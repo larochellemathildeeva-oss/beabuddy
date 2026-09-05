@@ -1,0 +1,193 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-visited: var(--visited);
+  --color-nexttime: var(--nexttime);
+  --color-wishlist: var(--wishlist);
+  --color-reco: var(--reco);
+  --color-elevated: var(--elevated);
+
+  /* Library requirement: consumers must load these fonts in their <head>:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
+:root {
+  --radius: 0.9rem;
+
+  /* Warm editorial cream / clay */
+  --background: oklch(0.968 0.014 82);
+  --foreground: oklch(0.27 0.026 55);
+  --card: oklch(0.988 0.009 84);
+  --card-foreground: oklch(0.27 0.026 55);
+  --elevated: oklch(0.945 0.018 78);
+  --popover: oklch(0.988 0.009 84);
+  --popover-foreground: oklch(0.27 0.026 55);
+  --primary: oklch(0.55 0.126 46);
+  --primary-foreground: oklch(0.98 0.01 84);
+  --secondary: oklch(0.93 0.02 76);
+  --secondary-foreground: oklch(0.34 0.03 52);
+  --muted: oklch(0.93 0.018 78);
+  --muted-foreground: oklch(0.545 0.032 58);
+  --accent: oklch(0.9 0.035 70);
+  --accent-foreground: oklch(0.3 0.03 52);
+  --destructive: oklch(0.56 0.18 27);
+  --destructive-foreground: oklch(0.98 0.01 84);
+  --border: oklch(0.885 0.018 76);
+  --input: oklch(0.885 0.018 76);
+  --ring: oklch(0.55 0.126 46);
+
+  --visited: oklch(0.56 0.13 249);
+  --nexttime: oklch(0.57 0.115 158);
+  --wishlist: oklch(0.72 0.13 84);
+  --reco: oklch(0.55 0.15 305);
+
+  --shadow-soft: 0 1px 2px oklch(0.3 0.03 55 / 0.05), 0 12px 30px -18px oklch(0.3 0.03 55 / 0.35);
+  --gradient-clay: linear-gradient(140deg, oklch(0.62 0.13 52), oklch(0.53 0.13 32));
+}
+
+.dark {
+  --background: oklch(0.19 0.014 58);
+  --foreground: oklch(0.94 0.012 82);
+  --card: oklch(0.235 0.016 56);
+  --card-foreground: oklch(0.94 0.012 82);
+  --elevated: oklch(0.27 0.018 56);
+  --popover: oklch(0.235 0.016 56);
+  --popover-foreground: oklch(0.94 0.012 82);
+  --primary: oklch(0.7 0.12 52);
+  --primary-foreground: oklch(0.2 0.02 50);
+  --secondary: oklch(0.29 0.018 56);
+  --secondary-foreground: oklch(0.93 0.012 82);
+  --muted: oklch(0.29 0.018 56);
+  --muted-foreground: oklch(0.72 0.02 72);
+  --accent: oklch(0.32 0.024 56);
+  --accent-foreground: oklch(0.94 0.012 82);
+  --destructive: oklch(0.66 0.17 27);
+  --destructive-foreground: oklch(0.97 0.01 82);
+  --border: oklch(0.34 0.018 58);
+  --input: oklch(0.34 0.018 58);
+  --ring: oklch(0.7 0.12 52);
+
+  --visited: oklch(0.68 0.13 249);
+  --nexttime: oklch(0.7 0.13 158);
+  --wishlist: oklch(0.8 0.13 86);
+  --reco: oklch(0.7 0.13 305);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3), 0 16px 34px -20px oklch(0 0 0 / 0.8);
+  --gradient-clay: linear-gradient(140deg, oklch(0.72 0.12 56), oklch(0.6 0.13 34));
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm, 4px);
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility card-soft {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility label-caps {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+}
+
+@utility clay-gradient {
+  background-image: var(--gradient-clay);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pin-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility rise {
+  animation: rise-in 0.55s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@utility pin-pop {
+  animation: pin-pop 0.5s cubic-bezier(0.34, 1.4, 0.5, 1) both;
+}

@@ -1,0 +1,5 @@
+# App entry & routing scaffolding — the consumer has its own.
+src/router.tsx
+src/start.ts
+src/routeTree.gen.ts
+src/routes/**

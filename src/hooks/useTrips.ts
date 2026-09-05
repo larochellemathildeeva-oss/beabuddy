@@ -1,0 +1,405 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+
+async function liveUserId(fallback?: string | null): Promise<string> {
+  const { data } = await supabase.auth.getUser();
+  const id = data.user?.id ?? fallback ?? null;
+  if (!id) throw new Error("Sign in first");
+  return id;
+}
+
+export type TripRow = {
+  id: string;
+  owner_id: string;
+  title: string;
+  city: string | null;
+  country: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+  budget: string | null;
+  budget_enabled: boolean;
+  notes: string | null;
+};
+
+export type MemberRow = {
+  id: string;
+  trip_id: string;
+  user_id: string;
+  role: string;
+  display_name: string | null;
+};
+
+export type ItineraryRow = {
+  id: string;
+  trip_id: string;
+  day_date: string | null;
+  time_label: string | null;
+  kind: string;
+  title: string;
+  detail: string | null;
+  address: string | null;
+  lat: number | null;
+  lon: number | null;
+  position: number;
+  updated_by: string | null;
+  updated_at: string;
+};
+
+export function useTrips() {
+  const [uid, setUid] = useState<string | null>(null);
+  const [trips, setTrips] = useState<TripRow[]>([]);
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user ?? null;
+    setUid(user?.id ?? null);
+    if (!user) {
+      setTrips([]);
+      setMembers([]);
+      setLoading(false);
+      return;
+    }
+    const { data: t } = await supabase
+      .from("trips")
+      .select(
+        "id, owner_id, title, city, country, start_date, end_date, status, budget, budget_enabled, notes",
+      )
+      .order("start_date", { ascending: false });
+    setTrips((t ?? []) as TripRow[]);
+    const { data: m } = await supabase
+      .from("trip_members")
+      .select("id, trip_id, user_id, role, display_name");
+    setMembers((m ?? []) as MemberRow[]);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    void load();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => void load());
+    return () => sub.subscription.unsubscribe();
+  }, [load]);
+
+  useEffect(() => {
+    if (!uid) return;
+    const channel = supabase
+      .channel("trips-sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => void load())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trip_members" },
+        () => void load(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [uid, load]);
+
+  const createTrip = useCallback(
+    async (t: {
+      title: string;
+      city?: string;
+      country?: string;
+      start_date?: string;
+      end_date?: string;
+      budget_enabled?: boolean;
+    }) => {
+      const ownerId = await liveUserId(uid);
+      const { data, error } = await supabase
+        .from("trips")
+        .insert({
+          owner_id: ownerId,
+          title: t.title,
+          city: t.city || null,
+          country: t.country || null,
+          start_date: t.start_date || null,
+          end_date: t.end_date || null,
+          budget_enabled: t.budget_enabled ?? false,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await load();
+      return data.id as string;
+    },
+    [uid, load],
+  );
+
+  const updateTrip = useCallback(
+    async (
+      id: string,
+      patch: Partial<
+        Pick<
+          TripRow,
+          | "title"
+          | "city"
+          | "country"
+          | "start_date"
+          | "end_date"
+          | "status"
+          | "budget_enabled"
+          | "notes"
+        >
+      >,
+    ) => {
+      const clean = Object.fromEntries(
+        Object.entries(patch).map(([k, v]) => [k, v === "" ? null : v]),
+      ) as typeof patch;
+      const { error } = await supabase.from("trips").update(clean).eq("id", id);
+
+      if (error) throw error;
+      await load();
+    },
+    [load],
+  );
+
+  const deleteTrip = useCallback(
+    async (id: string) => {
+      const { error } = await supabase.from("trips").delete().eq("id", id);
+      if (error) throw error;
+      await load();
+    },
+    [load],
+  );
+
+  const inviteToTrip = useCallback(
+    async (tripId: string, email?: string) => {
+      const inviterId = await liveUserId(uid);
+      const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+        .map((b) => b.toString(36).toUpperCase().padStart(2, "0"))
+        .join("")
+        .slice(0, 6);
+      const { error } = await supabase
+        .from("trip_invites")
+        .insert({ trip_id: tripId, code, email: email || null, invited_by: inviterId });
+      if (error) throw error;
+      return code;
+    },
+    [uid],
+  );
+
+  const joinTrip = useCallback(
+    async (code: string, displayName?: string) => {
+      const { data, error } = await supabase.rpc("accept_trip_invite", {
+        _code: code,
+        ...(displayName ? { _display_name: displayName } : {}),
+      });
+      if (error) throw error;
+      await load();
+      return data as unknown as string;
+    },
+    [load],
+  );
+
+  return {
+    uid,
+    trips,
+    members,
+    loading,
+    signedIn: !!uid,
+    createTrip,
+    updateTrip,
+    deleteTrip,
+    inviteToTrip,
+    joinTrip,
+    reload: load,
+  };
+}
+
+export type Presence = { userId: string; name: string; editing: string | null };
+
+export function useTripBoard(tripId: string | null, me: { id: string | null; name: string }) {
+  const [items, setItems] = useState<ItineraryRow[]>([]);
+  const [invites, setInvites] = useState<
+    { code: string; email: string | null; accepted_at: string | null }[]
+  >([]);
+  const [present, setPresent] = useState<Presence[]>([]);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+
+  const load = useCallback(async () => {
+    if (!tripId) return;
+    const { data } = await supabase
+      .from("itinerary_items")
+      .select(
+        "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at",
+      )
+      .eq("trip_id", tripId)
+      .order("day_date", { ascending: true })
+      .order("position", { ascending: true });
+    setItems((data ?? []) as ItineraryRow[]);
+    const { data: inv } = await supabase
+      .from("trip_invites")
+      .select("code, email, accepted_at")
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false });
+    setInvites(inv ?? []);
+  }, [tripId]);
+
+  useEffect(() => {
+    setItems([]);
+    setPresent([]);
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    if (!tripId || !me.id) return;
+    const channel = supabase.channel(`trip:${tripId}`, {
+      config: { presence: { key: me.id } },
+    });
+    channel
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "itinerary_items",
+          filter: `trip_id=eq.${tripId}`,
+        },
+        () => void load(),
+      )
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState<Presence>();
+        const list: Presence[] = [];
+        for (const key of Object.keys(state)) {
+          const first = state[key]?.[0];
+          if (first) list.push(first);
+        }
+        setPresent(list);
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          void channel.track({ userId: me.id, name: me.name, editing: null });
+        }
+      });
+    channelRef.current = channel;
+    return () => {
+      channelRef.current = null;
+      void supabase.removeChannel(channel);
+    };
+  }, [tripId, me.id, me.name, load]);
+
+  const setEditing = useCallback(
+    (label: string | null) => {
+      const ch = channelRef.current;
+      if (!ch || !me.id) return;
+      void ch.track({ userId: me.id, name: me.name, editing: label });
+    },
+    [me.id, me.name],
+  );
+
+  const addItem = useCallback(
+    async (item: {
+      day_date?: string;
+      time_label?: string;
+      kind: string;
+      title: string;
+      detail?: string;
+      address?: string;
+      lat?: number;
+      lon?: number;
+    }) => {
+      if (!tripId) throw new Error("Open a trip first");
+      const authorId = await liveUserId(me.id);
+      const { error } = await supabase.from("itinerary_items").insert({
+        trip_id: tripId,
+        day_date: item.day_date || null,
+        time_label: item.time_label || null,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail || null,
+        address: item.address || null,
+        lat: item.lat ?? null,
+        lon: item.lon ?? null,
+        position: items.length,
+        created_by: authorId,
+        updated_by: authorId,
+      });
+      if (error) throw error;
+      await load();
+    },
+    [tripId, me.id, items.length, load],
+  );
+
+  const addItems = useCallback(
+    async (
+      additions: Array<{
+        day_date?: string;
+        time_label?: string;
+        kind: string;
+        title: string;
+        detail?: string;
+        address?: string;
+        lat?: number;
+        lon?: number;
+      }>,
+    ) => {
+      if (!tripId) throw new Error("Open a trip first");
+      if (additions.length === 0) return;
+      const authorId = await liveUserId(me.id);
+
+      const { error } = await supabase.from("itinerary_items").insert(
+        additions.map((item, index) => ({
+          trip_id: tripId,
+          day_date: item.day_date || null,
+          time_label: item.time_label || null,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail || null,
+          address: item.address || null,
+          lat: item.lat ?? null,
+          lon: item.lon ?? null,
+          position: items.length + index,
+          created_by: authorId,
+          updated_by: authorId,
+        })),
+      );
+      if (error) throw error;
+      await load();
+    },
+    [tripId, me.id, items.length, load],
+  );
+
+  const updateItem = useCallback(
+    async (
+      id: string,
+      patch: Partial<
+        Pick<
+          ItineraryRow,
+          "title" | "detail" | "time_label" | "kind" | "day_date" | "address" | "lat" | "lon"
+        >
+      >,
+    ) => {
+      const { error } = await supabase
+        .from("itinerary_items")
+        .update({ ...patch, updated_by: me.id })
+        .eq("id", id);
+      if (error) throw error;
+      await load();
+    },
+    [me.id, load],
+  );
+
+  const removeItem = useCallback(
+    async (id: string) => {
+      await supabase.from("itinerary_items").delete().eq("id", id);
+      await load();
+    },
+    [load],
+  );
+
+  return {
+    items,
+    invites,
+    present,
+    addItem,
+    addItems,
+    updateItem,
+    removeItem,
+    setEditing,
+    reload: load,
+  };
+}
