@@ -205,7 +205,8 @@ export const parseItinerary = createServerFn({ method: "POST" })
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Could not read that itinerary — try a clearer photo or paste the text.");
       }
-      throw error;
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
     }
   });
 
@@ -301,7 +302,8 @@ export const compareItineraries = createServerFn({ method: "POST" })
         if (NoObjectGeneratedError.isInstance(error)) {
           throw new Error(`Could not read ${side.label}. Try pasting a clearer plan.`);
         }
-        throw error;
+        const { aiFailure } = await import("@/lib/ai.server");
+        throw aiFailure(error);
       }
     };
 
@@ -364,7 +366,8 @@ export const compareItineraries = createServerFn({ method: "POST" })
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("The comparison came back garbled. Try again.");
       }
-      throw error;
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
     }
   });
 
@@ -561,6 +564,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Béa couldn't rearrange that — try fewer goals, or try again.");
       }
-      throw error;
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
     }
   });

@@ -141,6 +141,7 @@ export const comparePlaces = createServerFn({ method: "POST" })
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("The comparison came back garbled. Try again.");
       }
-      throw error;
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
     }
   });
