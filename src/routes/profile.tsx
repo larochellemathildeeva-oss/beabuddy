@@ -9,7 +9,6 @@ import { CustomizeHome } from "@/components/CustomizeHome";
 import { useTrips } from "@/hooks/useTrips";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 
 
 export const Route = createFileRoute("/profile")({
@@ -76,7 +75,6 @@ function Collapsible({
 function ProfilePage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const photo = usePhotoMemories();
   const t = useTrips();
   const [dark, setDark] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
@@ -180,17 +178,6 @@ function ProfilePage() {
             </div>
           </div>
         )}
-
-        <section>
-          <p className="label-caps mb-2 text-foreground">Travel statistics</p>
-          <div className="grid grid-cols-3 gap-3">
-            <Tile value={photo.stats.countries} label="Countries" />
-            <Tile value={photo.stats.cities} label="Cities" />
-            <Tile value={t.trips.length} label="Trips" />
-            <Tile value={photo.stats.photos} label="Photos" />
-            <Tile value={photo.stats.days} label="Days" />
-          </div>
-        </section>
 
         <Collapsible
           title="Profile settings"
@@ -385,11 +372,3 @@ function ProfilePage() {
   );
 }
 
-function Tile({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="card-soft p-3 text-center">
-      <p className="font-display text-[22px] leading-none">{value}</p>
-      <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
-  );
-}
