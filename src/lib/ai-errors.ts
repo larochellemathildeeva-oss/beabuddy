@@ -40,7 +40,7 @@ export function shouldFallToNextModel(error: unknown): boolean {
 
 /**
  * Primary plus a comma-separated fallback ladder, de-duplicated and in order.
- * Example: primary `gemini-3.7-flash`, fallbacks `gemini-3.6-flash,gemini-3.5-flash-lite`.
+ * Example: primary `gemini-3.6-flash`, fallbacks `gemini-3.5-flash-lite,gemini-3.1-flash-lite`.
  */
 export function parseModelChain(primary: string, fallbacksCsv?: string | null): string[] {
   const extras = (fallbacksCsv ?? "")

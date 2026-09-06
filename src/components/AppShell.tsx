@@ -1,5 +1,5 @@
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
 
@@ -51,6 +51,20 @@ export function AppShell({
   const showBack = pathname !== "/";
   const { user, loading } = useAuth();
   useLegalConsent();
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   // The app frame is for members, except on pages a visitor has to be able to
   // read before they have an account.
@@ -70,11 +84,9 @@ export function AppShell({
   // only bounce them back to sign-in.
   const showTabs = !!user;
 
-
-
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 bg-background">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 bg-background md:max-w-[720px] xl:max-w-[960px]">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             {showBack &&
@@ -100,7 +112,7 @@ export function AppShell({
               <span className="flex items-center gap-2">
                 <span className="leading-none">
                   <span className="block font-display text-[24px]">Béa</span>
-<span className="block text-[8px] font-semibold uppercase text-muted-foreground">
+                  <span className="block text-[8px] font-semibold uppercase text-muted-foreground">
                     v{APP_VERSION}
                   </span>
                 </span>
@@ -110,12 +122,25 @@ export function AppShell({
           </div>
 
           <div className="flex items-center gap-2">
-            <PageGuide />
-            <span aria-label="Live sync" title="Live sync" className="grid size-7 place-items-center rounded-full border border-border bg-card">
-              <span className="size-1.5 rounded-full bg-nexttime" />
+            {user && <PageGuide />}
+            {!user && (
+              <Link
+                to="/auth"
+                className="rounded-xl bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground"
+              >
+                Sign in
+              </Link>
+            )}
+            <span
+              aria-label={online ? "Online" : "Offline"}
+              title={online ? "Online" : "Offline — changes may not sync"}
+              className="grid size-7 place-items-center rounded-full border border-border bg-card"
+            >
+              <span
+                className={`size-1.5 rounded-full ${online ? "bg-nexttime" : "bg-muted-foreground"}`}
+              />
             </span>
           </div>
-
         </header>
 
         {(eyebrow || title) && (

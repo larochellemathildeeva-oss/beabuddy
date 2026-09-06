@@ -8,6 +8,7 @@ import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
+import { DEMO_PLACES } from "@/lib/demo-seed";
 
 export const Route = createFileRoute("/opportunities")({
   head: () => ({
@@ -94,17 +95,27 @@ function OpportunitiesPage() {
   const [duration, setDuration] = useState<ShareDuration>("once");
   const [picking, setPicking] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [manualLabel, setManualLabel] = useState<string | null>(null);
   const vault = useRecommendations();
   const photo = usePhotoMemories();
   const scorePrefs = useScorePrefs();
 
+  const setManualHere = (place: (typeof DEMO_PLACES)[number]) => {
+    setHere({ lat: place.lat, lon: place.lon });
+    setManualLabel(place.label);
+    setLocState("ok");
+    setLocError("");
+    setConsent(true);
+  };
+
   const locate = () => {
     if (!("geolocation" in navigator)) {
       setLocState("error");
-      setLocError("This device can't share its location.");
+      setLocError("This device can't share its location — pick a city below instead.");
       return;
     }
     setLocState("locating");
+    setManualLabel(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setHere({ lat: pos.coords.latitude, lon: pos.coords.longitude });
@@ -115,14 +126,14 @@ function OpportunitiesPage() {
         const framed = typeof window !== "undefined" && window.self !== window.top;
         if (err.code === 1 && framed) {
           setLocError(
-            "This little preview window isn't allowed to use location. Open Béa in its own tab and it will work.",
+            "This little preview window isn't allowed to use location. Open Béa in its own tab, or pick a city below.",
           );
         } else if (err.code === 1) {
           setLocError(
-            "Your browser is blocking location for this site. Allow it in the address-bar settings, then tap Use my location again.",
+            "Your browser is blocking location. Allow it in the address bar, or pick a city below for the demo.",
           );
         } else {
-          setLocError(err.message || "Location unavailable");
+          setLocError(err.message || "Location unavailable — pick a city below.");
         }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
@@ -150,6 +161,7 @@ function OpportunitiesPage() {
     }
     setConsent(false);
     setHere(null);
+    setManualLabel(null);
     setLocState("idle");
   };
 
@@ -212,7 +224,11 @@ function OpportunitiesPage() {
               <p className="label-caps">Your location</p>
               <p className="mt-1 text-[13px] text-muted-foreground">
                 {locState === "locating" && "Finding you…"}
-                {locState === "ok" && here && `${here.lat.toFixed(3)}, ${here.lon.toFixed(3)}`}
+                {locState === "ok" &&
+                  here &&
+                  (manualLabel
+                    ? `Pretending you're in ${manualLabel}`
+                    : `${here.lat.toFixed(3)}, ${here.lon.toFixed(3)}`)}
                 {locState === "error" && (locError || "Location off")}
                 {locState === "idle" && "Not shared yet"}
               </p>
@@ -278,6 +294,30 @@ function OpportunitiesPage() {
               Stop sharing my location
             </button>
           )}
+
+          <div className="mt-4">
+            <p className="label-caps">Or demo from a city</p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              No GPS needed — useful in a meeting room or on a projector. Sample data is densest
+              around Lisbon.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {DEMO_PLACES.map((place) => (
+                <button
+                  key={place.label}
+                  type="button"
+                  onClick={() => setManualHere(place)}
+                  className={`rounded-xl border px-3 py-2 text-[12px] font-semibold transition-colors ${
+                    manualLabel === place.label
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  {place.label}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div data-guide="alert-settings">
           <p className="label-caps mt-4">Alert distance</p>

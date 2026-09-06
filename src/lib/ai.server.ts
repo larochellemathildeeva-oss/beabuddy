@@ -27,16 +27,18 @@ export {
  * change rather than a redeploy, and a wrong id fails loudly at the first call
  * instead of silently sitting in source.
  */
-const MODEL_ID = process.env["GEMINI_MODEL"] || "gemini-3.7-flash";
+// gemini-2.5-flash is blocked for new API keys/projects — use 3.6+ only.
+const MODEL_ID = process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
 
 /**
  * Optional comma-separated ladder of weaker / cheaper models. Tried in order
  * when the primary (then each previous step) is overloaded or out of free-tier
  * quota. Each model has its own free-tier pool.
  *
- * Example: gemini-3.6-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite
+ * Example: gemini-3.5-flash-lite,gemini-3.1-flash-lite
  */
-const FALLBACK_MODEL_IDS = process.env["GEMINI_FALLBACK_MODEL"];
+const FALLBACK_MODEL_IDS =
+  process.env["GEMINI_FALLBACK_MODEL"] || "gemini-3.5-flash-lite,gemini-3.1-flash-lite";
 
 function google() {
   const apiKey = process.env["GOOGLE_GENERATIVE_AI_API_KEY"];
