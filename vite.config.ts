@@ -29,7 +29,44 @@ function buildId(): string {
   }
 }
 
-const appVersion = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version?: string }).version ?? "1.0.0";
+/**
+ * Versioning restarted at 1.0.1. major.minor come from package.json so they can
+ * be bumped deliberately; the patch is derived from the commit count so it
+ * climbs on its own and never needs remembering.
+ *
+ * Note this counts commits, not build runs — rebuilding the same commit gives
+ * the same number, which is the useful behaviour: the version names the code.
+ * The sha beside it distinguishes rebuilds.
+ */
+const COMMIT_OFFSET = 27; // commit 28 is 1.0.1
+
+function patchNumber(): number {
+  // A host-provided build number wins if there is one — it survives shallow clones.
+  const fromHost = Number(
+    process.env["CANNER_BUILD_NUMBER"] ?? process.env["GITHUB_RUN_NUMBER"] ?? Number.NaN,
+  );
+  if (Number.isFinite(fromHost) && fromHost > 0) return fromHost;
+  try {
+    const count = Number(
+      execSync("git rev-list --count HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+        .toString()
+        .trim(),
+    );
+    const patch = count - COMMIT_OFFSET;
+    // A shallow clone reports 1, which would go negative. Fall through instead.
+    if (Number.isFinite(patch) && patch > 0) return patch;
+  } catch {
+    /* no git in the build image */
+  }
+  return 0;
+}
+
+const pkgVersion =
+  (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+    version?: string;
+  }).version ?? "1.0.0";
+const [major = "1", minor = "0"] = pkgVersion.split(".");
+const appVersion = `${major}.${minor}.${patchNumber()}`;
 
 export default defineConfig({
   tanstackStart: {
