@@ -151,7 +151,7 @@ function MemoriesPage() {
   return (
     <AppShell eyebrow="City memories" title="Every place, kept in one page.">
       <div className="space-y-5">
-        <div className="card-soft flex items-center justify-between gap-3 p-4">
+        <div data-guide="city-memories" className="card-soft flex items-center justify-between gap-3 p-4">
           <p className="text-[13px] text-muted-foreground">
             {loading
               ? "Opening your memories…"
@@ -240,7 +240,7 @@ function MemoriesPage() {
                     </div>
                   )}
 
-                  <div>
+                  <div data-guide="future-me">
                     <p className="label-caps">Future Me notes</p>
                     {cityNotes.length === 0 && (
                       <p className="mt-1 text-[13px] text-muted-foreground">

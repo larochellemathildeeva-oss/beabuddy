@@ -19,6 +19,8 @@ export type Pin = {
   source?: string;
   /** Reco row marked visited — not the same as pin type "visited". */
   visited?: boolean;
+  /** Place-level travel tags (same vocabulary as You → Travel preferences). */
+  travelTags?: string[];
   distanceM?: number;
 };
 

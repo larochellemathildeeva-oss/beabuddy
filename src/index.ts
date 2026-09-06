@@ -41,6 +41,7 @@ export * from "./hooks/useExpenses";
 export * from "./hooks/useVault";
 export * from "./hooks/useTripBudget";
 export * from "./hooks/useHomeLayout";
+export * from "./hooks/useStatsLayout";
 export * from "./hooks/useLegalConsent";
 export * from "./hooks/useOfflineDirections";
 export * from "./hooks/useRates";

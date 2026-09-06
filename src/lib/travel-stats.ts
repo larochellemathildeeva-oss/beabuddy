@@ -20,6 +20,16 @@ export type TravelStats = {
   days: number;
 };
 
+/** UN members plus the two observer states — the usual “how many countries” figure. */
+export const WORLD_COUNTRY_COUNT = 195;
+
+export function countryWorldShare(visited: number, world = WORLD_COUNTRY_COUNT) {
+  const safe = Math.max(0, Math.floor(visited));
+  const total = Math.max(1, world);
+  const percent = Math.min(100, Math.round((safe / total) * 100));
+  return { visited: safe, world: total, percent };
+}
+
 /** Case- and whitespace-insensitive, so "Paris" and "paris " are one city. */
 function key(value: string | null | undefined): string | null {
   const trimmed = (value ?? "").trim().toLowerCase();

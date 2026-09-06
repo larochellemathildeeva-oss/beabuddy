@@ -13,6 +13,9 @@ import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+
+const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
 
 function NotFoundComponent() {
@@ -99,8 +102,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.png", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      { rel: "icon", href: `/favicon.ico?v=${APP_VERSION}`, sizes: "any" },
+      { rel: "icon", href: `/favicon.png?v=${APP_VERSION}`, type: "image/png", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: `/apple-touch-icon.png?v=${APP_VERSION}` },
     ],
   }),
   shellComponent: RootShell,
@@ -113,6 +117,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />
       </head>

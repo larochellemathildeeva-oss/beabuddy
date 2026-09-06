@@ -274,7 +274,7 @@ function ExpensesPage() {
         </p>
 
 
-        <div className="card-soft space-y-3 p-4">
+        <div data-guide="new-receipt" className="card-soft space-y-3 p-4">
           <p className="label-caps text-foreground">New receipt</p>
 
           <input
@@ -487,6 +487,7 @@ function ExpensesPage() {
             </p>
 
             <button
+              data-guide="expense-export"
               onClick={exportCsv}
               className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
             >

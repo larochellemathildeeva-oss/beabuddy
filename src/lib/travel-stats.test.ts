@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Pin } from "../data/atlas.ts";
-import { deriveTravelStats } from "./travel-stats.ts";
+import { countryWorldShare, deriveTravelStats, WORLD_COUNTRY_COUNT } from "./travel-stats.ts";
 
 function pin(partial: Partial<Pin> & Pick<Pin, "id" | "name">): Pin {
   return {
@@ -61,5 +61,23 @@ describe("deriveTravelStats", () => {
     assert.equal(stats.photos, 2);
     assert.equal(stats.days, 2);
     assert.equal(stats.cities, 2);
+  });
+});
+
+describe("countryWorldShare", () => {
+  it("rounds one country to 1% of the world", () => {
+    const share = countryWorldShare(1);
+    assert.equal(share.world, WORLD_COUNTRY_COUNT);
+    assert.equal(share.visited, 1);
+    assert.equal(share.percent, 1);
+  });
+
+  it("stays at 0% when you have not left home", () => {
+    assert.equal(countryWorldShare(0).percent, 0);
+  });
+
+  it("caps a full set at 100%", () => {
+    assert.equal(countryWorldShare(WORLD_COUNTRY_COUNT).percent, 100);
+    assert.equal(countryWorldShare(WORLD_COUNTRY_COUNT + 4).percent, 100);
   });
 });

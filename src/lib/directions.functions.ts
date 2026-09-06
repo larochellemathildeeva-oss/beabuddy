@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { hasCoords, looksLikeStreetAddress, mapsDirUrl } from "@/lib/direction-stops";
 import { haversine } from "@/lib/geo";
 
 export type RouteStep = { instruction: string; distance: number };
@@ -15,6 +16,12 @@ export type RouteLeg = {
   mapUrl: string;
   /** True when we had coordinates but stopped calling OSRM. */
   capped?: boolean;
+  /** True when neither end could be placed on the map. */
+  unknownSpot?: boolean;
+  fromLat?: number;
+  fromLon?: number;
+  toLat?: number;
+  toLon?: number;
 };
 
 type Stop = {
@@ -42,7 +49,7 @@ function candidates(title: string): string[] {
   const stripVerb = (v: string) =>
     v
       .replace(
-        /^(?:purchase|buy|hike|explore|visit|walk|stroll|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip)\b\s*/i,
+        /^(?:purchase|buy|hike|explore|visit|walk|stroll|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip|check\s+in(?:\s+at)?|check\s+out(?:\s+of)?)\b\s*/i,
         "",
       )
       .trim();
@@ -132,7 +139,7 @@ async function leg(
 // They are not the same cost, so they do not share a number.
 const LOOKUP_BUDGET = 15;
 const LEG_BUDGET = 60;
-const WALL_MS = 20_000;
+const WALL_MS = 40_000;
 
 const coord = z.preprocess((value) => {
   if (value == null || value === "") return null;
@@ -155,18 +162,37 @@ const BuildRoutesInput = z.object({
   area: z.string().max(200).optional(),
 });
 
-function mapsOnlyLeg(fromName: string, toName: string, area: string, capped = false): RouteLeg {
-  const region = cleanArea(area);
-  const q = (n: string) => encodeURIComponent(region ? `${n}, ${region}` : n);
+function mapsOnlyLeg(
+  fromName: string,
+  toName: string,
+  area: string,
+  opts?: {
+    capped?: boolean;
+    mode?: "walking" | "driving";
+    from?: { lat: number; lon: number } | null;
+    to?: { lat: number; lon: number } | null;
+  },
+): RouteLeg {
+  const from = opts?.from ?? null;
+  const to = opts?.to ?? null;
+  const mode = opts?.mode ?? "walking";
   return {
     from: fromName,
     to: toName,
-    mode: "walking",
+    mode,
     distance: 0,
     duration: 0,
     steps: [],
-    mapUrl: `https://www.google.com/maps/dir/?api=1&origin=${q(fromName)}&destination=${q(toName)}&travelmode=walking`,
-    ...(capped ? { capped: true } : {}),
+    mapUrl: mapsDirUrl(
+      { title: fromName, ...(from ? { lat: from.lat, lon: from.lon } : {}) },
+      { title: toName, ...(to ? { lat: to.lat, lon: to.lon } : {}) },
+      area,
+      mode,
+    ),
+    ...(opts?.capped ? { capped: true } : {}),
+    ...(!from || !to ? { unknownSpot: true } : {}),
+    ...(from ? { fromLat: from.lat, fromLon: from.lon } : {}),
+    ...(to ? { toLat: to.lat, toLon: to.lon } : {}),
   };
 }
 
@@ -184,15 +210,11 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
       lookupsLeft -= 1;
       const found = await geocode(query);
-      await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
+      if (lookupsLeft > 0) await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
       return found;
     };
     for (const stop of data.stops) {
-      if (
-        typeof stop.lat === "number" &&
-        typeof stop.lon === "number" &&
-        (stop.lat !== 0 || stop.lon !== 0)
-      ) {
+      if (hasCoords(stop)) {
         points.push({ lat: stop.lat, lon: stop.lon });
         continue;
       }
@@ -202,10 +224,10 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       const region = cleanArea(area);
-      const names = [
-        ...(stop.address?.trim() ? [stop.address.trim()] : []),
-        ...candidates(stop.title),
-      ];
+      const hint = stop.address?.trim() ?? "";
+      const names = looksLikeStreetAddress(hint)
+        ? [hint]
+        : [...candidates(stop.title), ...(hint ? [hint] : [])];
       let found: { lat: number; lon: number } | null = null;
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
@@ -238,23 +260,23 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (!a || !b) {
         const missing = !a ? fromName : toName;
         if (deferred.includes(missing)) {
-          legs.push(mapsOnlyLeg(fromName, toName, area, true));
+          legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a ?? null, to: b ?? null }));
         } else {
           if (!unresolved.includes(missing)) unresolved.push(missing);
-          legs.push(mapsOnlyLeg(fromName, toName, area));
+          legs.push(mapsOnlyLeg(fromName, toName, area, { from: a ?? null, to: b ?? null }));
         }
         continue;
       }
+      const straight = haversine(a, b);
+      const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
       if (legsLeft <= 0 || Date.now() > deadline) {
-        legs.push(mapsOnlyLeg(fromName, toName, area, true));
+        legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a, to: b, mode }));
         continue;
       }
       legsLeft -= 1;
-      const straight = haversine(a, b);
-      const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
       const r = await leg(a, b, mode);
       if (!r) {
-        legs.push(mapsOnlyLeg(fromName, toName, area));
+        legs.push(mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }));
         continue;
       }
       legs.push({
@@ -264,7 +286,16 @@ export const buildRoutes = createServerFn({ method: "POST" })
         distance: r.distance,
         duration: r.duration,
         steps: r.steps,
-        mapUrl: `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lon}&destination=${b.lat},${b.lon}&travelmode=${mode === "walking" ? "walking" : "driving"}`,
+        mapUrl: mapsDirUrl(
+          { title: fromName, lat: a.lat, lon: a.lon },
+          { title: toName, lat: b.lat, lon: b.lon },
+          area,
+          mode,
+        ),
+        fromLat: a.lat,
+        fromLon: a.lon,
+        toLat: b.lat,
+        toLon: b.lon,
       });
     }
 

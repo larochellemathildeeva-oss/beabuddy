@@ -160,9 +160,6 @@ function PrivacyPage() {
           <p>Béa does not sell data, does not run advertising and does not track you across the web.</p>
         </Section>
 
-        <p className="mt-6 border-t border-border pt-6 text-[12px] text-muted-foreground">
-          © 2026 Mathilde E. Larochelle. All rights reserved.
-        </p>
         <Link
           to="/profile"
           className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[13px] font-semibold"

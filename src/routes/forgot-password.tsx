@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -45,7 +46,8 @@ function ForgotPasswordPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col justify-center border-x border-border/70 px-6 py-10">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
+      <div className="flex flex-1 flex-col justify-center">
         <p className="label-caps">Béa</p>
         <h1 className="mt-2 text-[34px] leading-[1.05]">Forgot your password?</h1>
         <p className="mt-2 text-[13px] text-muted-foreground">
@@ -82,6 +84,8 @@ function ForgotPasswordPage() {
         <Link to="/auth" className="mt-6 text-[13px] text-muted-foreground underline underline-offset-4">
           Back to sign in
         </Link>
+      </div>
+        <CopyrightNotice />
       </div>
     </div>
   );

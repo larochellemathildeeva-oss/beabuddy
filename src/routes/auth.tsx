@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
 import { startTour } from "@/components/Tour";
+import { CopyrightNotice } from "@/components/CopyrightNotice";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -130,7 +131,8 @@ function AuthPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col justify-center border-x border-border/70 px-6 py-10">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
+      <div className="flex flex-1 flex-col justify-center">
         <div className="rise">
           <p className="label-caps">Béa</p>
           <h1 className="mt-2 text-[34px] leading-[1.05]">
@@ -287,6 +289,8 @@ function AuthPage() {
           {mode === "signup" ? "I already have an account" : "Create a new account"}
         </button>
 
+      </div>
+        <CopyrightNotice />
       </div>
     </div>
   );

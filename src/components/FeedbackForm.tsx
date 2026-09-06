@@ -1,35 +1,43 @@
 import { useState } from "react";
+import { FEEDBACK_CATEGORIES, formatFeedbackMessage } from "@/lib/feedback";
 import { fileReport } from "@/lib/report";
 import { useAuth } from "@/hooks/useAuth";
 
 /**
- * The Terms have had a "Feedback" section since launch with no way to send any.
- * This is that way: short, on the Help page, and honest about needing an account
- * since a report is stored as a row the sender owns.
+ * Writes a row to app_reports (kind = feedback). Shown under You → Feedback.
  */
-export function FeedbackForm() {
-  const { user } = useAuth();
+export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: boolean }) {
+  const { user, loading } = useAuth();
+  const [category, setCategory] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [failed, setFailed] = useState(false);
+  const signedIn = alreadySignedIn || !!user;
+  const canSend = Boolean(category && message.trim());
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!canSend) return;
     setBusy(true);
     setFailed(false);
-    const ok = await fileReport({ kind: "feedback", message });
+    const ok = await fileReport({
+      kind: "feedback",
+      message: formatFeedbackMessage(category, message),
+      detail: category,
+    });
     setBusy(false);
     if (ok) {
       setSent(true);
       setMessage("");
+      setCategory("");
     } else {
       setFailed(true);
     }
   };
 
-  if (!user) {
+  if (!signedIn) {
+    if (loading) return null;
     return (
       <p className="text-[12px] text-muted-foreground">
         Sign in to send feedback — it is saved to your account so we can reply about it.
@@ -53,6 +61,22 @@ export function FeedbackForm() {
 
   return (
     <form onSubmit={send} className="space-y-2">
+      <label className="block">
+        <span className="sr-only">What kind of something is this?</span>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          required
+          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+        >
+          <option value="">What kind of something is this?</option>
+          {FEEDBACK_CATEGORIES.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <textarea
         value={message}
         onChange={(e) => setMessage(e.target.value)}
@@ -68,7 +92,7 @@ export function FeedbackForm() {
       )}
       <button
         type="submit"
-        disabled={busy || !message.trim()}
+        disabled={busy || !canSend}
         className="rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy ? "Sending…" : "Send feedback"}

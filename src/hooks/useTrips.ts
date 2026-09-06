@@ -1,6 +1,100 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  datesStatusOrDefault,
+  isMissingDatesStatusColumn,
+  type DatesStatus,
+} from "@/lib/trip-dates";
+
+/** Cached after the first select/insert: the live DB may not have this column yet. */
+let datesStatusColumnAvailable: boolean | null = null;
+
+const TRIP_COLS =
+  "id, owner_id, title, city, country, start_date, end_date, status, budget, budget_enabled, notes";
+const TRIP_COLS_WITH_DATES_STATUS = `${TRIP_COLS}, dates_status`;
+
+function markDatesStatusUnavailable(error: { message?: string; code?: string } | null | undefined) {
+  if (isMissingDatesStatusColumn(error)) {
+    datesStatusColumnAvailable = false;
+    return true;
+  }
+  return false;
+}
+
+type TripQueryRow = TripRow & { dates_status?: string | null };
+
+function asTripRow(row: TripQueryRow): TripRow {
+  return {
+    ...row,
+    dates_status: datesStatusOrDefault(row.dates_status),
+  };
+}
+
+async function selectTrips(): Promise<TripRow[]> {
+  if (datesStatusColumnAvailable !== false) {
+    const first = await supabase
+      .from("trips")
+      .select(TRIP_COLS_WITH_DATES_STATUS)
+      .order("start_date", { ascending: false });
+    if (!first.error) {
+      datesStatusColumnAvailable = true;
+      return ((first.data ?? []) as TripQueryRow[]).map(asTripRow);
+    }
+    if (!markDatesStatusUnavailable(first.error)) throw first.error;
+  }
+  const retry = await supabase
+    .from("trips")
+    .select(TRIP_COLS)
+    .order("start_date", { ascending: false });
+  if (retry.error) throw retry.error;
+  return ((retry.data ?? []) as TripQueryRow[]).map(asTripRow);
+}
+
+async function insertTrip(row: {
+  owner_id: string;
+  title: string;
+  city: string | null;
+  country: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  dates_status: DatesStatus;
+  budget_enabled: boolean;
+}): Promise<{ id: string }> {
+  const withStatus = { ...row };
+  if (datesStatusColumnAvailable !== false) {
+    const first = await supabase.from("trips").insert(withStatus).select("id").single();
+    if (!first.error && first.data) {
+      datesStatusColumnAvailable = true;
+      return first.data as { id: string };
+    }
+    if (!markDatesStatusUnavailable(first.error)) throw first.error;
+  }
+  const { dates_status: _datesStatus, ...withoutStatus } = withStatus;
+  const retry = await supabase.from("trips").insert(withoutStatus).select("id").single();
+  if (retry.error) throw retry.error;
+  return retry.data as { id: string };
+}
+
+type TripPatch = Partial<
+  Pick<
+    TripRow,
+    "title" | "city" | "country" | "start_date" | "end_date" | "dates_status" | "status" | "budget_enabled" | "notes"
+  >
+>;
+
+async function updateTripRow(id: string, patch: TripPatch): Promise<void> {
+  const withStatus = { ...patch };
+  if (datesStatusColumnAvailable === false && withStatus.dates_status !== undefined) {
+    delete withStatus.dates_status;
+  }
+  const first = await supabase.from("trips").update(withStatus).eq("id", id);
+  if (!first.error) return;
+  if (!markDatesStatusUnavailable(first.error) || patch.dates_status === undefined) throw first.error;
+  const { dates_status: _datesStatus, ...withoutStatus } = patch;
+  const retry = await supabase.from("trips").update(withoutStatus).eq("id", id);
+  if (retry.error) throw retry.error;
+}
 
 async function liveUserId(fallback?: string | null): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -17,6 +111,7 @@ export type TripRow = {
   country: string | null;
   start_date: string | null;
   end_date: string | null;
+  dates_status: DatesStatus;
   status: string;
   budget: string | null;
   budget_enabled: boolean;
@@ -63,13 +158,8 @@ export function useTrips() {
       setLoading(false);
       return;
     }
-    const { data: t } = await supabase
-      .from("trips")
-      .select(
-        "id, owner_id, title, city, country, start_date, end_date, status, budget, budget_enabled, notes",
-      )
-      .order("start_date", { ascending: false });
-    setTrips((t ?? []) as TripRow[]);
+    const rows = await selectTrips();
+    setTrips(rows);
     const { data: m } = await supabase
       .from("trip_members")
       .select("id, trip_id, user_id, role, display_name");
@@ -106,25 +196,23 @@ export function useTrips() {
       country?: string;
       start_date?: string;
       end_date?: string;
+      dates_status?: DatesStatus;
       budget_enabled?: boolean;
     }) => {
       const ownerId = await liveUserId(uid);
-      const { data, error } = await supabase
-        .from("trips")
-        .insert({
-          owner_id: ownerId,
-          title: t.title,
-          city: t.city || null,
-          country: t.country || null,
-          start_date: t.start_date || null,
-          end_date: t.end_date || null,
-          budget_enabled: t.budget_enabled ?? false,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
+      const row = {
+        owner_id: ownerId,
+        title: t.title,
+        city: t.city || null,
+        country: t.country || null,
+        start_date: t.start_date || null,
+        end_date: t.end_date || null,
+        dates_status: t.dates_status ?? "tentative",
+        budget_enabled: t.budget_enabled ?? false,
+      };
+      const created = await insertTrip(row);
       await load();
-      return data.id as string;
+      return created.id;
     },
     [uid, load],
   );
@@ -140,6 +228,7 @@ export function useTrips() {
           | "country"
           | "start_date"
           | "end_date"
+          | "dates_status"
           | "status"
           | "budget_enabled"
           | "notes"
@@ -149,9 +238,7 @@ export function useTrips() {
       const clean = Object.fromEntries(
         Object.entries(patch).map(([k, v]) => [k, v === "" ? null : v]),
       ) as typeof patch;
-      const { error } = await supabase.from("trips").update(clean).eq("id", id);
-
-      if (error) throw error;
+      await updateTripRow(id, clean);
       await load();
     },
     [load],

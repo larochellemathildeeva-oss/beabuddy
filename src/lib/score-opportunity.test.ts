@@ -101,6 +101,15 @@ describe("scoreOpportunity", () => {
     assert.ok(scoreOpportunity(fresh, prefs, { now }).reasons.includes("Saved this week"));
   });
 
+  it("matches stored travel tags even when the name is opaque", () => {
+    const prefs = { tags: ["Museums"], preferredCountries: [] };
+    const tagged = scoreOpportunity(pin({ id: "rom", name: "ROM", travelTags: ["Museums"] }), prefs);
+    const untagged = scoreOpportunity(pin({ id: "rom2", name: "ROM" }), prefs);
+    assert.ok(tagged.reasons.some((r) => r.startsWith("Matches")));
+    assert.ok(!untagged.reasons.some((r) => r.startsWith("Matches")));
+    assert.ok(tagged.score > untagged.score);
+  });
+
   it("does not credit dormancy to somewhere already visited", () => {
     const been = scoreOpportunity(
       pin({ id: "v", name: "Old haunt", type: "visited", dateAdded: "2023-09-06" }),

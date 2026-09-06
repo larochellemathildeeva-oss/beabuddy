@@ -237,6 +237,7 @@ export type Database = {
           packed: boolean
           position: number
           quantity: number
+          section: string | null
           updated_at: string
           user_id: string
         }
@@ -248,6 +249,7 @@ export type Database = {
           packed?: boolean
           position?: number
           quantity?: number
+          section?: string | null
           updated_at?: string
           user_id: string
         }
@@ -259,6 +261,7 @@ export type Database = {
           packed?: boolean
           position?: number
           quantity?: number
+          section?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -415,6 +418,7 @@ export type Database = {
           pin_type: string
           recommended_by: string | null
           source: string | null
+          travel_tags: string[]
           updated_at: string
           url: string | null
           user_id: string
@@ -434,6 +438,7 @@ export type Database = {
           pin_type?: string
           recommended_by?: string | null
           source?: string | null
+          travel_tags?: string[]
           updated_at?: string
           url?: string | null
           user_id: string
@@ -453,6 +458,7 @@ export type Database = {
           pin_type?: string
           recommended_by?: string | null
           source?: string | null
+          travel_tags?: string[]
           updated_at?: string
           url?: string | null
           user_id?: string
@@ -651,6 +657,7 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string
+          dates_status: string | null
           end_date: string | null
           id: string
           notes: string | null
@@ -668,6 +675,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          dates_status?: string | null
           end_date?: string | null
           id?: string
           notes?: string | null
@@ -685,6 +693,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string
+          dates_status?: string | null
           end_date?: string | null
           id?: string
           notes?: string | null

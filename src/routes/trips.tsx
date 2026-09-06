@@ -4,6 +4,7 @@ import { FileText, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
+import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
@@ -17,6 +18,11 @@ import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
+import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
+import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
+import { unroutedLegCopy } from "@/lib/timeline-directions";
+import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
+import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
 export const Route = createFileRoute("/trips")({
@@ -79,6 +85,7 @@ function TripsPage() {
     country: "",
     start_date: "",
     end_date: "",
+    dates_status: "tentative" as DatesStatus,
   });
   const [withBudget, setWithBudget] = useState(false);
   const packing = usePacking(null);
@@ -117,6 +124,7 @@ function TripsPage() {
                 New trip
               </button>
               <button
+                data-guide="join-trip"
                 onClick={() => {
                   setJoining(!joining);
                   setCreating(false);
@@ -138,39 +146,27 @@ function TripsPage() {
                 <PlaceSearchInput
                   value={form.city}
                   onChange={(v) => setForm({ ...form, city: v })}
-                  onPick={(p) =>
+                  onPick={(p) => {
+                    const loc = locationFromParsedPlace(p);
                     setForm({
                       ...form,
-                      city: p.city || p.name,
-                      country: p.country ?? form.country,
-                    })
-                  }
+                      city: loc.city,
+                      country: loc.country || form.country,
+                    });
+                  }}
                   placeholder="Starting city — search it"
-                />
-                <input
-                  value={form.country}
-                  onChange={(e) => setForm({ ...form, country: e.target.value })}
-                  placeholder="Country (fills in automatically)"
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
                 />
                 <p className="px-1 text-[11px] text-muted-foreground">
                   Going to more than one country? Open the trip after creating it and add each stop
                   — including layovers.
                 </p>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
-                  />
-                  <input
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
-                  />
-                </div>
+                <DateRangeField
+                  start={form.start_date}
+                  end={form.end_date}
+                  onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
+                  datesStatus={form.dates_status}
+                  onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+                />
                 {form.start_date &&
                   form.end_date &&
                   form.end_date < form.start_date && (
@@ -207,6 +203,7 @@ function TripsPage() {
                   />
                   Track a budget for this trip
                 </label>
+                <p className="px-1 text-[11px] text-muted-foreground">{tripStillEditableNote()}</p>
                 <button
                   disabled={
                     !form.title.trim() ||
@@ -219,7 +216,14 @@ function TripsPage() {
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
                       openTrip(id);
-                      setForm({ title: "", city: "", country: "", start_date: "", end_date: "" });
+                      setForm({
+                        title: "",
+                        city: "",
+                        country: "",
+                        start_date: "",
+                        end_date: "",
+                        dates_status: "tentative",
+                      });
                       setWithBudget(false);
                       setCreating(false);
                     } catch (e) {
@@ -268,10 +272,10 @@ function TripsPage() {
                 <LiveTripCard
                   key={trip.id}
                   trip={trip}
-                  memberCount={t.members.filter((m) => m.trip_id === trip.id).length}
-                  memberNames={t.members
-                    .filter((m) => m.trip_id === trip.id)
-                    .map((m) => m.display_name?.trim() || "Traveller")}
+                  companionsLine={tripCompanionsLine(
+                    t.members.filter((m) => m.trip_id === trip.id),
+                    t.uid,
+                  )}
                   open={openId === trip.id}
                   onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
                   me={{ id: t.uid, name: myName }}
@@ -316,8 +320,7 @@ function TripsPage() {
 
 function LiveTripCard({
   trip,
-  memberCount,
-  memberNames,
+  companionsLine,
   open,
   onToggle,
   me,
@@ -326,8 +329,7 @@ function LiveTripCard({
   onDelete,
 }: {
   trip: TripRow;
-  memberCount: number;
-  memberNames: string[];
+  companionsLine: string;
   open: boolean;
   onToggle: () => void;
   me: { id: string | null; name: string };
@@ -345,32 +347,18 @@ function LiveTripCard({
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
-  const routeStops =
-    cities.stops.length >= 2
-      ? cities.stops.map((s) => ({
-          title: (s.place_name || s.city).trim() || s.city,
-          address: s.address,
-          lat: s.lat,
-          lon: s.lon,
-        }))
-      : board.items
-          .filter((i) => i.title.trim())
-          .map((i) => ({
-            title: i.title.trim(),
-            address: i.address,
-            lat: i.lat,
-            lon: i.lon,
-          }));
+  const directionStops = timelineStopsForDirections(board.items);
+  const routeStops = stopsForDirections(cities.stops, board.items);
+  const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sheetSection, setSheetSection] = useState<"invite" | "edit" | "offline" | "packing" | null>(
-    null,
-  );
+  const [sheetSection, setSheetSection] = useState<
+    "invite" | "budget" | "edit" | "offline" | "packing" | null
+  >(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [packSignal, setPackSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
-  const [editTrip, setEditTrip] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineDraft, setTimelineDraft] = useState({
@@ -383,10 +371,11 @@ function LiveTripCard({
   const [timelineError, setTimelineError] = useState("");
   const [tripForm, setTripForm] = useState({
     title: trip.title,
-    city: trip.city ?? "",
+    city: formatTripLocation(trip.city, trip.country),
     country: trip.country ?? "",
     start_date: trip.start_date ?? "",
     end_date: trip.end_date ?? "",
+    dates_status: trip.dates_status,
     status: trip.status,
   });
   const others = board.present.filter((p) => p.userId !== me.id);
@@ -404,16 +393,12 @@ function LiveTripCard({
           </span>
           <h2 className="mt-1 text-[22px] leading-tight">{trip.title}</h2>
           <p className="text-[12px] text-muted-foreground">
-            {[trip.city, trip.country].filter(Boolean).join(", ")}
+            {formatTripLocation(trip.city, trip.country)}
             {trip.start_date
-              ? ` · ${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
+              ? ` · ${trip.dates_status === "tentative" ? "Tentative · " : ""}${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
               : ""}
           </p>
-          <p className="mt-1 truncate text-[12px] text-muted-foreground">
-            {memberNames.length > 0
-              ? `With ${memberNames.join(", ")}`
-              : `${memberCount} travelling`}
-          </p>
+          <p className="mt-1 truncate text-[12px] text-muted-foreground">{companionsLine}</p>
         </button>
         <button
           data-guide="bea-plan"
@@ -430,8 +415,9 @@ function LiveTripCard({
           <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
         </button>
         <button
-          aria-label="Create a packing list"
-          title="Create a packing list"
+          data-guide="packing-lists"
+          aria-label="Add packing list to this trip"
+          title="Add packing list to this trip"
           onClick={() => {
             if (!open) onToggle();
             setPackSignal((n) => n + 1);
@@ -490,7 +476,7 @@ function LiveTripCard({
 
           {trip.budget_enabled && <TripBudget tripId={trip.id} />}
 
-          <div className="mb-3 rounded-xl border border-border p-3">
+          <div data-guide="trip-timeline" className="mb-3 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="label-caps text-foreground">What you're doing</p>
@@ -660,15 +646,10 @@ function LiveTripCard({
           </div>
 
           <ItineraryDirections
-            stops={board.items.map((i) => ({
-              title: i.title,
-              address: i.address,
-              lat: i.lat,
-              lon: i.lon,
-            }))}
-            {...(trip.city
-              ? { area: [trip.city, trip.country].filter(Boolean).join(", ") }
-              : {})}
+            stops={directionStops}
+            existingTitles={board.items.map((i) => i.title)}
+            onAddToTimeline={board.addItems}
+            {...(directionArea ? { area: directionArea } : {})}
           />
 
         </div>
@@ -701,10 +682,13 @@ function LiveTripCard({
         {...(trip.start_date ? { startDate: trip.start_date } : {})}
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
-        onAddCosts={budget.addItems}
+        onAddCosts={async (items) => {
+          if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
+          await budget.addItems(items);
+        }}
         onApplySchedule={board.applySchedule}
         onApplyDates={async (dates) => {
-          await onUpdate({ ...dates, budget_enabled: true });
+          await onUpdate(dates);
         }}
       />
 
@@ -830,14 +814,15 @@ function LiveTripCard({
               {sheetSection === "offline" && (
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-[11px] text-muted-foreground">
-                    Save the walk or drive between the cities on this trip — works with no service.
+                    Download the walk or drive between stops so the steps work with no service.
+                    Adding directions to the timeline saves the summary — not the offline map.
                   </p>
                   <button
                     disabled={dir.busy || routeStops.length < 2}
                     onClick={() =>
                       void dir.download(
                         routeStops,
-                        [trip.city, trip.country].filter(Boolean).join(", "),
+                        directionArea,
                       )
                     }
                     className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
@@ -864,9 +849,7 @@ function LiveTripCard({
                             <span className="ml-2 text-[11px] font-normal text-muted-foreground">
                               {l.distance > 0
                                 ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
-                                : l.capped
-                                  ? "Open in maps for this stretch"
-                                  : "Exact spot unknown"}
+                                : unroutedLegCopy(l)}
                             </span>
                           </summary>
                           <ol className="mt-2 space-y-1">
@@ -909,12 +892,12 @@ function LiveTripCard({
               )}
 
               <button
-                onClick={() => setSheetSection(sheetSection === "edit" ? null : "edit")}
+                onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
                 className="w-full rounded-xl px-3 py-3 text-left text-[14px] font-semibold hover:bg-elevated"
               >
-                Trip & budget options
+                Budget Options
               </button>
-              {sheetSection === "edit" && (
+              {sheetSection === "budget" && (
                 <div className="space-y-2 rounded-xl border border-border p-3">
                   <label className="flex items-center gap-2 px-1 text-[13px]">
                     <input
@@ -925,97 +908,112 @@ function LiveTripCard({
                     />
                     Track a budget for this trip
                   </label>
-                  <button
-                    onClick={() => {
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  const next = sheetSection === "edit" ? null : "edit";
+                  setSheetSection(next);
+                  if (next === "edit") {
+                    setTripForm({
+                      title: trip.title,
+                      city: formatTripLocation(trip.city, trip.country),
+                      country: trip.country ?? "",
+                      start_date: trip.start_date ?? "",
+                      end_date: trip.end_date ?? "",
+                      dates_status: trip.dates_status,
+                      status: trip.status,
+                    });
+                  }
+                }}
+                className="w-full rounded-xl px-3 py-3 text-left text-[14px] font-semibold hover:bg-elevated"
+              >
+                Trip Options
+              </button>
+              {sheetSection === "edit" && (
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <input
+                    value={tripForm.title}
+                    onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
+                    placeholder="Trip name"
+                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                  />
+                  <PlaceSearchInput
+                    value={tripForm.city}
+                    onChange={(v) => setTripForm({ ...tripForm, city: v })}
+                    onPick={(p) => {
+                      const loc = locationFromParsedPlace(p);
                       setTripForm({
-                        title: trip.title,
-                        city: trip.city ?? "",
-                        country: trip.country ?? "",
-                        start_date: trip.start_date ?? "",
-                        end_date: trip.end_date ?? "",
-                        status: trip.status,
+                        ...tripForm,
+                        city: loc.city,
+                        country: loc.country || tripForm.country,
                       });
-                      setEditTrip(!editTrip);
                     }}
-                    className="w-full rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
-                  >
-                    {editTrip ? "Cancel editing" : "Edit name, place or dates"}
-                  </button>
-                  {editTrip && (
-                    <div className="space-y-2">
-                      {(["title", "city", "country"] as const).map((f) => (
-                        <input
-                          key={f}
-                          value={tripForm[f]}
-                          onChange={(e) => setTripForm({ ...tripForm, [f]: e.target.value })}
-                          placeholder={
-                            f === "title" ? "Trip name" : f === "city" ? "City" : "Country"
-                          }
-                          className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                      ))}
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          value={tripForm.start_date}
-                          onChange={(e) => setTripForm({ ...tripForm, start_date: e.target.value })}
-                          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                        <input
-                          type="date"
-                          value={tripForm.end_date}
-                          onChange={(e) => setTripForm({ ...tripForm, end_date: e.target.value })}
-                          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                      </div>
-                      {tripForm.start_date &&
-                        tripForm.end_date &&
-                        tripForm.end_date < tripForm.start_date && (
-                          <p className="px-1 text-[12px] font-medium text-destructive">
-                            End date can't be earlier than the start date.
-                          </p>
-                        )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          ["upcoming", "Upcoming"],
-                          ["active", "In progress"],
-                          ["past", "Past"],
-                        ].map(([v, label]) => (
-                          <button
-                            key={v}
-                            onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                            className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                              tripForm.status === v
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                    placeholder="Starting city — search it"
+                  />
+                  <DateRangeField
+                    start={tripForm.start_date}
+                    end={tripForm.end_date}
+                    onChange={(start_date, end_date) =>
+                      setTripForm({ ...tripForm, start_date, end_date })
+                    }
+                    datesStatus={tripForm.dates_status}
+                    onDatesStatusChange={(dates_status) =>
+                      setTripForm({ ...tripForm, dates_status })
+                    }
+                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-left text-[13px]"
+                  />
+                  {tripForm.start_date &&
+                    tripForm.end_date &&
+                    tripForm.end_date < tripForm.start_date && (
+                      <p className="px-1 text-[12px] font-medium text-destructive">
+                        End date can't be earlier than the start date.
+                      </p>
+                    )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      ["upcoming", "Upcoming"],
+                      ["active", "In progress"],
+                      ["past", "Past"],
+                    ].map(([v, label]) => (
                       <button
-                        disabled={
-                          !tripForm.title.trim() ||
-                          !!(tripForm.start_date && tripForm.end_date && tripForm.end_date < tripForm.start_date)
-                        }
-                        onClick={async () => {
-                          await onUpdate({
-                            title: tripForm.title.trim(),
-                            city: tripForm.city,
-                            country: tripForm.country,
-                            start_date: tripForm.start_date,
-                            end_date: tripForm.end_date,
-                            status: tripForm.status,
-                          } as Partial<TripRow>);
-                          setEditTrip(false);
-                        }}
-                        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                        key={v}
+                        onClick={() => setTripForm({ ...tripForm, status: v as string })}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                          tripForm.status === v
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                        }`}
                       >
-                        Save changes
+                        {label}
                       </button>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                  <button
+                    disabled={
+                      !tripForm.title.trim() ||
+                      !!(
+                        tripForm.start_date &&
+                        tripForm.end_date &&
+                        tripForm.end_date < tripForm.start_date
+                      )
+                    }
+                    onClick={async () => {
+                      await onUpdate({
+                        title: tripForm.title.trim(),
+                        city: tripForm.city,
+                        country: tripForm.country,
+                        start_date: tripForm.start_date,
+                        end_date: tripForm.end_date,
+                        dates_status: tripForm.dates_status,
+                        status: tripForm.status,
+                      } as Partial<TripRow>);
+                    }}
+                    className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Save changes
+                  </button>
                 </div>
               )}
 
@@ -1110,11 +1108,7 @@ function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
               ))}
             </ol>
           ) : (
-            <p className="text-[11px] text-muted-foreground">
-              {leg.capped
-                ? "Turn-by-turn paused here — open in maps for this stretch."
-                : "Exact spot unknown — open in maps to search it."}
-            </p>
+            <p className="text-[11px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
           )}
           <a
             href={leg.mapUrl}

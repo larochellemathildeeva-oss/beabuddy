@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { supabase } from "../integrations/supabase/client";
 import { useTrips, type TripRow } from "../hooks/useTrips";
+import { formatTripLocation } from "../lib/place-label";
 
 type NextItem = { id: string; day_date: string | null; time_label: string | null; title: string; kind: string };
 
@@ -107,7 +108,7 @@ export function HomeTripCard() {
           <div>
             <h2 className="font-display text-[22px] leading-tight">{trip.title}</h2>
             <p className="mt-0.5 text-[13px] text-muted-foreground">
-              {[trip.city, trip.country].filter(Boolean).join(", ") || "Destination to be decided"}
+              {formatTripLocation(trip.city, trip.country) || "Destination to be decided"}
             </p>
           </div>
           {trip.start_date && (
@@ -116,6 +117,11 @@ export function HomeTripCard() {
               {trip.end_date && (
                 <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   to {fmt(trip.end_date)}
+                </p>
+              )}
+              {trip.dates_status === "tentative" && (
+                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  Tentative
                 </p>
               )}
             </div>

@@ -17,6 +17,17 @@ CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and build on every
 push to `main` and every pull request. Do not push work that has not passed it
 locally first.
 
+## App version (Canner)
+
+`package.json` `version` is the number shown in the app header. Bump it on
+every push that will deploy to Canner.
+
+| Change | Command | Example |
+| --- | --- | --- |
+| Bug fix, no new capability | `npm run version:fix` | 1.0.0 → 1.0.1 |
+| Better existing feature | `npm run version:enhance` | 1.0.0 → 1.1.0 |
+| New feature or large change | `npm run version:feature` | 1.0.0 → 2.0.0 |
+
 ## Database
 
 Migrations live in `supabase/migrations/` and are **applied by hand**, not by

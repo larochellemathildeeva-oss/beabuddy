@@ -140,7 +140,7 @@ function HomePage() {
 
 
         {empty && (
-          <section className="rise card-soft p-4">
+          <section data-guide="home-empty" className="rise card-soft p-4">
             <p className="font-display text-[20px] leading-snug">
               {user ? "Your vault is empty — let's fill it." : "Start your travel vault."}
             </p>
@@ -165,7 +165,7 @@ function HomePage() {
         )}
 
         {layout.waiting && topReco && (
-          <section className="rise">
+          <section data-guide="home-waiting" className="rise">
             <SectionHead title="Waiting for you" aside={`${vault.rows.length} saved`} />
             <div className="card-soft overflow-hidden">
               <div className="p-4">
@@ -193,7 +193,7 @@ function HomePage() {
         )}
 
         {layout.recent && recentCities.length > 0 && (
-          <section className="rise">
+          <section data-guide="home-recent" className="rise">
             <SectionHead title="Recent memories" aside={`${photo.stats.cities} cities`} />
             <div className="grid grid-cols-2 gap-3">
               {recentCities.map((c) => (
@@ -217,7 +217,7 @@ function HomePage() {
         )}
 
         {layout.future && topNote && (
-          <section className="rise">
+          <section data-guide="home-future" className="rise">
             <SectionHead title={`Future me · ${topNote.city}`} aside="Surfaces on revisit" />
             <div className="card-soft p-4">
               <div className="flex items-center gap-2">

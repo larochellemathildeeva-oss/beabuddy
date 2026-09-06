@@ -141,7 +141,7 @@ function CalendarPage() {
   return (
     <AppShell eyebrow="Trip calendar" title="Plan it before you leave home.">
       <div className="space-y-5">
-        <div className="card-soft p-4">
+        <div data-guide="calendar-month" className="card-soft p-4">
           <div className="flex items-center justify-between">
             <button
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}

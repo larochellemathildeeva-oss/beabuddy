@@ -195,7 +195,7 @@ function PhotosPage() {
         </ol>
 
         {!consented && (
-          <div className="card-soft space-y-2 p-4">
+          <div data-guide="photo-privacy" className="card-soft space-y-2 p-4">
             <p className="label-caps text-foreground">Privacy, in plain words</p>
             <ul className="space-y-1.5 text-[13px] text-muted-foreground">
               <li>· Your account details and photos live in your private Béa account (our secure Supabase database), tied only to your email.</li>
@@ -223,7 +223,7 @@ function PhotosPage() {
         )}
 
 
-        <div className="card-soft space-y-2 p-4">
+        <div data-guide="photo-keep" className="card-soft space-y-2 p-4">
           <p className="label-caps text-foreground">What should Béa keep?</p>
           <button
             onClick={() => setMode("both")}

@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
   "sideEffects": [
     "src/styles.css"
@@ -15,7 +15,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts",
+    "version:fix": "npm version patch --no-git-tag-version",
+    "version:enhance": "npm version minor --no-git-tag-version",
+    "version:feature": "npm version major --no-git-tag-version"
   },
   "engines": {
     "node": ">=20"
