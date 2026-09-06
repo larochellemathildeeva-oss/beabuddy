@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { haversine } from "@/lib/geo";
 
 export type RouteStep = { instruction: string; distance: number };
 
@@ -16,7 +17,12 @@ export type RouteLeg = {
   capped?: boolean;
 };
 
-type Stop = { title: string; lat?: number | null; lon?: number | null };
+type Stop = {
+  title: string;
+  address?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+};
 
 const UA = "BeaBot/1.0 (travel app)";
 
@@ -101,37 +107,50 @@ async function leg(
 ) {
   const profile = mode === "walking" ? "foot" : "driving";
   const url = `https://router.project-osrm.org/route/v1/${profile}/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false&steps=true`;
-  const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8_000) });
-  if (!res.ok) return null;
-  const json = (await res.json()) as {
-    routes?: {
-      distance: number;
-      duration: number;
-      legs: { steps: { distance: number; name?: string; maneuver?: { type?: string; modifier?: string } }[] }[];
-    }[];
-  };
-  const route = json.routes?.[0];
-  if (!route) return null;
-  const steps: RouteStep[] = (route.legs[0]?.steps ?? [])
-    .map((s) => ({ instruction: stepText(s), distance: Math.round(s.distance) }))
-    .filter((s) => s.distance > 0 || s.instruction.startsWith("Arrive"));
-  return { distance: Math.round(route.distance), duration: Math.round(route.duration), steps };
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8_000) });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      routes?: {
+        distance: number;
+        duration: number;
+        legs: { steps: { distance: number; name?: string; maneuver?: { type?: string; modifier?: string } }[] }[];
+      }[];
+    };
+    const route = json.routes?.[0];
+    if (!route) return null;
+    const steps: RouteStep[] = (route.legs[0]?.steps ?? [])
+      .map((s) => ({ instruction: stepText(s), distance: Math.round(s.distance) }))
+      .filter((s) => s.distance > 0 || s.instruction.startsWith("Arrive"));
+    return { distance: Math.round(route.distance), duration: Math.round(route.duration), steps };
+  } catch {
+    return null;
+  }
 }
 
 // Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
 // They are not the same cost, so they do not share a number.
 const LOOKUP_BUDGET = 15;
 const LEG_BUDGET = 60;
+const WALL_MS = 20_000;
+
+const coord = z.preprocess((value) => {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}, z.number().nullable());
 
 const BuildRoutesInput = z.object({
   stops: z
     .array(
       z.object({
-        title: z.string().min(1).max(200),
-        lat: z.number().nullable().optional(),
-        lon: z.number().nullable().optional(),
+        title: z.string().trim().min(1).max(200),
+        address: z.string().max(300).nullable().optional(),
+        lat: coord,
+        lon: coord,
       }),
     )
+    .min(2)
     .max(200),
   area: z.string().max(200).optional(),
 });
@@ -160,8 +179,9 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const deferred: string[] = [];
     let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
+    const deadline = Date.now() + WALL_MS;
     const lookup = async (query: string) => {
-      if (lookupsLeft <= 0) return null;
+      if (lookupsLeft <= 0 || Date.now() > deadline) return null;
       lookupsLeft -= 1;
       const found = await geocode(query);
       await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
@@ -176,13 +196,16 @@ export const buildRoutes = createServerFn({ method: "POST" })
         points.push({ lat: stop.lat, lon: stop.lon });
         continue;
       }
-      if (lookupsLeft <= 0) {
+      if (lookupsLeft <= 0 || Date.now() > deadline) {
         if (!deferred.includes(stop.title)) deferred.push(stop.title);
         points.push(null);
         continue;
       }
       const region = cleanArea(area);
-      const names = candidates(stop.title);
+      const names = [
+        ...(stop.address?.trim() ? [stop.address.trim()] : []),
+        ...candidates(stop.title),
+      ];
       let found: { lat: number; lon: number } | null = null;
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
@@ -222,7 +245,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         }
         continue;
       }
-      if (legsLeft <= 0) {
+      if (legsLeft <= 0 || Date.now() > deadline) {
         legs.push(mapsOnlyLeg(fromName, toName, area, true));
         continue;
       }
@@ -247,13 +270,3 @@ export const buildRoutes = createServerFn({ method: "POST" })
 
     return { legs, unresolved, deferred, savedAt: new Date().toISOString() };
   });
-
-function haversine(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {
-  const R = 6371000;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLon = ((b.lon - a.lon) * Math.PI) / 180;
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}

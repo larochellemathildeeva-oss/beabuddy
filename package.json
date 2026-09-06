@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "start": "node scripts/start-production.mjs",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts"
   },
   "engines": {
     "node": ">=20"

@@ -2,18 +2,36 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { comparePlaces, type ComparisonResult } from "@/lib/compare.functions";
 import { pinColorClass, pinLabel, type Pin } from "@/data/atlas";
+import { formatMetres } from "@/lib/geo";
 
 const MAX = 5;
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
 
 export function ComparePins({ pins }: { pins: Pin[] }) {
   const run = useServerFn(comparePlaces);
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
   const [priorities, setPriorities] = useState("");
+  const [month, setMonth] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ComparisonResult | null>(null);
   const [sideBySide, setSideBySide] = useState(false);
+  const [showThoughts, setShowThoughts] = useState(false);
 
   const toggle = (id: string) =>
     setPicked((cur) =>
@@ -27,6 +45,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
     setError(null);
     setResult(null);
     setSideBySide(false);
+    setShowThoughts(false);
     try {
       const out = await run({
         data: {
@@ -37,9 +56,15 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             category: p.category ?? null,
             kind: pinLabel[p.type],
             notes: p.notes ?? null,
+            lat: Number.isFinite(p.lat) ? p.lat : null,
+            lon: Number.isFinite(p.lon) ? p.lon : null,
+            recommendedBy: p.recommendedBy ?? null,
+            dateAdded: p.dateAdded ?? p.dateVisited ?? null,
+            source: p.source ?? null,
+            alreadyBeen: p.type === "visited" || !!p.visited,
           })),
           priorities: priorities.trim() || null,
-          month: null,
+          month: month || null,
         },
       });
       setResult(out);
@@ -97,6 +122,22 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             />
           </label>
 
+          <label className="block">
+            <span className="label-caps">When would you go</span>
+            <select
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+              className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+            >
+              <option value="">Not sure yet</option>
+              {MONTHS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <button
             onClick={compare}
             disabled={busy || picked.length < 2}
@@ -117,6 +158,24 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
               <p className="text-[13px]">
                 <span className="font-medium">Béa would pick {result.pick}.</span> {result.why}
               </p>
+              <MeasuredFacts result={result} />
+              {result.reasoningText && (
+                <div>
+                  <button
+                    onClick={() => setShowThoughts((v) => !v)}
+                    aria-expanded={showThoughts}
+                    className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+                  >
+                    <span>How Béa decided</span>
+                    <span className={`transition-transform ${showThoughts ? "rotate-90" : ""}`}>▸</span>
+                  </button>
+                  {showThoughts && (
+                    <p className="mt-2 whitespace-pre-wrap text-[12px] text-muted-foreground">
+                      {result.reasoningText}
+                    </p>
+                  )}
+                </div>
+              )}
               <button
                 onClick={() => setSideBySide(true)}
                 className="w-full rounded-xl border border-primary px-4 py-2 text-[13px] font-semibold text-primary"
@@ -190,7 +249,43 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
           </div>
         </div>
       )}
-
     </section>
+  );
+}
+
+function MeasuredFacts({ result }: { result: ComparisonResult }) {
+  const { facts } = result;
+  if (!facts.pairs.length && !facts.places.some((p) => p.daysSinceSaved != null || p.recommendedBy)) {
+    return null;
+  }
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-2.5">
+      <p className="label-caps mb-1">What we measured</p>
+      <ul className="space-y-0.5 text-[12px] text-muted-foreground">
+        {facts.pairs.map((pair) => (
+          <li key={`${pair.a}-${pair.b}`}>
+            {pair.a} ↔ {pair.b} · {formatMetres(pair.metres)}
+          </li>
+        ))}
+        {facts.places.map((place) => {
+          const bits: string[] = [];
+          if (place.daysSinceSaved != null) {
+            bits.push(place.daysSinceSaved === 0 ? "saved today" : `saved ${place.daysSinceSaved} days ago`);
+          }
+          if (place.recommendedBy) bits.push(`from ${place.recommendedBy}`);
+          if (place.alreadyBeen) bits.push("already been");
+          if (place.metresFromHome != null && facts.homeCity) {
+            bits.push(`${formatMetres(place.metresFromHome)} from ${facts.homeCity}`);
+          }
+          if (!bits.length) return null;
+          return (
+            <li key={place.name}>
+              {place.name} · {bits.join(" · ")}
+            </li>
+          );
+        })}
+        {facts.month && <li>Going around {facts.month}</li>}
+      </ul>
+    </div>
   );
 }

@@ -2,6 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { formatDistance, pinColorClass, pinLabel, type Pin } from "@/data/atlas";
+import { haversine } from "@/lib/geo";
+import { useScorePrefs } from "@/hooks/useScorePrefs";
+import { scoreOpportunity } from "@/lib/score-opportunity";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 
@@ -29,14 +32,7 @@ export const Route = createFileRoute("/opportunities")({
 const radii = [500, 1000, 5000, 25000];
 
 function distanceM(aLat: number, aLon: number, bLat: number, bLon: number) {
-  const R = 6371000;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(bLat - aLat);
-  const dLon = toRad(bLon - aLon);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
+  return haversine({ lat: aLat, lon: aLon }, { lat: bLat, lon: bLon });
 }
 
 function reason(pin: Pin) {
@@ -95,6 +91,7 @@ function OpportunitiesPage() {
   const [duration, setDuration] = useState<ShareDuration>("once");
   const vault = useRecommendations();
   const photo = usePhotoMemories();
+  const scorePrefs = useScorePrefs();
 
   const locate = () => {
     if (!("geolocation" in navigator)) {
@@ -159,11 +156,11 @@ function OpportunitiesPage() {
       .map((p) => ({ pin: p, d: distanceM(here.lat, here.lon, p.lat, p.lon) }))
       .filter((x) => x.d <= radius && !snoozed.includes(x.pin.id))
       .sort((a, b) => {
-        const score = (x: { pin: Pin; d: number }) =>
-          (x.pin.priority === "High" ? 0 : x.pin.type === "reco" ? 0.5 : 1) * 10000 + x.d;
-        return score(a) - score(b);
+        const sa = scoreOpportunity(a.pin, scorePrefs, { here }).score;
+        const sb = scoreOpportunity(b.pin, scorePrefs, { here }).score;
+        return sb - sa;
       });
-  }, [here, candidates, radius, snoozed]);
+  }, [here, candidates, radius, snoozed, scorePrefs]);
 
   const timeline = useMemo(() => {
     const bucket = (d: number | null) => {
@@ -307,7 +304,7 @@ function OpportunitiesPage() {
                   </div>
                   <h2 className="mt-1 text-[21px] leading-tight">{p.name}</h2>
                   <p className="text-[12px] text-muted-foreground">
-                    {reason(p)}
+                    {scoreOpportunity(p, scorePrefs, { here }).reasons[0] ?? reason(p)}
                     {p.dateAdded ? ` · added ${p.dateAdded.slice(0, 4)}` : ""}
                     {p.category ? ` · ${p.category}` : ""}
                   </p>

@@ -1,10 +1,16 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Columns2, Image as ImageIcon, Sparkles, X } from "lucide-react";
+import { Camera, Columns2, Image as ImageIcon, ListOrdered, Sparkles, X } from "lucide-react";
 import {
   compareItineraries,
+  optimizeItinerary,
+  OPTIMIZE_GOALS,
   parseItinerary,
   type ItineraryComparison,
+  type OptimizeGoalId,
+  type OptimizeItinerary,
+  type OptimizeSourceCity,
+  type OptimizeSourceItem,
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
 import { downscaleImage } from "@/lib/image";
@@ -20,26 +26,47 @@ type NewItineraryItem = {
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
+type PlannerTab = "import" | "optimize" | "compare";
+
 export function ItineraryImport({
   open,
   onClose,
   tripCity,
   startDate,
   endDate,
+  defaultTab = "import",
+  existingItems = [],
+  cities = [],
   onAddItems,
   onAddCosts,
   onApplyDates,
+  onApplySchedule,
 }: {
   open: boolean;
   onClose: () => void;
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
+  defaultTab?: PlannerTab;
+  existingItems?: OptimizeSourceItem[];
+  cities?: OptimizeSourceCity[];
   onAddItems: (items: NewItineraryItem[]) => Promise<void>;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
+  onApplySchedule?: (
+    updates: Array<{
+      id: string;
+      day_date: string | null;
+      time_label: string | null;
+      position: number;
+    }>,
+  ) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<"import" | "compare">("import");
+  const [tab, setTab] = useState<PlannerTab>(defaultTab);
+
+  useEffect(() => {
+    if (open) setTab(defaultTab);
+  }, [open, defaultTab]);
 
   if (!open) return null;
 
@@ -71,24 +98,35 @@ export function ItineraryImport({
             <X className="size-4" />
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => setTab("import")}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] ${
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
               tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
             }`}
           >
-            <Camera className="size-3.5" /> Build or import
+            <Camera className="size-3.5" /> Build
+          </button>
+          <button
+            data-guide="bea-optimize"
+            onClick={() => setTab("optimize")}
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
+              tab === "optimize"
+                ? "border-primary bg-card"
+                : "border-border/60 text-muted-foreground"
+            }`}
+          >
+            <ListOrdered className="size-3.5" /> Optimize
           </button>
           <button
             onClick={() => setTab("compare")}
-            className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[12px] ${
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
               tab === "compare"
                 ? "border-primary bg-card"
                 : "border-border/60 text-muted-foreground"
             }`}
           >
-            <Columns2 className="size-3.5" /> Compare two plans
+            <Columns2 className="size-3.5" /> Compare
           </button>
         </div>
 
@@ -100,6 +138,16 @@ export function ItineraryImport({
             onAddItems={onAddItems}
             onAddCosts={onAddCosts}
             onApplyDates={onApplyDates}
+          />
+        )}
+        {tab === "optimize" && (
+          <OptimizePanel
+            tripCity={tripCity}
+            startDate={startDate}
+            endDate={endDate}
+            items={existingItems}
+            cities={cities}
+            onApplySchedule={onApplySchedule}
           />
         )}
         {tab === "compare" && <ComparePanel />}
@@ -443,13 +491,199 @@ function ImportPanel({
                   {it.day_date || it.time_label ? " · " : ""}
                   {it.kind}
                 </span>
-                <span className="block text-[13px] font-medium">{it.title}</span>
+                <span className="block text-[13px] font-medium">
+                  {it.title}
+                  {it.source === "vault" && (
+                    <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                      From your vault
+                    </span>
+                  )}
+                </span>
                 {it.detail && (
                   <span className="block text-[12px] text-muted-foreground">{it.detail}</span>
                 )}
               </span>
             </label>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OptimizePanel({
+  tripCity,
+  startDate,
+  endDate,
+  items,
+  cities,
+  onApplySchedule,
+}: {
+  tripCity?: string | undefined;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+  items: OptimizeSourceItem[];
+  cities: OptimizeSourceCity[];
+  onApplySchedule?: (
+    updates: Array<{
+      id: string;
+      day_date: string | null;
+      time_label: string | null;
+      position: number;
+    }>,
+  ) => Promise<void>;
+}) {
+  const run = useServerFn(optimizeItinerary);
+  const [goals, setGoals] = useState<OptimizeGoalId[]>(["closest"]);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<OptimizeItinerary | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  const toggleGoal = (id: OptimizeGoalId) => {
+    setGoals((cur) => {
+      if (cur.includes(id)) return cur.length === 1 ? cur : cur.filter((g) => g !== id);
+      return cur.length >= 4 ? cur : [...cur, id];
+    });
+  };
+
+  const rearrange = async () => {
+    if (items.length < 2) return;
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    setPlan(null);
+    try {
+      const out = await run({
+        data: {
+          tripCity: tripCity || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          goals,
+          note: note.trim() || null,
+          items,
+          cities,
+        },
+      });
+      setPlan(out);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const apply = async () => {
+    if (!plan || !onApplySchedule) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onApplySchedule(plan.items);
+      setSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const byId = new Map(items.map((item) => [item.id, item]));
+
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[12px] text-muted-foreground">
+        Béa keeps every stop you already have and reshuffles the days — closest together, indoor
+        on a wet day, easier mornings, whatever you pick.
+      </p>
+
+      {items.length < 2 ? (
+        <p className="rounded-xl border border-border bg-elevated px-3 py-2.5 text-[12px] text-muted-foreground">
+          Add at least two timeline stops first, then come back to rearrange them.
+        </p>
+      ) : (
+        <>
+          <p className="text-[11px] text-muted-foreground">
+            {items.length} stop{items.length === 1 ? "" : "s"} on this trip
+            {goals.length ? ` · ${goals.length} preference${goals.length === 1 ? "" : "s"}` : ""}
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {OPTIMIZE_GOALS.map((goal) => {
+              const on = goals.includes(goal.id);
+              return (
+                <button
+                  key={goal.id}
+                  onClick={() => toggleGoal(goal.id)}
+                  className={`rounded-full border px-3 py-1.5 text-left text-[12px] ${
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <span className="block font-medium">{goal.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {OPTIMIZE_GOALS.filter((g) => goals.includes(g.id))
+              .map((g) => g.hint)
+              .join(" · ")}
+          </p>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            maxLength={400}
+            placeholder="Anything else — one slow museum day, keep the dinner reservation…"
+            className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+          />
+          <button
+            onClick={() => void rearrange()}
+            disabled={busy || goals.length === 0}
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {busy && !plan ? "Béa is rearranging…" : "Ask Béa to rearrange"}
+          </button>
+        </>
+      )}
+
+      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {saved && <p className="text-[12px] text-primary">Timeline updated.</p>}
+
+      {plan && (
+        <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
+          <p className="text-[13px] font-medium">{plan.summary}</p>
+          <p className="text-[12px] text-muted-foreground">{plan.changes}</p>
+          <ol className="space-y-1.5">
+            {plan.items.map((row) => {
+              const original = byId.get(row.id);
+              if (!original) return null;
+              const when = [row.day_date, row.time_label].filter(Boolean).join(" · ");
+              const before = [original.day_date, original.time_label].filter(Boolean).join(" · ");
+              const moved = when !== before;
+              return (
+                <li key={row.id} className="rounded-lg border border-border/60 p-2">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    {when || "Unscheduled"}
+                    {moved && before ? ` · was ${before}` : ""}
+                    {moved ? "" : " · stayed"}
+                  </p>
+                  <p className="text-[13px] font-medium">{original.title}</p>
+                  {row.reason && (
+                    <p className="text-[12px] text-muted-foreground">{row.reason}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <button
+            onClick={() => void apply()}
+            disabled={busy || !onApplySchedule}
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {busy && plan ? "Saving the new order…" : "Use this arrangement"}
+          </button>
         </div>
       )}
     </div>
@@ -490,8 +724,8 @@ function ComparePanel() {
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[12px] text-muted-foreground">
-        Paste two versions of a plan — from two AI answers, a friend, or a tour page — and Béa lays
-        them out side by side.
+        Paste two versions of a plan — from two AI answers, a friend, or a tour page. Béa reads
+        each one first, then compares. That takes a little longer.
       </p>
 
       {[[a, setA] as const, [b, setB] as const].map(([plan, set], i) => (
@@ -529,7 +763,11 @@ function ComparePanel() {
         disabled={busy || !ready}
         className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
       >
-        {busy ? "Weighing them up…" : ready ? "Compare side by side" : "Paste both plans first"}
+        {busy
+          ? "Reading both plans, then comparing…"
+          : ready
+            ? "Compare side by side"
+            : "Paste both plans first"}
       </button>
 
       {error && <p className="text-[12px] text-destructive">{error}</p>}
@@ -548,25 +786,21 @@ const METRIC_ROWS: Array<{
   /** Which direction counts as better, or null when neither is. */
   better: "low" | "high" | null;
   format?: (value: number) => string;
+  omitHint: string;
 }> = [
-  { key: "estimatedCost", label: "Estimated cost", unit: "", better: "low" },
-  { key: "activeHoursPerDay", label: "Active hours / day", unit: "h", better: null },
-  { key: "transitMinutesPerDay", label: "Transit / day", unit: "min", better: "low" },
-  { key: "stopCount", label: "Places visited", unit: "", better: "high" },
-  { key: "walkingKmPerDay", label: "Walking / day", unit: "km", better: null },
-  {
-    key: "indoorShare",
-    label: "Works in bad weather",
-    unit: "",
-    better: "high",
-    format: (v) => `${Math.round(v * 100)}%`,
-  },
-  { key: "longestTravelLegMinutes", label: "Longest single trip", unit: "min", better: "low" },
+  { key: "estimatedCost", label: "Estimated cost", unit: "", better: "low", omitHint: "" },
+  { key: "stopCount", label: "Places visited", unit: "", better: "high", omitHint: "" },
+  { key: "activeHoursPerDay", label: "Active hours / day", unit: "h", better: null, omitHint: "Need stop durations" },
+  { key: "indoorShare", label: "Works in bad weather", unit: "", better: "high", format: (v) => `${Math.round(v * 100)}%`, omitHint: "Need indoor/outdoor labels" },
+  { key: "walkingKmPerDay", label: "Walking / day", unit: "km", better: null, omitHint: "Need a map pin on every stop" },
+  { key: "transitMinutesPerDay", label: "Transit / day", unit: "min", better: "low", omitHint: "Need routed times" },
+  { key: "longestTravelLegMinutes", label: "Longest single trip", unit: "min", better: "low", omitHint: "Need routed times" },
 ];
 
 function ComparisonResult({ result }: { result: ItineraryComparison }) {
   const [dayTab, setDayTab] = useState<"a" | "b">("a");
   const [showProse, setShowProse] = useState(false);
+  const [showThoughts, setShowThoughts] = useState(false);
   const money = (value: number) => `${Math.round(value).toLocaleString()} ${result.currency}`;
 
   const proseRows: Array<[string, "pace" | "highlights" | "cost" | "bestFor" | "watchOut"]> = [
@@ -614,6 +848,16 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
             {METRIC_ROWS.map((row) => {
               const av = result.a.metrics[row.key];
               const bv = result.b.metrics[row.key];
+              if (av == null || bv == null) {
+                return (
+                  <tr key={row.key}>
+                    <td className="border-t border-border/60 p-1 text-muted-foreground">{row.label}</td>
+                    <td colSpan={2} className="border-t border-border/60 p-1 text-[11px] text-muted-foreground">
+                      Not measured — {row.omitHint || "we didn't have enough to compute this"}.
+                    </td>
+                  </tr>
+                );
+              }
               const fmt = (v: number) =>
                 row.format
                   ? row.format(v)
@@ -652,7 +896,8 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
           </tbody>
         </table>
         <p className="mt-1 text-[10px] text-muted-foreground">
-          Every figure is Béa's estimate, not a quote or a booking.
+          Cost and stop counts are added up in the app. A blank row means we could not measure it —
+          never a guess. Nothing here is a quote or a booking.
         </p>
       </div>
 
@@ -716,6 +961,24 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
         <p className="label-caps mb-0.5 text-primary">Borrow this</p>
         <p className="text-[13px]">{result.mix}</p>
       </div>
+
+      {result.reasoningText && (
+        <div>
+          <button
+            onClick={() => setShowThoughts((v) => !v)}
+            aria-expanded={showThoughts}
+            className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+          >
+            <span>How Béa decided</span>
+            <span className={`transition-transform ${showThoughts ? "rotate-90" : ""}`}>▸</span>
+          </button>
+          {showThoughts && (
+            <p className="mt-2 whitespace-pre-wrap text-[12px] text-muted-foreground">
+              {result.reasoningText}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 5 — the prose detail, collapsed */}
       <div>

@@ -11,6 +11,8 @@ import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { supabase } from "@/integrations/supabase/client";
 import { pinColorClass, pinLabel } from "@/data/atlas";
+import { useScorePrefs } from "@/hooks/useScorePrefs";
+import { rankOpportunities } from "@/lib/score-opportunity";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,6 +41,7 @@ function HomePage() {
   const photo = usePhotoMemories();
   const vault = useRecommendations();
   const notes = useFutureNotes();
+  const scorePrefs = useScorePrefs();
 
   useEffect(() => {
     if (!user) {
@@ -79,7 +82,12 @@ function HomePage() {
       .slice(0, 4);
   }, [photo.rows]);
 
-  const topReco = vault.rows[0];
+  const topReco = useMemo(() => {
+    const ranked = rankOpportunities(vault.comparePins, scorePrefs);
+    const winner = ranked[0]?.pin;
+    if (!winner) return vault.rows[0];
+    return vault.rows.find((row) => `reco-${row.id}` === winner.id) ?? vault.rows[0];
+  }, [vault.comparePins, vault.rows, scorePrefs]);
   const topNote = notes.rows[0];
   const empty =
     photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
@@ -99,7 +107,7 @@ function HomePage() {
         )}
 
         {layout.shortcuts && (
-        <div className="grid grid-cols-2 gap-3">
+        <div data-guide="home-shortcuts" className="grid grid-cols-2 gap-3">
           <Link
             to="/story"
             className="rise card-soft p-4 transition-colors hover:bg-elevated"
