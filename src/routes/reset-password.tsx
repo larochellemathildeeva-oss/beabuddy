@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/reset-password")({
@@ -64,7 +65,8 @@ function ResetPasswordPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col justify-center border-x border-border/70 px-6 py-10">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
+      <div className="flex flex-1 flex-col justify-center">
         <p className="label-caps">Béa</p>
         <h1 className="mt-2 text-[34px] leading-[1.05]">Choose a new password</h1>
 
@@ -113,6 +115,8 @@ function ResetPasswordPage() {
             </button>
           </form>
         )}
+      </div>
+        <CopyrightNotice />
       </div>
     </div>
   );

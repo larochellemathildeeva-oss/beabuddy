@@ -9,7 +9,22 @@ export type SavedDirections = {
   savedAt: string;
 };
 
-const key = (tripId: string) => `bea.directions.${tripId}`;
+export const DIRECTIONS_KEY_PREFIX = "bea.directions.";
+
+export const directionsStorageKey = (tripId: string) => `${DIRECTIONS_KEY_PREFIX}${tripId}`;
+
+/** Trip ids that have turn-by-turn saved on this phone. */
+export function listSavedDirectionTripIds(): string[] {
+  if (typeof window === "undefined") return [];
+  const ids: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const stored = localStorage.key(i);
+    if (stored?.startsWith(DIRECTIONS_KEY_PREFIX)) {
+      ids.push(stored.slice(DIRECTIONS_KEY_PREFIX.length));
+    }
+  }
+  return ids;
+}
 
 export function useOfflineDirections(tripId: string | null) {
   const [saved, setSaved] = useState<SavedDirections | null>(null);
@@ -23,7 +38,7 @@ export function useOfflineDirections(tripId: string | null) {
       return;
     }
     try {
-      const raw = localStorage.getItem(key(tripId));
+      const raw = localStorage.getItem(directionsStorageKey(tripId));
       setSaved(raw ? (JSON.parse(raw) as SavedDirections) : null);
     } catch {
       setSaved(null);
@@ -42,7 +57,7 @@ export function useOfflineDirections(tripId: string | null) {
         const result = (await run({
           data: { stops, ...(area ? { area } : {}) },
         })) as SavedDirections;
-        localStorage.setItem(key(tripId), JSON.stringify(result));
+        localStorage.setItem(directionsStorageKey(tripId), JSON.stringify(result));
         setSaved(result);
       } catch (e) {
         const message = e instanceof Error ? e.message : "";
@@ -60,7 +75,7 @@ export function useOfflineDirections(tripId: string | null) {
 
   const clear = useCallback(() => {
     if (!tripId) return;
-    localStorage.removeItem(key(tripId));
+    localStorage.removeItem(directionsStorageKey(tripId));
     setSaved(null);
   }, [tripId]);
 

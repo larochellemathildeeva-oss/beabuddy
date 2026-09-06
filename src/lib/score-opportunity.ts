@@ -65,13 +65,16 @@ export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext 
     reasons.push("Already been");
   }
 
-  // Word-boundary match: a raw substring made "art" hit Cartagena and "bar" hit
-  // Barcelona. Multi-word tags still match as a phrase.
+  // Exact tags stored on the rec beat a name/category haystack match. Word-
+  // boundary on the haystack: a raw substring made "art" hit Cartagena and
+  // "bar" hit Barcelona. Multi-word tags still match as a phrase.
   const folded = foldAccents(text);
   const words = new Set(folded.split(" "));
+  const stored = new Set((pin.travelTags ?? []).map((tag) => foldAccents(tag)));
   const tagHits = prefs.tags.filter((tag) => {
     const needle = foldAccents(tag ?? "");
     if (!needle) return false;
+    if (stored.has(needle)) return true;
     return needle.includes(" ") ? folded.includes(needle) : words.has(needle);
   });
   if (tagHits.length) {

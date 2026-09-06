@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { LEGAL_VERSION } from "@/lib/legal";
 
 export const Route = createFileRoute("/terms")({
@@ -38,7 +39,7 @@ function TermsPage() {
         <p className="label-caps">Béa</p>
         <h1 className="mt-2 text-[30px] leading-[1.08]">Terms of Service</h1>
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Version {LEGAL_VERSION} — effective 5 September 2026
+          Version {LEGAL_VERSION} — effective 6 September 2026
         </p>
         <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
           These terms govern your use of Béa ("the app"). By creating an account you confirm that
@@ -77,13 +78,17 @@ function TermsPage() {
           </p>
         </Section>
 
-        <Section title="4. Licence to use Béa">
+        <Section title="4. Intellectual property and licence to use Béa">
+          <p>
+            Béa — the name, design, code, features, written copy and original ideas in the app — is
+            owned by Mathilde E. Larochelle. All rights not expressly granted are reserved.
+          </p>
           <p>
             We grant you a personal, limited, non-exclusive, non-transferable, revocable licence to
             use Béa for your own non-commercial travel organisation. You may not copy, resell,
             sublicense, reverse-engineer, decompile or create derivative works from the app, remove
             proprietary notices, or use automated systems to extract data from it, except where such
-            restrictions are prohibited by law. All rights not expressly granted are reserved.
+            restrictions are prohibited by law.
           </p>
         </Section>
 
@@ -276,9 +281,7 @@ function TermsPage() {
           This page is a starting point written in plain language — have a lawyer review it before
           you rely on it commercially. Questions about these terms? Reach us via the profile page.
         </p>
-        <p className="mt-3 text-[12px] text-muted-foreground">
-          © 2026 Mathilde E. Larochelle. All rights reserved.
-        </p>
+        <CopyrightNotice className="mt-3 px-0 text-left text-[12px] text-muted-foreground" />
         <Link to="/" className="mt-4 inline-block text-[13px] text-primary underline underline-offset-4">
           Back to Béa
         </Link>

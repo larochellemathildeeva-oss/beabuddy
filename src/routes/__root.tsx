@@ -13,6 +13,7 @@ import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
+import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
@@ -116,6 +117,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />
       </head>

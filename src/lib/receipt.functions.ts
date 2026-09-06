@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { filePartFromDataUrl } from "@/lib/ai-image";
 
 const ReceiptInput = z.object({
   // Downscaled image as a data URL (image/jpeg …), kept small by the client.
@@ -47,7 +48,7 @@ export const extractReceiptFields = createServerFn({ method: "POST" })
                   "If a field is not readable, return null for it. Never guess an amount.",
                 ].join("\n"),
               },
-              { type: "image", image: data.imageDataUrl },
+              filePartFromDataUrl(data.imageDataUrl),
             ],
           },
         ],

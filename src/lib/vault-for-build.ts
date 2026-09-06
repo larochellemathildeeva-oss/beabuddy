@@ -1,5 +1,6 @@
 import type { Pin } from "../data/atlas.ts";
 import { foldAccents } from "./fuzzy.ts";
+import { tagsForSave } from "./reco-tags.ts";
 import { rankOpportunities, type ScorePrefs } from "./score-opportunity.ts";
 
 export type VaultReco = {
@@ -13,6 +14,7 @@ export type VaultReco = {
   lon: number | null;
   pin_type: string | null;
   created_at: string;
+  travel_tags?: string[] | null;
 };
 
 export type VaultNote = {
@@ -21,6 +23,7 @@ export type VaultNote = {
 };
 
 function recoAsPin(row: VaultReco, index: number): Pin {
+  const travelTags = tagsForSave(row);
   return {
     id: `vault-${index}`,
     type: (row.pin_type as Pin["type"]) || "reco",
@@ -32,6 +35,7 @@ function recoAsPin(row: VaultReco, index: number): Pin {
     ...(row.category ? { category: row.category } : {}),
     ...(row.notes ? { notes: row.notes } : {}),
     ...(row.recommended_by ? { recommendedBy: row.recommended_by } : {}),
+    ...(travelTags.length ? { travelTags } : {}),
     dateAdded: row.created_at.slice(0, 10),
   };
 }
@@ -74,6 +78,8 @@ export function vaultPrompt(
     for (const { pin, score } of ranked) {
       lines.push(
         `- ${pin.name}${pin.city ? `, ${pin.city}` : ""}${pin.category ? ` · ${pin.category}` : ""}${
+          pin.travelTags?.length ? ` · tags: ${pin.travelTags.join(", ")}` : ""
+        }${
           pin.recommendedBy ? ` · saved by ${pin.recommendedBy}` : ""
         }${pin.notes ? ` · "${pin.notes}"` : ""} (${score.reasons[0]})`,
       );

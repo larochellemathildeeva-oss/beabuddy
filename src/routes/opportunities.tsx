@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { DayTripFromNear } from "@/components/DayTripFromNear";
 import { formatDistance, pinColorClass, pinLabel, type Pin } from "@/data/atlas";
 import { haversine } from "@/lib/geo";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
@@ -89,6 +90,8 @@ function OpportunitiesPage() {
   const [consent, setConsent] = useState(false); // resolved after mount
   const [consentReady, setConsentReady] = useState(false);
   const [duration, setDuration] = useState<ShareDuration>("once");
+  const [picking, setPicking] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const vault = useRecommendations();
   const photo = usePhotoMemories();
   const scorePrefs = useScorePrefs();
@@ -183,7 +186,18 @@ function OpportunitiesPage() {
       .slice(0, 30);
   }, [candidates, here]);
 
+  const selectedPins = useMemo(
+    () => nearby.filter((row) => selectedIds.includes(row.pin.id)).map((row) => row.pin),
+    [nearby, selectedIds],
+  );
 
+  const togglePick = (id: string) => {
+    setSelectedIds((cur) => {
+      if (cur.includes(id)) return cur.filter((item) => item !== id);
+      if (cur.length >= 12) return cur;
+      return [...cur, id];
+    });
+  };
 
   return (
     <AppShell eyebrow="Opportunities near me" title="Béa remembers, so you don't.">
@@ -294,11 +308,49 @@ function OpportunitiesPage() {
         </div>
 
         <section data-guide="near-list" className="space-y-3">
+          {here && nearby.length >= 2 && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[13px] text-muted-foreground">
+                {picking
+                  ? `${selectedIds.length} selected for a day trip`
+                  : "Tick a few recs and Béa will arrange a day trip."}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setPicking((on) => !on);
+                  if (picking) setSelectedIds([]);
+                }}
+                className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+              >
+                {picking ? "Cancel" : "Plan a day trip"}
+              </button>
+            </div>
+          )}
+          {selectedPins.length >= 2 && (
+            <DayTripFromNear
+              selected={selectedPins}
+              here={here}
+              onClear={() => {
+                setSelectedIds([]);
+                setPicking(false);
+              }}
+            />
+          )}
           {nearby.map(({ pin: p, d }) => (
             <article key={p.id} className="rise card-soft p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
+                    {picking && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(p.id)}
+                        onChange={() => togglePick(p.id)}
+                        aria-label={`Add ${p.name} to a day trip`}
+                        className="size-4 accent-[hsl(var(--primary))]"
+                      />
+                    )}
                     <span className={`size-2 rounded-full ${pinColorClass[p.type]}`} />
                     <span className="label-caps">{pinLabel[p.type]}</span>
                   </div>

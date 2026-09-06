@@ -6,6 +6,7 @@ import {
   optimizeItinerary,
   OPTIMIZE_GOALS,
   parseItinerary,
+  reviseItinerary,
   type ItineraryComparison,
   type OptimizeGoalId,
   type OptimizeItinerary,
@@ -14,6 +15,9 @@ import {
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
 import { downscaleImage } from "@/lib/image";
+import { placeHintFromDetail } from "@/lib/direction-stops";
+import { tripStillEditableNote } from "@/lib/trip-copy";
+import { Switch } from "@/components/ui/switch";
 import logo from "@/assets/bea-logo.png";
 
 type NewItineraryItem = {
@@ -22,6 +26,7 @@ type NewItineraryItem = {
   kind: string;
   title: string;
   detail?: string;
+  address?: string;
 };
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
@@ -87,7 +92,7 @@ export function ItineraryImport({
           <div className="min-w-0 flex-1">
             <p className="font-display text-[19px] leading-tight">Let Béa plan this trip</p>
             <p className="text-[11px] text-muted-foreground">
-              Built around your saved travel preferences
+              Built around your travel preferences and tagged recs
             </p>
           </div>
           <button
@@ -172,6 +177,7 @@ function ImportPanel({
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
+  const revise = useServerFn(reviseItinerary);
   const fileRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const MAX_IMAGES = 6;
@@ -205,6 +211,9 @@ function ImportPanel({
     "comfortable",
   );
   const [currency, setCurrency] = useState("CAD");
+  const [includeCosts, setIncludeCosts] = useState(false);
+  const [altReason, setAltReason] = useState("");
+  const [rebuildReason, setRebuildReason] = useState("");
   const [plan, setPlan] = useState<Awaited<ReturnType<typeof run>> | null>(null);
 
   const read = async () => {
@@ -226,12 +235,15 @@ function ImportPanel({
           pace,
           budgetLevel,
           currency,
+          includeCosts,
         },
       });
       setSummary(out.summary);
       setItems(out.items);
       setPlan(out);
       setPicked(out.items.map((_, i) => i));
+      setAltReason("");
+      setRebuildReason("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -247,17 +259,19 @@ function ImportPanel({
       const chosen = picked.flatMap((i) => {
         const it = items[i];
         if (!it) return [];
+        const address = placeHintFromDetail(it.detail);
         return [
           {
             ...(it.day_date ? { day_date: it.day_date } : {}),
             ...(it.time_label ? { time_label: it.time_label } : {}),
             kind: it.kind,
             title: it.title,
-            ...(it.detail || it.estimated_cost != null
+            ...(address ? { address } : {}),
+            ...(it.detail || (includeCosts && it.estimated_cost != null)
               ? {
                   detail: [
                     it.detail,
-                    it.estimated_cost != null
+                    includeCosts && it.estimated_cost != null
                       ? `Est. ${it.estimated_cost} ${it.currency ?? plan?.currency ?? currency}`
                       : "",
                   ]
@@ -270,7 +284,7 @@ function ImportPanel({
       });
       setSaveStatus(`Saving ${chosen.length} timeline stops…`);
       await onAddItems(chosen);
-      if (onAddCosts && plan?.costs.length) {
+      if (includeCosts && onAddCosts && plan?.costs.length) {
         setSaveStatus("Saving the budget…");
         await onAddCosts(plan.costs);
       }
@@ -289,11 +303,82 @@ function ImportPanel({
     }
   };
 
+  const applyRevision = (out: Awaited<ReturnType<typeof revise>>) => {
+    setSummary(out.summary);
+    setItems(out.items);
+    setPlan(out);
+    setPicked(out.items.map((_, i) => i));
+  };
+
+  const findAlternatives = async () => {
+    if (!items || picked.length === 0 || altReason.trim().length < 3) return;
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const out = await revise({
+        data: {
+          tripCity: tripCity || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          pace,
+          budgetLevel,
+          currency,
+          includeCosts,
+          originalRequest: text.trim() || null,
+          items,
+          selectedIndexes: picked,
+          reason: altReason.trim(),
+          mode: "alternatives",
+        },
+      });
+      applyRevision(out);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const rebuildTrip = async () => {
+    if (!items || rebuildReason.trim().length < 3) return;
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const out = await revise({
+        data: {
+          tripCity: tripCity || null,
+          startDate: startDate || null,
+          endDate: endDate || null,
+          pace,
+          budgetLevel,
+          currency,
+          includeCosts,
+          originalRequest: text.trim() || null,
+          items,
+          selectedIndexes: [],
+          reason: rebuildReason.trim(),
+          mode: "rebuild",
+        },
+      });
+      applyRevision(out);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[12px] text-muted-foreground">
-        Build a new trip from a few details, or turn a photo or pasted plan into dates, costs and a
+        Build a new trip from a few details, or turn a photo or pasted plan into dates and a
         complete timeline.
+      </p>
+      <p className="text-[12px] text-muted-foreground">
+        Béa drafts a plan. She does not book hotels, restaurants or tickets, and she cannot check
+        whether a table or room is actually free. You reserve and confirm those yourself.
       </p>
 
       <div className="grid grid-cols-2 gap-2">
@@ -311,7 +396,7 @@ function ImportPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className={`grid gap-2 ${includeCosts ? "grid-cols-3" : "grid-cols-2"}`}>
         <select
           value={pace}
           onChange={(e) => setPace(e.target.value as typeof pace)}
@@ -332,16 +417,31 @@ function ImportPanel({
           <option value="comfortable">Comfort</option>
           <option value="premium">Premium</option>
         </select>
-        <select
-          value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
-          aria-label="Currency"
-          className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
-        >
-          {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </select>
+        {includeCosts && (
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            aria-label="Currency"
+            className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+          >
+            {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
+              <option key={value}>{value}</option>
+            ))}
+          </select>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
+        <div>
+          <p className="text-[13px] font-medium">Approximate costs</p>
+          <p className="text-[11px] text-muted-foreground">
+            Off unless you ask. Estimates only — not quotes.
+          </p>
+        </div>
+        <Switch
+          checked={includeCosts}
+          onCheckedChange={setIncludeCosts}
+          aria-label="Include approximate costs"
+        />
       </div>
 
       <input
@@ -443,12 +543,16 @@ function ImportPanel({
       )}
 
       {error && <p className="text-[12px] text-destructive">{error}</p>}
-      {saved && <p className="text-[12px] text-primary">Added to your timeline.</p>}
+      {saved && (
+        <p className="text-[12px] text-primary">
+          Added to your timeline. {tripStillEditableNote()}
+        </p>
+      )}
 
       {items && (
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
           {summary && <p className="text-[12px] text-muted-foreground">{summary}</p>}
-          {plan?.estimated_total != null && (
+          {includeCosts && plan?.estimated_total != null && (
             <p className="text-[13px] font-semibold">
               Estimated trip total: {plan.estimated_total.toLocaleString()} {plan.currency}
             </p>
@@ -456,7 +560,8 @@ function ImportPanel({
           {items.length > 0 && (
             <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-border bg-card p-2 shadow-sm">
               <p className="mb-2 text-[11px] text-muted-foreground">
-                {picked.length} of {items.length} stops selected
+                {picked.length} of {items.length} stops selected. Nothing here is reserved — book
+                hotels, tables and tickets yourself.
               </p>
               <button
                 onClick={() => void addChosen()}
@@ -465,7 +570,7 @@ function ImportPanel({
               >
                 {busy
                   ? saveStatus || "Saving your trip…"
-                  : `Save ${picked.length} stops${plan?.costs.length ? " + costs" : ""}`}
+                  : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
               </button>
             </div>
           )}
@@ -502,9 +607,60 @@ function ImportPanel({
                 {it.detail && (
                   <span className="block text-[12px] text-muted-foreground">{it.detail}</span>
                 )}
+                {includeCosts && it.estimated_cost != null && (
+                  <span className="block text-[12px] text-muted-foreground">
+                    Est. {it.estimated_cost} {it.currency ?? plan?.currency ?? currency}
+                  </span>
+                )}
               </span>
             </label>
           ))}
+          {items.length > 0 && (
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="text-[12px] text-muted-foreground">
+                Tick the stops you want swapped, then tell Béa why. Untick anything that should
+                stay.
+              </p>
+              {picked.length === items.length && (
+                <p className="text-[11px] text-muted-foreground">
+                  Every stop is ticked — this will suggest a new version of the whole list.
+                </p>
+              )}
+              <textarea
+                value={altReason}
+                onChange={(e) => setAltReason(e.target.value)}
+                rows={2}
+                maxLength={800}
+                placeholder="Rainy-day activities, something less expensive…"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none"
+              />
+              <button
+                onClick={() => void findAlternatives()}
+                disabled={busy || picked.length === 0 || altReason.trim().length < 3}
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+              >
+                {busy ? "Béa is working…" : "Ask Béa to find alternatives for these suggestions"}
+              </button>
+              <p className="pt-1 text-[12px] text-muted-foreground">
+                Or start over from this draft.
+              </p>
+              <textarea
+                value={rebuildReason}
+                onChange={(e) => setRebuildReason(e.target.value)}
+                rows={2}
+                maxLength={800}
+                placeholder="Fewer museums, more food, a slower first day…"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none"
+              />
+              <button
+                onClick={() => void rebuildTrip()}
+                disabled={busy || rebuildReason.trim().length < 3}
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+              >
+                {busy ? "Béa is working…" : "Rebuild my trip"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -596,7 +752,8 @@ function OptimizePanel({
     <div className="mt-3 space-y-2">
       <p className="text-[12px] text-muted-foreground">
         Béa keeps every stop you already have and reshuffles the days — closest together, indoor
-        on a wet day, easier mornings, whatever you pick.
+        on a wet day, easier mornings, whatever you pick. She does not check whether a reservation
+        is still available.
       </p>
 
       {items.length < 2 ? (

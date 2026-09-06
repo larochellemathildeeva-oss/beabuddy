@@ -418,6 +418,7 @@ export type Database = {
           pin_type: string
           recommended_by: string | null
           source: string | null
+          travel_tags: string[]
           updated_at: string
           url: string | null
           user_id: string
@@ -437,6 +438,7 @@ export type Database = {
           pin_type?: string
           recommended_by?: string | null
           source?: string | null
+          travel_tags?: string[]
           updated_at?: string
           url?: string | null
           user_id: string
@@ -456,6 +458,7 @@ export type Database = {
           pin_type?: string
           recommended_by?: string | null
           source?: string | null
+          travel_tags?: string[]
           updated_at?: string
           url?: string | null
           user_id?: string

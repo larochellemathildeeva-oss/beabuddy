@@ -186,7 +186,7 @@ function StoryPage() {
               </div>
             </section>
 
-            <div className="rise flex items-center gap-2">
+            <div data-guide="story-play" className="rise flex items-center gap-2">
               <button
                 onClick={() => {
                   setIndex((i) => Math.max(0, i - 1));

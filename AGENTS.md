@@ -20,8 +20,7 @@ locally first.
 ## App version (Canner)
 
 `package.json` `version` is the number shown in the app header. Bump it on
-every push that will deploy to Canner, then leave the sha in the header to
-name the exact commit.
+every push that will deploy to Canner.
 
 | Change | Command | Example |
 | --- | --- | --- |

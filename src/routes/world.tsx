@@ -1,17 +1,19 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import { ComparePins } from "@/components/ComparePins";
 import { AddVisitedCity } from "@/components/AddVisitedCity";
+import { Switch } from "@/components/ui/switch";
 
 import { supabase } from "@/integrations/supabase/client";
 
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTrips } from "@/hooks/useTrips";
+import { STAT_OPTIONS, useStatsLayout } from "@/hooks/useStatsLayout";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
-import { deriveTravelStats } from "@/lib/travel-stats";
+import { countryWorldShare, deriveTravelStats } from "@/lib/travel-stats";
 import { isCityLevelPlace } from "@/lib/reco-place";
 
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
@@ -48,8 +50,10 @@ function WorldPage() {
   const [heatmap, setHeatmap] = useState(false);
   const [heatOpen, setHeatOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [statsEdit, setStatsEdit] = useState(false);
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
+  const statsLayout = useStatsLayout();
 
   const photo = usePhotoMemories();
   const vault = useRecommendations();
@@ -81,6 +85,10 @@ function WorldPage() {
         return Number.isFinite(ms) && ms >= 0 ? sum + Math.round(ms / 86400000) + 1 : sum;
       }, 0),
     [t.trips],
+  );
+  const worldShare = useMemo(
+    () => countryWorldShare(travelStats.countries),
+    [travelStats.countries],
   );
 
   useEffect(() => {
@@ -278,23 +286,112 @@ function WorldPage() {
               </span>
               Travel statistics
             </button>
+            {statsOpen && (
+              <button
+                type="button"
+                onClick={() => setStatsEdit((v) => !v)}
+                className="text-[11px] text-primary"
+              >
+                {statsEdit ? "Done" : "Choose stats"}
+              </button>
+            )}
           </div>
           {statsOpen && (
             <div id="travel-stats-body" className="card-soft space-y-3 px-4 py-3">
               <div className="grid grid-cols-4 gap-2">
-                <Stat value={travelStats.countries} label="Countries" />
-                <Stat value={travelStats.cities} label="Cities" />
-                <Stat value={tripsCompleted} label="Trips completed" />
-                <Stat value={counts.flights} label="Flights" />
-                <Stat value={counts.hotels} label="Hotels" />
-                <Stat value={counts.restaurants} label="Restaurants" />
-                <Stat value={travelDays} label="Travel days" />
-                <Stat value={allPins.length} label="Pins" accent />
+                {statsLayout.layout.countries &&
+                  (statsLayout.layout.countryShare ? (
+                    <Stat
+                      value={`${worldShare.percent}%`}
+                      label="of the world"
+                      hint={`${worldShare.visited} of ${worldShare.world} countries`}
+                    />
+                  ) : (
+                    <Stat value={travelStats.countries} label="Countries" />
+                  ))}
+                {statsLayout.layout.cities && <Stat value={travelStats.cities} label="Cities" />}
+                {statsLayout.layout.trips && <Stat value={tripsCompleted} label="Trips completed" />}
+                {statsLayout.layout.flights && <Stat value={counts.flights} label="Flights" />}
+                {statsLayout.layout.hotels && <Stat value={counts.hotels} label="Hotels" />}
+                {statsLayout.layout.restaurants && (
+                  <Stat value={counts.restaurants} label="Restaurants" />
+                )}
+                {statsLayout.layout.travelDays && <Stat value={travelDays} label="Travel days" />}
+                {statsLayout.layout.pins && <Stat value={allPins.length} label="Pins" accent />}
               </div>
+              {!STAT_OPTIONS.some((option) => statsLayout.layout[option.key]) && (
+                <p className="text-[12px] text-muted-foreground">
+                  Nothing selected — tap Choose stats and turn a few back on.
+                </p>
+              )}
+              {statsLayout.layout.countries && statsLayout.layout.countryShare && (
+                <p className="text-[12px] text-muted-foreground">
+                  You have visited {worldShare.percent}% of the world — {worldShare.visited} of{" "}
+                  {worldShare.world} widely recognised countries.
+                </p>
+              )}
+              {statsEdit && (
+                <div className="space-y-2 border-t border-border pt-3">
+                  <p className="text-[12px] text-muted-foreground">
+                    Pick what Béa counts. Saved on this phone.
+                  </p>
+                  {STAT_OPTIONS.map((option) => (
+                    <div key={option.key} className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[13px] font-medium">{option.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{option.hint}</p>
+                      </div>
+                      <Switch
+                        checked={statsLayout.layout[option.key]}
+                        onCheckedChange={() => statsLayout.toggle(option.key)}
+                        aria-label={`Show ${option.label}`}
+                      />
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                    <div>
+                      <p className="text-[13px] font-medium">Countries as a world share</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Show 1 of 195 countries as a percentage.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={statsLayout.layout.countryShare}
+                      onCheckedChange={(on) => statsLayout.setCountryShare(on)}
+                      aria-label="Show countries as a percentage of the world"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={statsLayout.reset}
+                    className="w-full rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+                  >
+                    Reset to default
+                  </button>
+                  <p className="rounded-xl border border-dashed border-primary/40 bg-card px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground">
+                    Dreaming of a number that isn't here — croissants eaten, continents stamped,
+                    nights under canvas? Béa's whole job is to make you happy, and she is nosy in
+                    the useful way.{" "}
+                    <Link to="/profile" className="font-medium text-primary underline underline-offset-2">
+                      Tell her on You → Feedback
+                    </Link>
+                    .
+                  </p>
+                </div>
+              )}
               <p className="text-[11px] leading-relaxed text-muted-foreground">
                 These stats only include data Béa has access to — the trips, timeline entries,
                 photos and pins saved in this app.
               </p>
+              {!statsEdit && (
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Missing a number that would make you grin?{" "}
+                  <Link to="/profile" className="text-primary underline underline-offset-2">
+                    You → Feedback
+                  </Link>{" "}
+                  is where Béa keeps her ears open.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -352,13 +449,24 @@ function WorldPage() {
   );
 }
 
-function Stat({ value, label, accent }: { value: number; label: string; accent?: boolean }) {
+function Stat({
+  value,
+  label,
+  hint,
+  accent,
+}: {
+  value: number | string;
+  label: string;
+  hint?: string;
+  accent?: boolean;
+}) {
   return (
     <div className="text-center">
       <p className={`font-display text-[22px] leading-none ${accent ? "text-primary" : ""}`}>
         {value}
       </p>
       <p className="mt-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      {hint && <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }

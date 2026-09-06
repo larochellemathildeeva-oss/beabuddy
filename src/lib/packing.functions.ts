@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { filePartsFromDataUrls } from "@/lib/ai-image";
 import { SECTION_MAX_LEN } from "@/lib/packing-sections";
 
 const ParsePackingInput = z
@@ -77,7 +78,7 @@ export const parsePackingList = createServerFn({ method: "POST" })
                       ? `${prompt}\n\nExtra notes:\n${data.text}`
                       : prompt,
                   },
-                  ...data.imageDataUrls.map((image) => ({ type: "image" as const, image })),
+                  ...filePartsFromDataUrls(data.imageDataUrls),
                 ]
               : [
                   {

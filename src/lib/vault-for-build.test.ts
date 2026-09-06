@@ -13,6 +13,7 @@ const rom: VaultReco = {
   lon: -79.3948,
   pin_type: "reco",
   created_at: "2026-09-06T12:00:00Z",
+  travel_tags: ["Museums"],
 };
 
 const park: VaultReco = {
@@ -37,10 +38,20 @@ describe("vaultPrompt", () => {
       { tags: ["Museums"], preferredCountries: ["Canada"] },
     );
     assert.match(text, /Royal Ontario Museum/);
+    assert.match(text, /tags: Museums/);
     assert.match(text, /saved by Mathilde/);
     assert.match(text, /source "vault"/);
     assert.match(text, /Try the ferry/);
     assert.ok(text.indexOf("Royal Ontario Museum") < text.indexOf("High Park"));
+  });
+
+  it("guesses tags for an older vault rec that was saved without them", () => {
+    const untagged = { ...rom, travel_tags: null };
+    const text = vaultPrompt("Toronto", [untagged], [], {
+      tags: ["Museums"],
+      preferredCountries: [],
+    });
+    assert.match(text, /tags: Museums/);
   });
 
   it("returns empty when the vault has nothing for that city", () => {

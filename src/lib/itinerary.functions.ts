@@ -1,9 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
+import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { filePartsFromDataUrls } from "@/lib/ai-image";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
+import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 
 const KINDS = ["Flight", "Hotel", "Reservation", "Transport", "Plan"] as const;
 
@@ -21,6 +25,7 @@ const ParseInput = z
     pace: z.enum(["relaxed", "balanced", "full"]).nullable(),
     budgetLevel: z.enum(["value", "comfortable", "premium"]).nullable(),
     currency: z.string().max(3).nullable(),
+    includeCosts: z.boolean().optional().default(false),
   })
   .refine(
     (v) => v.mode === "build" || Boolean(v.imageDataUrls?.length || (v.text && v.text.trim())),
@@ -72,12 +77,15 @@ const instructions = (
   pace: string | null,
   budgetLevel: string | null,
   currency: string | null,
+  includeCosts: boolean,
   preferences: string,
 ) =>
   [
     mode === "build"
       ? "Build a practical, bookable trip from the traveller's request. Create a day-by-day itinerary, not just a loose list."
-      : "Extract this travel itinerary into a complete trip with dates, estimated costs and an ordered day-by-day timeline.",
+      : includeCosts
+        ? "Extract this travel itinerary into a complete trip with dates, estimated costs and an ordered day-by-day timeline."
+        : "Extract this travel itinerary into a complete trip with dates and an ordered day-by-day timeline.",
     `kind must be exactly one of: ${KINDS.join(", ")}.`,
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
@@ -87,14 +95,25 @@ const instructions = (
     endDate ? `The trip ends on ${endDate}.` : "",
     pace ? `Requested pace: ${pace}.` : "",
     budgetLevel ? `Requested budget style: ${budgetLevel}.` : "",
-    currency ? `Use ${currency} for all estimates.` : "Use a sensible currency for the destination.",
+    includeCosts && currency
+      ? `Use ${currency} for all estimates.`
+      : includeCosts
+        ? "Use a sensible currency for the destination."
+        : "",
     preferences,
     mode === "import"
-      ? "Never invent confirmed bookings, confirmation numbers or times that are not in the source. You may estimate realistic costs and clearly treat them as estimates."
+      ? includeCosts
+        ? "Never invent confirmed bookings, confirmation numbers or times that are not in the source. You may estimate realistic costs and clearly treat them as estimates."
+        : "Never invent confirmed bookings, confirmation numbers or times that are not in the source."
       : "Use realistic opening patterns and travel times, but never claim an activity is booked. Avoid impossible transfers and leave breathing room.",
+    "Béa cannot check availability or make a reservation. Phrase hotels, restaurants and tickets as suggestions the traveller must book and confirm themselves. Never say a table, room or ticket is held or available.",
     "trip_title: a short useful name. start_date and end_date: YYYY-MM-DD when known or inferable, otherwise null.",
-    "For every timeline item include an estimated_cost and currency when meaningful. Use zero only for genuinely free activities; otherwise null if unknowable.",
-    "costs: grouped planned expenses using categories Accommodation, Transport, Meals, Activities, Shopping, or Other. Do not double-count. estimated_total must equal the costs sum.",
+    includeCosts
+      ? "For every timeline item include an estimated_cost and currency when meaningful. Use zero only for genuinely free activities; otherwise null if unknowable."
+      : "Do not estimate prices. Set every estimated_cost to null, costs to an empty list, and estimated_total to null.",
+    includeCosts
+      ? "costs: grouped planned expenses using categories Accommodation, Transport, Meals, Activities, Shopping, or Other. Do not double-count. estimated_total must equal the costs sum."
+      : "",
     "Keep the original order of each day and include enough detail to follow the plan.",
     mode === "build"
       ? 'source: "vault" when the stop is one of the traveller\'s saved vault places listed below — keep that name. Otherwise "new".'
@@ -117,6 +136,7 @@ async function runParse(
     data.pace,
     data.budgetLevel,
     data.currency,
+    Boolean(data.includeCosts),
     preferenceText,
   );
 
@@ -136,7 +156,7 @@ async function runParse(
                     ? `${text}\n\nThe traveller attached ${data.imageDataUrls.length} pictures of the same trip. Read them all and merge them into ONE itinerary in chronological order, removing duplicates.${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`
                     : `${text}${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`,
               },
-              ...data.imageDataUrls.map((image) => ({ type: "image" as const, image })),
+              ...filePartsFromDataUrls(data.imageDataUrls),
             ]
           : [
               {
@@ -150,14 +170,83 @@ async function runParse(
     ],
   });
   const out = result.output;
-  return {
+  const parsed: ParsedItinerary = {
     ...out,
-        items: out.items.slice(0, 60).map((i) => ({
-          ...i,
-          kind: (KINDS as readonly string[]).includes(i.kind) ? i.kind : "Plan",
-          source: i.source === "vault" ? "vault" : data.mode === "build" ? "new" : null,
-        })),
+    items: out.items.slice(0, 60).map((i) => ({
+      ...i,
+      kind: (KINDS as readonly string[]).includes(i.kind) ? i.kind : "Plan",
+      source: i.source === "vault" ? "vault" : data.mode === "build" ? "new" : null,
+    })),
   };
+  return applyCostPolicy(parsed, Boolean(data.includeCosts));
+}
+
+type PlanContext = {
+  supabase: SupabaseClient<Database>;
+  userId: string;
+};
+
+async function loadBuildExtra(
+  context: PlanContext,
+  tripCity: string | null,
+  mode: "import" | "build",
+) {
+  const { getTravelPreferences, preferencePrompt } = await import(
+    "@/lib/travel-preferences.server"
+  );
+  const preferences = await getTravelPreferences(context);
+  let extra = preferencePrompt(preferences);
+  const { tagVaultItems, vaultPrompt } = await import("@/lib/vault-for-build");
+  let recosForTag: import("@/lib/vault-for-build").VaultReco[] = [];
+  if (mode === "build" && tripCity) {
+    const city = tripCity;
+    const recoCols =
+      "name, city, country, category, notes, recommended_by, lat, lon, pin_type, created_at";
+    const [{ data: recos, error: recoError }, { data: notes }] = await Promise.all([
+      context.supabase
+        .from("recommendations")
+        .select(`${recoCols}, travel_tags`)
+        .eq("user_id", context.userId)
+        .ilike("city", `%${city}%`)
+        .limit(40),
+      context.supabase
+        .from("future_notes")
+        .select("city, note")
+        .eq("user_id", context.userId)
+        .ilike("city", `%${city}%`)
+        .limit(20),
+    ]);
+    const { isMissingTravelTagsColumn } = await import("@/lib/reco-tags");
+    if (recoError && isMissingTravelTagsColumn(recoError)) {
+      const retry = await context.supabase
+        .from("recommendations")
+        .select(recoCols)
+        .eq("user_id", context.userId)
+        .ilike("city", `%${city}%`)
+        .limit(40);
+      recosForTag = (retry.data ?? []) as import("@/lib/vault-for-build").VaultReco[];
+    } else {
+      recosForTag = (recos ?? []) as import("@/lib/vault-for-build").VaultReco[];
+    }
+    const vault = vaultPrompt(city, recosForTag, notes ?? [], {
+      tags: preferences.tags,
+      preferredCountries: preferences.preferredCountries,
+    });
+    if (vault) extra = `${extra}\n\n${vault}`;
+  }
+  return { extra, recosForTag, tagVaultItems };
+}
+
+function finishBuild(
+  parsed: ParsedItinerary,
+  mode: "import" | "build",
+  recosForTag: import("@/lib/vault-for-build").VaultReco[],
+  tagVaultItems: (typeof import("@/lib/vault-for-build"))["tagVaultItems"],
+): ParsedItinerary {
+  if (mode === "build" && recosForTag.length) {
+    return { ...parsed, items: tagVaultItems(parsed.items, recosForTag) };
+  }
+  return parsed;
 }
 
 export const parseItinerary = createServerFn({ method: "POST" })
@@ -165,45 +254,180 @@ export const parseItinerary = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ParseInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
     const model = await gemini();
-    const { getTravelPreferences, preferencePrompt } = await import("@/lib/travel-preferences.server");
-    const preferences = await getTravelPreferences(context);
-    let extra = preferencePrompt(preferences);
-    const { tagVaultItems, vaultPrompt } = await import("@/lib/vault-for-build");
-    let recosForTag: import("@/lib/vault-for-build").VaultReco[] = [];
-    if (data.mode === "build" && data.tripCity) {
-      const city = data.tripCity;
-      const [{ data: recos }, { data: notes }] = await Promise.all([
-        context.supabase
-          .from("recommendations")
-          .select(
-            "name, city, country, category, notes, recommended_by, lat, lon, pin_type, created_at",
-          )
-          .eq("user_id", context.userId)
-          .ilike("city", `%${city}%`)
-          .limit(40),
-        context.supabase
-          .from("future_notes")
-          .select("city, note")
-          .eq("user_id", context.userId)
-          .ilike("city", `%${city}%`)
-          .limit(20),
-      ]);
-      recosForTag = recos ?? [];
-      const vault = vaultPrompt(city, recosForTag, notes ?? [], {
-        tags: preferences.tags,
-        preferredCountries: preferences.preferredCountries,
-      });
-      if (vault) extra = `${extra}\n\n${vault}`;
-    }
+    const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
+      context,
+      data.tripCity,
+      data.mode,
+    );
     try {
       const parsed = await runParse(model, data, extra);
-      if (data.mode === "build" && recosForTag.length) {
-        return { ...parsed, items: tagVaultItems(parsed.items, recosForTag) };
-      }
-      return parsed;
+      return finishBuild(parsed, data.mode, recosForTag, tagVaultItems);
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Could not read that itinerary — try a clearer photo or paste the text.");
+      }
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
+    }
+  });
+
+const ReviseItemIn = ItemSchema.extend({
+  title: z.string().max(200),
+  detail: z.string().max(400).nullable(),
+});
+
+const ReviseInput = z
+  .object({
+    tripCity: z.string().max(120).nullable(),
+    startDate: z.string().max(20).nullable(),
+    endDate: z.string().max(20).nullable(),
+    pace: z.enum(["relaxed", "balanced", "full"]).nullable(),
+    budgetLevel: z.enum(["value", "comfortable", "premium"]).nullable(),
+    currency: z.string().max(3).nullable(),
+    includeCosts: z.boolean(),
+    originalRequest: z.string().max(20_000).nullable(),
+    items: z.array(ReviseItemIn).min(1).max(60),
+    selectedIndexes: z.array(z.number().int().min(0).max(59)).max(40),
+    reason: z.string().trim().min(3).max(800),
+    mode: z.enum(["alternatives", "rebuild"]),
+  })
+  .refine((v) => v.mode === "rebuild" || v.selectedIndexes.length > 0, {
+    message: "Tick the stops you want alternatives for.",
+  })
+  .refine((v) => v.selectedIndexes.every((i) => i < v.items.length), {
+    message: "One of those stops is no longer on the draft.",
+  });
+
+const AlternativesSchema = z.object({
+  summary: z.string(),
+  items: z.array(ItemSchema),
+  estimated_total: z.number().nullable(),
+  currency: z.string().nullable(),
+  costs: z.array(CostSchema),
+});
+
+function formatDraftItems(items: z.infer<typeof ReviseItemIn>[]) {
+  return items
+    .map((item, index) => {
+      const when = [item.day_date, item.time_label].filter(Boolean).join(" ");
+      return `${index + 1}. [${item.kind}] ${item.title}${when ? ` (${when})` : ""}${
+        item.detail ? ` — ${item.detail}` : ""
+      }`;
+    })
+    .join("\n");
+}
+
+export const reviseItinerary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => ReviseInput.parse(input))
+  .handler(async ({ data, context }): Promise<ParsedItinerary> => {
+    const model = await gemini();
+    const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
+      context,
+      data.tripCity,
+      "build",
+    );
+
+    if (data.mode === "rebuild") {
+      const rebuildText = [
+        data.originalRequest?.trim() ? `Original request:\n${data.originalRequest.trim()}` : "",
+        "Previous draft:",
+        formatDraftItems(data.items),
+        `Rebuild the whole trip. The traveller wants this change: ${data.reason}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+      try {
+        const parsed = await runParse(
+          model,
+          {
+            imageDataUrls: null,
+            text: rebuildText,
+            tripCity: data.tripCity,
+            startDate: data.startDate,
+            endDate: data.endDate,
+            mode: "build",
+            pace: data.pace,
+            budgetLevel: data.budgetLevel,
+            currency: data.currency,
+            includeCosts: data.includeCosts,
+          },
+          extra,
+        );
+        return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+      } catch (error) {
+        if (NoObjectGeneratedError.isInstance(error)) {
+          throw new Error("Béa couldn't rebuild that — try a shorter note, or try again.");
+        }
+        const { aiFailure } = await import("@/lib/ai.server");
+        throw aiFailure(error);
+      }
+    }
+
+    const chosen = data.selectedIndexes.map((index) => ({
+      index,
+      item: data.items[index]!,
+    }));
+    const keepLines = data.items
+      .map((item, index) => ({ item, index }))
+      .filter(({ index }) => !data.selectedIndexes.includes(index))
+      .map(({ item, index }) => `${index + 1}. ${item.title} — keep this stop as it is.`);
+    const prompt = [
+      "The traveller likes most of this draft. Replace only the ticked stops with alternatives.",
+      data.tripCity ? `The trip is around ${data.tripCity}.` : "",
+      data.startDate ? `Trip starts ${data.startDate}.` : "",
+      data.endDate ? `Trip ends ${data.endDate}.` : "",
+      extra,
+      `Why they want a change: ${data.reason}`,
+      keepLines.length ? `Do not change these:\n${keepLines.join("\n")}` : "",
+      `Return exactly ${chosen.length} replacement stop${chosen.length === 1 ? "" : "s"}, in this same order:`,
+      ...chosen.map(
+        ({ item, index }, i) =>
+          `${i + 1}. Replace #${index + 1} "${item.title}"${
+            item.day_date ? ` on ${item.day_date}` : ""
+          }${item.time_label ? ` at ${item.time_label}` : ""}. Keep the same day when you can.`,
+      ),
+      `kind must be exactly one of: ${KINDS.join(", ")}.`,
+      "Each replacement must be a real alternative — not the same place rephrased.",
+      "Béa cannot check availability or make a reservation. Never say a table, room or ticket is held.",
+      data.includeCosts
+        ? "Include estimated_cost and currency when meaningful. costs: grouped planned expenses for the replacements only."
+        : "Do not estimate prices. Set every estimated_cost to null, costs to an empty list, and estimated_total to null.",
+      "summary: one warm sentence on what changed.",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      const result = await generateText({
+        model,
+        output: Output.object({ schema: AlternativesSchema }),
+        reasoning: "medium",
+        prompt,
+      });
+      const replacements = result.output.items.slice(0, chosen.length).map((item) => ({
+        ...item,
+        kind: (KINDS as readonly string[]).includes(item.kind) ? item.kind : "Plan",
+        source: item.source === "vault" ? ("vault" as const) : ("new" as const),
+      }));
+      const merged = mergeAlternativeItems(data.items, replacements, data.selectedIndexes);
+      const parsed = applyCostPolicy(
+        {
+          summary: result.output.summary,
+          trip_title: "",
+          start_date: data.startDate,
+          end_date: data.endDate,
+          estimated_total: result.output.estimated_total,
+          currency: result.output.currency ?? data.currency,
+          costs: data.includeCosts ? result.output.costs : [],
+          items: merged,
+        },
+        data.includeCosts,
+      );
+      return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+    } catch (error) {
+      if (NoObjectGeneratedError.isInstance(error)) {
+        throw new Error("Béa couldn't find alternatives — try a shorter note, or try again.");
       }
       const { aiFailure } = await import("@/lib/ai.server");
       throw aiFailure(error);
@@ -295,6 +519,7 @@ export const compareItineraries = createServerFn({ method: "POST" })
             pace: null,
             budgetLevel: null,
             currency: homeCurrency,
+            includeCosts: true,
           },
           preferencePrompt(preferences),
         );
@@ -563,6 +788,108 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Béa couldn't rearrange that — try fewer goals, or try again.");
+      }
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
+    }
+  });
+
+const DayTripPlaceIn = z.object({
+  name: z.string().trim().min(1).max(200),
+  city: z.string().max(120).nullable(),
+  country: z.string().max(80).nullable(),
+  category: z.string().max(80).nullable(),
+  notes: z.string().max(400).nullable(),
+  tags: z.array(z.string().max(40)).max(12),
+  lat: z.number(),
+  lon: z.number(),
+});
+
+const DayTripInput = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  here: z.object({ lat: z.number(), lon: z.number() }).nullable(),
+  pace: z.enum(["relaxed", "balanced", "full"]),
+  emphasize: z.array(z.string().max(40)).max(16),
+  note: z.string().max(400).nullable(),
+  places: z.array(DayTripPlaceIn).min(2).max(12),
+});
+
+function formatDayTripPlaces(places: z.infer<typeof DayTripPlaceIn>[]) {
+  return places
+    .map((place, index) => {
+      const where = [place.city, place.country].filter(Boolean).join(", ");
+      const extras = [
+        place.category,
+        place.tags.length ? `tags: ${place.tags.join(", ")}` : "",
+        place.notes,
+        `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      return `${index + 1}. ${place.name}${where ? ` (${where})` : ""} — ${extras}`;
+    })
+    .join("\n");
+}
+
+export const planDayTrip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => DayTripInput.parse(input))
+  .handler(async ({ data, context }): Promise<ParsedItinerary> => {
+    const model = await gemini();
+    const { getTravelPreferences, preferencePrompt } = await import(
+      "@/lib/travel-preferences.server"
+    );
+    const preferences = await getTravelPreferences(context);
+    const city =
+      data.places.map((place) => place.city?.trim()).find(Boolean) ?? data.places[0]?.name ?? "";
+
+    const prompt = [
+      "Arrange these saved places into ONE practical day trip. Do not add hotels, flights or new attractions.",
+      "Use ONLY the listed places as stops. You may add Transport between them if a move needs saying.",
+      "Keep each saved name exactly. kind must be Plan, Reservation or Transport.",
+      `The day is ${data.date}. Put every stop on that date.`,
+      `Requested pace: ${data.pace}.`,
+      data.here
+        ? `The traveller starts near ${data.here.lat.toFixed(4)}, ${data.here.lon.toFixed(4)}. Order stops to cut backtracking from there.`
+        : "Order stops to cut backtracking.",
+      data.emphasize.length ? `Lean into these today: ${data.emphasize.join(", ")}.` : "",
+      preferencePrompt(preferences),
+      "Béa cannot book or check availability. Phrase meals as suggestions. Never say a table is held.",
+      "time_label: 24h HH:MM for each stop, spaced like a real day.",
+      "trip_title: a short name starting with Day trip.",
+      "Do not estimate prices. Set every estimated_cost to null, costs to an empty list, and estimated_total to null.",
+      "source: vault for the saved places, new only for Transport.",
+      "summary: one warm sentence about the day.",
+      data.note?.trim() ? `Traveller note: ${data.note.trim()}` : "",
+      `Saved places:\n${formatDayTripPlaces(data.places)}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    try {
+      const result = await generateText({
+        model,
+        output: Output.object({ schema: ParsedSchema }),
+        reasoning: "low",
+        messages: [{ role: "user", content: prompt }],
+      });
+      const allowed = new Set(["Plan", "Reservation", "Transport"]);
+      const parsed: ParsedItinerary = {
+        ...result.output,
+        start_date: data.date,
+        end_date: data.date,
+        trip_title: result.output.trip_title.trim() || `Day trip — ${city}`,
+        items: result.output.items.slice(0, 20).map((item) => ({
+          ...item,
+          day_date: data.date,
+          kind: allowed.has(item.kind) ? item.kind : "Plan",
+          source: item.kind === "Transport" ? "new" : "vault",
+        })),
+      };
+      return applyCostPolicy(parsed, false);
+    } catch (error) {
+      if (NoObjectGeneratedError.isInstance(error)) {
+        throw new Error("Béa couldn't arrange that day — try fewer places, or try again.");
       }
       const { aiFailure } = await import("@/lib/ai.server");
       throw aiFailure(error);

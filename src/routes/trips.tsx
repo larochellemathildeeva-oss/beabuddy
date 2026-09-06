@@ -18,7 +18,10 @@ import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
+import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
+import { unroutedLegCopy } from "@/lib/timeline-directions";
+import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
@@ -121,6 +124,7 @@ function TripsPage() {
                 New trip
               </button>
               <button
+                data-guide="join-trip"
                 onClick={() => {
                   setJoining(!joining);
                   setCreating(false);
@@ -199,6 +203,7 @@ function TripsPage() {
                   />
                   Track a budget for this trip
                 </label>
+                <p className="px-1 text-[11px] text-muted-foreground">{tripStillEditableNote()}</p>
                 <button
                   disabled={
                     !form.title.trim() ||
@@ -267,10 +272,10 @@ function TripsPage() {
                 <LiveTripCard
                   key={trip.id}
                   trip={trip}
-                  memberCount={t.members.filter((m) => m.trip_id === trip.id).length}
-                  memberNames={t.members
-                    .filter((m) => m.trip_id === trip.id)
-                    .map((m) => m.display_name?.trim() || "Traveller")}
+                  companionsLine={tripCompanionsLine(
+                    t.members.filter((m) => m.trip_id === trip.id),
+                    t.uid,
+                  )}
                   open={openId === trip.id}
                   onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
                   me={{ id: t.uid, name: myName }}
@@ -315,8 +320,7 @@ function TripsPage() {
 
 function LiveTripCard({
   trip,
-  memberCount,
-  memberNames,
+  companionsLine,
   open,
   onToggle,
   me,
@@ -325,8 +329,7 @@ function LiveTripCard({
   onDelete,
 }: {
   trip: TripRow;
-  memberCount: number;
-  memberNames: string[];
+  companionsLine: string;
   open: boolean;
   onToggle: () => void;
   me: { id: string | null; name: string };
@@ -344,22 +347,9 @@ function LiveTripCard({
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
-  const routeStops =
-    cities.stops.length >= 2
-      ? cities.stops.map((s) => ({
-          title: (s.place_name || s.city).trim() || s.city,
-          address: s.address,
-          lat: s.lat,
-          lon: s.lon,
-        }))
-      : board.items
-          .filter((i) => i.title.trim())
-          .map((i) => ({
-            title: i.title.trim(),
-            address: i.address,
-            lat: i.lat,
-            lon: i.lon,
-          }));
+  const directionStops = timelineStopsForDirections(board.items);
+  const routeStops = stopsForDirections(cities.stops, board.items);
+  const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
@@ -408,11 +398,7 @@ function LiveTripCard({
               ? ` · ${trip.dates_status === "tentative" ? "Tentative · " : ""}${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
               : ""}
           </p>
-          <p className="mt-1 truncate text-[12px] text-muted-foreground">
-            {memberNames.length > 0
-              ? `With ${memberNames.join(", ")}`
-              : `${memberCount} travelling`}
-          </p>
+          <p className="mt-1 truncate text-[12px] text-muted-foreground">{companionsLine}</p>
         </button>
         <button
           data-guide="bea-plan"
@@ -490,7 +476,7 @@ function LiveTripCard({
 
           {trip.budget_enabled && <TripBudget tripId={trip.id} />}
 
-          <div className="mb-3 rounded-xl border border-border p-3">
+          <div data-guide="trip-timeline" className="mb-3 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="label-caps text-foreground">What you're doing</p>
@@ -660,15 +646,10 @@ function LiveTripCard({
           </div>
 
           <ItineraryDirections
-            stops={board.items.map((i) => ({
-              title: i.title,
-              address: i.address,
-              lat: i.lat,
-              lon: i.lon,
-            }))}
-            {...(trip.city
-              ? { area: [trip.city, trip.country].filter(Boolean).join(", ") }
-              : {})}
+            stops={directionStops}
+            existingTitles={board.items.map((i) => i.title)}
+            onAddToTimeline={board.addItems}
+            {...(directionArea ? { area: directionArea } : {})}
           />
 
         </div>
@@ -701,10 +682,13 @@ function LiveTripCard({
         {...(trip.start_date ? { startDate: trip.start_date } : {})}
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
-        onAddCosts={budget.addItems}
+        onAddCosts={async (items) => {
+          if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
+          await budget.addItems(items);
+        }}
         onApplySchedule={board.applySchedule}
         onApplyDates={async (dates) => {
-          await onUpdate({ ...dates, budget_enabled: true });
+          await onUpdate(dates);
         }}
       />
 
@@ -830,14 +814,15 @@ function LiveTripCard({
               {sheetSection === "offline" && (
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-[11px] text-muted-foreground">
-                    Save the walk or drive between the cities on this trip — works with no service.
+                    Download the walk or drive between stops so the steps work with no service.
+                    Adding directions to the timeline saves the summary — not the offline map.
                   </p>
                   <button
                     disabled={dir.busy || routeStops.length < 2}
                     onClick={() =>
                       void dir.download(
                         routeStops,
-                        [trip.city, trip.country].filter(Boolean).join(", "),
+                        directionArea,
                       )
                     }
                     className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
@@ -864,9 +849,7 @@ function LiveTripCard({
                             <span className="ml-2 text-[11px] font-normal text-muted-foreground">
                               {l.distance > 0
                                 ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
-                                : l.capped
-                                  ? "Open in maps for this stretch"
-                                  : "Exact spot unknown"}
+                                : unroutedLegCopy(l)}
                             </span>
                           </summary>
                           <ol className="mt-2 space-y-1">
@@ -1125,11 +1108,7 @@ function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
               ))}
             </ol>
           ) : (
-            <p className="text-[11px] text-muted-foreground">
-              {leg.capped
-                ? "Turn-by-turn paused here — open in maps for this stretch."
-                : "Exact spot unknown — open in maps to search it."}
-            </p>
+            <p className="text-[11px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
           )}
           <a
             href={leg.mapUrl}

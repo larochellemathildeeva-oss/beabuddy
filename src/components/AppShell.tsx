@@ -101,7 +101,7 @@ export function AppShell({
                 <span className="leading-none">
                   <span className="block font-display text-[24px]">Béa</span>
 <span className="block text-[8px] font-semibold uppercase text-muted-foreground">
-                    v{APP_VERSION} · {typeof __APP_BUILD__ === "string" ? __APP_BUILD__ : ""}
+                    v{APP_VERSION}
                   </span>
                 </span>
                 <span className="label-caps">Travel Buddy</span>

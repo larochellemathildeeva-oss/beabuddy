@@ -1,14 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { startTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
+import { FeedbackForm } from "@/components/FeedbackForm";
+import { CopyrightNotice } from "@/components/CopyrightNotice";
+import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { applyDark, readDark } from "@/lib/theme";
 
 
 export const Route = createFileRoute("/profile")({
@@ -29,14 +33,6 @@ export const Route = createFileRoute("/profile")({
   }),
   component: ProfilePage,
 });
-
-const offline = [
-  { name: "Maps", detail: "Street maps for the cities on your trips." },
-  { name: "Photos", detail: "Your imported pictures, viewable with no signal." },
-  { name: "Recommendations", detail: "Every saved place and who told you about it." },
-  { name: "Itineraries", detail: "Trip timelines, stops and dates." },
-  { name: "Documents", detail: "Your encrypted vault, still locked behind your passphrase." },
-];
 
 function Collapsible({
   title,
@@ -78,14 +74,14 @@ function ProfilePage() {
   const t = useTrips();
   const [dark, setDark] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
-  const [downloads, setDownloads] = useState<string[]>([]);
+  const [offlineTripIds, setOfflineTripIds] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [homeCity, setHomeCity] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", dark);
-  }, [dark]);
+    setDark(readDark());
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -117,13 +113,12 @@ function ProfilePage() {
     setTimeout(() => setSaved(false), 1600);
   };
 
-  const toggleDownload = (value: string) =>
-    setDownloads((list) =>
-      list.includes(value) ? list.filter((v) => v !== value) : [...list, value],
-    );
-
+  useEffect(() => {
+    setOfflineTripIds(listSavedDirectionTripIds());
+  }, []);
 
   const signedInName = displayName || user?.email?.split("@")[0] || "Traveller";
+  const offlineTrips = t.trips.filter((trip) => offlineTripIds.includes(trip.id));
 
   return (
     <AppShell eyebrow="Profile" title={user ? signedInName : "Your profile"}>
@@ -231,7 +226,11 @@ function ProfilePage() {
                 </p>
               </div>
               <button
-                onClick={() => setDark((v) => !v)}
+                onClick={() => {
+                  const next = !dark;
+                  applyDark(next);
+                  setDark(next);
+                }}
                 aria-label="Toggle dark mode"
                 className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                   dark ? "bg-primary" : "bg-muted"
@@ -249,7 +248,7 @@ function ProfilePage() {
               <div>
                 <p className="text-[13px] font-medium">Take the tour again</p>
                 <p className="text-[11.5px] text-muted-foreground">
-                  A quick walk through everything Béa can do.
+                  A quick walk around the block, or a Deep Dive through every feature.
                 </p>
               </div>
               <button
@@ -282,36 +281,45 @@ function ProfilePage() {
         <Collapsible
           title="Offline options"
           summary={
-            downloads.length ? `${downloads.length} ready offline` : "Nothing downloaded yet"
+            offlineTrips.length
+              ? `${offlineTrips.length} trip${offlineTrips.length === 1 ? "" : "s"} with directions on this phone`
+              : "Only trip directions can be kept on this phone"
           }
+          guide="offline-options"
         >
-          <p className="mb-3 text-[12px] text-muted-foreground">
-            Download these before you lose signal and they stay readable on the road.
+          <p className="text-[12px] text-muted-foreground">
+            Béa cannot pack maps, photos, recommendations, itineraries or the vault onto this phone
+            yet. Those still need a connection.
           </p>
-          <div className="divide-y divide-border">
-            {offline.map((o) => (
-              <button
-                key={o.name}
-                onClick={() => toggleDownload(o.name)}
-                className="flex w-full items-center justify-between gap-3 py-3 text-left"
-              >
-                <span>
-                  <span className="block text-[14px]">{o.name}</span>
-                  <span className="block text-[11.5px] text-muted-foreground">{o.detail}</span>
-                </span>
-                <span
-                  className={`shrink-0 text-[11px] ${
-                    downloads.includes(o.name) ? "text-nexttime" : "text-muted-foreground"
-                  }`}
-                >
-                  {downloads.includes(o.name) ? "Downloaded" : "Download"}
-                </span>
-              </button>
-            ))}
-          </div>
+          <p className="mt-2 text-[12px] text-muted-foreground">
+            What does work: open a trip → settings → Offline directions. That keeps the walk or
+            drive steps on this phone.
+          </p>
+          {offlineTrips.length > 0 ? (
+            <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
+              {offlineTrips.map((trip) => (
+                <li key={trip.id} className="px-3 py-2.5">
+                  <p className="text-[13px] font-medium">{trip.title}</p>
+                  <p className="text-[11.5px] text-muted-foreground">
+                    {[trip.city, trip.country].filter(Boolean).join(", ") || "Directions saved here"}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-[12px] text-muted-foreground">
+              None yet. Open a trip and download Offline directions there.
+            </p>
+          )}
+          <Link
+            to="/trips"
+            className="mt-3 block rounded-xl border border-border px-4 py-2.5 text-center text-[13px] font-semibold"
+          >
+            Open trips
+          </Link>
         </Collapsible>
 
-        <Collapsible title="Legal, privacy and such" summary="Policies, terms and your data">
+        <Collapsible title="Legal, privacy and such" summary="Policies, terms and your data" guide="legal">
           <div className="space-y-2">
             <Link
               to="/privacy"
@@ -337,9 +345,13 @@ function ProfilePage() {
               </span>
               <span className="shrink-0 text-[13px] text-primary">Read</span>
             </Link>
-            <p className="px-1 pt-1 text-[11px] text-muted-foreground">
-              © 2026 Mathilde E. Larochelle. All rights reserved.
-            </p>
+            <div className="rounded-xl border border-border p-3">
+              <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[12px] text-muted-foreground" />
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                Béa — the app, its name, design, features and original ideas — is Mathilde E.
+                Larochelle's work. You keep what you save in it. The Terms spell this out.
+              </p>
+            </div>
           </div>
         </Collapsible>
 
@@ -358,15 +370,32 @@ function ProfilePage() {
           </Link>
         </Collapsible>
 
-        <Link to="/help" className="card-soft flex items-center justify-between gap-3 p-4">
+        <Link
+          to="/help"
+          className="card-soft flex items-center justify-between gap-3 px-4 py-3.5"
+        >
           <span>
             <span className="block text-[14px] font-medium">Help & FAQ</span>
             <span className="block text-[12px] text-muted-foreground">
               Answers to the questions people ask most.
             </span>
           </span>
-          <span className="shrink-0 text-[13px] text-primary">Open</span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
+
+        <Collapsible
+          title="Feedback"
+          summary="Tell Béa something"
+          guide="feedback"
+        >
+          <div className="space-y-2">
+            <p className="text-[13px] text-muted-foreground">
+              Béa is here to make you happy. A missing travel stat, a wish, something that broke —
+              write it here. It is saved to your account so we can actually read it.
+            </p>
+            <FeedbackForm alreadySignedIn={!!user} />
+          </div>
+        </Collapsible>
       </div>
     </AppShell>
   );

@@ -1,4 +1,6 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { wrapLanguageModel } from "ai";
+import { flattenGeminiPromptFiles } from "@/lib/ai-image";
 
 /**
  * Model ids move. Keeping this in the environment means a rename is a config
@@ -16,13 +18,26 @@ function google() {
   return createGoogleGenerativeAI({ apiKey });
 }
 
+function wrapGoogleModel(model: ReturnType<ReturnType<typeof google>>) {
+  return wrapLanguageModel({
+    model,
+    middleware: {
+      specificationVersion: "v3",
+      transformParams: async ({ params }) => ({
+        ...params,
+        prompt: flattenGeminiPromptFiles(params.prompt),
+      }),
+    },
+  });
+}
+
 export function getGeminiModel() {
-  return google()(MODEL_ID);
+  return wrapGoogleModel(google()(MODEL_ID));
 }
 
 export function getFallbackModel() {
   if (!FALLBACK_MODEL_ID) return null;
-  return google()(FALLBACK_MODEL_ID);
+  return wrapGoogleModel(google()(FALLBACK_MODEL_ID));
 }
 
 /** Judgment jobs: think more, and return a thought summary the UI can show. */
@@ -75,6 +90,9 @@ export function aiFailure(error: unknown): Error {
   const text = messageOf(error).toLowerCase();
   if (text.includes("api key") || text.includes("401") || text.includes("403")) {
     return new Error("AI is not set up on this app yet.");
+  }
+  if (text.includes("inline_data") || text.includes("scalar field")) {
+    return new Error("Could not read that picture. Try another photo or paste the list.");
   }
   return error instanceof Error ? error : new Error("Something went wrong. Try again.");
 }

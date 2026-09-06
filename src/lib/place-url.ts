@@ -72,12 +72,17 @@ export class UnsupportedPlaceUrlError extends Error {
   }
 }
 
-/** Full hop check: https, no credentials, not a private/local host, and on the place allowlist. */
-export function isFetchablePlaceUrl(url: URL): boolean {
+/** https, no credentials, not a private or local host. */
+export function isPublicHttpsUrl(url: URL): boolean {
   if (url.protocol !== "https:") return false;
   if (url.username || url.password) return false;
   if (isBlockedHost(url.hostname)) return false;
-  return isPlaceHost(url.hostname);
+  return true;
+}
+
+/** Full hop check: public https, and on the place allowlist. */
+export function isFetchablePlaceUrl(url: URL): boolean {
+  return isPublicHttpsUrl(url) && isPlaceHost(url.hostname);
 }
 
 function parseHref(href: string, base?: URL): URL | null {
@@ -125,17 +130,16 @@ async function readCappedText(res: Response): Promise<string> {
   return new TextDecoder("utf-8", { fatal: false }).decode(out);
 }
 
-/**
- * GET a pasted place link without `redirect: "follow"`.
- * Each Location is run through the same allowlist + IP rules before the next hop is requested.
- */
-export async function fetchPlaceHtml(href: string): Promise<{ html: string; finalUrl: string }> {
+async function fetchHtmlWithPolicy(
+  href: string,
+  canFollow: (url: URL) => boolean,
+): Promise<{ html: string; finalUrl: string }> {
   const start = parseHref(href);
   if (!start) return { html: "", finalUrl: href };
-  if (start.protocol !== "https:" || start.username || start.password || isBlockedHost(start.hostname)) {
+  if (!isPublicHttpsUrl(start)) {
     throw new UnsupportedPlaceUrlError();
   }
-  if (!isFetchablePlaceUrl(start)) {
+  if (!canFollow(start)) {
     return { html: "", finalUrl: start.toString() };
   }
 
@@ -154,7 +158,7 @@ export async function fetchPlaceHtml(href: string): Promise<{ html: string; fina
         return { html: "", finalUrl: current.toString() };
       }
       const next = parseHref(location, current);
-      if (!next || !isFetchablePlaceUrl(next)) {
+      if (!next || !canFollow(next)) {
         return { html: "", finalUrl: current.toString() };
       }
       current = next;
@@ -170,4 +174,17 @@ export async function fetchPlaceHtml(href: string): Promise<{ html: string; fina
   }
 
   return { html: "", finalUrl: current.toString() };
+}
+
+/**
+ * GET a pasted place link without `redirect: "follow"`.
+ * Each Location is run through the same allowlist + IP rules before the next hop is requested.
+ */
+export async function fetchPlaceHtml(href: string): Promise<{ html: string; finalUrl: string }> {
+  return fetchHtmlWithPolicy(href, isFetchablePlaceUrl);
+}
+
+/** GET a public https page (articles, listicles) with the same SSRF guards, no host allowlist. */
+export async function fetchPublicHtml(href: string): Promise<{ html: string; finalUrl: string }> {
+  return fetchHtmlWithPolicy(href, isPublicHttpsUrl);
 }
