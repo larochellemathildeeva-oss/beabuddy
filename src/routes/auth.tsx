@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
-import { startTour } from "@/components/Tour";
+import { startFirstRunTour } from "@/components/Tour";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 
 export const Route = createFileRoute("/auth")({
@@ -94,7 +94,9 @@ function AuthPage() {
           setMessage("Check your email and tap the confirmation link to finish signing up.");
         } else {
           // Brand-new account: start the guided tour as soon as they land.
-          startTour();
+          // Tour's own auth listener may also fire for this session; both go
+          // through the same gate, so a skip made a moment ago still holds.
+          startFirstRunTour();
         }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });

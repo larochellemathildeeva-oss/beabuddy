@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { startTour } from "@/components/Tour";
+import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
@@ -303,7 +303,7 @@ function ProfilePage() {
               </div>
               <button
                 onClick={() => {
-                  startTour();
+                  resumeOrReplayTour();
                   void navigate({ to: "/" });
                 }}
                 className="shrink-0 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
