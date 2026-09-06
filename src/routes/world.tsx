@@ -11,6 +11,7 @@ import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
+import { deriveTravelStats } from "@/lib/travel-stats";
 
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
@@ -53,6 +54,14 @@ function WorldPage() {
   const vault = useRecommendations();
   const t = useTrips();
   const allPins = [...photo.pins, ...vault.pins];
+
+  // Photo rows plus vault pins, so a city added by hand on this map counts too.
+  // photo.pins are omitted on purpose — they are derived from photo.rows and
+  // would be the same places twice.
+  const travelStats = useMemo(
+    () => deriveTravelStats(photo.rows, vault.pins),
+    [photo.rows, vault.pins],
+  );
 
   const [counts, setCounts] = useState<ItineraryCounts>({ flights: 0, hotels: 0, restaurants: 0 });
 
@@ -135,7 +144,7 @@ function WorldPage() {
       eyebrow="Your world"
       title={
         photo.stats.cities
-          ? `${photo.stats.cities} cities, ${photo.stats.countries} countries.`
+          ? `${travelStats.cities} cities, ${travelStats.countries} countries.`
           : "Your map starts here."
       }
     >
@@ -265,8 +274,8 @@ function WorldPage() {
           {statsOpen && (
             <div id="travel-stats-body" className="card-soft space-y-3 px-4 py-3">
               <div className="grid grid-cols-4 gap-2">
-                <Stat value={photo.stats.countries} label="Countries" />
-                <Stat value={photo.stats.cities} label="Cities" />
+                <Stat value={travelStats.countries} label="Countries" />
+                <Stat value={travelStats.cities} label="Cities" />
                 <Stat value={tripsCompleted} label="Trips completed" />
                 <Stat value={counts.flights} label="Flights" />
                 <Stat value={counts.hotels} label="Hotels" />
