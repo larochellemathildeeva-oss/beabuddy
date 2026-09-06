@@ -746,7 +746,7 @@ function LiveTripCard({
                       void dir.download(
                         board.items.map((i) => ({ title: i.title, lat: i.lat, lon: i.lon })),
                         [trip.city, trip.country].filter(Boolean).join(", "),
-                      )})
+                      )
                     }
                     className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
