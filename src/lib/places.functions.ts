@@ -159,7 +159,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     const name =
       (rawTitle || "")
-        .split(/ [·|—–\-] /)[0]
+        .split(/ [·|—–-] /)[0]
         ?.replace(/\s*-\s*Google Maps$/i, "")
         .trim() || "Saved place";
 

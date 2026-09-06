@@ -77,7 +77,9 @@ function writeConsent(duration: ShareDuration) {
   if (duration === "once") return; // nothing stored
   try {
     localStorage.setItem(CONSENT_KEY, JSON.stringify({ expiry }));
-  } catch {}
+  } catch {
+    /* storage unavailable: consent lasts for this session only */
+  }
 }
 
 function OpportunitiesPage() {
@@ -143,7 +145,9 @@ function OpportunitiesPage() {
   const stopSharing = () => {
     try {
       localStorage.removeItem(CONSENT_KEY);
-    } catch {}
+    } catch {
+      /* storage unavailable: nothing was stored to remove */
+    }
     setConsent(false);
     setHere(null);
     setLocState("idle");
