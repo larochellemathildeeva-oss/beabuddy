@@ -12,6 +12,8 @@ export type RouteLeg = {
   duration: number;
   steps: RouteStep[];
   mapUrl: string;
+  /** True when we had coordinates but stopped calling OSRM. */
+  capped?: boolean;
 };
 
 type Stop = { title: string; lat?: number | null; lon?: number | null };
@@ -116,10 +118,10 @@ async function leg(
   return { distance: Math.round(route.distance), duration: Math.round(route.duration), steps };
 }
 
-// Nominatim + OSRM share one ceiling so a 200-stop body of pre-geocoded
-// points cannot become 199 OSRM fetches. 15 × 1.1s of lookups plus the
-// leftover OSRM calls should stay under a 30s proxy timeout.
-const OUTBOUND_BUDGET = 25;
+// Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
+// They are not the same cost, so they do not share a number.
+const LOOKUP_BUDGET = 15;
+const LEG_BUDGET = 60;
 
 const BuildRoutesInput = z.object({
   stops: z
@@ -134,7 +136,7 @@ const BuildRoutesInput = z.object({
   area: z.string().max(200).optional(),
 });
 
-function mapsOnlyLeg(fromName: string, toName: string, area: string): RouteLeg {
+function mapsOnlyLeg(fromName: string, toName: string, area: string, capped = false): RouteLeg {
   const region = cleanArea(area);
   const q = (n: string) => encodeURIComponent(region ? `${n}, ${region}` : n);
   return {
@@ -145,6 +147,7 @@ function mapsOnlyLeg(fromName: string, toName: string, area: string): RouteLeg {
     duration: 0,
     steps: [],
     mapUrl: `https://www.google.com/maps/dir/?api=1&origin=${q(fromName)}&destination=${q(toName)}&travelmode=walking`,
+    ...(capped ? { capped: true } : {}),
   };
 }
 
@@ -154,10 +157,12 @@ export const buildRoutes = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const points: ({ lat: number; lon: number } | null)[] = [];
-    let outboundLeft = OUTBOUND_BUDGET;
+    const deferred: string[] = [];
+    let lookupsLeft = LOOKUP_BUDGET;
+    let legsLeft = LEG_BUDGET;
     const lookup = async (query: string) => {
-      if (outboundLeft <= 0) return null;
-      outboundLeft -= 1;
+      if (lookupsLeft <= 0) return null;
+      lookupsLeft -= 1;
       const found = await geocode(query);
       await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
       return found;
@@ -169,6 +174,11 @@ export const buildRoutes = createServerFn({ method: "POST" })
         (stop.lat !== 0 || stop.lon !== 0)
       ) {
         points.push({ lat: stop.lat, lon: stop.lon });
+        continue;
+      }
+      if (lookupsLeft <= 0) {
+        if (!deferred.includes(stop.title)) deferred.push(stop.title);
+        points.push(null);
         continue;
       }
       const region = cleanArea(area);
@@ -204,15 +214,19 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const toName = data.stops[i + 1]!.title;
       if (!a || !b) {
         const missing = !a ? fromName : toName;
-        if (!unresolved.includes(missing)) unresolved.push(missing);
-        legs.push(mapsOnlyLeg(fromName, toName, area));
+        if (deferred.includes(missing)) {
+          legs.push(mapsOnlyLeg(fromName, toName, area, true));
+        } else {
+          if (!unresolved.includes(missing)) unresolved.push(missing);
+          legs.push(mapsOnlyLeg(fromName, toName, area));
+        }
         continue;
       }
-      if (outboundLeft <= 0) {
-        legs.push(mapsOnlyLeg(fromName, toName, area));
+      if (legsLeft <= 0) {
+        legs.push(mapsOnlyLeg(fromName, toName, area, true));
         continue;
       }
-      outboundLeft -= 1;
+      legsLeft -= 1;
       const straight = haversine(a, b);
       const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
       const r = await leg(a, b, mode);
@@ -231,7 +245,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
       });
     }
 
-    return { legs, unresolved, savedAt: new Date().toISOString() };
+    return { legs, unresolved, deferred, savedAt: new Date().toISOString() };
   });
 
 function haversine(a: { lat: number; lon: number }, b: { lat: number; lon: number }) {

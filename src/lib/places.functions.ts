@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { fetchPlaceHtml } from "@/lib/place-url";
+import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
 
 export type ParsedPlace = {
   name: string;
@@ -142,7 +142,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       html = fetched.html;
       finalUrl = fetched.finalUrl;
     } catch (error) {
-      if (error instanceof Error && error.message === "Only web links are supported") throw error;
+      if (error instanceof UnsupportedPlaceUrlError) throw error;
       /* fall through to URL-only parsing */
     }
 

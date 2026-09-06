@@ -64,6 +64,14 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
+export class UnsupportedPlaceUrlError extends Error {
+  readonly code = "UNSUPPORTED_PLACE_URL" as const;
+  constructor() {
+    super("Only web links are supported");
+    this.name = "UnsupportedPlaceUrlError";
+  }
+}
+
 /** Full hop check: https, no credentials, not a private/local host, and on the place allowlist. */
 export function isFetchablePlaceUrl(url: URL): boolean {
   if (url.protocol !== "https:") return false;
@@ -125,7 +133,7 @@ export async function fetchPlaceHtml(href: string): Promise<{ html: string; fina
   const start = parseHref(href);
   if (!start) return { html: "", finalUrl: href };
   if (start.protocol !== "https:" || start.username || start.password || isBlockedHost(start.hostname)) {
-    throw new Error("Only web links are supported");
+    throw new UnsupportedPlaceUrlError();
   }
   if (!isFetchablePlaceUrl(start)) {
     return { html: "", finalUrl: start.toString() };

@@ -744,9 +744,9 @@ function LiveTripCard({
                     disabled={dir.busy || board.items.length < 2}
                     onClick={() =>
                       void dir.download(
-                        board.items.map((i) => ({ title: i.title })),
+                        board.items.map((i) => ({ title: i.title, lat: i.lat, lon: i.lon })),
                         [trip.city, trip.country].filter(Boolean).join(", "),
-                      )
+                      )})
                     }
                     className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
@@ -769,8 +769,11 @@ function LiveTripCard({
                           <summary className="cursor-pointer text-[13px] font-medium">
                             {l.from} → {l.to}
                             <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                              {l.mode === "walking" ? "Walk" : "Drive"} ·{" "}
-                              {prettyDistance(l.distance)} · {prettyDuration(l.duration)}
+                              {l.distance > 0
+                                ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                                : l.capped
+                                  ? "Open in maps for this stretch"
+                                  : "Exact spot unknown"}
                             </span>
                           </summary>
                           <ol className="mt-2 space-y-1">
@@ -794,6 +797,11 @@ function LiveTripCard({
                       {dir.saved.unresolved.length > 0 && (
                         <p className="text-[11px] text-muted-foreground">
                           Couldn't find on the map: {dir.saved.unresolved.join(", ")}
+                        </p>
+                      )}
+                      {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
+                        <p className="text-[11px] text-muted-foreground">
+                          Later stretches open in maps — Béa stops looking after a long list.
                         </p>
                       )}
                       <button
