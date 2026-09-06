@@ -57,6 +57,7 @@ export const extractReceiptFields = createServerFn({ method: "POST" })
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Could not read that receipt — fill it in by hand.");
       }
-      throw error;
+      const { aiFailure } = await import("@/lib/ai.server");
+      throw aiFailure(error);
     }
   });
