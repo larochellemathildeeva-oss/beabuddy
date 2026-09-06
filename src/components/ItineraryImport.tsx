@@ -83,7 +83,7 @@ export function ItineraryImport({
         className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-4 sm:rounded-2xl"
       >
         <div className="mb-3 flex items-center gap-3">
-          <img src={logo} alt="" className="size-9 rounded-full" />
+          <img src={logo} alt="" className="size-9" />
           <div className="min-w-0 flex-1">
             <p className="font-display text-[19px] leading-tight">Let Béa plan this trip</p>
             <p className="text-[11px] text-muted-foreground">
