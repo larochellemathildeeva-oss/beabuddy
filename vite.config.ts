@@ -15,7 +15,15 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Canner is a Node host, not Cloudflare. node-server emits .output/server/index.mjs
+  // and listens on $PORT.
+  nitro: { preset: "node-server" },
   vite: {
+    preview: {
+      host: "0.0.0.0",
+      port: Number(process.env.PORT) || 4173,
+      strictPort: true,
+    },
     define: {
       // Stamp every build so the displayed app version updates on each release.
       __APP_VERSION__: JSON.stringify(appVersion),
