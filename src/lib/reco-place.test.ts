@@ -1,11 +1,17 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "./reco-place.ts";
+import { isCityLevelPlace, isCountryLevelPlace, recMatchesPlace, uniqueRecCities } from "./reco-place.ts";
 
 test("isCityLevelPlace treats Nominatim cities and hand-added City rows as places", () => {
   assert.equal(isCityLevelPlace({ name: "Paris", city: "Paris", category: "city" }), true);
   assert.equal(isCityLevelPlace({ name: "Lisbon", city: "Lisbon", category: "City" }), true);
   assert.equal(isCityLevelPlace({ name: "Montreal", city: "Montreal, Quebec, Canada", category: "Place" }), true);
+});
+
+test("isCountryLevelPlace treats a country pin as a country, not a city", () => {
+  const france = { name: "France", city: "France", country: "France", category: "Country" };
+  assert.equal(isCountryLevelPlace(france), true);
+  assert.equal(isCityLevelPlace(france), false);
 });
 
 test("isCityLevelPlace keeps real venue recs", () => {
@@ -20,6 +26,16 @@ test("isCityLevelPlace keeps real venue recs", () => {
   assert.equal(
     isCityLevelPlace({ name: "Paris", city: "Paris", category: "restaurant" }),
     false,
+  );
+});
+
+test("uniqueRecCities skips country pins", () => {
+  assert.deepEqual(
+    uniqueRecCities([
+      { name: "France", city: "France", country: "France", category: "Country" },
+      { name: "Joe Beef", city: "Montreal", country: "Canada", category: "restaurant" },
+    ]),
+    ["Montreal"],
   );
 });
 

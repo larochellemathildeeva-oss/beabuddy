@@ -138,7 +138,12 @@ export function queryMentionsHit(query: string, hit: NominatimHitLike): boolean 
   return hints.some((hint) => needle.includes(foldAccents(hint)));
 }
 
+function isCountryHit(hit: NominatimHitLike): boolean {
+  return kindOf(hit) === "country";
+}
+
 function isAdminRegion(hit: NominatimHitLike, query: string): boolean {
+  if (isCountryHit(hit) && queryMentionsHit(query, hit)) return false;
   if (queryMentionsHit(query, hit) && /administrative|agglomeration|region|county|province/i.test(query)) {
     return false;
   }

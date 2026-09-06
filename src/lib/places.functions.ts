@@ -4,6 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
+import { localPlaceHits } from "@/lib/world-countries";
 
 export type ParsedPlace = {
   name: string;
@@ -108,6 +109,8 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ query: z.string().min(2).max(200) }).parse(data))
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
+    const local = localPlaceHits(data.query);
+    if (local.length) return local;
     let hits: NominatimHit[] = [];
     for (const query of fuzzyQueryVariants(data.query)) {
       hits = await nominatim(query, 10);

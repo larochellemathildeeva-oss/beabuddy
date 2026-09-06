@@ -1,4 +1,5 @@
 import type { Pin } from "../data/atlas.ts";
+import { isCountryLevelPlace } from "./reco-place.ts";
 
 /**
  * Travel counts came only from photo_memories, so a city added by hand on the
@@ -69,8 +70,8 @@ export function deriveTravelStats(
     if (!countsAsVisited(pin)) continue;
     const city = key(pin.city);
     const country = key(pin.country);
-    if (city) cities.add(`${city}|${country ?? ""}`);
     if (country) countries.add(country);
+    if (city && !isCountryLevelPlace(pin)) cities.add(`${city}|${country ?? ""}`);
   }
 
   return {

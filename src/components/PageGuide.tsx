@@ -78,7 +78,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a city by hand",
-        body: "Type one city, or paste / upload a list from your notes. Béa looks each name up and you pick the pin before anything lands on the globe. Those cities count in your travel stats too.",
+        body: "Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
         selector: "[data-guide='add-city']",
       },
     ],

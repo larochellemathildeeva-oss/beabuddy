@@ -8,6 +8,7 @@ import {
   type CompareFacts,
   type PlaceForCompare,
 } from "@/lib/compare-facts";
+import { AI_CALL } from "@/lib/ai-errors";
 import { isLatLon, type LatLon } from "@/lib/geo";
 
 const PlaceInput = z.object({
@@ -89,8 +90,7 @@ export const comparePlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ComparisonResult> => {
-    const { getGeminiModel, judgmentCall } = await import("@/lib/ai.server");
-    const model = getGeminiModel();
+    const { withModelFallback, judgmentCall } = await import("@/lib/ai.server");
     const { getTravelPreferences, preferencePrompt } = await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     const homeCoords = await geocodeHome(preferences.homeCity);
@@ -126,12 +126,15 @@ export const comparePlaces = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: CompareSchema }),
-        ...judgmentCall,
-        prompt,
-      });
+      const result = await withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: CompareSchema }),
+          ...judgmentCall,
+          prompt,
+        }),
+      );
       return {
         ...result.output,
         facts,

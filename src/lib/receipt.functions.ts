@@ -3,6 +3,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { filePartFromDataUrl } from "@/lib/ai-image";
+import { AI_CALL } from "@/lib/ai-errors";
 
 const ReceiptInput = z.object({
   // Downscaled image as a data URL (image/jpeg …), kept small by the client.
@@ -26,33 +27,35 @@ export const extractReceiptFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReceiptInput.parse(input))
   .handler(async ({ data }): Promise<ReceiptExtraction> => {
-    const { getGeminiModel } = await import("@/lib/ai.server");
-    const model = getGeminiModel();
+    const { withModelFallback } = await import("@/lib/ai.server");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: ReceiptSchema }),
-        reasoning: "low",
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: [
-                  "Read this receipt photo and extract the expense details.",
-                  `merchant: the shop or restaurant name. amount: the FINAL total paid as a number (after tax, including tip if shown). currency: ISO code like CAD, USD, EUR. spentOn: the date on the receipt as YYYY-MM-DD.`,
-                  `category: exactly one of ${CATEGORIES.join(", ")}.`,
-                  "summary: five words or fewer describing what it was for (e.g. 'team lunch near office').",
-                  "If a field is not readable, return null for it. Never guess an amount.",
-                ].join("\n"),
-              },
-              filePartFromDataUrl(data.imageDataUrl),
-            ],
-          },
-        ],
-      });
+      const result = await withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: ReceiptSchema }),
+          reasoning: "low",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: [
+                    "Read this receipt photo and extract the expense details.",
+                    `merchant: the shop or restaurant name. amount: the FINAL total paid as a number (after tax, including tip if shown). currency: ISO code like CAD, USD, EUR. spentOn: the date on the receipt as YYYY-MM-DD.`,
+                    `category: exactly one of ${CATEGORIES.join(", ")}.`,
+                    "summary: five words or fewer describing what it was for (e.g. 'team lunch near office').",
+                    "If a field is not readable, return null for it. Never guess an amount.",
+                  ].join("\n"),
+                },
+                filePartFromDataUrl(data.imageDataUrl),
+              ],
+            },
+          ],
+        }),
+      );
       return result.output;
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {

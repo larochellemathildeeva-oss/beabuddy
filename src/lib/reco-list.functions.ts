@@ -3,6 +3,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { AI_CALL } from "@/lib/ai-errors";
 import { htmlToPlainText } from "@/lib/html-text";
 import { fetchPublicHtml, isPublicHttpsUrl, UnsupportedPlaceUrlError } from "@/lib/place-url";
 import { RECO_LIST_MAX } from "@/lib/reco-list";
@@ -38,8 +39,7 @@ export const parseRecoList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseRecoListInput.parse(input))
   .handler(async ({ data }): Promise<ParsedRecoList> => {
-    const { getGeminiModel } = await import("@/lib/ai.server");
-    const model = getGeminiModel();
+    const { withModelFallback } = await import("@/lib/ai.server");
     let pageText: string | null = null;
     if (data.pageUrl?.trim()) {
       let parsed: URL;
@@ -88,30 +88,33 @@ export const parseRecoList = createServerFn({ method: "POST" })
       .join("\n\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: ParsedRecoListSchema }),
-        reasoning: "low",
-        messages: [
-          {
-            role: "user",
-            content: data.imageDataUrls?.length
-              ? [
-                  {
-                    type: "text" as const,
-                    text: extras ? `${prompt}\n\n${extras}` : prompt,
-                  },
-                  ...filePartsFromDataUrls(data.imageDataUrls),
-                ]
-              : [
-                  {
-                    type: "text" as const,
-                    text: extras ? `${prompt}\n\n${extras}` : prompt,
-                  },
-                ],
-          },
-        ],
-      });
+      const result = await withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: ParsedRecoListSchema }),
+          reasoning: "low",
+          messages: [
+            {
+              role: "user",
+              content: data.imageDataUrls?.length
+                ? [
+                    {
+                      type: "text" as const,
+                      text: extras ? `${prompt}\n\n${extras}` : prompt,
+                    },
+                    ...filePartsFromDataUrls(data.imageDataUrls),
+                  ]
+                : [
+                    {
+                      type: "text" as const,
+                      text: extras ? `${prompt}\n\n${extras}` : prompt,
+                    },
+                  ],
+            },
+          ],
+        }),
+      );
       const out = result.output;
       return {
         summary: out.summary,

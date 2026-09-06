@@ -16,6 +16,11 @@ import {
   startRecoDrafts,
   type RecoListDraft,
 } from "@/lib/reco-list";
+import { localPlaceHits, PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 const pinChoices: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
 
@@ -137,6 +142,7 @@ export function RecoListImport({
 
   const lookupOneByOne = async (rows: RecoListDraft[]) => {
     const next = [...rows];
+    let mapCalls = 0;
     for (let i = 0; i < next.length; i++) {
       const row = next[i];
       if (!row || row.query.length < 2) {
@@ -144,11 +150,23 @@ export function RecoListImport({
         setDrafts([...next]);
         continue;
       }
+      const local = localPlaceHits(row.query);
+      if (local.length) {
+        next[i] = applySearchHits(row, [...local]);
+        setDrafts([...next]);
+        continue;
+      }
       next[i] = { ...row, status: "searching" };
       setSearchingAt(i);
       setDrafts([...next]);
+      if (mapCalls > 0) await wait(PLACE_LOOKUP_GAP_MS);
+      mapCalls += 1;
       try {
-        const hits = await search({ data: { query: row.query } });
+        let hits = await search({ data: { query: row.query } });
+        if (hits.length === 0) {
+          await wait(PLACE_LOOKUP_GAP_MS);
+          hits = await search({ data: { query: row.query } });
+        }
         next[i] = applySearchHits(row, hits);
       } catch {
         next[i] = applySearchHits(row, []);
