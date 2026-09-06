@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { fetchPlaceHtml } from "@/lib/place-url";
 
 export type ParsedPlace = {
   name: string;
@@ -57,6 +59,7 @@ async function reverse(lat: number, lon: number) {
   try {
     const res = await fetch(
       `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
+      { signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) return {};
     const d = (await res.json()) as {
@@ -88,7 +91,7 @@ async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&addressdetails=1&namedetails=1&accept-language=en&limit=${limit}`,
-      { headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" } },
+      { headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" }, signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) return [];
     return (await res.json()) as NominatimHit[];
@@ -117,7 +120,8 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
 
 /** Search the web for a place by name, so anything can be saved without a link. */
 export const searchPlaces = createServerFn({ method: "POST" })
-  .inputValidator((data) => z.object({ query: z.string().min(2) }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ query: z.string().min(2).max(200) }).parse(data))
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const hits = await nominatim(data.query, 8);
     return hits.map(hitToPlace);
@@ -126,21 +130,19 @@ export const searchPlaces = createServerFn({ method: "POST" })
 
 /** Pull a place out of a pasted link: title, address, category and coordinates. */
 export const parsePlaceLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ url: z.string().url() }).parse(data))
   .handler(async ({ data }): Promise<ParsedPlace> => {
     const target = new URL(data.url);
-    if (!/^https?:$/.test(target.protocol)) throw new Error("Only web links are supported");
 
     let html = "";
     let finalUrl = target.toString();
     try {
-      const res = await fetch(finalUrl, {
-        redirect: "follow",
-        headers: { "user-agent": "Mozilla/5.0 (compatible; BeaBot/1.0)" },
-      });
-      finalUrl = res.url || finalUrl;
-      if (res.ok) html = (await res.text()).slice(0, 300_000);
-    } catch {
+      const fetched = await fetchPlaceHtml(data.url);
+      html = fetched.html;
+      finalUrl = fetched.finalUrl;
+    } catch (error) {
+      if (error instanceof Error && error.message === "Only web links are supported") throw error;
       /* fall through to URL-only parsing */
     }
 
@@ -200,5 +202,8 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
 /** Look up the city and country for a set of coordinates. */
 export const lookupCoords = createServerFn({ method: "POST" })
-  .inputValidator((data) => z.object({ lat: z.number(), lon: z.number() }).parse(data))
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z.object({ lat: z.number().gte(-90).lte(90), lon: z.number().gte(-180).lte(180) }).parse(data),
+  )
   .handler(async ({ data }) => reverse(data.lat, data.lon));

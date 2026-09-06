@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type RouteStep = { instruction: string; distance: number };
 
@@ -64,7 +66,10 @@ function candidates(title: string): string[] {
 async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!res.ok) return null;
     const json = (await res.json()) as { lat: string; lon: string }[];
     const first = json[0];
@@ -94,7 +99,7 @@ async function leg(
 ) {
   const profile = mode === "walking" ? "foot" : "driving";
   const url = `https://router.project-osrm.org/route/v1/${profile}/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false&steps=true`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
+  const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8_000) });
   if (!res.ok) return null;
   const json = (await res.json()) as {
     routes?: {
@@ -111,11 +116,52 @@ async function leg(
   return { distance: Math.round(route.distance), duration: Math.round(route.duration), steps };
 }
 
+// Nominatim + OSRM share one ceiling so a 200-stop body of pre-geocoded
+// points cannot become 199 OSRM fetches. 15 × 1.1s of lookups plus the
+// leftover OSRM calls should stay under a 30s proxy timeout.
+const OUTBOUND_BUDGET = 25;
+
+const BuildRoutesInput = z.object({
+  stops: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        lat: z.number().nullable().optional(),
+        lon: z.number().nullable().optional(),
+      }),
+    )
+    .max(200),
+  area: z.string().max(200).optional(),
+});
+
+function mapsOnlyLeg(fromName: string, toName: string, area: string): RouteLeg {
+  const region = cleanArea(area);
+  const q = (n: string) => encodeURIComponent(region ? `${n}, ${region}` : n);
+  return {
+    from: fromName,
+    to: toName,
+    mode: "walking",
+    distance: 0,
+    duration: 0,
+    steps: [],
+    mapUrl: `https://www.google.com/maps/dir/?api=1&origin=${q(fromName)}&destination=${q(toName)}&travelmode=walking`,
+  };
+}
+
 export const buildRoutes = createServerFn({ method: "POST" })
-  .inputValidator((input: { stops: Stop[]; area?: string }) => input)
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { stops: Stop[]; area?: string }) => BuildRoutesInput.parse(input))
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const points: ({ lat: number; lon: number } | null)[] = [];
+    let outboundLeft = OUTBOUND_BUDGET;
+    const lookup = async (query: string) => {
+      if (outboundLeft <= 0) return null;
+      outboundLeft -= 1;
+      const found = await geocode(query);
+      await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
+      return found;
+    };
     for (const stop of data.stops) {
       if (
         typeof stop.lat === "number" &&
@@ -130,15 +176,13 @@ export const buildRoutes = createServerFn({ method: "POST" })
       let found: { lat: number; lon: number } | null = null;
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
-        found = await geocode(q);
-        await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
+        found = await lookup(q);
         if (found) break;
       }
       // Some well-known places (e.g. Beaver Lake) only resolve without a region suffix.
       if (!found && region) {
         for (const name of names) {
-          const hit = await geocode(name);
-          await new Promise((r) => setTimeout(r, 1100));
+          const hit = await lookup(name);
           if (!hit) continue;
           // Guard against same-named places far away: if we already have a
           // located stop on this trip, the new one must be near it.
@@ -161,24 +205,21 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (!a || !b) {
         const missing = !a ? fromName : toName;
         if (!unresolved.includes(missing)) unresolved.push(missing);
-        // Still give a usable maps link using the place names.
-        const region = cleanArea(area);
-        const q = (n: string) => encodeURIComponent(region ? `${n}, ${region}` : n);
-        legs.push({
-          from: fromName,
-          to: toName,
-          mode: "walking",
-          distance: 0,
-          duration: 0,
-          steps: [],
-          mapUrl: `https://www.google.com/maps/dir/?api=1&origin=${q(fromName)}&destination=${q(toName)}&travelmode=walking`,
-        });
+        legs.push(mapsOnlyLeg(fromName, toName, area));
         continue;
       }
+      if (outboundLeft <= 0) {
+        legs.push(mapsOnlyLeg(fromName, toName, area));
+        continue;
+      }
+      outboundLeft -= 1;
       const straight = haversine(a, b);
       const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
       const r = await leg(a, b, mode);
-      if (!r) continue;
+      if (!r) {
+        legs.push(mapsOnlyLeg(fromName, toName, area));
+        continue;
+      }
       legs.push({
         from: fromName,
         to: toName,
