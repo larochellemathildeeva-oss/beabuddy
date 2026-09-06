@@ -2,6 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
 import { Sparkles, X } from "lucide-react";
+import {
+  findGuideTarget,
+  measureGuideTarget,
+  SpotlightOverlay,
+  type SpotlightBox,
+} from "./SpotlightOverlay";
 
 type GuideStep = {
   title: string;
@@ -213,7 +219,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Replay the full tour",
-        body: "The welcome tour lives here. You pick a quick walk around the block, or a Deep Dive through every feature.",
+        body: "First sign-in already took the quick walk. Replay here to take it again, or open the Deep Dive through every feature.",
         selector: "[data-guide='replay-tour']",
       },
       {
@@ -345,46 +351,35 @@ const guides: Record<string, Guide> = {
   },
 };
 
-function findTarget(step: GuideStep): HTMLElement | null {
-  if (step.selector) {
-    const el = document.querySelector<HTMLElement>(step.selector);
-    if (el) return el;
-  }
-  return null;
-}
-
-type Box = { top: number; left: number; width: number; height: number };
-
 export function PageGuide() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
-  const [box, setBox] = useState<Box | null>(null);
+  const [box, setBox] = useState<SpotlightBox | null>(null);
 
   const guide = useMemo(() => guides[pathname] ?? null, [pathname]);
   const steps = useMemo(
     () =>
       !guide || typeof document === "undefined"
         ? []
-        : guide.steps.filter((candidate) => findTarget(candidate)),
+        : guide.steps.filter((candidate) => findGuideTarget(candidate.selector)),
     [guide, open],
   );
   const step = steps[i];
 
   const measure = useCallback(() => {
     if (!step) return;
-    const el = findTarget(step);
+    const el = findGuideTarget(step.selector);
     if (!el) {
       setBox(null);
       return;
     }
-    const r = el.getBoundingClientRect();
-    setBox({ top: r.top - 6, left: r.left - 6, width: r.width + 12, height: r.height + 12 });
+    setBox(measureGuideTarget(el));
   }, [step]);
 
   useEffect(() => {
     if (!open || !step) return;
-    const el = findTarget(step);
+    const el = findGuideTarget(step.selector);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     const frame = window.requestAnimationFrame(measure);
     const observer = el ? new ResizeObserver(measure) : null;
@@ -434,7 +429,6 @@ export function PageGuide() {
   if (!step) return null;
 
   const last = i === steps.length - 1;
-  const belowTarget = box ? box.top + box.height < window.innerHeight * 0.55 : true;
 
   return (
     <>
@@ -448,96 +442,57 @@ export function PageGuide() {
       </button>
 
       {createPortal(
-        <div
-          role="dialog"
-          aria-label={`${guide.name} walkthrough`}
-          className="pointer-events-none fixed inset-0 z-[60]"
-        >
-        {box ? (
-          <>
-            <div
-              className="pointer-events-auto absolute bg-black/55"
-              style={{ top: 0, left: 0, right: 0, height: Math.max(box.top, 0) }}
-              onClick={() => setOpen(false)}
-            />
-            <div
-              className="pointer-events-auto absolute bg-black/55"
-              style={{ top: box.top + box.height, left: 0, right: 0, bottom: 0 }}
-              onClick={() => setOpen(false)}
-            />
-            <div
-              className="pointer-events-auto absolute bg-black/55"
-              style={{ top: box.top, left: 0, width: Math.max(box.left, 0), height: box.height }}
-              onClick={() => setOpen(false)}
-            />
-            <div
-              className="pointer-events-auto absolute bg-black/55"
-              style={{ top: box.top, left: box.left + box.width, right: 0, height: box.height }}
-              onClick={() => setOpen(false)}
-            />
-            <div
-              className="absolute rounded-2xl ring-2 ring-primary transition-all duration-300"
-              style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
-            />
-          </>
-        ) : (
-          <div className="pointer-events-auto absolute inset-0 bg-black/55" onClick={() => setOpen(false)} />
-        )}
-
-        <div
-          className="pointer-events-auto absolute inset-x-0 flex justify-center px-4"
-          style={belowTarget ? { top: (box ? box.top + box.height : 0) + 14 } : { bottom: 90 }}
-        >
-          <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <p className="label-caps">
-                {guide.name} · {i + 1} of {steps.length}
-              </p>
-              <button
-                onClick={() => setOpen(false)}
-                aria-label="Close walkthrough"
-                className="text-muted-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step?.title}</h2>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step?.body}</p>
-            {!box && (
-              <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-                This part isn't on screen right now.
-              </p>
-            )}
-
-            <div className="mt-3 flex gap-1">
-              {steps.map((_, n) => (
-                <span
-                  key={n}
-                  className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
-                />
-              ))}
-            </div>
-
-            <div className="mt-3 flex gap-2">
-              {i > 0 && (
+        <div role="dialog" aria-label={`${guide.name} walkthrough`}>
+          <SpotlightOverlay box={box} onDismiss={() => setOpen(false)}>
+            <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <p className="label-caps">
+                  {guide.name} · {i + 1} of {steps.length}
+                </p>
                 <button
-                  onClick={() => setI(i - 1)}
-                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close walkthrough"
+                  className="text-muted-foreground"
                 >
-                  Back
+                  <X className="size-4" />
                 </button>
+              </div>
+              <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step?.title}</h2>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step?.body}</p>
+              {!box && (
+                <p className="mt-1.5 text-[11px] italic text-muted-foreground">
+                  This part isn't on screen right now.
+                </p>
               )}
-              <button
-                onClick={() => (last ? setOpen(false) : setI(i + 1))}
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
-              >
-                {last ? "Got it" : "Next"}
-              </button>
-            </div>
-          </div>
-          </div>
-        </div>,
 
+              <div className="mt-3 flex gap-1">
+                {steps.map((_, n) => (
+                  <span
+                    key={n}
+                    className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                {i > 0 && (
+                  <button
+                    onClick={() => setI(i - 1)}
+                    className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
+                  >
+                    Back
+                  </button>
+                )}
+                <button
+                  onClick={() => (last ? setOpen(false) : setI(i + 1))}
+                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
+                >
+                  {last ? "Got it" : "Next"}
+                </button>
+              </div>
+            </div>
+          </SpotlightOverlay>
+        </div>,
         document.body,
       )}
     </>

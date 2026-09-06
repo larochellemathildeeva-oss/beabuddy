@@ -1,12 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { DEEP_STEPS, QUICK_STEPS, tourSteps } from "./tour.ts";
+import { DEEP_STEPS, QUICK_STEPS, routeNeedsAuth, tourSteps } from "./tour.ts";
 
-test("quick tour keeps the original walk", () => {
-  assert.equal(QUICK_STEPS.length, 17);
+test("quick tour is a short spotlight walk with a few taps", () => {
+  assert.equal(QUICK_STEPS.length, 10);
   assert.equal(QUICK_STEPS[0]?.title, "Welcome to Béa");
   assert.equal(QUICK_STEPS.at(-1)?.title, "You're all set");
-  assert.match(QUICK_STEPS[1]!.body, /current or next trip/);
+  assert.ok(QUICK_STEPS.some((s) => s.selector), "quick walk spotlights real controls");
+  assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 3);
 });
 
 test("deep dive is longer and covers every feature area", () => {
@@ -37,7 +38,15 @@ test("deep dive is longer and covers every feature area", () => {
   }
 });
 
-test("tourSteps picks the walk", () => {
-  assert.equal(tourSteps("quick"), QUICK_STEPS);
-  assert.equal(tourSteps("deep"), DEEP_STEPS);
+test("tourSteps picks the walk and tags gated routes", () => {
+  assert.equal(tourSteps("quick").length, QUICK_STEPS.length);
+  assert.equal(tourSteps("deep").length, DEEP_STEPS.length);
+  const world = tourSteps("quick").find((s) => s.to === "/world");
+  assert.equal(world?.needsAuth, true);
+  const home = tourSteps("quick").find((s) => s.to === "/" && s.selector);
+  assert.equal(home?.needsAuth, false);
+  assert.equal(routeNeedsAuth("/"), false);
+  assert.equal(routeNeedsAuth("/help"), false);
+  assert.equal(routeNeedsAuth("/trips"), true);
+  assert.equal(routeNeedsAuth("/calendar"), true);
 });

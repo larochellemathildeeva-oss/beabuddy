@@ -14,7 +14,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",
-        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The welcome tour lives in Profile settings — you pick a quick walk around the block, or a Deep Dive through every feature.",
+        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The welcome tour starts on first sign-in as a quick spotlight walk; Replay under Profile settings is where you can pick that again or the Deep Dive.",
       },
       {
         q: "How do I get a tour of a page?",
@@ -22,7 +22,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between the quick walk and the Deep Dive?",
-        a: "The welcome tour asks first. A quick walk around the block is the highlights — Home, World, trips, Near, photos, You. The Deep Dive goes through every feature and explains it: pin filters, travel stats, adding a city by hand, travel tags, Flying Solo, Optimize, day trips, packing, offline directions, legal, the lot. Replay from Profile settings any time and pick again.",
+        a: "First sign-in starts the quick walk around the block — spotlight highlights on Home, World, trips, Recs, Near and You, with a few taps. The Deep Dive goes through every feature: pin filters, travel stats, adding a city by hand, travel tags, Flying Solo, Optimize, day trips, packing, offline directions, legal, the lot. Replay from Profile settings any time to pick either walk.",
       },
       {
         q: "How do I customize what shows on Home?",

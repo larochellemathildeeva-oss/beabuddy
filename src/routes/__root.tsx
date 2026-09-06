@@ -138,7 +138,7 @@ function RootComponent() {
       <BeaProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <Tour open={tour.open} onClose={() => tour.setOpen(false)} />
+        <Tour open={tour.open} onClose={() => tour.setOpen(false)} intent={tour.intent} />
       </BeaProvider>
     </QueryClientProvider>
   );

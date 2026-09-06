@@ -298,7 +298,7 @@ function ProfilePage() {
               <div>
                 <p className="text-[13px] font-medium">Take the tour again</p>
                 <p className="text-[11.5px] text-muted-foreground">
-                  A quick walk around the block, or a Deep Dive through every feature.
+                  Replay the quick spotlight walk, or take the Deep Dive through every feature.
                 </p>
               </div>
               <button
