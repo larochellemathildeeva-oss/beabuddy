@@ -1,40 +1,62 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { type TourMode, tourSteps } from "@/lib/tour";
+import {
+  beginTourReplay,
+  markTourSeen,
+  readTourProgress,
+  safeStorage,
+  saveTourProgress,
+  shouldAutoOpenTour,
+} from "@/lib/tour-state";
 
-const TOUR_KEY = "bea-tour-seen";
+const TOUR_EVENT = "bea-tour-start";
 
 export function useTourControl() {
   const [open, setOpen] = useState(false);
+  const { user, loading } = useAuth();
+
+  // Only members get the walk. Opening it for a signed-out visitor put the
+  // sheet over the sign-in form and then navigated them into gated routes,
+  // which AppShell bounced straight back to /auth.
+  useEffect(() => {
+    if (loading || !user) return;
+    if (shouldAutoOpenTour(safeStorage(), { signedIn: true })) setOpen(true);
+  }, [user, loading]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (localStorage.getItem(TOUR_KEY) !== "yes") setOpen(true);
     const reopen = () => setOpen(true);
-    window.addEventListener("bea-tour-start", reopen);
-    // Brand-new accounts (covers Google/Apple sign-up, which redirects away
-    // and comes back): if the session that just started belongs to a user
-    // created in the last couple of minutes, walk them through the tour.
-    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event !== "SIGNED_IN" || !session?.user) return;
-      const created = new Date(session.user.created_at).getTime();
-      if (Date.now() - created < 2 * 60 * 1000) startTour();
-    });
-    return () => {
-      window.removeEventListener("bea-tour-start", reopen);
-      authSub.subscription.unsubscribe();
-    };
+    window.addEventListener(TOUR_EVENT, reopen);
+    return () => window.removeEventListener(TOUR_EVENT, reopen);
   }, []);
 
   return { open, setOpen };
 }
 
-export function startTour() {
+function openTourSheet() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(TOUR_KEY);
-  window.dispatchEvent(new Event("bea-tour-start"));
+  window.dispatchEvent(new Event(TOUR_EVENT));
+}
+
+/**
+ * A brand-new account lands in the walk — unless they already dismissed it.
+ * Signing up is not a reason to re-ask someone who skipped a minute ago, so
+ * this never clears the seen mark. Safe to call from more than one place.
+ */
+export function startFirstRunTour() {
+  if (!shouldAutoOpenTour(safeStorage(), { signedIn: true })) return;
+  openTourSheet();
+}
+
+/**
+ * "Replay" from Profile. Starts the walk from the top without un-marking it as
+ * seen — leaving mid-replay must not make the next session look brand new.
+ */
+export function resumeOrReplayTour() {
+  beginTourReplay(safeStorage());
+  openTourSheet();
 }
 
 export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -47,11 +69,18 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
   const blocked = !!step?.needsAuth && !user;
 
   useEffect(() => {
-    if (open) {
-      setI(0);
-      setMode(null);
-    }
+    if (!open) return;
+    const saved = readTourProgress(safeStorage());
+    setMode(saved?.mode ?? null);
+    setI(saved?.step ?? 0);
   }, [open]);
+
+  // Write on every move, so closing the tab mid-Deep-Dive costs one step, not
+  // all forty-two. Nothing is stored until they have picked a mode.
+  useEffect(() => {
+    if (!open || !mode) return;
+    saveTourProgress(safeStorage(), { mode, step: i });
+  }, [open, mode, i]);
 
   // Bring up the screen each step is talking about.
   useEffect(() => {
@@ -63,7 +92,7 @@ export function Tour({ open, onClose }: { open: boolean; onClose: () => void }) 
   if (!open) return null;
 
   const finish = () => {
-    if (typeof window !== "undefined") localStorage.setItem(TOUR_KEY, "yes");
+    markTourSeen(safeStorage());
     onClose();
   };
 

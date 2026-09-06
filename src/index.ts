@@ -26,7 +26,7 @@ export { ItineraryImport } from "./components/ItineraryImport";
 export { ItineraryDirections } from "./components/ItineraryDirections";
 export * from "./data/atlas";
 
-export { Tour, useTourControl, startTour } from "./components/Tour";
+export { Tour, useTourControl, startFirstRunTour, resumeOrReplayTour } from "./components/Tour";
 export { TripBudget } from "./components/TripBudget";
 export { Constants } from "./integrations/supabase/types";
 export type { Database } from "./integrations/supabase/types";
