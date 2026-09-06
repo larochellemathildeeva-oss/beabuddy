@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { FeedbackForm } from "@/components/FeedbackForm";
 
 export const Route = createFileRoute("/help")({
   head: () => ({
@@ -164,6 +165,11 @@ function HelpPage() {
             </div>
           </section>
         ))}
+
+        <section className="card-soft p-4">
+          <p className="label-caps mb-2 text-foreground">Tell us something</p>
+          <FeedbackForm />
+        </section>
 
         <section className="card-soft p-4">
           <p className="text-[14px] font-medium">Still stuck?</p>
