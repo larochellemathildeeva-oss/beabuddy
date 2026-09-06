@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileText, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
@@ -40,10 +40,36 @@ export const Route = createFileRoute("/trips")({
   component: TripsPage,
 });
 
+const OPEN_TRIP_KEY = "bea.trips.open";
+
 function TripsPage() {
   const { user } = useAuth();
   const t = useTrips();
   const [openId, setOpenId] = useState<string>("");
+
+  // Switching tabs unmounts this route, so the expanded trip used to collapse and
+  // take its timeline, budget and saved directions with it — which reads as
+  // "everything disappeared" rather than "the card closed". Remember it for the
+  // session. Restored in an effect, not in useState, so SSR and the first client
+  // render agree.
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(OPEN_TRIP_KEY);
+      if (stored) setOpenId(stored);
+    } catch {
+      /* private mode, or storage disabled — just start collapsed */
+    }
+  }, []);
+
+  const openTrip = useCallback((id: string) => {
+    setOpenId(id);
+    try {
+      if (id) sessionStorage.setItem(OPEN_TRIP_KEY, id);
+      else sessionStorage.removeItem(OPEN_TRIP_KEY);
+    } catch {
+      /* not being able to remember it is not worth failing the click over */
+    }
+  }, []);
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [form, setForm] = useState({
@@ -191,7 +217,7 @@ function TripsPage() {
                       const id = await t.createTrip({ ...form, budget_enabled: withBudget });
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
-                      setOpenId(id);
+                      openTrip(id);
                       setForm({ title: "", city: "", country: "", start_date: "", end_date: "" });
                       setWithBudget(false);
                       setCreating(false);
@@ -220,7 +246,7 @@ function TripsPage() {
                     setError("");
                     try {
                       const id = await t.joinTrip(code, myName);
-                      setOpenId(id);
+                      openTrip(id);
                       setCode("");
                       setJoining(false);
                     } catch (e) {
@@ -246,7 +272,7 @@ function TripsPage() {
                     .filter((m) => m.trip_id === trip.id)
                     .map((m) => m.display_name?.trim() || "Traveller")}
                   open={openId === trip.id}
-                  onToggle={() => setOpenId(openId === trip.id ? "" : trip.id)}
+                  onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
                   me={{ id: t.uid, name: myName }}
                   onInvite={() => t.inviteToTrip(trip.id)}
                   onUpdate={(patch) => t.updateTrip(trip.id, patch)}
