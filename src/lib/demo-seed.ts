@@ -444,6 +444,16 @@ export function demoGlobePins(): Pin[] {
   }));
 }
 
+/**
+ * A trip is only ours to delete when it carries the seed marker AND has a title
+ * we actually seed. Title alone would delete a real trip that happens to be
+ * called "Paris in spring", and trip children cascade on delete.
+ */
+export function isDemoTrip(trip: { title: string; notes?: string | null }): boolean {
+  if (!(trip.notes ?? "").includes(`[${DEMO_SOURCE}]`)) return false;
+  return DEMO_TRIPS.some((t) => t.title === trip.title);
+}
+
 function isoDate(offsetDays: number): string {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
@@ -605,11 +615,17 @@ export async function loadDemoSeed(): Promise<DemoSeedResult> {
     tripsMade += 1;
   }
 
-  await supabase.from("profiles").upsert({
-    id: uid,
-    home_city: "Lisbon, Portugal",
-    display_name: "Demo Traveller",
-  });
+  // Only fill blanks. Overwriting a real traveller's name and home city to
+  // "Demo Traveller"/"Lisbon" is not recoverable from clearDemoSeed.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, home_city")
+    .eq("id", uid)
+    .maybeSingle();
+  const fill: { id: string; display_name?: string; home_city?: string } = { id: uid };
+  if (!profile?.display_name?.trim()) fill.display_name = "Demo Traveller";
+  if (!profile?.home_city?.trim()) fill.home_city = "Lisbon, Portugal";
+  if (Object.keys(fill).length > 1) await supabase.from("profiles").upsert(fill);
 
   return {
     ok: true,
@@ -661,13 +677,7 @@ export async function clearDemoSeed(): Promise<DemoClearResult> {
     return { ok: false, reason: "error", message: tripSelectError.message };
   }
 
-  const tripIds = (tripRows ?? [])
-    .filter((t) => {
-      const notes = t.notes ?? "";
-      // Prefer the marker; fall back to exact demo titles for seeds loaded before the marker.
-      return notes.includes(`[${DEMO_SOURCE}]`) || demoTitles.includes(t.title);
-    })
-    .map((t) => t.id);
+  const tripIds = (tripRows ?? []).filter(isDemoTrip).map((t) => t.id);
 
   const recoCount = recoRows?.length ?? 0;
   const noteCount = noteRows?.length ?? 0;

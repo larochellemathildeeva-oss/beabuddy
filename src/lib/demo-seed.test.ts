@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DEMO_NOTES, DEMO_PLACES, DEMO_RECOS, DEMO_SOURCE, DEMO_TRIPS, demoGlobePins } from "./demo-seed.ts";
+import { DEMO_NOTES, DEMO_PLACES, DEMO_RECOS, DEMO_SOURCE, DEMO_TRIPS, demoGlobePins, isDemoTrip } from "./demo-seed.ts";
 
 describe("demo seed", () => {
   it("covers enough cities, pin types and a dense Lisbon cluster", () => {
@@ -32,5 +32,15 @@ describe("demo seed", () => {
     const mod = await import("./demo-seed.ts");
     assert.equal(typeof mod.clearDemoSeed, "function");
     assert.equal(typeof mod.loadDemoSeed, "function");
+  });
+
+  it("only treats a trip as demo data when it carries the marker", () => {
+    const title = DEMO_TRIPS[0]!.title;
+    // The case that loses real data: a traveller's own trip sharing a demo title.
+    assert.equal(isDemoTrip({ title, notes: "Booked the flights today." }), false);
+    assert.equal(isDemoTrip({ title, notes: null }), false);
+    assert.equal(isDemoTrip({ title, notes: `notes\n\n[${DEMO_SOURCE}]` }), true);
+    // A marker on a title we never seed is not ours to delete either.
+    assert.equal(isDemoTrip({ title: "Someone else's trip", notes: `[${DEMO_SOURCE}]` }), false);
   });
 });

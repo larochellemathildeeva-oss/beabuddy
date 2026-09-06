@@ -80,6 +80,9 @@ function featureVisited(name: string | undefined, visited: Set<string>): boolean
 
 const SIZE = 320;
 
+/** Pointer travel (px) past which a pointerup is a rotate, not a country click. */
+const DRAG_SLOP = 6;
+
 export function Globe({
   pins,
   selectedId,
@@ -99,6 +102,14 @@ export function Globe({
   const drag = useRef<{ x: number; y: number } | null>(null);
   const velocity = useRef<[number, number]>([0, 0]);
   const pending = useRef<[number, number] | null>(null);
+  /**
+   * The rotation the pointer has produced so far. `rotation` state lags by a
+   * frame, so reading it as the base during a fast drag drops movement.
+   */
+  const live = useRef<[number, number]>([-10, -18]);
+  /** Pointer travel since pointerdown, so a rotate doesn't land as a country click. */
+  const moved = useRef(0);
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const rafDrag = useRef<number | null>(null);
   const rafInertia = useRef<number | null>(null);
 
@@ -171,12 +182,32 @@ export function Globe({
     setRotation(next);
   };
 
+  const applyDelta = (dLam: number, dPhi: number) => {
+    const [lam, phi] = live.current;
+    const next: [number, number] = [lam + dLam, Math.max(-85, Math.min(85, phi + dPhi))];
+    live.current = next;
+    scheduleRotation(next);
+  };
+
   const scheduleRotation = (next: [number, number]) => {
     pending.current = next;
     if (rafDrag.current == null) {
       rafDrag.current = requestAnimationFrame(flushRotation);
     }
   };
+
+  // React attaches `wheel` as a passive listener at the root, so an onWheel
+  // preventDefault() is ignored and the page scrolls as well as the globe.
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoom((z) => Math.max(0.7, Math.min(2.6, z + (e.deltaY > 0 ? -0.12 : 0.12))));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -200,10 +231,7 @@ export function Globe({
         rafInertia.current = null;
         return;
       }
-      setRotation(([lam, phi]) => [
-        lam + vx,
-        Math.max(-85, Math.min(85, phi + vy)),
-      ]);
+      applyDelta(vx, vy);
       velocity.current = [vx * 0.92, vy * 0.92];
       rafInertia.current = requestAnimationFrame(tick);
     };
@@ -213,11 +241,13 @@ export function Globe({
   return (
     <div className={`select-none ${className ?? ""}`}>
       <div
-        className="relative overflow-hidden rounded-3xl border border-border bg-elevated touch-pan-y"
+        ref={frameRef}
+        className="relative touch-none overflow-hidden rounded-3xl border border-border bg-elevated"
         onPointerDown={(e) => {
           stopInertia();
           velocity.current = [0, 0];
           drag.current = { x: e.clientX, y: e.clientY };
+          moved.current = 0;
           (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
         }}
         onPointerMove={(e) => {
@@ -225,14 +255,11 @@ export function Globe({
           const dx = e.clientX - drag.current.x;
           const dy = e.clientY - drag.current.y;
           drag.current = { x: e.clientX, y: e.clientY };
+          moved.current += Math.abs(dx) + Math.abs(dy);
           const dLam = dx * 0.4;
           const dPhi = -dy * 0.3;
           velocity.current = [dLam, dPhi];
-          const [lam, phi] = pending.current ?? rotation;
-          scheduleRotation([
-            lam + dLam,
-            Math.max(-85, Math.min(85, phi + dPhi)),
-          ]);
+          applyDelta(dLam, dPhi);
         }}
         onPointerUp={() => {
           drag.current = null;
@@ -240,11 +267,6 @@ export function Globe({
         }}
         onPointerCancel={() => {
           drag.current = null;
-        }}
-        onWheel={(e) => {
-          e.preventDefault();
-          const delta = e.deltaY > 0 ? -0.12 : 0.12;
-          setZoom((z) => Math.max(0.7, Math.min(2.6, z + delta)));
         }}
       >
         <svg
@@ -272,6 +294,8 @@ export function Globe({
                 className={onCountrySelect && c.name ? "cursor-pointer" : undefined}
                 onClick={(e) => {
                   if (!c.name || !onCountrySelect) return;
+                  // A drag that happens to end over a country is a rotate, not a click.
+                  if (moved.current > DRAG_SLOP) return;
                   e.stopPropagation();
                   onCountrySelect(c.name);
                 }}
