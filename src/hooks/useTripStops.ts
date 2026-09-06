@@ -36,6 +36,7 @@ const COLS =
 export function useTripStops(tripId: string | null, uid: string | null) {
   const [stops, setStops] = useState<StopRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [channelId] = useState(() => Math.random().toString(36).slice(2));
 
   const load = useCallback(async () => {
     if (!tripId) {
@@ -60,7 +61,7 @@ export function useTripStops(tripId: string | null, uid: string | null) {
   useEffect(() => {
     if (!tripId) return;
     const channel = supabase
-      .channel(`trip-stops:${tripId}`)
+      .channel(`trip-stops:${tripId}:${channelId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "trip_stops", filter: `trip_id=eq.${tripId}` },
@@ -70,7 +71,7 @@ export function useTripStops(tripId: string | null, uid: string | null) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [tripId, load]);
+  }, [tripId, channelId, load]);
 
   const addStop = useCallback(
     async (s: NewStop) => {

@@ -10,7 +10,7 @@ export const Route = createFileRoute("/help")({
       {
         name: "description",
         content:
-          "Answers about trips, pins, photo imports, the document vault, receipts and offline use in Béa.",
+          "Answers about trips, Béa's planner, pins, photo imports, the document vault, dark mode and offline use.",
       },
       { property: "og:title", content: "Help & FAQ — Béa" },
       {
@@ -39,14 +39,26 @@ const groups: { title: string; items: Faq[] }[] = [
         a: "Yes, to keep anything. An account means your pins, trips, recommendations and photos are saved to you and follow you onto any phone or laptop.",
       },
       {
+        q: "What's the difference between Ask Béa and Let Béa plan?",
+        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The full welcome tour lives in Profile settings.",
+      },
+      {
         q: "How do I get a tour of a page?",
-        a: "Tap 'Ask Béa' at the top of any page. Béa highlights each part of that page and explains what it does. You can also replay the full welcome tour from Profile settings.",
+        a: "Tap Ask Béa (the sparkle) at the top of any page. Béa highlights each part of that page and explains what it does. You can also replay the full welcome tour from Profile settings.",
       },
     ],
   },
   {
     title: "Trips & planning",
     items: [
+      {
+        q: "How do I let Béa plan a trip?",
+        a: "Open a trip — or tap the sparkle on the trip card — and choose Let Béa plan. You can build a new day-by-day plan from your saved travel preferences, import a photo or pasted itinerary, optimize the stops you already have, or compare two drafts side by side. Tick the stops you want and save them onto that trip's timeline, with optional costs and dates.",
+      },
+      {
+        q: "Can Béa rearrange a trip I already planned?",
+        a: "Yes. Open the trip and tap Optimize, or open Let Béa plan and choose Optimize. Pick what matters — closest together, rainy-day indoor activities, easy mornings, a rest day, even pace, or meals first — and Béa reshuffles the existing timeline. You review the new order before anything is saved. Flights, hotels and reservations stay put unless they have to move.",
+      },
       {
         q: "Can one trip cover several countries?",
         a: "Yes. Inside a trip, 'Where you're going' holds every city with its arrival and leaving dates, in the order you'll travel. Stops can be marked as layovers too.",
@@ -70,7 +82,11 @@ const groups: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where do recommendations come from?",
-        a: "You can type one in, paste a link, or save a place you found on the map. Béa keeps who recommended it so you remember why it's on the list.",
+        a: "You can type one in, paste a link, search the web, pin a place on the nearby map, or save where you're standing. Béa keeps who recommended it so you remember why it's on the list.",
+      },
+      {
+        q: "Does search need the exact spelling?",
+        a: "No. Searching your vault or a place name still finds a match if a letter is off, doubled, or missing — café and cafe both work.",
       },
     ],
   },
@@ -114,11 +130,15 @@ const groups: { title: string; items: Faq[] }[] = [
     ],
   },
   {
-    title: "Offline",
+    title: "Appearance & offline",
     items: [
       {
+        q: "How do I switch to dark mode?",
+        a: "Open You → Profile settings. The switch is labelled Light or Dark mode: warm cream by day, black and light grey at night. It lasts until you reload the page.",
+      },
+      {
         q: "Does Béa work without signal?",
-        a: "Download maps, photos, recommendations, itineraries and documents ahead of time from Profile settings, and they stay readable while you're offline.",
+        a: "Download maps, photos, recommendations, itineraries and documents ahead of time from Profile settings and they stay readable offline. On a trip, Trip settings → Offline directions saves the walk or drive between the cities on that trip.",
       },
     ],
   },
@@ -149,9 +169,10 @@ function HelpPage() {
   return (
     <AppShell eyebrow="Help" title="Questions, answered.">
       <div className="space-y-5 pb-4">
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
-          Everything people usually ask. If a page still feels unclear, tap “Ask Béa” at the top of
-          it for a guided walkthrough.
+        <p data-guide="help-faq" className="text-[13px] leading-relaxed text-muted-foreground">
+          Everything people usually ask. If a page still feels unclear, tap Ask Béa (the sparkle at
+          the top) for a walkthrough of that screen — different from the sparkle on a trip, which
+          plans the itinerary.
         </p>
 
         {groups.map((g) => (

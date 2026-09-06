@@ -27,6 +27,11 @@ const guides: Record<string, Guide> = {
         body: "The trip you're on, or the next one coming, sits here with its dates and the first few things on the plan. Tap it to open the whole folder.",
         selector: "[data-guide='home-trip']",
       },
+      {
+        title: "Travel story and memories",
+        body: "Playback walks your journey city by city. City memories gathers photos, notes and saved spots. Hide either shortcut from Profile if you want a quieter Home.",
+        selector: "[data-guide='home-shortcuts']",
+      },
       navStep("/world", "The map", "Every pin you've ever saved lives on the World map."),
       navStep("/trips", "Trips", "Plans, packing, budgets and documents, one folder per trip."),
     ],
@@ -70,9 +75,19 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='new-trip']",
       },
       {
+        title: "Let Béa plan",
+        body: "The sparkle on a trip card is Béa's planner, not the page tour. It can build a plan, import one, rearrange the stops you already have by a preference you pick — closest together, rainy-day indoor, easy mornings — or compare two drafts.",
+        selector: "[data-guide='bea-plan']",
+      },
+      {
         title: "Inside a trip",
-        body: "Tap any trip to open it: where you're going city by city, the shared timeline, who's invited, the budget and offline directions.",
+        body: "Tap any trip to open it: where you're going city by city, the shared timeline, who's invited, the budget, and offline walking or driving directions between those cities.",
         selector: "[data-guide='trip-list']",
+      },
+      {
+        title: "Optimize the timeline",
+        body: "Once a trip has a couple of stops, Optimize asks Béa to reshuffle them — closest together, rainy-day indoor, easy mornings, a rest day, even pace, or meals first. You approve the new order before it saves.",
+        selector: "[data-guide='optimize-trip']",
       },
       {
         title: "Packing lists",
@@ -91,7 +106,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Find anything you've saved",
-        body: "Search by the place, the city, or the person who told you about it.",
+        body: "Search by the place, the city, or the person who told you about it. A typo or a missing accent still finds a match.",
         selector: "[data-guide='reco-search']",
       },
       {
@@ -100,8 +115,13 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='reco-categories']",
       },
       {
+        title: "Pin something nearby",
+        body: "Open the map of where you are and drop a pin on a suggested place, or tap anywhere to save that exact spot.",
+        selector: "[data-guide='pin-nearby']",
+      },
+      {
         title: "Four ways to save something",
-        body: "Paste a link and Béa reads the name and address out of it, search the web by name, tap 'I'm here now' to pin where you're standing, or type it in by hand.",
+        body: "Paste a link and Béa reads the name and address out of it, search the web by name — typos are fine — tap 'I'm here now' to pin where you're standing, or type it in by hand.",
         selector: "[data-guide='reco-add']",
       },
       {
@@ -131,6 +151,16 @@ const guides: Record<string, Guide> = {
       },
     ],
   },
+  "/help": {
+    name: "Help",
+    steps: [
+      {
+        title: "Questions, answered",
+        body: "These are the usual how-does-this-work questions — trips, Béa's planner, search that forgives typos, dark mode, and offline directions. Tap a question to open it.",
+        selector: "[data-guide='help-faq']",
+      },
+    ],
+  },
   "/profile": {
     name: "You",
     steps: [
@@ -141,7 +171,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Your travel preferences",
-        body: "Open Profile settings to add the interests, pace, food, budget and travel style Béa should use when advising you.",
+        body: "Open Profile settings for your name, home city, travel style, and the appearance switch — warm cream by day, black and light grey at night. Those preferences are what Béa plans with.",
         selector: "[data-guide='profile-settings']",
       },
       {

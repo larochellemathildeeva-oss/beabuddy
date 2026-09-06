@@ -13,6 +13,7 @@ import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { useAuth } from "@/hooks/useAuth";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
+import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
 import logo from "@/assets/bea-logo.png";
@@ -307,11 +308,30 @@ function LiveTripCard({
   onUpdate: (patch: Partial<TripRow>) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
-  const board = useTripBoard(open ? trip.id : null, me);
-  const budget = useTripBudget(open ? trip.id : null);
-  const dir = useOfflineDirections(open ? trip.id : null);
-  const templates = usePacking(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
+  const boundId = open || plannerOpen ? trip.id : null;
+  const board = useTripBoard(boundId, me);
+  const budget = useTripBudget(boundId);
+  const cities = useTripStops(boundId, me.id);
+  const dir = useOfflineDirections(boundId);
+  const routeStops =
+    cities.stops.length >= 2
+      ? cities.stops.map((s) => ({
+          title: (s.place_name || s.city).trim() || s.city,
+          address: s.address,
+          lat: s.lat,
+          lon: s.lon,
+        }))
+      : board.items
+          .filter((i) => i.title.trim())
+          .map((i) => ({
+            title: i.title.trim(),
+            address: i.address,
+            lat: i.lat,
+            lon: i.lon,
+          }));
+  const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<"invite" | "edit" | "offline" | "packing" | null>(
     null,
@@ -366,9 +386,14 @@ function LiveTripCard({
           </p>
         </button>
         <button
+          data-guide="bea-plan"
           aria-label="Let Béa plan this trip"
           title="Let Béa plan this trip"
-          onClick={() => setPlannerOpen(true)}
+          onClick={() => {
+            if (!open) onToggle();
+            setPlannerTab("import");
+            setPlannerOpen(true);
+          }}
           className="relative grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10"
         >
           <img src={logo} alt="" className="size-7 object-contain" />
@@ -445,16 +470,30 @@ function LiveTripCard({
                     : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`}
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setTimelineDraft({ kind: "activity", day_date: "", time_label: "", title: "", detail: "" });
-                  setTimelineError("");
-                  setAddingTimeline(!addingTimeline);
-                }}
-                className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
-              >
-                {addingTimeline ? "Cancel" : "Add to timeline"}
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-1.5">
+                <button
+                  onClick={() => {
+                    setTimelineDraft({ kind: "activity", day_date: "", time_label: "", title: "", detail: "" });
+                    setTimelineError("");
+                    setAddingTimeline(!addingTimeline);
+                  }}
+                  className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+                >
+                  {addingTimeline ? "Cancel" : "Add to timeline"}
+                </button>
+                {board.items.length >= 2 && (
+                  <button
+                    data-guide="optimize-trip"
+                    onClick={() => {
+                      setPlannerTab("optimize");
+                      setPlannerOpen(true);
+                    }}
+                    className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+                  >
+                    Optimize
+                  </button>
+                )}
+              </div>
             </div>
 
 
@@ -592,6 +631,7 @@ function LiveTripCard({
           <ItineraryDirections
             stops={board.items.map((i) => ({
               title: i.title,
+              address: i.address,
               lat: i.lat,
               lon: i.lon,
             }))}
@@ -606,11 +646,32 @@ function LiveTripCard({
       <ItineraryImport
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
+        defaultTab={plannerTab}
+        existingItems={board.items.map((item) => ({
+          id: item.id,
+          day_date: item.day_date,
+          time_label: item.time_label,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail,
+          address: item.address,
+          lat: item.lat,
+          lon: item.lon,
+        }))}
+        cities={cities.stops.map((stop) => ({
+          city: stop.city,
+          country: stop.country,
+          arrive_on: stop.arrive_on,
+          depart_on: stop.depart_on,
+          lat: stop.lat,
+          lon: stop.lon,
+        }))}
         {...(trip.city ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") } : {})}
         {...(trip.start_date ? { startDate: trip.start_date } : {})}
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
         onAddCosts={budget.addItems}
+        onApplySchedule={board.applySchedule}
         onApplyDates={async (dates) => {
           await onUpdate({ ...dates, budget_enabled: true });
         }}
@@ -738,13 +799,13 @@ function LiveTripCard({
               {sheetSection === "offline" && (
                 <div className="rounded-xl border border-border p-3">
                   <p className="text-[11px] text-muted-foreground">
-                    Save the walk or drive between each stop — works with no service.
+                    Save the walk or drive between the cities on this trip — works with no service.
                   </p>
                   <button
-                    disabled={dir.busy || board.items.length < 2}
+                    disabled={dir.busy || routeStops.length < 2}
                     onClick={() =>
                       void dir.download(
-                        board.items.map((i) => ({ title: i.title, lat: i.lat, lon: i.lon })),
+                        routeStops,
                         [trip.city, trip.country].filter(Boolean).join(", "),
                       )
                     }
@@ -756,9 +817,10 @@ function LiveTripCard({
                         ? "Refresh directions"
                         : "Download directions"}
                   </button>
-                  {board.items.length < 2 && (
+                  {routeStops.length < 2 && (
                     <p className="mt-2 text-[11px] text-muted-foreground">
-                      Add at least two stops first.
+                      Add at least two cities to this trip first (or two timeline entries with
+                      places).
                     </p>
                   )}
                   {dir.error && <p className="mt-2 text-[11px] text-destructive">{dir.error}</p>}
