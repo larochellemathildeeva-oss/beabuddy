@@ -202,7 +202,7 @@ function WorldPage() {
 
         <AddVisitedCity onSaved={() => void vault.reload()} />
 
-        <ComparePins pins={allPins} />
+        <ComparePins pins={[...photo.pins, ...vault.comparePins]} />
 
 
         {selected ? (

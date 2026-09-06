@@ -17,6 +17,8 @@ export type Pin = {
   priority?: "High" | "Medium" | "Low";
   recommendedBy?: string;
   source?: string;
+  /** Reco row marked visited — not the same as pin type "visited". */
+  visited?: boolean;
   distanceM?: number;
 };
 

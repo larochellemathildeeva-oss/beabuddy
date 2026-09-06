@@ -35,22 +35,33 @@ export type NewReco = {
   pin_type?: PinType | undefined;
 };
 
-export function recoToPin(r: RecoRowDB): Pin | null {
-  if (r.lat == null || r.lon == null) return null;
+function recoFields(r: RecoRowDB): Omit<Pin, "lat" | "lon"> & { lat: number; lon: number } {
   return {
     id: `reco-${r.id}`,
     type: (r.pin_type ?? "reco") as PinType,
     name: r.name,
     city: r.city ?? "",
     country: r.country ?? "",
-    lat: r.lat,
-    lon: r.lon,
+    lat: r.lat ?? Number.NaN,
+    lon: r.lon ?? Number.NaN,
     ...(r.category ? { category: r.category } : {}),
     ...(r.notes ? { notes: r.notes } : {}),
     ...(r.recommended_by ? { recommendedBy: r.recommended_by } : {}),
     ...(r.source ? { source: r.source } : {}),
+    ...(r.visited ? { visited: true } : {}),
     dateAdded: r.created_at.slice(0, 10),
   };
+}
+
+/** Map pin — only when the place has coordinates. */
+export function recoToPin(r: RecoRowDB): Pin | null {
+  if (r.lat == null || r.lon == null) return null;
+  return recoFields(r);
+}
+
+/** Compare / score — includes places that were saved without a point on the map. */
+export function recoToComparePin(r: RecoRowDB): Pin {
+  return recoFields(r);
 }
 
 export function useRecommendations() {
@@ -116,5 +127,14 @@ export function useRecommendations() {
     [reload],
   );
 
-  return { rows, loading, signedIn, add, remove, reload, pins: rows.map(recoToPin).filter(Boolean) as Pin[] };
+  return {
+    rows,
+    loading,
+    signedIn,
+    add,
+    remove,
+    reload,
+    pins: rows.map(recoToPin).filter(Boolean) as Pin[],
+    comparePins: rows.map(recoToComparePin),
+  };
 }

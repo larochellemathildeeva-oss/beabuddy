@@ -6,6 +6,9 @@ import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import { parsePlaceLink, lookupCoords, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
+import { fuzzyRank } from "@/lib/fuzzy";
+import { useScorePrefs } from "@/hooks/useScorePrefs";
+import { scoreOpportunity } from "@/lib/score-opportunity";
 
 export const Route = createFileRoute("/recommendations")({
   head: () => ({
@@ -57,6 +60,7 @@ function RecommendationsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const vault = useRecommendations();
+  const scorePrefs = useScorePrefs();
   const parseLink = useServerFn(parsePlaceLink);
   const lookup = useServerFn(lookupCoords);
   const search = useServerFn(searchPlaces);
@@ -94,17 +98,15 @@ function RecommendationsPage() {
 
   const views = saved.map(rowView);
   const categories = ["All", ...new Set(views.map((v) => v.category))];
-  const filtered = views.filter((v) => {
-    const inCat = category === "All" || v.category === category;
-    const q = query.toLowerCase();
-    return (
-      inCat &&
-      (!q ||
-        v.name.toLowerCase().includes(q) ||
-        v.city.toLowerCase().includes(q) ||
-        v.by.toLowerCase().includes(q))
-    );
-  });
+  const inCategory = views.filter((v) => category === "All" || v.category === category);
+  const filtered = query.trim()
+    ? fuzzyRank(inCategory, query, (v) => [v.name, v.city, v.country, v.by, v.notes])
+    : [...inCategory].sort((a, b) => {
+        const pinA = vault.comparePins.find((p) => p.id === a.id || p.id === `reco-${a.id}`);
+        const pinB = vault.comparePins.find((p) => p.id === b.id || p.id === `reco-${b.id}`);
+        if (!pinA || !pinB) return 0;
+        return scoreOpportunity(pinB, scorePrefs).score - scoreOpportunity(pinA, scorePrefs).score;
+      });
 
   const handleLink = async () => {
     setError(null);
@@ -197,7 +199,7 @@ function RecommendationsPage() {
           data-guide="reco-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search places, cities, people…"
+          placeholder="Search places, cities, people — typos are fine"
           className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[13px] outline-none placeholder:text-muted-foreground focus:border-primary"
         />
 
