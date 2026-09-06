@@ -56,22 +56,16 @@ export function unroutedLegCopy(leg: Pick<RouteLeg, "capped" | "unknownSpot" | "
   return "Open in maps for this stretch";
 }
 
-function alreadyOnTimeline(title: string, existing: string[]): boolean {
-  const key = title.trim().toLowerCase();
-  return existing.some((item) => item.trim().toLowerCase() === key);
-}
-
-/** Turn looked-up legs into timeline Transport rows, skipping ones already saved. */
+/** Turn looked-up legs into timeline Transport rows. Callers upsert by title. */
 export function legsToTimelineItems(
   legs: RouteLeg[],
   stops: DirectionStop[],
-  existingTitles: string[] = [],
+  _existingTitles: string[] = [],
 ): TimelineDirectionItem[] {
   return legs.flatMap((leg, i) => {
     const from = stops[i];
     const to = stops[i + 1];
     const title = directionTitle(leg);
-    if (alreadyOnTimeline(title, existingTitles)) return [];
     const item: TimelineDirectionItem = {
       kind: "Transport",
       title,

@@ -648,7 +648,7 @@ function LiveTripCard({
           <ItineraryDirections
             stops={directionStops}
             existingTitles={board.items.map((i) => i.title)}
-            onAddToTimeline={board.addItems}
+            onAddToTimeline={board.upsertItems}
             {...(directionArea ? { area: directionArea } : {})}
           />
 

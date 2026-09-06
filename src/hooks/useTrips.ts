@@ -465,6 +465,71 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [tripId, me.id, items.length, load],
   );
 
+  const upsertItems = useCallback(
+    async (
+      additions: Array<{
+        day_date?: string;
+        time_label?: string;
+        kind: string;
+        title: string;
+        detail?: string;
+        address?: string;
+        lat?: number;
+        lon?: number;
+      }>,
+    ) => {
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
+      if (additions.length === 0) return;
+      const authorId = await liveUserId(me.id);
+      const existingByTitle = new Map(items.map((row) => [row.title.trim().toLowerCase(), row]));
+      const inserts: typeof additions = [];
+      for (const item of additions) {
+        const hit = existingByTitle.get(item.title.trim().toLowerCase());
+        if (!hit) {
+          inserts.push(item);
+          continue;
+        }
+        const { error } = await supabase
+          .from("itinerary_items")
+          .update({
+            detail: item.detail ?? hit.detail,
+            address: item.address ?? hit.address,
+            lat: item.lat ?? hit.lat,
+            lon: item.lon ?? hit.lon,
+            day_date: item.day_date || hit.day_date,
+            time_label: item.time_label || hit.time_label,
+            kind: item.kind,
+            updated_by: authorId,
+          })
+          .eq("id", hit.id)
+          .eq("trip_id", id);
+        if (error) throw error;
+      }
+      if (inserts.length > 0) {
+        const { error } = await supabase.from("itinerary_items").insert(
+          inserts.map((item, index) => ({
+            trip_id: id,
+            day_date: item.day_date || null,
+            time_label: item.time_label || null,
+            kind: item.kind,
+            title: item.title,
+            detail: item.detail || null,
+            address: item.address || null,
+            lat: item.lat ?? null,
+            lon: item.lon ?? null,
+            position: items.length + index,
+            created_by: authorId,
+            updated_by: authorId,
+          })),
+        );
+        if (error) throw error;
+      }
+      await load();
+    },
+    [tripId, me.id, items, load],
+  );
+
   const updateItem = useCallback(
     async (
       id: string,
@@ -532,6 +597,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     present,
     addItem,
     addItems,
+    upsertItems,
     applySchedule,
     updateItem,
     removeItem,

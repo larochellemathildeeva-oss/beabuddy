@@ -44,7 +44,8 @@ test("legsToTimelineItems uses the from-stop day and destination coords", () => 
     [{ title: "Hotel", day_date: "2026-09-12" }],
     ["Walk to Market"],
   );
-  assert.equal(again.length, 0);
+  assert.equal(again.length, 1);
+  assert.equal(again[0]?.title, "Walk to Market");
 });
 
 test("directionDetail names a same-place stretch", () => {
