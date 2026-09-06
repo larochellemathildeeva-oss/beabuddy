@@ -55,16 +55,16 @@ test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () =>
 });
 
 test("parseModelChain builds a de-duplicated ladder", () => {
-  assert.deepEqual(parseModelChain("gemini-3.7-flash", "gemini-3.6-flash, gemini-3.5-flash-lite"), [
-    "gemini-3.7-flash",
+  assert.deepEqual(parseModelChain("gemini-3.6-flash", "gemini-3.5-flash-lite, gemini-3.1-flash-lite"), [
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
   ]);
   assert.deepEqual(parseModelChain("gemini-3.6-flash", "gemini-3.6-flash,gemini-3.5-flash-lite"), [
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
   ]);
-  assert.deepEqual(parseModelChain("gemini-3.7-flash", ""), ["gemini-3.7-flash"]);
+  assert.deepEqual(parseModelChain("gemini-3.6-flash", ""), ["gemini-3.6-flash"]);
 });
 
 test("runModelChain steps down on quota and stops on other errors", async () => {

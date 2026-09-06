@@ -32,7 +32,7 @@ export const Route = createFileRoute("/trips")({
       {
         name: "description",
         content:
-          "Every trip as a folder: a shared timeline you edit together, live presence, reservations, documents, budget and the debrief you wrote afterwards.",
+          "Every trip as a folder: a shared timeline you edit together, live presence, reservations, documents and budget.",
       },
       { property: "og:title", content: "Trips — Béa" },
       {

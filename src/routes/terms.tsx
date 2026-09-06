@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { AppShell } from "@/components/AppShell";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { LEGAL_VERSION } from "@/lib/legal";
 
@@ -34,21 +35,18 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function TermsPage() {
   return (
-    <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto w-full max-w-[640px] border-x border-border/70 px-6 py-10 pb-24">
-        <p className="label-caps">Béa</p>
-        <h1 className="mt-2 text-[30px] leading-[1.08]">Terms of Service</h1>
-        <p className="mt-2 text-[12px] text-muted-foreground">
-          Version {LEGAL_VERSION} — effective 6 September 2026
-        </p>
-        <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
-          These terms govern your use of Béa ("the app"). By creating an account you confirm that
-          you have read, understood and agree to them, together with our{" "}
-          <Link to="/privacy" className="text-primary underline underline-offset-4">
-            Privacy Policy
-          </Link>
-          . If you do not agree, please do not create an account or use the app.
-        </p>
+    <AppShell publicPage eyebrow="Béa" title="Terms of Service">
+      <p className="text-[12px] text-muted-foreground">
+        Version {LEGAL_VERSION} — effective 6 September 2026
+      </p>
+      <p className="mt-4 text-[13.5px] leading-relaxed text-muted-foreground">
+        These terms govern your use of Béa ("the app"). By creating an account you confirm that
+        you have read, understood and agree to them, together with our{" "}
+        <Link to="/privacy" className="text-primary underline underline-offset-4">
+          Privacy Policy
+        </Link>
+        . If you do not agree, please do not create an account or use the app.
+      </p>
 
         <Section title="1. What Béa is">
           <p>
@@ -285,7 +283,6 @@ function TermsPage() {
         <Link to="/" className="mt-4 inline-block text-[13px] text-primary underline underline-offset-4">
           Back to Béa
         </Link>
-      </div>
-    </div>
+    </AppShell>
   );
 }

@@ -217,7 +217,29 @@ function WorldPage() {
         </p>
 
         <div data-guide="globe">
-          <Globe pins={visible} selectedId={selected?.id} onSelect={setSelected} />
+          <Globe
+            pins={visible}
+            selectedId={selected?.id}
+            onSelect={setSelected}
+            onCountrySelect={(name) => {
+              const lower = name.toLowerCase();
+              const match =
+                allPins.find((p) => p.country.toLowerCase() === lower) ??
+                allPins.find((p) => {
+                  if (lower.includes("united states") || lower === "usa") {
+                    return /united states|usa/i.test(p.country);
+                  }
+                  if (lower.includes("united kingdom") || lower === "uk") {
+                    return /united kingdom|uk|britain/i.test(p.country);
+                  }
+                  return p.country.toLowerCase().includes(lower) || lower.includes(p.country.toLowerCase());
+                });
+              if (match) {
+                setCountry(match.country);
+                setSelected(match);
+              }
+            }}
+          />
         </div>
 
         <AddVisitedCity onSaved={() => void vault.reload()} />
