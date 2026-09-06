@@ -247,10 +247,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
 
   useEffect(() => {
     if (!tripId || !me.id) return;
-    const channel = supabase.channel(`trip:${tripId}`, {
-      config: { presence: { key: me.id } },
-    });
-    channel
+    // Row changes stay on a public channel: postgres_changes payloads are already
+    // filtered by RLS on itinerary_items, which requires trip membership.
+    const dataChannel = supabase.channel(`trip:${tripId}`);
+    dataChannel
       .on(
         "postgres_changes",
         {
@@ -261,8 +261,18 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         },
         () => void load(),
       )
+      .subscribe();
+
+    // Presence is client-supplied and fanned out to everyone on the topic, so it
+    // needs its own gate. `private: true` is what makes Realtime consult the RLS
+    // policies in 20260906120000_gate_trip_presence_topics.sql — without it the
+    // topic is public and anyone holding the trip UUID can join it.
+    const presenceChannel = supabase.channel(`trip-presence:${tripId}`, {
+      config: { private: true, presence: { key: me.id } },
+    });
+    presenceChannel
       .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState<Presence>();
+        const state = presenceChannel.presenceState<Presence>();
         const list: Presence[] = [];
         for (const key of Object.keys(state)) {
           const first = state[key]?.[0];
@@ -272,13 +282,14 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          void channel.track({ userId: me.id, name: me.name, editing: null });
+          void presenceChannel.track({ userId: me.id, name: me.name, editing: null });
         }
       });
-    channelRef.current = channel;
+    channelRef.current = presenceChannel;
     return () => {
       channelRef.current = null;
-      void supabase.removeChannel(channel);
+      void supabase.removeChannel(dataChannel);
+      void supabase.removeChannel(presenceChannel);
     };
   }, [tripId, me.id, me.name, load]);
 

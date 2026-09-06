@@ -117,7 +117,9 @@ function AuthPage() {
       provider,
       options: {
         redirectTo: `${window.location.origin}/profile`,
-        queryParams: askEveryTime ? { prompt: "select_account" } : undefined,
+        // Spread rather than pass undefined: exactOptionalPropertyTypes rejects
+        // an explicit undefined for an optional property.
+        ...(askEveryTime ? { queryParams: { prompt: "select_account" } } : {}),
       },
     });
     setBusy(false);
