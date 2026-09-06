@@ -35,7 +35,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function PrivacyPage() {
   return (
-    <AppShell eyebrow="Privacy" title="What Béa keeps, and what only you can read.">
+    <AppShell publicPage eyebrow="Privacy" title="What Béa keeps, and what only you can read.">
       <div className="space-y-4 pb-4">
         <p className="text-[13px] leading-relaxed text-muted-foreground">
           Béa is a private vault for your travels. This page explains, in plain words, what is

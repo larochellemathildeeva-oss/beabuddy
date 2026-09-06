@@ -147,7 +147,7 @@ function Item({ q, a }: Faq) {
 
 function HelpPage() {
   return (
-    <AppShell eyebrow="Help" title="Questions, answered.">
+    <AppShell publicPage eyebrow="Help" title="Questions, answered.">
       <div className="space-y-5 pb-4">
         <p className="text-[13px] leading-relaxed text-muted-foreground">
           Everything people usually ask. If a page still feels unclear, tap “Ask Béa” at the top of
