@@ -4,7 +4,7 @@ import { Route as RouteIcon } from "lucide-react";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 
-type Stop = { title: string; lat?: number | null; lon?: number | null };
+type Stop = { title: string; address?: string | null; lat?: number | null; lon?: number | null };
 
 export function ItineraryDirections({ stops, area }: { stops: Stop[]; area?: string }) {
   const run = useServerFn(buildRoutes);

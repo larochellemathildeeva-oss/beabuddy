@@ -219,6 +219,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   >([]);
   const [present, setPresent] = useState<Presence[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const tripIdRef = useRef(tripId);
+  tripIdRef.current = tripId;
 
   const load = useCallback(async () => {
     if (!tripId) return;
@@ -313,10 +315,11 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       lat?: number;
       lon?: number;
     }) => {
-      if (!tripId) throw new Error("Open a trip first");
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
       const authorId = await liveUserId(me.id);
       const { error } = await supabase.from("itinerary_items").insert({
-        trip_id: tripId,
+        trip_id: id,
         day_date: item.day_date || null,
         time_label: item.time_label || null,
         kind: item.kind,
@@ -348,13 +351,14 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         lon?: number;
       }>,
     ) => {
-      if (!tripId) throw new Error("Open a trip first");
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
 
       const { error } = await supabase.from("itinerary_items").insert(
         additions.map((item, index) => ({
-          trip_id: tripId,
+          trip_id: id,
           day_date: item.day_date || null,
           time_label: item.time_label || null,
           kind: item.kind,
@@ -394,6 +398,39 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [me.id, load],
   );
 
+  const applySchedule = useCallback(
+    async (
+      updates: Array<{
+        id: string;
+        day_date: string | null;
+        time_label: string | null;
+        position: number;
+      }>,
+    ) => {
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
+      if (updates.length === 0) return;
+      const authorId = await liveUserId(me.id);
+      const known = new Set(items.map((item) => item.id));
+      for (const row of updates) {
+        if (!known.has(row.id)) continue;
+        const { error } = await supabase
+          .from("itinerary_items")
+          .update({
+            day_date: row.day_date,
+            time_label: row.time_label,
+            position: row.position,
+            updated_by: authorId,
+          })
+          .eq("id", row.id)
+          .eq("trip_id", id);
+        if (error) throw error;
+      }
+      await load();
+    },
+    [me.id, items, load],
+  );
+
   const removeItem = useCallback(
     async (id: string) => {
       await supabase.from("itinerary_items").delete().eq("id", id);
@@ -408,6 +445,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     present,
     addItem,
     addItems,
+    applySchedule,
     updateItem,
     removeItem,
     setEditing,

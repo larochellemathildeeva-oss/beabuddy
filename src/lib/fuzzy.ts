@@ -110,6 +110,7 @@ export function fuzzyRank<T>(
   items: readonly T[],
   query: string,
   fields: (item: T) => (string | null | undefined)[],
+  minScore = MATCH_FLOOR,
 ): T[] {
   const needle = query.trim();
   if (!needle) return [...items];
@@ -124,7 +125,18 @@ export function fuzzyRank<T>(
       }
       return { item, score, index };
     })
-    .filter((entry) => entry.score >= MATCH_FLOOR)
+    .filter((entry) => entry.score >= minScore)
     .sort((a, b) => b.score - a.score || a.index - b.index)
     .map((entry) => entry.item);
+}
+
+/** Extra Nominatim queries when the typed name is likely a typo. */
+export function fuzzyQueryVariants(query: string): string[] {
+  const q = foldAccents(query);
+  if (q.length < 3) return [q];
+  const out = [q];
+  const squeezed = q.replace(/(.)\1+/g, "$1");
+  if (squeezed !== q && squeezed.length >= 2) out.push(squeezed);
+  if (q.length >= 5) out.push(q.slice(0, -1));
+  return [...new Set(out)];
 }

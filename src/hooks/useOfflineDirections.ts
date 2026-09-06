@@ -31,7 +31,10 @@ export function useOfflineDirections(tripId: string | null) {
   }, [tripId]);
 
   const download = useCallback(
-    async (stops: { title: string; lat?: number | null; lon?: number | null }[], area?: string) => {
+    async (
+      stops: { title: string; address?: string | null; lat?: number | null; lon?: number | null }[],
+      area?: string,
+    ) => {
       if (!tripId) return;
       setBusy(true);
       setError("");
@@ -42,7 +45,12 @@ export function useOfflineDirections(tripId: string | null) {
         localStorage.setItem(key(tripId), JSON.stringify(result));
         setSaved(result);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't download the directions");
+        const message = e instanceof Error ? e.message : "";
+        setError(
+          /unauthorized/i.test(message)
+            ? "Sign in again, then try downloading."
+            : message || "Couldn't download the directions",
+        );
       } finally {
         setBusy(false);
       }

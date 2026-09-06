@@ -227,7 +227,7 @@ function ProfilePage() {
               <div>
                 <p className="text-[13px] font-medium">{dark ? "Dark" : "Light"} mode</p>
                 <p className="text-[11.5px] text-muted-foreground">
-                  Warm cream by day, deep clay by night.
+                  Warm cream by day, black and light grey by night.
                 </p>
               </div>
               <button

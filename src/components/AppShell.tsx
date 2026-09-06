@@ -96,7 +96,7 @@ export function AppShell({
                 </Link>
               ))}
             <Link to="/" className="flex items-center gap-2">
-              <img src={logo} alt="Béa logo" className="size-8 rounded-full" width={32} height={32} />
+              <img src={logo} alt="Béa logo" className="size-9 object-contain" width={36} height={36} />
               <span className="flex items-center gap-2">
                 <span className="leading-none">
                   <span className="block font-display text-[24px]">Béa</span>

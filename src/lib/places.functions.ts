@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
+import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 
 export type ParsedPlace = {
   name: string;
@@ -123,8 +124,13 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ query: z.string().min(2).max(200) }).parse(data))
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
-    const hits = await nominatim(data.query, 8);
-    return hits.map(hitToPlace);
+    let hits: NominatimHit[] = [];
+    for (const query of fuzzyQueryVariants(data.query)) {
+      hits = await nominatim(query, 8);
+      if (hits.length) break;
+    }
+    const places = hits.map(hitToPlace);
+    return fuzzyRank(places, data.query, (place) => [place.name, place.address, place.city, place.country], 0);
   });
 
 

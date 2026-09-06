@@ -21,7 +21,7 @@ const steps: Step[] = [
   },
   {
     title: "Home",
-    body: "Your travel year at a glance: how many photos, cities and countries you've collected, what's waiting for you next, and a note from your future self.",
+    body: "Your current or next trip sits at the top. Shortcuts jump to your travel story and city memories, and you can hide or show those sections from Profile.",
     to: "/",
   },
   {
@@ -36,7 +36,12 @@ const steps: Step[] = [
   },
   {
     title: "Trips",
-    body: "Make a trip, add flights, hotels and dinners, invite a friend with a code, and see who's looking at the plan right now. You can download directions between stops for when there's no signal.",
+    body: "Make a trip, add the cities you're visiting, invite a friend with a code, and see who's looking at the plan right now. Trip settings can save walking and driving directions between those cities for when there's no signal.",
+    to: "/trips",
+  },
+  {
+    title: "Let Béa plan",
+    body: "On any trip, tap the sparkle next to the name. Béa can build a day-by-day plan from your travel preferences, read a photo or pasted itinerary, rearrange the stops you already have (closest together, rainy-day indoor, easy mornings…), or compare two drafts. Tick what you want and save it onto that trip.",
     to: "/trips",
   },
   {
@@ -47,7 +52,7 @@ const steps: Step[] = [
   },
   {
     title: "Recommendations",
-    body: "Someone sends you a restaurant link? Paste it, search the web for it, or tap 'I'm here now' and Béa saves the spot with its address and place on the map.",
+    body: "Paste a link, search the web, pin a nearby place on the map, or tap 'I'm here now'. Search forgives typos — a missing or doubled letter still finds the place.",
     to: "/recommendations",
   },
   {
@@ -84,8 +89,13 @@ const steps: Step[] = [
     to: "/profile",
   },
   {
+    title: "Light and dark",
+    body: "Profile settings has an appearance switch: warm cream by day, black and light grey at night. That's also where you set the travel preferences Béa plans with.",
+    to: "/profile",
+  },
+  {
     title: "You're all set",
-    body: "That's the whole tour. You can replay it any time from your profile, and the privacy policy lives there too if you're curious.",
+    body: "That's the whole tour. Replay it any time from Profile settings, tap Ask Béa on any page for a walkthrough of that screen, and the privacy policy lives on your profile too.",
     to: "/",
   },
 ];
