@@ -1,6 +1,12 @@
 export type LatLon = { lat: number; lon: number };
 
-export function isLatLon(value: { lat?: number | null; lon?: number | null }): value is LatLon {
+/**
+ * Generic so `places.filter(isLatLon)` keeps the caller's own fields alongside
+ * the narrowed coordinates — narrowing to bare LatLon would drop `name`.
+ */
+export function isLatLon<T extends { lat?: number | null; lon?: number | null }>(
+  value: T,
+): value is T & LatLon {
   return (
     typeof value.lat === "number" &&
     typeof value.lon === "number" &&

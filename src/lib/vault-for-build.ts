@@ -69,7 +69,9 @@ export function vaultPrompt(
   return lines.join("\n");
 }
 
-export function tagVaultItems<T extends { title: string; source?: "vault" | "new" | null }>(
+export function tagVaultItems<
+  T extends { title: string; source?: "vault" | "new" | null | undefined },
+>(
   items: T[],
   recos: VaultReco[],
 ): T[] {

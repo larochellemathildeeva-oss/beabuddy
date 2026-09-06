@@ -524,14 +524,16 @@ function OptimizePanel({
   endDate?: string | undefined;
   items: OptimizeSourceItem[];
   cities: OptimizeSourceCity[];
-  onApplySchedule?: (
-    updates: Array<{
-      id: string;
-      day_date: string | null;
-      time_label: string | null;
-      position: number;
-    }>,
-  ) => Promise<void>;
+  onApplySchedule?:
+    | ((
+        updates: Array<{
+          id: string;
+          day_date: string | null;
+          time_label: string | null;
+          position: number;
+        }>,
+      ) => Promise<void>)
+    | undefined;
 }) {
   const run = useServerFn(optimizeItinerary);
   const [goals, setGoals] = useState<OptimizeGoalId[]>(["closest"]);
