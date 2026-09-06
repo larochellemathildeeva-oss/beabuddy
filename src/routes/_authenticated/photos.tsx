@@ -198,7 +198,7 @@ function PhotosPage() {
           <div className="card-soft space-y-2 p-4">
             <p className="label-caps text-foreground">Privacy, in plain words</p>
             <ul className="space-y-1.5 text-[13px] text-muted-foreground">
-              <li>· Your account details and photos live in your private Béa account (our secure Lovable Cloud database), tied only to your email.</li>
+              <li>· Your account details and photos live in your private Béa account (our secure Supabase database), tied only to your email.</li>
               <li>· Photos are stored privately — only you can see them, and only while signed in.</li>
               <li>· If a photo has a location saved inside it, Béa reads that spot to place it on your map. Nothing else is taken from the photo.</li>
               <li>· Your photos are never shared, sold, or used to advertise to you.</li>
