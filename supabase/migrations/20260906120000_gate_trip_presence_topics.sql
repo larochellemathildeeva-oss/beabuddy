@@ -27,7 +27,30 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.realtime_topic_trip_id(text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.realtime_topic_trip_id(text) TO authenticated, service_role;
 
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+-- Fail loudly and legibly if this instance has no Realtime Authorization, rather
+-- than with a bare "function realtime.topic() does not exist" from the policies below.
+DO $$
+BEGIN
+  PERFORM 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'realtime' AND p.proname = 'topic';
+  IF NOT FOUND THEN
+    RAISE EXCEPTION
+      'realtime.topic() not found: this Realtime version has no authorization support, so presence cannot be gated this way';
+  END IF;
+END $$;
+
+-- Supabase normally ships realtime.messages with RLS already on, and the migration
+-- role may not own the table. Only ALTER when it is actually needed, so the common
+-- case needs no privilege we might not have — and a genuine miss still fails loudly
+-- rather than leaving policies that silently do not enforce.
+DO $$
+BEGIN
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'realtime.messages'::regclass) THEN
+    ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 DROP POLICY IF EXISTS "Trip members read trip presence" ON realtime.messages;
 CREATE POLICY "Trip members read trip presence"
