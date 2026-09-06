@@ -4,6 +4,7 @@ import { FileText, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
+import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
@@ -17,6 +18,8 @@ import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
+import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
+import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
 export const Route = createFileRoute("/trips")({
@@ -79,6 +82,7 @@ function TripsPage() {
     country: "",
     start_date: "",
     end_date: "",
+    dates_status: "tentative" as DatesStatus,
   });
   const [withBudget, setWithBudget] = useState(false);
   const packing = usePacking(null);
@@ -138,39 +142,27 @@ function TripsPage() {
                 <PlaceSearchInput
                   value={form.city}
                   onChange={(v) => setForm({ ...form, city: v })}
-                  onPick={(p) =>
+                  onPick={(p) => {
+                    const loc = locationFromParsedPlace(p);
                     setForm({
                       ...form,
-                      city: p.city || p.name,
-                      country: p.country ?? form.country,
-                    })
-                  }
+                      city: loc.city,
+                      country: loc.country || form.country,
+                    });
+                  }}
                   placeholder="Starting city — search it"
-                />
-                <input
-                  value={form.country}
-                  onChange={(e) => setForm({ ...form, country: e.target.value })}
-                  placeholder="Country (fills in automatically)"
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
                 />
                 <p className="px-1 text-[11px] text-muted-foreground">
                   Going to more than one country? Open the trip after creating it and add each stop
                   — including layovers.
                 </p>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
-                  />
-                  <input
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
-                  />
-                </div>
+                <DateRangeField
+                  start={form.start_date}
+                  end={form.end_date}
+                  onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
+                  datesStatus={form.dates_status}
+                  onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+                />
                 {form.start_date &&
                   form.end_date &&
                   form.end_date < form.start_date && (
@@ -219,7 +211,14 @@ function TripsPage() {
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
                       openTrip(id);
-                      setForm({ title: "", city: "", country: "", start_date: "", end_date: "" });
+                      setForm({
+                        title: "",
+                        city: "",
+                        country: "",
+                        start_date: "",
+                        end_date: "",
+                        dates_status: "tentative",
+                      });
                       setWithBudget(false);
                       setCreating(false);
                     } catch (e) {
@@ -363,14 +362,13 @@ function LiveTripCard({
           }));
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sheetSection, setSheetSection] = useState<"invite" | "edit" | "offline" | "packing" | null>(
-    null,
-  );
+  const [sheetSection, setSheetSection] = useState<
+    "invite" | "budget" | "edit" | "offline" | "packing" | null
+  >(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [packSignal, setPackSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
-  const [editTrip, setEditTrip] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineDraft, setTimelineDraft] = useState({
@@ -383,10 +381,11 @@ function LiveTripCard({
   const [timelineError, setTimelineError] = useState("");
   const [tripForm, setTripForm] = useState({
     title: trip.title,
-    city: trip.city ?? "",
+    city: formatTripLocation(trip.city, trip.country),
     country: trip.country ?? "",
     start_date: trip.start_date ?? "",
     end_date: trip.end_date ?? "",
+    dates_status: trip.dates_status,
     status: trip.status,
   });
   const others = board.present.filter((p) => p.userId !== me.id);
@@ -404,9 +403,9 @@ function LiveTripCard({
           </span>
           <h2 className="mt-1 text-[22px] leading-tight">{trip.title}</h2>
           <p className="text-[12px] text-muted-foreground">
-            {[trip.city, trip.country].filter(Boolean).join(", ")}
+            {formatTripLocation(trip.city, trip.country)}
             {trip.start_date
-              ? ` · ${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
+              ? ` · ${trip.dates_status === "tentative" ? "Tentative · " : ""}${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
               : ""}
           </p>
           <p className="mt-1 truncate text-[12px] text-muted-foreground">
@@ -430,8 +429,9 @@ function LiveTripCard({
           <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
         </button>
         <button
-          aria-label="Create a packing list"
-          title="Create a packing list"
+          data-guide="packing-lists"
+          aria-label="Add packing list to this trip"
+          title="Add packing list to this trip"
           onClick={() => {
             if (!open) onToggle();
             setPackSignal((n) => n + 1);
@@ -909,12 +909,12 @@ function LiveTripCard({
               )}
 
               <button
-                onClick={() => setSheetSection(sheetSection === "edit" ? null : "edit")}
+                onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
                 className="w-full rounded-xl px-3 py-3 text-left text-[14px] font-semibold hover:bg-elevated"
               >
-                Trip & budget options
+                Budget Options
               </button>
-              {sheetSection === "edit" && (
+              {sheetSection === "budget" && (
                 <div className="space-y-2 rounded-xl border border-border p-3">
                   <label className="flex items-center gap-2 px-1 text-[13px]">
                     <input
@@ -925,97 +925,112 @@ function LiveTripCard({
                     />
                     Track a budget for this trip
                   </label>
-                  <button
-                    onClick={() => {
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  const next = sheetSection === "edit" ? null : "edit";
+                  setSheetSection(next);
+                  if (next === "edit") {
+                    setTripForm({
+                      title: trip.title,
+                      city: formatTripLocation(trip.city, trip.country),
+                      country: trip.country ?? "",
+                      start_date: trip.start_date ?? "",
+                      end_date: trip.end_date ?? "",
+                      dates_status: trip.dates_status,
+                      status: trip.status,
+                    });
+                  }
+                }}
+                className="w-full rounded-xl px-3 py-3 text-left text-[14px] font-semibold hover:bg-elevated"
+              >
+                Trip Options
+              </button>
+              {sheetSection === "edit" && (
+                <div className="space-y-2 rounded-xl border border-border p-3">
+                  <input
+                    value={tripForm.title}
+                    onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
+                    placeholder="Trip name"
+                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                  />
+                  <PlaceSearchInput
+                    value={tripForm.city}
+                    onChange={(v) => setTripForm({ ...tripForm, city: v })}
+                    onPick={(p) => {
+                      const loc = locationFromParsedPlace(p);
                       setTripForm({
-                        title: trip.title,
-                        city: trip.city ?? "",
-                        country: trip.country ?? "",
-                        start_date: trip.start_date ?? "",
-                        end_date: trip.end_date ?? "",
-                        status: trip.status,
+                        ...tripForm,
+                        city: loc.city,
+                        country: loc.country || tripForm.country,
                       });
-                      setEditTrip(!editTrip);
                     }}
-                    className="w-full rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
-                  >
-                    {editTrip ? "Cancel editing" : "Edit name, place or dates"}
-                  </button>
-                  {editTrip && (
-                    <div className="space-y-2">
-                      {(["title", "city", "country"] as const).map((f) => (
-                        <input
-                          key={f}
-                          value={tripForm[f]}
-                          onChange={(e) => setTripForm({ ...tripForm, [f]: e.target.value })}
-                          placeholder={
-                            f === "title" ? "Trip name" : f === "city" ? "City" : "Country"
-                          }
-                          className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                      ))}
-                      <div className="flex gap-2">
-                        <input
-                          type="date"
-                          value={tripForm.start_date}
-                          onChange={(e) => setTripForm({ ...tripForm, start_date: e.target.value })}
-                          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                        <input
-                          type="date"
-                          value={tripForm.end_date}
-                          onChange={(e) => setTripForm({ ...tripForm, end_date: e.target.value })}
-                          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                        />
-                      </div>
-                      {tripForm.start_date &&
-                        tripForm.end_date &&
-                        tripForm.end_date < tripForm.start_date && (
-                          <p className="px-1 text-[12px] font-medium text-destructive">
-                            End date can't be earlier than the start date.
-                          </p>
-                        )}
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          ["upcoming", "Upcoming"],
-                          ["active", "In progress"],
-                          ["past", "Past"],
-                        ].map(([v, label]) => (
-                          <button
-                            key={v}
-                            onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                            className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                              tripForm.status === v
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-border"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
+                    placeholder="Starting city — search it"
+                  />
+                  <DateRangeField
+                    start={tripForm.start_date}
+                    end={tripForm.end_date}
+                    onChange={(start_date, end_date) =>
+                      setTripForm({ ...tripForm, start_date, end_date })
+                    }
+                    datesStatus={tripForm.dates_status}
+                    onDatesStatusChange={(dates_status) =>
+                      setTripForm({ ...tripForm, dates_status })
+                    }
+                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-left text-[13px]"
+                  />
+                  {tripForm.start_date &&
+                    tripForm.end_date &&
+                    tripForm.end_date < tripForm.start_date && (
+                      <p className="px-1 text-[12px] font-medium text-destructive">
+                        End date can't be earlier than the start date.
+                      </p>
+                    )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      ["upcoming", "Upcoming"],
+                      ["active", "In progress"],
+                      ["past", "Past"],
+                    ].map(([v, label]) => (
                       <button
-                        disabled={
-                          !tripForm.title.trim() ||
-                          !!(tripForm.start_date && tripForm.end_date && tripForm.end_date < tripForm.start_date)
-                        }
-                        onClick={async () => {
-                          await onUpdate({
-                            title: tripForm.title.trim(),
-                            city: tripForm.city,
-                            country: tripForm.country,
-                            start_date: tripForm.start_date,
-                            end_date: tripForm.end_date,
-                            status: tripForm.status,
-                          } as Partial<TripRow>);
-                          setEditTrip(false);
-                        }}
-                        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                        key={v}
+                        onClick={() => setTripForm({ ...tripForm, status: v as string })}
+                        className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                          tripForm.status === v
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                        }`}
                       >
-                        Save changes
+                        {label}
                       </button>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                  <button
+                    disabled={
+                      !tripForm.title.trim() ||
+                      !!(
+                        tripForm.start_date &&
+                        tripForm.end_date &&
+                        tripForm.end_date < tripForm.start_date
+                      )
+                    }
+                    onClick={async () => {
+                      await onUpdate({
+                        title: tripForm.title.trim(),
+                        city: tripForm.city,
+                        country: tripForm.country,
+                        start_date: tripForm.start_date,
+                        end_date: tripForm.end_date,
+                        dates_status: tripForm.dates_status,
+                        status: tripForm.status,
+                      } as Partial<TripRow>);
+                    }}
+                    className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Save changes
+                  </button>
                 </div>
               )}
 

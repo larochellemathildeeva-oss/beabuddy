@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
+import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
 
 export type ParsedPlace = {
   name: string;
@@ -78,15 +79,7 @@ async function reverse(lat: number, lon: number) {
   }
 }
 
-type NominatimHit = {
-  lat: string;
-  lon: string;
-  name?: string;
-  display_name?: string;
-  type?: string;
-  category?: string;
-  address?: Record<string, string>;
-};
+type NominatimHit = NominatimHitLike;
 
 async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
   try {
@@ -102,18 +95,9 @@ async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
 }
 
 function hitToPlace(h: NominatimHit): ParsedPlace {
-  const a = h.address ?? {};
-  const parts = (h.display_name ?? "").split(", ");
+  const found = placeFromNominatim(h);
   return {
-    name: h.name || parts[0] || "Saved place",
-    ...(h.display_name ? { address: h.display_name } : {}),
-    ...(a["city"] || a["town"] || a["village"] || a["municipality"] || a["county"]
-      ? { city: a["city"] || a["town"] || a["village"] || a["municipality"] || a["county"]! }
-      : {}),
-    ...(a["country"] ? { country: a["country"] } : {}),
-    ...(h.type ? { category: h.type.replace(/_/g, " ") } : {}),
-    lat: Number(h.lat),
-    lon: Number(h.lon),
+    ...found,
     source: "Web search",
     url: `https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lon}`,
   };
@@ -126,10 +110,11 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     let hits: NominatimHit[] = [];
     for (const query of fuzzyQueryVariants(data.query)) {
-      hits = await nominatim(query, 8);
+      hits = await nominatim(query, 10);
       if (hits.length) break;
     }
-    const places = hits.map(hitToPlace);
+    const refined = refineNominatimHits(hits, data.query);
+    const places = (refined.length ? refined : hits).map(hitToPlace);
     return fuzzyRank(places, data.query, (place) => [place.name, place.address, place.city, place.country], 0);
   });
 

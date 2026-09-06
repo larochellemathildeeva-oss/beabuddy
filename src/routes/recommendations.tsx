@@ -6,7 +6,9 @@ import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import { parsePlaceLink, lookupCoords, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
+import { placeSuggestionLines } from "@/lib/place-label";
 import { fuzzyRank } from "@/lib/fuzzy";
+import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 
@@ -50,6 +52,7 @@ type Draft = {
 
 function RecommendationsPage() {
   const [query, setQuery] = useState("");
+  const [placeFilter, setPlaceFilter] = useState("All places");
   const [category, setCategory] = useState("All");
   const [mode, setMode] = useState<"link" | "search" | "here" | "manual" | null>(null);
   const [link, setLink] = useState("");
@@ -96,9 +99,12 @@ function RecommendationsPage() {
           removable: false,
         };
 
-  const views = saved.map(rowView);
+  const venues = saved.filter((r) => !isCityLevelPlace(r));
+  const views = venues.map(rowView);
+  const places = ["All places", ...uniqueRecCities(saved)];
   const categories = ["All", ...new Set(views.map((v) => v.category))];
-  const inCategory = views.filter((v) => category === "All" || v.category === category);
+  const inPlace = views.filter((v) => recMatchesPlace(v, placeFilter));
+  const inCategory = inPlace.filter((v) => category === "All" || v.category === category);
   const filtered = query.trim()
     ? fuzzyRank(inCategory, query, (v) => [v.name, v.city, v.country, v.by, v.notes])
     : [...inCategory].sort((a, b) => {
@@ -203,26 +209,48 @@ function RecommendationsPage() {
           className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[13px] outline-none placeholder:text-muted-foreground focus:border-primary"
         />
 
-        <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
-          {categories.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
-                category === c
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+        <div>
+          <p className="label-caps mb-2 text-muted-foreground">Places</p>
+          <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
+            {places.map((c) => (
+              <button
+                key={c}
+                onClick={() => setPlaceFilter(c)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                  placeFilter === c
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <p className="label-caps mb-2 text-muted-foreground">Kind</p>
+          <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCategory(c)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                  category === c
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card"
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
         </div>
 
         <section>
           <p className="label-caps mb-2 text-foreground">Pin nearby places</p>
           <NearbyMapPin
-            existing={saved
+            existing={venues
               .filter((r): r is RecoRowDB => "lat" in r && r.lat != null && r.lon != null)
               .map((r) => ({
                 id: r.id,
@@ -313,19 +341,24 @@ function RecommendationsPage() {
               </button>
               {results && results.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  {results.map((r) => (
-                    <button
-                      key={`${r.lat}-${r.lon}-${r.name}`}
-                      onClick={() => {
-                        setDraft({ ...r, category: r.category ?? "Place" });
-                        setResults(null);
-                      }}
-                      className="w-full rounded-xl border border-border bg-background p-3 text-left"
-                    >
-                      <p className="text-[13px] font-semibold">{r.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{r.address ?? ""}</p>
-                    </button>
-                  ))}
+                  {results.map((r) => {
+                    const line = placeSuggestionLines(r);
+                    return (
+                      <button
+                        key={`${r.lat}-${r.lon}-${r.name}`}
+                        onClick={() => {
+                          setDraft({ ...r, category: r.category ?? "Place" });
+                          setResults(null);
+                        }}
+                        className="w-full rounded-xl border border-border bg-background p-3 text-left"
+                      >
+                        <p className="text-[13px] font-semibold">{line.title}</p>
+                        {line.subtitle ? (
+                          <p className="text-[11px] text-muted-foreground">{line.subtitle}</p>
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

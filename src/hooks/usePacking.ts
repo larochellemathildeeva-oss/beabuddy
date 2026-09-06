@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  asDraftItems,
+  encodeSectionLabel,
+  hydratePackItem,
+  isMissingSectionColumn,
+  normalizeSection,
+  type PackDraftItem,
+} from "@/lib/packing-sections";
+
+export type { PackDraftItem };
 
 export type PackRow = {
   id: string;
@@ -15,7 +25,118 @@ export type PackItemRow = {
   quantity: number;
   packed: boolean;
   position: number;
+  section: string | null;
 };
+
+/** Cached after the first select/insert: the live DB may not have this column yet. */
+let sectionColumnAvailable: boolean | null = null;
+
+type ItemQueryRow = {
+  id: string;
+  list_id: string;
+  label: string;
+  quantity?: number | null;
+  packed?: boolean | null;
+  position: number;
+  section?: string | null;
+};
+
+function markSectionUnavailable(error: { message?: string; code?: string } | null | undefined) {
+  if (isMissingSectionColumn(error)) {
+    sectionColumnAvailable = false;
+    return true;
+  }
+  return false;
+}
+
+async function selectItems(listId?: string): Promise<ItemQueryRow[]> {
+  if (sectionColumnAvailable !== false) {
+    let q = supabase
+      .from("packing_items")
+      .select("id, list_id, label, quantity, packed, position, section")
+      .order("position", { ascending: true });
+    if (listId) q = q.eq("list_id", listId);
+    const first = await q;
+    if (!first.error) {
+      sectionColumnAvailable = true;
+      return first.data;
+    }
+    if (!markSectionUnavailable(first.error)) throw first.error;
+  }
+  let retryQ = supabase
+    .from("packing_items")
+    .select("id, list_id, label, quantity, packed, position")
+    .order("position", { ascending: true });
+  if (listId) retryQ = retryQ.eq("list_id", listId);
+  const retry = await retryQ;
+  if (retry.error) throw retry.error;
+  return retry.data;
+}
+
+async function insertDrafts(
+  uid: string,
+  listId: string,
+  drafts: PackDraftItem[],
+  startPosition = 0,
+): Promise<ItemQueryRow[]> {
+  const rowsFor = (withSection: boolean) =>
+    itemInsertRows(uid, listId, drafts, withSection).map((row, i) => ({
+      ...row,
+      position: startPosition + i,
+    }));
+
+  if (sectionColumnAvailable !== false) {
+    const first = await supabase
+      .from("packing_items")
+      .insert(rowsFor(true))
+      .select("id, list_id, label, quantity, packed, position, section");
+    if (!first.error) {
+      sectionColumnAvailable = true;
+      return first.data;
+    }
+    if (!markSectionUnavailable(first.error)) throw first.error;
+  }
+  const retry = await supabase
+    .from("packing_items")
+    .insert(rowsFor(false))
+    .select("id, list_id, label, quantity, packed, position");
+  if (retry.error) throw retry.error;
+  return retry.data;
+}
+
+function toItemRows(rows: ItemQueryRow[]): PackItemRow[] {
+  return rows.map((row) =>
+    hydratePackItem({
+      id: row.id,
+      list_id: row.list_id,
+      label: row.label,
+      quantity: row.quantity ?? 1,
+      packed: row.packed ?? false,
+      position: row.position,
+      section: row.section ?? null,
+    }),
+  );
+}
+
+function itemInsertRows(
+  uid: string,
+  listId: string,
+  drafts: PackDraftItem[],
+  withSection: boolean,
+) {
+  return drafts.map((item, k) => {
+    const section = normalizeSection(item.section);
+    const label = item.label.trim();
+    return {
+      user_id: uid,
+      list_id: listId,
+      label: withSection ? label : encodeSectionLabel(section, label),
+      quantity: item.quantity && item.quantity > 1 ? item.quantity : 1,
+      position: k,
+      ...(withSection ? { section } : {}),
+    };
+  });
+}
 
 export function usePacking(tripId?: string | null) {
   const [uid, setUid] = useState<string | null>(null);
@@ -33,18 +154,18 @@ export function usePacking(tripId?: string | null) {
       setLoading(false);
       return;
     }
-    const { data: l } = await supabase
-      .from("packing_lists")
-      .select("id, name, emoji, trip_id")
-      .order("created_at", { ascending: true });
-    const { data: i } = await supabase
-      .from("packing_items")
-      .select("id, list_id, label, quantity, packed, position")
-      .order("position", { ascending: true });
-    const all = (l ?? []) as PackRow[];
-    setPacks(tripId ? all.filter((x) => x.trip_id === tripId) : all.filter((x) => !x.trip_id));
-    setItems((i ?? []) as PackItemRow[]);
-    setLoading(false);
+    try {
+      const { data: l } = await supabase
+        .from("packing_lists")
+        .select("id, name, emoji, trip_id")
+        .order("created_at", { ascending: true });
+      const itemRows = await selectItems();
+      const all = (l ?? []) as PackRow[];
+      setPacks(tripId ? all.filter((x) => x.trip_id === tripId) : all.filter((x) => !x.trip_id));
+      setItems(toItemRows(itemRows));
+    } finally {
+      setLoading(false);
+    }
   }, [tripId]);
 
   useEffect(() => {
@@ -54,7 +175,7 @@ export function usePacking(tripId?: string | null) {
   }, [load]);
 
   const createPack = useCallback(
-    async (name: string, emoji: string, starter: string[] = []) => {
+    async (name: string, emoji: string, starter: Array<string | PackDraftItem> = []) => {
       if (!uid) throw new Error("Sign in first");
       const { data, error } = await supabase
         .from("packing_lists")
@@ -64,18 +185,10 @@ export function usePacking(tripId?: string | null) {
       if (error) throw error;
       const pack = data as PackRow;
       setPacks((p) => [...p, pack]);
-      if (starter.length) {
-        const rows = starter.map((label, k) => ({
-          user_id: uid,
-          list_id: pack.id,
-          label,
-          position: k,
-        }));
-        const { data: made } = await supabase
-          .from("packing_items")
-          .insert(rows)
-          .select("id, list_id, label, quantity, packed, position");
-        setItems((s) => [...s, ...((made ?? []) as PackItemRow[])]);
+      const drafts = asDraftItems(starter).filter((item) => item.label.trim());
+      if (drafts.length) {
+        const made = await insertDrafts(uid, pack.id, drafts);
+        setItems((s) => [...s, ...toItemRows(made)]);
       }
       return pack.id;
     },
@@ -97,13 +210,8 @@ export function usePacking(tripId?: string | null) {
     async (listId: string, label: string, quantity = 1) => {
       if (!uid) throw new Error("Sign in first");
       const position = items.filter((i) => i.list_id === listId).length;
-      const { data, error } = await supabase
-        .from("packing_items")
-        .insert({ user_id: uid, list_id: listId, label: label.trim(), quantity, position })
-        .select("id, list_id, label, quantity, packed, position")
-        .single();
-      if (error) throw error;
-      setItems((s) => [...s, data as PackItemRow]);
+      const made = await insertDrafts(uid, listId, [{ label, quantity }], position);
+      setItems((s) => [...s, ...toItemRows(made)]);
     },
     [uid, items],
   );
@@ -133,11 +241,11 @@ export function usePacking(tripId?: string | null) {
       if (!uid) throw new Error("Sign in first");
       const source = packs.find((p) => p.id === listId);
       if (!source) return;
-      const labels = items
+      const drafts = items
         .filter((i) => i.list_id === listId)
         .sort((a, b) => a.position - b.position)
-        .map((i) => i.label);
-      await createPack(`${source.name} copy`, source.emoji, labels);
+        .map((i) => ({ label: i.label, section: i.section, quantity: i.quantity }));
+      await createPack(`${source.name} copy`, source.emoji, drafts);
     },
     [uid, packs, items, createPack],
   );
@@ -159,21 +267,13 @@ export function usePacking(tripId?: string | null) {
         .select("id")
         .single();
       if (error) throw error;
-      const { data: srcItems } = await supabase
-        .from("packing_items")
-        .select("label, quantity, position")
-        .eq("list_id", templateId)
-        .order("position", { ascending: true });
-      if (srcItems?.length) {
-        await supabase.from("packing_items").insert(
-          srcItems.map((i, k) => ({
-            user_id: me,
-            list_id: made.id as string,
-            label: i.label,
-            quantity: i.quantity,
-            position: k,
-          })),
-        );
+      const drafts = toItemRows(await selectItems(templateId)).map((i) => ({
+        label: i.label,
+        section: i.section,
+        quantity: i.quantity,
+      }));
+      if (drafts.length) {
+        await insertDrafts(me, made.id as string, drafts);
       }
       await load();
       return made.id as string;

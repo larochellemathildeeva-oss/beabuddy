@@ -1,5 +1,6 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { placeSuggestionLines } from "@/lib/place-label";
 import { searchPlaces, type ParsedPlace } from "@/lib/places.functions";
 
 export function PlaceSearchInput({
@@ -63,21 +64,26 @@ export function PlaceSearchInput({
       {err && <p className="text-[11px] text-muted-foreground">{err}</p>}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">
-          {hits.slice(0, 5).map((h, i) => (
-            <li key={`${h.name}-${i}`}>
-              <button
-                type="button"
-                onClick={() => {
-                  onPick(h);
-                  setHits([]);
-                }}
-                className="w-full rounded-lg px-2 py-1.5 text-left"
-              >
-                <p className="text-[13px] font-medium">{h.name}</p>
-                <p className="truncate text-[11px] text-muted-foreground">{h.address ?? ""}</p>
-              </button>
-            </li>
-          ))}
+          {hits.slice(0, 5).map((h, i) => {
+            const line = placeSuggestionLines(h);
+            return (
+              <li key={`${h.name}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(h);
+                    setHits([]);
+                  }}
+                  className="w-full rounded-lg px-2 py-1.5 text-left"
+                >
+                  <p className="text-[13px] font-medium">{line.title}</p>
+                  {line.subtitle ? (
+                    <p className="truncate text-[11px] text-muted-foreground">{line.subtitle}</p>
+                  ) : null}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

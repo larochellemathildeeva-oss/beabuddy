@@ -71,7 +71,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Start a trip",
-        body: "Name it, search the starting city — the country fills itself in — and tick a budget if you want one.",
+        body: "Name it, search the starting city, pick your dates if you know them, and tick a budget if you want one.",
         selector: "[data-guide='new-trip']",
       },
       {
@@ -91,7 +91,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Packing lists",
-        body: "Build reusable packs — weekend, beach, ski, work — and tick items off as you fill the bag.",
+        body: "The paper icon adds a saved list to this trip. Create and edit those reusable packs under You — weekend, beach, ski, work — then add a copy here to tick things off.",
         selector: "[data-guide='packing-lists']",
       },
       {
@@ -110,8 +110,13 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='reco-search']",
       },
       {
-        title: "Narrow it down",
-        body: "These chips filter by kind — restaurants, bars, hotels, whatever you've been tagging.",
+        title: "Filter by city",
+        body: "These chips are cities from your saved recs — not pins. Tap one to see every restaurant, hotel or spot there.",
+        selector: "[data-guide='reco-places']",
+      },
+      {
+        title: "Filter by kind",
+        body: "These chips filter by category — restaurants, bars, hotels, whatever you've been tagging.",
         selector: "[data-guide='reco-categories']",
       },
       {

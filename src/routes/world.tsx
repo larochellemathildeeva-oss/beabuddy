@@ -12,6 +12,7 @@ import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { deriveTravelStats } from "@/lib/travel-stats";
+import { isCityLevelPlace } from "@/lib/reco-place";
 
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
@@ -53,7 +54,9 @@ function WorldPage() {
   const photo = usePhotoMemories();
   const vault = useRecommendations();
   const t = useTrips();
-  const allPins = [...photo.pins, ...vault.pins];
+  const allPins = [...photo.pins, ...vault.pins].filter(
+    (p) => p.type !== "reco" || !isCityLevelPlace(p),
+  );
 
   // Photo rows plus vault pins, so a city added by hand on this map counts too.
   // photo.pins are omitted on purpose — they are derived from photo.rows and
@@ -211,7 +214,12 @@ function WorldPage() {
 
         <AddVisitedCity onSaved={() => void vault.reload()} />
 
-        <ComparePins pins={[...photo.pins, ...vault.comparePins]} />
+        <ComparePins
+          pins={[
+            ...photo.pins,
+            ...vault.comparePins.filter((p) => p.type !== "reco" || !isCityLevelPlace(p)),
+          ]}
+        />
 
 
         {selected ? (
