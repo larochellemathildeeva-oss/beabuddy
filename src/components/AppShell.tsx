@@ -2,6 +2,8 @@ import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tan
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
+import { useAutoSeed } from "../hooks/useAutoSeed";
+import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
 
 import {
   ArrowLeft,
@@ -51,6 +53,8 @@ export function AppShell({
   const showBack = pathname !== "/";
   const { user, loading } = useAuth();
   useLegalConsent();
+  // A brand-new account gets sample data once, so the app has something to show.
+  useAutoSeed();
   const [online, setOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -68,11 +72,19 @@ export function AppShell({
 
   // The app frame is for members, except on pages a visitor has to be able to
   // read before they have an account.
+  //
+  // Never bounce while an OAuth result is still in the URL: Google returns to a
+  // gated page with `?code=` and Supabase redeems it a beat later, so a
+  // redirect here rewrites the URL and destroys a single-use code — leaving
+  // someone who just signed in with Google sitting on the sign-in form.
   useEffect(() => {
-    if (!publicPage && !loading && !user) navigate({ to: "/auth", replace: true });
+    if (publicPage || loading || user) return;
+    if (hasPendingOAuthResultInWindow()) return;
+    navigate({ to: "/auth", replace: true });
   }, [publicPage, loading, user, navigate]);
 
-  if (!publicPage && (loading || !user)) {
+  const settlingOAuth = !user && hasPendingOAuthResultInWindow();
+  if (!publicPage && (loading || !user || settlingOAuth)) {
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-background">
         <p className="text-[13px] text-muted-foreground">Loading…</p>
