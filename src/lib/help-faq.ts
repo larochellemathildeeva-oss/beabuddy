@@ -120,7 +120,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "How do I add cities I already visited?",
-        a: "On World, open Add a city by hand. Type one city, or paste / upload a list from your notes. Béa looks each name up and you pick the right pin before anything is saved to the globe. Those cities count in your travel stats too.",
+        a: "On World, open Add a city by hand — now labelled Add cities or countries. Type one place, or paste / upload a list of cities or countries from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything is saved to the globe. If one name is not recognised, tap Correct it, type the usual country or city name, and look that one up again. Those places count in your travel stats too.",
       },
       {
         q: "Where do recommendations come from?",

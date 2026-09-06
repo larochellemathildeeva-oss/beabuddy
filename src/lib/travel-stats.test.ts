@@ -62,6 +62,19 @@ describe("deriveTravelStats", () => {
     assert.equal(stats.days, 2);
     assert.equal(stats.cities, 2);
   });
+
+  it("counts a country pin as a country, not an extra city", () => {
+    const france = pin({
+      id: "fr",
+      name: "France",
+      city: "France",
+      country: "France",
+      category: "Country",
+    });
+    const stats = deriveTravelStats([], [france]);
+    assert.equal(stats.countries, 1);
+    assert.equal(stats.cities, 0);
+  });
 });
 
 describe("countryWorldShare", () => {

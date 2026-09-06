@@ -172,6 +172,22 @@ test("locationFromParsedPlace fills the city field with the full place line", ()
   assert.equal(loc.country, "Canada");
 });
 
+test("refineNominatimHits keeps a country when the query is that country", () => {
+  const france: NominatimHitLike = {
+    lat: "46.6",
+    lon: "1.9",
+    name: "France",
+    display_name: "France",
+    type: "administrative",
+    addresstype: "country",
+    importance: 0.9,
+    address: { country: "France", country_code: "fr" },
+  };
+  const refined = refineNominatimHits([france, montrealAdmin], "France");
+  assert.ok(refined.some((hit) => hit.addresstype === "country"));
+  assert.equal(placeFromNominatim(refined[0]!).country, "France");
+});
+
 test("formatTripLocation does not repeat a country already in the city line", () => {
   assert.equal(formatTripLocation("Montreal, Quebec, Canada", "Canada"), "Montreal, Quebec, Canada");
   assert.equal(formatTripLocation("Montreal", "Canada"), "Montreal, Canada");

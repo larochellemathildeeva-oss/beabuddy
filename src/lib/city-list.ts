@@ -1,8 +1,11 @@
 import type { PinType } from "../data/atlas.ts";
 import type { NewReco } from "../hooks/useRecommendations.ts";
+import { foldAccents } from "./fuzzy.ts";
 import type { ParsedPlace } from "./places.functions.ts";
+import { localPlaceHits } from "./world-countries.ts";
 
-export const CITY_LIST_MAX = 40;
+/** Enough for a full world list, plus a few extras such as Taiwan. */
+export const CITY_LIST_MAX = 220;
 
 export type CityListDraft = {
   query: string;
@@ -55,14 +58,18 @@ export function startCityDrafts(names: string[]): CityListDraft[] {
     .map((name) => name.trim())
     .filter((name) => name.length >= 2)
     .slice(0, CITY_LIST_MAX)
-    .map((name) => ({
-      query: name,
-      originalName: name,
-      hits: [],
-      chosen: null,
-      skip: false,
-      status: "pending" as const,
-    }));
+    .map((name) => {
+      const draft: CityListDraft = {
+        query: name,
+        originalName: name,
+        hits: [],
+        chosen: null,
+        skip: false,
+        status: "pending",
+      };
+      const local = localPlaceHits(name);
+      return local.length ? applyCityHits(draft, [...local]) : draft;
+    });
 }
 
 export function applyCityHits(draft: CityListDraft, hits: ParsedPlace[]): CityListDraft {
@@ -75,23 +82,46 @@ export function applyCityHits(draft: CityListDraft, hits: ParsedPlace[]): CityLi
   };
 }
 
+/** Rename one list row and resolve it locally when the new name is a country. */
+export function correctCityDraft(draft: CityListDraft, name: string): CityListDraft {
+  const query = name.trim();
+  const next: CityListDraft = {
+    ...draft,
+    query,
+    originalName: query || draft.originalName,
+    hits: [],
+    chosen: null,
+    skip: false,
+    status: query.length < 2 ? "empty" : "pending",
+  };
+  if (query.length < 2) return next;
+  const local = localPlaceHits(query);
+  return local.length ? applyCityHits(next, [...local]) : next;
+}
+
+function isCountryHit(hit: ParsedPlace): boolean {
+  return foldAccents(hit.category ?? "") === "country";
+}
+
 export function draftsToCities(drafts: CityListDraft[], pinType: PinType, source: string): NewReco[] {
   return drafts
     .filter((draft) => !draft.skip)
     .flatMap((draft) => {
       const hit = draft.chosen != null ? draft.hits[draft.chosen] : undefined;
       if (hit?.lat == null || hit.lon == null) return [];
-      const city = (hit.city || hit.name || draft.originalName).trim();
+      const country = isCountryHit(hit);
+      const label = (country ? hit.country || hit.name : hit.city || hit.name || draft.originalName).trim();
       const reco: NewReco = {
-        name: city,
-        city,
+        name: label,
+        city: label,
         pin_type: pinType,
-        category: "City",
+        category: country ? "Country" : "City",
         source,
         lat: hit.lat,
         lon: hit.lon,
       };
       if (hit.country?.trim()) reco.country = hit.country.trim();
+      else if (country) reco.country = label;
       return [reco];
     });
 }

@@ -31,8 +31,19 @@ export function placeChipLabel(city: string): string {
   return city.trim().split(",")[0]?.trim() ?? city.trim();
 }
 
+/** True when the saved row is a country pin, not a city or a venue. */
+export function isCountryLevelPlace(place: RecoPlaceFields): boolean {
+  const category = foldAccents(place.category ?? "").replace(/_/g, " ");
+  if (category === "country") return true;
+  const name = foldAccents(place.name);
+  const country = foldAccents(place.country ?? "");
+  const city = foldAccents(place.city ?? "");
+  return Boolean(name && country && name === country && (!city || city === country) && GENERIC_CATEGORIES.has(category));
+}
+
 /** True when the saved row *is* a city/town, not a restaurant, hotel, etc. */
 export function isCityLevelPlace(place: RecoPlaceFields): boolean {
+  if (isCountryLevelPlace(place)) return false;
   const category = foldAccents(place.category ?? "").replace(/_/g, " ");
   if (CITY_CATEGORIES.has(category)) return true;
 
@@ -50,6 +61,7 @@ export function uniqueRecCities(places: readonly RecoPlaceFields[]): string[] {
   const seen = new Set<string>();
 
   for (const place of places) {
+    if (isCountryLevelPlace(place)) continue;
     const raw = place.city?.trim() || (isCityLevelPlace(place) ? place.name.trim() : "");
     if (!raw) continue;
     const head = placeChipLabel(raw);

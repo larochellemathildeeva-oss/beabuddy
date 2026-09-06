@@ -3,6 +3,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { AI_CALL } from "@/lib/ai-errors";
 import { SECTION_MAX_LEN } from "@/lib/packing-sections";
 
 const ParsePackingInput = z
@@ -49,8 +50,7 @@ export const parsePackingList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParsePackingInput.parse(input))
   .handler(async ({ data }): Promise<ParsedPackingList> => {
-    const { getGeminiModel } = await import("@/lib/ai.server");
-    const model = getGeminiModel();
+    const { withModelFallback } = await import("@/lib/ai.server");
     const prompt = [
       "Read this packing list (photo and/or pasted or uploaded text) and extract every item.",
       "Group items into short section headings a traveller would scan while packing.",
@@ -63,32 +63,35 @@ export const parsePackingList = createServerFn({ method: "POST" })
     ].join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: ParsedPackingSchema }),
-        reasoning: "low",
-        messages: [
-          {
-            role: "user",
-            content: data.imageDataUrls?.length
-              ? [
-                  {
-                    type: "text" as const,
-                    text: data.text?.trim()
-                      ? `${prompt}\n\nExtra notes:\n${data.text}`
-                      : prompt,
-                  },
-                  ...filePartsFromDataUrls(data.imageDataUrls),
-                ]
-              : [
-                  {
-                    type: "text" as const,
-                    text: `${prompt}\n\nList:\n${data.text}`,
-                  },
-                ],
-          },
-        ],
-      });
+      const result = await withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: ParsedPackingSchema }),
+          reasoning: "low",
+          messages: [
+            {
+              role: "user",
+              content: data.imageDataUrls?.length
+                ? [
+                    {
+                      type: "text" as const,
+                      text: data.text?.trim()
+                        ? `${prompt}\n\nExtra notes:\n${data.text}`
+                        : prompt,
+                    },
+                    ...filePartsFromDataUrls(data.imageDataUrls),
+                  ]
+                : [
+                    {
+                      type: "text" as const,
+                      text: `${prompt}\n\nList:\n${data.text}`,
+                    },
+                  ],
+            },
+          ],
+        }),
+      );
       const out = result.output;
       return {
         name: out.name.trim() || "Packing list",

@@ -149,7 +149,7 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "Add a city by hand",
-    body: "Not every visit has a photo. On World, open Add a city by hand: type one city, or paste / upload a list from your notes. Béa looks each name up and you pick the right pin before anything is saved. Those cities count in your travel stats too.",
+    body: "Not every visit has a photo. On World, open Add a city by hand: type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything is saved. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
     to: "/world",
   },
   {

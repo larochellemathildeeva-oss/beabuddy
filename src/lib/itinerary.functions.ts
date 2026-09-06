@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { AI_CALL } from "@/lib/ai-errors";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
@@ -64,9 +65,12 @@ const ParsedSchema = z.object({
 export type ParsedItinerary = z.infer<typeof ParsedSchema>;
 export type ParsedItineraryItem = z.infer<typeof ItemSchema>;
 
-async function gemini() {
-  const { getGeminiModel } = await import("@/lib/ai.server");
-  return getGeminiModel();
+/** Prefer withGemini so a rate-limit can fall through to GEMINI_FALLBACK_MODEL. */
+async function withGemini<T>(
+  run: (model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>) => Promise<T>,
+): Promise<T> {
+  const { withModelFallback } = await import("@/lib/ai.server");
+  return withModelFallback(run);
 }
 
 const instructions = (
@@ -124,7 +128,7 @@ const instructions = (
     .join("\n");
 
 async function runParse(
-  model: Awaited<ReturnType<typeof gemini>>,
+  model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>,
   data: z.infer<typeof ParseInput>,
   preferenceText: string,
 ): Promise<ParsedItinerary> {
@@ -142,6 +146,7 @@ async function runParse(
 
   const result = await generateText({
     model,
+    ...AI_CALL,
     output: Output.object({ schema: ParsedSchema }),
     reasoning: data.mode === "build" ? "medium" : "low",
     messages: [
@@ -253,15 +258,16 @@ export const parseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
-    const model = await gemini();
     const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
       context,
       data.tripCity,
       data.mode,
     );
     try {
-      const parsed = await runParse(model, data, extra);
-      return finishBuild(parsed, data.mode, recosForTag, tagVaultItems);
+      return await withGemini(async (model) => {
+        const parsed = await runParse(model, data, extra);
+        return finishBuild(parsed, data.mode, recosForTag, tagVaultItems);
+      });
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Could not read that itinerary — try a clearer photo or paste the text.");
@@ -321,7 +327,6 @@ export const reviseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReviseInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
-    const model = await gemini();
     const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
       context,
       data.tripCity,
@@ -338,23 +343,25 @@ export const reviseItinerary = createServerFn({ method: "POST" })
         .filter(Boolean)
         .join("\n\n");
       try {
-        const parsed = await runParse(
-          model,
-          {
-            imageDataUrls: null,
-            text: rebuildText,
-            tripCity: data.tripCity,
-            startDate: data.startDate,
-            endDate: data.endDate,
-            mode: "build",
-            pace: data.pace,
-            budgetLevel: data.budgetLevel,
-            currency: data.currency,
-            includeCosts: data.includeCosts,
-          },
-          extra,
-        );
-        return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+        return await withGemini(async (model) => {
+          const parsed = await runParse(
+            model,
+            {
+              imageDataUrls: null,
+              text: rebuildText,
+              tripCity: data.tripCity,
+              startDate: data.startDate,
+              endDate: data.endDate,
+              mode: "build",
+              pace: data.pace,
+              budgetLevel: data.budgetLevel,
+              currency: data.currency,
+              includeCosts: data.includeCosts,
+            },
+            extra,
+          );
+          return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+        });
       } catch (error) {
         if (NoObjectGeneratedError.isInstance(error)) {
           throw new Error("Béa couldn't rebuild that — try a shorter note, or try again.");
@@ -399,32 +406,35 @@ export const reviseItinerary = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: AlternativesSchema }),
-        reasoning: "medium",
-        prompt,
+      return await withGemini(async (model) => {
+        const result = await generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: AlternativesSchema }),
+          reasoning: "medium",
+          prompt,
+        });
+        const replacements = result.output.items.slice(0, chosen.length).map((item) => ({
+          ...item,
+          kind: (KINDS as readonly string[]).includes(item.kind) ? item.kind : "Plan",
+          source: item.source === "vault" ? ("vault" as const) : ("new" as const),
+        }));
+        const merged = mergeAlternativeItems(data.items, replacements, data.selectedIndexes);
+        const parsed = applyCostPolicy(
+          {
+            summary: result.output.summary,
+            trip_title: "",
+            start_date: data.startDate,
+            end_date: data.endDate,
+            estimated_total: result.output.estimated_total,
+            currency: result.output.currency ?? data.currency,
+            costs: data.includeCosts ? result.output.costs : [],
+            items: merged,
+          },
+          data.includeCosts,
+        );
+        return finishBuild(parsed, "build", recosForTag, tagVaultItems);
       });
-      const replacements = result.output.items.slice(0, chosen.length).map((item) => ({
-        ...item,
-        kind: (KINDS as readonly string[]).includes(item.kind) ? item.kind : "Plan",
-        source: item.source === "vault" ? ("vault" as const) : ("new" as const),
-      }));
-      const merged = mergeAlternativeItems(data.items, replacements, data.selectedIndexes);
-      const parsed = applyCostPolicy(
-        {
-          summary: result.output.summary,
-          trip_title: "",
-          start_date: data.startDate,
-          end_date: data.endDate,
-          estimated_total: result.output.estimated_total,
-          currency: result.output.currency ?? data.currency,
-          costs: data.includeCosts ? result.output.costs : [],
-          items: merged,
-        },
-        data.includeCosts,
-      );
-      return finishBuild(parsed, "build", recosForTag, tagVaultItems);
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error("Béa couldn't find alternatives — try a shorter note, or try again.");
@@ -500,28 +510,29 @@ export const compareItineraries = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ItineraryComparison> => {
-    const model = await gemini();
     const { getTravelPreferences, preferencePrompt } = await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     const homeCurrency = preferences.homeCurrency || "CAD";
 
     const parseSide = async (side: { label: string; text: string }) => {
       try {
-        return await runParse(
-          model,
-          {
-            imageDataUrls: null,
-            text: side.text,
-            tripCity: null,
-            startDate: null,
-            endDate: null,
-            mode: "import",
-            pace: null,
-            budgetLevel: null,
-            currency: homeCurrency,
-            includeCosts: true,
-          },
-          preferencePrompt(preferences),
+        return await withGemini((model) =>
+          runParse(
+            model,
+            {
+              imageDataUrls: null,
+              text: side.text,
+              tripCity: null,
+              startDate: null,
+              endDate: null,
+              mode: "import",
+              pace: null,
+              budgetLevel: null,
+              currency: homeCurrency,
+              includeCosts: true,
+            },
+            preferencePrompt(preferences),
+          ),
         );
       } catch (error) {
         if (NoObjectGeneratedError.isInstance(error)) {
@@ -534,7 +545,6 @@ export const compareItineraries = createServerFn({ method: "POST" })
 
     const parsedA = await parseSide(data.a);
     const parsedB = await parseSide(data.b);
-    const { judgmentCall } = await import("@/lib/ai.server");
 
     const prompt = [
       "Compare these two draft travel itineraries for the same traveller and help them choose.",
@@ -559,12 +569,16 @@ export const compareItineraries = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: CompareSchema }),
-        ...judgmentCall,
-        prompt,
-      });
+      const { judgmentCall } = await import("@/lib/ai.server");
+      const result = await withGemini((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: CompareSchema }),
+          ...judgmentCall,
+          prompt,
+        }),
+      );
       const finish = (
         side: z.infer<typeof SideSchema>,
         parsed: ParsedItinerary,
@@ -702,7 +716,6 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => OptimizeInput.parse(input))
   .handler(async ({ data, context }): Promise<OptimizeItinerary> => {
-    const model = await gemini();
     const { getTravelPreferences, preferencePrompt } = await import(
       "@/lib/travel-preferences.server"
     );
@@ -750,12 +763,15 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: OptimizeSchema }),
-        reasoning: "medium",
-        prompt,
-      });
+      const result = await withGemini((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: OptimizeSchema }),
+          reasoning: "medium",
+          prompt,
+        }),
+      );
       const seen = new Set<string>();
       const rearranged = result.output.items
         .filter((item) => byId.has(item.id) && !seen.has(item.id) && seen.add(item.id))
@@ -835,7 +851,6 @@ export const planDayTrip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DayTripInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
-    const model = await gemini();
     const { getTravelPreferences, preferencePrompt } = await import(
       "@/lib/travel-preferences.server"
     );
@@ -867,12 +882,15 @@ export const planDayTrip = createServerFn({ method: "POST" })
       .join("\n");
 
     try {
-      const result = await generateText({
-        model,
-        output: Output.object({ schema: ParsedSchema }),
-        reasoning: "low",
-        messages: [{ role: "user", content: prompt }],
-      });
+      const result = await withGemini((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          output: Output.object({ schema: ParsedSchema }),
+          reasoning: "low",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      );
       const allowed = new Set(["Plan", "Reservation", "Transport"]);
       const parsed: ParsedItinerary = {
         ...result.output,
