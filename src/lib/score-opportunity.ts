@@ -1,4 +1,5 @@
 import type { Pin } from "../data/atlas.ts";
+import { foldAccents } from "./fuzzy.ts";
 import { daysSince, haversine, isLatLon } from "./geo.ts";
 
 export type ScorePrefs = {
@@ -18,7 +19,7 @@ export type OpportunityScore = {
   reasons: string[];
 };
 
-const INDOOR = /\b(museum|gallery|indoor|rain|shop|market|cafe|café)\b/i;
+const INDOOR = /\b(museum|gallery|indoor|rain|shop|mall|cafe|café)\b/i;
 const FOOD = /\b(food|restaurant|eat|lunch|dinner|breakfast|market|cafe|café)\b/i;
 
 function haystack(pin: Pin): string {
@@ -44,6 +45,10 @@ export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext 
   let score = 0;
   const reasons: string[] = [];
 
+  // NOTE: nothing populates pin.priority today — there is no priority column on
+  // `recommendations` and no writer in src/. These weights are inert against real
+  // data and only fire in tests. Kept so the term is ready if the column lands;
+  // do not tune the other weights against it until it does.
   if (pin.priority === "High") {
     score += 40;
     reasons.push("High priority");
@@ -60,7 +65,15 @@ export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext 
     reasons.push("Already been");
   }
 
-  const tagHits = prefs.tags.filter((tag) => tag && text.includes(tag.toLowerCase()));
+  // Word-boundary match: a raw substring made "art" hit Cartagena and "bar" hit
+  // Barcelona. Multi-word tags still match as a phrase.
+  const folded = foldAccents(text);
+  const words = new Set(folded.split(" "));
+  const tagHits = prefs.tags.filter((tag) => {
+    const needle = foldAccents(tag ?? "");
+    if (!needle) return false;
+    return needle.includes(" ") ? folded.includes(needle) : words.has(needle);
+  });
   if (tagHits.length) {
     score += Math.min(24, tagHits.length * 12);
     reasons.push(`Matches ${tagHits[0]}`);
@@ -77,9 +90,22 @@ export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext 
   if (pin.dateAdded) {
     const days = daysSince(pin.dateAdded, now);
     if (days != null) {
-      const recency = Math.max(0, 16 - days / 30);
-      score += recency * boosts.recent;
-      if (days <= 7) reasons.push("Saved this week");
+      // Two different things about age are interesting, and the old single
+      // recency term only captured one. Just-saved is top of mind; long-dormant
+      // is the reason the vault exists at all — "saved in 2026, surfaced years
+      // later". Scoring only recency ranked the resurfacing case last.
+      if (days <= 14) {
+        score += 10 * boosts.recent;
+        if (days <= 7) reasons.push("Saved this week");
+      }
+      if (!pin.visited && pin.type !== "visited") {
+        const dormant = Math.min(18, (days / 365) * 12);
+        score += dormant;
+        const years = Math.floor(days / 365);
+        if (years >= 1) {
+          reasons.push(`Saved ${years} year${years > 1 ? "s" : ""} ago, never visited`);
+        }
+      }
     }
   }
 

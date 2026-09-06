@@ -72,4 +72,41 @@ describe("scoreOpportunity", () => {
     const b = scoreOpportunity(pin({ id: "b", name: "New reco" }), { tags: [], preferredCountries: [] });
     assert.ok(b.score > a.score);
   });
+
+  it("does not treat a substring as a tag match", () => {
+    // "art" must not match Cartagena, nor "bar" Barcelona.
+    const prefs = { tags: ["art", "bar"], preferredCountries: [] };
+    const decoy = scoreOpportunity(
+      pin({ id: "d", name: "Hostel", city: "Cartagena", country: "Colombia" }),
+      prefs,
+    );
+    const real = scoreOpportunity(
+      pin({ id: "r", name: "Art gallery", city: "Toronto", category: "art" }),
+      prefs,
+    );
+    assert.ok(real.score > decoy.score);
+    assert.ok(!decoy.reasons.some((r) => r.startsWith("Matches")));
+  });
+
+  it("surfaces a long-dormant save, which is the point of the vault", () => {
+    // The old recency-only term ranked this last. It is the product's whole
+    // premise: saved years ago, never visited, surfaced now.
+    const old = pin({ id: "old", name: "Bar Basso", dateAdded: "2023-09-06" });
+    const fresh = pin({ id: "fresh", name: "Somewhere new", dateAdded: "2026-09-05" });
+    const prefs = { tags: [], preferredCountries: [] };
+    const dormant = scoreOpportunity(old, prefs, { now });
+    assert.ok(dormant.score > 0);
+    assert.ok(dormant.reasons.some((r) => r.includes("never visited")));
+    // and a just-saved pin still gets its own bump
+    assert.ok(scoreOpportunity(fresh, prefs, { now }).reasons.includes("Saved this week"));
+  });
+
+  it("does not credit dormancy to somewhere already visited", () => {
+    const been = scoreOpportunity(
+      pin({ id: "v", name: "Old haunt", type: "visited", dateAdded: "2023-09-06" }),
+      { tags: [], preferredCountries: [] },
+      { now },
+    );
+    assert.ok(!been.reasons.some((r) => r.includes("never visited")));
+  });
 });
