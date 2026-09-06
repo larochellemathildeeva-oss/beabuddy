@@ -371,7 +371,7 @@ function LiveTripCard({
           onClick={() => setPlannerOpen(true)}
           className="relative grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10"
         >
-          <img src={logo} alt="" className="size-7 rounded-full" />
+          <img src={logo} alt="" className="size-7 object-contain" />
           <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
         </button>
         <button
