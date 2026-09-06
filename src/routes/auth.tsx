@@ -76,15 +76,18 @@ function AuthPage() {
         if (err) throw err;
         // Confirm-email leaves no session, so RLS would refuse this insert.
         // AppShell records consent on the first signed-in page instead.
-        if (data.session && data.user) {
+        const newUser = data.user;
+        if (data.session && newUser) {
           const { error: consentError } = await supabase.from("legal_consents").insert(
             CONSENT_TYPES.map((t) => ({
-              user_id: data.user.id,
+              user_id: newUser.id,
               consent_type: t,
               document_version: LEGAL_VERSION,
             })),
           );
-          if (consentError) throw consentError;
+          // Account already exists. A failed insert must not look like a failed
+          // signup — AppShell writes the same rows on the next page.
+          if (consentError) console.error("[legal_consents]", consentError.message);
         }
         if (!data.session) {
           setMessage("Check your email and tap the confirmation link to finish signing up.");

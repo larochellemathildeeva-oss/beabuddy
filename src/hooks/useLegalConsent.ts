@@ -18,11 +18,15 @@ export function useLegalConsent() {
     if (!user) return;
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error: readError } = await supabase
         .from("legal_consents")
         .select("consent_type")
         .eq("document_version", LEGAL_VERSION);
       if (cancelled) return;
+      if (readError) {
+        console.error("[legal_consents]", readError.message);
+        return;
+      }
       const have = new Set((data ?? []).map((r) => r.consent_type));
       const missing = CONSENT_TYPES.filter((t) => !have.has(t));
       if (missing.length) {
