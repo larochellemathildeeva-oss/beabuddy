@@ -12,6 +12,7 @@ import { ItineraryDirections } from "@/components/ItineraryDirections";
 
 import { useAuth } from "@/hooks/useAuth";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
+import type { RouteLeg } from "@/lib/directions.functions";
 import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
@@ -307,11 +308,15 @@ function LiveTripCard({
   onUpdate: (patch: Partial<TripRow>) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
-  const board = useTripBoard(open ? trip.id : null, me);
-  const budget = useTripBudget(open ? trip.id : null);
-  const dir = useOfflineDirections(open ? trip.id : null);
-  const templates = usePacking(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  // The Béa planner button lives in the card header, outside the expanded view,
+  // so anything it writes to needs a trip id even while the card is collapsed —
+  // otherwise saving its plan failed with "Open a trip first".
+  const activeId = open || plannerOpen ? trip.id : null;
+  const board = useTripBoard(activeId, me);
+  const budget = useTripBudget(activeId);
+  const dir = useOfflineDirections(activeId);
+  const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<"invite" | "edit" | "offline" | "packing" | null>(
     null,
@@ -460,7 +465,7 @@ function LiveTripCard({
 
 
           <ol className="relative space-y-3 border-l border-border pl-4">
-            {board.items.map((item) => (
+            {board.items.map((item, i) => (
               <li key={item.id} className="relative">
                 <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -502,6 +507,7 @@ function LiveTripCard({
                     )}
                   </p>
                 )}
+                <StopDirections leg={dir.saved?.legs[i]} />
                 <button
                   onClick={() => void board.removeItem(item.id)}
                   className="mt-0.5 text-[11px] text-muted-foreground underline"
@@ -978,5 +984,61 @@ function LiveTripCard({
         </div>
       )}
     </article>
+  );
+}
+
+
+/**
+ * Saved walking/driving directions for the leg that starts at this stop.
+ * Collapsed to a single quiet line so the timeline stays readable — the steps
+ * are only worth screen space at the moment someone is about to walk them.
+ */
+function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!leg) return null;
+
+  const measured = leg.distance > 0;
+  const summary = measured
+    ? `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
+    : `Directions to ${leg.to}`;
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="text-[11px] font-medium text-primary underline underline-offset-2"
+      >
+        {open ? "Hide directions" : summary}
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg border border-border bg-elevated p-2">
+          {leg.steps.length > 0 ? (
+            <ol className="space-y-1">
+              {leg.steps.map((step, s) => (
+                <li key={s} className="text-[11px] text-muted-foreground">
+                  {step.instruction}
+                  {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {leg.capped
+                ? "Turn-by-turn paused here — open in maps for this stretch."
+                : "Exact spot unknown — open in maps to search it."}
+            </p>
+          )}
+          <a
+            href={leg.mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1.5 inline-block text-[11px] font-semibold text-primary underline"
+          >
+            Open in maps
+          </a>
+        </div>
+      )}
+    </div>
   );
 }
