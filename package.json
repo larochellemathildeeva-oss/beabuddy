@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "start": "node scripts/start-production.mjs",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
   },
   "engines": {
