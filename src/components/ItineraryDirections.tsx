@@ -10,6 +10,7 @@ export function ItineraryDirections({ stops, area }: { stops: Stop[]; area?: str
   const run = useServerFn(buildRoutes);
   const [legs, setLegs] = useState<RouteLeg[] | null>(null);
   const [unresolved, setUnresolved] = useState<string[]>([]);
+  const [deferred, setDeferred] = useState<string[]>([]);
   const [openLeg, setOpenLeg] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -22,9 +23,10 @@ export function ItineraryDirections({ stops, area }: { stops: Stop[]; area?: str
     try {
       const result = (await run({
         data: { stops, ...(area ? { area } : {}) },
-      })) as { legs: RouteLeg[]; unresolved: string[] };
+      })) as { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] };
       setLegs(result.legs);
       setUnresolved(result.unresolved);
+      setDeferred(result.deferred ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't work out the directions.");
     } finally {
@@ -74,7 +76,9 @@ export function ItineraryDirections({ stops, area }: { stops: Stop[]; area?: str
                 <p className="text-[11.5px] text-muted-foreground">
                   {leg.distance > 0
                     ? `${leg.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
-                    : "Exact spot unknown — open in maps to search it"}
+                    : leg.capped
+                      ? "Turn-by-turn paused here — open in maps for this stretch"
+                      : "Exact spot unknown — open in maps to search it"}
                 </p>
               </button>
               {openLeg === i && (
@@ -107,6 +111,11 @@ export function ItineraryDirections({ stops, area }: { stops: Stop[]; area?: str
       {unresolved.length > 0 && (
         <p className="mt-2 text-[11.5px] text-muted-foreground">
           Couldn't find: {unresolved.join(", ")}
+        </p>
+      )}
+      {(deferred.length > 0 || legs?.some((leg) => leg.capped)) && (
+        <p className="mt-2 text-[11.5px] text-muted-foreground">
+          Later stretches open in maps — Béa stops looking after a long list so the rest of the trip stays usable.
         </p>
       )}
     </div>

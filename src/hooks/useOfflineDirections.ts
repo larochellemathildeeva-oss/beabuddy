@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 
-export type SavedDirections = { legs: RouteLeg[]; unresolved: string[]; savedAt: string };
+export type SavedDirections = {
+  legs: RouteLeg[];
+  unresolved: string[];
+  deferred?: string[];
+  savedAt: string;
+};
 
 const key = (tripId: string) => `bea.directions.${tripId}`;
 
@@ -26,7 +31,7 @@ export function useOfflineDirections(tripId: string | null) {
   }, [tripId]);
 
   const download = useCallback(
-    async (stops: { title: string }[], area?: string) => {
+    async (stops: { title: string; lat?: number | null; lon?: number | null }[], area?: string) => {
       if (!tripId) return;
       setBusy(true);
       setError("");

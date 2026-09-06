@@ -1,28 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getRates, type RateTable } from "@/lib/rates.functions";
+import { getRates, HOME_CURRENCIES, type RateTable } from "@/lib/rates.functions";
 
 const HOME_KEY = "bea-home-currency";
 
-export const homeCurrencies = [
-  "CAD",
-  "USD",
-  "EUR",
-  "GBP",
-  "AUD",
-  "CHF",
-  "JPY",
-  "MXN",
-  "SEK",
-  "NOK",
-  "NZD",
-  "SGD",
-] as const;
+export const homeCurrencies = HOME_CURRENCIES;
+const ALLOWED_HOME = new Set<string>(HOME_CURRENCIES);
 
 function guessHome() {
   if (typeof window === "undefined") return "CAD";
   const saved = window.localStorage.getItem(HOME_KEY);
-  if (saved) return saved;
+  if (saved && ALLOWED_HOME.has(saved)) return saved;
   try {
     const region = new Intl.Locale(navigator.language).region;
     const map: Record<string, string> = {
@@ -91,6 +79,7 @@ export function useRates() {
   }, [home, load]);
 
   const setHomeCurrency = useCallback((next: string) => {
+    if (!ALLOWED_HOME.has(next)) return;
     window.localStorage.setItem(HOME_KEY, next);
     setHome(next);
   }, []);

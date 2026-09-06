@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type RateTable = {
   base: string;
@@ -6,14 +7,39 @@ export type RateTable = {
   rates: Record<string, number>;
 };
 
+export const HOME_CURRENCIES = [
+  "CAD",
+  "USD",
+  "EUR",
+  "GBP",
+  "AUD",
+  "CHF",
+  "JPY",
+  "MXN",
+  "SEK",
+  "NOK",
+  "NZD",
+  "SGD",
+] as const;
+
+export type HomeCurrency = (typeof HOME_CURRENCIES)[number];
+
+const ALLOWED_BASE = new Set<string>(HOME_CURRENCIES);
+
+function parseBase(data: { base?: string } | undefined): { base: HomeCurrency } {
+  const base = (data?.base ?? "CAD").toUpperCase();
+  if (!ALLOWED_BASE.has(base)) throw new Error("Unsupported currency");
+  return { base: base as HomeCurrency };
+}
+
 /** Live exchange rates from the European Central Bank feed (frankfurter.dev). */
 export const getRates = createServerFn({ method: "GET" })
-  .inputValidator((data: { base?: string }) => ({
-    base: (data?.base ?? "CAD").toUpperCase().slice(0, 3),
-  }))
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { base?: string }) => parseBase(data))
   .handler(async ({ data }): Promise<RateTable> => {
     const res = await fetch(
       `https://api.frankfurter.dev/v1/latest?base=${encodeURIComponent(data.base)}`,
+      { signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) throw new Error("Could not reach the exchange rate service");
     const json = (await res.json()) as { base: string; date: string; rates: Record<string, number> };
