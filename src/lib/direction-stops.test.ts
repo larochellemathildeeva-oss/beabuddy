@@ -7,7 +7,10 @@ import {
   looksLikeStreetAddress,
   mapsDirUrl,
   placeHintFromDetail,
+  placeQueryCandidates,
+  reuseKeyForStop,
   stopsForDirections,
+  streetNameFromText,
   timelineStopsForDirections,
 } from "./direction-stops.ts";
 
@@ -80,4 +83,37 @@ test("hasCoords rejects empty and 0,0 pins", () => {
   assert.equal(hasCoords({ lat: 49.2, lon: -123.1 }), true);
   assert.equal(hasCoords({ lat: 0, lon: 0 }), false);
   assert.equal(hasCoords({ lat: null, lon: -123 }), false);
+});
+
+test("streetNameFromText pulls a street out of a shopping or range line", () => {
+  assert.equal(streetNameFromText("Alberni Street Luxury Shopping"), "Alberni Street");
+  assert.equal(streetNameFromText("Granville St between W 5th and W 16th"), "Granville St");
+  assert.equal(streetNameFromText("Water St and surrounding alleys"), "Water St");
+});
+
+test("placeHintFromDetail keeps a street range as the street name", () => {
+  assert.equal(
+    placeHintFromDetail("Granville St between W 5th and W 16th; explore independent fashion"),
+    "Granville St",
+  );
+});
+
+test("placeQueryCandidates prefers a street or venue over a long activity title", () => {
+  assert.deepEqual(placeQueryCandidates("Alberni Street Luxury Shopping", null), [
+    "Alberni Street",
+    "Alberni Street Luxury Shopping",
+  ]);
+  assert.deepEqual(placeQueryCandidates("Lunch at Nightingale", "1017 W Hastings St"), ["1017 W Hastings St"]);
+  assert.equal(placeQueryCandidates("Check in at Fairmont Pacific Rim", "1038 Canada Place, Vancouver")[0], "1038 Canada Place, Vancouver");
+  assert.equal(placeQueryCandidates("South Granville Boutiques & Art Galleries", "Granville St")[0], "Granville St");
+  assert.ok(
+    placeQueryCandidates("South Granville Boutiques & Art Galleries", null).includes("South Granville"),
+  );
+});
+
+test("reuseKeyForStop treats the same street with a city suffix as one pin", () => {
+  assert.equal(
+    reuseKeyForStop({ title: "Check in", address: "1038 Canada Place, Vancouver" }),
+    reuseKeyForStop({ title: "Check out", address: "1038 Canada Place" }),
+  );
 });

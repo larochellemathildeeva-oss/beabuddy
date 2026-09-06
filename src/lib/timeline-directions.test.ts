@@ -47,6 +47,13 @@ test("legsToTimelineItems uses the from-stop day and destination coords", () => 
   assert.equal(again.length, 0);
 });
 
+test("directionDetail names a same-place stretch", () => {
+  assert.equal(
+    directionDetail({ ...walk, distance: 0, duration: 0, sameSpot: true }),
+    "Same place — no walk · https://maps.example/walk",
+  );
+});
+
 test("directionDetail only says the spot is unknown when it is", () => {
   assert.equal(
     directionDetail({ ...walk, distance: 0, duration: 0, unknownSpot: true }),

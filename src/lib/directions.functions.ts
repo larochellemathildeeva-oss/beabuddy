@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { hasCoords, looksLikeStreetAddress, mapsDirUrl } from "@/lib/direction-stops";
+import { hasCoords, mapsDirUrl, placeQueryCandidates, reuseKeyForStop } from "@/lib/direction-stops";
 import { haversine } from "@/lib/geo";
 
 export type RouteStep = { instruction: string; distance: number };
@@ -18,6 +18,8 @@ export type RouteLeg = {
   capped?: boolean;
   /** True when neither end could be placed on the map. */
   unknownSpot?: boolean;
+  /** True when both ends resolved to the same pin. */
+  sameSpot?: boolean;
   fromLat?: number;
   fromLon?: number;
   toLat?: number;
@@ -37,46 +39,11 @@ function cleanArea(area: string): string {
   return area.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").replace(/\s+,/g, ",").trim();
 }
 
-// Turn a timeline title like "Picnic Lunch at Beaver Lake · Est. 10 CAD"
-// into searchable place-name candidates.
-function candidates(title: string): string[] {
-  const base = title
-    .split("·")[0]!
-    .replace(/\([^)]*\)/g, " ")
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const stripVerb = (v: string) =>
-    v
-      .replace(
-        /^(?:purchase|buy|hike|explore|visit|walk|stroll|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip|check\s+in(?:\s+at)?|check\s+out(?:\s+of)?)\b\s*/i,
-        "",
-      )
-      .trim();
-  const out: string[] = [];
-  const push = (v: string | undefined) => {
-    const t = (v ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").trim();
-    if (t.length > 2 && !out.includes(t)) out.push(t);
-  };
-  const stripTail = (v: string) =>
-    v
-      .replace(
-        /\s+(?:walking|walk|tour|dinner|lunch|breakfast|brunch|drinks?|coffee|hike|visit|exploration)$/i,
-        "",
-      )
-      .trim();
-  // "X at Place" → the place is the strongest candidate
-  const at = base.match(/\b(?:at|in|to|around|near)\s+(.+)$/i);
-  if (at?.[1]) push(stripTail(stripVerb(at[1]).split(/\s*&\s*/)[0] ?? ""));
-  if (at?.[1]) push(at[1]);
-  // Verb-stripped, without "& second place" tails and trailing activity words
-  push(stripTail(stripVerb(base).split(/\s*&\s*/)[0] ?? ""));
-  push(stripVerb(base).split(/\s*&\s*/)[0]);
-  push(stripVerb(base));
-  push(base.split(/\s*&\s*/)[0]);
-  push(base);
-  return out.slice(0, 6);
-}
+// Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
+// A long day plan needs more than a dozen lookups; reuse identical venues.
+const LOOKUP_BUDGET = 30;
+const LEG_BUDGET = 60;
+const WALL_MS = 80_000;
 
 async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
   const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
@@ -134,12 +101,6 @@ async function leg(
     return null;
   }
 }
-
-// Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
-// They are not the same cost, so they do not share a number.
-const LOOKUP_BUDGET = 15;
-const LEG_BUDGET = 60;
-const WALL_MS = 40_000;
 
 const coord = z.preprocess((value) => {
   if (value == null || value === "") return null;
@@ -203,19 +164,31 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const area = data.area?.trim() ?? "";
     const points: ({ lat: number; lon: number } | null)[] = [];
     const deferred: string[] = [];
+    const remembered = new Map<string, { lat: number; lon: number }>();
+    const queryCache = new Map<string, { lat: number; lon: number } | null>();
     let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
     const deadline = Date.now() + WALL_MS;
     const lookup = async (query: string) => {
+      const cacheKey = query.toLowerCase();
+      if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
       lookupsLeft -= 1;
       const found = await geocode(query);
+      queryCache.set(cacheKey, found);
       if (lookupsLeft > 0) await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
       return found;
     };
     for (const stop of data.stops) {
       if (hasCoords(stop)) {
-        points.push({ lat: stop.lat, lon: stop.lon });
+        const pin = { lat: stop.lat, lon: stop.lon };
+        remembered.set(reuseKeyForStop(stop), pin);
+        points.push(pin);
+        continue;
+      }
+      const reuse = remembered.get(reuseKeyForStop(stop));
+      if (reuse) {
+        points.push(reuse);
         continue;
       }
       if (lookupsLeft <= 0 || Date.now() > deadline) {
@@ -224,10 +197,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       const region = cleanArea(area);
-      const hint = stop.address?.trim() ?? "";
-      const names = looksLikeStreetAddress(hint)
-        ? [hint]
-        : [...candidates(stop.title), ...(hint ? [hint] : [])];
+      const names = placeQueryCandidates(stop.title, stop.address);
       let found: { lat: number; lon: number } | null = null;
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
@@ -235,18 +205,12 @@ export const buildRoutes = createServerFn({ method: "POST" })
         if (found) break;
       }
       // Some well-known places (e.g. Beaver Lake) only resolve without a region suffix.
-      if (!found && region) {
-        for (const name of names) {
-          const hit = await lookup(name);
-          if (!hit) continue;
-          // Guard against same-named places far away: if we already have a
-          // located stop on this trip, the new one must be near it.
-          const anchor = points.find((p) => p !== null);
-          if (anchor && haversine(anchor, hit) > 150_000) continue;
-          found = hit;
-          break;
-        }
+      if (!found && region && names[0]) {
+        const hit = await lookup(names[0]);
+        const anchor = points.find((p) => p !== null);
+        if (hit && (!anchor || haversine(anchor, hit) <= 150_000)) found = hit;
       }
+      if (found) remembered.set(reuseKeyForStop(stop), found);
       points.push(found);
     }
 
@@ -268,6 +232,28 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       const straight = haversine(a, b);
+      if (straight < 25) {
+        legs.push({
+          from: fromName,
+          to: toName,
+          mode: "walking",
+          distance: 0,
+          duration: 0,
+          steps: [],
+          mapUrl: mapsDirUrl(
+            { title: fromName, lat: a.lat, lon: a.lon },
+            { title: toName, lat: b.lat, lon: b.lon },
+            area,
+            "walking",
+          ),
+          sameSpot: true,
+          fromLat: a.lat,
+          fromLon: a.lon,
+          toLat: b.lat,
+          toLon: b.lon,
+        });
+        continue;
+      }
       const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
       if (legsLeft <= 0 || Date.now() > deadline) {
         legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a, to: b, mode }));

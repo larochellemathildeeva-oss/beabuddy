@@ -38,6 +38,85 @@ export function looksLikeStreetAddress(value: string): boolean {
   return /^\d+[a-z]?\s+\S+/i.test(text);
 }
 
+const ACTIVITY_SUFFIX =
+  /\s+(?:(?:luxury|designer|artisanal|&|and)\s+)*(?:shopping|boutiques?(?:\s*(?:&|and)\s+(?:art\s+)?galleries)?|art\s+galleries|galleries|treatment|experience|spa(?:\s+treatment)?)$/i;
+
+/** "Alberni Street Luxury Shopping" / "Granville St between 5th and 16th" → the street. */
+export function streetNameFromText(value: string): string | null {
+  const text = value.replace(/\s+/g, " ").trim();
+  if (!text) return null;
+  const match = text.match(
+    /\b([A-ZÀ-ÖØ-ÿ0-9][\w.'-]*(?:\s+[A-ZÀ-ÖØ-ÿ0-9][\w.']*){0,4}\s+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Place|Pl|Way|Lane|Ln|Crescent|Cres)\.?)\b/i,
+  );
+  const street = match?.[1]?.replace(/\.$/, "").trim();
+  return street && street.length >= 4 ? street : null;
+}
+
+function titlePlaceCandidates(title: string): string[] {
+  const base = title
+    .split("·")[0]!
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const stripVerb = (v: string) =>
+    v
+      .replace(
+        /^(?:purchase|buy|hike|explore|visit|walk|stroll|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip|check\s+in(?:\s+at)?|check\s+out(?:\s+of)?)\b\s*/i,
+        "",
+      )
+      .trim();
+  const out: string[] = [];
+  const push = (v: string | undefined) => {
+    const t = (v ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").trim();
+    if (t.length > 2 && !out.includes(t)) out.push(t);
+  };
+  const stripTail = (v: string) =>
+    v
+      .replace(
+        /\s+(?:walking|walk|tour|dinner|lunch|breakfast|brunch|drinks?|coffee|hike|visit|exploration)$/i,
+        "",
+      )
+      .trim();
+  const at = base.match(/\b(?:at|in|to|around|near)\s+(.+)$/i);
+  if (at?.[1]) push(stripTail(stripVerb(at[1]).split(/\s*&\s*/)[0] ?? ""));
+  if (at?.[1]) push(at[1]);
+  const stripped = base.replace(ACTIVITY_SUFFIX, "").trim();
+  if (stripped && stripped !== base) push(stripped);
+  push(stripTail(stripVerb(base).split(/\s*&\s*/)[0] ?? ""));
+  push(stripVerb(base).split(/\s*&\s*/)[0]);
+  push(stripVerb(base));
+  push(base.split(/\s*&\s*/)[0]);
+  push(base);
+  return out;
+}
+
+/**
+ * Queries to try, best first: a real street or venue, then a cleaned title.
+ * "Alberni Street Luxury Shopping" becomes "Alberni Street" before the long phrase.
+ */
+export function placeQueryCandidates(title: string, hint?: string | null): string[] {
+  const out: string[] = [];
+  const push = (value?: string | null) => {
+    const text = (value ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").replace(/\s+/g, " ").trim();
+    if (text.length > 2 && !out.includes(text)) out.push(text);
+  };
+  const h = hint?.trim() ?? "";
+  if (looksLikeStreetAddress(h)) push(h);
+  push(streetNameFromText(h));
+  if (h && !looksLikeStreetAddress(h) && h.split(/\s+/).length <= 10) push(h);
+  push(streetNameFromText(title));
+  for (const name of titlePlaceCandidates(title)) push(name);
+  return looksLikeStreetAddress(out[0] ?? "") ? out.slice(0, 1) : out.slice(0, 4);
+}
+
+export function reuseKeyForStop(stop: { title: string; address?: string | null | undefined }): string {
+  const address = stop.address?.trim();
+  if (!address) return stop.title.trim().toLowerCase();
+  const street = looksLikeStreetAddress(address) ? address.split(",")[0]!.trim() : address;
+  return street.toLowerCase().replace(/\s+/g, " ");
+}
+
 /**
  * Planner items stash the venue or street in `detail` ("1038 Canada Place, Vancouver; suggest…")
  * and leave `address` / coords empty. Pull the first clause when it looks like a place.
@@ -50,6 +129,8 @@ export function placeHintFromDetail(detail?: string | null): string | null {
     .trim();
   if (first.length < 4 || first.length > 180) return null;
   if (looksLikeStreetAddress(first)) return first;
+  const street = streetNameFromText(first);
+  if (street) return street;
   if (/^(browse|explore|suggest|book|reserve|enjoy|visit|walk|stroll|head|take|grab)\b/i.test(first)) {
     return null;
   }

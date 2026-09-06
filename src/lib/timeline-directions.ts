@@ -29,13 +29,15 @@ export function directionTitle(leg: Pick<RouteLeg, "mode" | "to">): string {
 }
 
 export function directionDetail(
-  leg: Pick<RouteLeg, "mode" | "distance" | "duration" | "mapUrl" | "capped" | "unknownSpot">,
+  leg: Pick<RouteLeg, "mode" | "distance" | "duration" | "mapUrl" | "capped" | "unknownSpot" | "sameSpot">,
 ): string {
   const parts: string[] = [];
   if (leg.distance > 0) {
     parts.push(leg.mode === "walking" ? "Walk" : "Drive");
     parts.push(prettyDistance(leg.distance));
     parts.push(prettyDuration(leg.duration));
+  } else if (leg.sameSpot) {
+    parts.push("Same place — no walk");
   } else if (leg.capped) {
     parts.push("Open in maps for this stretch");
   } else if (leg.unknownSpot) {
@@ -47,7 +49,8 @@ export function directionDetail(
   return parts.join(" · ");
 }
 
-export function unroutedLegCopy(leg: Pick<RouteLeg, "capped" | "unknownSpot">): string {
+export function unroutedLegCopy(leg: Pick<RouteLeg, "capped" | "unknownSpot" | "sameSpot">): string {
+  if (leg.sameSpot) return "Same place — no walk";
   if (leg.capped) return "Turn-by-turn paused here — open in maps for this stretch";
   if (leg.unknownSpot) return "Exact spot unknown — open in maps to search it";
   return "Open in maps for this stretch";
