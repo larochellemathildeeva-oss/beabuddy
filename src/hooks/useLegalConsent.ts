@@ -5,9 +5,10 @@ import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
 
 /**
  * Ensures the signed-in member has an on-file acceptance of the current
- * Terms of Service, Privacy Policy and liability disclaimer. Email sign-ups
- * record consent at sign-up; this hook covers social sign-in and members who
- * accepted an older document version. Records are insert-once proof.
+ * Terms of Service, Privacy Policy and liability disclaimer. Confirm-email
+ * sign-ups skip the auth-page insert (no session, RLS would refuse it).
+ * Mounted in AppShell so home, trips, and the globe record it too. Also
+ * covers social sign-in and older document versions.
  */
 export function useLegalConsent() {
   const { user } = useAuth();
@@ -25,13 +26,17 @@ export function useLegalConsent() {
       const have = new Set((data ?? []).map((r) => r.consent_type));
       const missing = CONSENT_TYPES.filter((t) => !have.has(t));
       if (missing.length) {
-        await supabase.from("legal_consents").insert(
+        const { error } = await supabase.from("legal_consents").insert(
           missing.map((t) => ({
             user_id: user.id,
             consent_type: t,
             document_version: LEGAL_VERSION,
           })),
         );
+        if (error && error.code !== "23505") {
+          console.error("[legal_consents]", error.message);
+          return;
+        }
       }
       if (!cancelled) setRecorded(true);
     })();

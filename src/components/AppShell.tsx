@@ -1,6 +1,7 @@
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useLegalConsent } from "../hooks/useLegalConsent";
 
 import {
   ArrowLeft,
@@ -42,6 +43,7 @@ export function AppShell({
   const canGoBack = useCanGoBack();
   const showBack = pathname !== "/";
   const { user, loading } = useAuth();
+  useLegalConsent();
 
   // Everything inside the app frame is for members only: send visitors to the
   // sign-in page before any page content is rendered.

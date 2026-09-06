@@ -74,16 +74,17 @@ function AuthPage() {
           },
         });
         if (err) throw err;
-        // Record proof of consent for the documents the member just accepted.
-        const newUserId = data.user?.id;
-        if (newUserId) {
-          await supabase.from("legal_consents").insert(
+        // Confirm-email leaves no session, so RLS would refuse this insert.
+        // AppShell records consent on the first signed-in page instead.
+        if (data.session && data.user) {
+          const { error: consentError } = await supabase.from("legal_consents").insert(
             CONSENT_TYPES.map((t) => ({
-              user_id: newUserId,
+              user_id: data.user.id,
               consent_type: t,
               document_version: LEGAL_VERSION,
             })),
           );
+          if (consentError) throw consentError;
         }
         if (!data.session) {
           setMessage("Check your email and tap the confirmation link to finish signing up.");
