@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { FeedbackForm } from "@/components/FeedbackForm";
 
 export const Route = createFileRoute("/help")({
   head: () => ({
@@ -167,7 +168,7 @@ function Item({ q, a }: Faq) {
 
 function HelpPage() {
   return (
-    <AppShell eyebrow="Help" title="Questions, answered.">
+    <AppShell publicPage eyebrow="Help" title="Questions, answered.">
       <div className="space-y-5 pb-4">
         <p data-guide="help-faq" className="text-[13px] leading-relaxed text-muted-foreground">
           Everything people usually ask. If a page still feels unclear, tap Ask Béa (the sparkle at
@@ -185,6 +186,11 @@ function HelpPage() {
             </div>
           </section>
         ))}
+
+        <section className="card-soft p-4">
+          <p className="label-caps mb-2 text-foreground">Tell us something</p>
+          <FeedbackForm />
+        </section>
 
         <section className="card-soft p-4">
           <p className="text-[14px] font-medium">Still stuck?</p>

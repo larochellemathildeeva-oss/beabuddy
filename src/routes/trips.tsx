@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FileText, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
@@ -12,6 +12,7 @@ import { ItineraryDirections } from "@/components/ItineraryDirections";
 
 import { useAuth } from "@/hooks/useAuth";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
+import type { RouteLeg } from "@/lib/directions.functions";
 import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
@@ -40,10 +41,36 @@ export const Route = createFileRoute("/trips")({
   component: TripsPage,
 });
 
+const OPEN_TRIP_KEY = "bea.trips.open";
+
 function TripsPage() {
   const { user } = useAuth();
   const t = useTrips();
   const [openId, setOpenId] = useState<string>("");
+
+  // Switching tabs unmounts this route, so the expanded trip used to collapse and
+  // take its timeline, budget and saved directions with it — which reads as
+  // "everything disappeared" rather than "the card closed". Remember it for the
+  // session. Restored in an effect, not in useState, so SSR and the first client
+  // render agree.
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(OPEN_TRIP_KEY);
+      if (stored) setOpenId(stored);
+    } catch {
+      /* private mode, or storage disabled — just start collapsed */
+    }
+  }, []);
+
+  const openTrip = useCallback((id: string) => {
+    setOpenId(id);
+    try {
+      if (id) sessionStorage.setItem(OPEN_TRIP_KEY, id);
+      else sessionStorage.removeItem(OPEN_TRIP_KEY);
+    } catch {
+      /* not being able to remember it is not worth failing the click over */
+    }
+  }, []);
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [form, setForm] = useState({
@@ -191,7 +218,7 @@ function TripsPage() {
                       const id = await t.createTrip({ ...form, budget_enabled: withBudget });
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
-                      setOpenId(id);
+                      openTrip(id);
                       setForm({ title: "", city: "", country: "", start_date: "", end_date: "" });
                       setWithBudget(false);
                       setCreating(false);
@@ -220,7 +247,7 @@ function TripsPage() {
                     setError("");
                     try {
                       const id = await t.joinTrip(code, myName);
-                      setOpenId(id);
+                      openTrip(id);
                       setCode("");
                       setJoining(false);
                     } catch (e) {
@@ -246,7 +273,7 @@ function TripsPage() {
                     .filter((m) => m.trip_id === trip.id)
                     .map((m) => m.display_name?.trim() || "Traveller")}
                   open={openId === trip.id}
-                  onToggle={() => setOpenId(openId === trip.id ? "" : trip.id)}
+                  onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
                   me={{ id: t.uid, name: myName }}
                   onInvite={() => t.inviteToTrip(trip.id)}
                   onUpdate={(patch) => t.updateTrip(trip.id, patch)}
@@ -310,11 +337,14 @@ function LiveTripCard({
 }) {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
-  const boundId = open || plannerOpen ? trip.id : null;
-  const board = useTripBoard(boundId, me);
-  const budget = useTripBudget(boundId);
-  const cities = useTripStops(boundId, me.id);
-  const dir = useOfflineDirections(boundId);
+  // The Béa planner button lives in the card header, outside the expanded view,
+  // so anything it writes to needs a trip id even while the card is collapsed —
+  // otherwise saving its plan failed with "Open a trip first".
+  const activeId = open || plannerOpen ? trip.id : null;
+  const board = useTripBoard(activeId, me);
+  const budget = useTripBudget(activeId);
+  const cities = useTripStops(activeId, me.id);
+  const dir = useOfflineDirections(activeId);
   const routeStops =
     cities.stops.length >= 2
       ? cities.stops.map((s) => ({
@@ -499,7 +529,7 @@ function LiveTripCard({
 
 
           <ol className="relative space-y-3 border-l border-border pl-4">
-            {board.items.map((item) => (
+            {board.items.map((item, i) => (
               <li key={item.id} className="relative">
                 <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -541,6 +571,7 @@ function LiveTripCard({
                     )}
                   </p>
                 )}
+                <StopDirections leg={dir.saved?.legs[i]} />
                 <button
                   onClick={() => void board.removeItem(item.id)}
                   className="mt-0.5 text-[11px] text-muted-foreground underline"
@@ -1040,5 +1071,61 @@ function LiveTripCard({
         </div>
       )}
     </article>
+  );
+}
+
+
+/**
+ * Saved walking/driving directions for the leg that starts at this stop.
+ * Collapsed to a single quiet line so the timeline stays readable — the steps
+ * are only worth screen space at the moment someone is about to walk them.
+ */
+function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
+  const [open, setOpen] = useState(false);
+  if (!leg) return null;
+
+  const measured = leg.distance > 0;
+  const summary = measured
+    ? `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
+    : `Directions to ${leg.to}`;
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="text-[11px] font-medium text-primary underline underline-offset-2"
+      >
+        {open ? "Hide directions" : summary}
+      </button>
+      {open && (
+        <div className="mt-1.5 rounded-lg border border-border bg-elevated p-2">
+          {leg.steps.length > 0 ? (
+            <ol className="space-y-1">
+              {leg.steps.map((step, s) => (
+                <li key={s} className="text-[11px] text-muted-foreground">
+                  {step.instruction}
+                  {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {leg.capped
+                ? "Turn-by-turn paused here — open in maps for this stretch."
+                : "Exact spot unknown — open in maps to search it."}
+            </p>
+          )}
+          <a
+            href={leg.mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-1.5 inline-block text-[11px] font-semibold text-primary underline"
+          >
+            Open in maps
+          </a>
+        </div>
+      )}
+    </div>
   );
 }

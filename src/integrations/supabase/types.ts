@@ -168,6 +168,42 @@ export type Database = {
           },
         ]
       }
+      app_reports: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          kind: string
+          message: string
+          path: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind: string
+          message: string
+          path?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          path?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       legal_consents: {
         Row: {
           accepted_at: string

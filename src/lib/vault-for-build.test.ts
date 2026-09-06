@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { tagVaultItems, vaultPrompt, type VaultReco } from "./vault-for-build.ts";
+import { matchesDestination, tagVaultItems, vaultPrompt, type VaultReco } from "./vault-for-build.ts";
 
 const rom: VaultReco = {
   name: "Royal Ontario Museum",
@@ -57,5 +57,14 @@ describe("vaultPrompt", () => {
     );
     assert.equal(tagged[0]!.source, "vault");
     assert.equal(tagged[1]!.source, "new");
+  });
+});
+
+describe("matchesDestination", () => {
+  it("does not answer a York trip with New York", () => {
+    assert.equal(matchesDestination("Paris, France", "Paris"), true);
+    assert.equal(matchesDestination("New York", "York"), false);
+    assert.equal(matchesDestination("new york", "New York"), true);
+    assert.equal(matchesDestination(null, "Paris"), false);
   });
 });

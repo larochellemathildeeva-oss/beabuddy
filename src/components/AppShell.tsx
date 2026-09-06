@@ -32,10 +32,17 @@ export function AppShell({
   children,
   eyebrow,
   title,
+  publicPage = false,
 }: {
   children: ReactNode;
   eyebrow?: string;
   title?: string;
+  /**
+   * Pages a signed-out visitor must be able to read. The sign-up form asks
+   * people to agree to the Privacy Policy and links to it, so gating that link
+   * behind an account makes the consent unreadable before it is given.
+   */
+  publicPage?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const router = useRouter();
@@ -45,19 +52,23 @@ export function AppShell({
   const { user, loading } = useAuth();
   useLegalConsent();
 
-  // Everything inside the app frame is for members only: send visitors to the
-  // sign-in page before any page content is rendered.
+  // The app frame is for members, except on pages a visitor has to be able to
+  // read before they have an account.
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/auth", replace: true });
-  }, [loading, user, navigate]);
+    if (!publicPage && !loading && !user) navigate({ to: "/auth", replace: true });
+  }, [publicPage, loading, user, navigate]);
 
-  if (loading || !user) {
+  if (!publicPage && (loading || !user)) {
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-background">
         <p className="text-[13px] text-muted-foreground">Loading…</p>
       </div>
     );
   }
+
+  // A signed-out visitor gets the frame without the member tab bar, which would
+  // only bounce them back to sign-in.
+  const showTabs = !!user;
 
 
 
@@ -116,6 +127,7 @@ export function AppShell({
 
         <main className="flex-1 px-4 pb-6 pt-3.5">{children}</main>
 
+        {showTabs && (
         <nav className="sticky bottom-0 z-20 grid grid-cols-6 border-t border-border/70 bg-background/90 px-2 py-1.5 backdrop-blur-xl">
           {tabs.map(({ to, label, icon: Icon }) => {
             const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
@@ -133,6 +145,7 @@ export function AppShell({
             );
           })}
         </nav>
+        )}
       </div>
     </div>
   );

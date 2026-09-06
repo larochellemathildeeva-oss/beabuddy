@@ -1,4 +1,5 @@
 import type { Pin } from "../data/atlas.ts";
+import { foldAccents } from "./fuzzy.ts";
 import { rankOpportunities, type ScorePrefs } from "./score-opportunity.ts";
 
 export type VaultReco = {
@@ -35,6 +36,24 @@ function recoAsPin(row: VaultReco, index: number): Pin {
   };
 }
 
+/**
+ * The SQL side fetches with `ilike '%city%'`, which is deliberately broad so we
+ * do not miss "Paris, France" for a trip to "Paris". That same breadth makes a
+ * trip to York pull New York, so narrow it here on word boundaries.
+ */
+export function matchesDestination(rowCity: string | null, destination: string): boolean {
+  const city = foldAccents(rowCity ?? "");
+  const target = foldAccents(destination);
+  if (!city || !target) return false;
+  if (city === target) return true;
+  // "paris, france" contains "paris" as a whole word; "new york" does not
+  // contain "york" as a standalone destination match for a York trip.
+  const words = city.split(/[\s,]+/).filter(Boolean);
+  const targetWords = target.split(/[\s,]+/).filter(Boolean);
+  if (targetWords.length > 1) return city.includes(target);
+  return words[0] === targetWords[0];
+}
+
 export function vaultPrompt(
   destination: string,
   recos: VaultReco[],
@@ -43,7 +62,7 @@ export function vaultPrompt(
   limit = 8,
 ): string {
   const ranked = rankOpportunities(
-    recos.map(recoAsPin),
+    recos.filter((row) => matchesDestination(row.city, destination)).map(recoAsPin),
     prefs,
   ).slice(0, limit);
 
@@ -69,7 +88,9 @@ export function vaultPrompt(
   return lines.join("\n");
 }
 
-export function tagVaultItems<T extends { title: string; source?: "vault" | "new" | null }>(
+export function tagVaultItems<
+  T extends { title: string; source?: "vault" | "new" | null | undefined },
+>(
   items: T[],
   recos: VaultReco[],
 ): T[] {

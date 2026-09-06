@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref so a quick follow-up push doesn't queue.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: typecheck · lint · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Vite transpiles without typechecking, so a type error ships silently
+      # unless this step runs. Blocking on purpose.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Non-blocking for now: the tree carries ~1,360 pre-existing Prettier
+      # findings. Run `npm run format` once, commit it, then delete this line
+      # so lint blocks like the other two steps.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
