@@ -22,7 +22,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between the quick walk and the Deep Dive?",
-        a: "First sign-in starts the quick walk around the block — spotlight highlights on Home, World, trips, Recs, Near and You, with a few taps. The Deep Dive goes through every feature: pin filters, travel stats, adding a city by hand, travel tags, Flying Solo, Optimize, day trips, packing, offline directions, legal, the lot. Replay from Profile settings any time to pick either walk.",
+        a: "First sign-in starts a quick walk around the block — the save → globe → trip → near loop, with a few taps. The Deep Dive goes through every feature: pin filters, travel stats, adding a city by hand, travel tags, Flying Solo, Optimize, day trips, packing, offline directions, legal, the lot. Replay from Profile settings any time to pick either walk.",
       },
       {
         q: "How do I customize what shows on Home?",

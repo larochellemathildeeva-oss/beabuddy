@@ -288,24 +288,29 @@ export function Tour({
         </button>
       </div>
 
-      {showCopy ? (
-        <>
-          <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
-          {blocked && (
-            <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-              This screen opens once you're signed in — for now, picture it here.
-            </p>
+          {showCopy ? (
+            <>
+              <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
+              {blocked && (
+                <p className="mt-1.5 text-[11px] italic text-muted-foreground">
+                  This screen opens once you're signed in — for now, picture it here.
+                </p>
+              )}
+              {step?.awaitClick && box && !clicked && (
+                <p className="mt-1.5 text-[11px] font-medium text-primary">
+                  {step.actionHint ?? "Tap the highlighted bit, then Next"}
+                </p>
+              )}
+              {step?.awaitClick && box && clicked && (
+                <p className="mt-1.5 text-[11px] font-medium text-primary">
+                  {step.actionDoneHint ?? "Got it — tap Next"}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-2 text-[13px] text-muted-foreground">Finding that bit of the screen…</p>
           )}
-          {needsClick && (
-            <p className="mt-1.5 text-[11px] font-medium text-primary">
-              Tap the highlighted bit to continue (or Skip).
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="mt-2 text-[13px] text-muted-foreground">Finding that bit of the screen…</p>
-      )}
 
       {mode === "deep" ? (
         <div className="mt-3 h-1 rounded-full bg-border">

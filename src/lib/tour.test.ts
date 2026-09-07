@@ -1,13 +1,39 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
+import { DEEP_BODY_MAX, QUICK_BODY_MAX, wordCount } from "./tour-copy.ts";
 import { DEEP_STEPS, QUICK_STEPS, routeNeedsAuth, tourSteps } from "./tour.ts";
 
-test("quick tour is a short spotlight walk with a few taps", () => {
-  assert.equal(QUICK_STEPS.length, 10);
-  assert.equal(QUICK_STEPS[0]?.title, "Welcome to Béa");
+test("quick tour is a short journey loop with a few taps", () => {
+  assert.equal(QUICK_STEPS.length, 7);
+  assert.equal(QUICK_STEPS[0]?.title, "Welcome");
   assert.equal(QUICK_STEPS.at(-1)?.title, "You're all set");
   assert.ok(QUICK_STEPS.some((s) => s.selector), "quick walk spotlights real controls");
   assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 3);
+  const taps = QUICK_STEPS.filter((s) => s.awaitClick);
+  for (const s of taps) {
+    assert.ok(s.actionHint, `${s.title} needs an actionHint`);
+    assert.match(s.actionHint!, /then Next/i, `${s.title} hint should mention Next`);
+  }
+  const blob = QUICK_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
+  for (const needle of ["paris", "lisbon", "save", "globe", "near"]) {
+    assert.ok(blob.includes(needle), `journey should mention ${needle}`);
+  }
+  assert.ok(!blob.includes("every saved place"), "must not overclaim city-level recs as pins");
+});
+
+test("quick and deep bodies stay under the word caps", () => {
+  for (const s of QUICK_STEPS) {
+    assert.ok(
+      wordCount(s.body) <= QUICK_BODY_MAX,
+      `${s.title} is ${wordCount(s.body)} words (max ${QUICK_BODY_MAX})`,
+    );
+  }
+  for (const s of DEEP_STEPS) {
+    assert.ok(
+      wordCount(s.body) <= DEEP_BODY_MAX,
+      `${s.title} is ${wordCount(s.body)} words (max ${DEEP_BODY_MAX})`,
+    );
+  }
 });
 
 test("deep dive is longer and covers every feature area", () => {
@@ -18,7 +44,6 @@ test("deep dive is longer and covers every feature area", () => {
     "travel tags",
     "flying solo",
     "heatmap",
-    "choose stats",
     "add a city",
     "offline",
     "packing",
@@ -30,7 +55,6 @@ test("deep dive is longer and covers every feature area", () => {
     "customize home",
     "layover",
     "snooze",
-    "locations only",
     "join with a code",
     "tentative",
   ]) {

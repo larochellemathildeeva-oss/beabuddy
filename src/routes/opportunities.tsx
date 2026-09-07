@@ -306,6 +306,7 @@ function OpportunitiesPage() {
                 <button
                   key={place.label}
                   type="button"
+                  data-guide={place.label === "Lisbon" ? "demo-city-lisbon" : undefined}
                   onClick={() => setManualHere(place)}
                   className={`rounded-xl border px-3 py-2 text-[12px] font-semibold transition-colors ${
                     manualLabel === place.label

@@ -219,7 +219,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Replay the full tour",
-        body: "First sign-in already took the quick walk. Replay here to take it again, or open the Deep Dive through every feature.",
+        body: "First sign-in already took the quick journey. Replay here to take it again, or open the Deep Dive through every feature.",
         selector: "[data-guide='replay-tour']",
       },
       {
