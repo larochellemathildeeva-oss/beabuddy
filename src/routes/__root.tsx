@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useCallback, useEffect, type ReactNode } from "react";
 import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
@@ -131,14 +131,17 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const tour = useTourControl();
+  const { open, setOpen, intent } = useTourControl();
+  // Stable close handler — a new inline fn every render restarted the tour's
+  // "Finding that bit…" wait forever (effect cleanup cancelled every poll).
+  const closeTour = useCallback(() => setOpen(false), [setOpen]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <BeaProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <Tour open={tour.open} onClose={() => tour.setOpen(false)} intent={tour.intent} />
+        <Tour open={open} onClose={closeTour} intent={intent} />
       </BeaProvider>
     </QueryClientProvider>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
@@ -20,9 +20,9 @@ import {
 } from "./SpotlightOverlay";
 
 const TOUR_EVENT = "bea-tour-start";
-/** Polls for a target after route navigation before treating it as missing. */
-const TARGET_TRIES = 12;
-const TARGET_RETRY_MS = 50;
+/** Wait for route paint + data (seed/trips) before treating a target as missing. */
+const TARGET_TRIES = 40;
+const TARGET_RETRY_MS = 100;
 const EMPTY_STEPS: ReturnType<typeof tourSteps> = [];
 
 export type TourIntent = "first-run" | "replay";
@@ -108,15 +108,18 @@ export function Tour({
   // on an empty shell or a still-loading target.
   const needsClick = !!step?.awaitClick && !!box && !clicked;
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   const finish = useCallback(() => {
     markTourSeen(safeStorage());
-    onClose();
-  }, [onClose]);
+    onCloseRef.current();
+  }, []);
 
   /** Backdrop near-miss: close the sheet but leave first-run eligible. */
   const dismissSoft = useCallback(() => {
-    onClose();
-  }, [onClose]);
+    onCloseRef.current();
+  }, []);
 
   const skipMissingTarget = useCallback(() => {
     setI((n) => {
@@ -128,6 +131,9 @@ export function Tour({
       return n + 1;
     });
   }, [steps.length, finish]);
+
+  const skipMissingRef = useRef(skipMissingTarget);
+  skipMissingRef.current = skipMissingTarget;
 
   useEffect(() => {
     if (!open) return;
@@ -191,9 +197,16 @@ export function Tour({
     );
   }, [stepSelector]);
 
+  const measureRef = useRef(measure);
+  measureRef.current = measure;
+
   // Spotlight: wait for a painted target after navigation, then track it.
   // Missing targets skip ahead (or finish on the last step) — never leave
   // awaitClick with Next disabled and nothing to tap.
+  //
+  // Critically: do NOT depend on measure/skip callbacks here. Parent re-renders
+  // (e.g. unstable onClose) used to cancel the poll every frame and leave the
+  // sheet stuck on "Finding that bit of the screen…".
   useEffect(() => {
     if (!open || !mode) return;
     setClicked(false);
@@ -208,6 +221,7 @@ export function Tour({
     let cancelled = false;
     let tries = 0;
     let retryTimer = 0;
+    const onResizeOrScroll = () => measureRef.current();
     const tick = () => {
       if (cancelled) return;
       const el = findGuideTarget(stepSelector);
@@ -223,19 +237,19 @@ export function Tour({
         return;
       }
       setTargetReady(true);
-      skipMissingTarget();
+      skipMissingRef.current();
     };
     const frame = window.requestAnimationFrame(tick);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", onResizeOrScroll);
+    window.addEventListener("scroll", onResizeOrScroll, true);
     return () => {
       cancelled = true;
       window.clearTimeout(retryTimer);
       window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", onResizeOrScroll);
+      window.removeEventListener("scroll", onResizeOrScroll, true);
     };
-  }, [open, mode, i, stepSelector, measure, skipMissingTarget]);
+  }, [open, mode, i, stepSelector]);
 
   // Interactive beats: any click inside the highlighted control unlocks Next.
   useEffect(() => {
@@ -311,29 +325,29 @@ export function Tour({
         </button>
       </div>
 
-          {showCopy ? (
-            <>
-              <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
-              {blocked && (
-                <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-                  This screen opens once you're signed in — for now, picture it here.
-                </p>
-              )}
-              {step?.awaitClick && box && !clicked && (
-                <p className="mt-1.5 text-[11px] font-medium text-primary">
-                  {step.actionHint ?? "Tap the highlighted bit, then Next"}
-                </p>
-              )}
-              {step?.awaitClick && box && clicked && (
-                <p className="mt-1.5 text-[11px] font-medium text-primary">
-                  {step.actionDoneHint ?? "Got it — tap Next"}
-                </p>
-              )}
-            </>
-          ) : (
-            <p className="mt-2 text-[13px] text-muted-foreground">Finding that bit of the screen…</p>
+      {showCopy ? (
+        <>
+          <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
+          {blocked && (
+            <p className="mt-1.5 text-[11px] italic text-muted-foreground">
+              This screen opens once you're signed in — for now, picture it here.
+            </p>
           )}
+          {step?.awaitClick && box && !clicked && (
+            <p className="mt-1.5 text-[11px] font-medium text-primary">
+              {step.actionHint ?? "Tap the highlighted bit, then Next"}
+            </p>
+          )}
+          {step?.awaitClick && box && clicked && (
+            <p className="mt-1.5 text-[11px] font-medium text-primary">
+              {step.actionDoneHint ?? "Got it — tap Next"}
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-2 text-[13px] text-muted-foreground">Finding that bit of the screen…</p>
+      )}
 
       {mode === "deep" ? (
         <div className="mt-3 h-1 rounded-full bg-border">
