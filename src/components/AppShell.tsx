@@ -131,7 +131,7 @@ export function AppShell({
                     v{APP_VERSION}
                   </span>
                 </span>
-                <span className="label-caps">Travel life</span>
+                <span className="label-caps">Travel Buddy</span>
               </span>
             </Link>
           </div>
