@@ -97,11 +97,18 @@ async function handOffOwnedSharedTrips(
         .eq("trip_id", tripId);
       if (memberErr) throw new Error(memberErr.message);
 
-      const successor = (members ?? []).find(
-        (m: { user_id: string }) => m.user_id !== userId,
-      ) as { user_id: string; role: string } | undefined;
+      const successor = (members ?? []).find((m: { user_id: string }) => m.user_id !== userId) as
+        { user_id: string; role: string } | undefined;
 
       if (!successor) continue;
+
+      // Promote role first so a failed owner_id update stays retryable (trip still owned).
+      const { error: roleErr } = await admin
+        .from("trip_members")
+        .update({ role: "owner" })
+        .eq("trip_id", tripId)
+        .eq("user_id", successor.user_id);
+      if (roleErr) throw new Error(roleErr.message);
 
       const { error: ownerErr } = await admin
         .from("trips")
@@ -110,13 +117,6 @@ async function handOffOwnedSharedTrips(
         .eq("owner_id", userId);
       if (ownerErr) throw new Error(ownerErr.message);
       transferred += 1;
-
-      const { error: roleErr } = await admin
-        .from("trip_members")
-        .update({ role: "owner" })
-        .eq("trip_id", tripId)
-        .eq("user_id", successor.user_id);
-      if (roleErr) throw new Error(roleErr.message);
     }
   } catch (e) {
     if (transferred > 0) {
@@ -149,7 +149,10 @@ async function nullCreatedBy(
   userId: string,
 ) {
   for (const column of columns) {
-    const { error } = await admin.from(table).update({ [column]: null }).eq(column, userId);
+    const { error } = await admin
+      .from(table)
+      .update({ [column]: null })
+      .eq(column, userId);
     if (error) throw new Error(`${table}.${column}: ${error.message}`);
   }
 }
@@ -256,8 +259,8 @@ export const eraseMyData = createServerFn({ method: "POST" })
   });
 
 /**
- * Permanently delete the signed-in account: hand off shared trips, purge
- * Storage, then Auth user (remaining DB rows cascade from auth.users).
+ * Permanently delete the signed-in account: purge Storage, hand off shared
+ * trips, then Auth user (remaining DB rows cascade from auth.users).
  */
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -272,11 +275,31 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = context.userId;
 
-    await handOffOwnedSharedTrips(supabaseAdmin, userId);
+    // Reversible/idempotent cleanup before ownership handoff.
     await purgeUserStorage(supabaseAdmin, userId);
 
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
-    if (error) throw new Error(error.message || "Could not delete account");
+    let transferred = 0;
+    try {
+      transferred = (await handOffOwnedSharedTrips(supabaseAdmin, userId)).transferred;
+
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (error) throw new Error(error.message || "Could not delete account");
+    } catch (e) {
+      const partial =
+        transferred > 0 ||
+        (typeof e === "object" &&
+          e !== null &&
+          "transferred" in e &&
+          typeof (e as { transferred: unknown }).transferred === "number" &&
+          (e as { transferred: number }).transferred > 0);
+      if (partial) {
+        const detail = e instanceof Error ? e.message : "Unknown error";
+        throw new Error(
+          `Account delete was interrupted after shared-trip handoff (${detail}). Tap Delete again to finish — remaining steps are safe to retry.`,
+        );
+      }
+      throw e;
+    }
 
     return { ok: true as const };
   });
