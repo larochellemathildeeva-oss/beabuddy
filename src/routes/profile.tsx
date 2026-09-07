@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
@@ -24,8 +26,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { applyDark, readDark } from "@/lib/theme";
-import { deleteMyAccount } from "@/lib/account.functions";
+import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
+import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
 
 export const Route = createFileRoute("/profile")({
@@ -413,6 +416,7 @@ function ProfilePage() {
                 Larochelle's work. You keep what you save in it. The Terms spell this out.
               </p>
             </div>
+            {user && <EraseDataPanel userId={user.id} />}
             {user && <DeleteAccountPanel userId={user.id} />}
           </div>
         </Collapsible>
@@ -463,21 +467,23 @@ function ProfilePage() {
   );
 }
 
-function DeleteAccountPanel({ userId }: { userId: string }) {
+function EraseDataPanel({ userId }: { userId: string }) {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [confirmStep, setConfirmStep] = useState<null | 1 | 2>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  async function eraseAllData() {
+  async function eraseData() {
     setBusy(true);
     setError("");
     try {
-      await deleteMyAccount({ data: { confirm: "DELETE" } });
+      await eraseMyData({ data: { confirm: "ERASE" } });
       clearLocalUserData(userId);
-      await supabase.auth.signOut();
+      queryClient.clear();
       setConfirmStep(null);
-      await navigate({ to: "/auth" });
+      toast.success("Your data was erased. You can start fresh.");
+      await navigate({ to: "/" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not erase your data.");
       setConfirmStep(null);
@@ -490,9 +496,10 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
     <div className="rounded-xl border border-destructive/30 p-3">
       <p className="text-[14px] font-medium">Erase all my data</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-        This is designed to remove your trips, recommendations, photos, receipts, vault documents,
-        and account. Shared trips are handed to another member when someone else is on them.
-        Backups and the AI provider may still hold traces for a short time.
+        Start fresh without closing your account. This is designed to remove your trips,
+        recommendations, photos, receipts, vault documents, and travel preferences. Shared trips
+        hand off to another member when someone else is on them. Your login stays. Backups and the
+        AI provider may still hold traces for a short time.
       </p>
       {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
       <button
@@ -520,8 +527,8 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmStep === 2
-                ? "There is no undo. Trips, photos, receipts, vault files, and the rest of your account data are designed to be removed for good."
-                : "This permanently erases your Béa data and closes your account. You will need a new account to use Béa again."}
+                ? "There is no undo. Your trips, photos, receipts, vault files, and preferences are designed to be removed. You stay signed in with an empty account."
+                : "This permanently erases your Béa travel data so you can start fresh. Your account and login stay."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -543,7 +550,7 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={(e) => {
                   e.preventDefault();
-                  void eraseAllData();
+                  void eraseData();
                 }}
               >
                 {busy ? "Erasing…" : "Yes — erase everything"}
@@ -552,6 +559,59 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function DeleteAccountPanel({ userId }: { userId: string }) {
+  const navigate = useNavigate();
+  const [phrase, setPhrase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const ready = phrase.trim() === "DELETE";
+
+  return (
+    <div className="rounded-xl border border-destructive/30 p-3">
+      <p className="text-[14px] font-medium">Delete my account</p>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+        Close the account entirely — login and all. Type DELETE to confirm. Prefer starting fresh
+        without closing the account? Use Erase all my data above. Backups and the AI provider may
+        still hold traces for a short time.
+      </p>
+      <input
+        value={phrase}
+        onChange={(e) => setPhrase(e.target.value)}
+        placeholder="Type DELETE"
+        autoComplete="off"
+        className="mt-3 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+        aria-label="Type DELETE to confirm account deletion"
+      />
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <button
+        type="button"
+        disabled={!ready || busy}
+        onClick={() =>
+          void (async () => {
+            setBusy(true);
+            setError("");
+            try {
+              await deleteMyAccount({ data: { confirm: "DELETE" } });
+              clearStoredVaultKeys(userId);
+              clearLocalUserData(userId);
+              await supabase.auth.signOut();
+              await navigate({ to: "/auth" });
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Could not delete the account.");
+            } finally {
+              setBusy(false);
+            }
+          })()
+        }
+        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2.5 text-[13px] font-semibold text-destructive disabled:opacity-50"
+      >
+        {busy ? "Deleting…" : "Delete my account forever"}
+      </button>
     </div>
   );
 }
