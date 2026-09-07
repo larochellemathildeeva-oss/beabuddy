@@ -28,19 +28,36 @@ export function directionTitle(leg: Pick<RouteLeg, "mode" | "to">): string {
   return `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to}`;
 }
 
+/** Google Maps / goo.gl maps links older builds appended to Transport detail. */
+const EMBEDDED_MAPS_URL_SOURCE =
+  String.raw`https?:\/\/(?:(?:www\.)?google\.[^/\s]+\/maps\S*|maps\.google\.\S*|maps\.app\.goo\.gl\S*|goo\.gl\/maps\S*)`;
+
 /**
  * Drop raw maps URLs that older builds saved into Transport detail text.
  * The timeline already has an "Open in maps" control — the URL must not
  * sit in the note line (it overflows the phone and reads like junk).
+ * Ordinary https links (hotel booking, etc.) are left alone.
  */
 export function stripEmbeddedMapsUrl(detail: string | null | undefined): string {
   if (!detail) return "";
   return detail
-    .replace(/\s*·\s*https?:\/\/\S+/gi, "")
-    .replace(/https?:\/\/\S+/gi, "")
+    .replace(new RegExp(`\\s*·\\s*(?:${EMBEDDED_MAPS_URL_SOURCE})`, "gi"), "")
+    .replace(new RegExp(EMBEDDED_MAPS_URL_SOURCE, "gi"), "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s*·\s*$/g, "")
     .trim();
+}
+
+/**
+ * While the traveller is editing a detail field, keep their draft even if a
+ * realtime row refresh arrives with a different sanitized value.
+ */
+export function syncDetailDraft(
+  focused: boolean,
+  localDraft: string,
+  remoteDetail: string | null | undefined,
+): string {
+  return focused ? localDraft : stripEmbeddedMapsUrl(remoteDetail);
 }
 
 export function directionDetail(

@@ -87,6 +87,14 @@ test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () =>
     ).message,
     /too many stops/i,
   );
+  assert.doesNotMatch(
+    aiFailure(
+      new Error(
+        '[{ "code": "too_big", "maximum": 400, "type": "string", "inclusive": true, "exact": false, "message": "String must contain at most 400 character(s)", "path": [ "note" ] }]',
+      ),
+    ).message,
+    /too many stops/i,
+  );
 });
 
 test("isNetworkFailure matches Safari and Chromium fetch failures", () => {

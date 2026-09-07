@@ -6,6 +6,7 @@ import {
   directionTitle,
   legsToTimelineItems,
   stripEmbeddedMapsUrl,
+  syncDetailDraft,
 } from "./timeline-directions.ts";
 
 const walk: RouteLeg = {
@@ -29,11 +30,27 @@ test("directionDetail keeps a short summary without embedding the maps URL", () 
 
 test("stripEmbeddedMapsUrl clears leftover map links from older saves", () => {
   assert.equal(
-    stripEmbeddedMapsUrl("Exact spot unknown — open in maps · https://www.google.com/maps/dir/?api=1&origin=a"),
+    stripEmbeddedMapsUrl(
+      "Exact spot unknown — open in maps · https://www.google.com/maps/dir/?api=1&origin=a",
+    ),
     "Exact spot unknown — open in maps",
   );
   assert.equal(stripEmbeddedMapsUrl("Walk · 800 m · 10 min"), "Walk · 800 m · 10 min");
   assert.equal(stripEmbeddedMapsUrl(null), "");
+  assert.equal(
+    stripEmbeddedMapsUrl("Book here https://hotel.example/rooms"),
+    "Book here https://hotel.example/rooms",
+  );
+});
+
+test("syncDetailDraft keeps a focused edit through a remote refresh", () => {
+  const remote =
+    "Exact spot unknown — open in maps · https://www.google.com/maps/dir/?api=1&origin=a";
+  assert.equal(syncDetailDraft(true, "typing a note", remote), "typing a note");
+  assert.equal(
+    syncDetailDraft(false, "typing a note", remote),
+    "Exact spot unknown — open in maps",
+  );
 });
 
 test("legsToTimelineItems uses the from-stop day and destination coords", () => {

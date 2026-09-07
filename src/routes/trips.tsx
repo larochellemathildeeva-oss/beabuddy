@@ -20,7 +20,7 @@ import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
-import { stripEmbeddedMapsUrl, unroutedLegCopy } from "@/lib/timeline-directions";
+import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import type { DatesStatus } from "@/lib/trip-dates";
@@ -545,18 +545,14 @@ function LiveTripCard({
                   }}
                   className="w-full min-w-0 truncate bg-transparent text-[14px] font-medium outline-none"
                 />
-                <input
-                  key={`${item.id}-detail-${stripEmbeddedMapsUrl(item.detail)}`}
-                  defaultValue={stripEmbeddedMapsUrl(item.detail)}
-                  placeholder="Add a detail"
+                <TimelineDetailInput
+                  detail={item.detail}
                   onFocus={() => board.setEditing(item.title)}
-                  onBlur={(e) => {
+                  onCommit={(next) => {
                     board.setEditing(null);
-                    const next = stripEmbeddedMapsUrl(e.target.value);
                     const prev = stripEmbeddedMapsUrl(item.detail);
                     if (next !== prev) void board.updateItem(item.id, { detail: next || null });
                   }}
-                  className="w-full min-w-0 truncate bg-transparent text-[12px] text-muted-foreground outline-none"
                 />
                 {item.address && (
                   <p className="break-words text-[11px] text-muted-foreground">
@@ -1200,6 +1196,43 @@ function LiveTripCard({
  * Collapsed to a single quiet line so the timeline stays readable — the steps
  * are only worth screen space at the moment someone is about to walk them.
  */
+function TimelineDetailInput({
+  detail,
+  onFocus,
+  onCommit,
+}: {
+  detail: string | null;
+  onFocus: () => void;
+  onCommit: (next: string) => void;
+}) {
+  const remote = stripEmbeddedMapsUrl(detail);
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(remote);
+
+  useEffect(() => {
+    setDraft((current) => syncDetailDraft(focused, current, detail));
+  }, [detail, focused]);
+
+  return (
+    <input
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      placeholder="Add a detail"
+      onFocus={() => {
+        setFocused(true);
+        onFocus();
+      }}
+      onBlur={() => {
+        setFocused(false);
+        const next = stripEmbeddedMapsUrl(draft);
+        setDraft(next);
+        onCommit(next);
+      }}
+      className="w-full min-w-0 truncate bg-transparent text-[12px] text-muted-foreground outline-none"
+    />
+  );
+}
+
 function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
   const [open, setOpen] = useState(false);
   if (!leg) return null;
