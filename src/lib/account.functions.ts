@@ -143,27 +143,18 @@ async function nullCreatedBy(
 /**
  * Wipe travel content for a fresh start. Keeps Auth + profiles row (name/avatar).
  * Shared trips hand off; solo trips and memberships are removed.
+ *
+ * Ordered so private content goes first; trip handoff is last irreversible
+ * ownership change. Steps are idempotent — a failed erase can be retried.
  */
 async function wipeUserContent(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
   userId: string,
 ) {
-  await handOffOwnedSharedTrips(admin, userId);
+  // Storage + private rows before trip handoff, so a mid-wipe failure does not
+  // strand the user without ownership of shared trips while their vault still exists.
   await purgeUserStorage(admin, userId);
-
-  // Remaining owned trips are solo — cascade trip-scoped children.
-  await deleteWhere(admin, "trips", "owner_id", userId);
-  await deleteWhere(admin, "trip_members", "user_id", userId);
-  await deleteWhere(admin, "trip_invites", "invited_by", userId);
-
-  // Rate-limit log may be absent on older DBs; ignore missing-table errors.
-  {
-    const { error } = await admin.from("trip_invite_attempts").delete().eq("user_id", userId);
-    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
-      throw new Error(`trip_invite_attempts: ${error.message}`);
-    }
-  }
 
   await deleteWhere(admin, "recommendations", "user_id", userId);
   await deleteWhere(admin, "future_notes", "user_id", userId);
@@ -175,26 +166,53 @@ async function wipeUserContent(
   await deleteWhere(admin, "vault_settings", "user_id", userId);
   await deleteWhere(admin, "app_reports", "user_id", userId);
 
-  await nullCreatedBy(admin, "itinerary_items", ["created_by", "updated_by"], userId);
-  await nullCreatedBy(admin, "trip_stops", ["created_by"], userId);
-  await nullCreatedBy(admin, "trip_budget_items", ["created_by"], userId);
+  // Rate-limit log may be absent on older DBs; ignore missing-table errors.
+  {
+    const { error } = await admin.from("trip_invite_attempts").delete().eq("user_id", userId);
+    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+      throw new Error(`trip_invite_attempts: ${error.message}`);
+    }
+  }
 
-  const { error: profileErr } = await admin
-    .from("profiles")
-    .update({
-      home_city: null,
-      preferences: [],
-      travel_style: null,
-      budget_level: null,
-      trip_pace: null,
-      preferred_countries: [],
-      dietary_notes: null,
-      avoid_notes: null,
-      home_currency: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
-  if (profileErr) throw new Error(profileErr.message);
+  let handedOffSharedTrips = false;
+  try {
+    await handOffOwnedSharedTrips(admin, userId);
+    handedOffSharedTrips = true;
+
+    // Remaining owned trips are solo — cascade trip-scoped children.
+    await deleteWhere(admin, "trips", "owner_id", userId);
+    await deleteWhere(admin, "trip_members", "user_id", userId);
+    await deleteWhere(admin, "trip_invites", "invited_by", userId);
+
+    await nullCreatedBy(admin, "itinerary_items", ["created_by", "updated_by"], userId);
+    await nullCreatedBy(admin, "trip_stops", ["created_by"], userId);
+    await nullCreatedBy(admin, "trip_budget_items", ["created_by"], userId);
+
+    const { error: profileErr } = await admin
+      .from("profiles")
+      .update({
+        home_city: null,
+        preferences: [],
+        travel_style: null,
+        budget_level: null,
+        trip_pace: null,
+        preferred_countries: [],
+        dietary_notes: null,
+        avoid_notes: null,
+        home_currency: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", userId);
+    if (profileErr) throw new Error(profileErr.message);
+  } catch (e) {
+    if (handedOffSharedTrips) {
+      const detail = e instanceof Error ? e.message : "Unknown error";
+      throw new Error(
+        `Erase was interrupted after shared-trip handoff (${detail}). Tap Erase again to finish — the remaining steps are safe to retry.`,
+      );
+    }
+    throw e;
+  }
 }
 
 /**
