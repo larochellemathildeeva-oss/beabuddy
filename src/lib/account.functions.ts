@@ -73,7 +73,7 @@ async function purgeUserStorage(
 
 /**
  * Shared trips must outlive the deleting owner: hand ownership to another
- * member. Solo owned trips are left for auth.users CASCADE to remove.
+ * member. Solo owned trips are left for the caller to delete (or Auth CASCADE).
  */
 async function handOffOwnedSharedTrips(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,6 +115,105 @@ async function handOffOwnedSharedTrips(
     if (roleErr) throw new Error(roleErr.message);
   }
 }
+
+async function deleteWhere(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  table: string,
+  column: string,
+  userId: string,
+) {
+  const { error } = await admin.from(table).delete().eq(column, userId);
+  if (error) throw new Error(`${table}: ${error.message}`);
+}
+
+async function nullCreatedBy(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  table: string,
+  columns: string[],
+  userId: string,
+) {
+  for (const column of columns) {
+    const { error } = await admin.from(table).update({ [column]: null }).eq(column, userId);
+    if (error) throw new Error(`${table}.${column}: ${error.message}`);
+  }
+}
+
+/**
+ * Wipe travel content for a fresh start. Keeps Auth + profiles row (name/avatar).
+ * Shared trips hand off; solo trips and memberships are removed.
+ */
+async function wipeUserContent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  userId: string,
+) {
+  await handOffOwnedSharedTrips(admin, userId);
+  await purgeUserStorage(admin, userId);
+
+  // Remaining owned trips are solo — cascade trip-scoped children.
+  await deleteWhere(admin, "trips", "owner_id", userId);
+  await deleteWhere(admin, "trip_members", "user_id", userId);
+  await deleteWhere(admin, "trip_invites", "invited_by", userId);
+
+  // Rate-limit log may be absent on older DBs; ignore missing-table errors.
+  {
+    const { error } = await admin.from("trip_invite_attempts").delete().eq("user_id", userId);
+    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+      throw new Error(`trip_invite_attempts: ${error.message}`);
+    }
+  }
+
+  await deleteWhere(admin, "recommendations", "user_id", userId);
+  await deleteWhere(admin, "future_notes", "user_id", userId);
+  await deleteWhere(admin, "photo_memories", "user_id", userId);
+  await deleteWhere(admin, "expenses", "user_id", userId);
+  await deleteWhere(admin, "packing_lists", "user_id", userId);
+  await deleteWhere(admin, "packing_items", "user_id", userId);
+  await deleteWhere(admin, "vault_documents", "user_id", userId);
+  await deleteWhere(admin, "vault_settings", "user_id", userId);
+  await deleteWhere(admin, "app_reports", "user_id", userId);
+
+  await nullCreatedBy(admin, "itinerary_items", ["created_by", "updated_by"], userId);
+  await nullCreatedBy(admin, "trip_stops", ["created_by"], userId);
+  await nullCreatedBy(admin, "trip_budget_items", ["created_by"], userId);
+
+  const { error: profileErr } = await admin
+    .from("profiles")
+    .update({
+      home_city: null,
+      preferences: [],
+      travel_style: null,
+      budget_level: null,
+      trip_pace: null,
+      preferred_countries: [],
+      dietary_notes: null,
+      avoid_notes: null,
+      home_currency: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+  if (profileErr) throw new Error(profileErr.message);
+}
+
+/**
+ * Erase all travel data but keep the signed-in account (start fresh).
+ */
+export const eraseMyData = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        confirm: z.literal("ERASE"),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await wipeUserContent(supabaseAdmin, context.userId);
+    return { ok: true as const };
+  });
 
 /**
  * Permanently delete the signed-in account: hand off shared trips, purge
