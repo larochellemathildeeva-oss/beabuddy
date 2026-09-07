@@ -1,4 +1,4 @@
-// Client-side encryption for the travel document vault.
+// Client-side encryption for trip documents (reservations, tickets, confirmations).
 // Documents are encrypted in the browser with a key derived from the user's
 // passcode; the server only ever stores ciphertext.
 

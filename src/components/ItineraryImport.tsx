@@ -17,7 +17,9 @@ import {
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { tripStillEditableNote } from "@/lib/trip-copy";
+import { beaLine } from "@/lib/bea-voice";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
 
 type NewItineraryItem = {
@@ -244,6 +246,10 @@ function ImportPanel({
       setPicked(out.items.map((_, i) => i));
       setAltReason("");
       setRebuildReason("");
+      if (out.items.length > 0) {
+        const ready = beaLine("plan.ready");
+        toast.success(ready.title, { description: ready.body });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
     } finally {
@@ -296,6 +302,8 @@ function ImportPanel({
       setText("");
       setSaved(true);
       setSaveStatus("");
+      const done = beaLine("plan.complete");
+      toast.success(done.title, { description: done.body });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save those. Try again.");
     } finally {
@@ -529,13 +537,16 @@ function ImportPanel({
         className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
-          ? "Béa is planning…"
+          ? beaLine("plan.working").title
           : mode === "build"
             ? "Build my trip"
             : images.length > 1
               ? `Read these ${images.length} pictures`
               : "Read this itinerary"}
       </button>
+      {busy && (
+        <p className="text-[12px] text-muted-foreground">{beaLine("plan.working").body}</p>
+      )}
       {mode === "import" && !images.length && text.trim().length < 10 && (
         <p className="text-[11px] text-muted-foreground">
           Add one or more pictures above, or paste the plan first.
@@ -545,7 +556,7 @@ function ImportPanel({
       {error && <p className="text-[12px] text-destructive">{error}</p>}
       {saved && (
         <p className="text-[12px] text-primary">
-          Added to your timeline. {tripStillEditableNote()}
+          {beaLine("plan.complete").title} {tripStillEditableNote()}
         </p>
       )}
 
@@ -739,6 +750,8 @@ function OptimizePanel({
     try {
       await onApplySchedule(plan.items);
       setSaved(true);
+      const done = beaLine("plan.complete");
+      toast.success(done.title, { description: done.body });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
     } finally {

@@ -123,8 +123,8 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='packing-lists']",
       },
       {
-        title: "Document vault",
-        body: "Passports, visas and boarding passes, scrambled on your own device and locked behind a passcode.",
+        title: "Trip documents",
+        body: "Reservations, tickets, and confirmations for the trip — encrypted on your device and locked behind a passcode.",
         selector: "[data-guide='document-vault']",
       },
     ],
@@ -198,8 +198,8 @@ const guides: Record<string, Guide> = {
     name: "Help",
     steps: [
       {
-        title: "Questions, answered",
-        body: "These are the usual how-does-this-work questions — the two welcome walks, day trips, travel tags, packing, Flying Solo, tentative dates, Customize Home, and offline directions. Tap a question to open it.",
+        title: "Welcome to Béa",
+        body: "A conversation, not a manual — start here, then open any question. Ask Béa (the page sparkle) still walks the screen you're on.",
         selector: "[data-guide='help-faq']",
       },
     ],

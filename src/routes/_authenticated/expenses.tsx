@@ -419,7 +419,7 @@ function ExpensesPage() {
                 Keep an encrypted copy of this receipt in my private vault
                 {!vaultKey && (
                   <span className="block text-[11.5px]">
-                    Set up device unlock in your vault (Profile → Document vault) to use this.
+                    Set up device unlock in your vault (Profile → Trip documents) to use this.
                   </span>
                 )}
               </span>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useVault, type DocSecret, type VaultDocRow } from "@/hooks/useVault";
 
-const kinds = ["Passport", "Visa", "Flight", "Insurance", "Other"];
+const kinds = ["Reservation", "Ticket", "Confirmation", "Boarding pass", "Other"];
 
 export function DocumentVault() {
   const v = useVault();
@@ -13,7 +13,13 @@ export function DocumentVault() {
   const [adding, setAdding] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [secret, setSecret] = useState<DocSecret | null>(null);
-  const [form, setForm] = useState({ kind: "Passport", label: "", expires: "", number: "", notes: "" });
+  const [form, setForm] = useState({
+    kind: "Reservation",
+    label: "",
+    expires: "",
+    number: "",
+    notes: "",
+  });
   const [file, setFile] = useState<{ name: string; data: string } | null>(null);
 
   const run = async (fn: () => Promise<void>) => {
@@ -31,9 +37,10 @@ export function DocumentVault() {
   if (!v.signedIn) {
     return (
       <div className="card-soft p-4 text-center">
-        <p className="font-display text-[20px]">Passports, visas, tickets</p>
+        <p className="font-display text-[20px]">Trip confirmations & tickets</p>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          Encrypted on your phone before it ever leaves it, then synced to your account.
+          Keep reservations, tickets, and booking confirmations handy for the trip — encrypted on
+          your device before they sync.
         </p>
         <Link
           to="/auth"
@@ -54,8 +61,8 @@ export function DocumentVault() {
           </p>
           <p className="mt-1 text-[12px] text-muted-foreground">
             {v.hasVault
-              ? "Your documents are unreadable until you unlock them."
-              : "Choose a passcode. Only you know it — without it nobody, not even Béa, can read these documents."}
+              ? "Your trip documents stay locked until you unlock them."
+              : "Choose a passcode to protect reservations, tickets, and confirmations. Designed so only someone with your Vault credentials can view them."}
           </p>
         </div>
         <input
@@ -168,7 +175,7 @@ export function DocumentVault() {
         ))}
         {v.rows.length === 0 && (
           <p className="py-4 text-center text-[12px] text-muted-foreground">
-            Nothing stored yet. Add your passport to start.
+            Nothing stored yet. Add a reservation, ticket, or confirmation for the trip.
           </p>
         )}
       </div>
@@ -191,13 +198,13 @@ export function DocumentVault() {
           <input
             value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
-            placeholder="Label (e.g. Canadian passport)"
+            placeholder="Label (e.g. Hotel confirmation)"
             className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
           />
           <input
             value={form.number}
             onChange={(e) => setForm({ ...form, number: e.target.value })}
-            placeholder="Number / reference"
+            placeholder="Confirmation / booking reference"
             className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
           />
           <input
@@ -205,11 +212,12 @@ export function DocumentVault() {
             onChange={(e) => setForm({ ...form, expires: e.target.value })}
             type="date"
             className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            aria-label="Travel or stay date"
           />
           <textarea
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
-            placeholder="Notes"
+            placeholder="Notes (gate, seat, check-in time…)"
             rows={2}
             className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
           />
@@ -244,7 +252,13 @@ export function DocumentVault() {
                       ...(file ? { fileName: file.name, fileData: file.data } : {}),
                     },
                   });
-                  setForm({ kind: "Passport", label: "", expires: "", number: "", notes: "" });
+                  setForm({
+                    kind: "Reservation",
+                    label: "",
+                    expires: "",
+                    number: "",
+                    notes: "",
+                  });
                   setFile(null);
                   setAdding(false);
                 })
@@ -266,7 +280,7 @@ export function DocumentVault() {
           onClick={() => setAdding(true)}
           className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
         >
-          Add a document
+          Add a reservation or ticket
         </button>
       )}
 

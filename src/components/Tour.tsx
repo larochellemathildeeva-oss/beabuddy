@@ -23,6 +23,7 @@ const TOUR_EVENT = "bea-tour-start";
 /** Polls for a target after route navigation before treating it as missing. */
 const TARGET_TRIES = 12;
 const TARGET_RETRY_MS = 50;
+const EMPTY_STEPS: ReturnType<typeof tourSteps> = [];
 
 export type TourIntent = "first-run" | "replay";
 
@@ -100,7 +101,7 @@ export function Tour({
   const [targetReady, setTargetReady] = useState(true);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const steps = mode ? tourSteps(mode) : [];
+  const steps = mode ? tourSteps(mode) : EMPTY_STEPS;
   const step = mode ? steps[i] : undefined;
   const blocked = !!step?.needsAuth && !user;
   // Only lock Next when there is something visible to tap — never soft-lock
@@ -117,13 +118,16 @@ export function Tour({
     onClose();
   }, [onClose]);
 
-  const advanceOrFinish = useCallback(() => {
-    if (i >= steps.length - 1) {
-      finish();
-      return;
-    }
-    setI((n) => n + 1);
-  }, [i, steps.length, finish]);
+  const skipMissingTarget = useCallback(() => {
+    setI((n) => {
+      if (n >= steps.length - 1) {
+        // Defer finish so we don't mark seen during render/effect races.
+        queueMicrotask(() => finish());
+        return n;
+      }
+      return n + 1;
+    });
+  }, [steps.length, finish]);
 
   useEffect(() => {
     if (!open) return;
@@ -152,32 +156,48 @@ export function Tour({
   }, [open, mode, i]);
 
   // Bring up the screen each step is talking about.
+  // Depend on route string, not `step` object identity (tourSteps is stable,
+  // but never risk navigating every render).
+  const stepTo = step?.to;
+  const stepNeedsAuth = step?.needsAuth;
+  const stepSelector = step?.selector;
+  const stepAwaitClick = step?.awaitClick;
+
   useEffect(() => {
-    if (!open || loading || !mode || !step?.to) return;
-    if (step.needsAuth && !user) return;
-    navigate({ to: step.to });
-  }, [open, i, mode, user, loading, navigate, step]);
+    if (!open || loading || !mode || !stepTo) return;
+    if (stepNeedsAuth && !user) return;
+    navigate({ to: stepTo });
+  }, [open, i, mode, user, loading, navigate, stepTo, stepNeedsAuth]);
 
   const measure = useCallback(() => {
-    if (!step?.selector) {
+    if (!stepSelector) {
       setBox(null);
       return;
     }
-    const el = findGuideTarget(step.selector);
+    const el = findGuideTarget(stepSelector);
     if (!el) {
       setBox(null);
       return;
     }
-    setBox(measureGuideTarget(el));
-  }, [step]);
+    const next = measureGuideTarget(el);
+    setBox((prev) =>
+      prev &&
+      prev.top === next.top &&
+      prev.left === next.left &&
+      prev.width === next.width &&
+      prev.height === next.height
+        ? prev
+        : next,
+    );
+  }, [stepSelector]);
 
   // Spotlight: wait for a painted target after navigation, then track it.
   // Missing targets skip ahead (or finish on the last step) — never leave
   // awaitClick with Next disabled and nothing to tap.
   useEffect(() => {
-    if (!open || !mode || !step) return;
+    if (!open || !mode) return;
     setClicked(false);
-    if (!step.selector) {
+    if (!stepSelector) {
       setBox(null);
       setTargetReady(true);
       return;
@@ -187,9 +207,10 @@ export function Tour({
     setBox(null);
     let cancelled = false;
     let tries = 0;
+    let retryTimer = 0;
     const tick = () => {
       if (cancelled) return;
-      const el = findGuideTarget(step.selector);
+      const el = findGuideTarget(stepSelector);
       if (el) {
         el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
         setBox(measureGuideTarget(el));
@@ -198,32 +219,33 @@ export function Tour({
       }
       setBox(null);
       if (tries++ < TARGET_TRIES) {
-        window.setTimeout(tick, TARGET_RETRY_MS);
+        retryTimer = window.setTimeout(tick, TARGET_RETRY_MS);
         return;
       }
       setTargetReady(true);
-      advanceOrFinish();
+      skipMissingTarget();
     };
     const frame = window.requestAnimationFrame(tick);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
       cancelled = true;
+      window.clearTimeout(retryTimer);
       window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open, mode, step, measure, advanceOrFinish]);
+  }, [open, mode, i, stepSelector, measure, skipMissingTarget]);
 
   // Interactive beats: any click inside the highlighted control unlocks Next.
   useEffect(() => {
-    if (!open || !step?.awaitClick || !step.selector || !box) return;
-    const el = findGuideTarget(step.selector);
+    if (!open || !stepAwaitClick || !stepSelector || !box) return;
+    const el = findGuideTarget(stepSelector);
     if (!el) return;
     const onClick = () => setClicked(true);
     el.addEventListener("click", onClick, true);
     return () => el.removeEventListener("click", onClick, true);
-  }, [open, step, box, i]);
+  }, [open, stepAwaitClick, stepSelector, box, i]);
 
   if (!open) return null;
 

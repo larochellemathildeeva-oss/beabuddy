@@ -402,19 +402,19 @@ TRAVEL DOCUMENT VAULT
 
 --------------------------------------------------
 
-Create secure storage for:
+Create secure storage for trip-useful documents:
 
-- Passports
-
-- Visas
-
-- Travel insurance
-
-- Flight confirmations
+- Reservations
 
 - Tickets
 
-- Hotel confirmations
+- Booking confirmations
+
+- Boarding passes
+
+- Other confirmations useful during a trip
+
+(Not intended for identity documents such as passports or visas.)
 
 Security:
 

@@ -9,6 +9,7 @@ import { scoreOpportunity } from "@/lib/score-opportunity";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { DEMO_PLACES } from "@/lib/demo-seed";
+import { beaLine } from "@/lib/bea-voice";
 
 export const Route = createFileRoute("/opportunities")({
   head: () => ({
@@ -382,8 +383,23 @@ function OpportunitiesPage() {
               }}
             />
           )}
-          {nearby.map(({ pin: p, d }) => (
+          {here && nearby.length > 0 && (
+            <p className="text-[13px] text-muted-foreground">
+              <span className="font-semibold text-primary">{beaLine("near.nearby").title}</span>
+              {beaLine("near.nearby").body ? ` — ${beaLine("near.nearby").body}` : ""}
+            </p>
+          )}
+          {nearby.map(({ pin: p, d }) => {
+            const close = Number.isFinite(d) && d < 800;
+            const metres =
+              d < 100 ? Math.round(d) : Math.round(d / 10) * 10;
+            return (
             <article key={p.id} className="rise card-soft p-4">
+              {close && (
+                <p className="mb-2 text-[12px] text-muted-foreground">
+                  You're {metres} m from something Past You cared about.
+                </p>
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -428,7 +444,8 @@ function OpportunitiesPage() {
                 </button>
               </div>
             </article>
-          ))}
+            );
+          })}
 
           {!here && locState !== "locating" && (
             <p className="py-10 text-center text-[13px] text-muted-foreground">
@@ -436,10 +453,12 @@ function OpportunitiesPage() {
             </p>
           )}
           {here && nearby.length === 0 && (
-            <p className="py-10 text-center text-[13px] text-muted-foreground">
-              Nothing saved within {formatDistance(radius)} of you right now.
-              {frequency === "Always" ? "" : ` You'll be nudged ${frequency.toLowerCase()}.`}
-            </p>
+            <div className="py-10 text-center">
+              <p className="font-display text-[18px] leading-snug">{beaLine("near.empty").title}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                {beaLine("near.empty").body} Nothing saved within {formatDistance(radius)}.
+              </p>
+            </div>
           )}
         </section>
 

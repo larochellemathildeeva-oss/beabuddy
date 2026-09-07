@@ -256,8 +256,7 @@ function ProfilePage() {
               <span>
                 <span className="block text-[13px] font-medium">Travel preferences</span>
                 <span className="block text-[11.5px] text-muted-foreground">
-                  Style, budget, pace, favourite countries and your {interests.length} travel tag
-                  {interests.length === 1 ? "" : "s"} — this is what Béa plans with.
+                  Help Béa understand how you like to travel — style, pace, and tags she plans with.
                 </span>
               </span>
               <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold">
@@ -298,7 +297,7 @@ function ProfilePage() {
               <div>
                 <p className="text-[13px] font-medium">Take the tour again</p>
                 <p className="text-[11.5px] text-muted-foreground">
-                  Replay the quick spotlight walk, or take the Deep Dive through every feature.
+                  Replay the story walk, or the Deep Dive on what makes Béa different.
                 </p>
               </div>
               <button

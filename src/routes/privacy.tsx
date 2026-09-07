@@ -8,7 +8,7 @@ export const Route = createFileRoute("/privacy")({
       {
         name: "description",
         content:
-          "How Béa stores your account, handles the photos you import, and encrypts the passports and documents you keep in the vault.",
+          "How Béa stores your account, handles the photos you import, and protects trip documents you keep in the vault.",
       },
       { property: "og:title", content: "Privacy policy — Béa" },
       {
@@ -56,7 +56,12 @@ function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="Photos you import">
+        <Section title="Your photos">
+          <p>
+            Your photos belong to you. If you choose to import them, Béa uses location information
+            to help organize memories by city. You stay in control of what is kept and what is
+            removed.
+          </p>
           <p>
             Photos stay on your device until you pick them and confirm the upload. Béa asks for your
             agreement before every import unless you tell it to stop asking, and asks a second time
@@ -91,16 +96,17 @@ function PrivacyPage() {
 
         <Section title="The document vault">
           <p>
-            Passports, visas, insurance and boarding passes are treated differently to everything
-            else, because they are the most sensitive things you own.
+            The Vault is for trip-useful documents — reservations, tickets, booking confirmations,
+            boarding passes, and similar items you may need while travelling. It is not intended for
+            identity documents such as passports or visas.
           </p>
           <p>
             When you add a document it is encrypted on your own device, in your browser, before
             anything leaves it — AES-256-GCM, with the key derived from your passcode using PBKDF2
             at 210,000 iterations. Only the scrambled result is uploaded. Your passcode is never
-            uploaded and never stored on our side, which means nobody at Béa, and nobody with access
-            to the database, can read your documents. If you forget your passcode, those documents
-            cannot be recovered by anyone, including us.
+            uploaded and never stored on our side. The Vault is designed so that Béa cannot view
+            document contents without access to your Vault credentials. If you forget your
+            passcode, recovery options may be limited or unavailable.
           </p>
           <p>
             One honest caveat: if you turn on Face ID or fingerprint unlock, a copy of the key is
@@ -109,7 +115,11 @@ function PrivacyPage() {
           </p>
         </Section>
 
-        <Section title="Location">
+        <Section title="Your location">
+          <p>
+            Béa only uses your location when you allow it. The purpose is simple: helping you
+            discover places you've already saved nearby.
+          </p>
           <p>
             Béa asks for your location only when you open Near or save a place with “I'm here now”.
             Before the first request you're told exactly what it's used for and you choose how long
@@ -123,7 +133,7 @@ function PrivacyPage() {
           <p>
             When you invite someone to a trip with a code, that person can see and edit that trip's
             itinerary and see when you are viewing it. They cannot see your photos, your
-            recommendations, your notes or your document vault. Remove them and their access ends.
+            recommendations, your notes or your trip documents. Remove them and their access ends.
           </p>
         </Section>
 

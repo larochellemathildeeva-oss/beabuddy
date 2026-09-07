@@ -1,202 +1,252 @@
+/**
+ * Help Center copy — conversation with a travel companion, not a software manual.
+ * See docs/BRANDING.md. Keep answers explaining, encouraging, or reassuring.
+ */
+
 export type Faq = { q: string; a: string };
+
+export const HELP_WELCOME = {
+  title: "Hi, I'm Béa.",
+  lead: "I remember travel things so you don't have to.",
+  body: "Recommendations from friends. Places you've been meaning to visit. Cities you've explored. Trips you're planning. Memories you want to keep. Béa helps keep them connected.\n\nIf you're not sure where to start, you're in the right place.",
+} as const;
+
+export const HELP_CLOSING = {
+  title: "A final note",
+  body: "Travel plans change. Flights get delayed. Recommendations get forgotten. Cities surprise us.\n\nBéa can't prevent any of that.\n\nBut Béa can help make sure the places, ideas, memories, and plans that matter to you don't get lost along the way.\n\nBéa remembers your travel life so Future You doesn't miss what matters.",
+} as const;
 
 export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
   {
     title: "Getting started",
     items: [
       {
-        q: "What is Béa?",
-        a: "Béa is one place for everything about your travels: the map of where you've been and where you want to go, your trips and their timelines, the places people recommend to you, your photos, your documents and your receipts. She can also help you choose between pins, plan a trip or a day out from your recs, and keep packing lists and travel preferences for next time.",
+        q: "What exactly is Béa?",
+        a: "Béa is your travel memory, recommendation, and planning companion.\n\nThink of it as one place for places you've visited, places you want to visit, recommendations from friends, future trip ideas, travel memories and photos, and planned adventures.\n\nThe goal isn't to plan every trip for you. The goal is to help you make better use of everything you've already discovered.",
       },
       {
-        q: "Do I need an account?",
-        a: "Yes, to keep anything. An account means your pins, trips, recommendations and photos are saved to you and follow you onto any phone or laptop.",
+        q: "Why would I use Béa?",
+        a: "Most travel ideas end up scattered across screenshots, Google Maps, Instagram saves, group chats, notes apps, and memory.\n\nBéa brings those pieces together so they're easier to find, remember, and use.",
+      },
+      {
+        q: "Where should I start?",
+        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. First sign-in also offers a quick walk around the block; Replay under You can open that again or the Deep Dive.",
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",
-        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The welcome tour starts on first sign-in as a short story walk; Replay under Profile settings is where you can pick that again or the Deep Dive.",
+        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it.\n\nLet Béa plan is the sparkle on a trip: it builds or imports a day-by-day itinerary onto that trip.",
       },
       {
-        q: "How do I get a tour of a page?",
-        a: "Tap Ask Béa (the sparkle) at the top of any page. Béa highlights each part of that page and explains what it does. You can also replay the welcome tour from Profile settings and choose the short walk or the Deep Dive.",
-      },
-      {
-        q: "What's the difference between the quick walk and the Deep Dive?",
-        a: "First sign-in starts a quick walk around the block — a short story: what Béa is, your travel brain on the globe, the recommendation vault, turning ideas into trips, Near opportunities, and Travel story. The Deep Dive is six pillars of what competitors miss — memory, recommendations as assets, decision support, the opportunity engine, planning from your vault, and the connected system. Replay from Profile settings any time to pick either walk.",
-      },
-      {
-        q: "How do I customize what shows on Home?",
-        a: "On You → Profile settings, open Customize home. You can hide the trip card, the Travel story and City memories shortcuts, Waiting for you, Recent memories, or a Future Me note. The choice is saved on this device.",
-      },
-      {
-        q: "How do I set the travel preferences Béa plans with?",
-        a: "Open You → Profile settings → Travel preferences, or go to the Travel preferences page. Style, budget, pace, interests (travel tags), favourite countries, dietary notes and things to avoid all go into Let Béa plan, Optimize and Plan a day trip.",
-      },
-      {
-        q: "How do I tell Béa I want something new?",
-        a: "On You, open the Feedback banner at the bottom. Pick a category — it broke, a missing travel stat, a wish, something unhinged in a plan, the map has opinions, or something nice — then write it. If Béa dropped the ball, this is where you throw it back. What you write is saved so we can read it.",
+        q: "Do I need an account?",
+        a: "Yes, to keep anything. An account means your pins, trips, recommendations, and photos follow you onto any phone or laptop.",
       },
     ],
   },
   {
-    title: "Trips & planning",
+    title: "Recommendations & places",
     items: [
       {
-        q: "How do I let Béa plan a trip?",
-        a: "Open a trip — or tap the sparkle on the trip card — and choose Let Béa plan. You can build a new day-by-day plan from your saved travel preferences and the travel tags on your recs, import a photo or pasted itinerary, optimize the stops you already have, or compare two drafts side by side. Approximate costs stay off unless you switch them on. After a draft, tick the stops you want swapped and ask Béa for alternatives, or use Rebuild my trip to start the whole plan again. Tick the stops you want and save them onto that trip's timeline. Béa does not book hotels, restaurants or tickets, and she cannot check whether something is actually free — you reserve and confirm those yourself.",
+        q: "Why save recommendations?",
+        a: "Because \"I'll remember that later\" is surprisingly unreliable.\n\nSave places from friends, family, articles, social media, travel blogs, or your own discoveries. Later, Béa can help surface them when you're planning or nearby.",
       },
       {
-        q: "Does Béa book restaurants or hotels?",
-        a: "No. There is no booking connection — no OpenTable, hotel site or ticket desk. Béa can suggest a reservation on the timeline, but she cannot hold a table, check a room, or confirm a ticket. You book those yourself and treat anything she wrote as a draft until you have.",
+        q: "What's the difference between a recommendation and a wishlist?",
+        a: "Wishlist: a place you personally want to visit.\n\nRecommendation: a place someone suggested to you, or a specific spot worth remembering.\n\nA city can be a wishlist. A café, restaurant, museum, or hidden gem is often a recommendation.",
       },
       {
-        q: "Can Béa rearrange a trip I already planned?",
-        a: "Yes. Open the trip and tap Optimize, or open Let Béa plan and choose Optimize. Pick what matters — closest together, rainy-day indoor activities, easy mornings, a rest day, even pace, or meals first — and Béa reshuffles the existing timeline. You review the new order before anything is saved. Flights, hotels and reservations stay put unless they have to move.",
+        q: "Can I remember who suggested a place?",
+        a: "Absolutely. One of the most useful parts of Béa is remembering who told you, why they recommended it, and any notes you added.\n\nRecommendations are often more valuable with context. You can also add travel tags (Museums, Coffee shops, and so on) so planning can match how you travel.",
       },
       {
-        q: "Can Béa turn nearby recs into a day trip?",
-        a: "Yes. On Near, share your location, tick two or more saved places, pick today's pace (and any preferences you want to lean into), then Arrange with Béa. She orders them for one day using your saved travel preferences. Review the draft, then save it as a trip — nothing is booked.",
-      },
-      {
-        q: "Can one trip cover several countries?",
-        a: "Yes. Inside a trip, 'Where you're going' holds every city with its arrival and leaving dates, in the order you'll travel. Stops can be marked as layovers too.",
-      },
-      {
-        q: "How do I join a trip someone shared?",
-        a: "On Trips, tap Join with a code and type the invite code. You'll land in that folder and can edit the timeline, stops and budget with everyone else.",
-      },
-      {
-        q: "Can someone else edit my trip?",
-        a: "Yes. Share the trip's invite code and whoever joins can add to the timeline, the budget and the stops. You'll see their changes as they make them. A trip with only you says Flying Solo until someone joins.",
-      },
-      {
-        q: "What does Flying Solo mean?",
-        a: "It means nobody else is on that trip yet — just you. Invite someone with a code when you want company on the plan. Béa never labels you as a generic Traveller.",
-      },
-      {
-        q: "Do I have to track a budget?",
-        a: "No. When you create a trip, the budget box is off unless you tick it. You can turn a budget on or off later in trip settings. Claiming a receipt on Expenses only updates a trip that has a budget on.",
-      },
-      {
-        q: "Can I still change a trip after I create it?",
-        a: "Yes. Dates, cities, friends, packing and the budget stay editable. Creating a trip is a first draft of a holiday, not a boarding pass.",
-      },
-      {
-        q: "What does Tentative mean on the dates?",
-        a: "When you pick dates you can mark them Tentative or Confirmed. Tentative stays on the trip card and Home until you know the flights are real. You can flip it later in trip settings.",
-      },
-      {
-        q: "How do packing lists work?",
-        a: "On You, open Create packing lists and build reusable templates — weekend, beach, ski, work. When you create a trip, or later from the paper icon on the trip, attach a copy. Ticking things off only affects that trip.",
-      },
-      {
-        q: "How do I get walking or driving directions?",
-        a: "Open a trip and tap Get directions between the cities. After they arrive you can add those legs to the timeline. Turn-by-turn stays on this phone only if you download Offline directions in trip settings.",
-      },
-      {
-        q: "How do I delete a trip?",
-        a: "Open the trip and choose 'Delete trip'. Béa asks you to confirm first, because the timeline, stops, budget and invites go with it.",
+        q: "How do I save a place?",
+        a: "Paste a link, search the web, pin nearby, use I'm here now, type by hand, or paste a list. You review each one — name, note, category, who told you, exact map spot — before anything saves.",
       },
     ],
   },
   {
-    title: "Map, pins & recommendations",
+    title: "World & memories",
     items: [
       {
-        q: "What do the pin colours mean?",
-        a: "Visited is where you've been, Next time is somewhere you nearly made it, Wishlist is a dream, and Recommendation is a place someone told you about.",
+        q: "What is the globe for?",
+        a: "The globe is your travel life in one place. It helps you see where you've been, where you want to go, places you're saving for later, and recommendations waiting for future trips.\n\nPin colours: visited, next time, wishlist, and recommendation. Chips above the globe hide whole groups when the map gets busy. You can also add cities or countries by hand, turn on the heatmap, and choose which travel statistics to show.",
       },
       {
-        q: "How do I hide some pins?",
-        a: "On World, the chips above the globe hide and show whole groups — visited, next time, wishlist, recommendations — so a busy map calms down in one tap.",
+        q: "Why does Béa track memories by city?",
+        a: "Cities often become chapters in a travel story.\n\nGrouping photos, visits, notes, and recommendations by city makes it easier to revisit experiences over time.",
       },
       {
-        q: "Can I choose which travel stats Béa shows?",
-        a: "Yes. On World, open Travel statistics and tap Choose stats. Turn counters on or off, and switch Countries as a world share to see how many of the 195 widely recognised countries you have visited — for example 1 of 195, or 1%. If you want a number Béa does not count yet, tell her on You → Feedback.",
+        q: "What are Future Me notes?",
+        a: "They're messages from Present You to Future You.\n\nExamples: \"Try the bakery next visit.\" \"Come back in spring.\" \"Stay longer next time.\"\n\nSmall reminders often become the most valuable ones.",
       },
       {
-        q: "What is the heatmap?",
-        a: "On World, switch the heatmap on to see where you've spent the most time as a warm cloud instead of dots. Toggle between days (how long you stayed) and photos (how many pictures you imported).",
+        q: "What is Playback?",
+        a: "Playback is your travel story — also called Travel story on Home.\n\nBéa can walk through cities you've visited, in order, using photos and memories to create a timeline of your adventures. Think of it as a personal travel highlight reel.",
       },
       {
-        q: "How do I add cities I already visited?",
-        a: "On World, open Add a city by hand — now labelled Add cities or countries. Type one place, or paste / upload a list of cities or countries from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything is saved to the globe. If one name is not recognised, tap Correct it, type the usual country or city name, and look that one up again. Those places count in your travel stats too.",
-      },
-      {
-        q: "Where do recommendations come from?",
-        a: "You can type one in, paste a link, search the web, pin a place on the nearby map, save where you're standing, or paste / upload a list. The list can be names from your notes, a photo, a file, or a page of things to do — Béa reads the page and picks up the suggestions. You review each one, edit the name, note or category, pick the right pin, then save. On the details card you can search and pick the exact map spot yourself if Béa missed it or you typed the rec by hand. She also guesses travel tags from the place — Museums, Coffee shops, and so on — so Let Béa plan can pick recs that match what you like.",
-      },
-      {
-        q: "What are travel tags?",
-        a: "Tags on a saved rec — Museums, Coffee shops, Parks, Nightlife — describe what the place is. Béa guesses them when you save, and you can change them. Let Béa plan and Plan a day trip lean on those tags plus your travel preferences.",
-      },
-      {
-        q: "Does search need the exact spelling?",
-        a: "No. Searching your vault or a place name still finds a match if a letter is off, doubled, or missing — café and cafe both work.",
+        q: "How do I customize Home?",
+        a: "On You → Profile settings, open Customize home. You can hide the trip card, Travel story and City memories shortcuts, Waiting for you, Recent memories, or a Future Me note. The choice is saved on this device.",
       },
     ],
   },
   {
-    title: "Photos & memories",
+    title: "Planning trips",
     items: [
       {
-        q: "Does importing photos use up space?",
-        a: "Only if you want it to. When you import, choose 'Locations only' and Béa reads where each picture was taken to drop a pin, then keeps nothing at all.",
+        q: "How does trip planning work?",
+        a: "Béa can help build trips using your saved places, recommendations, travel preferences, and travel style.\n\nRather than starting from a blank page, planning begins with things you've already said matter to you. Set preferences on You → Travel preferences.",
       },
       {
-        q: "Who can see my photos?",
-        a: "Only you. Photos live in your private storage and are served to you through short-lived private links.",
+        q: "Does Béa automatically book anything?",
+        a: "No. Béa helps organize and plan. It does not make bookings or purchases on your behalf — and it does not book restaurants or hotels.",
       },
       {
-        q: "What is Travel story?",
-        a: "On Home, tap Travel story — or open it from the Playback shortcut. Béa plays the cities you've photographed, in the order you were there. Play, pause, or skip a stop. It is a story of places you already lived, not a new itinerary.",
+        q: "How does Help me choose work?",
+        a: "Sometimes choosing is harder than dreaming.\n\nHelp me choose compares saved destinations using your preferences, timing, distance, saved history, and travel interests. Béa explains its reasoning so you can decide for yourself.",
       },
       {
-        q: "What is a Future Me note?",
-        a: "On a city memory page, leave a note to your future self — a bakery, a warning, a secret garden. Béa hands it back when you open that city again.",
+        q: "Will Béa always have the right answer?",
+        a: "No. And that's okay.\n\nBéa can offer suggestions, rankings, and ideas, but travel decisions are personal. Whenever confidence is lower, we'll try to tell you honestly.",
+      },
+      {
+        q: "Can friends edit a trip with me?",
+        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Offline directions in trip settings if you want turn-by-turn on this phone.",
+      },
+      {
+        q: "Can Béa turn nearby saves into a day trip?",
+        a: "Yes. On Near, tick a few saved places, pick today's pace, Arrange with Béa, then save as a day trip. Still starting from what you already kept.",
       },
     ],
   },
   {
-    title: "Documents & privacy",
+    title: "Near",
     items: [
       {
-        q: "How safe is the document vault?",
-        a: "Documents are scrambled on your own device with a passphrase only you know before they ever leave it. Without your passphrase nobody — including us — can read them.",
+        q: "Why is Béa showing me this place?",
+        a: "Because at some point, you thought it was worth saving.\n\nBéa noticed you were nearby and wanted to remind you.\n\nOr, as Béa would put it: Past You left a breadcrumb.",
       },
       {
-        q: "What if I forget my vault passphrase?",
-        a: "It can't be recovered, by design. You'd need to reset the vault and add the documents again.",
+        q: "Does Béa always track my location?",
+        a: "No. Location is only used when you choose to share it. You control when location access starts and stops.",
+      },
+      {
+        q: "Can I use Near without sharing my location?",
+        a: "Yes. You can use demo cities to explore how Near works without GPS access.",
+      },
+    ],
+  },
+  {
+    title: "Privacy & security",
+    items: [
+      {
+        q: "Who can see my travel data?",
+        a: "Trips, memories, recommendations, and photos are private by default. They aren't publicly visible, and we don't share them unless you choose to use a sharing feature.",
+      },
+      {
+        q: "Does Béa track my location all the time?",
+        a: "Béa only accesses your location when you've granted permission. Location-enabled features use that information to provide services such as Nearby opportunities.",
+      },
+      {
+        q: "Can I use Béa without sharing my location?",
+        a: "Yes. Most of Béa works without location access. You'll only miss features that depend on your current location.",
+      },
+      {
+        q: "What happens to my photos?",
+        a: "That's your choice.\n\nYou can import photos and locations, import locations only, or remove imported photos later.\n\nYour travel memories should stay under your control.",
+      },
+      {
+        q: "Why do you ask for photo access?",
+        a: "To help organize memories, create city pages, and build your travel story from photos you choose to import.",
+      },
+      {
+        q: "What happens to my recommendations and saved places?",
+        a: "They're saved to your account so Béa can help you organize them, plan trips, and rediscover them later.",
+      },
+      {
+        q: "What is the Document Vault for?",
+        a: "A place to keep trip-useful documents — reservations, tickets, booking confirmations, boarding passes, and similar items you may need while travelling.\n\nIt is not intended for identity documents such as passports or visas.",
+      },
+      {
+        q: "How secure is the Document Vault?",
+        a: "Documents are encrypted on your device before being uploaded. The Vault is designed so that only someone with your Vault credentials can view its contents.",
+      },
+      {
+        q: "Can Béa read my Vault documents?",
+        a: "Vault documents are designed so that Béa cannot view their contents without access to your Vault credentials.",
+      },
+      {
+        q: "What if I forget my Vault passcode?",
+        a: "If you forget your Vault passcode, recovery options may be limited or unavailable. We recommend storing your passcode somewhere safe.",
+      },
+      {
+        q: "Why does Béa ask for permissions?",
+        a: "Only for features that need them.\n\nLocation → Nearby opportunities\nPhotos → Memories and city pages\nCamera → Receipt scanning and photo imports\n\nYou can choose which permissions to grant.",
+      },
+      {
+        q: "Do I own my data?",
+        a: "You retain control over the trips, memories, recommendations, notes, and photos you store in Béa.",
+      },
+      {
+        q: "Do you sell my data?",
+        a: "Béa is designed to help organize your travel life, not to build advertising profiles. For details about how information is used, see our Privacy Policy.",
+      },
+      {
+        q: "Can I delete my data?",
+        a: "You can delete many types of information you add to Béa, including trips, recommendations, notes, memories, and documents. Some information may remain in backups for a limited period as described in the Privacy Policy.",
+      },
+      {
+        q: "How does Béa use AI?",
+        a: "AI helps with things like trip planning, itinerary imports, recommendation organization, and decision support.\n\nBéa provides suggestions, not decisions. You'll always have the final say.\n\nAI-generated suggestions may be incomplete, inaccurate, or unsuitable for your situation. We encourage you to review recommendations before acting on them.",
+      },
+      {
+        q: "Is Béa always right?",
+        a: "No.\n\nWhen Béa is uncertain, we'll do our best to say so. Travel is complicated, and honest uncertainty is better than confident nonsense.",
+      },
+      {
+        q: "In one sentence, how does Béa think about privacy?",
+        a: "Your travel life is yours. Béa's role is to help you organize it, remember it, and make better use of it.",
+      },
+    ],
+  },
+  {
+    title: "Travel statistics",
+    items: [
+      {
+        q: "How are my stats calculated?",
+        a: "Stats are based on information you've added to Béa — saved cities, trips, photos, recommendations.\n\nThey're meant to be fun and informative, not official records.",
+      },
+      {
+        q: "Why do some stats seem incomplete?",
+        a: "Béa can only count what it knows. The more places, trips, and memories you add, the richer your travel story becomes.\n\nOn World you can choose which counters to show, including countries as a world share.",
+      },
+    ],
+  },
+  {
+    title: "Troubleshooting",
+    items: [
+      {
+        q: "Béa can't find a place",
+        a: "Try checking spelling, using the nearest city, searching the country first, or adding it manually. Some locations are easier to match than others. Search still works with typos and missing accents.",
+      },
+      {
+        q: "Something looks wrong",
+        a: "We'd like to hear about it. Use You → Feedback.\n\nOne of the categories is literally: It broke and I laughed. We appreciate both bug reports and honesty.",
+      },
+      {
+        q: "Does Béa work offline?",
+        a: "Not as a full offline app. Maps, photos, recommendations, and the vault still need a connection.\n\nWhat does work: trip Settings → Offline directions keeps walk or drive steps on this phone. You → Offline options lists trips that already have those steps saved here.",
+      },
+    ],
+  },
+  {
+    title: "About Béa",
+    items: [
+      {
+        q: "Why is the app called Béa?",
+        a: "Because travel feels better with a companion.\n\nNot one that tells you where to go. One that helps you remember why you wanted to go there in the first place.",
       },
       {
         q: "Who owns Béa?",
-        a: "Béa — the app, its name, design, features and original ideas — is Mathilde E. Larochelle's work. You keep what you save in it. The copyright notice lives under You → Legal, privacy and such, next to the privacy policy and the terms.",
-      },
-    ],
-  },
-  {
-    title: "Receipts & expenses",
-    items: [
-      {
-        q: "Is the expense report an official document?",
-        a: "No. Béa helps you stay organised and nothing more. It is not tax advice and not an official record — always check figures with your accountant or tax authority.",
-      },
-      {
-        q: "Can I send my expenses to accounting?",
-        a: "Yes. Export a spreadsheet from the receipts page with every amount, date, category and its value in your home currency. Photograph a receipt and Béa can read the merchant and amount; you can still fill it in by hand. Tag a trip so the spend lands on that budget.",
-      },
-    ],
-  },
-  {
-    title: "Appearance & offline",
-    items: [
-      {
-        q: "How do I switch to dark mode?",
-        a: "Open You → Profile settings. The switch is labelled Light or Dark mode: warm cream by day, black and light grey at night. Béa remembers the choice on this phone.",
-      },
-      {
-        q: "Does Béa work without signal?",
-        a: "Not as a full offline app. Maps, photos, recommendations, itineraries and the vault still need a connection — the Download list on You was only a toggle, and it did not save those. What does work: on a trip, Settings → Offline directions keeps the walk or drive steps on this phone. You → Offline options lists every trip that already has those steps saved here. Get directions can also add each leg to the timeline.",
+        a: "Béa — the app, its name, design, features and original ideas — is Mathilde E. Larochelle's work. You keep what you save in it. The copyright notice lives under You → Legal, next to privacy and terms.",
       },
     ],
   },

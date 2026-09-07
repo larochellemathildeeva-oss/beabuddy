@@ -40,6 +40,10 @@ live configuration; check before relying on it.
 
 ## Notes
 
+- Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
+  Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`.
+  Never position Béa as “AI travel planner.” Prefer privacy copy that matches reality
+  (*designed to / private by default / may*), not absolute guarantees.
 - `vite.config.ts` builds on `@lovable.dev/vite-tanstack-config`, which supplies
   the whole plugin chain. It is a leftover from the previous host but is load-
   bearing — removing it means reconstructing the build config.

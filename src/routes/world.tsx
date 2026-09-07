@@ -15,6 +15,7 @@ import { STAT_OPTIONS, useStatsLayout } from "@/hooks/useStatsLayout";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { countryWorldShare, deriveTravelStats } from "@/lib/travel-stats";
 import { isCityLevelPlace } from "@/lib/reco-place";
+import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
@@ -154,9 +155,11 @@ function WorldPage() {
     <AppShell
       eyebrow="Your world"
       title={
-        photo.stats.cities
-          ? `${travelStats.cities} cities, ${travelStats.countries} countries.`
-          : "Your map starts here."
+        allPins.length === 0
+          ? BEA_SIGNATURE.world
+          : photo.stats.cities
+            ? `${travelStats.cities} cities, ${travelStats.countries} countries.`
+            : "Your map starts here."
       }
     >
       <div className="space-y-5">
@@ -215,6 +218,13 @@ function WorldPage() {
         <p className="text-[11px] text-muted-foreground">
           Showing {visible.length} of {allPins.length} pins.
         </p>
+
+        {allPins.length === 0 && (
+          <div className="card-soft p-4">
+            <p className="font-display text-[18px] leading-snug">{beaLine("empty.globe").title}</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{beaLine("empty.globe").body}</p>
+          </div>
+        )}
 
         <div data-guide="globe">
           <Globe

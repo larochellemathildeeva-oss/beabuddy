@@ -14,21 +14,22 @@ import { pinColorClass, pinLabel } from "@/data/atlas";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
+import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Béa — Your travel memory vault" },
+      { title: "Béa — Your travel life, all in one place" },
       {
         name: "description",
         content:
-          "Béa remembers everywhere you've been, organises everywhere you want to go, and surfaces saved recommendations when you're near them.",
+          "Béa remembers your travel life so Future You doesn't miss what matters. Save recommendations, plan from your ideas, and rediscover opportunities nearby.",
       },
-      { property: "og:title", content: "Béa — Your travel memory vault" },
+      { property: "og:title", content: "Béa — Your travel life, all in one place" },
       {
         property: "og:description",
         content:
-          "A lifelong travel buddy for memories, recommendations, future plans and location-aware reminders.",
+          "Remember everywhere. Go anywhere. A travel memory, recommendation, and planning companion — not another AI trip generator.",
       },
     ],
   }),
@@ -52,13 +53,14 @@ function LandingPage() {
   return (
     <AppShell
       publicPage
-      eyebrow="Travel memory vault"
-      title="Béa remembers the places you care about."
+      eyebrow={BEA_TAGLINES.strongest}
+      title={BEA_POSITION}
     >
       <div className="space-y-6">
         <p className="text-[14px] leading-relaxed text-muted-foreground">
-          A globe of where you've been, a vault of recommendations, shared trip timelines, and a
-          Near list that surfaces saved places when you're close — without needing a booking app.
+          {BEA_MISSION} Save recommendations from friends, track where you've been, plan trips from
+          your saved ideas, and rediscover opportunities when you're nearby — because the best plans
+          start with what matters to you.
         </p>
         <Globe pins={pins} selectedId={selectedId} onSelect={(pin) => setSelectedId(pin.id)} />
         <div className="grid gap-2 sm:grid-cols-2">
@@ -205,10 +207,10 @@ function SignedInHome() {
         {empty && (
           <section data-guide="home-empty" className="rise card-soft p-4">
             <p className="font-display text-[20px] leading-snug">
-              Your vault is empty — let's fill it.
+              {beaLine("empty.home").title}
             </p>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Import photos, save a recommendation, or load a rich sample trip set for a demo.
+              {beaLine("empty.home").body}
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <button

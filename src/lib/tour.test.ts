@@ -17,6 +17,7 @@ test("quick tour is a story walk around the block", () => {
   const blob = QUICK_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
   for (const needle of [
     "remembers",
+    "future you",
     "globe",
     "recommendation",
     "help me choose",
@@ -70,6 +71,12 @@ test("deep dive is six pillars of differentiation", () => {
   for (const avoid of ["receipt", "document vault", "packing list", "dark mode"]) {
     assert.ok(!blob.includes(avoid), `deep dive should not dwell on ${avoid}`);
   }
+});
+
+test("tourSteps returns stable array references", () => {
+  assert.equal(tourSteps("quick"), tourSteps("quick"));
+  assert.equal(tourSteps("deep"), tourSteps("deep"));
+  assert.notEqual(tourSteps("quick"), tourSteps("deep"));
 });
 
 test("tourSteps picks the walk and tags gated routes", () => {

@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { comparePlaces, type ComparisonResult } from "@/lib/compare.functions";
 import { pinColorClass, pinLabel, type Pin } from "@/data/atlas";
 import { formatMetres } from "@/lib/geo";
+import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 
 const MAX = 5;
 
@@ -88,7 +89,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
 
       {!open ? (
         <p className="mt-2 text-[12px] text-muted-foreground">
-          Pick two to five saved places and Béa will weigh them up for you.
+          {BEA_SIGNATURE.choose} Pick two to five saved places and Béa will weigh them up for you.
         </p>
       ) : (
         <div className="mt-3 space-y-3">
@@ -144,16 +145,22 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-medium text-primary-foreground disabled:opacity-50"
           >
             {busy
-              ? "Thinking it over…"
+              ? beaLine("choose.working").title
               : picked.length < 2
                 ? "Pick at least two places"
                 : `Compare ${picked.length} places`}
           </button>
+          {busy && (
+            <p className="text-[12px] text-muted-foreground">{beaLine("choose.working").body}</p>
+          )}
 
           {error && <p className="text-[12px] text-destructive">{error}</p>}
 
           {result && (
             <div className="rise space-y-2 rounded-2xl border border-border bg-elevated p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                {beaLine("choose.ready").title}
+              </p>
               <h3 className="font-display text-[18px] leading-tight">{result.headline}</h3>
               <p className="text-[13px]">
                 <span className="font-medium">Béa would pick {result.pick}.</span> {result.why}

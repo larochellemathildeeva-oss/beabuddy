@@ -50,7 +50,7 @@ function withAuthFlags(steps: TourStep[]): TourStep[] {
 export const QUICK_STEPS: TourStep[] = [
   {
     title: "What is Béa?",
-    body: "Béa remembers your travel life, helps you choose what to do next, and turns saved ideas into real trips. Skip anytime.",
+    body: "Béa remembers your travel life so Future You doesn't miss what matters. Skip anytime.",
   },
   {
     title: "Your Travel Brain",
@@ -256,6 +256,10 @@ export const DEEP_STEPS: TourStep[] = [
   },
 ];
 
+const QUICK_TOUR = withAuthFlags(QUICK_STEPS);
+const DEEP_TOUR = withAuthFlags(DEEP_STEPS);
+
+/** Stable arrays — new objects every call would re-trigger Tour effects and freeze the app. */
 export function tourSteps(mode: TourMode): TourStep[] {
-  return withAuthFlags(mode === "deep" ? DEEP_STEPS : QUICK_STEPS);
+  return mode === "deep" ? DEEP_TOUR : QUICK_TOUR;
 }

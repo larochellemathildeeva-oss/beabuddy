@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
@@ -13,6 +14,7 @@ import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { scoreOpportunity } from "@/lib/score-opportunity";
+import { beaLine } from "@/lib/bea-voice";
 
 export const Route = createFileRoute("/recommendations")({
   head: () => ({
@@ -241,6 +243,8 @@ function RecommendationsPage() {
     setBusy("save");
     try {
       await vault.add(draft);
+      const line = beaLine("recs.saved");
+      toast.success(line.title, { description: line.body });
       setDraft(null);
       setTagsTouched(false); setMoreTags(false);
       setLocQuery("");
@@ -642,7 +646,13 @@ function RecommendationsPage() {
               </div>
             </article>
           ))}
-          {filtered.length === 0 && (
+          {views.length === 0 && (
+            <div className="py-8 text-center">
+              <p className="font-display text-[18px] leading-snug">{beaLine("empty.recs").title}</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">{beaLine("empty.recs").body}</p>
+            </div>
+          )}
+          {views.length > 0 && filtered.length === 0 && (
             <p className="py-8 text-center text-[13px] text-muted-foreground">
               Nothing saved matches that yet.
             </p>

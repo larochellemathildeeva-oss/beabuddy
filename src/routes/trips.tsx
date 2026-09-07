@@ -22,6 +22,7 @@ import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
 import { unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
+import { beaLine } from "@/lib/bea-voice";
 import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/trips")({
       {
         property: "og:description",
         content:
-          "Trip folders with a live shared itinerary, invited friends and an encrypted document vault.",
+          "Trip folders with a live shared itinerary, invited friends, and encrypted trip documents.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -285,9 +286,10 @@ function TripsPage() {
                 />
               ))}
               {t.trips.length === 0 && !t.loading && (
-                <p className="py-8 text-center text-[13px] text-muted-foreground">
-                  No trips yet. Create one, then invite whoever's coming.
-                </p>
+                <div className="py-8 text-center">
+                  <p className="font-display text-[18px] leading-snug">{beaLine("empty.trips").title}</p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">{beaLine("empty.trips").body}</p>
+                </div>
               )}
             </div>
           </>
@@ -308,8 +310,8 @@ function TripsPage() {
 
         <section data-guide="document-vault">
           <div className="mb-3 flex items-baseline justify-between">
-            <p className="label-caps text-foreground">Document vault</p>
-            <span className="text-[11px] text-muted-foreground">End-to-end encrypted</span>
+            <p className="label-caps text-foreground">Trip documents</p>
+            <span className="text-[11px] text-muted-foreground">Encrypted on this device</span>
           </div>
           <DocumentVault />
         </section>
