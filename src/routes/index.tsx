@@ -174,6 +174,7 @@ function SignedInHome() {
           <div data-guide="home-shortcuts" className="grid grid-cols-2 gap-3">
             <Link
               to="/story"
+              data-guide="home-story"
               className="rise card-soft p-4 transition-colors hover:bg-elevated"
             >
               <div className="flex items-center gap-1.5">

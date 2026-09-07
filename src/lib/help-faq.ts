@@ -14,7 +14,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",
-        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The welcome tour starts on first sign-in as a quick spotlight walk; Replay under Profile settings is where you can pick that again or the Deep Dive.",
+        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it. Let Béa plan is the sparkle on a trip card: it builds or imports a day-by-day itinerary onto that trip. The welcome tour starts on first sign-in as a short story walk; Replay under Profile settings is where you can pick that again or the Deep Dive.",
       },
       {
         q: "How do I get a tour of a page?",
@@ -22,7 +22,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between the quick walk and the Deep Dive?",
-        a: "First sign-in starts a quick walk around the block — the save → globe → trip → near loop, with a few taps. The Deep Dive goes through every feature: pin filters, travel stats, adding a city by hand, travel tags, Flying Solo, Optimize, day trips, packing, offline directions, legal, the lot. Replay from Profile settings any time to pick either walk.",
+        a: "First sign-in starts a quick walk around the block — a short story: what Béa is, your travel brain on the globe, the recommendation vault, turning ideas into trips, Near opportunities, and Travel story. The Deep Dive is six pillars of what competitors miss — memory, recommendations as assets, decision support, the opportunity engine, planning from your vault, and the connected system. Replay from Profile settings any time to pick either walk.",
       },
       {
         q: "How do I customize what shows on Home?",
@@ -34,7 +34,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "How do I tell Béa I want something new?",
-        a: "On You, open the Feedback banner at the bottom. Pick a category — it broke, a missing travel stat, a wish, something unhinged in a plan, the map has opinions, or something nice — then write it. If Béa dropped the ball, this is where you throw it back. What you write is saved so we can read it. The welcome tour also stops here so you know where it lives.",
+        a: "On You, open the Feedback banner at the bottom. Pick a category — it broke, a missing travel stat, a wish, something unhinged in a plan, the map has opinions, or something nice — then write it. If Béa dropped the ball, this is where you throw it back. What you write is saved so we can read it.",
       },
     ],
   },

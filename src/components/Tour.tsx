@@ -245,7 +245,8 @@ export function Tour({
 
           <h2 className="mt-2 font-display text-[24px] leading-tight">How shall we walk?</h2>
           <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-            First sign-in already took the quick walk. Pick that again, or open every cupboard.
+            First sign-in already took the story walk. Pick that again, or open the Deep Dive on what
+            makes Béa different.
           </p>
 
           <div className="mt-4 space-y-2">
@@ -255,7 +256,7 @@ export function Tour({
             >
               <span className="block text-[15px] font-semibold">A quick walk around the block</span>
               <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                Spotlight highlights. A few taps. A few minutes.
+                Remember → choose → plan → opportunity → story. About a minute.
               </span>
             </button>
             <button
@@ -264,7 +265,7 @@ export function Tour({
             >
               <span className="block text-[15px] font-semibold">Deep Dive</span>
               <span className="mt-0.5 block text-[12px] text-muted-foreground">
-                Every feature, explained. Bring a coffee.
+                Six pillars competitors miss. Bring a coffee.
               </span>
             </button>
           </div>

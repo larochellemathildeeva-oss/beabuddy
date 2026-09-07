@@ -40,308 +40,218 @@ function withAuthFlags(steps: TourStep[]): TourStep[] {
 }
 
 /**
- * First-run walk — one product loop on seeded data, not a feature table of contents.
- * Starts immediately (no chooser). Replay from You can still pick this or Deep Dive.
+ * First-run “walk around the block” — story, not a feature TOC.
  *
- * Loop: save → globe → trip → near → you.
- * Home shows Paris in spring (upcoming); Lisbon is past + Near demo density.
+ * Thread: Béa remembers your travel life, helps you choose what to do next,
+ * and turns saved ideas into real trips.
+ *
+ * Seeded demo: Paris upcoming on Home; Lisbon density on World / Near / Recs.
  */
 export const QUICK_STEPS: TourStep[] = [
   {
-    title: "Welcome",
-    body: "Your vault already has sample places and trips. We'll walk the loop Béa is for — Skip anytime.",
+    title: "What is Béa?",
+    body: "Béa remembers your travel life, helps you choose what to do next, and turns saved ideas into real trips. Skip anytime.",
   },
   {
-    title: "A place someone told you about",
-    body: "Recs is the shelf. Sample Lisbon spots are here — tap an Add option to open the form (nothing is saved yet).",
-    to: "/recommendations",
-    selector: "[data-guide='reco-add']",
-    awaitClick: true,
-    actionHint: "Tap an Add option, then Next",
-  },
-  {
-    title: "On the globe",
-    body: "Your saved spots become pins. Spin the globe — Lisbon is the dense cluster.",
+    title: "Your Travel Brain",
+    body: "Most people save ideas in Maps, screenshots, and texts. On the globe, visited, wishlist, recommendations, and next-time pins become one memory bank. Spin Lisbon.",
     to: "/world",
     selector: "[data-guide='globe']",
   },
   {
-    title: "On a trip",
-    body: "That's Paris in spring at the top of Home. Trips hold the day-by-day plan.",
+    title: "Never forget a tip",
+    body: "That restaurant a friend mentioned months ago? Béa keeps who told you, the note, and travel tags — searchable and ready for a trip. Lisbon samples are in.",
+    to: "/recommendations",
+    selector: "[data-guide='reco-list']",
+  },
+  {
+    title: "Where next?",
+    body: "Most apps invent a list for Paris. Béa asks: of the places you already care about, which one should you do next? Open Help me choose.",
+    to: "/world",
+    selector: "[data-guide='compare-pins']",
+  },
+  {
+    title: "Ideas become trips",
+    body: "Most apps help after you've decided. Béa builds from what you already saved — Let Béa plan, Optimize, Compare. Open Paris in spring.",
     to: "/",
     selector: "[data-guide='home-trip']",
     awaitClick: true,
     actionHint: "Tap your Paris trip, then Next",
   },
   {
-    title: "When you're nearby",
-    body: "Near ranks your saves by distance. No GPS? Pretend you're in Lisbon.",
+    title: "Opportunity mode",
+    body: "You're near something Future You wanted. Near ranks your own saves by distance and why they matter right now. Demo as Lisbon.",
     to: "/opportunities",
     selector: "[data-guide='demo-city-lisbon']",
     awaitClick: true,
     actionHint: "Tap Lisbon, then Next",
   },
   {
-    title: "You",
-    body: "Preferences, packing, and Replay live here. Want every cupboard? Replay and pick Deep Dive.",
-    to: "/profile",
-    selector: "[data-guide='profile-account']",
-  },
-  {
-    title: "You're all set",
-    body: "Save → globe → trip → near. Ask Béa explains any page. Feedback is on You if something's missing.",
+    title: "Your travel story",
+    body: "Every trip becomes history — Travel story playback and City memories. Remember → choose → plan → opportunity → story. Deep Dive from You covers the six pillars.",
     to: "/",
+    selector: "[data-guide='home-story']",
+    awaitClick: true,
+    actionHint: "Tap Travel story, then Next",
   },
 ];
 
-/** Every feature, explained. Offered on Replay from You — not on first sign-in. */
+/**
+ * Deep Dive — what competitors miss, in six pillars. Replay from You only.
+ * Supporting tools (budget, packing, vault, calendar) stay out of this walk.
+ */
 export const DEEP_STEPS: TourStep[] = [
   {
-    title: "Welcome — the long way",
-    body: "This is the Deep Dive through every cupboard. Nothing is booked. Skip anytime, or Back to pick the short walk.",
+    title: "Deep Dive — six pillars",
+    body: "This walk is the unique thread: memory, recommendations, decisions, opportunities, planning from your vault, and the connected system. Skip anytime.",
   },
+
+  // —— Pillar 1: The Memory Layer ——
   {
-    title: "Home — the trip card",
-    body: "Your current or next trip sits at the top with dates and the first few plan items. Tap the card to open the folder.",
-    to: "/",
-    selector: "[data-guide='home-trip']",
-  },
-  {
-    title: "Home — story and memories",
-    body: "Travel story plays city by city; City memories gathers photos and pins. Waiting for you and Recent memories sit further down.",
-    to: "/",
-    selector: "[data-guide='home-shortcuts']",
-  },
-  {
-    title: "Customize Home",
-    body: "On You → Profile settings, Customize home hides the trip card, shortcuts, Waiting for you, Recent memories, or a Future Me note.",
-    to: "/profile",
-    selector: "[data-guide='home-customize']",
-  },
-  {
-    title: "World — the globe",
-    body: "Drag to spin, pinch or scroll to zoom. Pins: blue visited, green next time, yellow wishlist, purple recommendation.",
+    title: "Pillar 1 — Memory",
+    body: "Most travel apps focus on planning. Béa focuses on remembering your travel life across years — not just one trip.",
     to: "/world",
     selector: "[data-guide='globe']",
   },
   {
-    title: "World — pin filters",
-    body: "The chips above the globe hide and show whole groups of pins when the map gets busy.",
+    title: "Your vault on the globe",
+    body: "Visited, next time, wishlist, and recommendation pins. Filter chips calm a busy map. This is one memory bank for everywhere you've saved.",
     to: "/world",
     selector: "[data-guide='pin-filters']",
   },
   {
-    title: "Help me choose",
-    body: "Tick two to five saved places, say what matters, and Béa ranks what you already saved — she does not invent cities.",
-    to: "/world",
-    selector: "[data-guide='compare-pins']",
-  },
-  {
     title: "Travel statistics",
-    body: "Open Travel statistics for countries, cities, trips and pins. Choose which counters to show; ask on You → Feedback for new ones.",
+    body: "Countries, cities, trips, and days — choose which counters to show. Your history feels alive, not buried in folders.",
     to: "/world",
     selector: "[data-guide='travel-stats']",
   },
   {
-    title: "Heatmap",
-    body: "Switch the heatmap on for time as a warm cloud. Toggle days (how long you stayed) or photos (how many you imported).",
-    to: "/world",
-    selector: "[data-guide='heatmap']",
+    title: "Photos become places",
+    body: "Import pictures; Béa reads where they were taken, builds city memories, and can drop a pin. Privacy note before every upload.",
+    to: "/photos",
+    selector: "[data-guide='photo-privacy']",
   },
   {
-    title: "Add a city by hand",
-    body: "Type a city or country, or paste a list. Countries recognise straight away; other names are looked up before they save.",
-    to: "/world",
-    selector: "[data-guide='add-city']",
+    title: "City memories",
+    body: "Each city gets a page — visits years apart, photos, and spots you cared about. Competitors stop when the trip ends; Béa keeps going.",
+    to: "/memories",
+    selector: "[data-guide='city-memories']",
   },
   {
-    title: "The recommendation vault",
-    body: "Recs holds places people told you about — newest first, with who recommended them and the tags Béa guessed.",
+    title: "Future Me notes",
+    body: "Leave a note for next time — a rooftop, a warning, a bakery. Béa hands it back when you open that city again.",
+    to: "/memories",
+    selector: "[data-guide='future-me']",
+  },
+  {
+    title: "Travel story playback",
+    body: "Playback walks cities in the order you were there — Montreal → Paris → Lisbon — with photos changing. Your story, not a new itinerary.",
+    to: "/story",
+    selector: "[data-guide='story-play']",
+  },
+
+  // —— Pillar 2: The Recommendation Vault ——
+  {
+    title: "Pillar 2 — Recommendations",
+    body: "\"You HAVE to try that place in Lisbon\" usually disappears. Béa treats recommendations like assets — who, note, tags, city — not bookmarks.",
     to: "/recommendations",
     selector: "[data-guide='reco-list']",
   },
   {
-    title: "Search and chips",
-    body: "Search by place, city, or who told you. Typos and missing accents still match. City and kind chips filter the shelf.",
+    title: "Who, note, tags",
+    body: "Save who suggested it, what they said, and travel tags Béa guesses. Later you find it instantly — or Near surfaces it for you.",
     to: "/recommendations",
-    selector: "[data-guide='reco-search']",
+    selector: "[data-guide='reco-list']",
   },
   {
-    title: "Ways to save a place",
-    body: "Paste a link, search the web, pin nearby, I'm here now, type by hand, or paste a list. You edit before anything saves.",
+    title: "Ways to capture a tip",
+    body: "Paste a Maps or Yelp link, search the web, pin nearby, I'm here now, type by hand, or paste a whole list. You review before it saves.",
     to: "/recommendations",
     selector: "[data-guide='reco-add']",
   },
   {
-    title: "Travel tags",
-    body: "Béa guesses tags like Museums or Coffee shops so Let Béa plan and day trips can match how you travel.",
+    title: "Search your vault",
+    body: "Search by place, city, or who told you. Typos and missing accents still match. City and kind chips filter the shelf.",
     to: "/recommendations",
-    selector: "[data-guide='reco-list']",
+    selector: "[data-guide='reco-search']",
+  },
+
+  // —— Pillar 3: Decision Support ——
+  {
+    title: "Pillar 3 — Decide",
+    body: "Most apps answer \"What should I do in Paris?\" Béa answers: of the places you already care about, which one next?",
+    to: "/world",
+    selector: "[data-guide='compare-pins']",
   },
   {
-    title: "Start a trip",
-    body: "Name it, search the starting city, optional dates (Tentative or Confirmed), and tick a budget only if you want one.",
-    to: "/trips",
-    selector: "[data-guide='new-trip']",
+    title: "Help me choose",
+    body: "Tick two to five saved places, say what matters, and Béa ranks them with reasons — a recommendation engine on your own travel life.",
+    to: "/world",
+    selector: "[data-guide='compare-pins']",
+  },
+
+  // —— Pillar 4: Opportunity Engine ——
+  {
+    title: "Pillar 4 — Opportunities",
+    body: "You saved a restaurant, a museum, a hike months ago. Near says you're 900m from something Future You wanted.",
+    to: "/opportunities",
+    selector: "[data-guide='near-list']",
   },
   {
-    title: "Flying Solo and invite codes",
-    body: "Alone it says Flying Solo. Share an invite code so friends can edit the timeline. Join with a code accepts theirs.",
-    to: "/trips",
-    selector: "[data-guide='join-trip']",
+    title: "Near — your saves, ranked",
+    body: "Share location or demo a city. Distance and preference score bring forgotten intentions back as experiences. Snooze when it's not the moment.",
+    to: "/opportunities",
+    selector: "[data-guide='location-card']",
   },
   {
-    title: "Cities, stops and layovers",
-    body: "Where you're going lists cities with arrival and leaving dates. Mark a layover when you're only changing planes.",
-    to: "/trips",
-    selector: "[data-guide='trip-list']",
+    title: "Day trip from your vault",
+    body: "Tick nearby saves, pick today's pace, Arrange with Béa, then save as a day-trip — still starting from places you already kept.",
+    to: "/opportunities",
+    selector: "[data-guide='day-trip']",
+  },
+
+  // —— Pillar 5: Planning Without a Blank Page ——
+  {
+    title: "Pillar 5 — Plan from you",
+    body: "Most planners open a blank page. Béa starts with your saved places, preferences, recommendations, and travel style.",
+    to: "/preferences",
+    selector: "[data-guide='pref-style']",
   },
   {
-    title: "The shared timeline",
-    body: "The day-by-day plan — meals, walks, free hours. Everyone on the trip can add. Nothing here is a reservation.",
-    to: "/trips",
-    selector: "[data-guide='trip-list']",
-  },
-  {
-    title: "Let Béa plan — build or import",
-    body: "The trip sparkle builds a plan from preferences and tagged recs, or imports a photo or pasted itinerary.",
-    to: "/trips",
-    selector: "[data-guide='bea-plan']",
-  },
-  {
-    title: "Costs, alternatives and rebuild",
-    body: "Costs stay off unless you ask. Swap selected stops or rebuild the draft. Béa does not book or check availability.",
+    title: "Let Béa plan",
+    body: "On a trip, build a day-by-day plan from prefs and tagged recs — or import a photo or pasted itinerary. You're never starting from scratch.",
     to: "/trips",
     selector: "[data-guide='bea-plan']",
   },
   {
     title: "Optimize",
-    body: "Reshuffle stops you already have — closest together, rainy-day indoor, easy mornings, and more. You approve before it saves.",
+    body: "Reshuffle stops you already have — closest together, rainy-day indoor, easy mornings, rest day, even pace, meals first. You approve before it saves.",
     to: "/trips",
     selector: "[data-guide='optimize-trip']",
   },
   {
-    title: "Get directions",
-    body: "Get walking or driving between cities, then add legs to the timeline. Offline turn-by-turn needs a trip download.",
+    title: "Compare drafts",
+    body: "Still deciding? Compare two plan drafts side by side — metrics and a clear pick grounded in how you travel.",
     to: "/trips",
-    selector: "[data-guide='trip-list']",
+    selector: "[data-guide='bea-plan']",
+  },
+
+  // —— Pillar 6: Travel Operating System ——
+  {
+    title: "Pillar 6 — One system",
+    body: "Map → recommendations → decisions → trips → photos → memories → the next opportunity. Most apps solve one problem; Béa connects them.",
+    to: "/",
+    selector: "[data-guide='home-shortcuts']",
   },
   {
-    title: "Packing lists on a trip",
-    body: "The paper icon attaches a copy of a saved list. Build reusable templates under You → Create packing lists.",
-    to: "/trips",
-    selector: "[data-guide='packing-lists']",
-  },
-  {
-    title: "Trip settings",
-    body: "Turn budget on or off, download offline directions, or delete the trip (timeline, stops, invites go with it).",
-    to: "/trips",
-    selector: "[data-guide='trip-list']",
-  },
-  {
-    title: "The document vault",
-    body: "Passports and boarding passes are scrambled on your device, then locked behind a passcode or fingerprint.",
-    to: "/trips",
-    selector: "[data-guide='document-vault']",
-  },
-  {
-    title: "Budgets",
-    body: "When a budget is on, add planned spend and watch live totals. Claimed receipts update the trip across devices.",
-    to: "/trips",
-  },
-  {
-    title: "Calendar",
-    body: "Every trip and plan by date — overlapping holidays and a work week in another city on one page.",
-    to: "/calendar",
-    selector: "[data-guide='calendar-month']",
-  },
-  {
-    title: "Near me — location rules",
-    body: "Béa asks before using location. Choose once, an hour, today, or until you turn it off — no background watch by default.",
-    to: "/opportunities",
-    selector: "[data-guide='location-card']",
-  },
-  {
-    title: "How close, how often, snooze",
-    body: "Set distance and nudge frequency. Snooze a place for now. Saves rank from right here to a day trip away.",
-    to: "/opportunities",
-    selector: "[data-guide='alert-settings']",
-  },
-  {
-    title: "Plan a day trip",
-    body: "Tick nearby recs, pick today's pace, Arrange with Béa, then save as a day-trip. Nothing is booked.",
-    to: "/opportunities",
-    selector: "[data-guide='day-trip']",
-  },
-  {
-    title: "Photos become memories",
-    body: "Import pictures; Béa reads embedded location, builds city memories, and can drop a pin. Privacy note before every upload.",
-    to: "/photos",
-    selector: "[data-guide='photo-privacy']",
-  },
-  {
-    title: "City memories and Future Me",
-    body: "Each city gets a memory page. Leave a note to your future self — Béa hands it back when you return.",
-    to: "/memories",
-    selector: "[data-guide='city-memories']",
-  },
-  {
-    title: "Travel story",
-    body: "Playback walks cities in the order you were there. A story of places you lived — not a new itinerary.",
-    to: "/story",
-    selector: "[data-guide='story-play']",
-  },
-  {
-    title: "Receipts and expenses",
-    body: "Photograph receipts, tag the trip, export a spreadsheet. Multi-currency totals use today's live rates.",
-    to: "/expenses",
-    selector: "[data-guide='new-receipt']",
-  },
-  {
-    title: "You — the account",
-    body: "Sign in so pins, trips, and photos follow you. Packing lists, offline options, legal, and Help live here too.",
-    to: "/profile",
-    selector: "[data-guide='profile-account']",
-  },
-  {
-    title: "Travel preferences",
-    body: "Style, budget, pace, interests, and dietary notes feed Let Béa plan, Optimize, and day trips.",
-    to: "/preferences",
-    selector: "[data-guide='pref-style']",
-  },
-  {
-    title: "Light, dark and packing",
-    body: "Appearance lives in Profile settings. Create packing lists on You, then attach a copy to a trip.",
-    to: "/profile",
-    selector: "[data-guide='packing-lists']",
-  },
-  {
-    title: "Offline options",
-    body: "Maps and the vault still need a connection. Trip settings → Offline directions keeps walk/drive steps on this phone.",
-    to: "/profile",
-    selector: "[data-guide='offline-options']",
-  },
-  {
-    title: "Legal and copyright",
-    body: "You → Legal holds privacy, terms, and that Béa is Mathilde E. Larochelle's work. You keep what you save.",
-    to: "/profile",
-    selector: "[data-guide='legal']",
-  },
-  {
-    title: "Help, and Ask Béa",
-    body: "Help & FAQ answers the usual questions. Ask Béa is the page sparkle; Let Béa plan is the trip sparkle.",
+    title: "Ask Béa anytime",
+    body: "The page sparkle explains the screen you're on. Let Béa plan is the trip sparkle. Same companion, different jobs.",
     to: "/help",
     selector: "[data-guide='help-faq']",
   },
   {
-    title: "Tell Béa something",
-    body: "You → Feedback: pick a category and write it. If Béa dropped the ball, this is where you throw it back.",
-    to: "/profile",
-    selector: "[data-guide='feedback']",
-  },
-  {
     title: "You're all set",
-    body: "Replay from You anytime for the quick walk or this Deep Dive. Ask Béa and Feedback stay on every visit.",
+    body: "Three things to remember: save tips from anyone, get nudged when you're near them, and keep a searchable travel history. Replay from You anytime.",
     to: "/",
   },
 ];

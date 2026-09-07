@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { DEEP_BODY_MAX, QUICK_BODY_MAX, wordCount } from "./tour-copy.ts";
 import { DEEP_STEPS, QUICK_STEPS, routeNeedsAuth, tourSteps } from "./tour.ts";
 
-test("quick tour is a short journey loop with a few taps", () => {
+test("quick tour is a story walk around the block", () => {
   assert.equal(QUICK_STEPS.length, 7);
-  assert.equal(QUICK_STEPS[0]?.title, "Welcome");
-  assert.equal(QUICK_STEPS.at(-1)?.title, "You're all set");
+  assert.equal(QUICK_STEPS[0]?.title, "What is Béa?");
+  assert.equal(QUICK_STEPS.at(-1)?.title, "Your travel story");
   assert.ok(QUICK_STEPS.some((s) => s.selector), "quick walk spotlights real controls");
   assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 3);
   const taps = QUICK_STEPS.filter((s) => s.awaitClick);
@@ -15,10 +15,20 @@ test("quick tour is a short journey loop with a few taps", () => {
     assert.match(s.actionHint!, /then Next/i, `${s.title} hint should mention Next`);
   }
   const blob = QUICK_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
-  for (const needle of ["paris", "lisbon", "save", "globe", "near"]) {
-    assert.ok(blob.includes(needle), `journey should mention ${needle}`);
+  for (const needle of [
+    "remembers",
+    "globe",
+    "recommendation",
+    "help me choose",
+    "paris",
+    "lisbon",
+    "near",
+    "story",
+    "memory",
+  ]) {
+    assert.ok(blob.includes(needle), `story walk should mention ${needle}`);
   }
-  assert.ok(!blob.includes("every saved place"), "must not overclaim city-level recs as pins");
+  assert.ok(!blob.includes("every cupboard"), "quick walk is not a feature TOC");
 });
 
 test("quick and deep bodies stay under the word caps", () => {
@@ -36,29 +46,29 @@ test("quick and deep bodies stay under the word caps", () => {
   }
 });
 
-test("deep dive is longer and covers every feature area", () => {
+test("deep dive is six pillars of differentiation", () => {
   assert.ok(DEEP_STEPS.length > QUICK_STEPS.length);
   const blob = DEEP_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
   for (const needle of [
+    "pillar 1",
+    "pillar 2",
+    "pillar 3",
+    "pillar 4",
+    "pillar 5",
+    "pillar 6",
+    "future me",
+    "help me choose",
+    "assets",
+    "optimize",
     "day trip",
-    "travel tags",
-    "flying solo",
-    "heatmap",
-    "add a city",
-    "offline",
-    "packing",
-    "ask béa",
-    "feedback",
-    "copyright",
-    "preferences",
-    "does not book",
-    "customize home",
-    "layover",
-    "snooze",
-    "join with a code",
-    "tentative",
+    "playback",
+    "near",
   ]) {
     assert.ok(blob.includes(needle), `deep dive should mention ${needle}`);
+  }
+  // Supporting utilities stay out of the differentiation walk
+  for (const avoid of ["receipt", "document vault", "packing list", "dark mode"]) {
+    assert.ok(!blob.includes(avoid), `deep dive should not dwell on ${avoid}`);
   }
 });
 
@@ -73,4 +83,5 @@ test("tourSteps picks the walk and tags gated routes", () => {
   assert.equal(routeNeedsAuth("/help"), false);
   assert.equal(routeNeedsAuth("/trips"), true);
   assert.equal(routeNeedsAuth("/calendar"), true);
+  assert.equal(routeNeedsAuth("/story"), true);
 });
