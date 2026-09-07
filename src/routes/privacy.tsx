@@ -170,8 +170,10 @@ function PrivacyPage() {
           <p>
             You can edit or delete any photo, recommendation, note, trip or document at any time,
             and deletion is permanent rather than hidden. Under Profile → Legal you can delete your
-            account — that is designed to remove your Auth user, database rows, and photo/receipt
-            files. Backups, logs, and the AI provider may lag for a short time.
+            account — that is designed to remove your Auth user, your private database rows, and
+            photo/receipt files. Trips you shared with others are designed to stay with a remaining
+            member (ownership hands off); trips only you were on are removed. Backups, logs, and the
+            AI provider may lag for a short time.
           </p>
           <p>Béa does not sell data, does not run advertising and does not track you across the web.</p>
         </Section>

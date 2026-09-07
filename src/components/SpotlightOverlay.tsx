@@ -20,6 +20,44 @@ export function measureGuideTarget(el: HTMLElement): SpotlightBox {
 }
 
 /**
+ * Remeasure after scroll / CSS enter animations settle. Call `onBox` immediately
+ * and again over ~rise duration (0.55s). Returns a cancel function.
+ */
+export function trackGuideTargetSettle(
+  el: HTMLElement,
+  onBox: (box: SpotlightBox) => void,
+): () => void {
+  const measure = () => onBox(measureGuideTarget(el));
+  measure();
+
+  const timers: number[] = [];
+  const schedule = (ms: number) => {
+    timers.push(window.setTimeout(measure, ms));
+  };
+  // Double-rAF for post-scroll layout, then cover the 0.55s `rise` animation.
+  let raf2 = 0;
+  const raf1 = window.requestAnimationFrame(() => {
+    raf2 = window.requestAnimationFrame(() => {
+      measure();
+      schedule(50);
+      schedule(150);
+      schedule(300);
+      schedule(560);
+    });
+  });
+
+  const observer = new ResizeObserver(measure);
+  observer.observe(el);
+
+  return () => {
+    window.cancelAnimationFrame(raf1);
+    window.cancelAnimationFrame(raf2);
+    for (const id of timers) window.clearTimeout(id);
+    observer.disconnect();
+  };
+}
+
+/**
  * Dimmed cutout around a target (PageGuide / welcome tour). The hole has no
  * hit target so clicks reach the page underneath — needed for interactive steps.
  */
@@ -59,7 +97,7 @@ export function SpotlightOverlay({
             onClick={onDismiss}
           />
           <div
-            className="absolute rounded-2xl ring-2 ring-primary transition-all duration-300"
+            className="absolute rounded-2xl ring-2 ring-primary"
             style={{ top: box.top, left: box.left, width: box.width, height: box.height }}
           />
         </>

@@ -72,8 +72,53 @@ async function purgeUserStorage(
 }
 
 /**
- * Permanently delete the signed-in account: Storage objects for this user,
- * then Auth user (DB rows cascade from auth.users).
+ * Shared trips must outlive the deleting owner: hand ownership to another
+ * member. Solo owned trips are left for auth.users CASCADE to remove.
+ */
+async function handOffOwnedSharedTrips(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  userId: string,
+) {
+  const { data: owned, error: ownedErr } = await admin
+    .from("trips")
+    .select("id")
+    .eq("owner_id", userId);
+  if (ownedErr) throw new Error(ownedErr.message);
+
+  for (const trip of owned ?? []) {
+    const tripId = trip.id as string;
+    const { data: members, error: memberErr } = await admin
+      .from("trip_members")
+      .select("user_id, role")
+      .eq("trip_id", tripId);
+    if (memberErr) throw new Error(memberErr.message);
+
+    const successor = (members ?? []).find(
+      (m: { user_id: string }) => m.user_id !== userId,
+    ) as { user_id: string; role: string } | undefined;
+
+    if (!successor) continue;
+
+    const { error: ownerErr } = await admin
+      .from("trips")
+      .update({ owner_id: successor.user_id })
+      .eq("id", tripId)
+      .eq("owner_id", userId);
+    if (ownerErr) throw new Error(ownerErr.message);
+
+    const { error: roleErr } = await admin
+      .from("trip_members")
+      .update({ role: "owner" })
+      .eq("trip_id", tripId)
+      .eq("user_id", successor.user_id);
+    if (roleErr) throw new Error(roleErr.message);
+  }
+}
+
+/**
+ * Permanently delete the signed-in account: hand off shared trips, purge
+ * Storage, then Auth user (remaining DB rows cascade from auth.users).
  */
 export const deleteMyAccount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -88,6 +133,7 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const userId = context.userId;
 
+    await handOffOwnedSharedTrips(supabaseAdmin, userId);
     await purgeUserStorage(supabaseAdmin, userId);
 
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);

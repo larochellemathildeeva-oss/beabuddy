@@ -24,9 +24,33 @@ test("guideTargetLooksVisible rejects display:none and visibility:hidden", () =>
   );
 });
 
+test("guideTargetLooksVisible rejects near-zero opacity", () => {
+  assert.equal(
+    guideTargetLooksVisible(
+      { width: 100, height: 40 },
+      { display: "block", visibility: "visible", opacity: "0" },
+    ),
+    false,
+  );
+  assert.equal(
+    guideTargetLooksVisible(
+      { width: 100, height: 40 },
+      { display: "block", visibility: "visible", opacity: "0.02" },
+    ),
+    false,
+  );
+});
+
 test("guideTargetLooksVisible accepts a real painted box", () => {
   assert.equal(
     guideTargetLooksVisible({ width: 100, height: 40 }, { display: "block", visibility: "visible" }),
+    true,
+  );
+  assert.equal(
+    guideTargetLooksVisible(
+      { width: 100, height: 40 },
+      { display: "block", visibility: "visible", opacity: "1" },
+    ),
     true,
   );
 });

@@ -6,6 +6,7 @@ import {
   findGuideTarget,
   measureGuideTarget,
   SpotlightOverlay,
+  trackGuideTargetSettle,
   type SpotlightBox,
 } from "./SpotlightOverlay";
 
@@ -381,14 +382,16 @@ export function PageGuide() {
     if (!open || !step) return;
     const el = findGuideTarget(step.selector);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-    const frame = window.requestAnimationFrame(measure);
-    const observer = el ? new ResizeObserver(measure) : null;
-    if (el) observer?.observe(el);
+    const stopSettle = el
+      ? trackGuideTargetSettle(el, setBox)
+      : (() => {
+          setBox(null);
+          return () => undefined;
+        })();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, true);
     return () => {
-      window.cancelAnimationFrame(frame);
-      observer?.disconnect();
+      stopSettle();
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };

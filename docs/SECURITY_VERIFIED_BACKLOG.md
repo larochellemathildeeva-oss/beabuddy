@@ -15,7 +15,7 @@ reduces crypto strength, invite single-use, or verification belongs under
 
 | # | Issue | Pri | Status | Effort | Residual after fix | Next step |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Live account-delete proof + failure modes | P0 | In repo | S | Low if verified | Run pack A on Canner canary |
+| 1 | Live account-delete proof + failure modes | P0 | **Verified** 2026-09-07 | S | Low | Optional: confirm Storage prefixes empty if canary uploaded files |
 | 2 | Supabase Auth dashboard unknowns | P0 | Open | S | Med until known | Pack B settings pass/fail |
 | 3 | Authz re-test after delete deploy | P0 | In repo* | S | Low if verified | Pack C A/B IDOR on Canner |
 | 4 | Remove / leave trip UI | P1 | In repo | M | Low | Smoke on deploy; trip settings → Invite |
@@ -82,6 +82,12 @@ Prereq: `SUPABASE_SERVICE_ROLE_KEY` set on Canner; dedicated **canary** account
 5. If canary was on a shared trip: other member still opens trip; canary gone from members.
 6. Record: date, env URL, pass/fail. On fail: do not claim delete in marketing.
 
+**Pass recorded 2026-09-07 (founder canary on live):** cannot re-login; Auth user gone;
+canary off the trip. Founder: shared trip **survived for the other member** (correct
+product). Code now **hands off** owned shared trips to another member before Auth
+delete; solo trips still cascade away. Migration
+`20260907120000_account_delete_trip_handoff_fks` softens `created_by` FKs.
+
 Failure modes to watch: Storage purged but Auth remains (user can re-login empty);
 Auth deleted but Storage orphans (use list-prefix purge — already in code).
 
@@ -143,3 +149,4 @@ On production/Canner after delete deploy:
 | --- | --- |
 | 2026-09-07 | Backlog created; invite math; leave/remove UI; Safe-negation + decision log |
 | 2026-09-07 | Free HIBP range check on sign-up/reset; idle auto-logout (45 min) |
+| 2026-09-07 | Pack A live canary: Auth gone, cannot re-login, trip cascade OK |

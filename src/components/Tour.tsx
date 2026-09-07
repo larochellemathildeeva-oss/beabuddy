@@ -16,6 +16,7 @@ import {
   findGuideTarget,
   measureGuideTarget,
   SpotlightOverlay,
+  trackGuideTargetSettle,
   type SpotlightBox,
 } from "./SpotlightOverlay";
 
@@ -209,13 +210,17 @@ export function Tour({
     let cancelled = false;
     let tries = 0;
     let retryTimer = 0;
+    let stopSettle: (() => void) | null = null;
     const onResizeOrScroll = () => measureRef.current();
     const tick = () => {
       if (cancelled) return;
       const el = findGuideTarget(stepSelector);
       if (el) {
         el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-        setBox(measureGuideTarget(el));
+        stopSettle?.();
+        stopSettle = trackGuideTargetSettle(el, (next) => {
+          if (!cancelled) setBox(next);
+        });
         setTargetReady(true);
         return;
       }
@@ -234,6 +239,7 @@ export function Tour({
       cancelled = true;
       window.clearTimeout(retryTimer);
       window.cancelAnimationFrame(frame);
+      stopSettle?.();
       window.removeEventListener("resize", onResizeOrScroll);
       window.removeEventListener("scroll", onResizeOrScroll, true);
     };
