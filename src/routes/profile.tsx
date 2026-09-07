@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { applyDark, readDark } from "@/lib/theme";
+import { deleteMyAccount } from "@/lib/account.functions";
+import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
 
 export const Route = createFileRoute("/profile")({
@@ -401,6 +403,7 @@ function ProfilePage() {
                 Larochelle's work. You keep what you save in it. The Terms spell this out.
               </p>
             </div>
+            {user && <DeleteAccountPanel userId={user.id} />}
           </div>
         </Collapsible>
 
@@ -447,6 +450,58 @@ function ProfilePage() {
         </Collapsible>
       </div>
     </AppShell>
+  );
+}
+
+function DeleteAccountPanel({ userId }: { userId: string }) {
+  const navigate = useNavigate();
+  const [phrase, setPhrase] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const ready = phrase.trim() === "DELETE";
+
+  return (
+    <div className="rounded-xl border border-destructive/30 p-3">
+      <p className="text-[14px] font-medium">Delete my account</p>
+      <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+        This is designed to remove your trips, recommendations, photos, receipts, and vault
+        documents. Type DELETE to confirm. Backups and the AI provider may still hold traces for a
+        short time.
+      </p>
+      <input
+        value={phrase}
+        onChange={(e) => setPhrase(e.target.value)}
+        placeholder="Type DELETE"
+        autoComplete="off"
+        className="mt-3 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+        aria-label="Type DELETE to confirm account deletion"
+      />
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      <button
+        type="button"
+        disabled={!ready || busy}
+        onClick={() =>
+          void (async () => {
+            setBusy(true);
+            setError("");
+            try {
+              await deleteMyAccount({ data: { confirm: "DELETE" } });
+              clearStoredVaultKeys(userId);
+              await supabase.auth.signOut();
+              await navigate({ to: "/auth" });
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Could not delete the account.");
+            } finally {
+              setBusy(false);
+            }
+          })()
+        }
+        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2.5 text-[13px] font-semibold text-destructive disabled:opacity-50"
+      >
+        {busy ? "Deleting…" : "Delete my account forever"}
+      </button>
+    </div>
   );
 }
 

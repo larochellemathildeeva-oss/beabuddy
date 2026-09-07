@@ -191,7 +191,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I delete my data?",
-        a: "You can delete many types of information you add to Béa, including trips, recommendations, notes, memories, and documents. Some information may remain in backups or with AI providers for a limited period as described in the Privacy Policy.",
+        a: "You can delete many types of information you add to Béa, including trips, recommendations, notes, memories, and documents.\n\nUnder Profile → Legal, privacy and such you can delete the whole account. Some information may remain in backups or with AI providers for a limited period as described in the Privacy Policy.",
       },
       {
         q: "How does Béa use AI?",
