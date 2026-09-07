@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { readExif } from "@/lib/exif";
 import { reverseGeocode } from "@/lib/geocode";
+import { isNetworkFailure } from "@/lib/ai-errors";
 import { stripImageFileMetadata } from "@/lib/strip-image-meta";
 
 export const Route = createFileRoute("/_authenticated/photos")({
@@ -164,7 +165,11 @@ function PhotosPage() {
       setPending([]);
       if (!skipPrompt) setConsented(false);
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Upload failed. Try again.");
+      if (isNetworkFailure(err)) {
+        setStatus("Upload didn't finish — check your connection and try again.");
+      } else {
+        setStatus(err instanceof Error ? err.message : "Upload failed. Try again.");
+      }
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";

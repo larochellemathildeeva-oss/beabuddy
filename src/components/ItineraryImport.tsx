@@ -14,6 +14,7 @@ import {
   type OptimizeSourceItem,
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
+import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { tripStillEditableNote } from "@/lib/trip-copy";
@@ -196,7 +197,7 @@ function ImportPanel({
         files.length > room ? `Béa can read up to ${MAX_IMAGES} pictures at a time.` : null,
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read that picture.");
+      setError(aiFailure(err).message);
     }
   };
   const [text, setText] = useState("");
@@ -251,7 +252,7 @@ function ImportPanel({
         toast.success(ready.title, { description: ready.body });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(aiFailure(e).message);
     } finally {
       setBusy(false);
     }
@@ -342,7 +343,7 @@ function ImportPanel({
       });
       applyRevision(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(aiFailure(e).message);
     } finally {
       setBusy(false);
     }
@@ -372,7 +373,7 @@ function ImportPanel({
       });
       applyRevision(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(aiFailure(e).message);
     } finally {
       setBusy(false);
     }
@@ -737,7 +738,7 @@ function OptimizePanel({
       });
       setPlan(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(aiFailure(e).message);
     } finally {
       setBusy(false);
     }
@@ -887,7 +888,7 @@ function ComparePanel() {
       });
       setResult(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(aiFailure(e).message);
     } finally {
       setBusy(false);
     }
