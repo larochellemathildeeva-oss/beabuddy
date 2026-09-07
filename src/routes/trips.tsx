@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { FileText, Settings, Sparkles, X } from "lucide-react";
+import { ChevronDown, FileText, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
@@ -14,12 +14,19 @@ import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { useAuth } from "@/hooks/useAuth";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
-import { useTripBoard, useTrips, type MemberRow, type TripRow } from "@/hooks/useTrips";
+import {
+  useTripBoard,
+  useTrips,
+  type ItineraryRow,
+  type MemberRow,
+  type TripRow,
+} from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
+import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -168,13 +175,11 @@ function TripsPage() {
                   datesStatus={form.dates_status}
                   onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
                 />
-                {form.start_date &&
-                  form.end_date &&
-                  form.end_date < form.start_date && (
-                    <p className="px-1 text-[12px] font-medium text-destructive">
-                      End date can't be earlier than the start date.
-                    </p>
-                  )}
+                {form.start_date && form.end_date && form.end_date < form.start_date && (
+                  <p className="px-1 text-[12px] font-medium text-destructive">
+                    End date can't be earlier than the start date.
+                  </p>
+                )}
                 {packing.packs.length > 0 && (
                   <label className="block px-1 py-1 text-[12px] text-muted-foreground">
                     Attach a copy of a packing list
@@ -291,8 +296,12 @@ function TripsPage() {
               ))}
               {t.trips.length === 0 && !t.loading && (
                 <div className="py-8 text-center">
-                  <p className="font-display text-[18px] leading-snug">{beaLine("empty.trips").title}</p>
-                  <p className="mt-1 text-[13px] text-muted-foreground">{beaLine("empty.trips").body}</p>
+                  <p className="font-display text-[18px] leading-snug">
+                    {beaLine("empty.trips").title}
+                  </p>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    {beaLine("empty.trips").body}
+                  </p>
                 </div>
               )}
             </div>
@@ -375,6 +384,9 @@ function LiveTripCard({
   const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingTimeline, setAddingTimeline] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [timelineByDay, setTimelineByDay] = useState(true);
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
   const [timelineDraft, setTimelineDraft] = useState({
     kind: "activity",
     day_date: "",
@@ -393,6 +405,8 @@ function LiveTripCard({
     status: trip.status,
   });
   const others = board.present.filter((p) => p.userId !== me.id);
+  const timelineGroups = groupTimelineByDay(board.items);
+  const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
 
   return (
     <article className="card-soft overflow-hidden">
@@ -492,19 +506,40 @@ function LiveTripCard({
 
           <div data-guide="trip-timeline" className="mb-3 rounded-xl border border-border p-3">
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="label-caps text-foreground">What you're doing</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {board.items.length === 0
-                    ? "Add activities, meals, transport and notes."
-                    : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`}
-                </p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTimelineOpen((v) => !v)}
+                aria-expanded={timelineOpen}
+                className="flex min-w-0 flex-1 items-start gap-2 text-left"
+              >
+                <ChevronDown
+                  className={`mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform ${
+                    timelineOpen ? "" : "-rotate-90"
+                  }`}
+                  aria-hidden
+                />
+                <div className="min-w-0">
+                  <p className="label-caps text-foreground">What you're doing</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {board.items.length === 0
+                      ? "Add activities, meals, transport and notes."
+                      : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`}
+                  </p>
+                </div>
+              </button>
               <div className="flex shrink-0 flex-col items-end gap-1.5">
                 <button
+                  type="button"
                   onClick={() => {
-                    setTimelineDraft({ kind: "activity", day_date: "", time_label: "", title: "", detail: "" });
+                    setTimelineDraft({
+                      kind: "activity",
+                      day_date: "",
+                      time_label: "",
+                      title: "",
+                      detail: "",
+                    });
                     setTimelineError("");
+                    setTimelineOpen(true);
                     setAddingTimeline(!addingTimeline);
                   }}
                   className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
@@ -513,6 +548,7 @@ function LiveTripCard({
                 </button>
                 {board.items.length >= 2 && (
                   <button
+                    type="button"
                     data-guide="optimize-trip"
                     onClick={() => {
                       setPlannerTab("optimize");
@@ -526,137 +562,202 @@ function LiveTripCard({
               </div>
             </div>
 
-
-
-          <ol className="relative space-y-3 border-l border-border pl-4">
-            {board.items.map((item, i) => (
-              <li key={item.id} className="relative">
-                <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  {[item.day_date, item.time_label].filter(Boolean).join(" · ")} · {item.kind}
-                </p>
-                <input
-                  defaultValue={item.title}
-                  onFocus={() => board.setEditing(item.title)}
-                  onBlur={(e) => {
-                    board.setEditing(null);
-                    if (e.target.value.trim() && e.target.value !== item.title)
-                      void board.updateItem(item.id, { title: e.target.value.trim() });
-                  }}
-                  className="w-full bg-transparent text-[14px] font-medium outline-none"
-                />
-                <input
-                  defaultValue={item.detail ?? ""}
-                  placeholder="Add a detail"
-                  onFocus={() => board.setEditing(item.title)}
-                  onBlur={(e) => {
-                    board.setEditing(null);
-                    if (e.target.value !== (item.detail ?? ""))
-                      void board.updateItem(item.id, { detail: e.target.value });
-                  }}
-                  className="w-full bg-transparent text-[12px] text-muted-foreground outline-none"
-                />
-                {item.address && (
-                  <p className="text-[11px] text-muted-foreground">
-                    📍 {item.address}
-                    {item.lat != null && item.lon != null && (
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="ml-2 font-semibold text-primary underline"
-                      >
-                        Map
-                      </a>
-                    )}
-                  </p>
-                )}
-                <StopDirections leg={dir.saved?.legs[i]} />
-                <button
-                  onClick={() => void board.removeItem(item.id)}
-                  className="mt-0.5 text-[11px] text-muted-foreground underline"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ol>
-
-          {addingTimeline && (
-            <div className="mt-3 space-y-2 rounded-xl border border-border p-3">
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  ["activity", "Activity"],
-                  ["meal", "Meal"],
-                  ["transport", "Transport"],
-                  ["lodging", "Lodging"],
-                  ["note", "Note"],
-                ].map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setTimelineDraft({ ...timelineDraft, kind: v as string })}
-                    className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                      timelineDraft.kind === v
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border"
-                    }`}
+            {timelineOpen && (
+              <div className="mt-3 space-y-3">
+                {board.items.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Timeline layout"
+                    className="flex gap-1.5 rounded-xl border border-border bg-elevated p-1"
                   >
-                    {label}
-                  </button>
-                ))}
+                    {(
+                      [
+                        ["list", "All entries"],
+                        ["day", "By day"],
+                      ] as const
+                    ).map(([mode, label]) => {
+                      const active = mode === "day" ? timelineByDay : !timelineByDay;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setTimelineByDay(mode === "day")}
+                          className={`flex-1 rounded-lg px-3 py-1.5 text-[12px] font-semibold ${
+                            active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {board.items.length === 0 ? null : timelineByDay ? (
+                  <div className="space-y-3">
+                    {timelineGroups.map((group) => {
+                      const dayOpen = !collapsedDays[group.key];
+                      return (
+                        <div
+                          key={group.key || "undated"}
+                          className="rounded-xl border border-border/60"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setCollapsedDays((prev) => ({
+                                ...prev,
+                                [group.key]: !prev[group.key],
+                              }))
+                            }
+                            aria-expanded={dayOpen}
+                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                          >
+                            <span className="text-[12px] font-semibold">
+                              {group.label}
+                              <span className="ml-2 font-normal text-muted-foreground">
+                                {group.items.length}
+                              </span>
+                            </span>
+                            <ChevronDown
+                              className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
+                                dayOpen ? "" : "-rotate-90"
+                              }`}
+                              aria-hidden
+                            />
+                          </button>
+                          {dayOpen && (
+                            <ol className="relative mx-3 mb-3 space-y-3 border-l border-border py-3 pl-4">
+                              {group.items.map((item) => (
+                                <TimelineEntry
+                                  key={item.id}
+                                  item={item}
+                                  showDay={false}
+                                  leg={dir.saved?.legs[itemIndexById.get(item.id) ?? -1]}
+                                  onEdit={(field) => board.setEditing(field)}
+                                  onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                  onRemove={() => void board.removeItem(item.id)}
+                                />
+                              ))}
+                            </ol>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <ol className="relative space-y-3 border-l border-border pl-4">
+                    {board.items.map((item, i) => (
+                      <TimelineEntry
+                        key={item.id}
+                        item={item}
+                        showDay
+                        leg={dir.saved?.legs[i]}
+                        onEdit={(field) => board.setEditing(field)}
+                        onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                        onRemove={() => void board.removeItem(item.id)}
+                      />
+                    ))}
+                  </ol>
+                )}
+
+                {addingTimeline && (
+                  <div className="space-y-2 rounded-xl border border-border p-3">
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        ["activity", "Activity"],
+                        ["meal", "Meal"],
+                        ["transport", "Transport"],
+                        ["lodging", "Lodging"],
+                        ["note", "Note"],
+                      ].map(([v, label]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setTimelineDraft({ ...timelineDraft, kind: v as string })}
+                          className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                            timelineDraft.kind === v
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      value={timelineDraft.title}
+                      onChange={(e) =>
+                        setTimelineDraft({ ...timelineDraft, title: e.target.value })
+                      }
+                      placeholder="What's happening?"
+                      className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="date"
+                        aria-label="Day"
+                        value={timelineDraft.day_date}
+                        onChange={(e) =>
+                          setTimelineDraft({ ...timelineDraft, day_date: e.target.value })
+                        }
+                        className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                      />
+                      <input
+                        value={timelineDraft.time_label}
+                        onChange={(e) =>
+                          setTimelineDraft({ ...timelineDraft, time_label: e.target.value })
+                        }
+                        placeholder="Time (e.g. 14:00)"
+                        className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                      />
+                    </div>
+                    <input
+                      value={timelineDraft.detail}
+                      onChange={(e) =>
+                        setTimelineDraft({ ...timelineDraft, detail: e.target.value })
+                      }
+                      placeholder="Detail (optional)"
+                      className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                    />
+                    {timelineError && (
+                      <p className="text-[11px] text-destructive">{timelineError}</p>
+                    )}
+                    <button
+                      type="button"
+                      disabled={!timelineDraft.title.trim()}
+                      onClick={async () => {
+                        setTimelineError("");
+                        try {
+                          await board.addItem({
+                            kind: timelineDraft.kind,
+                            title: timelineDraft.title.trim(),
+                            day_date: timelineDraft.day_date,
+                            time_label: timelineDraft.time_label,
+                            detail: timelineDraft.detail,
+                          });
+                          setTimelineDraft({
+                            kind: "activity",
+                            day_date: "",
+                            time_label: "",
+                            title: "",
+                            detail: "",
+                          });
+                          setAddingTimeline(false);
+                        } catch (e) {
+                          setTimelineError(
+                            e instanceof Error ? e.message : "Couldn't add that entry",
+                          );
+                        }
+                      }}
+                      className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                    >
+                      Add to timeline
+                    </button>
+                  </div>
+                )}
               </div>
-              <input
-                value={timelineDraft.title}
-                onChange={(e) => setTimelineDraft({ ...timelineDraft, title: e.target.value })}
-                placeholder="What's happening?"
-                className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-              />
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  aria-label="Day"
-                  value={timelineDraft.day_date}
-                  onChange={(e) => setTimelineDraft({ ...timelineDraft, day_date: e.target.value })}
-                  className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                />
-                <input
-                  value={timelineDraft.time_label}
-                  onChange={(e) => setTimelineDraft({ ...timelineDraft, time_label: e.target.value })}
-                  placeholder="Time (e.g. 14:00)"
-                  className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                />
-              </div>
-              <input
-                value={timelineDraft.detail}
-                onChange={(e) => setTimelineDraft({ ...timelineDraft, detail: e.target.value })}
-                placeholder="Detail (optional)"
-                className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-              />
-              {timelineError && <p className="text-[11px] text-destructive">{timelineError}</p>}
-              <button
-                disabled={!timelineDraft.title.trim()}
-                onClick={async () => {
-                  setTimelineError("");
-                  try {
-                    await board.addItem({
-                      kind: timelineDraft.kind,
-                      title: timelineDraft.title.trim(),
-                      day_date: timelineDraft.day_date,
-                      time_label: timelineDraft.time_label,
-                      detail: timelineDraft.detail,
-                    });
-                    setTimelineDraft({ kind: "activity", day_date: "", time_label: "", title: "", detail: "" });
-                    setAddingTimeline(false);
-                  } catch (e) {
-                    setTimelineError(e instanceof Error ? e.message : "Couldn't add that entry");
-                  }
-                }}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                Add to timeline
-              </button>
-            </div>
-          )}
+            )}
           </div>
 
           <ItineraryDirections
@@ -665,7 +766,6 @@ function LiveTripCard({
             onAddToTimeline={board.upsertItems}
             {...(directionArea ? { area: directionArea } : {})}
           />
-
         </div>
       )}
 
@@ -752,15 +852,14 @@ function LiveTripCard({
                     Create an invite code
                   </button>
                   {(() => {
-                    const active =
-                      inviteCode
-                        ? { code: inviteCode, expires_at: null as string | null }
-                        : board.invites.find(
-                            (inv) =>
-                              !inv.revoked_at &&
-                              inv.use_count < inv.max_uses &&
-                              (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
-                          );
+                    const active = inviteCode
+                      ? { code: inviteCode, expires_at: null as string | null }
+                      : board.invites.find(
+                          (inv) =>
+                            !inv.revoked_at &&
+                            inv.use_count < inv.max_uses &&
+                            (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
+                        );
                     if (!active) return null;
                     return (
                       <div className="mt-2 space-y-2 text-center">
@@ -792,7 +891,9 @@ function LiveTripCard({
 
                   {members.length > 0 && (
                     <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-[11px] font-semibold text-muted-foreground">People on this trip</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground">
+                        People on this trip
+                      </p>
                       <ul className="mt-2 space-y-2">
                         {members.map((m) => {
                           const isMe = m.user_id === me.id;
@@ -841,7 +942,9 @@ function LiveTripCard({
                         <button
                           type="button"
                           onClick={async () => {
-                            if (!confirm("Leave this trip? You will lose access to the itinerary.")) {
+                            if (
+                              !confirm("Leave this trip? You will lose access to the itinerary.")
+                            ) {
                               return;
                             }
                             try {
@@ -939,12 +1042,7 @@ function LiveTripCard({
                   </p>
                   <button
                     disabled={dir.busy || routeStops.length < 2}
-                    onClick={() =>
-                      void dir.download(
-                        routeStops,
-                        directionArea,
-                      )
-                    }
+                    onClick={() => void dir.download(routeStops, directionArea)}
                     className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     {dir.busy
@@ -1192,6 +1290,83 @@ function LiveTripCard({
   );
 }
 
+/**
+ * One editable timeline row. Shared by the flat list and the by-day groups so
+ * direction legs stay keyed to the same item id either way.
+ */
+function TimelineEntry({
+  item,
+  showDay,
+  leg,
+  onEdit,
+  onUpdate,
+  onRemove,
+}: {
+  item: ItineraryRow;
+  showDay: boolean;
+  leg?: RouteLeg | undefined;
+  onEdit: (field: string | null) => void;
+  onUpdate: (
+    patch: Partial<Pick<ItineraryRow, "title" | "detail" | "time_label" | "kind" | "day_date">>,
+  ) => void;
+  onRemove: () => void;
+}) {
+  const when = showDay
+    ? [item.day_date, item.time_label].filter(Boolean).join(" · ")
+    : (item.time_label ?? "");
+
+  return (
+    <li className="relative">
+      <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
+      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        {[when, item.kind].filter(Boolean).join(" · ")}
+      </p>
+      <input
+        defaultValue={item.title}
+        onFocus={() => onEdit(item.title)}
+        onBlur={(e) => {
+          onEdit(null);
+          if (e.target.value.trim() && e.target.value !== item.title)
+            onUpdate({ title: e.target.value.trim() });
+        }}
+        className="w-full bg-transparent text-[14px] font-medium outline-none"
+      />
+      <input
+        defaultValue={item.detail ?? ""}
+        placeholder="Add a detail"
+        onFocus={() => onEdit(item.title)}
+        onBlur={(e) => {
+          onEdit(null);
+          if (e.target.value !== (item.detail ?? "")) onUpdate({ detail: e.target.value });
+        }}
+        className="w-full bg-transparent text-[12px] text-muted-foreground outline-none"
+      />
+      {item.address && (
+        <p className="text-[11px] text-muted-foreground">
+          📍 {item.address}
+          {item.lat != null && item.lon != null && (
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
+              target="_blank"
+              rel="noreferrer"
+              className="ml-2 font-semibold text-primary underline"
+            >
+              Map
+            </a>
+          )}
+        </p>
+      )}
+      <StopDirections leg={leg} />
+      <button
+        type="button"
+        onClick={onRemove}
+        className="mt-0.5 text-[11px] text-muted-foreground underline"
+      >
+        Remove
+      </button>
+    </li>
+  );
+}
 
 /**
  * Saved walking/driving directions for the leg that starts at this stop.
