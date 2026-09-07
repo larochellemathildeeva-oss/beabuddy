@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
@@ -15,10 +15,10 @@ const PIN_FILL: Record<Pin["type"], string> = {
 
 type AnyTopology = Parameters<typeof feature>[0];
 const topo = worldTopo as unknown as AnyTopology;
-const world = feature(
-  topo,
-  topo.objects["countries"]!,
-) as unknown as FeatureCollection<Geometry, { name?: string }>;
+const world = feature(topo, topo.objects["countries"]!) as unknown as FeatureCollection<
+  Geometry,
+  { name?: string }
+>;
 
 /** world-atlas short names → names people save on pins. */
 const COUNTRY_ALIASES: Record<string, string[]> = {
@@ -79,9 +79,17 @@ function featureVisited(name: string | undefined, visited: Set<string>): boolean
 }
 
 const SIZE = 320;
+const ZOOM_MIN = 0.7;
+const ZOOM_MAX = 2.6;
 
-/** Pointer travel (px) past which a pointerup is a rotate, not a country click. */
+/** Pointer travel (px) past which a pointerup is a rotate, not a country/pin click. */
 const DRAG_SLOP = 6;
+
+type ActivePointer = { x: number; y: number };
+
+function pinchDistance(a: ActivePointer, b: ActivePointer) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 export function Globe({
   pins,
@@ -97,9 +105,11 @@ export function Globe({
   /** Extra classes on the outer frame — e.g. full-bleed on large screens. */
   className?: string | undefined;
 }) {
+  const oceanId = `globe-ocean-${useId().replace(/:/g, "")}`;
   const [rotation, setRotation] = useState<[number, number]>([-10, -18]);
   const [zoom, setZoom] = useState(1);
-  const drag = useRef<{ x: number; y: number } | null>(null);
+  const pointers = useRef<Map<number, ActivePointer>>(new Map());
+  const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   const velocity = useRef<[number, number]>([0, 0]);
   const pending = useRef<[number, number] | null>(null);
   /**
@@ -107,8 +117,17 @@ export function Globe({
    * frame, so reading it as the base during a fast drag drops movement.
    */
   const live = useRef<[number, number]>([-10, -18]);
-  /** Pointer travel since pointerdown, so a rotate doesn't land as a country click. */
+  /** Live zoom for pinch — state lags a frame the same way rotation does. */
+  const liveZoom = useRef(1);
+  /** Pointer travel since the gesture began (single-finger only). */
   const moved = useRef(0);
+  /**
+   * Once a gesture is a drag or pinch, ignore the trailing click.
+   * Cleared on the next pointerdown — not on pointerup, because click fires after.
+   */
+  const gestureConsumed = useRef(false);
+  /** True if this gesture used two fingers — no fling after release. */
+  const didPinch = useRef(false);
   const frameRef = useRef<HTMLDivElement | null>(null);
   const rafDrag = useRef<number | null>(null);
   const rafInertia = useRef<number | null>(null);
@@ -196,6 +215,14 @@ export function Globe({
     }
   };
 
+  const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+
+  const applyZoom = (next: number) => {
+    const z = clampZoom(next);
+    liveZoom.current = z;
+    setZoom(z);
+  };
+
   // React attaches `wheel` as a passive listener at the root, so an onWheel
   // preventDefault() is ignored and the page scrolls as well as the globe.
   useEffect(() => {
@@ -203,7 +230,9 @@ export function Globe({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      setZoom((z) => Math.max(0.7, Math.min(2.6, z + (e.deltaY > 0 ? -0.12 : 0.12))));
+      const next = clampZoom(liveZoom.current + (e.deltaY > 0 ? -0.12 : 0.12));
+      liveZoom.current = next;
+      setZoom(next);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -238,50 +267,118 @@ export function Globe({
     rafInertia.current = requestAnimationFrame(tick);
   };
 
+  const endPointer = (pointerId: number) => {
+    pointers.current.delete(pointerId);
+    if (pointers.current.size < 2) {
+      pinchStart.current = null;
+    }
+    if (pointers.current.size === 0) {
+      if (didPinch.current) {
+        velocity.current = [0, 0];
+        stopInertia();
+      } else {
+        startInertia();
+      }
+    }
+  };
+
+  const trySelectPin = (pin: Pin) => {
+    if (gestureConsumed.current || moved.current > DRAG_SLOP) return;
+    onSelect?.(pin);
+  };
+
+  const trySelectCountry = (name: string) => {
+    if (!onCountrySelect || gestureConsumed.current || moved.current > DRAG_SLOP) return;
+    onCountrySelect(name);
+  };
+
   return (
     <div className={`select-none ${className ?? ""}`}>
       <div
         ref={frameRef}
         className="relative touch-none overflow-hidden rounded-3xl border border-border bg-elevated"
         onPointerDown={(e) => {
+          // Zoom controls are buttons inside the frame — don't steal their gesture.
+          if ((e.target as Element | null)?.closest?.("button")) return;
+
           stopInertia();
           velocity.current = [0, 0];
-          drag.current = { x: e.clientX, y: e.clientY };
-          moved.current = 0;
+          pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+          if (pointers.current.size === 1) {
+            moved.current = 0;
+            gestureConsumed.current = false;
+            didPinch.current = false;
+          } else if (pointers.current.size >= 2) {
+            gestureConsumed.current = true;
+            didPinch.current = true;
+            velocity.current = [0, 0];
+            const [a, b] = [...pointers.current.values()];
+            if (a && b) {
+              pinchStart.current = {
+                distance: Math.max(1, pinchDistance(a, b)),
+                zoom: liveZoom.current,
+              };
+            }
+          }
+
           (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
         }}
         onPointerMove={(e) => {
-          if (!drag.current) return;
-          const dx = e.clientX - drag.current.x;
-          const dy = e.clientY - drag.current.y;
-          drag.current = { x: e.clientX, y: e.clientY };
+          if (!pointers.current.has(e.pointerId)) return;
+          const prev = pointers.current.get(e.pointerId)!;
+          const next = { x: e.clientX, y: e.clientY };
+          pointers.current.set(e.pointerId, next);
+
+          if (pointers.current.size >= 2) {
+            gestureConsumed.current = true;
+            didPinch.current = true;
+            velocity.current = [0, 0];
+            const pts = [...pointers.current.values()];
+            const a = pts[0];
+            const b = pts[1];
+            if (!a || !b) return;
+            const distance = Math.max(1, pinchDistance(a, b));
+            if (!pinchStart.current) {
+              pinchStart.current = { distance, zoom: liveZoom.current };
+              return;
+            }
+            const ratio = distance / pinchStart.current.distance;
+            applyZoom(pinchStart.current.zoom * ratio);
+            return;
+          }
+
+          const dx = next.x - prev.x;
+          const dy = next.y - prev.y;
           moved.current += Math.abs(dx) + Math.abs(dy);
+          if (moved.current > DRAG_SLOP) gestureConsumed.current = true;
           const dLam = dx * 0.4;
           const dPhi = -dy * 0.3;
           velocity.current = [dLam, dPhi];
           applyDelta(dLam, dPhi);
         }}
-        onPointerUp={() => {
-          drag.current = null;
-          startInertia();
-        }}
-        onPointerCancel={() => {
-          drag.current = null;
-        }}
+        onPointerUp={(e) => endPointer(e.pointerId)}
+        onPointerCancel={(e) => endPointer(e.pointerId)}
       >
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           className="h-[min(52vw,420px)] w-full cursor-grab active:cursor-grabbing md:h-[480px]"
         >
           <defs>
-            <radialGradient id="ocean" cx="35%" cy="30%">
+            <radialGradient id={oceanId} cx="35%" cy="30%">
               <stop offset="0%" stopColor="var(--card)" />
               <stop offset="70%" stopColor="var(--muted)" />
               <stop offset="100%" stopColor="var(--secondary)" />
             </radialGradient>
           </defs>
-          <path d={spherePath} fill="url(#ocean)" stroke="var(--border)" />
-          <path d={graticulePath} fill="none" stroke="var(--border)" strokeWidth={0.4} opacity={0.7} />
+          <path d={spherePath} fill={`url(#${oceanId})`} stroke="var(--border)" />
+          <path
+            d={graticulePath}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth={0.4}
+            opacity={0.7}
+          />
           {countryPaths.map((c) =>
             c.d ? (
               <path
@@ -293,24 +390,37 @@ export function Globe({
                 opacity={c.visited ? 0.55 : 0.22}
                 className={onCountrySelect && c.name ? "cursor-pointer" : undefined}
                 onClick={(e) => {
-                  if (!c.name || !onCountrySelect) return;
-                  // A drag that happens to end over a country is a rotate, not a click.
-                  if (moved.current > DRAG_SLOP) return;
+                  if (!c.name) return;
+                  // A drag / pinch that ends over a country is not a country tap.
+                  if (gestureConsumed.current || moved.current > DRAG_SLOP) return;
                   e.stopPropagation();
-                  onCountrySelect(c.name);
+                  trySelectCountry(c.name);
                 }}
               />
             ) : null,
           )}
           {projected.map(({ pin, x, y }) => (
             <g key={pin.id} transform={`translate(${x} ${y})`}>
-              <g className="pin-pop cursor-pointer" onClick={() => onSelect?.(pin)}>
+              <g
+                className="pin-pop cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  trySelectPin(pin);
+                }}
+              >
+                {/* Invisible hit target — fingers rarely land on the 4px dot. */}
+                <circle r={16} fill="transparent" />
                 <circle
                   r={selectedId === pin.id ? 11 : 8}
-                  fill={PIN_FILL[pin.type]}
+                  fill={PIN_FILL[pin.type] ?? "var(--reco)"}
                   opacity={0.28}
                 />
-                <circle r={4.2} fill={PIN_FILL[pin.type]} stroke="var(--card)" strokeWidth={1.2} />
+                <circle
+                  r={4.2}
+                  fill={PIN_FILL[pin.type] ?? "var(--reco)"}
+                  stroke="var(--card)"
+                  strokeWidth={1.2}
+                />
               </g>
             </g>
           ))}
@@ -334,7 +444,7 @@ export function Globe({
             type="button"
             aria-label="Zoom in"
             className="px-2.5 py-1.5 text-sm text-foreground"
-            onClick={() => setZoom((z) => Math.min(2.6, z + 0.2))}
+            onClick={() => applyZoom(liveZoom.current + 0.2)}
           >
             +
           </button>
@@ -343,14 +453,14 @@ export function Globe({
             type="button"
             aria-label="Zoom out"
             className="px-2.5 py-1.5 text-sm text-foreground"
-            onClick={() => setZoom((z) => Math.max(0.7, z - 0.2))}
+            onClick={() => applyZoom(liveZoom.current - 0.2)}
           >
             −
           </button>
         </div>
 
         <p className="absolute bottom-3 left-4 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Drag to rotate · scroll to zoom
+          Drag to rotate · pinch or scroll to zoom
         </p>
       </div>
     </div>
