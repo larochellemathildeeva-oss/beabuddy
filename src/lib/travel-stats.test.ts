@@ -78,11 +78,12 @@ describe("deriveTravelStats", () => {
 });
 
 describe("countryWorldShare", () => {
-  it("rounds one country to 1% of the world", () => {
+  it("is visited ÷ 195 as a one-decimal percent", () => {
     const share = countryWorldShare(1);
     assert.equal(share.world, WORLD_COUNTRY_COUNT);
     assert.equal(share.visited, 1);
-    assert.equal(share.percent, 1);
+    assert.equal(share.percent, 0.5);
+    assert.equal(countryWorldShare(10).percent, 5.1);
   });
 
   it("stays at 0% when you have not left home", () => {
