@@ -649,6 +649,8 @@ const OptimizeGoals = z.array(
   z.enum(OPTIMIZE_GOALS.map((g) => g.id) as [OptimizeGoalId, ...OptimizeGoalId[]]),
 );
 
+export const OPTIMIZE_MAX_ITEMS = 150;
+
 const OptimizeItemIn = z.object({
   id: z.string().max(80),
   day_date: z.string().max(20).nullable(),
@@ -676,7 +678,7 @@ const OptimizeInput = z.object({
   endDate: z.string().max(20).nullable(),
   goals: OptimizeGoals.min(1).max(4),
   note: z.string().max(400).nullable(),
-  items: z.array(OptimizeItemIn).min(2).max(60),
+  items: z.array(OptimizeItemIn).min(2).max(OPTIMIZE_MAX_ITEMS),
   cities: z.array(OptimizeCityIn).max(20),
 });
 

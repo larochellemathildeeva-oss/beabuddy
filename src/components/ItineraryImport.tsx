@@ -5,6 +5,7 @@ import {
   compareItineraries,
   optimizeItinerary,
   OPTIMIZE_GOALS,
+  OPTIMIZE_MAX_ITEMS,
   parseItinerary,
   reviseItinerary,
   type ItineraryComparison,
@@ -17,6 +18,7 @@ import {
 import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
+import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { Switch } from "@/components/ui/switch";
@@ -554,7 +556,7 @@ function ImportPanel({
         </p>
       )}
 
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
       {saved && (
         <p className="text-[12px] text-primary">
           {beaLine("plan.complete").title} {tripStillEditableNote()}
@@ -720,6 +722,12 @@ function OptimizePanel({
 
   const rearrange = async () => {
     if (items.length < 2) return;
+    if (items.length > OPTIMIZE_MAX_ITEMS) {
+      setError(
+        `This trip has ${items.length} stops — Béa can rearrange up to ${OPTIMIZE_MAX_ITEMS} in one go. Trim a few, or split the trip, then try again.`,
+      );
+      return;
+    }
     setBusy(true);
     setError(null);
     setSaved(false);
@@ -732,7 +740,10 @@ function OptimizePanel({
           endDate: endDate || null,
           goals,
           note: note.trim() || null,
-          items,
+          items: items.map((item) => ({
+            ...item,
+            detail: stripEmbeddedMapsUrl(item.detail) || null,
+          })),
           cities,
         },
       });
@@ -821,7 +832,7 @@ function OptimizePanel({
         </>
       )}
 
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
       {saved && <p className="text-[12px] text-primary">Timeline updated.</p>}
 
       {plan && (
@@ -842,9 +853,9 @@ function OptimizePanel({
                     {moved && before ? ` · was ${before}` : ""}
                     {moved ? "" : " · stayed"}
                   </p>
-                  <p className="text-[13px] font-medium">{original.title}</p>
+                  <p className="break-words text-[13px] font-medium">{original.title}</p>
                   {row.reason && (
-                    <p className="text-[12px] text-muted-foreground">{row.reason}</p>
+                    <p className="break-words text-[12px] text-muted-foreground">{row.reason}</p>
                   )}
                 </li>
               );
@@ -943,7 +954,7 @@ function ComparePanel() {
             : "Paste both plans first"}
       </button>
 
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
 
       {result && <ComparisonResult result={result} />}
     </div>

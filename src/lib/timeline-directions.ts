@@ -28,25 +28,35 @@ export function directionTitle(leg: Pick<RouteLeg, "mode" | "to">): string {
   return `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to}`;
 }
 
+/**
+ * Drop raw maps URLs that older builds saved into Transport detail text.
+ * The timeline already has an "Open in maps" control — the URL must not
+ * sit in the note line (it overflows the phone and reads like junk).
+ */
+export function stripEmbeddedMapsUrl(detail: string | null | undefined): string {
+  if (!detail) return "";
+  return detail
+    .replace(/\s*·\s*https?:\/\/\S+/gi, "")
+    .replace(/https?:\/\/\S+/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s*·\s*$/g, "")
+    .trim();
+}
+
 export function directionDetail(
-  leg: Pick<RouteLeg, "mode" | "distance" | "duration" | "mapUrl" | "capped" | "unknownSpot" | "sameSpot">,
+  leg: Pick<RouteLeg, "mode" | "distance" | "duration" | "capped" | "unknownSpot" | "sameSpot">,
 ): string {
-  const parts: string[] = [];
   if (leg.distance > 0) {
-    parts.push(leg.mode === "walking" ? "Walk" : "Drive");
-    parts.push(prettyDistance(leg.distance));
-    parts.push(prettyDuration(leg.duration));
-  } else if (leg.sameSpot) {
-    parts.push("Same place — no walk");
-  } else if (leg.capped) {
-    parts.push("Open in maps for this stretch");
-  } else if (leg.unknownSpot) {
-    parts.push("Exact spot unknown — open in maps");
-  } else {
-    parts.push("Open in maps");
+    return [
+      leg.mode === "walking" ? "Walk" : "Drive",
+      prettyDistance(leg.distance),
+      prettyDuration(leg.duration),
+    ].join(" · ");
   }
-  if (leg.mapUrl) parts.push(leg.mapUrl);
-  return parts.join(" · ");
+  if (leg.sameSpot) return "Same place — no walk";
+  if (leg.capped) return "Open in maps for this stretch";
+  if (leg.unknownSpot) return "Exact spot unknown — open in maps";
+  return "Open in maps";
 }
 
 export function unroutedLegCopy(leg: Pick<RouteLeg, "capped" | "unknownSpot" | "sameSpot">): string {

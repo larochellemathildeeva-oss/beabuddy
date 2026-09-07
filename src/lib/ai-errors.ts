@@ -218,5 +218,14 @@ export function aiFailure(error: unknown): Error {
   if (text.includes("request entity too large") || text.includes("413")) {
     return new Error("That picture is too large to send. Try a clearer crop or a smaller photo.");
   }
+  // Zod's array max surfaces as JSON — never show that raw blob in the planner UI.
+  if (
+    (text.includes('"too_big"') || text.includes("too_big")) &&
+    (text.includes('"items"') || text.includes("at most"))
+  ) {
+    return new Error(
+      "This trip has too many stops for Béa to rearrange in one go. Trim a few, or split the trip, then try again.",
+    );
+  }
   return error instanceof Error ? error : new Error("Something went wrong. Try again.");
 }

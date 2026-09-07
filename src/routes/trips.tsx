@@ -27,7 +27,7 @@ import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
-import { unroutedLegCopy } from "@/lib/timeline-directions";
+import { stripEmbeddedMapsUrl, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import type { DatesStatus } from "@/lib/trip-dates";
@@ -627,7 +627,7 @@ function LiveTripCard({
                             />
                           </button>
                           {dayOpen && (
-                            <ol className="relative mx-3 mb-3 space-y-3 border-l border-border py-3 pl-4">
+                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden border-l border-border py-3 pl-4">
                               {group.items.map((item) => (
                                 <TimelineEntry
                                   key={item.id}
@@ -646,7 +646,7 @@ function LiveTripCard({
                     })}
                   </div>
                 ) : (
-                  <ol className="relative space-y-3 border-l border-border pl-4">
+                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden border-l border-border pl-4">
                     {board.items.map((item, i) => (
                       <TimelineEntry
                         key={item.id}
@@ -1316,7 +1316,7 @@ function TimelineEntry({
     : (item.time_label ?? "");
 
   return (
-    <li className="relative">
+    <li className="relative min-w-0">
       <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
       <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
         {[when, item.kind].filter(Boolean).join(" · ")}
@@ -1329,20 +1329,23 @@ function TimelineEntry({
           if (e.target.value.trim() && e.target.value !== item.title)
             onUpdate({ title: e.target.value.trim() });
         }}
-        className="w-full bg-transparent text-[14px] font-medium outline-none"
+        className="w-full min-w-0 truncate bg-transparent text-[14px] font-medium outline-none"
       />
       <input
-        defaultValue={item.detail ?? ""}
+        key={`${item.id}-detail-${stripEmbeddedMapsUrl(item.detail)}`}
+        defaultValue={stripEmbeddedMapsUrl(item.detail)}
         placeholder="Add a detail"
         onFocus={() => onEdit(item.title)}
         onBlur={(e) => {
           onEdit(null);
-          if (e.target.value !== (item.detail ?? "")) onUpdate({ detail: e.target.value });
+          const next = stripEmbeddedMapsUrl(e.target.value);
+          const prev = stripEmbeddedMapsUrl(item.detail);
+          if (next !== prev) onUpdate({ detail: next || null });
         }}
-        className="w-full bg-transparent text-[12px] text-muted-foreground outline-none"
+        className="w-full min-w-0 truncate bg-transparent text-[12px] text-muted-foreground outline-none"
       />
       {item.address && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="break-words text-[11px] text-muted-foreground">
           📍 {item.address}
           {item.lat != null && item.lon != null && (
             <a
@@ -1387,7 +1390,7 @@ function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="text-[11px] font-medium text-primary underline underline-offset-2"
+        className="min-w-0 text-left text-[11px] font-medium text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
       >
         {open ? "Hide directions" : summary}
       </button>
