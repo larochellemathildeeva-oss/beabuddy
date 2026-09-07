@@ -23,12 +23,10 @@ function fakeStorage(seed: Record<string, string> = {}): TourStorage & { map: Ma
 }
 
 describe("tour storage lifecycle", () => {
-  it("does not open for a signed-out visitor", () => {
-    // The bug: the sheet opened over the sign-in form, then navigated into
-    // gated routes that bounced straight back to /auth.
+  it("does not auto-open the walk — Replay from You starts it", () => {
     const s = fakeStorage();
     assert.equal(shouldAutoOpenTour(s, { signedIn: false }), false);
-    assert.equal(shouldAutoOpenTour(s, { signedIn: true }), true);
+    assert.equal(shouldAutoOpenTour(s, { signedIn: true }), false);
   });
 
   it("keeps a skip through signing up", () => {

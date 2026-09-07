@@ -50,7 +50,7 @@ function WorldPage() {
   const [selected, setSelected] = useState<Pin | null>(null);
   const [heatmap, setHeatmap] = useState(false);
   const [heatOpen, setHeatOpen] = useState(true);
-  const [statsOpen, setStatsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(true);
   const [statsEdit, setStatsEdit] = useState(false);
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
@@ -252,59 +252,6 @@ function WorldPage() {
           />
         </div>
 
-        <AddVisitedCity onSaved={() => void vault.reload()} />
-
-        <ComparePins
-          pins={[
-            ...photo.pins,
-            ...vault.comparePins.filter((p) => p.type !== "reco" || !isCityLevelPlace(p)),
-          ]}
-        />
-
-
-        {selected ? (
-          <section className="rise card-soft p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`size-2 rounded-full ${pinColorClass[selected.type]}`} />
-                  <span className="label-caps">{pinLabel[selected.type]}</span>
-                </div>
-                <h2 className="mt-1 text-[24px] leading-tight">{selected.name}</h2>
-                <p className="text-[12px] text-muted-foreground">
-                  {selected.city}, {selected.country}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
-              >
-                Close
-              </button>
-            </div>
-
-            {selected.notes && (
-              <p className="mt-3 font-display text-[16px] leading-snug">“{selected.notes}”</p>
-            )}
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
-                <span
-                  key={t}
-                  className="rounded-xl border border-border bg-elevated px-2 py-2 text-center text-[11px] text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-
-          </section>
-        ) : (
-          <p className="text-[12px] text-muted-foreground">
-            Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
-          </p>
-        )}
-
         <section data-guide="travel-stats">
           <div className="mb-3 flex items-baseline justify-between">
             <button
@@ -476,6 +423,59 @@ function WorldPage() {
             )
           )}
         </section>
+
+        <AddVisitedCity onSaved={() => void vault.reload()} />
+
+        <ComparePins
+          pins={[
+            ...photo.pins,
+            ...vault.comparePins.filter((p) => p.type !== "reco" || !isCityLevelPlace(p)),
+          ]}
+        />
+
+
+        {selected ? (
+          <section className="rise card-soft p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className={`size-2 rounded-full ${pinColorClass[selected.type]}`} />
+                  <span className="label-caps">{pinLabel[selected.type]}</span>
+                </div>
+                <h2 className="mt-1 text-[24px] leading-tight">{selected.name}</h2>
+                <p className="text-[12px] text-muted-foreground">
+                  {selected.city}, {selected.country}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelected(null)}
+                className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+              >
+                Close
+              </button>
+            </div>
+
+            {selected.notes && (
+              <p className="mt-3 font-display text-[16px] leading-snug">“{selected.notes}”</p>
+            )}
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
+                <span
+                  key={t}
+                  className="rounded-xl border border-border bg-elevated px-2 py-2 text-center text-[11px] text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+
+          </section>
+        ) : (
+          <p className="text-[12px] text-muted-foreground">
+            Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
+          </p>
+        )}
       </div>
     </AppShell>
   );

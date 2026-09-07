@@ -2,9 +2,9 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
-import { startFirstRunTour } from "@/components/Tour";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
+import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
+import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -66,6 +66,7 @@ function AuthPage() {
         if (!consented) {
           throw new Error("Please accept the terms and disclaimer to create your account.");
         }
+        await assertNewPasswordAllowed(password);
         const { data, error: err } = await supabase.auth.signUp({
           email,
           password,
@@ -92,11 +93,6 @@ function AuthPage() {
         }
         if (!data.session) {
           setMessage("Check your email and tap the confirmation link to finish signing up.");
-        } else {
-          // Brand-new account: start the guided tour as soon as they land.
-          // Tour's own auth listener may also fire for this session; both go
-          // through the same gate, so a skip made a moment ago still holds.
-          startFirstRunTour();
         }
       } else {
         const { error: err } = await supabase.auth.signInWithPassword({ email, password });
@@ -219,11 +215,17 @@ function AuthPage() {
             onChange={(e) => setPassword(e.target.value)}
             type="password"
             required
-            minLength={6}
-            placeholder="Password"
+            minLength={mode === "signup" ? MIN_NEW_PASSWORD_LENGTH : 6}
+            placeholder={mode === "signup" ? `Password (${MIN_NEW_PASSWORD_LENGTH}+ characters)` : "Password"}
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
             className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
           />
+          {mode === "signup" && (
+            <p className="text-[11px] text-muted-foreground">
+              New passwords are checked against a public breach list. Your password itself is never
+              sent — only a short hash prefix.
+            </p>
+          )}
           {mode === "signup" && (
             <div className="space-y-2.5 rounded-xl border border-border bg-card/60 p-3.5">
               <label className="flex cursor-pointer items-start gap-2.5 text-[12.5px] leading-relaxed">

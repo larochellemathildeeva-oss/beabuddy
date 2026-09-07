@@ -32,18 +32,6 @@ type TourStartDetail = { intent: TourIntent };
 export function useTourControl() {
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<TourIntent>("first-run");
-  const { user, loading } = useAuth();
-
-  // Only members get the walk. Opening it for a signed-out visitor put the
-  // sheet over the sign-in form and then navigated them into gated routes,
-  // which AppShell bounced straight back to /auth.
-  useEffect(() => {
-    if (loading || !user) return;
-    if (shouldAutoOpenTour(safeStorage(), { signedIn: true })) {
-      setIntent("first-run");
-      setOpen(true);
-    }
-  }, [user, loading]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

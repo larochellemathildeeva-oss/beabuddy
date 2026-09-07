@@ -1,19 +1,7 @@
 /**
- * Whether to fill a brand-new account with sample travel data on first login.
- *
- * The first five minutes decide whether Béa reads as a travel vault or an empty
- * form: the globe, Near, travel stats and the guided walk all describe data the
- * account does not have yet. Seeding once, up front, is what makes the rest of
- * the app tell the truth.
- *
- * Two guards, because getting this wrong is worse than not doing it:
- *
- *  - only ever for an account with nothing in it, so this cannot bury data
- *    someone already added;
- *  - only once per account, so "Remove sample" on You is not undone by the
- *    next page load.
- *
- * Kept pure so both guards are unit tested rather than argued about.
+ * Sample data is opt-in only (Home empty CTA / You → Load sample).
+ * These guards stay so any leftover auto-seed hook cannot bury real data
+ * or undo "Remove sample".
  */
 
 import type { TourStorage } from "./tour-state.ts";
@@ -45,12 +33,15 @@ export function markAutoSeedAttempted(storage: TourStorage, userId: string): voi
   storage.setItem(autoSeedKey(userId), "yes");
 }
 
+/**
+ * Always false — sample travel data must be loaded by the traveller.
+ * Kept as a function so older hooks cannot accidentally re-enable seeding.
+ */
 export function shouldAutoSeed(
-  storage: TourStorage,
+  _storage: TourStorage,
   userId: string | null | undefined,
-  counts: AccountCounts,
+  _counts: AccountCounts,
 ): boolean {
   if (!userId) return false;
-  if (hasAutoSeeded(storage, userId)) return false;
-  return accountIsEmpty(counts);
+  return false;
 }

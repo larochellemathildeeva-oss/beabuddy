@@ -58,16 +58,15 @@ export function saveTourProgress(storage: TourStorage, progress: TourProgress): 
 }
 
 /**
- * A brand-new account opens the walk; anyone who already finished or skipped it
- * does not, however they arrived. Signing up is not a reason to re-ask someone
- * who just said no.
+ * The walk is opt-in from You → Replay. Auto-opening it felt like a demo
+ * starting without being asked.
  */
 export function shouldAutoOpenTour(
-  storage: TourStorage,
+  _storage: TourStorage,
   context: { signedIn: boolean },
 ): boolean {
   if (!context.signedIn) return false;
-  return !hasSeenTour(storage);
+  return false;
 }
 
 /**

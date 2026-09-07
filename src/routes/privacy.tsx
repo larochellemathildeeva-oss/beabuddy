@@ -48,11 +48,15 @@ function PrivacyPage() {
             When you create an account Béa stores your email address, and anything you choose to add
             to your profile: your name, your home city and the interests you tick. Signing in with
             Google or Apple shares only your email address and name with Béa — never your password.
+            When you choose a new email password (sign-up or reset), Béa is designed to check it
+            against a public breach list without sending the password itself — only a short hash
+            prefix.
           </p>
           <p>
             Everything is stored in a private, encrypted-at-rest database. Each row is locked to
             your account, so no other user of Béa can read your data, and the app itself only ever
-            queries as you.
+            queries as you. On this device, Béa is designed to sign you out after about 45 minutes
+            with no activity, as a free substitute for stricter hosted session controls.
           </p>
         </Section>
 
@@ -131,8 +135,9 @@ function PrivacyPage() {
             When you invite someone to a trip with a code, that person can see and edit that trip's
             itinerary and see when you are viewing it. Invite codes are designed to expire and to
             work a limited number of times; you can revoke a code from trip settings. They cannot
-            see your photos, your recommendations, your notes or your trip documents. Remove them
-            and their access ends.
+            see your photos, your recommendations, your notes or your trip documents. From trip
+            settings, the owner can remove a person, and a guest can leave — access ends when they
+            are removed or leave.
           </p>
         </Section>
 

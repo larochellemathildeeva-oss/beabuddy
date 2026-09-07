@@ -302,6 +302,52 @@ export function useTrips() {
     [load],
   );
 
+  /** Non-owner leaves; owner with companions must remove them or delete the trip. */
+  const leaveTrip = useCallback(
+    async (tripId: string) => {
+      const userId = await liveUserId(uid);
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) throw new Error("Trip not found");
+      if (trip.owner_id === userId) {
+        const others = members.filter((m) => m.trip_id === tripId && m.user_id !== userId);
+        if (others.length > 0) {
+          throw new Error(
+            "You're the trip owner. Remove the others first, or delete the trip.",
+          );
+        }
+        await deleteTrip(tripId);
+        return;
+      }
+      const { error } = await supabase
+        .from("trip_members")
+        .delete()
+        .eq("trip_id", tripId)
+        .eq("user_id", userId);
+      if (error) throw error;
+      await load();
+    },
+    [uid, trips, members, deleteTrip, load],
+  );
+
+  /** Owner removes another member. */
+  const removeTripMember = useCallback(
+    async (tripId: string, memberUserId: string) => {
+      const userId = await liveUserId(uid);
+      const trip = trips.find((t) => t.id === tripId);
+      if (!trip) throw new Error("Trip not found");
+      if (trip.owner_id !== userId) throw new Error("Only the trip owner can remove people");
+      if (memberUserId === userId) throw new Error("Use leave or delete the trip instead");
+      const { error } = await supabase
+        .from("trip_members")
+        .delete()
+        .eq("trip_id", tripId)
+        .eq("user_id", memberUserId);
+      if (error) throw error;
+      await load();
+    },
+    [uid, trips, load],
+  );
+
   return {
     uid,
     trips,
@@ -314,6 +360,8 @@ export function useTrips() {
     inviteToTrip,
     revokeTripInvite,
     joinTrip,
+    leaveTrip,
+    removeTripMember,
     reload: load,
   };
 }

@@ -2,7 +2,6 @@ import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tan
 import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
-import { useAutoSeed } from "../hooks/useAutoSeed";
 import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
 
 import {
@@ -18,6 +17,8 @@ import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 import { PageGuide } from "./PageGuide";
+import { useIdleLogout } from "../hooks/useIdleLogout";
+// Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
 
 
 
@@ -53,8 +54,7 @@ export function AppShell({
   const showBack = pathname !== "/";
   const { user, loading } = useAuth();
   useLegalConsent();
-  // A brand-new account gets sample data once, so the app has something to show.
-  useAutoSeed();
+  useIdleLogout(!!user);
   const [online, setOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );

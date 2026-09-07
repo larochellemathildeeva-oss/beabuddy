@@ -10,6 +10,10 @@ Voice/FAQ rule: prefer *designed to / private by default / may* over *always / n
 (v3.6.0 locally; confirm deploy). Invite migration `harden_trip_invites` applied to live
 Supabase. Dashboard: Cursor canvas `bea-risk-matrix.canvas.tsx`.
 
+**Pass 3 — 2026-09-07.** Deduped work lives in `docs/SECURITY_VERIFIED_BACKLOG.md` (10 unique
+items, verification packs A–C, invite math, decision log, outside-checklist threats). Leave /
+remove-member UI shipping. Advisor: enable Auth leaked-password protection.
+
 ---
 
 ## 1. Data inventory
@@ -73,7 +77,7 @@ Verify:
 - [x] Trip UUID IDOR blocked (`lock_trip_member_insert` + RPC-only member insert)
 - [ ] Fresh ID-guessing pass after delete-account deploy
 - [x] Invite codes: 10-char alphabet, 7-day expiry, single-use, revoke, accept rate limit
-- [ ] Remove-member / leave-trip UI (policy exists; no in-app control found)
+- [x] Remove-member / leave-trip UI (trip settings → Invite; owner remove + guest leave)
 
 **Red-team:** User A opening user B's trip by URL — mitigated last pass; re-test after delete ships.
 
@@ -197,12 +201,16 @@ Keep scanning Help/privacy for *always / never / only / impossible*.
 
 ## Priority focus (remaining)
 
-1. Live account-delete smoke test + Canner service role  
-2. Supabase Auth dashboard (reset, session, email verify)  
-3. Remove-member / leave-trip  
-4. AI zero-retention or accept provider terms as-is  
-5. Analytics inventory  
+See **`docs/SECURITY_VERIFIED_BACKLOG.md`** for the deduped 10-row backlog and packs A–C.
+
+1. Live account-delete smoke test + Canner service role (Pack A)  
+2. Supabase Auth dashboard incl. HIBP (Pack B) — Pro toggle optional; free in-app check shipped  
+3. Authz IDOR re-test on Canner (Pack C)  
+4. Analytics inventory  
+5. AI zero-retention or accept provider terms as-is  
 6. Pre-strip photo blobs (optional backfill)
+
+Leave / remove-member: **in app** (trip settings → Invite). Confirm on deploy.
 
 ---
 
@@ -224,11 +232,11 @@ Severity = user impact if exploited. Priority = how urgently to fix before launc
 | Vault claims ≠ implementation | High | Low | P1 | Mitigated |
 | Cross-user authz (trips/docs) | Critical | Low | P0 | Mitigated* |
 | Shared-trip invite abuse | High | Low | P1 | Mitigated |
-| No remove-member UI | Med | Med | P1 | Open |
+| No remove-member UI | Med | Med | P1 | Shipping* |
 | Location retained unexpectedly | Med | Low | P2 | Clarify |
 | Account deletion incomplete | High | Low | P0 | Code done* |
 | Docs/files by URL guessing | Critical | Low | P1 | Likely OK |
-| Password reset / session weakness | Critical | Low | P0 | Unknown |
+| Password reset / session weakness | Critical | Low | P0 | Unknown (+ HIBP off) |
 | Privacy copy overpromises | High | Med | P1 | Improving |
 | AI prompts / provider retention | High | Med | P1 | Disclosed |
 | Photo EXIF in **new** uploads | Med | Low | P2 | Mitigated |
@@ -268,11 +276,13 @@ Live dashboard: Cursor canvas `bea-risk-matrix.canvas.tsx`.
 
 ### Top 5 now
 
-1. Smoke-test account deletion on deployed Béa  
-2. Review Supabase Auth project settings  
-3. Remove-member / leave-trip  
+1. Smoke-test account deletion on deployed Béa (Pack A)  
+2. Review Supabase Auth project settings + enable HIBP (Pack B)  
+3. Authz IDOR re-test on Canner (Pack C)  
 4. Inventory analytics vs Privacy  
-5. Decide: accept Gemini retention or pay for zero-retention
+5. Decide: accept Gemini retention or pay for zero-retention  
+
+Leave/remove-member is in the app (trip settings). See `docs/SECURITY_VERIFIED_BACKLOG.md`.
 
 ### Pass log
 
@@ -281,3 +291,4 @@ Live dashboard: Cursor canvas `bea-risk-matrix.canvas.tsx`.
 | 2026-09-06 | Six-priority founder pass | Vault partial, invites weak, EXIF in files, no account delete |
 | 2026-09-06 | Risk matrix + launch gates | See first `bea-risk-matrix` |
 | 2026-09-06 evening | Pass 2 after vault/invites/EXIF/delete | This file + updated `bea-risk-matrix` |
+| 2026-09-07 | Deduped backlog + leave/remove + invite math | `SECURITY_VERIFIED_BACKLOG.md` |

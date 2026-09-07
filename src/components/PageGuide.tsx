@@ -219,7 +219,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Replay the full tour",
-        body: "First sign-in already took the quick journey. Replay here to take it again, or open the Deep Dive through every feature.",
+        body: "The story walk and the Deep Dive live here. Sample travel data is a separate button under Your account — Béa will not load either until you ask.",
         selector: "[data-guide='replay-tour']",
       },
       {

@@ -30,7 +30,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where should I start?",
-        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. First sign-in also offers a quick walk around the block; Replay under You can open that again or the Deep Dive.",
+        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You). Replay under You opens a quick walk around the block, or the Deep Dive.",
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",
@@ -109,7 +109,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can friends edit a trip with me?",
-        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Offline directions in trip settings if you want turn-by-turn on this phone.",
+        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In trip settings you can revoke a code, remove someone (if you own the trip), or leave the trip yourself.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Offline directions in trip settings if you want turn-by-turn on this phone.",
       },
       {
         q: "Can Béa turn nearby saves into a day trip?",
@@ -188,6 +188,10 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       {
         q: "Do you sell my data?",
         a: "Béa is designed to help organize your travel life, not to build advertising profiles. For details about how information is used, see our Privacy Policy.",
+      },
+      {
+        q: "Will Béa sign me out automatically?",
+        a: "If you're signed in and leave the app idle for about 45 minutes with no taps or typing, Béa is designed to sign you out on this device. That helps on shared phones. Sign back in anytime.",
       },
       {
         q: "Can I delete my data?",

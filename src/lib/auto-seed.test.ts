@@ -20,44 +20,27 @@ function fakeStorage(seed: Record<string, string> = {}): TourStorage {
 const EMPTY = { recommendations: 0, trips: 0, notes: 0 };
 
 describe("auto-seed guards", () => {
-  it("seeds a brand-new empty account once", () => {
+  it("never auto-seeds — sample data is opt-in from Home or You", () => {
     const s = fakeStorage();
-    assert.equal(shouldAutoSeed(s, "user-1", EMPTY), true);
-    markAutoSeedAttempted(s, "user-1");
     assert.equal(shouldAutoSeed(s, "user-1", EMPTY), false);
   });
 
-  it("never buries data the traveller already has", () => {
-    const s = fakeStorage();
+  it("still treats accounts with any rows as non-empty", () => {
     for (const counts of [
       { recommendations: 1, trips: 0, notes: 0 },
       { recommendations: 0, trips: 1, notes: 0 },
       { recommendations: 0, trips: 0, notes: 1 },
     ]) {
-      assert.equal(shouldAutoSeed(s, "user-1", counts), false);
       assert.equal(accountIsEmpty(counts), false);
     }
-  });
-
-  it("does not undo Remove sample on the next page load", () => {
-    // The loop to avoid: seed → user clears it → account is empty again →
-    // reseed on the very next render.
-    const s = fakeStorage();
-    markAutoSeedAttempted(s, "user-1");
-    assert.equal(shouldAutoSeed(s, "user-1", EMPTY), false);
-  });
-
-  it("marks the attempt even when seeding failed, so it cannot retry forever", () => {
-    const s = fakeStorage();
-    markAutoSeedAttempted(s, "user-1"); // caller marks in a finally block
-    assert.equal(shouldAutoSeed(s, "user-1", EMPTY), false);
+    assert.equal(accountIsEmpty(EMPTY), true);
   });
 
   it("keys the marker per account, so a shared device is not confused", () => {
     const s = fakeStorage();
     markAutoSeedAttempted(s, "user-1");
     assert.notEqual(autoSeedKey("user-1"), autoSeedKey("user-2"));
-    assert.equal(shouldAutoSeed(s, "user-2", EMPTY), true);
+    assert.equal(shouldAutoSeed(s, "user-2", EMPTY), false);
   });
 
   it("does nothing without a signed-in account", () => {

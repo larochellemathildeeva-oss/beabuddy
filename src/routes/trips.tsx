@@ -14,7 +14,7 @@ import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { useAuth } from "@/hooks/useAuth";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
-import { useTripBoard, useTrips, type TripRow } from "@/hooks/useTrips";
+import { useTripBoard, useTrips, type MemberRow, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
@@ -273,6 +273,7 @@ function TripsPage() {
                 <LiveTripCard
                   key={trip.id}
                   trip={trip}
+                  members={t.members.filter((m) => m.trip_id === trip.id)}
                   companionsLine={tripCompanionsLine(
                     t.members.filter((m) => m.trip_id === trip.id),
                     t.uid,
@@ -284,6 +285,8 @@ function TripsPage() {
                   onRevokeInvite={(code) => t.revokeTripInvite(trip.id, code)}
                   onUpdate={(patch) => t.updateTrip(trip.id, patch)}
                   onDelete={() => t.deleteTrip(trip.id)}
+                  onLeave={() => t.leaveTrip(trip.id)}
+                  onRemoveMember={(userId) => t.removeTripMember(trip.id, userId)}
                 />
               ))}
               {t.trips.length === 0 && !t.loading && (
@@ -323,6 +326,7 @@ function TripsPage() {
 
 function LiveTripCard({
   trip,
+  members,
   companionsLine,
   open,
   onToggle,
@@ -331,8 +335,11 @@ function LiveTripCard({
   onRevokeInvite,
   onUpdate,
   onDelete,
+  onLeave,
+  onRemoveMember,
 }: {
   trip: TripRow;
+  members: MemberRow[];
   companionsLine: string;
   open: boolean;
   onToggle: () => void;
@@ -341,6 +348,8 @@ function LiveTripCard({
   onRevokeInvite: (code: string) => Promise<void>;
   onUpdate: (patch: Partial<TripRow>) => Promise<void>;
   onDelete: () => Promise<void>;
+  onLeave: () => Promise<void>;
+  onRemoveMember: (userId: string) => Promise<void>;
 }) {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
@@ -780,6 +789,82 @@ function LiveTripCard({
                       </div>
                     );
                   })()}
+
+                  {members.length > 0 && (
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="text-[11px] font-semibold text-muted-foreground">People on this trip</p>
+                      <ul className="mt-2 space-y-2">
+                        {members.map((m) => {
+                          const isMe = m.user_id === me.id;
+                          const isOwner = m.user_id === trip.owner_id;
+                          const iAmOwner = me.id === trip.owner_id;
+                          const label =
+                            m.display_name?.trim() ||
+                            (isMe ? "You" : isOwner ? "Owner" : "Traveler");
+                          return (
+                            <li
+                              key={m.id}
+                              className="flex items-center justify-between gap-2 text-[13px]"
+                            >
+                              <span>
+                                {label}
+                                {isOwner ? " · owner" : ""}
+                                {isMe && !isOwner ? " · you" : ""}
+                              </span>
+                              {iAmOwner && !isMe && (
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (
+                                      !confirm(
+                                        `Remove ${label} from this trip? They will lose access immediately.`,
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    try {
+                                      await onRemoveMember(m.user_id);
+                                    } catch (e) {
+                                      alert(e instanceof Error ? e.message : "Could not remove");
+                                    }
+                                  }}
+                                  className="text-[12px] font-semibold text-destructive underline"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {me.id && me.id !== trip.owner_id && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm("Leave this trip? You will lose access to the itinerary.")) {
+                              return;
+                            }
+                            try {
+                              await onLeave();
+                              setSettingsOpen(false);
+                            } catch (e) {
+                              alert(e instanceof Error ? e.message : "Could not leave");
+                            }
+                          }}
+                          className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[13px] font-semibold text-destructive"
+                        >
+                          Leave trip
+                        </button>
+                      )}
+                      {me.id === trip.owner_id &&
+                        members.some((m) => m.user_id !== me.id) === false && (
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            You&apos;re the only person here. Delete the trip from settings if you
+                            want it gone.
+                          </p>
+                        )}
+                    </div>
+                  )}
                 </div>
               )}
 

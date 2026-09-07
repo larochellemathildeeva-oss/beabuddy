@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
@@ -53,14 +54,20 @@ function ResetPasswordPage() {
       return;
     }
     setBusy(true);
-    const { error: err } = await supabase.auth.updateUser({ password });
-    setBusy(false);
-    if (err) {
-      setError(err.message);
-      return;
+    try {
+      await assertNewPasswordAllowed(password);
+      const { error: err } = await supabase.auth.updateUser({ password });
+      if (err) {
+        setError(err.message);
+        return;
+      }
+      setDone(true);
+      setTimeout(() => navigate({ to: "/", replace: true }), 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save that password.");
+    } finally {
+      setBusy(false);
     }
-    setDone(true);
-    setTimeout(() => navigate({ to: "/", replace: true }), 1200);
   };
 
   return (
@@ -90,8 +97,8 @@ function ResetPasswordPage() {
               onChange={(e) => setPassword(e.target.value)}
               type="password"
               required
-              minLength={6}
-              placeholder="New password"
+              minLength={MIN_NEW_PASSWORD_LENGTH}
+              placeholder={`New password (${MIN_NEW_PASSWORD_LENGTH}+ characters)`}
               autoComplete="new-password"
               className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
             />
@@ -100,11 +107,15 @@ function ResetPasswordPage() {
               onChange={(e) => setConfirm(e.target.value)}
               type="password"
               required
-              minLength={6}
+              minLength={MIN_NEW_PASSWORD_LENGTH}
               placeholder="Repeat new password"
               autoComplete="new-password"
               className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
             />
+            <p className="text-[11px] text-muted-foreground">
+              New passwords are checked against a public breach list. Your password itself is never
+              sent — only a short hash prefix.
+            </p>
             {error && <p className="text-[12px] text-destructive">{error}</p>}
             <button
               type="submit"
