@@ -9,6 +9,7 @@ import { AI_CALL } from "@/lib/ai-errors";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
+import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 
 const KINDS = ["Flight", "Hotel", "Reservation", "Transport", "Plan"] as const;
 
@@ -722,7 +723,12 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       "@/lib/travel-preferences.server"
     );
     const preferences = await getTravelPreferences(context);
-    const byId = new Map(data.items.map((item) => [item.id, item]));
+    // Normalize at the server boundary — do not trust the client strip alone.
+    const items = data.items.map((item) => ({
+      ...item,
+      detail: stripEmbeddedMapsUrl(item.detail) || null,
+    }));
+    const byId = new Map(items.map((item) => [item.id, item]));
 
     const prompt = [
       "Rearrange this existing trip timeline. Do not add new stops and do not drop any stop.",
@@ -749,7 +755,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
             .join("\n")}`
         : "",
       "Current timeline:",
-      ...data.items.map(
+      ...items.map(
         (item, index) =>
           `${index + 1}. id=${item.id} | ${item.day_date ?? "no date"} ${item.time_label ?? ""} | ${item.kind} | ${item.title}${
             item.address ? ` | ${item.address}` : ""

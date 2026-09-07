@@ -723,6 +723,8 @@ function OptimizePanel({
   const rearrange = async () => {
     if (items.length < 2) return;
     if (items.length > OPTIMIZE_MAX_ITEMS) {
+      setPlan(null);
+      setSaved(false);
       setError(
         `This trip has ${items.length} stops — Béa can rearrange up to ${OPTIMIZE_MAX_ITEMS} in one go. Trim a few, or split the trip, then try again.`,
       );
