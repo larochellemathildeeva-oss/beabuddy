@@ -6,6 +6,7 @@ import {
   isMissingDatesStatusColumn,
   type DatesStatus,
 } from "@/lib/trip-dates";
+import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -256,18 +257,37 @@ export function useTrips() {
   const inviteToTrip = useCallback(
     async (tripId: string, email?: string) => {
       const inviterId = await liveUserId(uid);
-      const code = Array.from(crypto.getRandomValues(new Uint8Array(4)))
-        .map((b) => b.toString(36).toUpperCase().padStart(2, "0"))
-        .join("")
-        .slice(0, 6);
-      const { error } = await supabase
+      // Retire any still-open codes for this trip so only one active share exists.
+      await supabase
         .from("trip_invites")
-        .insert({ trip_id: tripId, code, email: email || null, invited_by: inviterId });
+        .update({ revoked_at: new Date().toISOString() })
+        .eq("trip_id", tripId)
+        .is("revoked_at", null);
+      const code = generateInviteCode();
+      const { error } = await supabase.from("trip_invites").insert({
+        trip_id: tripId,
+        code,
+        email: email || null,
+        invited_by: inviterId,
+        expires_at: inviteExpiresAt(),
+        max_uses: 1,
+        use_count: 0,
+      });
       if (error) throw error;
       return code;
     },
     [uid],
   );
+
+  const revokeTripInvite = useCallback(async (tripId: string, code: string) => {
+    const { error } = await supabase
+      .from("trip_invites")
+      .update({ revoked_at: new Date().toISOString() })
+      .eq("trip_id", tripId)
+      .eq("code", code)
+      .is("revoked_at", null);
+    if (error) throw error;
+  }, []);
 
   const joinTrip = useCallback(
     async (code: string, displayName?: string) => {
@@ -292,6 +312,7 @@ export function useTrips() {
     updateTrip,
     deleteTrip,
     inviteToTrip,
+    revokeTripInvite,
     joinTrip,
     reload: load,
   };
@@ -302,7 +323,15 @@ export type Presence = { userId: string; name: string; editing: string | null };
 export function useTripBoard(tripId: string | null, me: { id: string | null; name: string }) {
   const [items, setItems] = useState<ItineraryRow[]>([]);
   const [invites, setInvites] = useState<
-    { code: string; email: string | null; accepted_at: string | null }[]
+    {
+      code: string;
+      email: string | null;
+      accepted_at: string | null;
+      expires_at: string | null;
+      revoked_at: string | null;
+      use_count: number;
+      max_uses: number;
+    }[]
   >([]);
   const [present, setPresent] = useState<Presence[]>([]);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -322,7 +351,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     setItems((data ?? []) as ItineraryRow[]);
     const { data: inv } = await supabase
       .from("trip_invites")
-      .select("code, email, accepted_at")
+      .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false });
     setInvites(inv ?? []);

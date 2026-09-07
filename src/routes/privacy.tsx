@@ -70,7 +70,9 @@ function PrivacyPage() {
           <p>
             From each photo Béa reads the date it was taken and, if the photo carries it, the
             location recorded by your camera. That is used to name the city, place your pins and
-            build your statistics. Nothing else is read from the image.
+            build your statistics. When a photo file is kept, GPS metadata is designed to be
+            stripped from the stored file; coordinates may still be saved as place fields on your
+            account for the map.
           </p>
           <p>
             Photos are kept in private storage. They are shown to you through links that expire
@@ -104,14 +106,9 @@ function PrivacyPage() {
             When you add a document it is encrypted on your own device, in your browser, before
             anything leaves it — AES-256-GCM, with the key derived from your passcode using PBKDF2
             at 210,000 iterations. Only the scrambled result is uploaded. Your passcode is never
-            uploaded and never stored on our side. The Vault is designed so that Béa cannot view
-            document contents without access to your Vault credentials. If you forget your
-            passcode, recovery options may be limited or unavailable.
-          </p>
-          <p>
-            One honest caveat: if you turn on Face ID or fingerprint unlock, a copy of the key is
-            kept in that device's local browser storage so it can open without typing. That is a
-            convenience trade-off. For maximum security, use the passcode only.
+            uploaded and never stored on our side. Unlock is passcode-only. The Vault is designed so
+            that Béa cannot view document contents without access to your Vault credentials. If you
+            forget your passcode, recovery options may be limited or unavailable.
           </p>
         </Section>
 
@@ -132,8 +129,10 @@ function PrivacyPage() {
         <Section title="Trips and collaboration">
           <p>
             When you invite someone to a trip with a code, that person can see and edit that trip's
-            itinerary and see when you are viewing it. They cannot see your photos, your
-            recommendations, your notes or your trip documents. Remove them and their access ends.
+            itinerary and see when you are viewing it. Invite codes are designed to expire and to
+            work a limited number of times; you can revoke a code from trip settings. They cannot
+            see your photos, your recommendations, your notes or your trip documents. Remove them
+            and their access ends.
           </p>
         </Section>
 
@@ -146,10 +145,11 @@ function PrivacyPage() {
             suggestions fit you.
           </p>
           <p>
-            This content is used only to generate your result; it is not sold, not used for
-            advertising, and not kept by Béa beyond what you save to your account. Photos from your
-            photo memories are never sent to the AI provider. Avoid pasting or photographing
-            sensitive details such as passport or card numbers.
+            This content is used only to generate your result; it is not sold and not used for
+            advertising by Béa. The AI provider may process or retain prompts under their own
+            policy — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories
+            are never sent to the AI provider. Avoid pasting or photographing sensitive details such
+            as passport or card numbers. Vault documents are not sent into AI prompts.
           </p>
         </Section>
 
@@ -165,7 +165,8 @@ function PrivacyPage() {
           <p>
             You can edit or delete any photo, recommendation, note, trip or document at any time,
             and deletion is permanent rather than hidden. Ask us to close your account and
-            everything attached to it is removed.
+            everything attached to it is removed. Backups and provider logs may lag for a short
+            time.
           </p>
           <p>Béa does not sell data, does not run advertising and does not track you across the web.</p>
         </Section>

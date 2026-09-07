@@ -1,15 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { expenseCategories, toCsv, useExpenses } from "@/hooks/useExpenses";
 import { homeCurrencies, useRates } from "@/hooks/useRates";
 import { useTrips } from "@/hooks/useTrips";
 import { extractReceiptFields } from "@/lib/receipt.functions";
-import { encryptJson, storedVaultKey } from "@/lib/vaultCrypto";
-import { supabase } from "@/integrations/supabase/client";
 
-// Downscale a receipt photo before sending it to the AI or storing it in the
-// encrypted vault — keeps payloads small without losing legibility.
+// Downscale a receipt photo before sending it to the AI — keeps payloads small
+// without losing legibility.
 function downscaleImage(file: File, maxSide = 1400, quality = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -79,21 +77,7 @@ function ExpensesPage() {
   const [status, setStatus] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [scanNote, setScanNote] = useState<string | null>(null);
-  const [vaultKey, setVaultKey] = useState<CryptoKey | null>(null);
-  const [vaultUid, setVaultUid] = useState<string | null>(null);
-  const [keepInVault, setKeepInVault] = useState(true);
   const smallImage = useRef<string | null>(null);
-
-  useEffect(() => {
-    void (async () => {
-      const { data } = await supabase.auth.getUser();
-      const id = data.user?.id ?? null;
-      if (!id) return;
-      setVaultUid(id);
-      const k = await storedVaultKey(id);
-      setVaultKey(k);
-    })();
-  }, []);
   const [showDisclaimer, setShowDisclaimer] = useState(
     () => typeof window !== "undefined" && !localStorage.getItem("bea-expense-disclaimer"),
   );
@@ -166,30 +150,7 @@ function ExpensesPage() {
         notes: notes.trim() || null,
       });
 
-      // Keep an encrypted copy of the receipt photo in the private vault.
-      if (file && keepInVault && vaultKey && vaultUid) {
-        try {
-          const dataUrl = smallImage.current ?? (await downscaleImage(file));
-          const { ciphertext, iv } = await encryptJson(vaultKey, {
-            fileName: file.name || "receipt.jpg",
-            fileData: dataUrl,
-            notes: notes.trim() || undefined,
-            number: amount ? `${amount} ${currency}` : undefined,
-          });
-          await supabase.from("vault_documents").insert({
-            user_id: vaultUid,
-            kind: "Receipt",
-            label: `Receipt — ${merchant.trim() || "expense"} · ${spentOn}`,
-            ciphertext,
-            iv,
-          });
-          setStatus("Saved, with an encrypted copy in your private vault.");
-        } catch {
-          setStatus("Saved — but the encrypted vault copy failed.");
-        }
-      } else {
-        setStatus("Saved to your expense record.");
-      }
+      setStatus("Saved to your expense record.");
       reset();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Could not save that one. Try again.");
@@ -405,26 +366,6 @@ function ExpensesPage() {
             />
             Claim this back as a business expense
           </label>
-
-          {file && (
-            <label className="flex items-start gap-2.5 text-[13px] text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={keepInVault && !!vaultKey}
-                disabled={!vaultKey}
-                onChange={(e) => setKeepInVault(e.target.checked)}
-                className="mt-0.5 size-4 accent-[var(--primary)]"
-              />
-              <span>
-                Keep an encrypted copy of this receipt in my private vault
-                {!vaultKey && (
-                  <span className="block text-[11.5px]">
-                    Set up device unlock in your vault (Profile → Trip documents) to use this.
-                  </span>
-                )}
-              </span>
-            </label>
-          )}
 
           <button
             onClick={() => void save()}

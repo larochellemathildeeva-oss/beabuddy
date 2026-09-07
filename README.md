@@ -420,8 +420,6 @@ Security:
 
 - Encryption
 
-- Biometric authentication
-
 - Passcode protection
 
 --------------------------------------------------

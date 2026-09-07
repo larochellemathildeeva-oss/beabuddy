@@ -281,6 +281,7 @@ function TripsPage() {
                   onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
                   me={{ id: t.uid, name: myName }}
                   onInvite={() => t.inviteToTrip(trip.id)}
+                  onRevokeInvite={(code) => t.revokeTripInvite(trip.id, code)}
                   onUpdate={(patch) => t.updateTrip(trip.id, patch)}
                   onDelete={() => t.deleteTrip(trip.id)}
                 />
@@ -327,6 +328,7 @@ function LiveTripCard({
   onToggle,
   me,
   onInvite,
+  onRevokeInvite,
   onUpdate,
   onDelete,
 }: {
@@ -336,6 +338,7 @@ function LiveTripCard({
   onToggle: () => void;
   me: { id: string | null; name: string };
   onInvite: () => Promise<string>;
+  onRevokeInvite: (code: string) => Promise<void>;
   onUpdate: (patch: Partial<TripRow>) => Promise<void>;
   onDelete: () => Promise<void>;
 }) {
@@ -725,28 +728,58 @@ function LiveTripCard({
               </button>
               {sheetSection === "invite" && (
                 <div className="rounded-xl border border-border p-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Codes expire in 7 days and work once. Creating a new code revokes the previous
+                    open one.
+                  </p>
                   <button
-                    onClick={async () => setInviteCode(await onInvite())}
-                    className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
+                    onClick={async () => {
+                      const code = await onInvite();
+                      setInviteCode(code);
+                      await board.reload();
+                    }}
+                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
                   >
                     Create an invite code
                   </button>
-                  {inviteCode && (
-                    <p className="mt-2 text-center text-[13px] text-muted-foreground">
-                      Share this code:{" "}
-                      <span className="font-semibold tracking-widest text-foreground">
-                        {inviteCode}
-                      </span>
-                    </p>
-                  )}
-                  {!inviteCode && board.invites[0] && (
-                    <p className="mt-2 text-center text-[13px] text-muted-foreground">
-                      Last code:{" "}
-                      <span className="font-semibold tracking-widest text-foreground">
-                        {board.invites[0].code}
-                      </span>
-                    </p>
-                  )}
+                  {(() => {
+                    const active =
+                      inviteCode
+                        ? { code: inviteCode, expires_at: null as string | null }
+                        : board.invites.find(
+                            (inv) =>
+                              !inv.revoked_at &&
+                              inv.use_count < inv.max_uses &&
+                              (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
+                          );
+                    if (!active) return null;
+                    return (
+                      <div className="mt-2 space-y-2 text-center">
+                        <p className="text-[13px] text-muted-foreground">
+                          Share this code:{" "}
+                          <span className="font-semibold tracking-widest text-foreground">
+                            {active.code}
+                          </span>
+                        </p>
+                        {active.expires_at && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Expires {new Date(active.expires_at).toLocaleDateString()}
+                          </p>
+                        )}
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await onRevokeInvite(active.code);
+                            setInviteCode("");
+                            await board.reload();
+                          }}
+                          className="text-[12px] font-semibold text-destructive underline"
+                        >
+                          Revoke this code
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

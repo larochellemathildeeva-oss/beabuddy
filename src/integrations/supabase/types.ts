@@ -516,27 +516,39 @@ export type Database = {
           code: string
           created_at: string
           email: string | null
+          expires_at: string | null
           id: string
           invited_by: string
+          max_uses: number
+          revoked_at: string | null
           trip_id: string
+          use_count: number
         }
         Insert: {
           accepted_at?: string | null
           code: string
           created_at?: string
           email?: string | null
+          expires_at?: string | null
           id?: string
           invited_by: string
+          max_uses?: number
+          revoked_at?: string | null
           trip_id: string
+          use_count?: number
         }
         Update: {
           accepted_at?: string | null
           code?: string
           created_at?: string
           email?: string | null
+          expires_at?: string | null
           id?: string
           invited_by?: string
+          max_uses?: number
+          revoked_at?: string | null
           trip_id?: string
+          use_count?: number
         }
         Relationships: [
           {

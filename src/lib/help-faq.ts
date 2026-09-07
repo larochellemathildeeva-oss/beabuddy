@@ -167,11 +167,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "How secure is the Document Vault?",
-        a: "Documents are encrypted on your device before being uploaded. The Vault is designed so that only someone with your Vault credentials can view its contents.",
+        a: "Document contents are encrypted on your device before being uploaded. Unlock is passcode-only.\n\nKind, label, and expiry stay readable so you can find items while locked. The Vault is designed so that only someone with your Vault credentials can view encrypted contents.",
       },
       {
         q: "Can Béa read my Vault documents?",
-        a: "Vault documents are designed so that Béa cannot view their contents without access to your Vault credentials.",
+        a: "Vault document contents are designed so that Béa cannot view them without access to your Vault credentials. Labels and kinds are stored so the list can show while locked.",
       },
       {
         q: "What if I forget my Vault passcode?",
@@ -191,11 +191,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I delete my data?",
-        a: "You can delete many types of information you add to Béa, including trips, recommendations, notes, memories, and documents. Some information may remain in backups for a limited period as described in the Privacy Policy.",
+        a: "You can delete many types of information you add to Béa, including trips, recommendations, notes, memories, and documents. Some information may remain in backups or with AI providers for a limited period as described in the Privacy Policy.",
       },
       {
         q: "How does Béa use AI?",
-        a: "AI helps with things like trip planning, itinerary imports, recommendation organization, and decision support.\n\nBéa provides suggestions, not decisions. You'll always have the final say.\n\nAI-generated suggestions may be incomplete, inaccurate, or unsuitable for your situation. We encourage you to review recommendations before acting on them.",
+        a: "AI helps with things like trip planning, itinerary imports, recommendation organization, and decision support. Those requests go to Google Gemini; the provider may process or retain prompts under their policy.\n\nBéa provides suggestions, not decisions. You'll always have the final say.\n\nAI-generated suggestions may be incomplete, inaccurate, or unsuitable for your situation. We encourage you to review recommendations before acting on them.",
       },
       {
         q: "Is Béa always right?",

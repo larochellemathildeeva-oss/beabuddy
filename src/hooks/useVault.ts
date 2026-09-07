@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  biometricAvailable,
-  biometricEnrolled,
+  clearStoredVaultKeys,
   decryptJson,
   deriveKey,
   encryptJson,
-  enrolBiometric,
-  forgetBiometric,
   randomB64,
-  unlockWithBiometric,
 } from "@/lib/vaultCrypto";
 
 export type VaultDocRow = {
@@ -40,30 +36,27 @@ const VERIFIER = "bea-vault-ok";
 
 export function useVault() {
   const [uid, setUid] = useState<string | null>(null);
-  const [email, setEmail] = useState<string>("");
   const [hasVault, setHasVault] = useState(false);
   const [key, setKey] = useState<CryptoKey | null>(null);
   const [rows, setRows] = useState<VaultDocRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [bioReady, setBioReady] = useState(false);
 
   const load = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
     setUid(user?.id ?? null);
-    setEmail(user?.email ?? "");
     if (!user) {
       setLoading(false);
       setHasVault(false);
       setRows([]);
       return;
     }
+    clearStoredVaultKeys(user.id);
     const { data: settings } = await supabase
       .from("vault_settings")
-      .select("salt, verifier, verifier_iv, biometric_credential_id")
+      .select("salt, verifier, verifier_iv")
       .maybeSingle();
     setHasVault(!!settings);
-    setBioReady(biometricAvailable() && biometricEnrolled(user.id));
     const { data: docs } = await supabase
       .from("vault_documents")
       .select("id, kind, label, expires_on, ciphertext, iv, created_at")
@@ -111,31 +104,6 @@ export function useVault() {
     setKey(k);
   }, []);
 
-  const unlockBiometric = useCallback(async () => {
-    if (!uid) throw new Error("Sign in first");
-    setKey(await unlockWithBiometric(uid));
-  }, [uid]);
-
-  const enableBiometric = useCallback(async () => {
-    if (!uid || !key) throw new Error("Unlock the vault first");
-    const credId = await enrolBiometric(uid, email || "traveller", key);
-    await supabase
-      .from("vault_settings")
-      .update({ biometric_credential_id: credId })
-      .eq("user_id", uid);
-    setBioReady(true);
-  }, [uid, key, email]);
-
-  const disableBiometric = useCallback(async () => {
-    if (!uid) return;
-    forgetBiometric(uid);
-    await supabase
-      .from("vault_settings")
-      .update({ biometric_credential_id: null })
-      .eq("user_id", uid);
-    setBioReady(false);
-  }, [uid]);
-
   const lock = useCallback(() => setKey(null), []);
 
   const addDoc = useCallback(
@@ -179,13 +147,8 @@ export function useVault() {
     unlocked: !!key,
     rows,
     loading,
-    bioReady,
-    bioSupported: biometricAvailable(),
     createVault,
     unlock,
-    unlockBiometric,
-    enableBiometric,
-    disableBiometric,
     lock,
     addDoc,
     removeDoc,

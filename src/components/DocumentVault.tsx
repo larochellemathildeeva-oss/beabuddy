@@ -101,14 +101,6 @@ export function DocumentVault() {
         >
           {v.hasVault ? "Unlock vault" : "Create vault"}
         </button>
-        {v.hasVault && v.bioReady && (
-          <button
-            onClick={() => run(() => v.unlockBiometric())}
-            className="mt-2 w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
-          >
-            Unlock with Face ID / fingerprint
-          </button>
-        )}
       </div>
     );
   }
@@ -284,14 +276,10 @@ export function DocumentVault() {
         </button>
       )}
 
-      {v.bioSupported && (
-        <button
-          onClick={() => run(() => (v.bioReady ? v.disableBiometric() : v.enableBiometric()))}
-          className="mt-2 w-full rounded-xl border border-border px-4 py-2.5 text-[13px]"
-        >
-          {v.bioReady ? "Turn off Face ID / fingerprint unlock" : "Unlock with Face ID / fingerprint"}
-        </button>
-      )}
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Unlock with your passcode. Labels and expiry dates stay readable when locked; only
+        attachment contents are encrypted.
+      </p>
       {error && !adding && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
     </div>
   );

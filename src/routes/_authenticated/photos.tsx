@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
 import { readExif } from "@/lib/exif";
 import { reverseGeocode } from "@/lib/geocode";
+import { stripImageFileMetadata } from "@/lib/strip-image-meta";
 
 export const Route = createFileRoute("/_authenticated/photos")({
   head: () => ({
@@ -127,9 +128,13 @@ function PhotosPage() {
         if (keepPhotos) {
           const ext = file.name.split(".").pop() ?? "jpg";
           path = `${uid}/${crypto.randomUUID()}.${ext}`;
+          // Drop GPS from file bytes; lat/lon still go into photo_memories columns.
+          const uploadFile = await stripImageFileMetadata(file);
+          const uploadPath = uploadFile.type === "image/jpeg" ? path.replace(/\.[^.]+$/, ".jpg") : path;
+          path = uploadPath;
           const { error: upErr } = await supabase.storage
             .from("photo-memories")
-            .upload(path, file, { contentType: file.type || "image/jpeg" });
+            .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
           if (upErr) throw upErr;
         }
 
