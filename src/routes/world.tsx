@@ -31,7 +31,8 @@ export const Route = createFileRoute("/world")({
       { property: "og:title", content: "World — Béa" },
       {
         property: "og:description",
-        content: "An interactive globe of your visited, wishlist, next-time and recommendation pins.",
+        content:
+          "An interactive globe of your visited, wishlist, next-time and recommendation pins.",
       },
     ],
   }),
@@ -75,7 +76,8 @@ function WorldPage() {
 
   const today = new Date().toISOString().slice(0, 10);
   const tripsCompleted = useMemo(
-    () => t.trips.filter((tr) => tr.status === "past" || (tr.end_date && tr.end_date < today)).length,
+    () =>
+      t.trips.filter((tr) => tr.status === "past" || (tr.end_date && tr.end_date < today)).length,
     [t.trips, today],
   );
   const travelDays = useMemo(
@@ -99,14 +101,18 @@ function WorldPage() {
       const { data } = await supabase
         .from("itinerary_items")
         .select("kind")
-        .in("trip_id", t.trips.map((tr) => tr.id));
+        .in(
+          "trip_id",
+          t.trips.map((tr) => tr.id),
+        );
       if (cancelled || !data) return;
       const next: ItineraryCounts = { flights: 0, hotels: 0, restaurants: 0 };
       for (const row of data) {
         const k = (row.kind ?? "").toLowerCase();
         if (k.includes("flight")) next.flights += 1;
         else if (k === "hotel" || k === "lodging") next.hotels += 1;
-        else if (k === "reservation" || k === "meal" || k.includes("restaurant")) next.restaurants += 1;
+        else if (k === "reservation" || k === "meal" || k.includes("restaurant"))
+          next.restaurants += 1;
       }
       setCounts(next);
     })();
@@ -131,7 +137,6 @@ function WorldPage() {
         p.country.toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q)),
   );
-
 
   const cityRows = useMemo(() => {
     const map = new Map<string, { city: string; photos: number; days: Set<string> }>();
@@ -232,8 +237,12 @@ function WorldPage() {
             selectedId={selected?.id}
             onSelect={setSelected}
             onCountrySelect={(name) => {
+              // Open a pin in that country — do not rewrite the country filter.
+              // Filtering here made a near-miss tap on a pin look like the whole
+              // map emptied (only that country's dots stayed).
               const lower = name.toLowerCase();
               const match =
+                visible.find((p) => p.country.toLowerCase() === lower) ??
                 allPins.find((p) => p.country.toLowerCase() === lower) ??
                 allPins.find((p) => {
                   if (lower.includes("united states") || lower === "usa") {
@@ -242,15 +251,61 @@ function WorldPage() {
                   if (lower.includes("united kingdom") || lower === "uk") {
                     return /united kingdom|uk|britain/i.test(p.country);
                   }
-                  return p.country.toLowerCase().includes(lower) || lower.includes(p.country.toLowerCase());
+                  return (
+                    p.country.toLowerCase().includes(lower) ||
+                    (p.country.length > 0 && lower.includes(p.country.toLowerCase()))
+                  );
                 });
-              if (match) {
-                setCountry(match.country);
-                setSelected(match);
-              }
+              if (match) setSelected(match);
             }}
           />
         </div>
+
+        {selected ? (
+          <section className="rise card-soft p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-2 rounded-full ${pinColorClass[selected.type] ?? pinColorClass.reco}`}
+                  />
+                  <span className="label-caps">{pinLabel[selected.type] ?? pinLabel.reco}</span>
+                </div>
+                <h2 className="mt-1 text-[24px] leading-tight">{selected.name}</h2>
+                <p className="text-[12px] text-muted-foreground">
+                  {[selected.city, selected.country].filter(Boolean).join(", ") ||
+                    "Somewhere on the map"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+              >
+                Close
+              </button>
+            </div>
+
+            {selected.notes && (
+              <p className="mt-3 font-display text-[16px] leading-snug">“{selected.notes}”</p>
+            )}
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
+                <span
+                  key={t}
+                  className="rounded-xl border border-border bg-elevated px-2 py-2 text-center text-[11px] text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <p className="text-[12px] text-muted-foreground">
+            Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
+          </p>
+        )}
 
         <section data-guide="travel-stats">
           <div className="mb-3 flex items-baseline justify-between">
@@ -289,7 +344,9 @@ function WorldPage() {
                     <Stat value={travelStats.countries} label="Countries" />
                   ))}
                 {statsLayout.layout.cities && <Stat value={travelStats.cities} label="Cities" />}
-                {statsLayout.layout.trips && <Stat value={tripsCompleted} label="Trips completed" />}
+                {statsLayout.layout.trips && (
+                  <Stat value={tripsCompleted} label="Trips completed" />
+                )}
                 {statsLayout.layout.flights && <Stat value={counts.flights} label="Flights" />}
                 {statsLayout.layout.hotels && <Stat value={counts.hotels} label="Hotels" />}
                 {statsLayout.layout.restaurants && (
@@ -351,7 +408,10 @@ function WorldPage() {
                     Dreaming of a number that isn't here — croissants eaten, continents stamped,
                     nights under canvas? Béa's whole job is to make you happy, and she is nosy in
                     the useful way.{" "}
-                    <Link to="/profile" className="font-medium text-primary underline underline-offset-2">
+                    <Link
+                      to="/profile"
+                      className="font-medium text-primary underline underline-offset-2"
+                    >
                       Tell her on You → Feedback
                     </Link>
                     .
@@ -394,8 +454,8 @@ function WorldPage() {
               </button>
             )}
           </div>
-          {heatOpen && (
-            cityRows.length === 0 ? (
+          {heatOpen &&
+            (cityRows.length === 0 ? (
               <p className="text-[12px] text-muted-foreground">
                 Import photos and each city you've been will appear here.
               </p>
@@ -420,8 +480,7 @@ function WorldPage() {
                   );
                 })}
               </div>
-            )
-          )}
+            ))}
         </section>
 
         <AddVisitedCity onSaved={() => void vault.reload()} />
@@ -432,50 +491,6 @@ function WorldPage() {
             ...vault.comparePins.filter((p) => p.type !== "reco" || !isCityLevelPlace(p)),
           ]}
         />
-
-
-        {selected ? (
-          <section className="rise card-soft p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`size-2 rounded-full ${pinColorClass[selected.type]}`} />
-                  <span className="label-caps">{pinLabel[selected.type]}</span>
-                </div>
-                <h2 className="mt-1 text-[24px] leading-tight">{selected.name}</h2>
-                <p className="text-[12px] text-muted-foreground">
-                  {selected.city}, {selected.country}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
-              >
-                Close
-              </button>
-            </div>
-
-            {selected.notes && (
-              <p className="mt-3 font-display text-[16px] leading-snug">“{selected.notes}”</p>
-            )}
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
-                <span
-                  key={t}
-                  className="rounded-xl border border-border bg-elevated px-2 py-2 text-center text-[11px] text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
-
-          </section>
-        ) : (
-          <p className="text-[12px] text-muted-foreground">
-            Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
-          </p>
-        )}
       </div>
     </AppShell>
   );
