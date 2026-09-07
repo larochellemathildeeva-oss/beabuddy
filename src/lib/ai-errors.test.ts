@@ -5,7 +5,10 @@ import {
   isDailyQuota,
   isOverloaded,
   isRateLimited,
+  isRetiredModel,
+  normalizeGeminiModelId,
   parseModelChain,
+  resolvePrimaryGeminiModel,
   runModelChain,
   shouldFallToNextModel,
 } from "./ai-errors.ts";
@@ -14,6 +17,15 @@ test("isOverloaded matches capacity wording and 503", () => {
   assert.equal(isOverloaded(new Error("This model is currently experiencing high demand")), true);
   assert.equal(isOverloaded(new Error("503 Service Unavailable")), true);
   assert.equal(isOverloaded(new Error("You exceeded your current quota")), false);
+});
+
+test("isOverloaded does not treat retired-model refusals as capacity", () => {
+  const retired = new Error(
+    "This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite",
+  );
+  assert.equal(isRetiredModel(retired), true);
+  assert.equal(isOverloaded(retired), false);
+  assert.equal(shouldFallToNextModel(retired), true);
 });
 
 test("isRateLimited matches 429 quota exhaustion", () => {
@@ -52,6 +64,28 @@ test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () =>
     ).message,
     /used up for today/i,
   );
+  assert.match(
+    aiFailure(
+      new Error(
+        "This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite",
+      ),
+    ).message,
+    /outdated AI model/i,
+  );
+});
+
+test("normalizeGeminiModelId remaps retired 2.5 ids and strips models/", () => {
+  assert.equal(normalizeGeminiModelId("models/gemini-2.5-flash-lite"), "gemini-3.5-flash-lite");
+  assert.equal(normalizeGeminiModelId("gemini-2.5-flash"), "gemini-3.6-flash");
+  assert.equal(normalizeGeminiModelId("gemini-3.5-flash-lite"), "gemini-3.5-flash-lite");
+  assert.equal(normalizeGeminiModelId(""), "");
+});
+
+test("resolvePrimaryGeminiModel prefers product default over lite remapping", () => {
+  assert.equal(resolvePrimaryGeminiModel("gemini-2.5-flash-lite"), "gemini-3.6-flash");
+  assert.equal(resolvePrimaryGeminiModel("models/gemini-2.5-flash-lite"), "gemini-3.6-flash");
+  assert.equal(resolvePrimaryGeminiModel(""), "gemini-3.6-flash");
+  assert.equal(resolvePrimaryGeminiModel("gemini-3.5-flash-lite"), "gemini-3.5-flash-lite");
 });
 
 test("parseModelChain builds a de-duplicated ladder", () => {
@@ -65,6 +99,13 @@ test("parseModelChain builds a de-duplicated ladder", () => {
     "gemini-3.5-flash-lite",
   ]);
   assert.deepEqual(parseModelChain("gemini-3.6-flash", ""), ["gemini-3.6-flash"]);
+});
+
+test("parseModelChain remaps a stale Canner 2.5 primary and fallbacks", () => {
+  assert.deepEqual(
+    parseModelChain("gemini-2.5-flash-lite", "gemini-2.5-flash-lite,gemini-3.1-flash-lite-preview"),
+    ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite-preview"],
+  );
 });
 
 test("runModelChain steps down on quota and stops on other errors", async () => {
@@ -86,4 +127,19 @@ test("runModelChain steps down on quota and stops on other errors", async () => 
       }),
     /Could not read that picture/,
   );
+});
+
+test("runModelChain steps down when Google refuses a retired model id", async () => {
+  const tried: string[] = [];
+  const result = await runModelChain(["dead", "live"], async (id) => {
+    tried.push(id);
+    if (id === "dead") {
+      throw new Error(
+        "This model models/gemini-2.5-flash-lite is no longer available to new users. Please update your code to use models/gemini-3.5-flash-lite",
+      );
+    }
+    return `ok:${id}`;
+  });
+  assert.equal(result, "ok:live");
+  assert.deepEqual(tried, ["dead", "live"]);
 });
