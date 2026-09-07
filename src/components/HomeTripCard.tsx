@@ -97,7 +97,7 @@ export function HomeTripCard() {
   );
 
   return (
-    <section className="rise">
+    <section data-guide="home-trip" className="rise">
       <div className="mb-3 flex items-baseline justify-between">
         <p className="label-caps text-foreground">{started ? "Your trip right now" : "Your next trip"}</p>
         <span className="text-[11px] text-muted-foreground">{status}</span>

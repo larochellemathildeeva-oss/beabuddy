@@ -1,11 +1,17 @@
 import type { ReactNode } from "react";
+import { guideTargetLooksVisible } from "@/lib/guide-target";
 
 export type SpotlightBox = { top: number; left: number; width: number; height: number };
 
 /** Resolve a guide/tour selector to a visible element, or null. */
 export function findGuideTarget(selector?: string): HTMLElement | null {
   if (!selector || typeof document === "undefined") return null;
-  return document.querySelector<HTMLElement>(selector);
+  const el = document.querySelector<HTMLElement>(selector);
+  if (!el) return null;
+  const rect = el.getBoundingClientRect();
+  const style = window.getComputedStyle(el);
+  if (!guideTargetLooksVisible(rect, style)) return null;
+  return el;
 }
 
 export function measureGuideTarget(el: HTMLElement): SpotlightBox {

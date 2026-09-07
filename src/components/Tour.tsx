@@ -20,6 +20,9 @@ import {
 } from "./SpotlightOverlay";
 
 const TOUR_EVENT = "bea-tour-start";
+/** Polls for a target after route navigation before treating it as missing. */
+const TARGET_TRIES = 12;
+const TARGET_RETRY_MS = 50;
 
 export type TourIntent = "first-run" | "replay";
 
@@ -93,12 +96,34 @@ export function Tour({
   const [mode, setMode] = useState<TourMode | null>(null);
   const [box, setBox] = useState<SpotlightBox | null>(null);
   const [clicked, setClicked] = useState(false);
+  /** False while a selector step is still waiting for a painted target. */
+  const [targetReady, setTargetReady] = useState(true);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const steps = mode ? tourSteps(mode) : [];
   const step = mode ? steps[i] : undefined;
   const blocked = !!step?.needsAuth && !user;
-  const needsClick = !!step?.awaitClick && !clicked;
+  // Only lock Next when there is something visible to tap — never soft-lock
+  // on an empty shell or a still-loading target.
+  const needsClick = !!step?.awaitClick && !!box && !clicked;
+
+  const finish = useCallback(() => {
+    markTourSeen(safeStorage());
+    onClose();
+  }, [onClose]);
+
+  /** Backdrop near-miss: close the sheet but leave first-run eligible. */
+  const dismissSoft = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
+  const advanceOrFinish = useCallback(() => {
+    if (i >= steps.length - 1) {
+      finish();
+      return;
+    }
+    setI((n) => n + 1);
+  }, [i, steps.length, finish]);
 
   useEffect(() => {
     if (!open) return;
@@ -146,15 +171,20 @@ export function Tour({
     setBox(measureGuideTarget(el));
   }, [step]);
 
-  // Spotlight: scroll the target in, then track size/position.
+  // Spotlight: wait for a painted target after navigation, then track it.
+  // Missing targets skip ahead (or finish on the last step) — never leave
+  // awaitClick with Next disabled and nothing to tap.
   useEffect(() => {
     if (!open || !mode || !step) return;
     setClicked(false);
     if (!step.selector) {
       setBox(null);
+      setTargetReady(true);
       return;
     }
 
+    setTargetReady(false);
+    setBox(null);
     let cancelled = false;
     let tries = 0;
     const tick = () => {
@@ -163,17 +193,16 @@ export function Tour({
       if (el) {
         el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
         setBox(measureGuideTarget(el));
+        setTargetReady(true);
         return;
       }
       setBox(null);
-      // Target missing on this screen (empty vault, collapsed panel, …):
-      // skip ahead so findTarget collapses the walk honestly instead of
-      // pointing at nothing.
-      if (tries++ < 12) {
-        window.setTimeout(tick, 50);
+      if (tries++ < TARGET_TRIES) {
+        window.setTimeout(tick, TARGET_RETRY_MS);
         return;
       }
-      if (i < steps.length - 1) setI((n) => n + 1);
+      setTargetReady(true);
+      advanceOrFinish();
     };
     const frame = window.requestAnimationFrame(tick);
     window.addEventListener("resize", measure);
@@ -184,11 +213,11 @@ export function Tour({
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
     };
-  }, [open, mode, step, i, steps.length, measure]);
+  }, [open, mode, step, measure, advanceOrFinish]);
 
   // Interactive beats: any click inside the highlighted control unlocks Next.
   useEffect(() => {
-    if (!open || !step?.awaitClick || !step.selector) return;
+    if (!open || !step?.awaitClick || !step.selector || !box) return;
     const el = findGuideTarget(step.selector);
     if (!el) return;
     const onClick = () => setClicked(true);
@@ -197,11 +226,6 @@ export function Tour({
   }, [open, step, box, i]);
 
   if (!open) return null;
-
-  const finish = () => {
-    markTourSeen(safeStorage());
-    onClose();
-  };
 
   const pick = (next: TourMode) => {
     setMode(next);
@@ -251,6 +275,8 @@ export function Tour({
   }
 
   const last = i === steps.length - 1;
+  const showCopy = targetReady;
+
   const sheet = (
     <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
       <div className="flex items-center justify-between">
@@ -262,22 +288,23 @@ export function Tour({
         </button>
       </div>
 
-      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
-      {blocked && (
-        <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-          This screen opens once you're signed in — for now, picture it here.
-        </p>
-      )}
-      {step?.selector && !box && !blocked && (
-        <p className="mt-1.5 text-[11px] italic text-muted-foreground">
-          This part isn't on screen right now — skipping ahead.
-        </p>
-      )}
-      {needsClick && (
-        <p className="mt-1.5 text-[11px] font-medium text-primary">
-          Tap the highlighted bit to continue (or Skip).
-        </p>
+      {showCopy ? (
+        <>
+          <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">{step!.body}</p>
+          {blocked && (
+            <p className="mt-1.5 text-[11px] italic text-muted-foreground">
+              This screen opens once you're signed in — for now, picture it here.
+            </p>
+          )}
+          {needsClick && (
+            <p className="mt-1.5 text-[11px] font-medium text-primary">
+              Tap the highlighted bit to continue (or Skip).
+            </p>
+          )}
+        </>
+      ) : (
+        <p className="mt-2 text-[13px] text-muted-foreground">Finding that bit of the screen…</p>
       )}
 
       {mode === "deep" ? (
@@ -312,7 +339,7 @@ export function Tour({
           Back
         </button>
         <button
-          disabled={needsClick}
+          disabled={needsClick || !showCopy}
           onClick={() => (last ? finish() : setI(i + 1))}
           className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
         >
@@ -324,7 +351,7 @@ export function Tour({
 
   return createPortal(
     <div role="dialog" aria-label="Welcome tour">
-      <SpotlightOverlay box={step?.selector ? box : null} onDismiss={finish}>
+      <SpotlightOverlay box={step?.selector ? box : null} onDismiss={dismissSoft}>
         {sheet}
       </SpotlightOverlay>
     </div>,
