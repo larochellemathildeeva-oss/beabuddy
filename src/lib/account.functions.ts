@@ -74,46 +74,60 @@ async function purgeUserStorage(
 /**
  * Shared trips must outlive the deleting owner: hand ownership to another
  * member. Solo owned trips are left for the caller to delete (or Auth CASCADE).
+ * Returns how many trips had ownership transferred (for partial-failure messaging).
  */
 async function handOffOwnedSharedTrips(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
   userId: string,
-) {
+): Promise<{ transferred: number }> {
   const { data: owned, error: ownedErr } = await admin
     .from("trips")
     .select("id")
     .eq("owner_id", userId);
   if (ownedErr) throw new Error(ownedErr.message);
 
-  for (const trip of owned ?? []) {
-    const tripId = trip.id as string;
-    const { data: members, error: memberErr } = await admin
-      .from("trip_members")
-      .select("user_id, role")
-      .eq("trip_id", tripId);
-    if (memberErr) throw new Error(memberErr.message);
+  let transferred = 0;
+  try {
+    for (const trip of owned ?? []) {
+      const tripId = trip.id as string;
+      const { data: members, error: memberErr } = await admin
+        .from("trip_members")
+        .select("user_id, role")
+        .eq("trip_id", tripId);
+      if (memberErr) throw new Error(memberErr.message);
 
-    const successor = (members ?? []).find(
-      (m: { user_id: string }) => m.user_id !== userId,
-    ) as { user_id: string; role: string } | undefined;
+      const successor = (members ?? []).find(
+        (m: { user_id: string }) => m.user_id !== userId,
+      ) as { user_id: string; role: string } | undefined;
 
-    if (!successor) continue;
+      if (!successor) continue;
 
-    const { error: ownerErr } = await admin
-      .from("trips")
-      .update({ owner_id: successor.user_id })
-      .eq("id", tripId)
-      .eq("owner_id", userId);
-    if (ownerErr) throw new Error(ownerErr.message);
+      const { error: ownerErr } = await admin
+        .from("trips")
+        .update({ owner_id: successor.user_id })
+        .eq("id", tripId)
+        .eq("owner_id", userId);
+      if (ownerErr) throw new Error(ownerErr.message);
+      transferred += 1;
 
-    const { error: roleErr } = await admin
-      .from("trip_members")
-      .update({ role: "owner" })
-      .eq("trip_id", tripId)
-      .eq("user_id", successor.user_id);
-    if (roleErr) throw new Error(roleErr.message);
+      const { error: roleErr } = await admin
+        .from("trip_members")
+        .update({ role: "owner" })
+        .eq("trip_id", tripId)
+        .eq("user_id", successor.user_id);
+      if (roleErr) throw new Error(roleErr.message);
+    }
+  } catch (e) {
+    if (transferred > 0) {
+      const detail = e instanceof Error ? e.message : "Unknown error";
+      const err = new Error(detail) as Error & { transferred: number };
+      err.transferred = transferred;
+      throw err;
+    }
+    throw e;
   }
+  return { transferred };
 }
 
 async function deleteWhere(
@@ -176,11 +190,12 @@ async function wipeUserContent(
 
   let handedOffSharedTrips = false;
   try {
-    await handOffOwnedSharedTrips(admin, userId);
-    handedOffSharedTrips = true;
+    const { transferred } = await handOffOwnedSharedTrips(admin, userId);
+    if (transferred > 0) handedOffSharedTrips = true;
 
     // Remaining owned trips are solo — cascade trip-scoped children.
     await deleteWhere(admin, "trips", "owner_id", userId);
+    handedOffSharedTrips = true;
     await deleteWhere(admin, "trip_members", "user_id", userId);
     await deleteWhere(admin, "trip_invites", "invited_by", userId);
 
@@ -205,7 +220,14 @@ async function wipeUserContent(
       .eq("id", userId);
     if (profileErr) throw new Error(profileErr.message);
   } catch (e) {
-    if (handedOffSharedTrips) {
+    const partial =
+      handedOffSharedTrips ||
+      (typeof e === "object" &&
+        e !== null &&
+        "transferred" in e &&
+        typeof (e as { transferred: unknown }).transferred === "number" &&
+        (e as { transferred: number }).transferred > 0);
+    if (partial) {
       const detail = e instanceof Error ? e.message : "Unknown error";
       throw new Error(
         `Erase was interrupted after shared-trip handoff (${detail}). Tap Erase again to finish — the remaining steps are safe to retry.`,
