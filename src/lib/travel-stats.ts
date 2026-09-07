@@ -27,7 +27,8 @@ export const WORLD_COUNTRY_COUNT = 195;
 export function countryWorldShare(visited: number, world = WORLD_COUNTRY_COUNT) {
   const safe = Math.max(0, Math.floor(visited));
   const total = Math.max(1, world);
-  const percent = Math.min(100, Math.round((safe / total) * 100));
+  // Straight share of 195 — one decimal so 10/195 is 5.1%, not a rounded 5%.
+  const percent = Math.min(100, Number(((safe / total) * 100).toFixed(1)));
   return { visited: safe, world: total, percent };
 }
 
