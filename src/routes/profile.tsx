@@ -7,6 +7,16 @@ import { PackingLists } from "@/components/PackingLists";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
@@ -15,7 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { applyDark, readDark } from "@/lib/theme";
 import { deleteMyAccount } from "@/lib/account.functions";
-import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
+import { clearLocalUserData } from "@/lib/clear-local-user-data";
 
 
 export const Route = createFileRoute("/profile")({
@@ -455,52 +465,93 @@ function ProfilePage() {
 
 function DeleteAccountPanel({ userId }: { userId: string }) {
   const navigate = useNavigate();
-  const [phrase, setPhrase] = useState("");
+  const [confirmStep, setConfirmStep] = useState<null | 1 | 2>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const ready = phrase.trim() === "DELETE";
+  async function eraseAllData() {
+    setBusy(true);
+    setError("");
+    try {
+      await deleteMyAccount({ data: { confirm: "DELETE" } });
+      clearLocalUserData(userId);
+      await supabase.auth.signOut();
+      setConfirmStep(null);
+      await navigate({ to: "/auth" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not erase your data.");
+      setConfirmStep(null);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-destructive/30 p-3">
-      <p className="text-[14px] font-medium">Delete my account</p>
+      <p className="text-[14px] font-medium">Erase all my data</p>
       <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-        This is designed to remove your trips, recommendations, photos, receipts, and vault
-        documents. Type DELETE to confirm. Backups and the AI provider may still hold traces for a
-        short time.
+        This is designed to remove your trips, recommendations, photos, receipts, vault documents,
+        and account. Shared trips are handed to another member when someone else is on them.
+        Backups and the AI provider may still hold traces for a short time.
       </p>
-      <input
-        value={phrase}
-        onChange={(e) => setPhrase(e.target.value)}
-        placeholder="Type DELETE"
-        autoComplete="off"
-        className="mt-3 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
-        aria-label="Type DELETE to confirm account deletion"
-      />
       {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
       <button
         type="button"
-        disabled={!ready || busy}
-        onClick={() =>
-          void (async () => {
-            setBusy(true);
-            setError("");
-            try {
-              await deleteMyAccount({ data: { confirm: "DELETE" } });
-              clearStoredVaultKeys(userId);
-              await supabase.auth.signOut();
-              await navigate({ to: "/auth" });
-            } catch (e) {
-              setError(e instanceof Error ? e.message : "Could not delete the account.");
-            } finally {
-              setBusy(false);
-            }
-          })()
-        }
+        disabled={busy}
+        onClick={() => {
+          setError("");
+          setConfirmStep(1);
+        }}
         className="mt-3 w-full rounded-xl border border-destructive px-4 py-2.5 text-[13px] font-semibold text-destructive disabled:opacity-50"
       >
-        {busy ? "Deleting…" : "Delete my account forever"}
+        {busy ? "Erasing…" : "Erase all my data"}
       </button>
+
+      <AlertDialog
+        open={confirmStep !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setConfirmStep(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmStep === 2 ? "Are you sure that you're sure?" : "Are you sure?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmStep === 2
+                ? "There is no undo. Trips, photos, receipts, vault files, and the rest of your account data are designed to be removed for good."
+                : "This permanently erases your Béa data and closes your account. You will need a new account to use Béa again."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            {confirmStep === 1 ? (
+              <AlertDialogAction
+                disabled={busy}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setConfirmStep(2);
+                }}
+              >
+                Yes, continue
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                disabled={busy}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void eraseAllData();
+                }}
+              >
+                {busy ? "Erasing…" : "Yes — erase everything"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
