@@ -192,13 +192,14 @@ async function wipeUserContent(
   }
 
   let handedOffSharedTrips = false;
+  let deletedSoloTrips = false;
   try {
     const { transferred } = await handOffOwnedSharedTrips(admin, userId);
     if (transferred > 0) handedOffSharedTrips = true;
 
     // Remaining owned trips are solo — cascade trip-scoped children.
     await deleteWhere(admin, "trips", "owner_id", userId);
-    handedOffSharedTrips = true;
+    deletedSoloTrips = true;
     await deleteWhere(admin, "trip_members", "user_id", userId);
     await deleteWhere(admin, "trip_invites", "invited_by", userId);
 
@@ -225,6 +226,7 @@ async function wipeUserContent(
   } catch (e) {
     const partial =
       handedOffSharedTrips ||
+      deletedSoloTrips ||
       (typeof e === "object" &&
         e !== null &&
         "transferred" in e &&
@@ -232,8 +234,9 @@ async function wipeUserContent(
         (e as { transferred: number }).transferred > 0);
     if (partial) {
       const detail = e instanceof Error ? e.message : "Unknown error";
+      const stage = handedOffSharedTrips ? "shared-trip handoff" : "trips were removed";
       throw new Error(
-        `Erase was interrupted after shared-trip handoff (${detail}). Tap Erase again to finish — the remaining steps are safe to retry.`,
+        `Erase was interrupted after ${stage} (${detail}). Tap Erase again to finish — the remaining steps are safe to retry.`,
       );
     }
     throw e;

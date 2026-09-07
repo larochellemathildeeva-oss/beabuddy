@@ -615,4 +615,3 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
     </div>
   );
 }
-
