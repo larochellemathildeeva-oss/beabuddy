@@ -6,177 +6,209 @@ assumptions before launch and before privacy/security copy overpromises.
 Pair with `docs/WHAT_BEA_BELIEVES.md`, `docs/BRANDING.md`, Help FAQ, and Privacy Policy.
 Voice/FAQ rule: prefer *designed to / private by default / may* over *always / never / only / impossible*.
 
+**Pass 2 — 2026-09-06 (evening).** Grounded in `main` through account-deletion commit `a5b53ce`
+(v3.6.0 locally; confirm deploy). Invite migration `harden_trip_invites` applied to live
+Supabase. Dashboard: Cursor canvas `bea-risk-matrix.canvas.tsx`.
+
+---
+
 ## 1. Data inventory
 
 Do we know what we collect?
 
-- [ ] Account email
-- [ ] Display name
-- [ ] Home city
-- [ ] Travel preferences
-- [ ] Recommendations
-- [ ] Trips
-- [ ] Notes
-- [ ] Photos
-- [ ] EXIF location data
-- [ ] GPS location
-- [ ] Documents (Vault)
-- [ ] Receipt images
-- [ ] Expense information
-- [ ] AI prompts and responses
-- [ ] Analytics events
+| Item | Why | Where | If we stop |
+| --- | --- | --- | --- |
+| Account email | Auth | Supabase Auth | Cannot sign in |
+| Display name / home city | Profile, trips, globe | `profiles` | Cosmetic / empty home |
+| Travel preferences | Let Béa plan / compare | `profiles.preferences` | Generic plans |
+| Recommendations | Memory layer | `recommendations` | Core product empty |
+| Trips / itinerary | Planning | `trips`, members, items | Core product empty |
+| Notes (Future Me) | Memory | `future_notes` | No later-you notes |
+| Photos | Memories / story | `photo_memories` + bucket `photo-memories` | No city albums |
+| EXIF / GPS from photos | Place on map | DB `lat`/`lon`; file GPS designed stripped on keep-photo | Map pins weaker |
+| Near GPS | Distance ranking | **In-memory only**; consent expiry in localStorage | Near still works via demo city |
+| Vault documents | Trip tickets/confirmations | `vault_documents` ciphertext; labels plaintext | No trip docs |
+| Receipts / expenses | Work travel | `expenses` + bucket `receipts` | No expense export |
+| AI prompts / answers | Plan, import, compare, OCR | Sent to Google Gemini; Béa stores what user saves | Features fail closed |
+| Analytics | Unknown | Inventory still open | — |
+| Feedback | Product | `app_reports` | Support blind |
 
-For each item: why collect it · which feature needs it · what if we stop.
+- [x] Inventory listed (this table)
+- [ ] Analytics events inventoried vs policy
+- [ ] Backup / log retention windows known (Supabase + Canner + Gemini)
+
+---
 
 ## 2. Authentication & accounts
 
-- [ ] Passwords hashed with modern algorithms (Supabase Auth)
-- [ ] Password reset tokens expire
-- [ ] Email verification where appropriate
-- [ ] Session expiration defined
-- [ ] Logout invalidates session
-- [ ] Google OAuth flow reviewed
-- [ ] Account linking tested
-- [ ] Duplicate-account scenarios tested
-- [ ] OAuth tokens stored safely
-- [ ] OAuth revocation behavior understood
+Supabase Auth (email + Google). Not a dashboard audit.
+
+- [x] Passwords hashed by Supabase (not our code)
+- [ ] Password reset token expiry confirmed in project settings
+- [ ] Email verification policy confirmed
+- [ ] Session expiration / logout invalidation confirmed
+- [x] Google OAuth used; code-exchange race was fixed earlier (`a220d2d` era)
+- [ ] Account linking / duplicate-account matrix tested this pass
+- [x] In-app account delete exists (Profile → Legal; type `DELETE`)
+- [ ] Live delete smoke-tested on Canner (`SUPABASE_SERVICE_ROLE_KEY` must be set)
+
+**Red-team leftover:** dashboard auth settings still **Unknown**.
+
+---
 
 ## 3. Authorization
 
 Users access only their own data for:
 
-- [ ] Recommendations
-- [ ] Trips
-- [ ] Notes
-- [ ] Photos
-- [ ] Documents
-- [ ] Expenses
-- [ ] Feedback
+- [x] Recommendations (RLS)
+- [x] Trips (RLS; join only via `accept_trip_invite`)
+- [x] Notes
+- [x] Photos (signed URLs, 1h)
+- [x] Vault documents (RLS + ciphertext)
+- [x] Expenses
+- [x] Feedback
 
 Verify:
 
-- [ ] No access by changing a URL / ID
-- [ ] No access via API with another user's IDs
-- [ ] Shared-trip permissions correct
+- [x] Trip UUID IDOR blocked (`lock_trip_member_insert` + RPC-only member insert)
+- [ ] Fresh ID-guessing pass after delete-account deploy
+- [x] Invite codes: 10-char alphabet, 7-day expiry, single-use, revoke, accept rate limit
+- [ ] Remove-member / leave-trip UI (policy exists; no in-app control found)
 
-**Red-team:** Can user A open user B's trip by editing `/trips` or an ID? If yes → critical.
+**Red-team:** User A opening user B's trip by URL — mitigated last pass; re-test after delete ships.
+
+---
 
 ## 4. Document Vault (trip documents)
 
 Positioning: reservations, tickets, confirmations, boarding passes — **not** passports / ID.
-Most sensitive encrypted feature remaining.
 
-- [ ] Encryption design documented
-- [ ] Encryption claims match reality
-- [ ] Key management documented
-- [ ] Vault threat model written
+- [x] Encryption: AES-256-GCM, PBKDF2 210k, key from passcode, ciphertext on server
+- [x] Unlock is **passcode-only** (Face ID / localStorage key removed)
+- [x] Derived keys non-extractable; leftover biometric keys cleared on vault load
+- [x] Copy: passcode-only; labels/kind/expiry readable while locked
+- [ ] Formal threat model doc (this checklist is the standing note)
 
-Questions: client-side vs server-side · who has keys · admin/support access ·
+Residual: plaintext `kind` / `label` / `expires_on`. Not ID documents by product intent.
 
-Copy: do not claim *only you / impossible / zero knowledge* unless verified.
+---
 
 ## 5. Location data
 
-- [ ] Requested only when needed
-- [ ] Permission prompts clear
-- [ ] Access can be revoked
-- [ ] Not collected unnecessarily
-- [ ] Retention known (stored? how long? who access?)
-- [ ] Near respects consent expiry
-- [ ] Stop-sharing actually stops
+- [x] Near requests GPS only after consent; expiry in localStorage, not coordinates
+- [x] Stop sharing clears live position
+- [x] Privacy: no location history from Near
+- [x] Saved pins / photo `lat`/`lon` **do** persist (user-chosen or EXIF-derived)
+
+---
 
 ## 6. Photos & EXIF
 
-- [ ] Users understand what is imported
-- [ ] EXIF handling documented
-- [ ] Remove photo removes photo
-- [ ] GPS metadata: retained / stripped?
-- [ ] Thumbnails / backup retention after delete
+- [x] Import consent UI exists
+- [x] Keep-photo path re-encodes JPEG to drop file GPS; `lat`/`lon` still stored on the row for the map
+- [x] Locations-only mode does not upload the file
+- [x] Delete removes storage object + row
+- [ ] Existing blobs uploaded *before* strip not backfilled
+- [ ] Receipt images not stripped (expenses, not vault)
+
+---
 
 ## 7. AI features
 
-- [ ] Outputs not represented as facts
-- [ ] Confidence / uncertainty messaging exists
-- [ ] Help me choose / Let Béa plan / extraction / import reviewed
-- [ ] What enters prompts known
-- [ ] Retention / training posture documented
+- [x] Help: suggestions not decisions; uncertainty copy
+- [x] Privacy/Help: Gemini may retain per Google policy; photo memories not sent; vault secrets not in prompts
+- [ ] No coded Gemini zero-retention / no-train flag in `ai.server.ts`
+- [x] Import surfaces warn against passport / card numbers
+
+---
 
 ## 8. File upload security
 
-Photos · receipts · documents · CSV · itinerary images
+Photos · receipts · documents (as vault ciphertext) · CSV · itinerary images
 
-- [ ] Max file size
-- [ ] File-type restrictions
-- [ ] Malware scanning (or accepted risk)
-- [ ] Filename sanitization
-- [ ] Upload rate limits
+- [ ] Max file size enforced consistently
+- [ ] File-type allowlist reviewed
+- [x] Malware scanning: **accepted early** (P2)
+- [ ] Upload rate limits (AI cost more urgent than malware)
+
+---
 
 ## 9. API review
 
-For each endpoint:
+ServerFns use `requireSupabaseAuth` where gated. Invite accept rate-limited in SQL.
 
-- [ ] Auth where appropriate
-- [ ] Authorization server-side
-- [ ] Input validation
-- [ ] Rate limiting
+- [x] Auth on member serverFns
+- [x] Trip join authorization server-side (DEFINER RPC)
+- [ ] Broader rate limits (AI, geocode)
+- [ ] Parameter-tampering re-test after 3.6.0
 
-Tests: ID guessing · parameter tampering · missing permissions · excess requests
+---
 
 ## 10. Privacy copy review
 
-For every FAQ / marketing claim: **Can we prove this?**
+Pass 2: vault Face ID caveat **removed**; account close now points at Profile → Legal;
+invite expiry described; AI provider *may* retain.
 
-Safe: private by default · designed to protect · you can remove content  
-Risky: nobody can see · we never access · completely secure · impossible to recover
+Keep scanning Help/privacy for *always / never / only / impossible*.
+
+- [x] Vault copy matches passcode-only + metadata honesty
+- [x] Account delete copy matches in-app control (*designed to*)
+- [x] Near / photos / AI disclosures improved
+- [ ] Full Help + marketing sweep this week
+
+---
 
 ## 11. Data retention
 
 | Data | Retained how long? |
 | --- | --- |
-| Trips | ? |
-| Recommendations | ? |
-| Photos | ? |
-| Vault docs | ? |
-| Receipts | ? |
-| Logs | ? |
-| Analytics | ? |
+| Trips, recs, notes, vault rows | Until user deletes item or account |
+| Photos / receipts files | Until item or account delete (purge then Auth delete) |
+| Near GPS | Not stored |
+| Photo map coords | Until photo/account delete |
+| AI prompts | Provider policy (not coded) |
+| Logs / backups | **Unknown** — disclose *may lag* |
+| Analytics | **Unknown** |
 
-- [ ] Account deletion behavior documented
+- [x] Account deletion behavior documented (code + Privacy/Help)
 - [ ] Backup retention known
-- [ ] Deleted-content retention periods known
+- [ ] Live delete verified (storage empty + cannot sign in)
+
+---
 
 ## 12. Incident readiness
 
-Can we answer: what happened · who affected · what data · how notify · who owns response?
+- [ ] One-page runbook: what happened · who · what data · how notify · owner
 
-Even a one-page runbook is enough initially.
+---
 
 ## 13. Founder reality check
 
-Before launch, can you honestly say:
+| Question | This pass |
+| --- | --- |
+| Where data lives | **Mostly** — Auth, Postgres, two buckets, Gemini, localStorage (tour/consent). Analytics unknown |
+| Who can access | **Mostly** — RLS + service role on server. Dashboard roles not reviewed |
+| How protected | **Mostly** — vault ciphertext real; metadata not |
+| How deleted | **Code yes / live test no** |
+| Privacy copy = reality | **Much closer** — keep sweeping |
+| Security marketing = reality | **Improved** — no Face ID encryption claims |
 
-- [ ] I know where every piece of user data lives
-- [ ] I know who can access it
-- [ ] I know how it's protected
-- [ ] I know how it's deleted
-- [ ] Privacy copy matches reality
-- [ ] Security marketing matches reality
+---
 
-If any answer is “not sure,” that is the next review.
+## Priority focus (remaining)
 
-## Priority focus (highest risk first)
+1. Live account-delete smoke test + Canner service role  
+2. Supabase Auth dashboard (reset, session, email verify)  
+3. Remove-member / leave-trip  
+4. AI zero-retention or accept provider terms as-is  
+5. Analytics inventory  
+6. Pre-strip photo blobs (optional backfill)
 
-1. Document Vault encryption claims  
-2. Shared-trip authorization  
-3. Photo and EXIF handling  
-4. Location storage and retention  
-5. AI prompt / privacy disclosures  
-6. Account deletion and data retention  
+---
 
 ## Risk matrix (severity × launch urgency)
 
 Severity = user impact if exploited. Priority = how urgently to fix before launch.
-Not every High severity is P0; not every P0 is catastrophic (e.g. privacy confusion can be P0 for trust).
 
 | Priority | Meaning | Test question |
 | --- | --- | --- |
@@ -185,62 +217,67 @@ Not every High severity is P0; not every P0 is catastrophic (e.g. privacy confus
 | **P2** | Schedule | Important, not immediately dangerous. |
 | **P3** | Nice to have | Polish and maturity. |
 
-### Tracked risks (assessed 2026-09-06)
+### Tracked risks (reassessed 2026-09-06 evening)
 
 | Risk | Sev | Likely | Pri | Status |
 | --- | --- | --- | --- | --- |
-| Vault claims ≠ implementation | Critical | Med | P0 | Watch |
-| Cross-user authz (trips/docs) | Critical | Med | P0 | Mitigated* (re-test) |
-| Shared-trip permission bugs | High | Med | P0 | Open |
-| Location retained unexpectedly | High | Med | P0 | Clarify |
-| Account deletion incomplete | High | Med | P0 | Open |
-| Docs accessible by URL guessing | Critical | Low | P0 | Likely OK — re-verify |
+| Vault claims ≠ implementation | High | Low | P1 | Mitigated |
+| Cross-user authz (trips/docs) | Critical | Low | P0 | Mitigated* |
+| Shared-trip invite abuse | High | Low | P1 | Mitigated |
+| No remove-member UI | Med | Med | P1 | Open |
+| Location retained unexpectedly | Med | Low | P2 | Clarify |
+| Account deletion incomplete | High | Low | P0 | Code done* |
+| Docs/files by URL guessing | Critical | Low | P1 | Likely OK |
 | Password reset / session weakness | Critical | Low | P0 | Unknown |
-| Privacy copy overpromises | High | High | P0 | Improving |
-| AI prompts unexpected sensitive content | High | Med | P1 | Open |
-| Photo EXIF unintentionally exposed | High | Med | P1 | Open |
+| Privacy copy overpromises | High | Med | P1 | Improving |
+| AI prompts / provider retention | High | Med | P1 | Disclosed |
+| Photo EXIF in **new** uploads | Med | Low | P2 | Mitigated |
+| Photo EXIF in **old** blobs | Med | Med | P2 | Open |
 | Analytics beyond disclosure | Med | Med | P1 | Unknown |
-| Near tracking confusion | Med | High | P1 | Watch |
-| No rate limiting | Med | Med | P1 | Open |
-| OCR / scan expectation mismatch | Med | Med | P1 | Watch |
+| Near tracking confusion | Med | Med | P2 | Watch |
+| No rate limiting (AI / other) | Med | Med | P1 | Partial |
+| OCR / vault-scan mismatch | Med | Low | P2 | Watch |
 | AI treated as facts | Med | Med | P2 | Improving |
 | Excess log retention | Med | Med | P2 | Unknown |
 | Upload malware protections | Med | Low | P2 | Accepted early |
-| Offline data on shared devices | Med | Low | P2 | Open |
+| Offline data on shared devices | Med | Low | P2 | Watch |
 | Bug reports with personal data | Med | Low | P3 | Watch |
+
+\*Mitigated = controls in repo/RLS. Account delete: **untested on production**. Authz: re-test after deploy.
 
 Live dashboard: Cursor canvas `bea-risk-matrix.canvas.tsx`.
 
 ### Founder dashboard (six categories)
 
-| Category | Current risk | Key questions |
+| Category | Current risk | Why |
 | --- | --- | --- |
-| Authentication | Unknown | Takeover? Session hijack? |
-| Authorization | Highest | Cross-user access? Shared trips? |
-| Vault | Highest | What encrypted? Keys? Honest claims? |
-| Privacy | Highest | FAQ = reality? Location/photos understood? |
-| AI | Medium | Prompt contents? Disclosures? |
-| Deletion & retention | Medium | After delete? Backups? Account close? |
+| Authentication | Unknown | Dashboard settings not reviewed this pass |
+| Authorization | Medium | IDOR + invites hardened; member-remove still missing |
+| Vault | Medium | Real crypto, passcode-only; metadata plaintext |
+| Privacy | Medium | Copy catching up; analytics/backups unknown |
+| AI | Medium | Disclosed Gemini; no zero-retention config |
+| Deletion & retention | Medium | In-app delete coded; live proof + backups open |
 
-### Launch gates (green before “ready”)
+### Launch gates
 
-**Security:** auth reviewed · authorization tested · shared-trip permissions tested · document storage reviewed · file uploads reviewed  
+**Security:** auth dashboard **open** · authorization **improved** · invites **shipped** · vault **passcode-only** · uploads **partial**
 
-**Privacy:** policy matches code · FAQ matches code · location retention documented · photo handling documented · AI usage disclosed  
+**Privacy:** policy/FAQ **much closer** · location **documented** · photo strip **new uploads** · AI **disclosed**
 
-**Trust:** no unproven zero-knowledge / nobody-can-access / completely secure / always-never claims  
+**Trust:** Face ID encryption claims **gone** · keep *designed to / may*
 
-### Top 5 to investigate first
+### Top 5 now
 
-1. Vault architecture and encryption claims  
-2. Cross-user authorization and shared trips  
-3. Location storage and retention  
-4. Photo/EXIF handling  
-5. Privacy-copy vs implementation consistency  
+1. Smoke-test account deletion on deployed Béa  
+2. Review Supabase Auth project settings  
+3. Remove-member / leave-trip  
+4. Inventory analytics vs Privacy  
+5. Decide: accept Gemini retention or pay for zero-retention
 
 ### Pass log
 
 | Date | Focus | Outcome |
 | --- | --- | --- |
-| 2026-09-06 | Six-priority founder pass | See `bea-security-founder-pass` canvas |
-| 2026-09-06 | Risk matrix + launch gates | See `bea-risk-matrix` canvas |
+| 2026-09-06 | Six-priority founder pass | Vault partial, invites weak, EXIF in files, no account delete |
+| 2026-09-06 | Risk matrix + launch gates | See first `bea-risk-matrix` |
+| 2026-09-06 evening | Pass 2 after vault/invites/EXIF/delete | This file + updated `bea-risk-matrix` |
