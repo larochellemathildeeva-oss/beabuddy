@@ -2,6 +2,12 @@
 export const AI_IMAGE_MAX_CHARS = 1_200_000;
 
 const READ_FAIL = "Could not read that picture. Try a JPEG or PNG, or take the photo again.";
+const TOO_LARGE = "That picture is too large to send. Try a clearer crop or a smaller photo.";
+
+/** True when a data URL is an image and fits the AI upload budget. */
+export function isWithinAiImageBudget(dataUrl: string): boolean {
+  return dataUrl.startsWith("data:image/") && dataUrl.length <= AI_IMAGE_MAX_CHARS;
+}
 
 type BitmapLike = {
   width: number;
@@ -96,13 +102,12 @@ export async function downscaleImage(file: File, maxSide = 1200, quality = 0.72)
       } catch {
         throw new Error(READ_FAIL);
       }
-      if (dataUrl.length <= AI_IMAGE_MAX_CHARS) return dataUrl;
+      if (isWithinAiImageBudget(dataUrl)) return dataUrl;
       if (q > 0.45) q = Math.max(0.45, q - 0.1);
       else side = Math.max(640, Math.round(side * 0.75));
     }
 
-    if (dataUrl.startsWith("data:image/") && dataUrl.length <= 3_000_000) return dataUrl;
-    throw new Error("That picture is too large to send. Try a clearer crop or a smaller photo.");
+    throw new Error(TOO_LARGE);
   } finally {
     bitmap.close?.();
   }

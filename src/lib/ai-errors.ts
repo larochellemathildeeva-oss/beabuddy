@@ -163,6 +163,8 @@ export function isDailyQuota(error: unknown): boolean {
 /**
  * Safari / WebKit spells a broken fetch as "Load failed"; Chromium says
  * "Failed to fetch". Either way the traveller can't act on the raw string.
+ * Match those known messages only — do not treat every TypeError mentioning
+ * "fetch" (e.g. "fetch is not a function") as a connection blip.
  */
 export function isNetworkFailure(error: unknown): boolean {
   const text = messageOf(error).toLowerCase();
@@ -171,10 +173,9 @@ export function isNetworkFailure(error: unknown): boolean {
     text === "load failed" ||
     text === "failed to fetch" ||
     text === "networkerror when attempting to fetch resource." ||
-    text.includes("networkerror") ||
+    text.includes("networkerror when attempting to fetch") ||
     text.includes("network request failed") ||
-    text.includes("the internet connection appears to be offline") ||
-    (error instanceof TypeError && (text.includes("fetch") || text.includes("load failed")))
+    text.includes("the internet connection appears to be offline")
   );
 }
 
@@ -205,9 +206,7 @@ export function aiFailure(error: unknown): Error {
     );
   }
   if (isNetworkFailure(error)) {
-    return new Error(
-      "That didn't reach Béa — check your connection and try again. A clearer or smaller photo helps.",
-    );
+    return new Error("That didn't reach Béa — check your connection and try again.");
   }
   const text = messageOf(error).toLowerCase();
   if (text.includes("api key") || text.includes("401") || text.includes("403")) {

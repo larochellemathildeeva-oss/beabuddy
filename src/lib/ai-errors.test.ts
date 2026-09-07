@@ -85,6 +85,7 @@ test("isNetworkFailure matches Safari and Chromium fetch failures", () => {
   assert.equal(isNetworkFailure(new TypeError("Load failed")), true);
   assert.equal(isNetworkFailure(new TypeError("Failed to fetch")), true);
   assert.equal(isNetworkFailure(new Error("Could not read that picture")), false);
+  assert.equal(isNetworkFailure(new TypeError("fetch is not a function")), false);
 });
 
 test("normalizeGeminiModelId remaps retired 2.5 ids and strips models/", () => {
