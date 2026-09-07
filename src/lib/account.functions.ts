@@ -224,17 +224,20 @@ async function wipeUserContent(
       .eq("id", userId);
     if (profileErr) throw new Error(profileErr.message);
   } catch (e) {
-    const partial =
-      handedOffSharedTrips ||
-      deletedSoloTrips ||
-      (typeof e === "object" &&
-        e !== null &&
-        "transferred" in e &&
-        typeof (e as { transferred: unknown }).transferred === "number" &&
-        (e as { transferred: number }).transferred > 0);
+    const transferredDuringFailure =
+      typeof e === "object" &&
+      e !== null &&
+      "transferred" in e &&
+      typeof (e as { transferred: unknown }).transferred === "number" &&
+      (e as { transferred: number }).transferred > 0;
+    const partial = handedOffSharedTrips || deletedSoloTrips || transferredDuringFailure;
     if (partial) {
       const detail = e instanceof Error ? e.message : "Unknown error";
-      const stage = handedOffSharedTrips ? "shared-trip handoff" : "trips were removed";
+      const stage = deletedSoloTrips
+        ? "trips were removed"
+        : handedOffSharedTrips || transferredDuringFailure
+          ? "shared-trip handoff"
+          : "trips were removed";
       throw new Error(
         `Erase was interrupted after ${stage} (${detail}). Tap Erase again to finish — the remaining steps are safe to retry.`,
       );
