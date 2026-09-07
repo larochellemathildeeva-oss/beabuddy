@@ -168,11 +168,7 @@ function SignedInHome() {
       title={firstName ? `Hello, ${firstName}.` : "Welcome to Béa."}
     >
       <div className="space-y-6">
-        {layout.trip && (
-          <div data-guide="home-trip">
-            <HomeTripCard />
-          </div>
-        )}
+        {layout.trip && <HomeTripCard />}
 
         {layout.shortcuts && (
           <div data-guide="home-shortcuts" className="grid grid-cols-2 gap-3">
