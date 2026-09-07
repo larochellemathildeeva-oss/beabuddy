@@ -4,10 +4,13 @@ import { flattenGeminiPromptFiles } from "@/lib/ai-image";
 import {
   AI_CALL,
   aiFailure,
+  DEFAULT_GEMINI_FALLBACKS,
   isDailyQuota,
   isOverloaded,
   isRateLimited,
+  normalizeGeminiModelId,
   parseModelChain,
+  resolvePrimaryGeminiModel,
   runModelChain,
   shouldFallToNextModel,
 } from "@/lib/ai-errors";
@@ -18,27 +21,27 @@ export {
   isDailyQuota,
   isOverloaded,
   isRateLimited,
+  normalizeGeminiModelId,
   parseModelChain,
+  resolvePrimaryGeminiModel,
   shouldFallToNextModel,
 };
 
 /**
  * Model ids move. Keeping this in the environment means a rename is a config
- * change rather than a redeploy, and a wrong id fails loudly at the first call
- * instead of silently sitting in source.
+ * change rather than a redeploy. Retired ids (gemini-2.5-*) are rewritten so a
+ * stale Canner env cannot keep calling a blocked model.
  */
-// gemini-2.5-flash is blocked for new API keys/projects — use 3.6+ only.
-const MODEL_ID = process.env["GEMINI_MODEL"] || "gemini-3.6-flash";
+const MODEL_ID = resolvePrimaryGeminiModel(process.env["GEMINI_MODEL"]);
 
 /**
  * Optional comma-separated ladder of weaker / cheaper models. Tried in order
- * when the primary (then each previous step) is overloaded or out of free-tier
- * quota. Each model has its own free-tier pool.
+ * when the primary (then each previous step) is overloaded, out of free-tier
+ * quota, or refused as a retired id. Each model has its own free-tier pool.
  *
  * Example: gemini-3.5-flash-lite,gemini-3.1-flash-lite-preview
  */
-const FALLBACK_MODEL_IDS =
-  process.env["GEMINI_FALLBACK_MODEL"] || "gemini-3.5-flash-lite,gemini-3.1-flash-lite-preview";
+const FALLBACK_MODEL_IDS = process.env["GEMINI_FALLBACK_MODEL"] || DEFAULT_GEMINI_FALLBACKS;
 
 function google() {
   const apiKey = process.env["GOOGLE_GENERATIVE_AI_API_KEY"];

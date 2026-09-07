@@ -6,14 +6,69 @@
 /** Don't burn free-tier quota on SDK retries; withModelFallback switches models instead. */
 export const AI_CALL = { maxRetries: 0 } as const;
 
+/** Current defaults — keep in sync with ai.server.ts. */
+export const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
+export const DEFAULT_GEMINI_FALLBACKS = "gemini-3.5-flash-lite,gemini-3.1-flash-lite-preview";
+
+/**
+ * Google blocks gemini-2.5-* (and older) for new API keys/projects. Stale
+ * Canner env vars still name them; remap so a config drift does not brick import.
+ */
+const RETIRED_GEMINI_MODELS: Record<string, string> = {
+  "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+  "gemini-2.5-flash-lite-preview": "gemini-3.5-flash-lite",
+  "gemini-2.5-flash": "gemini-3.6-flash",
+  "gemini-2.5-flash-preview": "gemini-3.6-flash",
+  "gemini-2.0-flash-lite": "gemini-3.5-flash-lite",
+  "gemini-2.0-flash": "gemini-3.6-flash",
+  "gemini-1.5-flash": "gemini-3.6-flash",
+  "gemini-1.5-flash-lite": "gemini-3.5-flash-lite",
+  "gemini-1.5-pro": "gemini-3.6-flash",
+};
+
 function messageOf(error: unknown): string {
   if (error instanceof Error) return error.message;
   return typeof error === "string" ? error : "";
 }
 
+/**
+ * Strip a leading `models/` and rewrite known-retired ids. Empty input stays empty
+ * so callers can fall back to their own default.
+ */
+export function normalizeGeminiModelId(raw: string | null | undefined): string {
+  const id = (raw ?? "").trim().replace(/^models\//i, "");
+  if (!id) return "";
+  const mapped = RETIRED_GEMINI_MODELS[id.toLowerCase()];
+  return mapped ?? id;
+}
+
+/**
+ * Primary model from env. A stale Canner value like gemini-2.5-flash-lite must
+ * not become the lite remapping — planning quality uses the product default.
+ */
+export function resolvePrimaryGeminiModel(raw: string | null | undefined): string {
+  const id = (raw ?? "").trim().replace(/^models\//i, "");
+  if (!id) return DEFAULT_GEMINI_MODEL;
+  if (RETIRED_GEMINI_MODELS[id.toLowerCase()]) return DEFAULT_GEMINI_MODEL;
+  return id;
+}
+
+/** True when Google refuses the model id itself (not capacity / quota). */
+export function isRetiredModel(error: unknown): boolean {
+  const text = messageOf(error).toLowerCase();
+  return (
+    text.includes("no longer available") ||
+    text.includes("not available to new users") ||
+    text.includes("please update your code to use") ||
+    (text.includes("model") && text.includes("not found"))
+  );
+}
+
 /** Provider is up but out of capacity — retrying the same model rarely helps. */
 export function isOverloaded(error: unknown): boolean {
   const text = messageOf(error).toLowerCase();
+  // "no longer available" is a retired-id refusal, not capacity — keep it out.
+  if (isRetiredModel(error)) return false;
   return (
     text.includes("high demand") ||
     text.includes("overloaded") ||
@@ -35,21 +90,22 @@ export function isRateLimited(error: unknown): boolean {
 
 /** True when trying a weaker / alternate model is worth it. */
 export function shouldFallToNextModel(error: unknown): boolean {
-  return isOverloaded(error) || isRateLimited(error);
+  return isOverloaded(error) || isRateLimited(error) || isRetiredModel(error);
 }
 
 /**
  * Primary plus a comma-separated fallback ladder, de-duplicated and in order.
+ * Retired ids are rewritten so a stale deploy env cannot keep calling 2.5-*.
  * Example: primary `gemini-3.6-flash`, fallbacks `gemini-3.5-flash-lite,gemini-3.1-flash-lite-preview`.
  */
 export function parseModelChain(primary: string, fallbacksCsv?: string | null): string[] {
   const extras = (fallbacksCsv ?? "")
     .split(/[,;\s]+/)
-    .map((id) => id.trim())
+    .map((id) => normalizeGeminiModelId(id))
     .filter(Boolean);
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const id of [primary.trim(), ...extras]) {
+  for (const id of [resolvePrimaryGeminiModel(primary), ...extras]) {
     if (!id || seen.has(id)) continue;
     seen.add(id);
     out.push(id);
@@ -121,6 +177,11 @@ export function aiFailure(error: unknown): Error {
   }
   if (isRateLimited(error)) {
     return new Error("That's a lot of planning at once. Wait a minute, then try again.");
+  }
+  if (isRetiredModel(error)) {
+    return new Error(
+      "Béa's planner hit an outdated AI model setting. Ask whoever runs the app to clear GEMINI_MODEL in Canner (or set gemini-3.6-flash).",
+    );
   }
   const text = messageOf(error).toLowerCase();
   if (text.includes("api key") || text.includes("401") || text.includes("403")) {
