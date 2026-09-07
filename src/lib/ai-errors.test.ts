@@ -79,6 +79,14 @@ test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () =>
   assert.match(aiFailure(new TypeError("Load failed")).message, /didn't reach Béa/i);
   assert.match(aiFailure(new TypeError("Failed to fetch")).message, /didn't reach Béa/i);
   assert.match(aiFailure(new Error("Request Entity Too Large")).message, /too large to send/i);
+  assert.match(
+    aiFailure(
+      new Error(
+        '[{ "code": "too_big", "maximum": 60, "type": "array", "inclusive": true, "exact": false, "message": "Array must contain at most 60 element(s)", "path": [ "items" ] }]',
+      ),
+    ).message,
+    /too many stops/i,
+  );
 });
 
 test("isNetworkFailure matches Safari and Chromium fetch failures", () => {

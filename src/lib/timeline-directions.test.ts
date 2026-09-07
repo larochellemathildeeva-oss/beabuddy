@@ -1,7 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import type { RouteLeg } from "./directions.functions.ts";
-import { directionDetail, directionTitle, legsToTimelineItems } from "./timeline-directions.ts";
+import {
+  directionDetail,
+  directionTitle,
+  legsToTimelineItems,
+  stripEmbeddedMapsUrl,
+} from "./timeline-directions.ts";
 
 const walk: RouteLeg = {
   from: "Hotel",
@@ -18,8 +23,17 @@ test("directionTitle names the walk or drive", () => {
   assert.equal(directionTitle({ ...walk, mode: "driving" }), "Drive to Market");
 });
 
-test("directionDetail keeps a short summary and the maps link", () => {
-  assert.equal(directionDetail(walk), "Walk · 800 m · 10 min · https://maps.example/walk");
+test("directionDetail keeps a short summary without embedding the maps URL", () => {
+  assert.equal(directionDetail(walk), "Walk · 800 m · 10 min");
+});
+
+test("stripEmbeddedMapsUrl clears leftover map links from older saves", () => {
+  assert.equal(
+    stripEmbeddedMapsUrl("Exact spot unknown — open in maps · https://www.google.com/maps/dir/?api=1&origin=a"),
+    "Exact spot unknown — open in maps",
+  );
+  assert.equal(stripEmbeddedMapsUrl("Walk · 800 m · 10 min"), "Walk · 800 m · 10 min");
+  assert.equal(stripEmbeddedMapsUrl(null), "");
 });
 
 test("legsToTimelineItems uses the from-stop day and destination coords", () => {
@@ -51,17 +65,17 @@ test("legsToTimelineItems uses the from-stop day and destination coords", () => 
 test("directionDetail names a same-place stretch", () => {
   assert.equal(
     directionDetail({ ...walk, distance: 0, duration: 0, sameSpot: true }),
-    "Same place — no walk · https://maps.example/walk",
+    "Same place — no walk",
   );
 });
 
 test("directionDetail only says the spot is unknown when it is", () => {
   assert.equal(
     directionDetail({ ...walk, distance: 0, duration: 0, unknownSpot: true }),
-    "Exact spot unknown — open in maps · https://maps.example/walk",
+    "Exact spot unknown — open in maps",
   );
   assert.equal(
     directionDetail({ ...walk, distance: 0, duration: 0 }),
-    "Open in maps · https://maps.example/walk",
+    "Open in maps",
   );
 });
