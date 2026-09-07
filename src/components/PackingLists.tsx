@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import { usePacking } from "@/hooks/usePacking";
+import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
 import { groupPackItems } from "@/lib/packing-sections";
 import { parsePackingList, type ParsedPackingList } from "@/lib/packing.functions";
@@ -176,7 +177,7 @@ export function PackingLists({
       setImportPreview(out);
       if (!newPack.trim() && out.name) setNewPack(out.name);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Could not read that list.");
+      setImportError(aiFailure(err).message);
     } finally {
       setImportBusy(false);
     }

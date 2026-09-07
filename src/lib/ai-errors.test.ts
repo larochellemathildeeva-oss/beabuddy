@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   aiFailure,
   isDailyQuota,
+  isNetworkFailure,
   isOverloaded,
   isRateLimited,
   isRetiredModel,
@@ -55,7 +56,10 @@ test("isDailyQuota treats free-tier request caps with a long wait as daily", () 
 
 test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () => {
   assert.match(aiFailure(new Error("high demand")).message, /busy right now/i);
-  assert.match(aiFailure(new Error("429 rate limit — Please retry in 20s")).message, /Wait a minute/i);
+  assert.match(
+    aiFailure(new Error("429 rate limit — Please retry in 20s")).message,
+    /Wait a minute/i,
+  );
   assert.match(
     aiFailure(
       new Error(
@@ -72,6 +76,16 @@ test("aiFailure uses distinct copy for busy vs short wait vs daily quota", () =>
     ).message,
     /outdated AI model/i,
   );
+  assert.match(aiFailure(new TypeError("Load failed")).message, /didn't reach Béa/i);
+  assert.match(aiFailure(new TypeError("Failed to fetch")).message, /didn't reach Béa/i);
+  assert.match(aiFailure(new Error("Request Entity Too Large")).message, /too large to send/i);
+});
+
+test("isNetworkFailure matches Safari and Chromium fetch failures", () => {
+  assert.equal(isNetworkFailure(new TypeError("Load failed")), true);
+  assert.equal(isNetworkFailure(new TypeError("Failed to fetch")), true);
+  assert.equal(isNetworkFailure(new Error("Could not read that picture")), false);
+  assert.equal(isNetworkFailure(new TypeError("fetch is not a function")), false);
 });
 
 test("normalizeGeminiModelId remaps retired 2.5 ids and strips models/", () => {
@@ -89,11 +103,10 @@ test("resolvePrimaryGeminiModel prefers product default over lite remapping", ()
 });
 
 test("parseModelChain builds a de-duplicated ladder", () => {
-  assert.deepEqual(parseModelChain("gemini-3.6-flash", "gemini-3.5-flash-lite, gemini-3.1-flash-lite"), [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.1-flash-lite",
-  ]);
+  assert.deepEqual(
+    parseModelChain("gemini-3.6-flash", "gemini-3.5-flash-lite, gemini-3.1-flash-lite"),
+    ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"],
+  );
   assert.deepEqual(parseModelChain("gemini-3.6-flash", "gemini-3.6-flash,gemini-3.5-flash-lite"), [
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",

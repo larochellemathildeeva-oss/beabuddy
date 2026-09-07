@@ -161,10 +161,32 @@ export function isDailyQuota(error: unknown): boolean {
 }
 
 /**
+ * Safari / WebKit spells a broken fetch as "Load failed"; Chromium says
+ * "Failed to fetch". Either way the traveller can't act on the raw string.
+ * Match those known messages only — do not treat every TypeError mentioning
+ * "fetch" (e.g. "fetch is not a function") as a connection blip.
+ */
+export function isNetworkFailure(error: unknown): boolean {
+  const text = messageOf(error).toLowerCase();
+  if (!text) return false;
+  return (
+    text === "load failed" ||
+    text === "failed to fetch" ||
+    text === "networkerror when attempting to fetch resource." ||
+    text.includes("networkerror when attempting to fetch") ||
+    text.includes("network request failed") ||
+    text.includes("the internet connection appears to be offline")
+  );
+}
+
+/**
  * Turn a provider failure into something a traveller can act on. The AI SDK's
  * own message is written for developers — "AI_APICallError: This model is
  * currently experiencing high demand" is not something to show someone who
  * just wanted a trip planned.
+ *
+ * Also used on the client for server-fn fetch failures so Safari's opaque
+ * "Load failed" never lands in the itinerary import UI.
  */
 export function aiFailure(error: unknown): Error {
   if (isOverloaded(error)) {
@@ -183,12 +205,18 @@ export function aiFailure(error: unknown): Error {
       "Béa's planner hit an outdated AI model setting. Ask whoever runs the app to clear GEMINI_MODEL in Canner (or set gemini-3.6-flash).",
     );
   }
+  if (isNetworkFailure(error)) {
+    return new Error("That didn't reach Béa — check your connection and try again.");
+  }
   const text = messageOf(error).toLowerCase();
   if (text.includes("api key") || text.includes("401") || text.includes("403")) {
     return new Error("AI is not set up on this app yet.");
   }
   if (text.includes("inline_data") || text.includes("scalar field")) {
     return new Error("Could not read that picture. Try another photo or paste the list.");
+  }
+  if (text.includes("request entity too large") || text.includes("413")) {
+    return new Error("That picture is too large to send. Try a clearer crop or a smaller photo.");
   }
   return error instanceof Error ? error : new Error("Something went wrong. Try again.");
 }
