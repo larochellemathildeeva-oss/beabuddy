@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
+import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
 
@@ -216,15 +217,15 @@ function AuthPage() {
             type="password"
             required
             minLength={mode === "signup" ? MIN_NEW_PASSWORD_LENGTH : 6}
-            placeholder={mode === "signup" ? `Password (${MIN_NEW_PASSWORD_LENGTH}+ characters)` : "Password"}
+            placeholder="Password"
             autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            aria-describedby={mode === "signup" ? "password-rules" : undefined}
             className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
           />
           {mode === "signup" && (
-            <p className="text-[11px] text-muted-foreground">
-              New passwords are checked against a public breach list. Your password itself is never
-              sent — only a short hash prefix.
-            </p>
+            <div id="password-rules">
+              <PasswordCreationRules password={password} />
+            </div>
           )}
           {mode === "signup" && (
             <div className="space-y-2.5 rounded-xl border border-border bg-card/60 p-3.5">
