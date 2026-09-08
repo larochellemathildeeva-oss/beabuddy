@@ -4,7 +4,11 @@ import type { TourStorage } from "./tour-state.ts";
 import {
   accountIsEmpty,
   autoSeedKey,
+  clearSampleCtaDismiss,
+  dismissSampleCta,
+  hasDismissedSampleCta,
   markAutoSeedAttempted,
+  sampleCtaDismissKey,
   shouldAutoSeed,
 } from "./auto-seed.ts";
 
@@ -48,5 +52,16 @@ describe("auto-seed guards", () => {
     assert.equal(shouldAutoSeed(s, null, EMPTY), false);
     assert.equal(shouldAutoSeed(s, undefined, EMPTY), false);
     assert.equal(shouldAutoSeed(s, "", EMPTY), false);
+  });
+
+  it("dismisses the Home sample CTA per account after Remove sample", () => {
+    const s = fakeStorage();
+    assert.equal(hasDismissedSampleCta(s, "user-1"), false);
+    dismissSampleCta(s, "user-1");
+    assert.equal(hasDismissedSampleCta(s, "user-1"), true);
+    assert.equal(hasDismissedSampleCta(s, "user-2"), false);
+    assert.notEqual(sampleCtaDismissKey("user-1"), sampleCtaDismissKey("user-2"));
+    clearSampleCtaDismiss(s, "user-1");
+    assert.equal(hasDismissedSampleCta(s, "user-1"), false);
   });
 });

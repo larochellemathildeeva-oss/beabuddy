@@ -13,8 +13,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { pinColorClass, pinLabel } from "@/data/atlas";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
+import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
 import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
+import { safeStorage } from "@/lib/tour-state";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -146,6 +148,10 @@ function SignedInHome() {
   const topNote = notes.rows[0];
   const empty =
     photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
+  const sampleCtaDismissed = Boolean(
+    user?.id && hasDismissedSampleCta(safeStorage(), user.id),
+  );
+  const showSamplePrompt = empty && !sampleCtaDismissed;
   const { layout } = useHomeLayout();
 
   const fillSample = async () => {
@@ -204,7 +210,7 @@ function SignedInHome() {
           </div>
         )}
 
-        {empty && (
+        {showSamplePrompt && (
           <section data-guide="home-empty" className="rise card-soft p-4">
             <p className="font-display text-[20px] leading-snug">
               {beaLine("empty.home").title}

@@ -2,6 +2,9 @@
  * Sample data is opt-in only (Home empty CTA / You → Load sample).
  * These guards stay so any leftover auto-seed hook cannot bury real data
  * or undo "Remove sample".
+ *
+ * After "Remove sample", the Home empty CTA must stay gone — otherwise the
+ * traveller just opted out and immediately gets asked to load sample again.
  */
 
 import type { TourStorage } from "./tour-state.ts";
@@ -9,6 +12,11 @@ import type { TourStorage } from "./tour-state.ts";
 /** One marker per account: a shared device must not seed the second person. */
 export function autoSeedKey(userId: string): string {
   return `bea-autoseed:${userId}`;
+}
+
+/** Home empty "Load sample" banner dismissed after Remove sample (per account). */
+export function sampleCtaDismissKey(userId: string): string {
+  return `bea-sample-cta-dismissed:${userId}`;
 }
 
 export type AccountCounts = {
@@ -31,6 +39,19 @@ export function hasAutoSeeded(storage: TourStorage, userId: string): boolean {
  */
 export function markAutoSeedAttempted(storage: TourStorage, userId: string): void {
   storage.setItem(autoSeedKey(userId), "yes");
+}
+
+export function hasDismissedSampleCta(storage: TourStorage, userId: string): boolean {
+  return storage.getItem(sampleCtaDismissKey(userId)) === "yes";
+}
+
+/** Called when Remove sample succeeds so Home does not re-prompt. */
+export function dismissSampleCta(storage: TourStorage, userId: string): void {
+  storage.setItem(sampleCtaDismissKey(userId), "yes");
+}
+
+export function clearSampleCtaDismiss(storage: TourStorage, userId: string): void {
+  storage.removeItem(sampleCtaDismissKey(userId));
 }
 
 /**
