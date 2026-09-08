@@ -1,3 +1,4 @@
+import { sampleCtaDismissKey } from "./auto-seed.ts";
 import { clearStoredVaultKeys } from "./vaultCrypto.ts";
 
 /** Same prefix as `DIRECTIONS_KEY_PREFIX` in useOfflineDirections. */
@@ -15,6 +16,7 @@ export function clearLocalUserData(uid: string) {
   const exact = [
     `bea-home-layout-${uid}`,
     `bea-stats-layout-${uid}`,
+    sampleCtaDismissKey(uid),
     "bea.trips.open",
     "bea-photo-consent-skip",
     "bea-location-consent",

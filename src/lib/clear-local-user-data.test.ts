@@ -38,6 +38,7 @@ describe("clearLocalUserData", () => {
     store.set("bea.vault.cred.u1", "y");
     store.set("bea-home-layout-u1", "{}");
     store.set("bea-stats-layout-u1", "{}");
+    store.set("bea-sample-cta-dismissed:u1", "yes");
     store.set("bea.directions.trip-a", "{}");
     store.set("bea.trips.open", "trip-a");
     store.set("bea-dark", "yes");
@@ -50,6 +51,7 @@ describe("clearLocalUserData", () => {
     assert.equal(store.has("bea.vault.cred.u1"), false);
     assert.equal(store.has("bea-home-layout-u1"), false);
     assert.equal(store.has("bea-stats-layout-u1"), false);
+    assert.equal(store.has("bea-sample-cta-dismissed:u1"), false);
     assert.equal(store.has("bea.directions.trip-a"), false);
     assert.equal(store.has("bea.trips.open"), false);
     assert.equal(store.get("bea-dark"), "yes");
