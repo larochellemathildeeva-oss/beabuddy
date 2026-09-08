@@ -30,7 +30,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where should I start?",
-        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You). Replay under You opens a quick walk around the block, or the Deep Dive.",
+        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You, until you remove it). Replay under You opens a quick walk around the block, or the Deep Dive.",
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",

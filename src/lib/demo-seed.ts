@@ -683,7 +683,12 @@ export async function clearDemoSeed(): Promise<DemoClearResult> {
   const noteCount = noteRows?.length ?? 0;
   const tripCount = tripIds.length;
 
+  const { dismissSampleCta } = await import("./auto-seed.ts");
+  const { safeStorage } = await import("./tour-state.ts");
+
   if (recoCount === 0 && noteCount === 0 && tripCount === 0) {
+    // Explicit Remove with nothing tagged still opts out of sample prompts.
+    dismissSampleCta(safeStorage(), uid);
     return {
       ok: false,
       reason: "empty",
@@ -711,10 +716,6 @@ export async function clearDemoSeed(): Promise<DemoClearResult> {
     if (error) return { ok: false, reason: "error", message: error.message };
   }
 
-  // Removing sample must also drop the Home "Load sample" prompt — otherwise
-  // an empty vault immediately asks them to load what they just cleared.
-  const { dismissSampleCta } = await import("./auto-seed.ts");
-  const { safeStorage } = await import("./tour-state.ts");
   dismissSampleCta(safeStorage(), uid);
 
   return { ok: true, recos: recoCount, notes: noteCount, trips: tripCount };

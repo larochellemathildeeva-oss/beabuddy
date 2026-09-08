@@ -24,10 +24,12 @@ import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 import { useTrips } from "@/hooks/useTrips";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { applyDark, readDark } from "@/lib/theme";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
+import { safeStorage } from "@/lib/tour-state";
 import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
 
@@ -96,10 +98,19 @@ function ProfilePage() {
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
+  const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
 
   useEffect(() => {
     setDark(readDark());
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setSampleCtaDismissed(false);
+      return;
+    }
+    setSampleCtaDismissed(hasDismissedSampleCta(safeStorage(), user.id));
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -189,53 +200,56 @@ function ProfilePage() {
                 Sign out
               </button>
             </div>
-            <div className="rounded-xl border border-border bg-elevated p-3">
-              <p className="text-[13px] font-semibold">Demo / sample data</p>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future Me
-                notes. Remove only deletes the sample rows — not places you added yourself.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={seeding}
-                  onClick={async () => {
-                    setSeeding(true);
-                    setSeedMsg("");
-                    const result = await loadDemoSeed();
-                    setSeeding(false);
-                    setSeedMsg(
-                      result.ok
-                        ? `Loaded ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
-                        : result.message,
-                    );
-                    if (result.ok) navigate({ to: "/world" });
-                  }}
-                  className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-[13px] font-semibold disabled:opacity-60"
-                >
-                  {seeding ? "Working…" : "Load sample"}
-                </button>
-                <button
-                  type="button"
-                  disabled={seeding}
-                  onClick={async () => {
-                    setSeeding(true);
-                    setSeedMsg("");
-                    const result = await clearDemoSeed();
-                    setSeeding(false);
-                    setSeedMsg(
-                      result.ok
-                        ? `Removed ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
-                        : result.message,
-                    );
-                  }}
-                  className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-60"
-                >
-                  Remove sample
-                </button>
+            {!sampleCtaDismissed && (
+              <div className="rounded-xl border border-border bg-elevated p-3">
+                <p className="text-[13px] font-semibold">Demo / sample data</p>
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future
+                  Me notes. Remove only deletes the sample rows — not places you added yourself.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    disabled={seeding}
+                    onClick={async () => {
+                      setSeeding(true);
+                      setSeedMsg("");
+                      const result = await loadDemoSeed();
+                      setSeeding(false);
+                      setSeedMsg(
+                        result.ok
+                          ? `Loaded ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
+                          : result.message,
+                      );
+                      if (result.ok) navigate({ to: "/world" });
+                    }}
+                    className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-[13px] font-semibold disabled:opacity-60"
+                  >
+                    {seeding ? "Working…" : "Load sample"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={seeding}
+                    onClick={async () => {
+                      setSeeding(true);
+                      setSeedMsg("");
+                      const result = await clearDemoSeed();
+                      setSeeding(false);
+                      // Remove (or empty) opts out of sample prompts — hide this card.
+                      if (result.ok || result.reason === "empty") {
+                        setSampleCtaDismissed(true);
+                        return;
+                      }
+                      setSeedMsg(result.message);
+                    }}
+                    className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-60"
+                  >
+                    Remove sample
+                  </button>
+                </div>
+                {seedMsg && <p className="mt-2 text-[12px] text-muted-foreground">{seedMsg}</p>}
               </div>
-              {seedMsg && <p className="mt-2 text-[12px] text-muted-foreground">{seedMsg}</p>}
-            </div>
+            )}
           </div>
         )}
 
