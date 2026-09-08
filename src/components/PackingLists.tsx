@@ -338,7 +338,7 @@ export function PackingLists({
                     </div>
                     <p className="text-[11px] text-muted-foreground">
                       Pick a starter to fill the pack, leave it blank and add your own, or let Béa
-                      read a photo or file.
+                      read photos or a file (up to 4 at once).
                     </p>
                     <input
                       ref={cameraRef}
@@ -352,6 +352,7 @@ export function PackingLists({
                       ref={fileRef}
                       type="file"
                       accept="image/*,text/plain,text/markdown,.txt,.md,.csv"
+                      multiple
                       className="hidden"
                       onChange={(e) => void onImportFile(e)}
                     />
@@ -370,7 +371,7 @@ export function PackingLists({
                         onClick={() => fileRef.current?.click()}
                         className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
                       >
-                        <ImageIcon className="size-4" /> Upload a list
+                        <ImageIcon className="size-4" /> Upload photos
                       </button>
                     </div>
                     <p className="text-[11px] leading-relaxed text-muted-foreground">
