@@ -54,7 +54,7 @@ describe("auto-seed guards", () => {
     assert.equal(shouldAutoSeed(s, "", EMPTY), false);
   });
 
-  it("dismisses the Home sample CTA per account after Remove sample", () => {
+  it("dismisses sample load prompts per account after Remove sample", () => {
     const s = fakeStorage();
     assert.equal(hasDismissedSampleCta(s, "user-1"), false);
     dismissSampleCta(s, "user-1");
