@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
+import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { supabase } from "@/integrations/supabase/client";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 
@@ -98,8 +99,9 @@ function ResetPasswordPage() {
               type="password"
               required
               minLength={MIN_NEW_PASSWORD_LENGTH}
-              placeholder={`New password (${MIN_NEW_PASSWORD_LENGTH}+ characters)`}
+              placeholder="New password"
               autoComplete="new-password"
+              aria-describedby="password-rules"
               className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
             />
             <input
@@ -112,10 +114,9 @@ function ResetPasswordPage() {
               autoComplete="new-password"
               className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
             />
-            <p className="text-[11px] text-muted-foreground">
-              New passwords are checked against a public breach list. Your password itself is never
-              sent — only a short hash prefix.
-            </p>
+            <div id="password-rules">
+              <PasswordCreationRules password={password} />
+            </div>
             {error && <p className="text-[12px] text-destructive">{error}</p>}
             <button
               type="submit"
