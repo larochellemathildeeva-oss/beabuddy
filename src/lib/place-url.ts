@@ -11,6 +11,8 @@ function isPlaceHost(hostname: string): boolean {
     host === "maps.app.goo.gl" ||
     host === "google.com" ||
     host.endsWith(".google.com") ||
+    host === "maps.apple.com" ||
+    host.endsWith(".maps.apple.com") ||
     host === "openstreetmap.org" ||
     host.endsWith(".openstreetmap.org") ||
     host === "yelp.com" ||
@@ -44,9 +46,16 @@ function isBlockedIpv4(octets: number[]): boolean {
 }
 
 function isBlockedHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  const host = hostname
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "");
   if (!host || host === "localhost" || host.endsWith(".localhost")) return true;
-  if (host === "metadata.google.internal" || host.endsWith(".local") || host.endsWith(".internal")) {
+  if (
+    host === "metadata.google.internal" ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  ) {
     return true;
   }
   const ipv4 = ipv4Octets(host);

@@ -7,8 +7,19 @@ import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
-import { PLACE_TRAVEL_TAGS, suggestTravelTags, tagsForSave, toggleTravelTag } from "@/lib/reco-tags";
-import { parsePlaceLink, lookupCoords, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
+import {
+  PLACE_TRAVEL_TAGS,
+  suggestTravelTags,
+  tagsForSave,
+  toggleTravelTag,
+} from "@/lib/reco-tags";
+import {
+  parsePlaceLink,
+  lookupCoords,
+  searchPlaces,
+  type ParsedPlace,
+} from "@/lib/places.functions";
+import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
@@ -95,7 +106,7 @@ function RecommendationsPage() {
           notes: r.notes ?? "",
           category: r.category ?? "Place",
           year: r.created_at.slice(0, 4),
-          type: ((r.pin_type ?? "reco") as PinType),
+          type: (r.pin_type ?? "reco") as PinType,
           tags: tagsForSave(r),
           removable: true,
         }
@@ -132,14 +143,31 @@ function RecommendationsPage() {
   const handleLink = async () => {
     setError(null);
     setBusy("link");
+    const extracted = extractPastedPlaceLink(link);
+    if (!extracted) {
+      setError("Paste a Maps, Yelp, or place link — share text with a link in it is fine.");
+      setBusy(null);
+      return;
+    }
     try {
-      const place = await parseLink({ data: { url: link.trim() } });
-      setTagsTouched(false); setMoreTags(false);
+      const place = await parseLink({
+        data: extracted.nameHint
+          ? { url: extracted.url, nameHint: extracted.nameHint }
+          : { url: extracted.url },
+      });
+      setTagsTouched(false);
+      setMoreTags(false);
       setDraft(draftWithTags({ ...place, category: place.category ?? "Place" }));
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
-      setTagsTouched(false); setMoreTags(false);
-      setDraft(draftWithTags({ name: "", url: link.trim() }));
+      setTagsTouched(false);
+      setMoreTags(false);
+      setDraft(
+        draftWithTags({
+          name: extracted.nameHint ?? "",
+          url: extracted.url,
+        }),
+      );
     } finally {
       setBusy(null);
     }
@@ -147,6 +175,26 @@ function RecommendationsPage() {
 
   const handleSearch = async () => {
     setError(null);
+    const pasted = extractPastedPlaceLink(term);
+    if (pasted) {
+      setBusy("search");
+      setResults(null);
+      try {
+        const place = await parseLink({
+          data: pasted.nameHint
+            ? { url: pasted.url, nameHint: pasted.nameHint }
+            : { url: pasted.url },
+        });
+        setTagsTouched(false);
+        setMoreTags(false);
+        setDraft(draftWithTags({ ...place, category: place.category ?? "Place" }));
+      } catch {
+        setError("Couldn't read that link. Try Paste a link, or type the place name.");
+      } finally {
+        setBusy(null);
+      }
+      return;
+    }
     setBusy("search");
     setResults(null);
     try {
@@ -171,7 +219,8 @@ function RecommendationsPage() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         const place = await lookup({ data: { lat: latitude, lon: longitude } });
-        setTagsTouched(false); setMoreTags(false);
+        setTagsTouched(false);
+        setMoreTags(false);
         setDraft(
           draftWithTags({
             name: "",
@@ -213,7 +262,8 @@ function RecommendationsPage() {
     try {
       const found = await search({ data: { query: q.trim() } });
       setLocResults(found);
-      if (found.length === 0) setError("Nothing found for that spot. Try a fuller address or add the city.");
+      if (found.length === 0)
+        setError("Nothing found for that spot. Try a fuller address or add the city.");
     } catch {
       setError("Couldn't search the map just now. Try again in a moment.");
     } finally {
@@ -246,7 +296,8 @@ function RecommendationsPage() {
       const line = beaLine("recs.saved");
       toast.success(line.title, { description: line.body });
       setDraft(null);
-      setTagsTouched(false); setMoreTags(false);
+      setTagsTouched(false);
+      setMoreTags(false);
       setLocQuery("");
       setLocResults(null);
       setLink("");
@@ -341,7 +392,8 @@ function RecommendationsPage() {
                 key={m}
                 onClick={() => {
                   setMode(mode === m ? null : m);
-                  setTagsTouched(false); setMoreTags(false);
+                  setTagsTouched(false);
+                  setMoreTags(false);
                   setDraft(m === "manual" ? draftWithTags({ name: "" }) : null);
                   setResults(null);
                   setLocQuery("");
@@ -377,18 +429,23 @@ function RecommendationsPage() {
             <div className="rise mt-3 card-soft p-4">
               <p className="label-caps">Paste a link</p>
               <p className="mt-1.5 text-[13px] text-muted-foreground">
-                A map link, a restaurant page, an article — Béa pulls out the name, the address and
-                the exact spot on the map.
+                A map link, a restaurant page, an article — or the whole share from Maps. Béa pulls
+                out the name, the address and the exact spot on the map.
               </p>
-              <input
+              <textarea
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
-                placeholder="https://…"
+                rows={3}
+                inputMode="url"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="Paste a Maps link — or the whole share"
                 className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
               />
               <button
                 onClick={handleLink}
-                disabled={!link.trim() || busy === "link"}
+                disabled={!looksLikePastedPlaceLink(link) || busy === "link"}
                 className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "link" ? "Reading the link…" : "Read this link"}
@@ -400,23 +457,40 @@ function RecommendationsPage() {
             <div className="rise mt-3 card-soft p-4">
               <p className="label-caps">Search the web</p>
               <p className="mt-1.5 text-[13px] text-muted-foreground">
-                Type a place name — add the city if you know it — and Béa finds it on the map.
+                Type a place name — add the city if you know it — or paste a Maps link. Béa finds it
+                on the map.
               </p>
-              <input
+              <textarea
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && term.trim().length > 1) void handleSearch();
+                  if (e.key === "Enter" && !e.shiftKey && term.trim().length > 1) {
+                    e.preventDefault();
+                    void handleSearch();
+                  }
                 }}
-                placeholder="Café de Flore, Paris"
+                rows={2}
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                placeholder="Café de Flore, Paris — or paste a Maps link"
                 className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
               />
               <button
                 onClick={() => void handleSearch()}
-                disabled={term.trim().length < 2 || busy === "search"}
+                disabled={
+                  (looksLikePastedPlaceLink(term) ? false : term.trim().length < 2) ||
+                  busy === "search"
+                }
                 className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {busy === "search" ? "Searching…" : "Search"}
+                {busy === "search"
+                  ? looksLikePastedPlaceLink(term)
+                    ? "Reading the link…"
+                    : "Searching…"
+                  : looksLikePastedPlaceLink(term)
+                    ? "Read this link"
+                    : "Search"}
               </button>
               {results && results.length > 0 && (
                 <div className="mt-3 space-y-2">
@@ -426,7 +500,8 @@ function RecommendationsPage() {
                       <button
                         key={`${r.lat}-${r.lon}-${r.name}`}
                         onClick={() => {
-                          setTagsTouched(false); setMoreTags(false);
+                          setTagsTouched(false);
+                          setMoreTags(false);
                           setDraft(draftWithTags({ ...r, category: r.category ?? "Place" }));
                           setResults(null);
                         }}
@@ -480,7 +555,12 @@ function RecommendationsPage() {
                   value={(draft[field] as string | undefined) ?? ""}
                   onChange={(e) => {
                     const next = { ...draft, [field]: e.target.value };
-                    const retag = !tagsTouched && (field === "name" || field === "category" || field === "notes" || field === "address");
+                    const retag =
+                      !tagsTouched &&
+                      (field === "name" ||
+                        field === "category" ||
+                        field === "notes" ||
+                        field === "address");
                     setDraft(retag ? { ...next, travel_tags: suggestTravelTags(next) } : next);
                   }}
                   placeholder={label}
@@ -490,7 +570,8 @@ function RecommendationsPage() {
               <div className="pt-1">
                 <p className="label-caps">Travel tags</p>
                 <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                  Béa guessed these so she can pick this rec when you ask her to plan. Tap to change.
+                  Béa guessed these so she can pick this rec when you ask her to plan. Tap to
+                  change.
                 </p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {(moreTags ? PLACE_TRAVEL_TAGS : (draft.travel_tags ?? [])).map((tag) => {
@@ -501,11 +582,16 @@ function RecommendationsPage() {
                         type="button"
                         onClick={() => {
                           setTagsTouched(true);
-                          setDraft({ ...draft, travel_tags: toggleTravelTag(draft.travel_tags ?? [], tag) });
+                          setDraft({
+                            ...draft,
+                            travel_tags: toggleTravelTag(draft.travel_tags ?? [], tag),
+                          });
                         }}
                         aria-pressed={on}
                         className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
-                          on ? "border-primary bg-card text-foreground" : "border-border/60 text-muted-foreground"
+                          on
+                            ? "border-primary bg-card text-foreground"
+                            : "border-border/60 text-muted-foreground"
                         }`}
                       >
                         {tag}
@@ -525,12 +611,13 @@ function RecommendationsPage() {
                 <p className="label-caps">Location on the map</p>
                 {draft.lat != null ? (
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to move it.
+                    Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to move
+                    it.
                   </p>
                 ) : (
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    No exact spot yet. Search a place or address and pick the pin yourself — Near and
-                    directions need it.
+                    No exact spot yet. Search a place or address and pick the pin yourself — Near
+                    and directions need it.
                   </p>
                 )}
                 <input
