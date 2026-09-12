@@ -7,7 +7,7 @@ import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { searchPlaces } from "@/lib/places.functions";
-import { loneHttpsUrl } from "@/lib/html-text";
+import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { parseRecoList } from "@/lib/reco-list.functions";
 import {
   applySearchHits,
@@ -96,7 +96,8 @@ export function RecoListImport({
       const images: string[] = [];
       const texts: string[] = [];
       for (const file of files.slice(0, 4)) {
-        const isImage = file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
+        const isImage =
+          file.type.startsWith("image/") || /\.(png|jpe?g|webp|gif)$/i.test(file.name);
         const isText = file.type.startsWith("text/") || /\.(txt|md|csv|list)$/i.test(file.name);
         if (isImage) images.push(await downscaleImage(file));
         else if (isText || file.size < 200_000) texts.push(await file.text());
@@ -117,13 +118,26 @@ export function RecoListImport({
   };
 
   const onReadPaste = async () => {
-    const typedLink = loneHttpsUrl(pageUrl) ?? loneHttpsUrl(paste);
-    const extra =
-      typedLink && paste.trim() && loneHttpsUrl(paste) !== typedLink ? paste.trim() : paste.trim();
+    const fromField = extractPastedPlaceLink(pageUrl);
+    const fromPaste = extractPastedPlaceLink(paste);
+    const typedLink = fromField?.url ?? fromPaste?.url ?? null;
     if (typedLink) {
+      // Keep typed notes when the page URL is in its own field; if the paste
+      // box is only the link (or share-sheet blob used as the link source),
+      // don't also send that blob as list text for AI to re-parse as venues.
+      let text: string | null = null;
+      if (fromField && paste.trim()) {
+        const pasteIsSameLink =
+          fromPaste?.url === typedLink && !fromPaste.nameHint && paste.trim() === typedLink;
+        text = pasteIsSameLink ? null : paste.trim();
+      } else if (!fromField && fromPaste?.nameHint) {
+        // Share-sheet paste: name + link — let the page fetch handle the URL;
+        // don't feed the share blob as a place list.
+        text = null;
+      }
       await ingest({
         imageDataUrls: null,
-        text: extra && extra !== typedLink ? extra : null,
+        text,
         pageUrl: typedLink,
         source: typedLink,
       });
@@ -188,9 +202,13 @@ export function RecoListImport({
     patch(index, { status: "searching" });
     try {
       const hits = await search({ data: { query: row.query } });
-      setDrafts((cur) => cur?.map((item, i) => (i === index ? applySearchHits(item, hits) : item)) ?? null);
+      setDrafts(
+        (cur) => cur?.map((item, i) => (i === index ? applySearchHits(item, hits) : item)) ?? null,
+      );
     } catch {
-      setDrafts((cur) => cur?.map((item, i) => (i === index ? applySearchHits(item, []) : item)) ?? null);
+      setDrafts(
+        (cur) => cur?.map((item, i) => (i === index ? applySearchHits(item, []) : item)) ?? null,
+      );
     } finally {
       setSearchingAt(-1);
     }
@@ -244,8 +262,10 @@ export function RecoListImport({
         <input
           value={pageUrl}
           onChange={(e) => setPageUrl(e.target.value)}
-          type="url"
           inputMode="url"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="https:// — Time Out, a blog, things to do…"
           className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
         />
@@ -253,12 +273,18 @@ export function RecoListImport({
       <button
         type="button"
         onClick={() => void onReadPaste()}
-        disabled={busy !== null || looking || (paste.trim().length < 3 && !loneHttpsUrl(pageUrl))}
+        disabled={
+          busy !== null ||
+          looking ||
+          (paste.trim().length < 3 &&
+            !extractPastedPlaceLink(pageUrl) &&
+            !extractPastedPlaceLink(paste))
+        }
         className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy === "read"
           ? "Reading…"
-          : loneHttpsUrl(pageUrl) || loneHttpsUrl(paste)
+          : extractPastedPlaceLink(pageUrl) || extractPastedPlaceLink(paste)
             ? "Read this page"
             : "Read this list"}
       </button>
@@ -318,7 +344,10 @@ export function RecoListImport({
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
           />
           {drafts.map((row, i) => (
-            <article key={`${row.originalName}-${i}`} className="rounded-xl border border-border bg-background p-3">
+            <article
+              key={`${row.originalName}-${i}`}
+              className="rounded-xl border border-border bg-background p-3"
+            >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[11px] text-muted-foreground">
                   {row.status === "searching"
@@ -449,7 +478,9 @@ export function RecoListImport({
             disabled={busy === "save" || looking || readyCount === 0}
             className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {busy === "save" ? "Saving…" : `Save ${readyCount} ${readyCount === 1 ? "place" : "places"}`}
+            {busy === "save"
+              ? "Saving…"
+              : `Save ${readyCount} ${readyCount === 1 ? "place" : "places"}`}
           </button>
           {!signedIn && (
             <p className="text-[11px] text-muted-foreground">

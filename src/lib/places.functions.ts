@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
@@ -47,13 +48,56 @@ function coordsFromUrl(url: string): { lat: number; lon: number } | undefined {
   if (bang) return { lat: Number(bang[1]), lon: Number(bang[2]) };
   try {
     const u = new URL(url);
-    const q = u.searchParams.get("query") || u.searchParams.get("q") || u.searchParams.get("ll");
-    const m = q?.match(/^(-?\d+\.\d+),\s*(-?\d+\.\d+)$/);
+    const q =
+      u.searchParams.get("ll") ||
+      u.searchParams.get("coordinate") ||
+      u.searchParams.get("query") ||
+      u.searchParams.get("q");
+    const m = q?.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
     if (m) return { lat: Number(m[1]), lon: Number(m[2]) };
   } catch {
     /* ignore */
   }
   return undefined;
+}
+
+function nameFromAppleMapsUrl(url: string): string | undefined {
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    if (host !== "maps.apple.com" && !host.endsWith(".maps.apple.com")) return undefined;
+    const q =
+      new URL(url).searchParams.get("name") ||
+      new URL(url).searchParams.get("address") ||
+      new URL(url).searchParams.get("q");
+    const cleaned = q?.trim();
+    if (!cleaned || cleaned.length < 2 || cleaned.length > 120) return undefined;
+    // Coordinate-only q= is not a place name.
+    if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(cleaned)) return undefined;
+    return cleaned;
+  } catch {
+    return undefined;
+  }
+}
+
+const ParsePlaceLinkInput = z.object({
+  url: z.string().min(1).max(4000),
+  nameHint: z.string().min(1).max(120).optional(),
+});
+
+function normalizePlaceLinkInput(data: unknown): { url: string; nameHint?: string } {
+  const raw = ParsePlaceLinkInput.parse(data);
+  const extracted = extractPastedPlaceLink(raw.url);
+  if (!extracted) {
+    throw new z.ZodError([
+      {
+        code: "custom",
+        path: ["url"],
+        message: "Paste a Maps, Yelp, or place link.",
+      },
+    ]);
+  }
+  const hint = raw.nameHint?.trim() || extracted.nameHint;
+  return hint ? { url: extracted.url, nameHint: hint } : { url: extracted.url };
 }
 
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
@@ -86,7 +130,10 @@ async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&addressdetails=1&namedetails=1&accept-language=en&limit=${limit}`,
-      { headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" }, signal: AbortSignal.timeout(5_000) },
+      {
+        headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
+        signal: AbortSignal.timeout(5_000),
+      },
     );
     if (!res.ok) return [];
     return (await res.json()) as NominatimHit[];
@@ -118,14 +165,18 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
     const refined = refineNominatimHits(hits, data.query);
     const places = (refined.length ? refined : hits).map(hitToPlace);
-    return fuzzyRank(places, data.query, (place) => [place.name, place.address, place.city, place.country], 0);
+    return fuzzyRank(
+      places,
+      data.query,
+      (place) => [place.name, place.address, place.city, place.country],
+      0,
+    );
   });
-
 
 /** Pull a place out of a pasted link: title, address, category and coordinates. */
 export const parsePlaceLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ url: z.string().url() }).parse(data))
+  .inputValidator((data) => normalizePlaceLinkInput(data))
   .handler(async ({ data }): Promise<ParsedPlace> => {
     const target = new URL(data.url);
 
@@ -146,8 +197,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     })();
     // Coordinates in the pasted link are trustworthy; ones that only appear after a
     // redirect are often the map site's own default view, not the place.
-    const coords =
-      coordsFromUrl(data.url) ?? (placeName ? undefined : coordsFromUrl(finalUrl));
+    const coords = coordsFromUrl(data.url) ?? (placeName ? undefined : coordsFromUrl(finalUrl));
     const place = coords ? await reverse(coords.lat, coords.lon) : {};
 
     const rawTitle =
@@ -157,11 +207,20 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
           meta(html, "twitter:title") ??
           decodeEntities(html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? ""));
 
-    const name =
+    const titleName =
       (rawTitle || "")
         .split(/ [·|—–-] /)[0]
         ?.replace(/\s*-\s*Google Maps$/i, "")
-        .trim() || "Saved place";
+        .replace(/\s*[·|—–-]\s*Apple Maps$/i, "")
+        .trim() || "";
+
+    const appleName = nameFromAppleMapsUrl(data.url) ?? nameFromAppleMapsUrl(finalUrl);
+    const name =
+      placeName ||
+      (titleName && titleName !== "Google Maps" && titleName !== "Apple Maps" ? titleName : "") ||
+      data.nameHint ||
+      appleName ||
+      "Saved place";
 
     const description = meta(html, "og:description") ?? "";
     const addressMatch = description.match(/([\dA-Za-zÀ-ÿ.,'’\- ]+\d[\dA-Za-zÀ-ÿ.,'’\- ]*)/);
@@ -169,7 +228,8 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     // No coordinates in the link (short links, blocked pages): search the web by name.
     if (!coords) {
       const pathName = placeName;
-      const query = pathName || (name !== "Saved place" ? name : "");
+      const query =
+        pathName || (name !== "Saved place" ? name : "") || data.nameHint || appleName || "";
       const hit = query.length > 2 ? (await nominatim(query, 1))[0] : undefined;
       if (hit) {
         const found = hitToPlace(hit);
@@ -192,7 +252,6 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       url: data.url,
     };
   });
-
 
 /** Look up the city and country for a set of coordinates. */
 export const lookupCoords = createServerFn({ method: "POST" })
