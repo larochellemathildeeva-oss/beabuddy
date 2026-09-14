@@ -38,6 +38,11 @@ export function PlaceSearchInput({
         });
         onPick(place);
         setHits([]);
+        if (place.partial) {
+          setErr(
+            "That link didn't give up any details. Open it in your browser and paste the long link, or type the name.",
+          );
+        }
         return;
       }
       const res = await search({ data: { query: near ? `${q}, ${near}` : q } });

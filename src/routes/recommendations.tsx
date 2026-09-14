@@ -66,6 +66,14 @@ type Draft = {
   travel_tags?: string[];
 };
 
+/**
+ * A share link that our server cannot follow (Maps serves nothing to a bot)
+ * comes back empty. The expanded URL carries the name and the coordinates in
+ * the path, so it reads perfectly — which is worth telling people.
+ */
+const SHORT_LINK_HINT =
+  "That link didn't give up any details. Open it once in your browser, then paste the long address-bar link instead — or just type the name below.";
+
 function draftWithTags(place: Draft): Draft {
   return { ...place, travel_tags: suggestTravelTags(place) };
 }
@@ -178,6 +186,7 @@ function RecommendationsPage() {
           : { url: extracted.url },
       });
       showDraft({ ...place, category: place.category ?? "Place" });
+      if (place.partial) setError(SHORT_LINK_HINT);
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
       showDraft({ name: extracted.nameHint ?? "", url: extracted.url });
@@ -199,6 +208,7 @@ function RecommendationsPage() {
             : { url: pasted.url },
         });
         showDraft({ ...place, category: place.category ?? "Place" });
+        if (place.partial) setError(SHORT_LINK_HINT);
       } catch {
         setError("Couldn't read that link. Try Paste a link, or type the place name.");
       } finally {

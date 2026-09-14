@@ -5,6 +5,12 @@ import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
+import {
+  cleanPageTitle,
+  placePathSegment,
+  resolvePlaceCoords,
+  splitPlacePathName,
+} from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
 
 export type ParsedPlace = {
@@ -17,6 +23,12 @@ export type ParsedPlace = {
   lon?: number;
   source: string;
   url: string;
+  /**
+   * Set when a link gave up nothing useful — a short link the page would not
+   * resolve for us, or a site that serves nothing to a bot. The caller should
+   * say so rather than presenting an empty draft as a successful read.
+   */
+  partial?: boolean;
 };
 
 function decodeEntities(s: string) {
@@ -37,26 +49,6 @@ function meta(html: string, key: string) {
   for (const p of patterns) {
     const m = html.match(p);
     if (m?.[1]) return decodeEntities(m[1]);
-  }
-  return undefined;
-}
-
-function coordsFromUrl(url: string): { lat: number; lon: number } | undefined {
-  const at = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-  if (at) return { lat: Number(at[1]), lon: Number(at[2]) };
-  const bang = url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-  if (bang) return { lat: Number(bang[1]), lon: Number(bang[2]) };
-  try {
-    const u = new URL(url);
-    const q =
-      u.searchParams.get("ll") ||
-      u.searchParams.get("coordinate") ||
-      u.searchParams.get("query") ||
-      u.searchParams.get("q");
-    const m = q?.match(/^(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)$/);
-    if (m) return { lat: Number(m[1]), lon: Number(m[2]) };
-  } catch {
-    /* ignore */
   }
   return undefined;
 }
@@ -191,13 +183,10 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       /* fall through to URL-only parsing */
     }
 
-    const placeName = (() => {
-      const m = /\/place\/([^/@?]+)/.exec(data.url) ?? /\/place\/([^/@?]+)/.exec(finalUrl);
-      return m?.[1] ? decodeURIComponent(m[1]).replace(/\+/g, " ").trim() : "";
-    })();
-    // Coordinates in the pasted link are trustworthy; ones that only appear after a
-    // redirect are often the map site's own default view, not the place.
-    const coords = coordsFromUrl(data.url) ?? (placeName ? undefined : coordsFromUrl(finalUrl));
+    // Google puts the name and often the street address in one path segment.
+    const fromPath = splitPlacePathName(placePathSegment(data.url) || placePathSegment(finalUrl));
+    const placeName = fromPath.name;
+    const coords = resolvePlaceCoords(data.url, finalUrl, Boolean(placeName));
     const place = coords ? await reverse(coords.lat, coords.lon) : {};
 
     const rawTitle =
@@ -207,49 +196,55 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
           meta(html, "twitter:title") ??
           decodeEntities(html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? ""));
 
-    const titleName =
-      (rawTitle || "")
-        .split(/ [·|—–-] /)[0]
-        ?.replace(/\s*-\s*Google Maps$/i, "")
-        .replace(/\s*[·|—–-]\s*Apple Maps$/i, "")
-        .trim() || "";
+    const titleName = cleanPageTitle(rawTitle || "");
 
     const appleName = nameFromAppleMapsUrl(data.url) ?? nameFromAppleMapsUrl(finalUrl);
-    const name =
-      placeName ||
-      (titleName && titleName !== "Google Maps" && titleName !== "Apple Maps" ? titleName : "") ||
-      data.nameHint ||
-      appleName ||
-      "Saved place";
+    const name = placeName || titleName || data.nameHint || appleName || "Saved place";
 
     const description = meta(html, "og:description") ?? "";
     const addressMatch = description.match(/([\dA-Za-zÀ-ÿ.,'’\- ]+\d[\dA-Za-zÀ-ÿ.,'’\- ]*)/);
 
-    // No coordinates in the link (short links, blocked pages): search the web by name.
+    // No coordinates in the link (blocked pages, a bare short link that would
+    // not resolve): search the web. The address from the path makes this far
+    // more accurate than the name alone — "Bar Raval" is ambiguous, "Bar
+    // Raval, 505 College St" is not.
     if (!coords) {
-      const pathName = placeName;
+      const named = name !== "Saved place" ? name : "";
       const query =
-        pathName || (name !== "Saved place" ? name : "") || data.nameHint || appleName || "";
+        [placeName || named, fromPath.address].filter(Boolean).join(", ") ||
+        data.nameHint ||
+        appleName ||
+        "";
       const hit = query.length > 2 ? (await nominatim(query, 1))[0] : undefined;
       if (hit) {
         const found = hitToPlace(hit);
         return {
           ...found,
-          name: pathName || (name !== "Saved place" ? name : found.name),
+          name: placeName || named || found.name,
+          ...(fromPath.address ? { address: fromPath.address } : {}),
           source: target.hostname.replace(/^www\./, ""),
           url: data.url,
         };
       }
     }
 
+    // The path address is the place's own; the og:description one is a guess
+    // pulled out of prose, so it only fills a gap.
+    const address =
+      fromPath.address ?? (addressMatch?.[1] ? addressMatch[1].trim().slice(0, 160) : undefined);
+
+    // Nothing but the URL came back: no name of its own, nowhere on the map.
+    const gotNothing = name === "Saved place" && !coords && !address;
+
     return {
       name,
-      ...(addressMatch?.[1] ? { address: addressMatch[1].trim().slice(0, 160) } : {}),
+      ...(address ? { address } : {}),
       ...(place.city ? { city: place.city } : {}),
       ...(place.country ? { country: place.country } : {}),
       ...(coords ? { lat: coords.lat, lon: coords.lon } : {}),
       source: target.hostname.replace(/^www\./, ""),
       url: data.url,
+      ...(gotNothing ? { partial: true } : {}),
     };
   });
 
