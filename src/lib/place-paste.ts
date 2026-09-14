@@ -3,13 +3,14 @@
  * address, then a link — not a bare URL. Extract the https link Béa can read.
  */
 
-const HTTPS_IN_TEXT = /https:\/\/[^\s<>"']+/gi;
+const URL_IN_TEXT = /https?:\/\/[^\s<>"']+/gi;
 
 /** Hosts people actually share for a single venue. */
 function isLikelyPlaceHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/\.$/, "");
   return (
     host === "goo.gl" ||
+    host === "g.page" ||
     host === "maps.app.goo.gl" ||
     host === "google.com" ||
     host.endsWith(".google.com") ||
@@ -25,14 +26,21 @@ function isLikelyPlaceHost(hostname: string): boolean {
   );
 }
 
-/** Trim punctuation that rides along when someone pastes from a message. */
+/**
+ * Trim punctuation that rides along when someone pastes from a message.
+ *
+ * `http://` links are upgraded rather than rejected — plenty of restaurant
+ * pages and QR-code links are still plain http, and refusing them silently
+ * left the "Read this link" button greyed out with no explanation.
+ */
 export function cleanPastedHttpsUrl(raw: string): string | null {
   let s = raw.trim();
   // Trailing ) ] . , ; from chat apps wrapping the link
   while (/[),.;\]]+$/.test(s)) s = s.slice(0, -1);
-  if (!/^https:\/\//i.test(s)) return null;
+  if (!/^https?:\/\//i.test(s)) return null;
   try {
     const url = new URL(s);
+    if (url.protocol === "http:") url.protocol = "https:";
     if (url.protocol !== "https:") return null;
     return url.toString();
   } catch {
@@ -41,8 +49,13 @@ export function cleanPastedHttpsUrl(raw: string): string | null {
 }
 
 function nameHintFromShare(text: string, urlRaw: string): string | undefined {
+  // An http link is upgraded to https, so the cleaned URL may not appear
+  // verbatim in the paste; without this guard indexOf(-1) sliced off the
+  // last character of the whole paste and called it the name.
+  const at = text.indexOf(urlRaw);
+  if (at < 0) return undefined;
   const before = text
-    .slice(0, text.indexOf(urlRaw))
+    .slice(0, at)
     .replace(/\r/g, "")
     .split("\n")
     .map((line) => line.trim())
@@ -65,7 +78,7 @@ export function extractPastedPlaceLink(text: string): { url: string; nameHint?: 
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > 4000) return null;
 
-  const found = trimmed.match(HTTPS_IN_TEXT) ?? [];
+  const found = trimmed.match(URL_IN_TEXT) ?? [];
   const cleaned = found.map(cleanPastedHttpsUrl).filter((u): u is string => Boolean(u));
   if (cleaned.length) {
     let best = cleaned[0]!;
@@ -85,9 +98,9 @@ export function extractPastedPlaceLink(text: string): { url: string; nameHint?: 
     return nameHint ? { url: best, nameHint } : { url: best };
   }
 
-  // Scheme-less share: "maps.app.goo.gl/AbCd" or "maps.apple.com/?ll=…"
+  // Scheme-less share: "maps.app.goo.gl/AbCd", "yelp.com/biz/…", "g.page/…".
   const bare = trimmed.match(
-    /^(?:https?:\/\/)?((?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.apple\.com|www\.google\.com\/maps|google\.com\/maps)[^\s]*)$/i,
+    /^(?:https?:\/\/)?((?:maps\.app\.goo\.gl|goo\.gl\/maps|g\.page|maps\.apple\.com|(?:www\.)?google\.[a-z.]{2,6}\/maps|(?:www\.)?yelp\.[a-z.]{2,6}\/|(?:www\.)?tripadvisor\.[a-z.]{2,6}\/|(?:www\.)?openstreetmap\.org\/)[^\s]*)$/i,
   );
   if (bare?.[1]) {
     const url = cleanPastedHttpsUrl(`https://${bare[1]}`);

@@ -3,7 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { Route as RouteIcon } from "lucide-react";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
-import { legsToTimelineItems, unroutedLegCopy, type DirectionStop } from "@/lib/timeline-directions";
+import {
+  legsToTimelineItems,
+  unroutedLegCopy,
+  type DirectionStop,
+} from "@/lib/timeline-directions";
+import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
 
 type TimelineAdd = {
   day_date?: string;
@@ -21,11 +26,21 @@ export function ItineraryDirections({
   area,
   existingTitles = [],
   onAddToTimeline,
+  onKeepOffline,
+  savedSignature,
+  savedAt,
 }: {
   stops: DirectionStop[];
   area?: string;
   existingTitles?: string[];
   onAddToTimeline?: (items: TimelineAdd[]) => Promise<void>;
+  /** Keep the legs already on screen for offline use. Returns false if storage failed. */
+  onKeepOffline?: (
+    result: { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] },
+    stops: DirectionStop[],
+  ) => boolean;
+  savedSignature?: string | undefined;
+  savedAt?: string | undefined;
 }) {
   const run = useServerFn(buildRoutes);
   const [legs, setLegs] = useState<RouteLeg[] | null>(null);
@@ -36,6 +51,7 @@ export function ItineraryDirections({
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [kept, setKept] = useState(false);
 
   if (stops.length < 2) return null;
 
@@ -69,6 +85,7 @@ export function ItineraryDirections({
       setUnresolved(result.unresolved);
       setDeferred(result.deferred ?? []);
       setAdded(false);
+      setKept(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't work out the directions.");
     } finally {
@@ -77,6 +94,12 @@ export function ItineraryDirections({
   };
 
   const showAddBanner = Boolean(legs && legs.length > 0 && onAddToTimeline);
+  const stale = savedIsStale(savedSignature, stops);
+  const offlineNote = !savedAt
+    ? null
+    : stale
+      ? `${savedAgoLabel(savedAt)} for offline — but your stops have changed since. Get directions again and keep them to update.`
+      : `${savedAgoLabel(savedAt)} for offline. These steps work with no service.`;
 
   return (
     <>
@@ -98,6 +121,8 @@ export function ItineraryDirections({
             {busy ? "Working…" : legs ? "Refresh" : "Get directions"}
           </button>
         </div>
+
+        {offlineNote && <p className="mt-2 text-[11.5px] text-muted-foreground">{offlineNote}</p>}
 
         {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
 
@@ -127,14 +152,14 @@ export function ItineraryDirections({
                 {openLeg === i && (
                   <>
                     {leg.steps.length > 0 && (
-                    <ol className="mt-2 space-y-1 border-l border-border pl-3">
-                      {leg.steps.map((step, s) => (
-                        <li key={s} className="text-[11.5px] text-muted-foreground">
-                          {step.instruction}
-                          {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
-                        </li>
-                      ))}
-                    </ol>
+                      <ol className="mt-2 space-y-1 border-l border-border pl-3">
+                        {leg.steps.map((step, s) => (
+                          <li key={s} className="text-[11.5px] text-muted-foreground">
+                            {step.instruction}
+                            {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
+                          </li>
+                        ))}
+                      </ol>
                     )}
                     <a
                       href={leg.mapUrl}
@@ -158,7 +183,8 @@ export function ItineraryDirections({
         )}
         {(deferred.length > 0 || legs?.some((leg) => leg.capped)) && (
           <p className="mt-2 text-[11.5px] text-muted-foreground">
-            Later stretches open in maps — Béa stops looking after a long list so the rest of the trip stays usable.
+            Later stretches open in maps — Béa stops looking after a long list so the rest of the
+            trip stays usable.
           </p>
         )}
       </div>
@@ -172,18 +198,35 @@ export function ItineraryDirections({
             <div>
               <p className="label-caps text-foreground">Add these legs</p>
               <p className="text-[11px] text-muted-foreground">
-                Saves each walk or drive as a timeline stop. Turn-by-turn stays on this phone only
-                after you download Offline directions in trip settings.
+                “Add to timeline” saves each walk or drive as a stop. “Keep for offline” stores
+                these exact steps on this phone, so you don't have to work them out twice.
               </p>
             </div>
-            <button
-              type="button"
-              disabled={adding}
-              onClick={() => void addLegs()}
-              className="shrink-0 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold disabled:opacity-50"
-            >
-              {adding ? "Adding…" : added ? "On the timeline" : "Add to timeline"}
-            </button>
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button
+                type="button"
+                disabled={adding}
+                onClick={() => void addLegs()}
+                className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold disabled:opacity-50"
+              >
+                {adding ? "Adding…" : added ? "On the timeline" : "Add to timeline"}
+              </button>
+              {onKeepOffline && legs && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ok = onKeepOffline(
+                      { legs, unresolved, ...(deferred.length ? { deferred } : {}) },
+                      stops,
+                    );
+                    setKept(ok);
+                  }}
+                  className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+                >
+                  {kept ? "Kept for offline" : "Keep for offline"}
+                </button>
+              )}
+            </div>
           </div>
           {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
         </div>

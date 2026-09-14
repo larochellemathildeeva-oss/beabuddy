@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -85,6 +85,28 @@ function RecommendationsPage() {
   const [moreTags, setMoreTags] = useState(false);
   const [locQuery, setLocQuery] = useState("");
   const [locResults, setLocResults] = useState<ParsedPlace[] | null>(null);
+  const draftRef = useRef<HTMLDivElement | null>(null);
+  const [justDrafted, setJustDrafted] = useState(0);
+
+  // The draft card is appended below the paste/search card, which on a phone
+  // puts it off-screen — the reason reading a link looked like it did nothing.
+  useEffect(() => {
+    if (!justDrafted || !draftRef.current) return;
+    draftRef.current.scrollIntoView({
+      behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [justDrafted]);
+
+  /** Every path that produces a draft goes through here, so none of them can
+   *  leave the card sitting unseen at the bottom of the page. */
+  const showDraft = (next: Draft) => {
+    setTagsTouched(false);
+    setMoreTags(false);
+    setDraft(draftWithTags(next));
+    setResults(null);
+    setJustDrafted((n) => n + 1);
+  };
 
   const vault = useRecommendations();
   const scorePrefs = useScorePrefs();
@@ -155,19 +177,10 @@ function RecommendationsPage() {
           ? { url: extracted.url, nameHint: extracted.nameHint }
           : { url: extracted.url },
       });
-      setTagsTouched(false);
-      setMoreTags(false);
-      setDraft(draftWithTags({ ...place, category: place.category ?? "Place" }));
+      showDraft({ ...place, category: place.category ?? "Place" });
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
-      setTagsTouched(false);
-      setMoreTags(false);
-      setDraft(
-        draftWithTags({
-          name: extracted.nameHint ?? "",
-          url: extracted.url,
-        }),
-      );
+      showDraft({ name: extracted.nameHint ?? "", url: extracted.url });
     } finally {
       setBusy(null);
     }
@@ -185,9 +198,7 @@ function RecommendationsPage() {
             ? { url: pasted.url, nameHint: pasted.nameHint }
             : { url: pasted.url },
         });
-        setTagsTouched(false);
-        setMoreTags(false);
-        setDraft(draftWithTags({ ...place, category: place.category ?? "Place" }));
+        showDraft({ ...place, category: place.category ?? "Place" });
       } catch {
         setError("Couldn't read that link. Try Paste a link, or type the place name.");
       } finally {
@@ -219,18 +230,14 @@ function RecommendationsPage() {
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         const place = await lookup({ data: { lat: latitude, lon: longitude } });
-        setTagsTouched(false);
-        setMoreTags(false);
-        setDraft(
-          draftWithTags({
-            name: "",
-            lat: latitude,
-            lon: longitude,
-            ...(place.city ? { city: place.city } : {}),
-            ...(place.country ? { country: place.country } : {}),
-            source: "Current location",
-          }),
-        );
+        showDraft({
+          name: "",
+          lat: latitude,
+          lon: longitude,
+          ...(place.city ? { city: place.city } : {}),
+          ...(place.country ? { country: place.country } : {}),
+          source: "Current location",
+        });
         setBusy(null);
       },
       (err) => {
@@ -394,7 +401,8 @@ function RecommendationsPage() {
                   setMode(mode === m ? null : m);
                   setTagsTouched(false);
                   setMoreTags(false);
-                  setDraft(m === "manual" ? draftWithTags({ name: "" }) : null);
+                  if (m === "manual") showDraft({ name: "" });
+                  else setDraft(null);
                   setResults(null);
                   setLocQuery("");
                   setLocResults(null);
@@ -450,6 +458,12 @@ function RecommendationsPage() {
               >
                 {busy === "link" ? "Reading the link…" : "Read this link"}
               </button>
+              {link.trim().length > 0 && !looksLikePastedPlaceLink(link) && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Béa can't see a link in that. Paste the whole share from Maps, or a web address
+                  starting with http.
+                </p>
+              )}
             </div>
           )}
 
@@ -499,12 +513,7 @@ function RecommendationsPage() {
                     return (
                       <button
                         key={`${r.lat}-${r.lon}-${r.name}`}
-                        onClick={() => {
-                          setTagsTouched(false);
-                          setMoreTags(false);
-                          setDraft(draftWithTags({ ...r, category: r.category ?? "Place" }));
-                          setResults(null);
-                        }}
+                        onClick={() => showDraft({ ...r, category: r.category ?? "Place" })}
                         className="w-full rounded-xl border border-border bg-background p-3 text-left"
                       >
                         <p className="text-[13px] font-semibold">{line.title}</p>
@@ -537,8 +546,37 @@ function RecommendationsPage() {
           {error && <p className="mt-3 text-[12px] text-destructive">{error}</p>}
 
           {draft && (
-            <div className="rise mt-3 card-soft space-y-2 p-4">
-              <p className="label-caps">Check the details</p>
+            <div ref={draftRef} className="rise mt-3 card-soft space-y-2 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="label-caps">Check the details</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Name is the only part Béa needs. Everything else can wait.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraft(null);
+                    setLocQuery("");
+                    setLocResults(null);
+                    setError(null);
+                  }}
+                  className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  Discard
+                </button>
+              </div>
+              {/* Save sits at the top as well as the bottom: the card is long,
+                  and on a phone the only Save button used to be several
+                  scrolls past the point where the rec was already complete. */}
+              <button
+                onClick={save}
+                disabled={busy === "save" || !draft.name.trim()}
+                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {busy === "save" ? "Saving…" : "Save to vault"}
+              </button>
               {(
                 [
                   ["name", "Name"],
@@ -685,11 +723,16 @@ function RecommendationsPage() {
               </div>
               <button
                 onClick={save}
-                disabled={busy === "save"}
+                disabled={busy === "save" || !draft.name.trim()}
                 className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "save" ? "Saving…" : "Save to vault"}
               </button>
+              {!draft.name.trim() && (
+                <p className="text-[11px] text-muted-foreground">
+                  Give it a name first — that's the only required field.
+                </p>
+              )}
               {!vault.signedIn && (
                 <p className="text-[11px] text-muted-foreground">
                   Sign in on the You tab to keep this saved to your account.

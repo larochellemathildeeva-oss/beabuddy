@@ -49,3 +49,25 @@ test("looksLikePastedPlaceLink is false for ordinary place names", () => {
   assert.equal(looksLikePastedPlaceLink("Café de Flore, Paris"), false);
   assert.equal(looksLikePastedPlaceLink("https://maps.app.goo.gl/x"), true);
 });
+
+test("cleanPastedHttpsUrl upgrades a plain http link", () => {
+  assert.equal(cleanPastedHttpsUrl("http://joesdiner.com/menu"), "https://joesdiner.com/menu");
+});
+
+test("extractPastedPlaceLink reads an http link out of a share", () => {
+  const out = extractPastedPlaceLink("Joe's Diner\nhttp://joesdiner.com/menu");
+  assert.equal(out?.url, "https://joesdiner.com/menu");
+});
+
+test("extractPastedPlaceLink accepts scheme-less Yelp and g.page shares", () => {
+  assert.equal(
+    extractPastedPlaceLink("yelp.com/biz/bar-raval-toronto")?.url,
+    "https://yelp.com/biz/bar-raval-toronto",
+  );
+  assert.equal(extractPastedPlaceLink("g.page/barraval")?.url, "https://g.page/barraval");
+});
+
+test("extractPastedPlaceLink still refuses a plain place name", () => {
+  assert.equal(extractPastedPlaceLink("Bar Raval, Toronto"), null);
+  assert.equal(extractPastedPlaceLink("joesdiner.com"), null);
+});

@@ -18,3 +18,6 @@
 - [ ] Accept PDFs, calendar invites and links on itinerary import
 - [ ] Editable import preview, and dedupe against the existing timeline
 - [ ] Undo toast for bulk saves and removes
+- [x] Show the rec draft after reading a link instead of leaving it off-screen
+- [x] Accept http and scheme-less Yelp / g.page links when pasting
+- [x] Keep directions for offline from where you got them, and warn when stale

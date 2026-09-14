@@ -11,6 +11,7 @@ import { TripStops } from "@/components/TripStops";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { TripTodos } from "@/components/TripTodos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
+import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 
@@ -390,6 +391,11 @@ function LiveTripCard({
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
   const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
+  // Saved directions are only the right legs for these rows when they were
+  // built from this exact stop list. They used to be indexed in blindly, so a
+  // city-to-city download showed up underneath timeline entries.
+  const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
+  const legFor = (index: number) => (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
@@ -662,7 +668,7 @@ function LiveTripCard({
                                   key={item.id}
                                   item={item}
                                   showDay={false}
-                                  leg={dir.saved?.legs[itemIndexById.get(item.id) ?? -1]}
+                                  leg={legFor(itemIndexById.get(item.id) ?? -1)}
                                   onEdit={(field) => board.setEditing(field)}
                                   onUpdate={(patch) => void board.updateItem(item.id, patch)}
                                   onRemove={() => void board.removeItem(item.id)}
@@ -681,7 +687,7 @@ function LiveTripCard({
                         key={item.id}
                         item={item}
                         showDay
-                        leg={dir.saved?.legs[i]}
+                        leg={legFor(i)}
                         onEdit={(field) => board.setEditing(field)}
                         onUpdate={(patch) => void board.updateItem(item.id, patch)}
                         onRemove={() => void board.removeItem(item.id)}
@@ -711,6 +717,9 @@ function LiveTripCard({
             stops={directionStops}
             existingTitles={board.items.map((i) => i.title)}
             onAddToTimeline={board.upsertItems}
+            onKeepOffline={dir.keep}
+            {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+            {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
             {...(directionArea ? { area: directionArea } : {})}
           />
         </div>
@@ -977,7 +986,8 @@ function LiveTripCard({
                 Offline directions
                 {dir.saved && (
                   <span className="ml-2 text-[11px] font-normal text-muted-foreground">
-                    Saved {new Date(dir.saved.savedAt).toLocaleDateString()}
+                    {savedAgoLabel(dir.saved.savedAt)}
+                    {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
                   </span>
                 )}
               </button>
@@ -986,6 +996,12 @@ function LiveTripCard({
                   <p className="text-[11px] text-muted-foreground">
                     Download the walk or drive between stops so the steps work with no service.
                     Adding directions to the timeline saves the summary — not the offline map.
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    {cities.stops.length >= 2
+                      ? `Covers your ${cities.stops.length} cities, in order.`
+                      : "Covers the timeline stops that have a place on the map."}{" "}
+                    You can also keep the legs from “Directions between stops” on the trip itself.
                   </p>
                   <button
                     disabled={dir.busy || routeStops.length < 2}
@@ -1002,6 +1018,11 @@ function LiveTripCard({
                     <p className="mt-2 text-[11px] text-muted-foreground">
                       Add at least two cities to this trip first (or two timeline entries with
                       places).
+                    </p>
+                  )}
+                  {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Your stops have changed since this was saved — refresh to bring it up to date.
                     </p>
                   )}
                   {dir.error && <p className="mt-2 text-[11px] text-destructive">{dir.error}</p>}

@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
+import {
+  directionsSignature,
+  storageFailureMessage,
+  type SignatureStop,
+} from "@/lib/offline-directions";
 
 export type SavedDirections = {
   legs: RouteLeg[];
   unresolved: string[];
   deferred?: string[];
   savedAt: string;
+  /** The stop list these were built from; absent on downloads predating it. */
+  signature?: string;
 };
 
 export const DIRECTIONS_KEY_PREFIX = "bea.directions.";
@@ -45,6 +52,36 @@ export function useOfflineDirections(tripId: string | null) {
     }
   }, [tripId]);
 
+  /**
+   * Persist directions that have already been worked out. Routing and storing
+   * are reported separately — a full phone used to read as a failed download.
+   */
+  const keep = useCallback(
+    (
+      result: { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] },
+      stops: SignatureStop[],
+    ) => {
+      if (!tripId) return false;
+      const record: SavedDirections = {
+        legs: result.legs,
+        unresolved: result.unresolved,
+        ...(result.deferred ? { deferred: result.deferred } : {}),
+        savedAt: new Date().toISOString(),
+        signature: directionsSignature(stops),
+      };
+      try {
+        localStorage.setItem(directionsStorageKey(tripId), JSON.stringify(record));
+      } catch (e) {
+        setError(storageFailureMessage(e));
+        return false;
+      }
+      setSaved(record);
+      setError("");
+      return true;
+    },
+    [tripId],
+  );
+
   const download = useCallback(
     async (
       stops: { title: string; address?: string | null; lat?: number | null; lon?: number | null }[],
@@ -56,9 +93,8 @@ export function useOfflineDirections(tripId: string | null) {
       try {
         const result = (await run({
           data: { stops, ...(area ? { area } : {}) },
-        })) as SavedDirections;
-        localStorage.setItem(directionsStorageKey(tripId), JSON.stringify(result));
-        setSaved(result);
+        })) as { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] };
+        keep(result, stops);
       } catch (e) {
         const message = e instanceof Error ? e.message : "";
         setError(
@@ -70,7 +106,7 @@ export function useOfflineDirections(tripId: string | null) {
         setBusy(false);
       }
     },
-    [tripId, run],
+    [tripId, run, keep],
   );
 
   const clear = useCallback(() => {
@@ -79,7 +115,7 @@ export function useOfflineDirections(tripId: string | null) {
     setSaved(null);
   }, [tripId]);
 
-  return { saved, busy, error, download, clear };
+  return { saved, busy, error, download, keep, clear };
 }
 
 export function prettyDistance(m: number) {
