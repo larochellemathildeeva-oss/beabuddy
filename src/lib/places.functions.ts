@@ -19,6 +19,8 @@ export type ParsedPlace = {
   city?: string;
   country?: string;
   category?: string;
+  /** Nominatim's `type`, used to work out what kind of stop this is. */
+  placeType?: string;
   lat?: number;
   lon?: number;
   source: string;

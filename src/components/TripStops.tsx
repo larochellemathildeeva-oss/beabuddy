@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
+import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
 
 type Draft = {
   kind: string;
@@ -13,6 +14,8 @@ type Draft = {
   arrive_on: string;
   depart_on: string;
   notes: string;
+  /** What the last map pick filled in, shown once and never saved. */
+  filled?: string;
 };
 
 const EMPTY: Draft = {
@@ -261,6 +264,8 @@ function StopDraftForm({
   // automatically" — an empty box that reads as pending work even once the
   // place search has already answered it. Now it only appears when it has to.
   const [forceCountry, setForceCountry] = useState(false);
+  /** A hand-picked kind must survive a later map pick. */
+  const [kindTouched, setKindTouched] = useState(false);
   const showCountry = forceCountry || !draft.country.trim();
 
   return (
@@ -274,7 +279,10 @@ function StopDraftForm({
             key={v}
             type="button"
             aria-pressed={draft.kind === v}
-            onClick={() => setDraft({ ...draft, kind: v as string })}
+            onClick={() => {
+              setKindTouched(true);
+              setDraft({ ...draft, kind: v as string });
+            }}
             className={`rounded-full border px-3 py-1.5 text-[12px] ${
               draft.kind === v
                 ? "border-primary bg-primary text-primary-foreground"
@@ -298,10 +306,30 @@ function StopDraftForm({
             address: p.address ?? "",
             ...(p.lat != null ? { lat: p.lat } : {}),
             ...(p.lon != null ? { lon: p.lon } : {}),
+            // An airport or station picked off the map is a stopover, not a
+            // destination — unless the kind was already chosen by hand.
+            kind: kindTouched
+              ? draft.kind
+              : stopKindForPlace({
+                  ...(p.placeType ? { placeType: p.placeType } : {}),
+                  ...(p.category ? { category: p.category } : {}),
+                  name: p.name,
+                }),
+            filled: filledFromMapSummary({
+              address: p.address ?? "",
+              city: p.city ?? p.country ?? "",
+              ...(p.lat != null ? { lat: p.lat } : {}),
+            }),
           })
         }
-        placeholder="Search a city or airport"
+        placeholder="Type a city, airport or hotel name"
       />
+      {draft.filled && (
+        <p aria-live="polite" className="px-1 text-[11px] text-muted-foreground">
+          {draft.filled}
+          {draft.kind === "layover" && !kindTouched ? " Marked as a stopover." : ""}
+        </p>
+      )}
 
       {showCountry ? (
         <input

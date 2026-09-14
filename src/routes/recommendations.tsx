@@ -21,6 +21,7 @@ import {
 } from "@/lib/places.functions";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines } from "@/lib/place-label";
+import { prettyPlaceCategory } from "@/lib/place-kind";
 import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
@@ -185,7 +186,7 @@ function RecommendationsPage() {
           ? { url: extracted.url, nameHint: extracted.nameHint }
           : { url: extracted.url },
       });
-      showDraft({ ...place, category: place.category ?? "Place" });
+      showDraft({ ...place, category: prettyPlaceCategory(place) });
       if (place.partial) setError(SHORT_LINK_HINT);
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
@@ -207,7 +208,7 @@ function RecommendationsPage() {
             ? { url: pasted.url, nameHint: pasted.nameHint }
             : { url: pasted.url },
         });
-        showDraft({ ...place, category: place.category ?? "Place" });
+        showDraft({ ...place, category: prettyPlaceCategory(place) });
         if (place.partial) setError(SHORT_LINK_HINT);
       } catch {
         setError("Couldn't read that link. Try Paste a link, or type the place name.");
@@ -523,7 +524,7 @@ function RecommendationsPage() {
                     return (
                       <button
                         key={`${r.lat}-${r.lon}-${r.name}`}
-                        onClick={() => showDraft({ ...r, category: r.category ?? "Place" })}
+                        onClick={() => showDraft({ ...r, category: prettyPlaceCategory(r) })}
                         className="w-full rounded-xl border border-border bg-background p-3 text-left"
                       >
                         <p className="text-[13px] font-semibold">{line.title}</p>

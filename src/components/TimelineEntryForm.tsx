@@ -10,6 +10,7 @@ import {
   tripDayOptions,
 } from "@/lib/timeline-entry";
 import type { ParsedPlace } from "@/lib/places.functions";
+import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
 
 export type NewTimelineEntry = {
   kind: string;
@@ -32,8 +33,11 @@ const KINDS: [string, string][] = [
 
 const EMPTY_PLACE = {
   address: "",
+  city: "",
+  country: "",
   lat: undefined as number | undefined,
   lon: undefined as number | undefined,
+  note: "",
 };
 
 /**
@@ -62,6 +66,8 @@ export function TimelineEntryForm({
   onDone: () => void;
 }) {
   const [kind, setKind] = useState("activity");
+  /** True once the kind was chosen by hand — then a pick must not override it. */
+  const [kindTouched, setKindTouched] = useState(false);
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [place, setPlace] = useState(EMPTY_PLACE);
@@ -84,15 +90,41 @@ export function TimelineEntryForm({
   const outside = dayOutsideTripNote(day, tripStart, tripEnd);
   const timeLabel = time || normalizeTimeLabel(freeTime);
 
+  /**
+   * One pick fills the lot: the name, the address, the city, the point on the
+   * map, and the kind of stop it is. A café comes back as an amenity from the
+   * geocoder, so the kind is worked out from its type rather than its
+   * addresstype — and never overrides a kind the user chose themselves.
+   */
   const pickPlace = (p: ParsedPlace) => {
     setTitle(p.name);
-    setPlace({
+    const filled = {
       address: p.address ?? "",
+      city: p.city ?? "",
+      country: p.country ?? "",
       ...(p.lat != null ? { lat: p.lat } : { lat: undefined }),
       ...(p.lon != null ? { lon: p.lon } : { lon: undefined }),
+      note: "",
+    };
+    filled.note = filledFromMapSummary({
+      address: filled.address,
+      city: filled.city || filled.country,
+      lat: filled.lat,
     });
+    setPlace(filled);
+    if (!kindTouched) {
+      setKind(
+        timelineKindForPlace({
+          ...(p.placeType ? { placeType: p.placeType } : {}),
+          ...(p.category ? { category: p.category } : {}),
+          name: p.name,
+        }),
+      );
+    }
     setError("");
   };
+
+  const placeAddress = place.address || [place.city, place.country].filter(Boolean).join(", ");
 
   const save = async () => {
     const name = title.trim();
@@ -106,7 +138,7 @@ export function TimelineEntryForm({
         ...(day ? { day_date: day } : {}),
         ...(timeLabel ? { time_label: timeLabel } : {}),
         ...(detail.trim() ? { detail: detail.trim() } : {}),
-        ...(place.address ? { address: place.address } : {}),
+        ...(placeAddress ? { address: placeAddress } : {}),
         ...(place.lat != null ? { lat: place.lat } : {}),
         ...(place.lon != null ? { lon: place.lon } : {}),
       });
@@ -131,7 +163,10 @@ export function TimelineEntryForm({
             key={value}
             type="button"
             aria-pressed={kind === value}
-            onClick={() => setKind(value)}
+            onClick={() => {
+              setKind(value);
+              setKindTouched(true);
+            }}
             className={`rounded-full border px-3 py-1.5 text-[12px] ${
               kind === value ? "border-primary bg-primary text-primary-foreground" : "border-border"
             }`}
@@ -151,16 +186,24 @@ export function TimelineEntryForm({
         {...(near ? { near } : {})}
       />
       <p className="px-1 text-[11px] text-muted-foreground">
-        Typing plain text works fine. Searching or pasting a Maps link also pins it to the map and
-        lets Béa give you directions between stops.
+        Type a name and pick it from the list — Béa fills in the address, the city, the point on the
+        map and what sort of stop it is. Plain text works fine too.
       </p>
 
-      {place.address && (
+      {(place.address || place.lat != null) && (
         <div className="flex items-start justify-between gap-2 rounded-xl border border-primary/40 bg-elevated px-3 py-2">
-          <p className="min-w-0 break-words text-[12px]">
-            <MapPin className="mr-1 inline size-3.5 text-primary" aria-hidden />
-            {place.address}
-          </p>
+          <div className="min-w-0">
+            <p className="min-w-0 break-words text-[12px]">
+              <MapPin className="mr-1 inline size-3.5 text-primary" aria-hidden />
+              {place.address || [place.city, place.country].filter(Boolean).join(", ")}
+            </p>
+            {place.note && (
+              <p aria-live="polite" className="mt-0.5 text-[11px] text-muted-foreground">
+                {place.note}
+                {!kindTouched && ` Set as a ${kind}.`}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             aria-label="Remove the pinned place"

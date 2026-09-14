@@ -65,7 +65,10 @@ function isJunkLabel(value: string | undefined): boolean {
   return Boolean(value && JUNK_LABEL.test(value));
 }
 
-function addressField(address: Record<string, string> | undefined, key: string): string | undefined {
+function addressField(
+  address: Record<string, string> | undefined,
+  key: string,
+): string | undefined {
   const value = address?.[key];
   return value || undefined;
 }
@@ -90,7 +93,10 @@ export function adminName(address: Record<string, string> | undefined): string |
 
 function cleanName(name: string | undefined): string {
   if (!name) return "";
-  return name.replace(/\s*\((?:administrative region|urban agglomeration)\)\s*/gi, " ").replace(/\s+/g, " ").trim();
+  return name
+    .replace(/\s*\((?:administrative region|urban agglomeration)\)\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function uniqueParts(parts: (string | undefined)[]): string[] {
@@ -121,7 +127,9 @@ export function isLocalityHit(hit: NominatimHitLike): boolean {
   if (LOCALITY_TYPES.has(hit.type ?? "")) return true;
   const local = localityName(hit.address);
   const name = cleanName(hit.name);
-  return Boolean(local && name && foldAccents(local) === foldAccents(name) && !isAdminJunkName(hit));
+  return Boolean(
+    local && name && foldAccents(local) === foldAccents(name) && !isAdminJunkName(hit),
+  );
 }
 
 function isAdminJunkName(hit: NominatimHitLike): boolean {
@@ -144,7 +152,10 @@ function isCountryHit(hit: NominatimHitLike): boolean {
 
 function isAdminRegion(hit: NominatimHitLike, query: string): boolean {
   if (isCountryHit(hit) && queryMentionsHit(query, hit)) return false;
-  if (queryMentionsHit(query, hit) && /administrative|agglomeration|region|county|province/i.test(query)) {
+  if (
+    queryMentionsHit(query, hit) &&
+    /administrative|agglomeration|region|county|province/i.test(query)
+  ) {
     return false;
   }
   if (isAdminJunkName(hit)) return true;
@@ -237,6 +248,9 @@ export function placeFromNominatim(hit: NominatimHitLike): {
   city?: string;
   country?: string;
   category?: string;
+  /** Nominatim's `type` — "cafe", "hotel", "aerodrome". The addresstype in
+   *  `category` is often just "amenity", which says nothing useful. */
+  placeType?: string;
   lat: number;
   lon: number;
 } {
@@ -254,6 +268,7 @@ export function placeFromNominatim(hit: NominatimHitLike): {
     ...(city ? { city } : {}),
     ...(country ? { country } : {}),
     ...(kind ? { category: kind.replace(/_/g, " ") } : {}),
+    ...(hit.type ? { placeType: hit.type } : {}),
     lat: Number(hit.lat),
     lon: Number(hit.lon),
   };

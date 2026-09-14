@@ -1,8 +1,12 @@
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { parsePlaceLink, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
+import { PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
+
+/** Long enough that a name is worth looking up, short enough to feel live. */
+const TYPE_AHEAD_MIN = 3;
 
 export function PlaceSearchInput({
   value,
@@ -10,18 +14,23 @@ export function PlaceSearchInput({
   onPick,
   placeholder = "Search a hotel, restaurant or landmark",
   near,
+  /** Off for fields where a lookup on every pause would be noise. */
+  typeAhead = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   onPick: (p: ParsedPlace) => void;
   placeholder?: string;
   near?: string;
+  typeAhead?: boolean;
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
   const [hits, setHits] = useState<ParsedPlace[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  /** Bumped on pick/clear so type-ahead does not immediately re-open. */
+  const settled = useRef("");
 
   const run = async () => {
     const q = value.trim();
@@ -36,6 +45,7 @@ export function PlaceSearchInput({
             ? { url: pasted.url, nameHint: pasted.nameHint }
             : { url: pasted.url },
         });
+        settled.current = place.name;
         onPick(place);
         setHits([]);
         if (place.partial) {
@@ -59,7 +69,42 @@ export function PlaceSearchInput({
     }
   };
 
+  // Look the name up once typing pauses, so finding a place is just typing it.
+  // Gated on the same gap the rest of the app uses to stay inside Nominatim's
+  // usage policy, and skipped for pasted links (those need the Read button, or
+  // Enter, so a half-pasted URL is never fetched).
+  useEffect(() => {
+    if (!typeAhead) return;
+    const q = value.trim();
+    if (q.length < TYPE_AHEAD_MIN) {
+      setHits([]);
+      return;
+    }
+    if (q === settled.current) return;
+    if (looksLikePastedPlaceLink(q)) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await search({ data: { query: near ? `${q}, ${near}` : q } });
+        if (!cancelled) setHits(res);
+      } catch {
+        /* a quiet type-ahead failure should not shout; the button still reports */
+      }
+    }, PLACE_LOOKUP_GAP_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [value, near, typeAhead, search]);
+
   const linkPaste = looksLikePastedPlaceLink(value);
+
+  const choose = (place: ParsedPlace) => {
+    settled.current = place.name;
+    onPick(place);
+    setHits([]);
+    setErr("");
+  };
 
   return (
     <div className="space-y-1.5">
@@ -72,6 +117,7 @@ export function PlaceSearchInput({
               e.preventDefault();
               void run();
             }
+            if (e.key === "Escape") setHits([]);
           }}
           rows={linkPaste ? 2 : 1}
           autoCapitalize="off"
@@ -98,10 +144,7 @@ export function PlaceSearchInput({
               <li key={`${h.name}-${i}`}>
                 <button
                   type="button"
-                  onClick={() => {
-                    onPick(h);
-                    setHits([]);
-                  }}
+                  onClick={() => choose(h)}
                   className="w-full rounded-lg px-2 py-1.5 text-left"
                 >
                   <p className="text-[13px] font-medium">{line.title}</p>
