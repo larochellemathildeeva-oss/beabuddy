@@ -8,3 +8,13 @@
 - [x] Show the Béa app version
 - [x] Test changed workflows and AI calls
 - [x] Fix saving Béa-generated stops, costs, and dates in one fast batch
+- [x] Keep the add-to-timeline form open after saving, and pre-fill the day
+- [x] Search or paste a place when adding a timeline entry by hand
+- [x] Edit a trip stop instead of removing and re-adding it
+- [x] Let a trip be created without inventing a name first
+- [x] Hide the planning knobs when importing an existing itinerary
+- [x] Trip to-do list (needs the `trip_todos` migration applied by hand)
+- [x] Keyboard, screen-reader and colour-blind access on the globe
+- [ ] Accept PDFs, calendar invites and links on itinerary import
+- [ ] Editable import preview, and dedupe against the existing timeline
+- [ ] Undo toast for bulk saves and removes

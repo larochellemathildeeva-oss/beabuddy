@@ -400,60 +400,69 @@ function ImportPanel({
           Build a new trip
         </button>
         <button
-          onClick={() => setMode("import")}
+          onClick={() => {
+            setMode("import");
+            // Cost estimates are a planning knob; reading a booked itinerary
+            // should never come back with invented prices.
+            setIncludeCosts(false);
+          }}
           className={`rounded-xl border px-3 py-2 text-[12px] font-semibold ${mode === "import" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
         >
           Import a plan
         </button>
       </div>
 
-      <div className={`grid gap-2 ${includeCosts ? "grid-cols-3" : "grid-cols-2"}`}>
-        <select
-          value={pace}
-          onChange={(e) => setPace(e.target.value as typeof pace)}
-          aria-label="Trip pace"
-          className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
-        >
-          <option value="relaxed">Relaxed</option>
-          <option value="balanced">Balanced</option>
-          <option value="full">Full days</option>
-        </select>
-        <select
-          value={budgetLevel}
-          onChange={(e) => setBudgetLevel(e.target.value as typeof budgetLevel)}
-          aria-label="Budget style"
-          className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
-        >
-          <option value="value">Value</option>
-          <option value="comfortable">Comfort</option>
-          <option value="premium">Premium</option>
-        </select>
-        {includeCosts && (
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            aria-label="Currency"
-            className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
-          >
-            {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </select>
-        )}
-      </div>
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
-        <div>
-          <p className="text-[13px] font-medium">Approximate costs</p>
-          <p className="text-[11px] text-muted-foreground">
-            Off unless you ask. Estimates only — not quotes.
-          </p>
-        </div>
-        <Switch
-          checked={includeCosts}
-          onCheckedChange={setIncludeCosts}
-          aria-label="Include approximate costs"
-        />
-      </div>
+      {mode === "build" && (
+        <>
+          <div className={`grid gap-2 ${includeCosts ? "grid-cols-3" : "grid-cols-2"}`}>
+            <select
+              value={pace}
+              onChange={(e) => setPace(e.target.value as typeof pace)}
+              aria-label="Trip pace"
+              className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+            >
+              <option value="relaxed">Relaxed</option>
+              <option value="balanced">Balanced</option>
+              <option value="full">Full days</option>
+            </select>
+            <select
+              value={budgetLevel}
+              onChange={(e) => setBudgetLevel(e.target.value as typeof budgetLevel)}
+              aria-label="Budget style"
+              className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+            >
+              <option value="value">Value</option>
+              <option value="comfortable">Comfort</option>
+              <option value="premium">Premium</option>
+            </select>
+            {includeCosts && (
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                aria-label="Currency"
+                className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+              >
+                {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
+            <div>
+              <p className="text-[13px] font-medium">Approximate costs</p>
+              <p className="text-[11px] text-muted-foreground">
+                Off unless you ask. Estimates only — not quotes.
+              </p>
+            </div>
+            <Switch
+              checked={includeCosts}
+              onCheckedChange={setIncludeCosts}
+              aria-label="Include approximate costs"
+            />
+          </div>
+        </>
+      )}
 
       <input
         ref={fileRef}

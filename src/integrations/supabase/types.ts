@@ -660,6 +660,62 @@ export type Database = {
           },
         ]
       }
+      trip_todos: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          created_by: string | null
+          done: boolean
+          done_at: string | null
+          done_by: string | null
+          due_on: string | null
+          id: string
+          notes: string | null
+          position: number
+          title: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          done?: boolean
+          done_at?: string | null
+          done_by?: string | null
+          due_on?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          title: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          created_by?: string | null
+          done?: boolean
+          done_at?: string | null
+          done_by?: string | null
+          due_on?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          title?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_todos_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           budget: string | null

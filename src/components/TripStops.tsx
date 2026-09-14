@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { useTripStops } from "@/hooks/useTripStops";
+import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 
 type Draft = {
   kind: string;
@@ -26,11 +26,99 @@ const EMPTY: Draft = {
   notes: "",
 };
 
+function draftFromStop(stop: StopRow): Draft {
+  return {
+    kind: stop.kind,
+    city: stop.city,
+    country: stop.country ?? "",
+    place_name: stop.place_name ?? "",
+    address: stop.address ?? "",
+    ...(stop.lat != null ? { lat: stop.lat } : {}),
+    ...(stop.lon != null ? { lon: stop.lon } : {}),
+    arrive_on: stop.arrive_on ?? "",
+    depart_on: stop.depart_on ?? "",
+    notes: stop.notes ?? "",
+  };
+}
+
 export function TripStops({ tripId, uid }: { tripId: string; uid: string | null }) {
   const s = useTripStops(tripId, uid);
   const [adding, setAdding] = useState(false);
+  /** Stop id being edited, or "" while adding a new one. */
+  const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const close = () => {
+    setAdding(false);
+    setEditingId("");
+    setDraft(EMPTY);
+    setError("");
+  };
+
+  const openForNew = () => {
+    if (adding && !editingId) {
+      close();
+      return;
+    }
+    setDraft(EMPTY);
+    setError("");
+    setEditingId("");
+    setAdding(true);
+  };
+
+  const openForEdit = (stop: StopRow) => {
+    if (editingId === stop.id) {
+      close();
+      return;
+    }
+    setDraft(draftFromStop(stop));
+    setError("");
+    setEditingId(stop.id);
+    setAdding(true);
+  };
+
+  const save = async () => {
+    const city = draft.city.trim();
+    if (!city) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (editingId) {
+        await s.updateStop(editingId, {
+          kind: draft.kind,
+          city,
+          country: draft.country.trim(),
+          place_name: draft.place_name,
+          address: draft.address,
+          lat: draft.lat ?? null,
+          lon: draft.lon ?? null,
+          arrive_on: draft.arrive_on,
+          depart_on: draft.depart_on,
+          notes: draft.notes,
+        });
+      } else {
+        await s.addStop({
+          kind: draft.kind,
+          city,
+          country: draft.country.trim(),
+          place_name: draft.place_name,
+          address: draft.address,
+          ...(draft.lat != null ? { lat: draft.lat } : {}),
+          ...(draft.lon != null ? { lon: draft.lon } : {}),
+          arrive_on: draft.arrive_on,
+          depart_on: draft.depart_on,
+          notes: draft.notes,
+        });
+      }
+      close();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save that stop");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="mb-3 rounded-xl border border-border p-3">
@@ -46,14 +134,10 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
           </p>
         </div>
         <button
-          onClick={() => {
-            setDraft(EMPTY);
-            setError("");
-            setAdding(!adding);
-          }}
+          onClick={openForNew}
           className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
         >
-          {adding ? "Cancel" : "Add a stop"}
+          {adding && !editingId ? "Cancel" : "Add a stop"}
         </button>
       </div>
 
@@ -84,7 +168,9 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                     </p>
                   )}
                   {stop.place_name && (
-                    <p className="truncate text-[11px] text-muted-foreground">📍 {stop.place_name}</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      📍 {stop.place_name}
+                    </p>
                   )}
                   {stop.notes && <p className="text-[11px] text-muted-foreground">{stop.notes}</p>}
                 </div>
@@ -106,6 +192,13 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                     ↓
                   </button>
                   <button
+                    aria-label={`Edit ${stop.city}`}
+                    onClick={() => openForEdit(stop)}
+                    className="rounded-lg border border-border px-2 py-1 text-[11px]"
+                  >
+                    {editingId === stop.id ? "Close" : "Edit"}
+                  </button>
+                  <button
                     onClick={() => void s.removeStop(stop.id)}
                     className="rounded-lg px-1.5 py-1 text-[11px] text-muted-foreground underline"
                   >
@@ -113,104 +206,161 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                   </button>
                 </div>
               </div>
+
+              {editingId === stop.id && (
+                <StopDraftForm
+                  draft={draft}
+                  setDraft={setDraft}
+                  error={error}
+                  busy={busy}
+                  submitLabel="Save changes"
+                  onSubmit={save}
+                  onCancel={close}
+                />
+              )}
             </li>
           ))}
         </ol>
       )}
 
-      {adding && (
-        <div className="mt-3 space-y-2 rounded-xl border border-border p-3">
-          <div className="flex gap-1.5">
-            {[
-              ["destination", "Destination"],
-              ["layover", "Stopover / layover"],
-            ].map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => setDraft({ ...draft, kind: v as string })}
-                className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                  draft.kind === v ? "border-primary bg-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <PlaceSearchInput
-            value={draft.city}
-            onChange={(v) => setDraft({ ...draft, city: v })}
-            onPick={(p) =>
-              setDraft({
-                ...draft,
-                city: p.city || p.name,
-                country: p.country ?? draft.country,
-                place_name: p.city && p.name !== p.city ? p.name : "",
-                address: p.address ?? "",
-                ...(p.lat != null ? { lat: p.lat } : {}),
-                ...(p.lon != null ? { lon: p.lon } : {}),
-              })
-            }
-            placeholder="Search a city or airport"
+      {adding && !editingId && (
+        <div className="mt-3">
+          <StopDraftForm
+            draft={draft}
+            setDraft={setDraft}
+            error={error}
+            busy={busy}
+            submitLabel="Add stop"
+            onSubmit={save}
+            onCancel={close}
           />
-          <input
-            value={draft.country}
-            onChange={(e) => setDraft({ ...draft, country: e.target.value })}
-            placeholder="Country (fills in automatically)"
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-          />
-          <div className="flex gap-2">
-            <input
-              type="date"
-              aria-label="Arrive on"
-              value={draft.arrive_on}
-              onChange={(e) => setDraft({ ...draft, arrive_on: e.target.value })}
-              className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-            />
-            <input
-              type="date"
-              aria-label="Leave on"
-              value={draft.depart_on}
-              onChange={(e) => setDraft({ ...draft, depart_on: e.target.value })}
-              className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-            />
-          </div>
-          <input
-            value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-            placeholder={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-          />
-          {error && <p className="text-[11px] text-destructive">{error}</p>}
-          <button
-            disabled={!draft.city.trim()}
-            onClick={async () => {
-              setError("");
-              try {
-                await s.addStop({
-                  kind: draft.kind,
-                  city: draft.city.trim(),
-                  country: draft.country.trim(),
-                  place_name: draft.place_name,
-                  address: draft.address,
-                  ...(draft.lat != null ? { lat: draft.lat } : {}),
-                  ...(draft.lon != null ? { lon: draft.lon } : {}),
-                  arrive_on: draft.arrive_on,
-                  depart_on: draft.depart_on,
-                  notes: draft.notes,
-                });
-                setDraft(EMPTY);
-                setAdding(false);
-              } catch (e) {
-                setError(e instanceof Error ? e.message : "Couldn't add that stop");
-              }
-            }}
-            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-          >
-            Add stop
-          </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function StopDraftForm({
+  draft,
+  setDraft,
+  error,
+  busy,
+  submitLabel,
+  onSubmit,
+  onCancel,
+}: {
+  draft: Draft;
+  setDraft: (next: Draft) => void;
+  error: string;
+  busy: boolean;
+  submitLabel: string;
+  onSubmit: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  // The country field used to sit there permanently, labelled "fills in
+  // automatically" — an empty box that reads as pending work even once the
+  // place search has already answered it. Now it only appears when it has to.
+  const [forceCountry, setForceCountry] = useState(false);
+  const showCountry = forceCountry || !draft.country.trim();
+
+  return (
+    <div className="mt-2 space-y-2 rounded-xl border border-border p-3">
+      <div className="flex gap-1.5">
+        {[
+          ["destination", "Destination"],
+          ["layover", "Stopover / layover"],
+        ].map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={draft.kind === v}
+            onClick={() => setDraft({ ...draft, kind: v as string })}
+            className={`rounded-full border px-3 py-1.5 text-[12px] ${
+              draft.kind === v
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <PlaceSearchInput
+        value={draft.city}
+        onChange={(v) => setDraft({ ...draft, city: v })}
+        onPick={(p) =>
+          setDraft({
+            ...draft,
+            city: p.city || p.name,
+            country: p.country ?? draft.country,
+            place_name: p.city && p.name !== p.city ? p.name : "",
+            address: p.address ?? "",
+            ...(p.lat != null ? { lat: p.lat } : {}),
+            ...(p.lon != null ? { lon: p.lon } : {}),
+          })
+        }
+        placeholder="Search a city or airport"
+      />
+
+      {showCountry ? (
+        <input
+          value={draft.country}
+          onChange={(e) => setDraft({ ...draft, country: e.target.value })}
+          placeholder="Country"
+          aria-label="Country"
+          className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+        />
+      ) : (
+        <p className="flex items-center gap-2 px-1 text-[11px] text-muted-foreground">
+          <span>Country: {draft.country}</span>
+          <button type="button" onClick={() => setForceCountry(true)} className="underline">
+            Change
+          </button>
+        </p>
+      )}
+
+      <div className="flex gap-2">
+        <input
+          type="date"
+          aria-label="Arrive on"
+          value={draft.arrive_on}
+          onChange={(e) => setDraft({ ...draft, arrive_on: e.target.value })}
+          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+        />
+        <input
+          type="date"
+          aria-label="Leave on"
+          value={draft.depart_on}
+          {...(draft.arrive_on ? { min: draft.arrive_on } : {})}
+          onChange={(e) => setDraft({ ...draft, depart_on: e.target.value })}
+          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+        />
+      </div>
+      <input
+        value={draft.notes}
+        onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+        placeholder={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
+        className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+      />
+      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={!draft.city.trim() || busy}
+          onClick={() => void onSubmit()}
+          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+        >
+          {busy ? "Saving…" : submitLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

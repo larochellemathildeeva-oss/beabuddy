@@ -8,6 +8,9 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
+import { TimelineEntryForm } from "@/components/TimelineEntryForm";
+import { TripTodos } from "@/components/TripTodos";
+import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 
@@ -95,6 +98,9 @@ function TripsPage() {
     end_date: "",
     dates_status: "tentative" as DatesStatus,
   });
+  // A trip should not need a name before Béa will keep anything — "Lisbon,
+  // sometime in March" is a trip. The city and dates suggest one.
+  const suggestedName = suggestedTripTitle(form.city, form.start_date);
   const [withBudget, setWithBudget] = useState(false);
   const packing = usePacking(null);
   const [packTemplateId, setPackTemplateId] = useState("");
@@ -148,9 +154,16 @@ function TripsPage() {
                 <input
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Trip name"
+                  placeholder={suggestedName || "Trip name"}
+                  aria-label="Trip name"
                   className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
                 />
+                {!form.title.trim() && suggestedName && (
+                  <p className="px-1 text-[11px] text-muted-foreground">
+                    No name needed — Béa will file this as “{suggestedName}”. Type over it whenever
+                    you like.
+                  </p>
+                )}
                 <PlaceSearchInput
                   value={form.city}
                   onChange={(v) => setForm({ ...form, city: v })}
@@ -212,13 +225,17 @@ function TripsPage() {
                 <p className="px-1 text-[11px] text-muted-foreground">{tripStillEditableNote()}</p>
                 <button
                   disabled={
-                    !form.title.trim() ||
+                    (!form.title.trim() && !suggestedName) ||
                     !!(form.start_date && form.end_date && form.end_date < form.start_date)
                   }
                   onClick={async () => {
                     setError("");
                     try {
-                      const id = await t.createTrip({ ...form, budget_enabled: withBudget });
+                      const id = await t.createTrip({
+                        ...form,
+                        title: form.title.trim() || suggestedName,
+                        budget_enabled: withBudget,
+                      });
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
                       openTrip(id);
@@ -387,14 +404,8 @@ function LiveTripCard({
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [timelineByDay, setTimelineByDay] = useState(true);
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
-  const [timelineDraft, setTimelineDraft] = useState({
-    kind: "activity",
-    day_date: "",
-    time_label: "",
-    title: "",
-    detail: "",
-  });
-  const [timelineError, setTimelineError] = useState("");
+  /** Day the add form should land on, set by the per-day "Add here" buttons. */
+  const [addDay, setAddDay] = useState("");
   const [tripForm, setTripForm] = useState({
     title: trip.title,
     city: formatTripLocation(trip.city, trip.country),
@@ -494,6 +505,15 @@ function LiveTripCard({
 
           <TripStops tripId={trip.id} uid={me.id} />
 
+          <TripTodos
+            tripId={trip.id}
+            uid={me.id}
+            international={cities.countries.length > 1 || Boolean(trip.country)}
+            hasLodging={board.items.some((item) => item.kind === "lodging")}
+            hasFlights={board.items.some((item) => item.kind === "transport")}
+            tripStart={trip.start_date}
+          />
+
           <PackingLists
             tripId={trip.id}
             label="Packing list for this trip"
@@ -531,14 +551,7 @@ function LiveTripCard({
                 <button
                   type="button"
                   onClick={() => {
-                    setTimelineDraft({
-                      kind: "activity",
-                      day_date: "",
-                      time_label: "",
-                      title: "",
-                      detail: "",
-                    });
-                    setTimelineError("");
+                    setAddDay("");
                     setTimelineOpen(true);
                     setAddingTimeline(!addingTimeline);
                   }}
@@ -603,30 +616,45 @@ function LiveTripCard({
                           key={group.key || "undated"}
                           className="rounded-xl border border-border/60"
                         >
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCollapsedDays((prev) => ({
-                                ...prev,
-                                [group.key]: !prev[group.key],
-                              }))
-                            }
-                            aria-expanded={dayOpen}
-                            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
-                          >
-                            <span className="text-[12px] font-semibold">
-                              {group.label}
-                              <span className="ml-2 font-normal text-muted-foreground">
-                                {group.items.length}
+                          <div className="flex items-center gap-1 pr-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCollapsedDays((prev) => ({
+                                  ...prev,
+                                  [group.key]: !prev[group.key],
+                                }))
+                              }
+                              aria-expanded={dayOpen}
+                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2 text-left"
+                            >
+                              <span className="text-[12px] font-semibold">
+                                {group.label}
+                                <span className="ml-2 font-normal text-muted-foreground">
+                                  {group.items.length}
+                                </span>
                               </span>
-                            </span>
-                            <ChevronDown
-                              className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
-                                dayOpen ? "" : "-rotate-90"
-                              }`}
-                              aria-hidden
-                            />
-                          </button>
+                              <ChevronDown
+                                className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
+                                  dayOpen ? "" : "-rotate-90"
+                                }`}
+                                aria-hidden
+                              />
+                            </button>
+                            {group.key && (
+                              <button
+                                type="button"
+                                aria-label={`Add something to ${group.label}`}
+                                onClick={() => {
+                                  setAddDay(group.key);
+                                  setAddingTimeline(true);
+                                }}
+                                className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] font-semibold"
+                              >
+                                + Add
+                              </button>
+                            )}
+                          </div>
                           {dayOpen && (
                             <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden border-l border-border py-3 pl-4">
                               {group.items.map((item) => (
@@ -663,99 +691,17 @@ function LiveTripCard({
                 )}
 
                 {addingTimeline && (
-                  <div className="space-y-2 rounded-xl border border-border p-3">
-                    <div className="flex flex-wrap gap-1.5">
-                      {[
-                        ["activity", "Activity"],
-                        ["meal", "Meal"],
-                        ["transport", "Transport"],
-                        ["lodging", "Lodging"],
-                        ["note", "Note"],
-                      ].map(([v, label]) => (
-                        <button
-                          key={v}
-                          type="button"
-                          onClick={() => setTimelineDraft({ ...timelineDraft, kind: v as string })}
-                          className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                            timelineDraft.kind === v
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      value={timelineDraft.title}
-                      onChange={(e) =>
-                        setTimelineDraft({ ...timelineDraft, title: e.target.value })
-                      }
-                      placeholder="What's happening?"
-                      className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="date"
-                        aria-label="Day"
-                        value={timelineDraft.day_date}
-                        onChange={(e) =>
-                          setTimelineDraft({ ...timelineDraft, day_date: e.target.value })
-                        }
-                        className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                      />
-                      <input
-                        value={timelineDraft.time_label}
-                        onChange={(e) =>
-                          setTimelineDraft({ ...timelineDraft, time_label: e.target.value })
-                        }
-                        placeholder="Time (e.g. 14:00)"
-                        className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                      />
-                    </div>
-                    <input
-                      value={timelineDraft.detail}
-                      onChange={(e) =>
-                        setTimelineDraft({ ...timelineDraft, detail: e.target.value })
-                      }
-                      placeholder="Detail (optional)"
-                      className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-                    />
-                    {timelineError && (
-                      <p className="text-[11px] text-destructive">{timelineError}</p>
-                    )}
-                    <button
-                      type="button"
-                      disabled={!timelineDraft.title.trim()}
-                      onClick={async () => {
-                        setTimelineError("");
-                        try {
-                          await board.addItem({
-                            kind: timelineDraft.kind,
-                            title: timelineDraft.title.trim(),
-                            day_date: timelineDraft.day_date,
-                            time_label: timelineDraft.time_label,
-                            detail: timelineDraft.detail,
-                          });
-                          setTimelineDraft({
-                            kind: "activity",
-                            day_date: "",
-                            time_label: "",
-                            title: "",
-                            detail: "",
-                          });
-                          setAddingTimeline(false);
-                        } catch (e) {
-                          setTimelineError(
-                            e instanceof Error ? e.message : "Couldn't add that entry",
-                          );
-                        }
-                      }}
-                      className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-                    >
-                      Add to timeline
-                    </button>
-                  </div>
+                  <TimelineEntryForm
+                    tripStart={trip.start_date}
+                    tripEnd={trip.end_date}
+                    {...(addDay ? { openDay: addDay } : {})}
+                    {...(directionArea ? { near: directionArea } : {})}
+                    onAdd={board.addItem}
+                    onDone={() => {
+                      setAddingTimeline(false);
+                      setAddDay("");
+                    }}
+                  />
                 )}
               </div>
             )}

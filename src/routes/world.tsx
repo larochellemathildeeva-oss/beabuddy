@@ -220,7 +220,7 @@ function WorldPage() {
           )}
         </div>
 
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground" aria-live="polite">
           Showing {visible.length} of {allPins.length} pins.
         </p>
 
@@ -260,6 +260,49 @@ function WorldPage() {
             }}
           />
         </div>
+
+        {visible.length > 0 && (
+          <section aria-label="Your pins">
+            <p className="mb-1.5 text-[11px] text-muted-foreground">
+              Or pick one from the list — the globe spins to it. Handy when a pin is round the
+              back.
+            </p>
+            <ul className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border p-1.5">
+              {visible.map((pin) => {
+                const active = selected?.id === pin.id;
+                return (
+                  <li key={pin.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(pin)}
+                      aria-current={active ? "true" : undefined}
+                      className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left ${
+                        active ? "bg-elevated" : ""
+                      }`}
+                    >
+                      <span
+                        className={`size-2 shrink-0 rounded-full ${
+                          pinColorClass[pin.type] ?? pinColorClass.reco
+                        }`}
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">{pin.name}</span>
+                        <span className="block truncate text-[11px] text-muted-foreground">
+                          {[pin.city, pin.country].filter(Boolean).join(", ") ||
+                            "Somewhere on the map"}
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        {pinLabel[pin.type] ?? pinLabel.reco}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
 
         {selected ? (
           <section className="rise card-soft p-4">

@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { RotateCcw } from "lucide-react";
 import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
@@ -84,6 +85,43 @@ const ZOOM_MAX = 2.6;
 
 /** Pointer travel (px) past which a pointerup is a rotate, not a country/pin click. */
 const DRAG_SLOP = 6;
+
+/** Degrees per arrow-key press — the keyboard equivalent of a small drag. */
+const KEY_STEP = 12;
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * Pin type is encoded by shape as well as colour — colour alone is unreadable
+ * for the ~8% of men with a colour-vision deficiency, and these four hues are
+ * blue / green / amber / purple.
+ */
+function pinTypeWord(type: Pin["type"]): string {
+  if (type === "visited") return "visited";
+  if (type === "nexttime") return "next time";
+  if (type === "wishlist") return "wishlist";
+  return "recommendation";
+}
+
+function pinShape(type: Pin["type"]): { d: string; label: string } {
+  switch (type) {
+    case "visited":
+      // Filled disc.
+      return { d: "M0,-4.2 A4.2,4.2 0 1,1 0,4.2 A4.2,4.2 0 1,1 0,-4.2 Z", label: "circle" };
+    case "nexttime":
+      // Diamond.
+      return { d: "M0,-5 L5,0 L0,5 L-5,0 Z", label: "diamond" };
+    case "wishlist":
+      // Triangle.
+      return { d: "M0,-5 L4.6,3.4 L-4.6,3.4 Z", label: "triangle" };
+    default:
+      // Square, for recommendations.
+      return { d: "M-3.8,-3.8 L3.8,-3.8 L3.8,3.8 L-3.8,3.8 Z", label: "square" };
+  }
+}
 
 type ActivePointer = { x: number; y: number };
 
@@ -254,6 +292,12 @@ export function Globe({
 
   const startInertia = () => {
     stopInertia();
+    // A globe that keeps spinning after release is exactly the kind of motion
+    // people turn off.
+    if (prefersReducedMotion()) {
+      velocity.current = [0, 0];
+      return;
+    }
     const tick = () => {
       const [vx, vy] = velocity.current;
       if (Math.hypot(vx, vy) < 0.08) {
@@ -282,6 +326,28 @@ export function Globe({
     }
   };
 
+  /** Bring a pin into view — the far side of a globe is not a place to hunt. */
+  const centreOn = (lon: number, lat: number) => {
+    const next: [number, number] = [-lon, -Math.max(-85, Math.min(85, lat))];
+    stopInertia();
+    velocity.current = [0, 0];
+    live.current = next;
+    setRotation(next);
+  };
+
+  // Selecting a pin anywhere (the list below, a country tap, a search) spins the
+  // globe to it rather than leaving it hidden round the back.
+  const selectedPin = pins.find((p) => p.id === selectedId);
+  const selectedLon = selectedPin?.lon;
+  const selectedLat = selectedPin?.lat;
+  useEffect(() => {
+    if (selectedLon == null || selectedLat == null) return;
+    if (clipTest(selectedLon, selectedLat)) return;
+    centreOn(selectedLon, selectedLat);
+    // clipTest changes on every rotation; re-running on it would fight the drag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLon, selectedLat]);
+
   const trySelectPin = (pin: Pin) => {
     if (gestureConsumed.current || moved.current > DRAG_SLOP) return;
     onSelect?.(pin);
@@ -296,7 +362,26 @@ export function Globe({
     <div className={`select-none ${className ?? ""}`}>
       <div
         ref={frameRef}
-        className="relative touch-none overflow-hidden rounded-3xl border border-border bg-elevated"
+        tabIndex={0}
+        role="group"
+        aria-label="Interactive globe. Arrow keys rotate, plus and minus zoom, Home resets the view."
+        onKeyDown={(e) => {
+          const step = e.shiftKey ? KEY_STEP * 2 : KEY_STEP;
+          if (e.key === "ArrowLeft") applyDelta(-step, 0);
+          else if (e.key === "ArrowRight") applyDelta(step, 0);
+          else if (e.key === "ArrowUp") applyDelta(0, step);
+          else if (e.key === "ArrowDown") applyDelta(0, -step);
+          else if (e.key === "+" || e.key === "=") applyZoom(liveZoom.current + 0.2);
+          else if (e.key === "-" || e.key === "_") applyZoom(liveZoom.current - 0.2);
+          else if (e.key === "Home") {
+            live.current = [-10, -18];
+            setRotation([-10, -18]);
+            applyZoom(1);
+          } else return;
+          e.preventDefault();
+          stopInertia();
+        }}
+        className="relative touch-none overflow-hidden rounded-3xl border border-border bg-elevated outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
         onPointerDown={(e) => {
           // Zoom controls are buttons inside the frame — don't steal their gesture.
           if ((e.target as Element | null)?.closest?.("button")) return;
@@ -362,6 +447,14 @@ export function Globe({
       >
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
+          role="img"
+          aria-label={
+            pins.length === 0
+              ? "A globe with no pins on it yet."
+              : `A globe showing ${pins.length} pin${pins.length === 1 ? "" : "s"} across ${
+                  new Set(pins.map((p) => p.country).filter(Boolean)).size
+                } countries. Every pin is also listed below the globe.`
+          }
           className="h-[min(52vw,420px)] w-full cursor-grab active:cursor-grabbing md:h-[480px]"
         >
           <defs>
@@ -399,31 +492,38 @@ export function Globe({
               />
             ) : null,
           )}
-          {projected.map(({ pin, x, y }) => (
-            <g key={pin.id} transform={`translate(${x} ${y})`}>
-              <g
-                className="pin-pop cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  trySelectPin(pin);
-                }}
-              >
-                {/* Invisible hit target — fingers rarely land on the 4px dot. */}
-                <circle r={16} fill="transparent" />
-                <circle
-                  r={selectedId === pin.id ? 11 : 8}
-                  fill={PIN_FILL[pin.type] ?? "var(--reco)"}
-                  opacity={0.28}
-                />
-                <circle
-                  r={4.2}
-                  fill={PIN_FILL[pin.type] ?? "var(--reco)"}
-                  stroke="var(--card)"
-                  strokeWidth={1.2}
-                />
+          {projected.map(({ pin, x, y }) => {
+            const shape = pinShape(pin.type);
+            return (
+              <g key={pin.id} transform={`translate(${x} ${y})`}>
+                <g
+                  className="pin-pop cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    trySelectPin(pin);
+                  }}
+                >
+                  <title>
+                    {`${pin.name}${pin.city ? `, ${pin.city}` : ""} — ${pinTypeWord(pin.type)} (${shape.label})`}
+                  </title>
+                  {/* Invisible hit target — fingers rarely land on the 4px dot. */}
+                  <circle r={16} fill="transparent" />
+                  <circle
+                    r={selectedId === pin.id ? 11 : 8}
+                    fill={PIN_FILL[pin.type] ?? "var(--reco)"}
+                    opacity={0.28}
+                  />
+                  {/* Shape carries the type as well as the colour. */}
+                  <path
+                    d={shape.d}
+                    fill={PIN_FILL[pin.type] ?? "var(--reco)"}
+                    stroke="var(--card)"
+                    strokeWidth={1.2}
+                  />
+                </g>
               </g>
-            </g>
-          ))}
+            );
+          })}
           {cityLabels.map(({ pin, x, y }) => (
             <text
               key={`city-${pin.city}-${pin.id}`}
@@ -443,7 +543,7 @@ export function Globe({
           <button
             type="button"
             aria-label="Zoom in"
-            className="px-2.5 py-1.5 text-sm text-foreground"
+            className="grid size-11 place-items-center text-base text-foreground"
             onClick={() => applyZoom(liveZoom.current + 0.2)}
           >
             +
@@ -452,15 +552,30 @@ export function Globe({
           <button
             type="button"
             aria-label="Zoom out"
-            className="px-2.5 py-1.5 text-sm text-foreground"
+            className="grid size-11 place-items-center text-base text-foreground"
             onClick={() => applyZoom(liveZoom.current - 0.2)}
           >
             −
           </button>
+          <span className="h-px bg-border" />
+          <button
+            type="button"
+            aria-label="Reset the view"
+            className="grid size-11 place-items-center text-foreground"
+            onClick={() => {
+              stopInertia();
+              velocity.current = [0, 0];
+              live.current = [-10, -18];
+              setRotation([-10, -18]);
+              applyZoom(1);
+            }}
+          >
+            <RotateCcw className="size-4" aria-hidden />
+          </button>
         </div>
 
-        <p className="absolute bottom-3 left-4 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-          Drag to rotate · pinch or scroll to zoom
+        <p className="absolute bottom-3 left-4 right-16 text-[11px] text-muted-foreground">
+          Drag or use the arrow keys to rotate · pinch, scroll or +/− to zoom
         </p>
       </div>
     </div>
