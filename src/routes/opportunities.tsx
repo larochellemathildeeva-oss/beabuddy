@@ -233,16 +233,18 @@ function OpportunitiesPage() {
                 {locState === "error" && (locError || "Location off")}
                 {locState === "idle" && "Not shared yet"}
               </p>
-              {locState === "error" && typeof window !== "undefined" && window.self !== window.top && (
-                <a
-                  href={window.location.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 inline-block text-[12px] font-semibold underline underline-offset-2"
-                >
-                  Open Béa in its own tab
-                </a>
-              )}
+              {locState === "error" &&
+                typeof window !== "undefined" &&
+                window.self !== window.top && (
+                  <a
+                    href={window.location.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-block text-[12px] font-semibold underline underline-offset-2"
+                  >
+                    Open Béa in its own tab
+                  </a>
+                )}
             </div>
             {consentReady && consent && (
               <button
@@ -260,8 +262,8 @@ function OpportunitiesPage() {
               <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
                 Your position is used only on this device, right now, to measure how far you are
                 from places you've saved. It is never sent to Béa's servers, never stored as a
-                history of where you've been, and never shared with anyone. You can stop sharing
-                at any time — see the privacy policy for the full picture.
+                history of where you've been, and never shared with anyone. You can stop sharing at
+                any time — see the privacy policy for the full picture.
               </p>
               <p className="label-caps mt-3">Share my location for…</p>
               <div className="mt-2 grid grid-cols-2 gap-2">
@@ -322,34 +324,38 @@ function OpportunitiesPage() {
           </div>
 
           <div data-guide="alert-settings">
-          <p className="label-caps mt-4">Alert distance</p>
-          <div className="mt-2 flex gap-2">
-            {radii.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRadius(r)}
-                className={`flex-1 rounded-xl border px-2 py-2 text-[12px] transition-colors ${
-                  radius === r ? "border-primary bg-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {formatDistance(r)}
-              </button>
-            ))}
-          </div>
-          <p className="label-caps mt-4">Alert frequency</p>
-          <div className="mt-2 flex gap-2">
-            {["Always", "Once a day", "Weekly"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setFrequency(f)}
-                className={`flex-1 rounded-xl border px-3 py-2 text-[12px] transition-colors ${
-                  frequency === f ? "border-primary bg-primary text-primary-foreground" : "border-border"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+            <p className="label-caps mt-4">Alert distance</p>
+            <div className="mt-2 flex gap-2">
+              {radii.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRadius(r)}
+                  className={`flex-1 rounded-xl border px-2 py-2 text-[12px] transition-colors ${
+                    radius === r
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  {formatDistance(r)}
+                </button>
+              ))}
+            </div>
+            <p className="label-caps mt-4">Alert frequency</p>
+            <div className="mt-2 flex gap-2">
+              {["Always", "Once a day", "Weekly"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFrequency(f)}
+                  className={`flex-1 rounded-xl border px-3 py-2 text-[12px] transition-colors ${
+                    frequency === f
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -391,59 +397,60 @@ function OpportunitiesPage() {
           )}
           {nearby.map(({ pin: p, d }) => {
             const close = Number.isFinite(d) && d < 800;
-            const metres =
-              d < 100 ? Math.round(d) : Math.round(d / 10) * 10;
+            const metres = d < 100 ? Math.round(d) : Math.round(d / 10) * 10;
             return (
-            <article key={p.id} className="rise card-soft p-4">
-              {close && (
-                <p className="mb-2 text-[12px] text-muted-foreground">
-                  You're {metres} m from something Past You cared about.
-                </p>
-              )}
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    {picking && (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(p.id)}
-                        onChange={() => togglePick(p.id)}
-                        aria-label={`Add ${p.name} to a day trip`}
-                        className="size-4 accent-[hsl(var(--primary))]"
-                      />
-                    )}
-                    <span className={`size-2 rounded-full ${pinColorClass[p.type]}`} />
-                    <span className="label-caps">{pinLabel[p.type]}</span>
-                  </div>
-                  <h2 className="mt-1 text-[21px] leading-tight">{p.name}</h2>
-                  <p className="text-[12px] text-muted-foreground">
-                    {scoreOpportunity(p, scorePrefs, { here }).reasons[0] ?? reason(p)}
-                    {p.dateAdded ? ` · added ${p.dateAdded.slice(0, 4)}` : ""}
-                    {p.category ? ` · ${p.category}` : ""}
+              <article key={p.id} className="rise card-soft p-4">
+                {close && (
+                  <p className="mb-2 text-[12px] text-muted-foreground">
+                    You're {metres} m from something Past You cared about.
                   </p>
+                )}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {picking && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(p.id)}
+                          onChange={() => togglePick(p.id)}
+                          aria-label={`Add ${p.name} to a day trip`}
+                          className="size-4"
+                        />
+                      )}
+                      <span className={`size-2 rounded-full ${pinColorClass[p.type]}`} />
+                      <span className="label-caps">{pinLabel[p.type]}</span>
+                    </div>
+                    <h2 className="mt-1 text-[21px] leading-tight">{p.name}</h2>
+                    <p className="text-[12px] text-muted-foreground">
+                      {scoreOpportunity(p, scorePrefs, { here }).reasons[0] ?? reason(p)}
+                      {p.dateAdded ? ` · added ${p.dateAdded.slice(0, 4)}` : ""}
+                      {p.category ? ` · ${p.category}` : ""}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] font-semibold">
+                    {formatDistance(d)}
+                  </span>
                 </div>
-                <span className="shrink-0 rounded-full border border-border bg-elevated px-2.5 py-1 text-[11px] font-semibold">
-                  {formatDistance(d)}
-                </span>
-              </div>
-              {p.notes && <p className="mt-3 font-display text-[15px] leading-snug">“{p.notes}”</p>}
-              <div className="mt-3 flex gap-2">
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-primary-foreground"
-                >
-                  Go now
-                </a>
-                <button
-                  onClick={() => setSnoozed((s) => [...s, p.id])}
-                  className="rounded-xl border border-border px-4 py-2.5 text-[13px]"
-                >
-                  Snooze
-                </button>
-              </div>
-            </article>
+                {p.notes && (
+                  <p className="mt-3 font-display text-[15px] leading-snug">“{p.notes}”</p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-primary-foreground"
+                  >
+                    Go now
+                  </a>
+                  <button
+                    onClick={() => setSnoozed((s) => [...s, p.id])}
+                    className="rounded-xl border border-border px-4 py-2.5 text-[13px]"
+                  >
+                    Snooze
+                  </button>
+                </div>
+              </article>
             );
           })}
 
@@ -500,7 +507,6 @@ function OpportunitiesPage() {
           )}
         </section>
       </div>
-
     </AppShell>
   );
 }

@@ -157,7 +157,7 @@ export function TripTodos({
                       checked={todo.done}
                       aria-label={todo.done ? `Undo ${todo.title}` : `Mark ${todo.title} done`}
                       onChange={(e) => void t.toggleTodo(todo.id, e.target.checked)}
-                      className="mt-0.5 size-5 shrink-0 accent-[hsl(var(--primary))]"
+                      className="mt-0.5 size-5 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                       <p

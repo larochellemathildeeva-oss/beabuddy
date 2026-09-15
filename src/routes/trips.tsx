@@ -223,7 +223,7 @@ function TripsPage() {
                     type="checkbox"
                     checked={withBudget}
                     onChange={(e) => setWithBudget(e.target.checked)}
-                    className="size-5 accent-[hsl(var(--primary))]"
+                    className="size-5"
                   />
                   Track a budget for this trip
                 </label>
@@ -1153,7 +1153,7 @@ function LiveTripCard({
                       type="checkbox"
                       checked={trip.budget_enabled}
                       onChange={(e) => void onUpdate({ budget_enabled: e.target.checked })}
-                      className="size-5 accent-[hsl(var(--primary))]"
+                      className="size-5"
                     />
                     Track a budget for this trip
                   </label>
