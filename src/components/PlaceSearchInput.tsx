@@ -1,6 +1,6 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
-import { Link2, Search } from "lucide-react";
+import { Link2, Plus, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { parsePlaceLink, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
@@ -17,6 +17,7 @@ export function PlaceSearchInput({
   near,
   /** Off for fields where a lookup on every pause would be noise. */
   typeAhead = true,
+  quickAdd,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -24,6 +25,13 @@ export function PlaceSearchInput({
   placeholder?: string;
   near?: string;
   typeAhead?: boolean;
+  /**
+   * A second action on each suggestion: take this one straight away, rather
+   * than filling the form and making the user confirm. Tapping the row still
+   * fills the form for anyone who wants to set things first.
+   */
+  quickAdd?:
+    { label: string; busyLabel?: string; onAdd: (place: ParsedPlace) => Promise<void> } | undefined;
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
@@ -32,6 +40,7 @@ export function PlaceSearchInput({
   const [err, setErr] = useState("");
   /** Bumped on pick/clear so type-ahead does not immediately re-open. */
   const settled = useRef("");
+  const [addingIndex, setAddingIndex] = useState(-1);
 
   const run = async () => {
     const q = value.trim();
@@ -150,17 +159,44 @@ export function PlaceSearchInput({
           {hits.slice(0, 5).map((h, i) => {
             const line = placeSuggestionLines(h);
             return (
-              <li key={`${h.name}-${i}`}>
+              <li key={`${h.name}-${i}`} className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => choose(h)}
-                  className="w-full rounded-lg px-2 py-1.5 text-left"
+                  className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
                 >
-                  <p className="text-[13px] font-medium">{line.title}</p>
+                  <p className="truncate text-[13px] font-medium">{line.title}</p>
                   {line.subtitle ? (
                     <p className="truncate text-[11px] text-muted-foreground">{line.subtitle}</p>
                   ) : null}
                 </button>
+                {quickAdd && (
+                  <button
+                    type="button"
+                    disabled={addingIndex >= 0}
+                    aria-label={`${quickAdd.label}: ${line.title}`}
+                    onClick={() => {
+                      setAddingIndex(i);
+                      void quickAdd
+                        .onAdd(h)
+                        .then(() => {
+                          settled.current = h.name;
+                          setHits([]);
+                        })
+                        .finally(() => setAddingIndex(-1));
+                    }}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50"
+                  >
+                    {addingIndex === i ? (
+                      (quickAdd.busyLabel ?? "Adding…")
+                    ) : (
+                      <>
+                        <Plus className="size-3.5" aria-hidden />
+                        {quickAdd.label}
+                      </>
+                    )}
+                  </button>
+                )}
               </li>
             );
           })}

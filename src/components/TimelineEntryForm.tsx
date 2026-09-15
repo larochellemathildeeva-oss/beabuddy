@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bookmark, CalendarDays, Clock, MapPin, Tag, StickyNote, X } from "lucide-react";
+import { Bookmark, CalendarDays, Check, Clock, MapPin, Tag, StickyNote, X } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
   dayChipLabel,
@@ -14,7 +14,7 @@ import {
 import type { ParsedPlace } from "@/lib/places.functions";
 import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
-import { toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
+import { capturedFromParsedPlace, toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
 
 export type NewTimelineEntry = {
   kind: string;
@@ -67,6 +67,7 @@ export function TimelineEntryForm({
   openDay,
   near,
   onAdd,
+  onUpdateEntry,
   onDone,
   existing = [],
 }: {
@@ -76,7 +77,15 @@ export function TimelineEntryForm({
   openDay?: string | undefined;
   /** City, country — biases place search towards where the trip is. */
   near?: string | undefined;
-  onAdd: (entry: NewTimelineEntry) => Promise<void>;
+  /** Returns the new row's id, so the form can offer to schedule it. */
+  onAdd: (entry: NewTimelineEntry) => Promise<string | undefined | void>;
+  /** Set a day or time on something already added. */
+  onUpdateEntry?:
+    | ((
+        id: string,
+        patch: { day_date?: string | null; time_label?: string | null },
+      ) => Promise<void>)
+    | undefined;
   onDone: () => void;
   /** Existing rows, so a saved place is not offered twice. */
   existing?: { title: string; address?: string | null; lat?: number | null; lon?: number | null }[];
@@ -94,6 +103,9 @@ export function TimelineEntryForm({
   const [error, setError] = useState("");
   const [added, setAdded] = useState(0);
   const [panel, setPanel] = useState<Panel>(null);
+  /** The entry just added, while the offer to schedule it is still up. */
+  const [justAdded, setJustAdded] = useState<{ id: string; title: string } | null>(null);
+  const [scheduling, setScheduling] = useState<"day" | "time" | null>(null);
 
   // Following the user to another day should move the form with them, but only
   // while they have not chosen a day themselves.
@@ -143,22 +155,38 @@ export function TimelineEntryForm({
     setError("");
   };
 
-  /** Put a saved place on the timeline with the day and time already set here. */
-  const addSaved = async (saved: CapturedPlace) => {
+  /** Add a captured place now, and remember it so a day or time can follow. */
+  const addCaptured = async (captured: CapturedPlace, label: string) => {
     setError("");
     try {
-      await onAdd(
-        toTimelineItem(saved, {
+      const id = await onAdd(
+        toTimelineItem(captured, {
           ...(kindTouched ? { kind } : {}),
           ...(day ? { day_date: day } : {}),
           ...(timeLabel ? { time_label: timeLabel } : {}),
         }),
       );
       setAdded((n) => n + 1);
+      setPanel(null);
+      setScheduling(null);
+      if (typeof id === "string" && onUpdateEntry) setJustAdded({ id, title: label });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that one");
     }
   };
+
+  /** Look something up and take it in one tap, rather than filling the form. */
+  const quickAddPlace = async (p: ParsedPlace) => {
+    const captured = capturedFromParsedPlace(p);
+    await addCaptured(captured, p.name);
+    // Show the kind that was actually saved, so the chip is not lying about
+    // the café it just filed as a meal.
+    if (!kindTouched) setKind(timelineKindForPlace(captured));
+    setTitle("");
+    setPlace(EMPTY_PLACE);
+  };
+
+  const addSaved = (saved: CapturedPlace) => addCaptured(saved, saved.name);
 
   const save = async () => {
     const name = title.trim();
@@ -166,7 +194,7 @@ export function TimelineEntryForm({
     setBusy(true);
     setError("");
     try {
-      await onAdd({
+      const id = await onAdd({
         kind,
         title: name,
         ...(day ? { day_date: day } : {}),
@@ -182,11 +210,38 @@ export function TimelineEntryForm({
       setDetail("");
       setPlace(EMPTY_PLACE);
       setPanel(null);
+      setScheduling(null);
       setAdded((n) => n + 1);
+      if (typeof id === "string" && onUpdateEntry) setJustAdded({ id, title: name });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that entry");
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * Set a day or time on the entry just added. It also becomes the form's
+   * default, because the next thing you add is usually on the same day.
+   */
+  const scheduleJustAdded = async (patch: {
+    day_date?: string | null;
+    time_label?: string | null;
+  }) => {
+    if (!justAdded || !onUpdateEntry) return;
+    try {
+      await onUpdateEntry(justAdded.id, patch);
+      if (patch.day_date !== undefined) {
+        setDayTouched(true);
+        setDay(patch.day_date ?? "");
+      }
+      if (patch.time_label !== undefined) {
+        setTime(patch.time_label ?? "");
+        setFreeTime("");
+      }
+      setScheduling(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't set that");
     }
   };
 
@@ -209,6 +264,9 @@ export function TimelineEntryForm({
         onPick={pickPlace}
         placeholder="What's happening?"
         {...(near ? { near } : {})}
+        {...(onUpdateEntry
+          ? { quickAdd: { label: "Add", busyLabel: "Adding…", onAdd: quickAddPlace } }
+          : {})}
       />
 
       {placeAddress && (
@@ -456,7 +514,127 @@ export function TimelineEntryForm({
       )}
 
       {error && <p className="text-[11px] text-destructive">{error}</p>}
-      {added > 0 && !error && (
+
+      {/* Added first, scheduled after — the day and time are offered once the
+          thing exists, rather than asked for before it does. */}
+      {justAdded && !error && (
+        <div className="space-y-2 rounded-xl border border-primary/40 bg-elevated p-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <p aria-live="polite" className="min-w-0 text-[12px]">
+              <Check className="mr-1 inline size-3.5 text-primary" aria-hidden />
+              Added <span className="font-medium">{justAdded.title}</span>
+              {day || timeLabel ? (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {[dayChipLabel(day, days) !== "Day" ? dayChipLabel(day, days) : "", timeLabel]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              ) : null}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setJustAdded(null);
+                setScheduling(null);
+              }}
+              aria-label="Dismiss"
+              className="grid size-6 shrink-0 place-items-center rounded-full border border-border"
+            >
+              <X className="size-3" />
+            </button>
+          </div>
+
+          {scheduling === null && (
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => setScheduling("day")}
+                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+              >
+                <CalendarDays className="size-3.5" aria-hidden />
+                {day ? `Change day (${dayChipLabel(day, days)})` : "Set a day"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setScheduling("time")}
+                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+              >
+                <Clock className="size-3.5" aria-hidden />
+                {timeLabel ? `Change time (${timeLabel})` : "Set a time"}
+              </button>
+            </div>
+          )}
+
+          {scheduling === "day" && (
+            <div className="flex flex-wrap gap-1.5">
+              {days.map((value, index) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => void scheduleJustAdded({ day_date: value })}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                    day === value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  Day {index + 1}
+                </button>
+              ))}
+              {days.length === 0 && (
+                <input
+                  type="date"
+                  aria-label="Day for the entry just added"
+                  onChange={(e) => void scheduleJustAdded({ day_date: e.target.value })}
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px]"
+                />
+              )}
+              <button
+                type="button"
+                onClick={() => void scheduleJustAdded({ day_date: null })}
+                className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+              >
+                No day
+              </button>
+            </div>
+          )}
+
+          {scheduling === "time" && (
+            <div className="flex flex-wrap gap-1.5">
+              {TIME_CHIPS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => void scheduleJustAdded({ time_label: preset.value })}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                    time === preset.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border"
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+              <input
+                type="time"
+                aria-label="Time for the entry just added"
+                onChange={(e) => void scheduleJustAdded({ time_label: e.target.value || null })}
+                className="rounded-xl border border-border bg-card px-2 py-1 text-[12px]"
+              />
+              <button
+                type="button"
+                onClick={() => void scheduleJustAdded({ time_label: null })}
+                className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+              >
+                No time
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {added > 0 && !justAdded && !error && (
         <p aria-live="polite" className="text-[11px] text-primary">
           {added === 1 ? "Added." : `${added} added.`} Keep going, or tap Done.
         </p>

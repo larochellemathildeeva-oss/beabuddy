@@ -489,22 +489,29 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       const id = tripIdRef.current;
       if (!id) throw new Error("Open a trip first");
       const authorId = await liveUserId(me.id);
-      const { error } = await supabase.from("itinerary_items").insert({
-        trip_id: id,
-        day_date: item.day_date || null,
-        time_label: item.time_label || null,
-        kind: item.kind,
-        title: item.title,
-        detail: item.detail || null,
-        address: item.address || null,
-        lat: item.lat ?? null,
-        lon: item.lon ?? null,
-        position: items.length,
-        created_by: authorId,
-        updated_by: authorId,
-      });
+      const { data, error } = await supabase
+        .from("itinerary_items")
+        .insert({
+          trip_id: id,
+          day_date: item.day_date || null,
+          time_label: item.time_label || null,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail || null,
+          address: item.address || null,
+          lat: item.lat ?? null,
+          lon: item.lon ?? null,
+          position: items.length,
+          created_by: authorId,
+          updated_by: authorId,
+        })
+        // The id comes back so the form can offer a day and a time for the
+        // thing that was just added, instead of asking for them up front.
+        .select("id")
+        .single();
       if (error) throw error;
       await load();
+      return data?.id as string | undefined;
     },
     [tripId, me.id, items.length, load],
   );

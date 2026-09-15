@@ -433,8 +433,8 @@ function LiveTripCard({
       label: item.title,
       remove: () => board.removeItem(item.id),
       // Comes back at the end of its day rather than its old position.
-      restore: () =>
-        board.addItem({
+      restore: async () => {
+        await board.addItem({
           kind: item.kind,
           title: item.title,
           ...(item.day_date ? { day_date: item.day_date } : {}),
@@ -443,7 +443,8 @@ function LiveTripCard({
           ...(item.address ? { address: item.address } : {}),
           ...(item.lat != null ? { lat: item.lat } : {}),
           ...(item.lon != null ? { lon: item.lon } : {}),
-        }),
+        });
+      },
     });
 
   const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
@@ -763,6 +764,7 @@ function LiveTripCard({
                       lon: item.lon,
                     }))}
                     onAdd={board.addItem}
+                    onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
                     onDone={() => {
                       setAddingTimeline(false);
                       setAddDay("");
