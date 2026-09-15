@@ -1,5 +1,6 @@
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
+import { Link2, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { parsePlaceLink, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
@@ -12,7 +13,7 @@ export function PlaceSearchInput({
   value,
   onChange,
   onPick,
-  placeholder = "Search a hotel, restaurant or landmark",
+  placeholder = "Search or type a place",
   near,
   /** Off for fields where a lookup on every pause would be noise. */
   typeAhead = true,
@@ -119,20 +120,28 @@ export function PlaceSearchInput({
             }
             if (e.key === "Escape") setHits([]);
           }}
-          rows={linkPaste ? 2 : 1}
+          rows={linkPaste ? 3 : 1}
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
           placeholder={placeholder}
-          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+          className="flex-1 resize-none rounded-xl border border-border bg-elevated px-3 py-2.5 text-[13px]"
         />
         <button
           type="button"
           onClick={() => void run()}
           disabled={busy || (!linkPaste && value.trim().length < 2)}
-          className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold disabled:opacity-50"
+          aria-label={linkPaste ? "Read this link" : "Find on the map"}
+          title={linkPaste ? "Read this link" : "Find on the map"}
+          className="grid size-[42px] shrink-0 place-items-center rounded-xl border border-border disabled:opacity-50"
         >
-          {busy ? "…" : linkPaste ? "Read link" : "Find on map"}
+          {busy ? (
+            <span className="text-[12px]">…</span>
+          ) : linkPaste ? (
+            <Link2 className="size-4" aria-hidden />
+          ) : (
+            <Search className="size-4" aria-hidden />
+          )}
         </button>
       </div>
       {err && <p className="text-[11px] text-muted-foreground">{err}</p>}

@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
-import { Bookmark, MapPin, X } from "lucide-react";
+import { Bookmark, CalendarDays, Clock, MapPin, Tag, StickyNote, X } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { formatDateRangeLabel } from "@/lib/trip-dates";
 import {
+  dayChipLabel,
   dayOutsideTripNote,
   defaultEntryDay,
+  detailChipLabel,
   normalizeTimeLabel,
+  timeChipLabel,
   TIME_CHIPS,
   tripDayOptions,
 } from "@/lib/timeline-entry";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
-import { addressLine, toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
+import { toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
 
 export type NewTimelineEntry = {
   kind: string;
@@ -33,6 +35,8 @@ const KINDS: [string, string][] = [
   ["note", "Note"],
 ];
 
+const kindLabel = (value: string) => KINDS.find(([v]) => v === value)?.[1] ?? "Activity";
+
 const EMPTY_PLACE = {
   address: "",
   city: "",
@@ -42,13 +46,20 @@ const EMPTY_PLACE = {
   note: "",
 };
 
+/** Only one optional control is open at a time. */
+type Panel = "kind" | "day" | "time" | "detail" | "saved" | null;
+
 /**
- * One add-to-timeline form.
+ * Add something to the timeline.
  *
- * It stays open after a save on purpose: nobody adds exactly one thing, and the
- * old form closed itself every time, so a day's five stops meant five reopenings
- * and five re-picks of the kind. The kind, day and time survive a save; only the
- * title, detail and place are cleared.
+ * Everything except the name is optional, so everything except the name is a
+ * chip: it reads as its own current value and opens only the control you
+ * tapped. Showing all of it at once meant seventeen things on screen to add
+ * one stop, which is what quick-add in Todoist, Google Calendar and Reminders
+ * all avoid by collapsing the rest behind a single row.
+ *
+ * The form stays open after a save — nobody adds exactly one thing — and the
+ * kind, day and time survive it. Only the name, note and place are cleared.
  */
 export function TimelineEntryForm({
   tripStart,
@@ -82,7 +93,7 @@ export function TimelineEntryForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [added, setAdded] = useState(0);
-  const [pickingSaved, setPickingSaved] = useState(false);
+  const [panel, setPanel] = useState<Panel>(null);
 
   // Following the user to another day should move the form with them, but only
   // while they have not chosen a day themselves.
@@ -95,6 +106,8 @@ export function TimelineEntryForm({
   const days = tripDayOptions(tripStart, tripEnd);
   const outside = dayOutsideTripNote(day, tripStart, tripEnd);
   const timeLabel = time || normalizeTimeLabel(freeTime);
+  const placeAddress = place.address || [place.city, place.country].filter(Boolean).join(", ");
+  const toggle = (next: Panel) => setPanel((cur) => (cur === next ? null : next));
 
   /**
    * One pick fills the lot: the name, the address, the city, the point on the
@@ -130,14 +143,12 @@ export function TimelineEntryForm({
     setError("");
   };
 
-  const placeAddress = place.address || [place.city, place.country].filter(Boolean).join(", ");
-
   /** Put a saved place on the timeline with the day and time already set here. */
-  const addSaved = async (place: CapturedPlace) => {
+  const addSaved = async (saved: CapturedPlace) => {
     setError("");
     try {
       await onAdd(
-        toTimelineItem(place, {
+        toTimelineItem(saved, {
           ...(kindTouched ? { kind } : {}),
           ...(day ? { day_date: day } : {}),
           ...(timeLabel ? { time_label: timeLabel } : {}),
@@ -165,11 +176,12 @@ export function TimelineEntryForm({
         ...(place.lat != null ? { lat: place.lat } : {}),
         ...(place.lon != null ? { lon: place.lon } : {}),
       });
-      // Keep the kind, day and time — the next entry is usually the same sort of
-      // thing on the same day. Clear only what is specific to this one.
+      // Keep the kind, day and time — the next entry is usually the same sort
+      // of thing on the same day. Clear only what is specific to this one.
       setTitle("");
       setDetail("");
       setPlace(EMPTY_PLACE);
+      setPanel(null);
       setAdded((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that entry");
@@ -178,70 +190,33 @@ export function TimelineEntryForm({
     }
   };
 
-  return (
-    <div className="space-y-2 rounded-xl border border-border p-3">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Entry type">
-        {KINDS.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={kind === value}
-            onClick={() => {
-              setKind(value);
-              setKindTouched(true);
-            }}
-            className={`rounded-full border px-3 py-1.5 text-[12px] ${
-              kind === value ? "border-primary bg-primary text-primary-foreground" : "border-border"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+  const chip = (active: boolean, set: boolean) =>
+    `flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[12px] ${
+      active
+        ? "border-primary bg-primary text-primary-foreground"
+        : set
+          ? "border-primary/50 text-foreground"
+          : "border-border text-muted-foreground"
+    }`;
 
-      {/* Search, so a hand-typed stop gets an address and coordinates too — without
-          them it is invisible to the map, to walking directions and to Optimize. */}
+  return (
+    <div className="space-y-2.5 rounded-xl border border-border p-3">
+      {/* The name is the only thing that is not optional, so it is the only
+          thing on screen by default. */}
       <PlaceSearchInput
         value={title}
-        onChange={(v) => setTitle(v)}
+        onChange={setTitle}
         onPick={pickPlace}
-        placeholder="What's happening? Search it, paste a link, or just type"
+        placeholder="What's happening?"
         {...(near ? { near } : {})}
       />
-      <p className="px-1 text-[11px] text-muted-foreground">
-        Type a name and pick it from the list — Béa fills in the address, the city, the point on the
-        map and what sort of stop it is. Plain text works fine too.
-      </p>
 
-      {!pickingSaved && (
-        <button
-          type="button"
-          onClick={() => setPickingSaved(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
-        >
-          <Bookmark className="size-3.5 text-primary" aria-hidden />
-          Or add one you already saved
-        </button>
-      )}
-      {pickingSaved && (
-        <SavedPlacePicker
-          {...(near ? { near } : {})}
-          alreadyHere={existing.map((row) => ({
-            name: row.title,
-            ...(row.lat != null ? { lat: row.lat } : {}),
-            ...(row.lon != null ? { lon: row.lon } : {}),
-          }))}
-          onPick={addSaved}
-          onClose={() => setPickingSaved(false)}
-        />
-      )}
-
-      {(place.address || place.lat != null) && (
+      {placeAddress && (
         <div className="flex items-start justify-between gap-2 rounded-xl border border-primary/40 bg-elevated px-3 py-2">
           <div className="min-w-0">
             <p className="min-w-0 break-words text-[12px]">
               <MapPin className="mr-1 inline size-3.5 text-primary" aria-hidden />
-              {place.address || [place.city, place.country].filter(Boolean).join(", ")}
+              {placeAddress}
             </p>
             {place.note && (
               <p aria-live="polite" className="mt-0.5 text-[11px] text-muted-foreground">
@@ -261,103 +236,229 @@ export function TimelineEntryForm({
         </div>
       )}
 
-      {days.length > 1 && (
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day">
-          {days.map((value, index) => (
+      {/* Everything optional lives here, showing its own value. */}
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Optional details">
+        <button
+          type="button"
+          aria-expanded={panel === "day"}
+          onClick={() => toggle("day")}
+          className={chip(panel === "day", Boolean(day))}
+        >
+          <CalendarDays className="size-3.5" aria-hidden />
+          {dayChipLabel(day, days)}
+        </button>
+        <button
+          type="button"
+          aria-expanded={panel === "time"}
+          onClick={() => toggle("time")}
+          className={chip(panel === "time", Boolean(timeLabel))}
+        >
+          <Clock className="size-3.5" aria-hidden />
+          {timeChipLabel(time, freeTime)}
+        </button>
+        <button
+          type="button"
+          aria-expanded={panel === "kind"}
+          onClick={() => toggle("kind")}
+          className={chip(panel === "kind", kindTouched)}
+        >
+          <Tag className="size-3.5" aria-hidden />
+          {kindLabel(kind)}
+        </button>
+        <button
+          type="button"
+          aria-expanded={panel === "detail"}
+          onClick={() => toggle("detail")}
+          className={chip(panel === "detail", Boolean(detail.trim()))}
+        >
+          <StickyNote className="size-3.5" aria-hidden />
+          {detailChipLabel(detail)}
+        </button>
+        <button
+          type="button"
+          aria-expanded={panel === "saved"}
+          onClick={() => toggle("saved")}
+          className={chip(panel === "saved", false)}
+        >
+          <Bookmark className="size-3.5" aria-hidden />
+          Saved
+        </button>
+      </div>
+
+      {panel === "kind" && (
+        <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 p-2">
+          {KINDS.map(([value, label]) => (
             <button
               key={value}
               type="button"
-              aria-pressed={day === value}
+              aria-pressed={kind === value}
               onClick={() => {
-                setDayTouched(true);
-                setDay(day === value ? "" : value);
+                setKind(value);
+                setKindTouched(true);
+                setPanel(null);
               }}
-              className={`rounded-full border px-2.5 py-1 text-[11px] ${
-                day === value
+              className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                kind === value
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border text-muted-foreground"
+                  : "border-border"
               }`}
             >
-              Day {index + 1}
+              {label}
             </button>
           ))}
         </div>
       )}
 
-      <div className="flex gap-2">
-        <input
-          type="date"
-          aria-label="Day"
-          value={day}
-          {...(tripStart ? { min: tripStart } : {})}
-          {...(tripEnd ? { max: tripEnd } : {})}
-          onChange={(e) => {
-            setDayTouched(true);
-            setDay(e.target.value);
-          }}
-          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-        />
-        <input
-          type="time"
-          aria-label="Time"
-          value={time}
-          onChange={(e) => {
-            setTime(e.target.value);
-            setFreeTime("");
-          }}
-          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-        />
-      </div>
-      {outside && <p className="px-1 text-[11px] text-muted-foreground">{outside}</p>}
-      {tripStart && !day && (
-        <p className="px-1 text-[11px] text-muted-foreground">
-          No day yet — it will sit in “Not scheduled”. Trip runs{" "}
-          {formatDateRangeLabel(tripStart, tripEnd ?? "")}.
-        </p>
+      {panel === "day" && (
+        <div className="space-y-2 rounded-xl border border-border/60 p-2">
+          {days.length > 1 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day of the trip">
+              {days.map((value, index) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={day === value}
+                  onClick={() => {
+                    setDayTouched(true);
+                    setDay(day === value ? "" : value);
+                    setPanel(null);
+                  }}
+                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                    day === value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  Day {index + 1}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="block text-[11px] text-muted-foreground">
+            Or a specific date
+            <input
+              type="date"
+              value={day}
+              {...(tripStart ? { min: tripStart } : {})}
+              {...(tripEnd ? { max: tripEnd } : {})}
+              onChange={(e) => {
+                setDayTouched(true);
+                setDay(e.target.value);
+              }}
+              className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+            />
+          </label>
+          {outside && <p className="text-[11px] text-muted-foreground">{outside}</p>}
+          {day && (
+            <button
+              type="button"
+              onClick={() => {
+                setDayTouched(true);
+                setDay("");
+                setPanel(null);
+              }}
+              className="text-[11px] text-muted-foreground underline"
+            >
+              No day yet
+            </button>
+          )}
+        </div>
       )}
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rough time of day">
-        {TIME_CHIPS.map((chip) => (
-          <button
-            key={chip.id}
-            type="button"
-            aria-pressed={time === chip.value}
-            onClick={() => {
-              setTime(time === chip.value ? "" : chip.value);
-              setFreeTime("");
-            }}
-            className={`rounded-full border px-3 py-1 text-[11px] ${
-              time === chip.value
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
-        {!time && (
-          <input
-            value={freeTime}
-            onChange={(e) => setFreeTime(e.target.value)}
-            onBlur={() => setFreeTime(normalizeTimeLabel(freeTime))}
-            placeholder="or “after check-in”"
-            aria-label="Time in your own words"
-            className="min-w-[9rem] flex-1 rounded-full border border-border bg-elevated px-3 py-1 text-[11px]"
-          />
-        )}
-      </div>
+      {panel === "time" && (
+        <div className="space-y-2 rounded-xl border border-border/60 p-2">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rough time of day">
+            {TIME_CHIPS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                aria-pressed={time === preset.value}
+                onClick={() => {
+                  setTime(time === preset.value ? "" : preset.value);
+                  setFreeTime("");
+                  setPanel(null);
+                }}
+                className={`rounded-full border px-3 py-1 text-[11px] ${
+                  time === preset.value
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <label className="block text-[11px] text-muted-foreground">
+            Or a clock time
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => {
+                setTime(e.target.value);
+                setFreeTime("");
+              }}
+              className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+            />
+          </label>
+          {!time && (
+            <label className="block text-[11px] text-muted-foreground">
+              Or in your own words
+              <input
+                value={freeTime}
+                onChange={(e) => setFreeTime(e.target.value)}
+                onBlur={() => setFreeTime(normalizeTimeLabel(freeTime))}
+                placeholder="after check-in"
+                className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+              />
+            </label>
+          )}
+          {timeLabel && (
+            <button
+              type="button"
+              onClick={() => {
+                setTime("");
+                setFreeTime("");
+                setPanel(null);
+              }}
+              className="text-[11px] text-muted-foreground underline"
+            >
+              No time
+            </button>
+          )}
+        </div>
+      )}
 
-      <input
-        value={detail}
-        onChange={(e) => setDetail(e.target.value)}
-        placeholder="Detail (optional)"
-        className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
-      />
+      {panel === "detail" && (
+        <input
+          value={detail}
+          autoFocus
+          onChange={(e) => setDetail(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setPanel(null);
+          }}
+          placeholder="Anything worth remembering"
+          aria-label="Note"
+          className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+        />
+      )}
+
+      {panel === "saved" && (
+        <SavedPlacePicker
+          {...(near ? { near } : {})}
+          alreadyHere={existing.map((row) => ({
+            name: row.title,
+            ...(row.lat != null ? { lat: row.lat } : {}),
+            ...(row.lon != null ? { lon: row.lon } : {}),
+          }))}
+          onPick={addSaved}
+          onClose={() => setPanel(null)}
+        />
+      )}
 
       {error && <p className="text-[11px] text-destructive">{error}</p>}
       {added > 0 && !error && (
         <p aria-live="polite" className="text-[11px] text-primary">
-          {added === 1 ? "Added." : `${added} added.`} The form is still here — keep going.
+          {added === 1 ? "Added." : `${added} added.`} Keep going, or tap Done.
         </p>
       )}
 

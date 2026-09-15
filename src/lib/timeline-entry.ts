@@ -143,3 +143,41 @@ export function suggestedTripTitle(city: string, startDate: string): string {
   if (place) return place;
   return "";
 }
+
+/**
+ * Chip labels for the compact add form.
+ *
+ * The form used to show every control at once — kind, day, time, time-of-day
+ * presets, free-text time, detail — which is seventeen things on screen before
+ * you have typed a word. Quick-add in Todoist, Google Calendar and Reminders
+ * all do the same thing instead: one field, then a row of chips that read as
+ * their current value and open only the control you tapped.
+ */
+
+/** "Day" when unset, else "Day 3" inside a dated trip, else the date itself. */
+export function dayChipLabel(day: string, tripDays: string[]): string {
+  if (!day) return "Day";
+  const index = tripDays.indexOf(day);
+  if (index >= 0) return `Day ${index + 1}`;
+  const parsed = parseLocalDate(day);
+  if (!parsed) return "Day";
+  return parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+/** "Time" when unset, else the clock time or the words someone typed. */
+export function timeChipLabel(time: string, freeTime: string): string {
+  if (time) {
+    const preset = TIME_CHIPS.find((chip) => chip.value === time);
+    return preset ? preset.label : time;
+  }
+  const typed = freeTime.trim();
+  if (!typed) return "Time";
+  return typed.length > 14 ? `${typed.slice(0, 13)}…` : typed;
+}
+
+/** "Note" when empty, else a short preview of it. */
+export function detailChipLabel(detail: string): string {
+  const text = detail.trim();
+  if (!text) return "Note";
+  return text.length > 16 ? `${text.slice(0, 15)}…` : text;
+}

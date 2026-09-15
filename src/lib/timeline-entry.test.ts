@@ -1,7 +1,10 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  dayChipLabel,
   dayOutsideTripNote,
+  detailChipLabel,
+  timeChipLabel,
   dayWithinTrip,
   defaultEntryDay,
   isClockTime,
@@ -126,4 +129,34 @@ test("suggestedTripTitle copes with half a form", () => {
   assert.equal(suggestedTripTitle("Lisbon", ""), "Lisbon");
   assert.equal(suggestedTripTitle("", "2026-03-14"), "");
   assert.equal(suggestedTripTitle("  ", ""), "");
+});
+
+test("dayChipLabel counts days inside the trip", () => {
+  const days = ["2026-04-01", "2026-04-02", "2026-04-03"];
+  assert.equal(dayChipLabel("2026-04-03", days), "Day 3");
+  assert.equal(dayChipLabel("", days), "Day");
+});
+
+test("dayChipLabel falls back to the date outside the trip", () => {
+  assert.equal(dayChipLabel("2026-05-20", ["2026-04-01"]), "May 20");
+  assert.equal(dayChipLabel("nonsense", []), "Day");
+});
+
+test("timeChipLabel prefers the preset's own word", () => {
+  assert.equal(timeChipLabel("09:00", ""), "Morning");
+  assert.equal(timeChipLabel("14:00", ""), "Afternoon");
+  assert.equal(timeChipLabel("16:45", ""), "16:45");
+});
+
+test("timeChipLabel shows what was typed, shortened", () => {
+  assert.equal(timeChipLabel("", ""), "Time");
+  assert.equal(timeChipLabel("", "after check-in"), "after check-in");
+  assert.equal(timeChipLabel("", "whenever we finally get going"), "whenever we f…");
+});
+
+test("detailChipLabel previews the note", () => {
+  assert.equal(detailChipLabel(""), "Note");
+  assert.equal(detailChipLabel("  "), "Note");
+  assert.equal(detailChipLabel("Book ahead"), "Book ahead");
+  assert.equal(detailChipLabel("Book ahead, they fill up fast"), "Book ahead, the…");
 });
