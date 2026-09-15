@@ -73,8 +73,8 @@ function Collapsible({
         className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
       >
         <span>
-          <span className="block text-[16.5px] font-medium">{title}</span>
-          {summary && <span className="block text-[13.5px] text-muted-foreground">{summary}</span>}
+          <span className="block text-[15px] font-medium">{title}</span>
+          {summary && <span className="block text-[13px] text-muted-foreground">{summary}</span>}
         </span>
         <ChevronDown
           className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
@@ -153,7 +153,7 @@ function ProfilePage() {
       <div className="space-y-4">
         {!loading && !user && (
           <div data-guide="profile-account" className="card-soft p-4">
-            <p className="font-display text-[21.5px] leading-snug">
+            <p className="font-display text-[19px] leading-snug">
               Sign in to keep all of this forever.
             </p>
             <p className="mt-1 text-[14px] text-muted-foreground">
@@ -162,7 +162,7 @@ function ProfilePage() {
             </p>
             <Link
               to="/auth"
-              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
+              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
             >
               Sign in or create an account
             </Link>
@@ -172,12 +172,12 @@ function ProfilePage() {
         {user && (
           <div data-guide="profile-account" className="card-soft space-y-3 p-4">
             <div className="flex items-center gap-4">
-              <div className="clay-gradient grid size-14 shrink-0 place-items-center rounded-full font-display text-[25px] text-primary-foreground">
+              <div className="clay-gradient grid size-14 shrink-0 place-items-center rounded-full font-display text-[22px] text-primary-foreground">
                 {signedInName[0]?.toUpperCase()}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-[16.5px] font-medium">{user.email}</p>
-                <p className="text-[13.5px] text-muted-foreground">
+                <p className="truncate text-[15px] font-medium">{user.email}</p>
+                <p className="text-[13px] text-muted-foreground">
                   {saved ? "Saved" : "Signed in — everything saves to your account"}
                 </p>
               </div>
@@ -185,7 +185,7 @@ function ProfilePage() {
             <div className="flex gap-2">
               <Link
                 to="/photos"
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
               >
                 Import photos
               </Link>
@@ -194,15 +194,15 @@ function ProfilePage() {
                   await supabase.auth.signOut();
                   navigate({ to: "/auth" });
                 }}
-                className="rounded-xl border border-border px-4 py-2.5 text-[15px]"
+                className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
               >
                 Sign out
               </button>
             </div>
             {!sampleCtaDismissed && (
               <div className="rounded-xl border border-border bg-elevated p-3">
-                <p className="text-[15px] font-semibold">Demo / sample data</p>
-                <p className="mt-1 text-[13.5px] text-muted-foreground">
+                <p className="text-[14.5px] font-semibold">Demo / sample data</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">
                   Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future
                   Me notes. Remove only deletes the sample rows — not places you added yourself.
                 </p>
@@ -222,7 +222,7 @@ function ProfilePage() {
                       );
                       if (result.ok) navigate({ to: "/world" });
                     }}
-                    className="flex-1 rounded-xl border border-border bg-card px-4 py-2.5 text-[15px] font-semibold disabled:opacity-60"
+                    className="flex-1 rounded-xl border border-border bg-card px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
                   >
                     {seeding ? "Working…" : "Load sample"}
                   </button>
@@ -241,12 +241,12 @@ function ProfilePage() {
                       }
                       setSeedMsg(result.message);
                     }}
-                    className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-60"
+                    className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
                   >
                     Remove sample
                   </button>
                 </div>
-                {seedMsg && <p className="mt-2 text-[13.5px] text-muted-foreground">{seedMsg}</p>}
+                {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
               </div>
             )}
           </div>
@@ -265,39 +265,39 @@ function ProfilePage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 onBlur={() => saveProfile({ display_name: displayName })}
                 placeholder="Your name"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
               />
               <input
                 value={homeCity}
                 onChange={(e) => setHomeCity(e.target.value)}
                 onBlur={() => saveProfile({ home_city: homeCity })}
                 placeholder="Home city"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
               />
             </div>
 
             <Link
               to="/preferences"
               data-guide="travel-preferences"
-              className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5"
+              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
             >
               <span>
-                <span className="block text-[15px] font-medium">Travel preferences</span>
-                <span className="block text-[13px] text-muted-foreground">
+                <span className="block text-[14.5px] font-medium">Travel preferences</span>
+                <span className="block text-[12.5px] text-muted-foreground">
                   Help Béa understand how you like to travel — style, pace, and tags she plans with.
                 </span>
               </span>
-              <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[15px] font-semibold">
+              <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold">
                 Open
               </span>
             </Link>
 
             <CustomizeHome variant="row" />
 
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5">
+            <div className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3">
               <div>
-                <p className="text-[15px] font-medium">{dark ? "Dark" : "Light"} mode</p>
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-[14.5px] font-medium">{dark ? "Dark" : "Light"} mode</p>
+                <p className="text-[12.5px] text-muted-foreground">
                   Warm cream by day, black and light grey by night.
                 </p>
               </div>
@@ -322,11 +322,11 @@ function ProfilePage() {
 
             <div
               data-guide="replay-tour"
-              className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5"
+              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
             >
               <div>
-                <p className="text-[15px] font-medium">Take the tour again</p>
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-[14.5px] font-medium">Take the tour again</p>
+                <p className="text-[12.5px] text-muted-foreground">
                   Replay the story walk, or the Deep Dive on what makes Béa different.
                 </p>
               </div>
@@ -335,7 +335,7 @@ function ProfilePage() {
                   resumeOrReplayTour();
                   void navigate({ to: "/" });
                 }}
-                className="shrink-0 rounded-xl border border-border px-3 py-2 text-[15px] font-semibold"
+                className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
               >
                 Replay
               </button>
@@ -349,7 +349,7 @@ function ProfilePage() {
           guide="packing-lists"
         >
           <div className="space-y-2">
-            <p className="text-[13.5px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               Build lists here once. When you create a trip you can attach a copy of one — what you
               tick off or add there stays on that trip only.
             </p>
@@ -366,11 +366,11 @@ function ProfilePage() {
           }
           guide="offline-options"
         >
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Béa cannot pack maps, photos, recommendations, itineraries or the vault onto this phone
             yet. Those still need a connection.
           </p>
-          <p className="mt-2 text-[13.5px] text-muted-foreground">
+          <p className="mt-2 text-[13px] text-muted-foreground">
             What does work: open a trip → settings → Offline directions. That keeps the walk or
             drive steps on this phone.
           </p>
@@ -378,8 +378,8 @@ function ProfilePage() {
             <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
               {offlineTrips.map((trip) => (
                 <li key={trip.id} className="px-3 py-2.5">
-                  <p className="text-[15px] font-medium">{trip.title}</p>
-                  <p className="text-[13px] text-muted-foreground">
+                  <p className="text-[14.5px] font-medium">{trip.title}</p>
+                  <p className="text-[12.5px] text-muted-foreground">
                     {[trip.city, trip.country].filter(Boolean).join(", ") ||
                       "Directions saved here"}
                   </p>
@@ -387,13 +387,13 @@ function ProfilePage() {
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-[13.5px] text-muted-foreground">
+            <p className="mt-3 text-[13px] text-muted-foreground">
               None yet. Open a trip and download Offline directions there.
             </p>
           )}
           <Link
             to="/trips"
-            className="mt-3 block rounded-xl border border-border px-4 py-2.5 text-center text-[15px] font-semibold"
+            className="mt-3 block rounded-xl border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
           >
             Open trips
           </Link>
@@ -407,31 +407,31 @@ function ProfilePage() {
           <div className="space-y-2">
             <Link
               to="/privacy"
-              className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5"
+              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
             >
               <span>
-                <span className="block text-[16.5px] font-medium">Privacy policy</span>
-                <span className="block text-[13px] text-muted-foreground">
+                <span className="block text-[15px] font-medium">Privacy policy</span>
+                <span className="block text-[12.5px] text-muted-foreground">
                   How your account, photos and documents are stored and protected.
                 </span>
               </span>
-              <span className="shrink-0 text-[15px] text-primary">Read</span>
+              <span className="shrink-0 text-[14.5px] text-primary">Read</span>
             </Link>
             <Link
               to="/terms"
-              className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5"
+              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
             >
               <span>
-                <span className="block text-[16.5px] font-medium">Terms of Service</span>
-                <span className="block text-[13px] text-muted-foreground">
+                <span className="block text-[15px] font-medium">Terms of Service</span>
+                <span className="block text-[12.5px] text-muted-foreground">
                   The rules of the road, disclaimers and liability limits you agreed to.
                 </span>
               </span>
-              <span className="shrink-0 text-[15px] text-primary">Read</span>
+              <span className="shrink-0 text-[14.5px] text-primary">Read</span>
             </Link>
-            <div className="rounded-2xl bg-elevated p-3.5">
-              <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[13.5px] text-muted-foreground" />
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+            <div className="rounded-xl bg-elevated p-3">
+              <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[13px] text-muted-foreground" />
+              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                 Béa — the app, its name, design, features and original ideas — is Mathilde E.
                 Larochelle's work. You keep what you save in it. The Terms spell this out.
               </p>
@@ -444,22 +444,22 @@ function ProfilePage() {
         <Collapsible title="Work travel" summary="Receipts, expenses and exports">
           <Link
             to="/expenses"
-            className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3.5"
+            className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
           >
             <span>
-              <span className="block text-[16.5px] font-medium">Receipts & expenses</span>
-              <span className="block text-[13px] text-muted-foreground">
+              <span className="block text-[15px] font-medium">Receipts & expenses</span>
+              <span className="block text-[12.5px] text-muted-foreground">
                 Photograph receipts and download a spreadsheet for accounting.
               </span>
             </span>
-            <span className="shrink-0 text-[15px] text-primary">Open</span>
+            <span className="shrink-0 text-[14.5px] text-primary">Open</span>
           </Link>
         </Collapsible>
 
         <Link to="/help" className="card-soft flex items-center justify-between gap-3 px-4 py-3.5">
           <span>
-            <span className="block text-[16.5px] font-medium">Help & FAQ</span>
-            <span className="block text-[13.5px] text-muted-foreground">
+            <span className="block text-[15px] font-medium">Help & FAQ</span>
+            <span className="block text-[13px] text-muted-foreground">
               Answers to the questions people ask most.
             </span>
           </span>
@@ -468,7 +468,7 @@ function ProfilePage() {
 
         <Collapsible title="Feedback" summary="Tell Béa something" guide="feedback">
           <div className="space-y-2">
-            <p className="text-[15px] text-muted-foreground">
+            <p className="text-[14.5px] text-muted-foreground">
               Béa is here to make you happy. A missing travel stat, a wish, something that broke —
               write it here. It is saved to your account so we can actually read it.
             </p>
@@ -507,14 +507,14 @@ function EraseDataPanel({ userId }: { userId: string }) {
 
   return (
     <div className="rounded-xl border border-destructive/30 p-3">
-      <p className="text-[16.5px] font-medium">Erase all my data</p>
-      <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+      <p className="text-[15px] font-medium">Erase all my data</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
         Start fresh without closing your account. This is designed to remove your trips,
         recommendations, photos, receipts, vault documents, and travel preferences. Shared trips
         hand off to another member when someone else is on them. Your login stays. Backups and the
         AI provider may still hold traces for a short time.
       </p>
-      {error && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
       <button
         type="button"
         disabled={busy}
@@ -522,7 +522,7 @@ function EraseDataPanel({ userId }: { userId: string }) {
           setError("");
           setConfirmStep(1);
         }}
-        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2.5 text-[15px] font-semibold text-destructive disabled:opacity-50"
+        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2 text-[14.5px] font-semibold text-destructive disabled:opacity-50"
       >
         {busy ? "Erasing…" : "Erase all my data"}
       </button>
@@ -586,8 +586,8 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
 
   return (
     <div className="rounded-xl border border-destructive/30 p-3">
-      <p className="text-[16.5px] font-medium">Delete my account</p>
-      <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+      <p className="text-[15px] font-medium">Delete my account</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
         Close the account entirely — login and all. Type DELETE to confirm. Prefer starting fresh
         without closing the account? Use Erase all my data above. Backups and the AI provider may
         still hold traces for a short time.
@@ -597,10 +597,10 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
         onChange={(e) => setPhrase(e.target.value)}
         placeholder="Type DELETE"
         autoComplete="off"
-        className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+        className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
         aria-label="Type DELETE to confirm account deletion"
       />
-      {error && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
       <button
         type="button"
         disabled={!ready || busy}
@@ -621,7 +621,7 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
             }
           })()
         }
-        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2.5 text-[15px] font-semibold text-destructive disabled:opacity-50"
+        className="mt-3 w-full rounded-xl border border-destructive px-4 py-2 text-[14.5px] font-semibold text-destructive disabled:opacity-50"
       >
         {busy ? "Deleting…" : "Delete my account forever"}
       </button>

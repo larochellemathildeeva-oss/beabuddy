@@ -25,12 +25,12 @@ export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" }
             className="flex w-full items-center justify-between gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-elevated"
           >
             <span>
-              <span className="block text-[15px] font-medium">Customize home</span>
-              <span className="block text-[13px] text-muted-foreground">
+              <span className="block text-[14.5px] font-medium">Customize home</span>
+              <span className="block text-[12.5px] text-muted-foreground">
                 Choose which sections appear on your Home screen.
               </span>
             </span>
-            <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[15px] font-semibold">
+            <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold">
               Open
             </span>
           </button>
@@ -56,8 +56,8 @@ export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" }
           {HOME_SECTIONS.map((s) => (
             <div key={s.key} className="flex items-center justify-between gap-4 py-3">
               <div>
-                <p className="text-[16.5px] font-medium">{s.label}</p>
-                <p className="text-[13.5px] text-muted-foreground">{s.hint}</p>
+                <p className="text-[15px] font-medium">{s.label}</p>
+                <p className="text-[13px] text-muted-foreground">{s.hint}</p>
               </div>
               <Switch
                 checked={layout[s.key]}
@@ -70,7 +70,7 @@ export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" }
         <button
           type="button"
           onClick={reset}
-          className="mt-4 w-full rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold transition-colors hover:bg-elevated"
+          className="mt-4 w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold transition-colors hover:bg-elevated"
         >
           Reset to default
         </button>

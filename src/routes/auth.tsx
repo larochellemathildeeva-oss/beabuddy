@@ -132,10 +132,10 @@ function AuthPage() {
         <div className="flex flex-1 flex-col justify-center">
           <div className="rise">
             <p className="label-caps">Béa</p>
-            <h1 className="mt-2 text-[38px] leading-[1.05]">
+            <h1 className="mt-2 text-[30px] leading-[1.05]">
               {mode === "signup" ? "Start your vault" : "Welcome back"}
             </h1>
-            <p className="mt-2 text-[15px] text-muted-foreground">
+            <p className="mt-2 text-[14.5px] text-muted-foreground">
               Your places, trips and photo memories are saved to your account and follow you across
               devices.
             </p>
@@ -145,11 +145,11 @@ function AuthPage() {
             <button
               onClick={() => social("google")}
               disabled={busy}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] font-medium disabled:opacity-60"
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] font-medium disabled:opacity-60"
             >
               Continue with Google
             </button>
-            <div className="flex items-center justify-center gap-4 pt-1 text-[12.5px] text-muted-foreground">
+            <div className="flex items-center justify-center gap-4 pt-1 text-[12px] text-muted-foreground">
               <label className="flex cursor-pointer items-center gap-1.5">
                 <input
                   type="radio"
@@ -171,7 +171,7 @@ function AuthPage() {
                 Ask me every time
               </label>
             </div>
-            <p className="pt-1 text-center text-[12.5px] leading-relaxed text-muted-foreground">
+            <p className="pt-1 text-center text-[12px] leading-relaxed text-muted-foreground">
               By continuing you agree to our{" "}
               <Link to="/terms" className="underline underline-offset-4">
                 Terms of Service
@@ -197,7 +197,7 @@ function AuthPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
                 autoComplete="name"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
               />
             )}
             <input
@@ -207,7 +207,7 @@ function AuthPage() {
               required
               placeholder="Email"
               autoComplete="email"
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
             />
             <input
               value={password}
@@ -218,7 +218,7 @@ function AuthPage() {
               placeholder="Password"
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               aria-describedby={mode === "signup" ? "password-rules" : undefined}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
             />
             {mode === "signup" && (
               <div id="password-rules">
@@ -261,12 +261,12 @@ function AuthPage() {
                 </label>
               </div>
             )}
-            {error && <p className="text-[13.5px] text-destructive">{error}</p>}
-            {message && <p className="text-[13.5px] text-nexttime">{message}</p>}
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
+            {message && <p className="text-[13px] text-nexttime">{message}</p>}
             <button
               type="submit"
               disabled={busy || (mode === "signup" && !consented)}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-60"
+              className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
             >
               {mode === "signup" ? "Agree & create account" : "Sign in"}
             </button>
@@ -275,7 +275,7 @@ function AuthPage() {
           {mode === "signin" && (
             <Link
               to="/forgot-password"
-              className="mt-3 block text-[15px] text-muted-foreground underline underline-offset-4"
+              className="mt-3 block text-[14.5px] text-muted-foreground underline underline-offset-4"
             >
               Forgot your password?
             </Link>
@@ -287,7 +287,7 @@ function AuthPage() {
               setError(null);
               setMessage(null);
             }}
-            className="mt-4 text-[15px] text-muted-foreground underline underline-offset-4"
+            className="mt-4 text-[14.5px] text-muted-foreground underline underline-offset-4"
           >
             {mode === "signup" ? "I already have an account" : "Create a new account"}
           </button>

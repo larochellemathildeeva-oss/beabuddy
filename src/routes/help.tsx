@@ -32,7 +32,7 @@ function Answer({ text, padded = true }: { text: string; padded?: boolean }) {
       {parts.map((para, i) => (
         <p
           key={i}
-          className="whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground"
+          className="whitespace-pre-line text-[14.5px] leading-relaxed text-muted-foreground"
         >
           {para}
         </p>
@@ -50,7 +50,7 @@ function Item({ q, a }: Faq) {
         aria-expanded={open}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
-        <span className="text-[16.5px] font-medium">{q}</span>
+        <span className="text-[15px] font-medium">{q}</span>
         <ChevronDown
           className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
         />
@@ -65,8 +65,8 @@ function HelpPage() {
     <AppShell publicPage eyebrow="Help" title="Welcome to Béa">
       <div className="space-y-5 pb-4">
         <section data-guide="help-faq" className="card-soft space-y-2 p-4">
-          <p className="font-display text-[25px] leading-tight">{HELP_WELCOME.title}</p>
-          <p className="text-[16.5px] font-medium text-foreground">{HELP_WELCOME.lead}</p>
+          <p className="font-display text-[22px] leading-tight">{HELP_WELCOME.title}</p>
+          <p className="text-[15px] font-medium text-foreground">{HELP_WELCOME.lead}</p>
           <Answer text={HELP_WELCOME.body} padded={false} />
         </section>
 
@@ -82,13 +82,13 @@ function HelpPage() {
         ))}
 
         <section className="card-soft space-y-2 p-4">
-          <p className="font-display text-[21.5px] leading-snug">{HELP_CLOSING.title}</p>
+          <p className="font-display text-[19px] leading-snug">{HELP_CLOSING.title}</p>
           <Answer text={HELP_CLOSING.body} padded={false} />
         </section>
 
         <section className="card-soft p-4">
-          <p className="text-[16.5px] font-medium">Still stuck?</p>
-          <p className="mt-1 text-[15px] text-muted-foreground">
+          <p className="text-[15px] font-medium">Still stuck?</p>
+          <p className="mt-1 text-[14.5px] text-muted-foreground">
             Tap Ask Béa (the sparkle) on any page for a walkthrough of that screen. Or read the{" "}
             <Link to="/privacy" className="text-primary underline">
               privacy policy

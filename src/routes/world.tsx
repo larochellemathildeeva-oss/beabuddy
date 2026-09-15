@@ -173,7 +173,7 @@ function WorldPage() {
             <button
               key={f.type}
               onClick={() => toggle(f.type)}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13.5px] font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 active.includes(f.type)
                   ? "border-border bg-card"
                   : "border-border/60 bg-transparent text-muted-foreground"
@@ -191,13 +191,13 @@ function WorldPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search a place, city or country"
             aria-label="Search your pins"
-            className="min-w-[180px] flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="min-w-[180px] flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
           />
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             aria-label="Filter by country"
-            className="rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
           >
             <option value="all">All countries</option>
             {countries.map((c) => (
@@ -213,21 +213,23 @@ function WorldPage() {
                 setCountry("all");
                 setActive(["visited", "nexttime", "wishlist", "reco"]);
               }}
-              className="rounded-xl border border-border px-3 py-2 text-[13.5px] text-muted-foreground"
+              className="rounded-xl border border-border px-3 py-2 text-[13px] text-muted-foreground"
             >
               Clear
             </button>
           )}
         </div>
 
-        <p className="text-[12.5px] text-muted-foreground" aria-live="polite">
+        <p className="text-[12px] text-muted-foreground" aria-live="polite">
           Showing {visible.length} of {allPins.length} pins.
         </p>
 
         {allPins.length === 0 && (
           <div className="card-soft p-4">
-            <p className="font-display text-[20px] leading-snug">{beaLine("empty.globe").title}</p>
-            <p className="mt-1 text-[15px] text-muted-foreground">{beaLine("empty.globe").body}</p>
+            <p className="font-display text-[18px] leading-snug">{beaLine("empty.globe").title}</p>
+            <p className="mt-1 text-[14.5px] text-muted-foreground">
+              {beaLine("empty.globe").body}
+            </p>
           </div>
         )}
 
@@ -263,7 +265,7 @@ function WorldPage() {
 
         {visible.length > 0 && (
           <section aria-label="Your pins">
-            <p className="mb-1.5 text-[12.5px] text-muted-foreground">
+            <p className="mb-1.5 text-[12px] text-muted-foreground">
               Or pick one from the list — the globe spins to it. Handy when a pin is round the back.
             </p>
             <ul className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border p-1.5">
@@ -286,8 +288,8 @@ function WorldPage() {
                         aria-hidden
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[15px] font-medium">{pin.name}</span>
-                        <span className="block truncate text-[12.5px] text-muted-foreground">
+                        <span className="block truncate text-[14.5px] font-medium">{pin.name}</span>
+                        <span className="block truncate text-[12px] text-muted-foreground">
                           {[pin.city, pin.country].filter(Boolean).join(", ") ||
                             "Somewhere on the map"}
                         </span>
@@ -313,8 +315,8 @@ function WorldPage() {
                   />
                   <span className="label-caps">{pinLabel[selected.type] ?? pinLabel.reco}</span>
                 </div>
-                <h2 className="mt-1 text-[27px] leading-tight">{selected.name}</h2>
-                <p className="text-[13.5px] text-muted-foreground">
+                <h2 className="mt-1 text-[23px] leading-tight">{selected.name}</h2>
+                <p className="text-[13px] text-muted-foreground">
                   {[selected.city, selected.country].filter(Boolean).join(", ") ||
                     "Somewhere on the map"}
                 </p>
@@ -322,21 +324,21 @@ function WorldPage() {
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="rounded-lg border border-border px-2.5 py-1 text-[12.5px] text-muted-foreground"
+                className="rounded-lg border border-border px-2.5 py-1 text-[12px] text-muted-foreground"
               >
                 Close
               </button>
             </div>
 
             {selected.notes && (
-              <p className="mt-3 font-display text-[18px] leading-snug">“{selected.notes}”</p>
+              <p className="mt-3 font-display text-[16.5px] leading-snug">“{selected.notes}”</p>
             )}
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
                 <span
                   key={t}
-                  className="rounded-xl border border-border bg-card px-2 py-2 text-center text-[12.5px] text-muted-foreground"
+                  className="rounded-xl border border-border bg-card px-2 py-2 text-center text-[12px] text-muted-foreground"
                 >
                   {t}
                 </span>
@@ -344,7 +346,7 @@ function WorldPage() {
             </div>
           </section>
         ) : (
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
           </p>
         )}
@@ -366,7 +368,7 @@ function WorldPage() {
               <button
                 type="button"
                 onClick={() => setStatsEdit((v) => !v)}
-                className="text-[12.5px] text-primary"
+                className="text-[12px] text-primary"
               >
                 {statsEdit ? "Done" : "Choose stats"}
               </button>
@@ -398,26 +400,26 @@ function WorldPage() {
                 {statsLayout.layout.pins && <Stat value={allPins.length} label="Pins" accent />}
               </div>
               {!STAT_OPTIONS.some((option) => statsLayout.layout[option.key]) && (
-                <p className="text-[13.5px] text-muted-foreground">
+                <p className="text-[13px] text-muted-foreground">
                   Nothing selected — tap Choose stats and turn a few back on.
                 </p>
               )}
               {statsLayout.layout.countries && statsLayout.layout.countryShare && (
-                <p className="text-[13.5px] text-muted-foreground">
+                <p className="text-[13px] text-muted-foreground">
                   You have visited {worldShare.percent}% of the world — {worldShare.visited} of{" "}
                   {worldShare.world} widely recognised countries.
                 </p>
               )}
               {statsEdit && (
                 <div className="space-y-2 border-t border-border pt-3">
-                  <p className="text-[13.5px] text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground">
                     Pick what Béa counts. Saved on this phone.
                   </p>
                   {STAT_OPTIONS.map((option) => (
                     <div key={option.key} className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[15px] font-medium">{option.label}</p>
-                        <p className="text-[12.5px] text-muted-foreground">{option.hint}</p>
+                        <p className="text-[14.5px] font-medium">{option.label}</p>
+                        <p className="text-[12px] text-muted-foreground">{option.hint}</p>
                       </div>
                       <Switch
                         checked={statsLayout.layout[option.key]}
@@ -428,8 +430,8 @@ function WorldPage() {
                   ))}
                   <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
                     <div>
-                      <p className="text-[15px] font-medium">Countries as a world share</p>
-                      <p className="text-[12.5px] text-muted-foreground">
+                      <p className="text-[14.5px] font-medium">Countries as a world share</p>
+                      <p className="text-[12px] text-muted-foreground">
                         Show 1 of 195 countries as a percentage.
                       </p>
                     </div>
@@ -442,11 +444,11 @@ function WorldPage() {
                   <button
                     type="button"
                     onClick={statsLayout.reset}
-                    className="w-full rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+                    className="w-full rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                   >
                     Reset to default
                   </button>
-                  <p className="rounded-xl border border-dashed border-primary/40 bg-card px-3 py-2.5 text-[13.5px] leading-relaxed text-muted-foreground">
+                  <p className="rounded-xl border border-dashed border-primary/40 bg-card px-3 py-2.5 text-[13px] leading-relaxed text-muted-foreground">
                     Dreaming of a number that isn't here — croissants eaten, continents stamped,
                     nights under canvas? Béa's whole job is to make you happy, and she is nosy in
                     the useful way.{" "}
@@ -460,12 +462,12 @@ function WorldPage() {
                   </p>
                 </div>
               )}
-              <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
                 These stats only include data Béa has access to — the trips, timeline entries,
                 photos and pins saved in this app.
               </p>
               {!statsEdit && (
-                <p className="text-[12.5px] leading-relaxed text-muted-foreground">
+                <p className="text-[12px] leading-relaxed text-muted-foreground">
                   Missing a number that would make you grin?{" "}
                   <Link to="/profile" className="text-primary underline underline-offset-2">
                     You → Feedback
@@ -491,14 +493,14 @@ function WorldPage() {
               Heatmap
             </button>
             {heatOpen && (
-              <button onClick={() => setHeatmap((v) => !v)} className="text-[12.5px] text-primary">
+              <button onClick={() => setHeatmap((v) => !v)} className="text-[12px] text-primary">
                 {heatmap ? "By photos" : "By days"}
               </button>
             )}
           </div>
           {heatOpen &&
             (cityRows.length === 0 ? (
-              <p className="text-[13.5px] text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Import photos and each city you've been will appear here.
               </p>
             ) : (
@@ -508,14 +510,14 @@ function WorldPage() {
                   const max = Math.max(...cityRows.map((x) => (heatmap ? x.days : x.photos)), 1);
                   return (
                     <div key={c.city} className="flex items-center gap-3 p-3">
-                      <span className="w-24 shrink-0 font-display text-[18px]">{c.city}</span>
+                      <span className="w-24 shrink-0 font-display text-[16.5px]">{c.city}</span>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full bg-primary transition-all duration-500"
                           style={{ width: `${Math.max(8, (value / max) * 100)}%` }}
                         />
                       </div>
-                      <span className="w-16 text-right text-[12.5px] text-muted-foreground">
+                      <span className="w-16 text-right text-[12px] text-muted-foreground">
                         {heatmap ? `${c.days} days` : `${c.photos} photos`}
                       </span>
                     </div>
@@ -551,7 +553,7 @@ function Stat({
 }) {
   return (
     <div className="text-center">
-      <p className={`font-display text-[25px] leading-none ${accent ? "text-primary" : ""}`}>
+      <p className={`font-display text-[22px] leading-none ${accent ? "text-primary" : ""}`}>
         {value}
       </p>
       <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>

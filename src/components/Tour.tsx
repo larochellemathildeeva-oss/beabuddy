@@ -268,13 +268,13 @@ export function Tour({
         <div className="pointer-events-auto w-full max-w-[480px] rounded-3xl border border-border bg-background p-5 shadow-xl">
           <div className="flex items-center justify-between">
             <p className="label-caps">Replay</p>
-            <button onClick={finish} className="text-[13.5px] text-muted-foreground underline">
+            <button onClick={finish} className="text-[13px] text-muted-foreground underline">
               Skip
             </button>
           </div>
 
-          <h2 className="mt-2 font-display text-[27px] leading-tight">How shall we walk?</h2>
-          <p className="mt-2 text-[16.5px] leading-relaxed text-muted-foreground">
+          <h2 className="mt-2 font-display text-[23px] leading-tight">How shall we walk?</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
             First sign-in already took the story walk. Pick that again, or open the Deep Dive on
             what makes Béa different.
           </p>
@@ -284,8 +284,10 @@ export function Tour({
               onClick={() => pick("quick")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
             >
-              <span className="block text-[17px] font-semibold">A quick walk around the block</span>
-              <span className="mt-0.5 block text-[13.5px] text-muted-foreground">
+              <span className="block text-[15.5px] font-semibold">
+                A quick walk around the block
+              </span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
                 Remember → choose → plan → opportunity → story. About a minute.
               </span>
             </button>
@@ -293,8 +295,8 @@ export function Tour({
               onClick={() => pick("deep")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
             >
-              <span className="block text-[17px] font-semibold">Deep Dive</span>
-              <span className="mt-0.5 block text-[13.5px] text-muted-foreground">
+              <span className="block text-[15.5px] font-semibold">Deep Dive</span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
                 Six pillars competitors miss. Bring a coffee.
               </span>
             </button>
@@ -321,26 +323,26 @@ export function Tour({
 
       {showCopy ? (
         <>
-          <h2 className="mt-1.5 font-display text-[23px] leading-tight">{step!.title}</h2>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{step!.body}</p>
+          <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
+          <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step!.body}</p>
           {blocked && (
-            <p className="mt-1.5 text-[12.5px] italic text-muted-foreground">
+            <p className="mt-1.5 text-[12px] italic text-muted-foreground">
               This screen opens once you're signed in — for now, picture it here.
             </p>
           )}
           {step?.awaitClick && box && !clicked && (
-            <p className="mt-1.5 text-[12.5px] font-medium text-primary">
+            <p className="mt-1.5 text-[12px] font-medium text-primary">
               {step.actionHint ?? "Tap the highlighted bit, then Next"}
             </p>
           )}
           {step?.awaitClick && box && clicked && (
-            <p className="mt-1.5 text-[12.5px] font-medium text-primary">
+            <p className="mt-1.5 text-[12px] font-medium text-primary">
               {step.actionDoneHint ?? "Got it — tap Next"}
             </p>
           )}
         </>
       ) : (
-        <p className="mt-2 text-[15px] text-muted-foreground">Finding that bit of the screen…</p>
+        <p className="mt-2 text-[14.5px] text-muted-foreground">Finding that bit of the screen…</p>
       )}
 
       {mode === "deep" ? (
@@ -370,14 +372,14 @@ export function Tour({
             }
             setI(i - 1);
           }}
-          className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
+          className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
         >
           Back
         </button>
         <button
           disabled={needsClick || !showCopy}
           onClick={() => (last ? finish() : setI(i + 1))}
-          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           {last ? "Start using Béa" : "Next"}
         </button>

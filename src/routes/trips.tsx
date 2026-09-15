@@ -123,7 +123,7 @@ function TripsPage() {
         <div className="flex gap-2">
           <Link
             to="/calendar"
-            className="flex-1 rounded-xl border border-border px-3 py-2.5 text-center text-[13.5px] font-semibold"
+            className="flex-1 rounded-xl border border-border px-3 py-2.5 text-center text-[13px] font-semibold"
           >
             Calendar view
           </Link>
@@ -138,7 +138,7 @@ function TripsPage() {
                   setCreating(!creating);
                   setJoining(false);
                 }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
+                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
                 New trip
               </button>
@@ -148,7 +148,7 @@ function TripsPage() {
                   setJoining(!joining);
                   setCreating(false);
                 }}
-                className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
+                className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
               >
                 Join with a code
               </button>
@@ -161,10 +161,10 @@ function TripsPage() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder={suggestedName || "Trip name"}
                   aria-label="Trip name"
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
                 />
                 {!form.title.trim() && suggestedName && (
-                  <p className="px-1 text-[12.5px] text-muted-foreground">
+                  <p className="px-1 text-[12px] text-muted-foreground">
                     No name needed — Béa will file this as “{suggestedName}”. Type over it whenever
                     you like.
                   </p>
@@ -182,7 +182,7 @@ function TripsPage() {
                   }}
                   placeholder="Starting city — search it"
                 />
-                <p className="px-1 text-[12.5px] text-muted-foreground">
+                <p className="px-1 text-[12px] text-muted-foreground">
                   Going to more than one country? Open the trip after creating it and add each stop
                   — including layovers.
                 </p>
@@ -194,17 +194,17 @@ function TripsPage() {
                   onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
                 />
                 {form.start_date && form.end_date && form.end_date < form.start_date && (
-                  <p className="px-1 text-[13.5px] font-medium text-destructive">
+                  <p className="px-1 text-[13px] font-medium text-destructive">
                     End date can't be earlier than the start date.
                   </p>
                 )}
                 {packing.packs.length > 0 && (
-                  <label className="block px-1 py-1 text-[13.5px] text-muted-foreground">
+                  <label className="block px-1 py-1 text-[13px] text-muted-foreground">
                     Attach a copy of a packing list
                     <select
                       value={packTemplateId}
                       onChange={(e) => setPackTemplateId(e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px] text-foreground"
+                      className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] text-foreground"
                     >
                       <option value="">No packing list</option>
                       {packing.packs.map((pack) => (
@@ -213,12 +213,12 @@ function TripsPage() {
                         </option>
                       ))}
                     </select>
-                    <span className="mt-1 block text-[12.5px]">
+                    <span className="mt-1 block text-[12px]">
                       You get a copy — ticking things off only affects this trip.
                     </span>
                   </label>
                 )}
-                <label className="flex items-center gap-2 px-1 py-1 text-[15px]">
+                <label className="flex items-center gap-2 px-1 py-1 text-[14.5px]">
                   <input
                     type="checkbox"
                     checked={withBudget}
@@ -227,9 +227,7 @@ function TripsPage() {
                   />
                   Track a budget for this trip
                 </label>
-                <p className="px-1 text-[12.5px] text-muted-foreground">
-                  {tripStillEditableNote()}
-                </p>
+                <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
                 <button
                   disabled={
                     (!form.title.trim() && !suggestedName) ||
@@ -260,7 +258,7 @@ function TripsPage() {
                       setError(e instanceof Error ? e.message : "Couldn't create the trip");
                     }
                   }}
-                  className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   Create trip
                 </button>
@@ -273,7 +271,7 @@ function TripsPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   placeholder="Invite code"
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px] tracking-widest"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] tracking-widest"
                 />
                 <button
                   disabled={code.length < 4}
@@ -288,14 +286,14 @@ function TripsPage() {
                       setError(e instanceof Error ? e.message : "That code didn't work");
                     }
                   }}
-                  className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   Join trip
                 </button>
               </div>
             )}
 
-            {error && <p className="text-[13.5px] text-destructive">{error}</p>}
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
 
             <div data-guide="trip-list" className="space-y-3">
               {t.trips.map((trip) => (
@@ -320,10 +318,10 @@ function TripsPage() {
               ))}
               {t.trips.length === 0 && !t.loading && (
                 <div className="py-8 text-center">
-                  <p className="font-display text-[20px] leading-snug">
+                  <p className="font-display text-[18px] leading-snug">
                     {beaLine("empty.trips").title}
                   </p>
-                  <p className="mt-1 text-[15px] text-muted-foreground">
+                  <p className="mt-1 text-[14.5px] text-muted-foreground">
                     {beaLine("empty.trips").body}
                   </p>
                 </div>
@@ -332,13 +330,13 @@ function TripsPage() {
           </>
         ) : (
           <div className="card-soft p-4">
-            <p className="font-display text-[21.5px] leading-snug">Sign in to start a trip.</p>
+            <p className="font-display text-[19px] leading-snug">Sign in to start a trip.</p>
             <p className="mt-1 text-[14px] text-muted-foreground">
               Trips, itineraries, invited friends and offline directions all save to your account.
             </p>
             <Link
               to="/auth"
-              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
+              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
             >
               Sign in or create an account
             </Link>
@@ -348,7 +346,7 @@ function TripsPage() {
         <section data-guide="document-vault">
           <div className="mb-3 flex items-baseline justify-between">
             <p className="label-caps text-foreground">Trip documents</p>
-            <span className="text-[12.5px] text-muted-foreground">Encrypted on this device</span>
+            <span className="text-[12px] text-muted-foreground">Encrypted on this device</span>
           </div>
           <DocumentVault />
         </section>
@@ -491,14 +489,14 @@ function LiveTripCard({
                 ? "In progress"
                 : "Upcoming"}
           </span>
-          <h2 className="mt-1 text-[25px] leading-tight">{trip.title}</h2>
-          <p className="text-[13.5px] text-muted-foreground">
+          <h2 className="mt-1 text-[22px] leading-tight">{trip.title}</h2>
+          <p className="text-[13px] text-muted-foreground">
             {formatTripLocation(trip.city, trip.country)}
             {trip.start_date
               ? ` · ${trip.dates_status === "tentative" ? "Tentative · " : ""}${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
               : ""}
           </p>
-          <p className="mt-1 truncate text-[13.5px] text-muted-foreground">{companionsLine}</p>
+          <p className="mt-1 truncate text-[13px] text-muted-foreground">{companionsLine}</p>
         </button>
         <button
           data-guide="bea-plan"
@@ -543,7 +541,7 @@ function LiveTripCard({
           <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
             <div className="flex items-center gap-2">
               <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-              <p className="text-[13.5px] text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 {others.length === 0
                   ? "You're the only one here right now"
                   : others.some((o) => o.editing)
@@ -585,7 +583,7 @@ function LiveTripCard({
 
           {trip.budget_enabled && <TripBudget tripId={trip.id} />}
 
-          <div data-guide="trip-timeline" className="mb-3 rounded-2xl bg-elevated p-3.5">
+          <div data-guide="trip-timeline" className="mb-3 rounded-xl bg-elevated p-3">
             <div className="flex items-start justify-between gap-2">
               <button
                 type="button"
@@ -601,7 +599,7 @@ function LiveTripCard({
                 />
                 <div className="min-w-0">
                   <p className="label-caps text-foreground">What you're doing</p>
-                  <p className="text-[12.5px] text-muted-foreground">
+                  <p className="text-[12px] text-muted-foreground">
                     {board.items.length === 0
                       ? "Add activities, meals, transport and notes."
                       : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`}
@@ -616,7 +614,7 @@ function LiveTripCard({
                     setTimelineOpen(true);
                     setAddingTimeline(!addingTimeline);
                   }}
-                  className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+                  className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                 >
                   {addingTimeline ? "Cancel" : "Add to timeline"}
                 </button>
@@ -628,7 +626,7 @@ function LiveTripCard({
                       setPlannerTab("optimize");
                       setPlannerOpen(true);
                     }}
-                    className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+                    className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                   >
                     Optimize
                   </button>
@@ -657,7 +655,7 @@ function LiveTripCard({
                           type="button"
                           aria-pressed={active}
                           onClick={() => setTimelineByDay(mode === "day")}
-                          className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
+                          className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
                             active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                           }`}
                         >
@@ -689,7 +687,7 @@ function LiveTripCard({
                               aria-expanded={dayOpen}
                               className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2 text-left"
                             >
-                              <span className="text-[13.5px] font-semibold">
+                              <span className="text-[13px] font-semibold">
                                 {group.label}
                                 <span className="ml-2 font-normal text-muted-foreground">
                                   {group.items.length}
@@ -710,7 +708,7 @@ function LiveTripCard({
                                   setAddDay(group.key);
                                   setAddingTimeline(true);
                                 }}
-                                className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12.5px] font-semibold"
+                                className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold"
                               >
                                 + Add
                               </button>
@@ -839,7 +837,7 @@ function LiveTripCard({
             className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-card p-5 sm:rounded-2xl"
           >
             <div className="mb-3 flex items-center justify-between">
-              <p className="font-display text-[21.5px] leading-snug">{trip.title}</p>
+              <p className="font-display text-[19px] leading-snug">{trip.title}</p>
               <button
                 aria-label="Close settings"
                 onClick={() => setSettingsOpen(false)}
@@ -852,13 +850,13 @@ function LiveTripCard({
             <div className="space-y-1">
               <button
                 onClick={() => setSheetSection(sheetSection === "invite" ? null : "invite")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
               >
                 Invite a friend
               </button>
               {sheetSection === "invite" && (
-                <div className="rounded-2xl bg-elevated p-3.5">
-                  <p className="text-[12.5px] text-muted-foreground">
+                <div className="rounded-xl bg-elevated p-3">
+                  <p className="text-[12px] text-muted-foreground">
                     Codes expire in 7 days and work once. Creating a new code revokes the previous
                     open one.
                   </p>
@@ -868,7 +866,7 @@ function LiveTripCard({
                       setInviteCode(code);
                       await board.reload();
                     }}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
+                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
                   >
                     Create an invite code
                   </button>
@@ -884,14 +882,14 @@ function LiveTripCard({
                     if (!active) return null;
                     return (
                       <div className="mt-2 space-y-2 text-center">
-                        <p className="text-[15px] text-muted-foreground">
+                        <p className="text-[14.5px] text-muted-foreground">
                           Share this code:{" "}
                           <span className="font-semibold tracking-widest text-foreground">
                             {active.code}
                           </span>
                         </p>
                         {active.expires_at && (
-                          <p className="text-[12.5px] text-muted-foreground">
+                          <p className="text-[12px] text-muted-foreground">
                             Expires {new Date(active.expires_at).toLocaleDateString()}
                           </p>
                         )}
@@ -902,7 +900,7 @@ function LiveTripCard({
                             setInviteCode("");
                             await board.reload();
                           }}
-                          className="text-[13.5px] font-semibold text-destructive underline"
+                          className="text-[13px] font-semibold text-destructive underline"
                         >
                           Revoke this code
                         </button>
@@ -912,7 +910,7 @@ function LiveTripCard({
 
                   {members.length > 0 && (
                     <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-[12.5px] font-semibold text-muted-foreground">
+                      <p className="text-[12px] font-semibold text-muted-foreground">
                         People on this trip
                       </p>
                       <ul className="mt-2 space-y-2">
@@ -926,7 +924,7 @@ function LiveTripCard({
                           return (
                             <li
                               key={m.id}
-                              className="flex items-center justify-between gap-2 text-[15px]"
+                              className="flex items-center justify-between gap-2 text-[14.5px]"
                             >
                               <span>
                                 {label}
@@ -950,7 +948,7 @@ function LiveTripCard({
                                       alert(e instanceof Error ? e.message : "Could not remove");
                                     }
                                   }}
-                                  className="text-[13.5px] font-semibold text-destructive underline"
+                                  className="text-[13px] font-semibold text-destructive underline"
                                 >
                                   Remove
                                 </button>
@@ -975,14 +973,14 @@ function LiveTripCard({
                               alert(e instanceof Error ? e.message : "Could not leave");
                             }
                           }}
-                          className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[15px] font-semibold text-destructive"
+                          className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
                         >
                           Leave trip
                         </button>
                       )}
                       {me.id === trip.owner_id &&
                         members.some((m) => m.user_id !== me.id) === false && (
-                          <p className="mt-2 text-[12.5px] text-muted-foreground">
+                          <p className="mt-2 text-[12px] text-muted-foreground">
                             You&apos;re the only person here. Delete the trip from settings if you
                             want it gone.
                           </p>
@@ -994,19 +992,19 @@ function LiveTripCard({
 
               <button
                 onClick={() => setSheetSection(sheetSection === "packing" ? null : "packing")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
               >
                 Attach a packing list
               </button>
               {sheetSection === "packing" && (
-                <div className="rounded-2xl bg-elevated p-3.5">
+                <div className="rounded-xl bg-elevated p-3">
                   {templates.packs.length === 0 ? (
-                    <p className="text-[13.5px] text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       No saved lists yet — create one under Profile → Create packing lists.
                     </p>
                   ) : (
                     <>
-                      <p className="text-[12.5px] text-muted-foreground">
+                      <p className="text-[12px] text-muted-foreground">
                         You get a copy — ticking things off only affects this trip.
                       </p>
                       <select
@@ -1015,7 +1013,7 @@ function LiveTripCard({
                           setPackTemplateId(e.target.value);
                           setPackMsg("");
                         }}
-                        className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                        className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
                       >
                         <option value="">Choose a list…</option>
                         {templates.packs.map((pk) => (
@@ -1032,12 +1030,12 @@ function LiveTripCard({
                           setPackTemplateId("");
                           setPackMsg("List attached — open the trip to tick items off.");
                         }}
-                        className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                        className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                       >
                         Attach a copy to this trip
                       </button>
                       {packMsg && (
-                        <p className="mt-2 text-[13.5px] text-muted-foreground">{packMsg}</p>
+                        <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>
                       )}
                     </>
                   )}
@@ -1046,23 +1044,23 @@ function LiveTripCard({
 
               <button
                 onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
               >
                 Offline directions
                 {dir.saved && (
-                  <span className="ml-2 text-[12.5px] font-normal text-muted-foreground">
+                  <span className="ml-2 text-[12px] font-normal text-muted-foreground">
                     {savedAgoLabel(dir.saved.savedAt)}
                     {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
                   </span>
                 )}
               </button>
               {sheetSection === "offline" && (
-                <div className="rounded-2xl bg-elevated p-3.5">
-                  <p className="text-[12.5px] text-muted-foreground">
+                <div className="rounded-xl bg-elevated p-3">
+                  <p className="text-[12px] text-muted-foreground">
                     Download the walk or drive between stops so the steps work with no service.
                     Adding directions to the timeline saves the summary — not the offline map.
                   </p>
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  <p className="mt-1 text-[12px] text-muted-foreground">
                     {cities.stops.length >= 2
                       ? `Covers your ${cities.stops.length} cities, in order.`
                       : "Covers the timeline stops that have a place on the map."}{" "}
@@ -1071,7 +1069,7 @@ function LiveTripCard({
                   <button
                     disabled={dir.busy || routeStops.length < 2}
                     onClick={() => void dir.download(routeStops, directionArea)}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     {dir.busy
                       ? "Saving…"
@@ -1080,24 +1078,24 @@ function LiveTripCard({
                         : "Download directions"}
                   </button>
                   {routeStops.length < 2 && (
-                    <p className="mt-2 text-[12.5px] text-muted-foreground">
+                    <p className="mt-2 text-[12px] text-muted-foreground">
                       Add at least two cities to this trip first (or two timeline entries with
                       places).
                     </p>
                   )}
                   {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
-                    <p className="mt-2 text-[12.5px] text-muted-foreground">
+                    <p className="mt-2 text-[12px] text-muted-foreground">
                       Your stops have changed since this was saved — refresh to bring it up to date.
                     </p>
                   )}
-                  {dir.error && <p className="mt-2 text-[12.5px] text-destructive">{dir.error}</p>}
+                  {dir.error && <p className="mt-2 text-[12px] text-destructive">{dir.error}</p>}
                   {dir.saved && (
                     <div className="mt-3 space-y-2">
                       {dir.saved.legs.map((l, i) => (
                         <details key={i} className="rounded-xl bg-elevated px-3 py-2">
-                          <summary className="cursor-pointer text-[15px] font-medium">
+                          <summary className="cursor-pointer text-[14.5px] font-medium">
                             {l.from} → {l.to}
-                            <span className="ml-2 text-[12.5px] font-normal text-muted-foreground">
+                            <span className="ml-2 text-[12px] font-normal text-muted-foreground">
                               {l.distance > 0
                                 ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
                                 : unroutedLegCopy(l)}
@@ -1105,7 +1103,7 @@ function LiveTripCard({
                           </summary>
                           <ol className="mt-2 space-y-1">
                             {l.steps.map((s, k) => (
-                              <li key={k} className="text-[13.5px] text-muted-foreground">
+                              <li key={k} className="text-[13px] text-muted-foreground">
                                 {s.instruction}
                                 {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
                               </li>
@@ -1115,25 +1113,25 @@ function LiveTripCard({
                             href={l.mapUrl}
                             target="_blank"
                             rel="noreferrer"
-                            className="mt-2 inline-block text-[13.5px] font-semibold text-primary"
+                            className="mt-2 inline-block text-[13px] font-semibold text-primary"
                           >
                             Open in maps (needs service)
                           </a>
                         </details>
                       ))}
                       {dir.saved.unresolved.length > 0 && (
-                        <p className="text-[12.5px] text-muted-foreground">
+                        <p className="text-[12px] text-muted-foreground">
                           Couldn't find on the map: {dir.saved.unresolved.join(", ")}
                         </p>
                       )}
                       {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
-                        <p className="text-[12.5px] text-muted-foreground">
+                        <p className="text-[12px] text-muted-foreground">
                           Later stretches open in maps — Béa stops looking after a long list.
                         </p>
                       )}
                       <button
                         onClick={dir.clear}
-                        className="text-[12.5px] text-muted-foreground underline"
+                        className="text-[12px] text-muted-foreground underline"
                       >
                         Delete saved directions
                       </button>
@@ -1144,13 +1142,13 @@ function LiveTripCard({
 
               <button
                 onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
               >
                 Budget Options
               </button>
               {sheetSection === "budget" && (
-                <div className="space-y-2 rounded-2xl bg-elevated p-3.5">
-                  <label className="flex items-center gap-2 px-1 text-[15px]">
+                <div className="space-y-2 rounded-xl bg-elevated p-3">
+                  <label className="flex items-center gap-2 px-1 text-[14.5px]">
                     <input
                       type="checkbox"
                       checked={trip.budget_enabled}
@@ -1178,17 +1176,17 @@ function LiveTripCard({
                     });
                   }
                 }}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
               >
                 Trip Options
               </button>
               {sheetSection === "edit" && (
-                <div className="space-y-2 rounded-2xl bg-elevated p-3.5">
+                <div className="space-y-2 rounded-xl bg-elevated p-3">
                   <input
                     value={tripForm.title}
                     onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
                     placeholder="Trip name"
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
                   />
                   <PlaceSearchInput
                     value={tripForm.city}
@@ -1213,12 +1211,12 @@ function LiveTripCard({
                     onDatesStatusChange={(dates_status) =>
                       setTripForm({ ...tripForm, dates_status })
                     }
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[15px]"
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
                   />
                   {tripForm.start_date &&
                     tripForm.end_date &&
                     tripForm.end_date < tripForm.start_date && (
-                      <p className="px-1 text-[13.5px] font-medium text-destructive">
+                      <p className="px-1 text-[13px] font-medium text-destructive">
                         End date can't be earlier than the start date.
                       </p>
                     )}
@@ -1231,7 +1229,7 @@ function LiveTripCard({
                       <button
                         key={v}
                         onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                        className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
+                        className={`rounded-full border px-3 py-1.5 text-[13px] ${
                           tripForm.status === v
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border"
@@ -1261,7 +1259,7 @@ function LiveTripCard({
                         status: tripForm.status,
                       } as Partial<TripRow>);
                     }}
-                    className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                    className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     Save changes
                   </button>
@@ -1270,7 +1268,7 @@ function LiveTripCard({
 
               <button
                 onClick={() => setConfirmDelete(true)}
-                className="w-full rounded-xl px-3 py-3 text-left text-[16.5px] font-semibold text-destructive hover:bg-elevated"
+                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
               >
                 Delete trip
               </button>
@@ -1293,15 +1291,15 @@ function LiveTripCard({
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-t-3xl bg-card p-5 text-center sm:rounded-2xl"
           >
-            <p className="font-display text-[21.5px] leading-snug">Delete this trip?</p>
-            <p className="mt-2 text-[15px] text-muted-foreground">
+            <p className="font-display text-[19px] leading-snug">Delete this trip?</p>
+            <p className="mt-2 text-[14.5px] text-muted-foreground">
               This permanently removes the trip, its timeline, stops, budget and invites. This can't
               be undone.
             </p>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-xl border border-border px-3 py-2.5 text-[15px] font-semibold"
+                className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
               >
                 Cancel
               </button>
@@ -1311,7 +1309,7 @@ function LiveTripCard({
                   setSettingsOpen(false);
                   void onDelete();
                 }}
-                className="flex-1 rounded-xl bg-destructive px-3 py-2.5 text-[15px] font-semibold text-destructive-foreground"
+                className="flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
               >
                 Delete
               </button>
@@ -1355,7 +1353,7 @@ function TimelineEntry({
   return (
     <li className="relative min-w-0">
       <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
-      <p className="text-[12.5px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-[12px] uppercase tracking-wider text-muted-foreground">
         {[when, item.kind].filter(Boolean).join(" · ")}
       </p>
       <input
@@ -1366,7 +1364,7 @@ function TimelineEntry({
           if (e.target.value.trim() && e.target.value !== item.title)
             onUpdate({ title: e.target.value.trim() });
         }}
-        className="w-full min-w-0 truncate bg-transparent text-[16.5px] font-medium outline-none"
+        className="w-full min-w-0 truncate bg-transparent text-[15px] font-medium outline-none"
       />
       <TimelineDetailInput
         detail={item.detail}
@@ -1378,7 +1376,7 @@ function TimelineEntry({
         }}
       />
       {item.address && (
-        <p className="break-words text-[12.5px] text-muted-foreground">
+        <p className="break-words text-[12px] text-muted-foreground">
           📍 {item.address}
           {item.lat != null && item.lon != null && (
             <a
@@ -1397,7 +1395,7 @@ function TimelineEntry({
         <button
           type="button"
           onClick={onRemove}
-          className="text-[12.5px] text-muted-foreground underline"
+          className="text-[12px] text-muted-foreground underline"
         >
           Remove
         </button>
@@ -1414,7 +1412,7 @@ function TimelineEntry({
                   ),
               );
             }}
-            className="text-[12.5px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
+            className="text-[12px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
           >
             {kept ? "Saved to your places" : "Save to my places"}
           </button>
@@ -1457,7 +1455,7 @@ function TimelineDetailInput({
         setDraft(next);
         onCommit(next);
       }}
-      className="w-full min-w-0 truncate bg-transparent text-[13.5px] text-muted-foreground outline-none"
+      className="w-full min-w-0 truncate bg-transparent text-[13px] text-muted-foreground outline-none"
     />
   );
 }
@@ -1481,7 +1479,7 @@ function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
-        className="min-w-0 text-left text-[12.5px] font-medium text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
+        className="min-w-0 text-left text-[12px] font-medium text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
       >
         {open ? "Hide directions" : summary}
       </button>
@@ -1490,20 +1488,20 @@ function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
           {leg.steps.length > 0 ? (
             <ol className="space-y-1">
               {leg.steps.map((step, s) => (
-                <li key={s} className="text-[12.5px] text-muted-foreground">
+                <li key={s} className="text-[12px] text-muted-foreground">
                   {step.instruction}
                   {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="text-[12.5px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
+            <p className="text-[12px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
           )}
           <a
             href={leg.mapUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-1.5 inline-block text-[12.5px] font-semibold text-primary underline"
+            className="mt-1.5 inline-block text-[12px] font-semibold text-primary underline"
           >
             Open in maps
           </a>

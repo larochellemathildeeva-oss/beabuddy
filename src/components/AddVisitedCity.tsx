@@ -227,7 +227,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
 
       {open && (
         <div id="add-city-body" className="mt-3 space-y-3">
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             One city or country, or a whole list from your notes. Country names are recognised
             straight away. Other names are looked up so you can pick the pin before anything lands
             on the globe.
@@ -237,7 +237,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
             <button
               type="button"
               onClick={() => setMode("one")}
-              className={`rounded-xl border px-3 py-2 text-[13.5px] font-semibold ${
+              className={`rounded-xl border px-3 py-2 text-[13px] font-semibold ${
                 mode === "one"
                   ? "border-primary text-primary"
                   : "border-border text-muted-foreground"
@@ -248,7 +248,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
             <button
               type="button"
               onClick={() => setMode("list")}
-              className={`rounded-xl border px-3 py-2 text-[13.5px] font-semibold ${
+              className={`rounded-xl border px-3 py-2 text-[13px] font-semibold ${
                 mode === "list"
                   ? "border-primary text-primary"
                   : "border-border text-muted-foreground"
@@ -263,7 +263,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
               <button
                 key={t.type}
                 onClick={() => setType(t.type)}
-                className={`rounded-full border px-3 py-1.5 text-[13.5px] transition-colors ${
+                className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
                   type === t.type
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card"
@@ -292,22 +292,22 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
               />
 
               <div className="grid grid-cols-2 gap-2">
-                <label className="text-[13.5px] text-muted-foreground">
+                <label className="text-[13px] text-muted-foreground">
                   When (optional)
                   <input
                     type="month"
                     value={when}
                     onChange={(e) => setWhen(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] text-foreground outline-none focus:border-primary"
+                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground outline-none focus:border-primary"
                   />
                 </label>
-                <label className="text-[13.5px] text-muted-foreground">
+                <label className="text-[13px] text-muted-foreground">
                   Note (optional)
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Anything to remember"
-                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
+                    className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground outline-none placeholder:text-muted-foreground focus:border-primary"
                   />
                 </label>
               </div>
@@ -321,7 +321,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                 onChange={(e) => setPaste(e.target.value)}
                 rows={5}
                 placeholder={"France\nSpain\nParis\nLisbon"}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
               />
               <input
                 ref={fileRef}
@@ -335,7 +335,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   disabled={busy || looking}
-                  className="rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
+                  className="rounded-xl border border-border px-3 py-2 text-[14.5px] font-medium disabled:opacity-50"
                 >
                   Upload a list
                 </button>
@@ -343,16 +343,16 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                   type="button"
                   onClick={() => void lookup(parseCityListText(paste), "Pasted list")}
                   disabled={busy || looking || paste.trim().length < 2}
-                  className="rounded-xl bg-primary px-3 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+                  className="rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   {looking ? "Looking up…" : "Look these up"}
                 </button>
               </div>
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 One city or country per line is best. A comma-separated line from Notes works too.
               </p>
               {looking && (
-                <p className="text-[15px] text-muted-foreground">
+                <p className="text-[14.5px] text-muted-foreground">
                   Looking up {searchingAt + 1} of {drafts?.length ?? 0}…
                 </p>
               )}
@@ -365,8 +365,8 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-[15px] font-semibold">{row.originalName}</p>
-                          <p className="text-[12.5px] text-muted-foreground">
+                          <p className="text-[14.5px] font-semibold">{row.originalName}</p>
+                          <p className="text-[12px] text-muted-foreground">
                             {row.status === "searching"
                               ? "Searching the map…"
                               : row.status === "pending"
@@ -384,7 +384,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                               <button
                                 type="button"
                                 onClick={() => setEditing(i)}
-                                className="text-[12.5px] font-semibold text-primary underline"
+                                className="text-[12px] font-semibold text-primary underline"
                               >
                                 Correct it
                               </button>
@@ -392,7 +392,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                           <button
                             type="button"
                             onClick={() => patch(i, { skip: !row.skip })}
-                            className="text-[12.5px] text-muted-foreground underline"
+                            className="text-[12px] text-muted-foreground underline"
                           >
                             {row.skip ? "Include" : "Skip"}
                           </button>
@@ -401,7 +401,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                       {!row.skip && (row.status === "empty" || editing === i) && (
                         <div className="mt-2 space-y-2">
                           <label className="block">
-                            <span className="text-[12.5px] text-muted-foreground">
+                            <span className="text-[12px] text-muted-foreground">
                               Correct the name
                             </span>
                             <input
@@ -415,7 +415,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                               }}
                               placeholder="Usual country or city name"
                               aria-label={`Correct ${row.originalName}`}
-                              className="mt-1 w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
+                              className="mt-1 w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[14.5px] outline-none focus:border-primary"
                             />
                           </label>
                           <div className="flex flex-wrap items-center gap-3">
@@ -423,7 +423,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                               type="button"
                               onClick={() => void lookupRow(i)}
                               disabled={looking || row.query.trim().length < 2}
-                              className="text-[13.5px] font-semibold text-primary underline disabled:opacity-50"
+                              className="text-[13px] font-semibold text-primary underline disabled:opacity-50"
                             >
                               {searchingAt === i ? "Looking up…" : "Correct it"}
                             </button>
@@ -431,7 +431,7 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                               <button
                                 type="button"
                                 onClick={() => setEditing(null)}
-                                className="text-[12.5px] text-muted-foreground underline"
+                                className="text-[12px] text-muted-foreground underline"
                               >
                                 Cancel
                               </button>
@@ -453,9 +453,9 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
                                   on ? "border-primary bg-elevated" : "border-border/60"
                                 }`}
                               >
-                                <p className="text-[15px] font-medium">{line.title}</p>
+                                <p className="text-[14.5px] font-medium">{line.title}</p>
                                 {line.subtitle ? (
-                                  <p className="text-[12.5px] text-muted-foreground">
+                                  <p className="text-[12px] text-muted-foreground">
                                     {line.subtitle}
                                   </p>
                                 ) : null}
@@ -471,13 +471,13 @@ export function AddVisitedCity({ onSaved }: { onSaved?: () => void }) {
             </>
           )}
 
-          {err && <p className="text-[13.5px] text-destructive">{err}</p>}
-          {msg && <p className="text-[13.5px] text-muted-foreground">{msg}</p>}
+          {err && <p className="text-[13px] text-destructive">{err}</p>}
+          {msg && <p className="text-[13px] text-muted-foreground">{msg}</p>}
 
           <button
             onClick={() => void (mode === "list" ? saveList() : saveOne())}
             disabled={busy || looking || (mode === "one" ? !picked : !drafts || readyCount === 0)}
-            className="w-full rounded-full bg-primary px-4 py-2.5 text-[15px] font-medium text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-full bg-primary px-4 py-2.5 text-[14.5px] font-medium text-primary-foreground disabled:opacity-50"
           >
             {busy
               ? "Saving…"

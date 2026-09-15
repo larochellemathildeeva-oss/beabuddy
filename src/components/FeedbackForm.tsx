@@ -39,7 +39,7 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
   if (!signedIn) {
     if (loading) return null;
     return (
-      <p className="text-[13.5px] text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Sign in to send feedback — it is saved to your account so we can reply about it.
       </p>
     );
@@ -48,10 +48,10 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
   if (sent) {
     return (
       <div className="rounded-xl border border-border bg-elevated p-3">
-        <p className="text-[15px]">Thank you — that reached us.</p>
+        <p className="text-[14.5px]">Thank you — that reached us.</p>
         <button
           onClick={() => setSent(false)}
-          className="mt-1 text-[12.5px] text-muted-foreground underline"
+          className="mt-1 text-[12px] text-muted-foreground underline"
         >
           Send something else
         </button>
@@ -67,7 +67,7 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           required
-          className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
         >
           <option value="">What kind of something is this?</option>
           {FEEDBACK_CATEGORIES.map((item) => (
@@ -83,21 +83,21 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
         rows={4}
         maxLength={4000}
         placeholder="What went wrong, or what would make Béa better?"
-        className="w-full rounded-xl border border-border bg-card p-3 text-[15px] outline-none"
+        className="w-full rounded-xl border border-border bg-card p-3 text-[14.5px] outline-none"
       />
       {failed && (
-        <p className="text-[13.5px] text-destructive">
+        <p className="text-[13px] text-destructive">
           That didn&rsquo;t send. Check your connection and try again.
         </p>
       )}
       <button
         type="submit"
         disabled={busy || !canSend}
-        className="rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy ? "Sending…" : "Send feedback"}
       </button>
-      <p className="text-[12.5px] text-muted-foreground">
+      <p className="text-[12px] text-muted-foreground">
         Béa attaches the page you were on and your app version. Please don&rsquo;t include passport
         numbers or other vault details.
       </p>

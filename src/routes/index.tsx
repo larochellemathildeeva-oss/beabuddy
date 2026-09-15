@@ -55,7 +55,7 @@ function LandingPage() {
   return (
     <AppShell publicPage eyebrow={BEA_TAGLINES.strongest} title={BEA_POSITION}>
       <div className="space-y-6">
-        <p className="text-[16.5px] leading-relaxed text-muted-foreground">
+        <p className="text-[15px] leading-relaxed text-muted-foreground">
           {BEA_MISSION} Save recommendations from friends, track where you've been, plan trips from
           your saved ideas, and rediscover opportunities when you're nearby — because the best plans
           start with what matters to you.
@@ -64,18 +64,18 @@ function LandingPage() {
         <div className="grid gap-2 sm:grid-cols-2">
           <Link
             to="/auth"
-            className="rounded-xl bg-primary px-4 py-3 text-center text-[15px] font-semibold text-primary-foreground"
+            className="rounded-xl bg-primary px-4 py-3 text-center text-[14.5px] font-semibold text-primary-foreground"
           >
             Create an account
           </Link>
           <Link
             to="/help"
-            className="rounded-xl border border-border px-4 py-3 text-center text-[15px] font-semibold"
+            className="rounded-xl border border-border px-4 py-3 text-center text-[14.5px] font-semibold"
           >
             How Béa works
           </Link>
         </div>
-        <p className="text-[13.5px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           The globe above is sample data. After you sign in, tap Load sample travel data on Home or
           You to fill an account for a live walkthrough.
         </p>
@@ -180,8 +180,8 @@ function SignedInHome() {
                 <span className="size-1.5 rounded-full bg-visited" />
                 <span className="label-caps">Playback</span>
               </div>
-              <p className="mt-1.5 font-display text-[21.5px] leading-tight">Travel story</p>
-              <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+              <p className="mt-1.5 font-display text-[19px] leading-tight">Travel story</p>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Play your journey city by city.
               </p>
             </Link>
@@ -190,8 +190,8 @@ function SignedInHome() {
                 <span className="size-1.5 rounded-full bg-reco" />
                 <span className="label-caps">Every place</span>
               </div>
-              <p className="mt-1.5 font-display text-[21.5px] leading-tight">City memories</p>
-              <p className="mt-0.5 text-[13.5px] text-muted-foreground">
+              <p className="mt-1.5 font-display text-[19px] leading-tight">City memories</p>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">
                 Photos, notes and saved spots by city.
               </p>
             </Link>
@@ -200,25 +200,25 @@ function SignedInHome() {
 
         {showSamplePrompt && (
           <section data-guide="home-empty" className="rise card-soft p-4">
-            <p className="font-display text-[23px] leading-snug">{beaLine("empty.home").title}</p>
-            <p className="mt-1 text-[15px] text-muted-foreground">{beaLine("empty.home").body}</p>
+            <p className="font-display text-[20px] leading-snug">{beaLine("empty.home").title}</p>
+            <p className="mt-1 text-[14.5px] text-muted-foreground">{beaLine("empty.home").body}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
                 disabled={seeding}
                 onClick={() => void fillSample()}
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
               >
                 {seeding ? "Loading sample…" : "Load sample travel data"}
               </button>
               <Link
                 to="/photos"
-                className="flex-1 rounded-xl border border-border px-4 py-2.5 text-center text-[15px] font-semibold"
+                className="flex-1 rounded-xl border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
               >
                 Import photos
               </Link>
             </div>
-            {seedMsg && <p className="mt-2 text-[13.5px] text-muted-foreground">{seedMsg}</p>}
+            {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
           </section>
         )}
 
@@ -231,17 +231,17 @@ function SignedInHome() {
                   <span className={`size-2 rounded-full ${pinColorClass["reco"]}`} />
                   <span className="label-caps">{pinLabel["reco"]}</span>
                 </div>
-                <h2 className="mt-1 text-[25px] leading-tight">{topReco.name}</h2>
-                <p className="mt-0.5 text-[15px] text-muted-foreground">
+                <h2 className="mt-1 text-[22px] leading-tight">{topReco.name}</h2>
+                <p className="mt-0.5 text-[14.5px] text-muted-foreground">
                   {[topReco.city, topReco.country].filter(Boolean).join(", ")}
                   {topReco.recommended_by ? ` · saved by ${topReco.recommended_by}` : ""}
                 </p>
                 {topReco.notes && (
-                  <p className="mt-3 font-display text-[18px] leading-snug">“{topReco.notes}”</p>
+                  <p className="mt-3 font-display text-[16.5px] leading-snug">“{topReco.notes}”</p>
                 )}
                 <Link
                   to="/opportunities"
-                  className="mt-4 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
+                  className="mt-4 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
                 >
                   See what's near you
                 </Link>
@@ -262,10 +262,10 @@ function SignedInHome() {
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="size-1.5 rounded-full bg-visited" />
-                    <span className="font-display text-[20px] leading-none">{c.city}</span>
+                    <span className="font-display text-[18px] leading-none">{c.city}</span>
                   </div>
-                  <p className="mt-1.5 text-[12.5px] text-muted-foreground">{c.photos} photos</p>
-                  <p className="text-[12.5px] text-muted-foreground">
+                  <p className="mt-1.5 text-[12px] text-muted-foreground">{c.photos} photos</p>
+                  <p className="text-[12px] text-muted-foreground">
                     {c.last
                       ? new Date(c.last).toLocaleDateString(undefined, {
                           month: "long",
@@ -289,7 +289,7 @@ function SignedInHome() {
                   Left {new Date(topNote.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <p className="mt-2 text-[16.5px] leading-relaxed">{topNote.note}</p>
+              <p className="mt-2 text-[15px] leading-relaxed">{topNote.note}</p>
             </div>
           </section>
         )}
@@ -302,7 +302,7 @@ function SectionHead({ title, aside }: { title: string; aside?: string }) {
   return (
     <div className="mb-3 flex items-baseline justify-between">
       <p className="label-caps text-foreground">{title}</p>
-      {aside && <span className="text-[12.5px] text-muted-foreground">{aside}</span>}
+      {aside && <span className="text-[12px] text-muted-foreground">{aside}</span>}
     </div>
   );
 }

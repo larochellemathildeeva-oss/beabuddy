@@ -574,7 +574,7 @@ export function Globe({
           </button>
         </div>
 
-        <p className="absolute bottom-3 left-4 right-16 text-[12.5px] text-muted-foreground">
+        <p className="absolute bottom-3 left-4 right-16 text-[12px] text-muted-foreground">
           Drag or use the arrow keys to rotate · pinch, scroll or +/− to zoom
         </p>
       </div>

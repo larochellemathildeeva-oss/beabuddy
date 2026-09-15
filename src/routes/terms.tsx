@@ -25,8 +25,8 @@ export const Route = createFileRoute("/terms")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-8">
-      <h2 className="text-[23px] leading-snug">{title}</h2>
-      <div className="mt-2 space-y-3 text-[15px] leading-relaxed text-muted-foreground">
+      <h2 className="text-[20px] leading-snug">{title}</h2>
+      <div className="mt-2 space-y-3 text-[14.5px] leading-relaxed text-muted-foreground">
         {children}
       </div>
     </section>
@@ -36,10 +36,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function TermsPage() {
   return (
     <AppShell publicPage eyebrow="Béa" title="Terms of Service">
-      <p className="text-[13.5px] text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Version {LEGAL_VERSION} — effective 6 September 2026
       </p>
-      <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+      <p className="mt-4 text-[14.5px] leading-relaxed text-muted-foreground">
         These terms govern your use of Béa ("the app"). By creating an account you confirm that you
         have read, understood and agree to them, together with our{" "}
         <Link to="/privacy" className="text-primary underline underline-offset-4">
@@ -281,14 +281,14 @@ function TermsPage() {
         </p>
       </Section>
 
-      <p className="mt-10 border-t border-border pt-6 text-[13.5px] text-muted-foreground">
+      <p className="mt-10 border-t border-border pt-6 text-[13px] text-muted-foreground">
         This page is a starting point written in plain language — have a lawyer review it before you
         rely on it commercially. Questions about these terms? Reach us via the profile page.
       </p>
-      <CopyrightNotice className="mt-3 px-0 text-left text-[13.5px] text-muted-foreground" />
+      <CopyrightNotice className="mt-3 px-0 text-left text-[13px] text-muted-foreground" />
       <Link
         to="/"
-        className="mt-4 inline-block text-[15px] text-primary underline underline-offset-4"
+        className="mt-4 inline-block text-[14.5px] text-primary underline underline-offset-4"
       >
         Back to Béa
       </Link>

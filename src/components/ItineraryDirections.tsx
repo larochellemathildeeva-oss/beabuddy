@@ -103,13 +103,13 @@ export function ItineraryDirections({
 
   return (
     <>
-      <div data-guide="itinerary-directions" className="mb-3 rounded-2xl bg-elevated p-3.5">
+      <div data-guide="itinerary-directions" className="mb-3 rounded-xl bg-elevated p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="flex items-center gap-1.5 text-[15px] font-medium">
+            <p className="flex items-center gap-1.5 text-[14.5px] font-medium">
               <RouteIcon className="size-3.5" /> Directions between stops
             </p>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-[12.5px] text-muted-foreground">
               How to get from each timeline stop to the next, with walking or driving time.
             </p>
           </div>
@@ -122,12 +122,12 @@ export function ItineraryDirections({
           </button>
         </div>
 
-        {offlineNote && <p className="mt-2 text-[13px] text-muted-foreground">{offlineNote}</p>}
+        {offlineNote && <p className="mt-2 text-[12.5px] text-muted-foreground">{offlineNote}</p>}
 
-        {error && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
+        {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
 
         {legs && legs.length === 0 && !busy && (
-          <p className="mt-2 text-[13.5px] text-muted-foreground">
+          <p className="mt-2 text-[13px] text-muted-foreground">
             Béa couldn't place these stops on the map yet — add an address to them and try again.
           </p>
         )}
@@ -143,7 +143,7 @@ export function ItineraryDirections({
                   <p className="text-[14px] font-medium">
                     {leg.from} → {leg.to}
                   </p>
-                  <p className="text-[13px] text-muted-foreground">
+                  <p className="text-[12.5px] text-muted-foreground">
                     {leg.distance > 0
                       ? `${leg.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
                       : unroutedLegCopy(leg)}
@@ -154,7 +154,7 @@ export function ItineraryDirections({
                     {leg.steps.length > 0 && (
                       <ol className="mt-2 space-y-1 border-l border-border pl-3">
                         {leg.steps.map((step, s) => (
-                          <li key={s} className="text-[13px] text-muted-foreground">
+                          <li key={s} className="text-[12.5px] text-muted-foreground">
                             {step.instruction}
                             {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
                           </li>
@@ -165,7 +165,7 @@ export function ItineraryDirections({
                       href={leg.mapUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="mt-2 inline-block text-[13px] font-semibold text-primary underline"
+                      className="mt-2 inline-block text-[12.5px] font-semibold text-primary underline"
                     >
                       Open in maps
                     </a>
@@ -177,12 +177,12 @@ export function ItineraryDirections({
         )}
 
         {unresolved.length > 0 && (
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-2 text-[12.5px] text-muted-foreground">
             Couldn't find: {unresolved.join(", ")}
           </p>
         )}
         {(deferred.length > 0 || legs?.some((leg) => leg.capped)) && (
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-2 text-[12.5px] text-muted-foreground">
             Later stretches open in maps — Béa stops looking after a long list so the rest of the
             trip stays usable.
           </p>
@@ -190,11 +190,11 @@ export function ItineraryDirections({
       </div>
 
       {showAddBanner && (
-        <div data-guide="add-directions-timeline" className="mb-3 rounded-2xl bg-elevated p-3.5">
+        <div data-guide="add-directions-timeline" className="mb-3 rounded-xl bg-elevated p-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="label-caps text-foreground">Add these legs</p>
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 “Add to timeline” saves each walk or drive as a stop. “Keep for offline” stores
                 these exact steps on this phone, so you don't have to work them out twice.
               </p>
@@ -204,7 +204,7 @@ export function ItineraryDirections({
                 type="button"
                 disabled={adding}
                 onClick={() => void addLegs()}
-                className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold disabled:opacity-50"
+                className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold disabled:opacity-50"
               >
                 {adding ? "Adding…" : added ? "On the timeline" : "Add to timeline"}
               </button>
@@ -218,14 +218,14 @@ export function ItineraryDirections({
                     );
                     setKept(ok);
                   }}
-                  className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+                  className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                 >
                   {kept ? "Kept for offline" : "Keep for offline"}
                 </button>
               )}
             </div>
           </div>
-          {error && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
+          {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
         </div>
       )}
     </>

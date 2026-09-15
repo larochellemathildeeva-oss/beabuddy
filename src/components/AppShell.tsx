@@ -75,7 +75,7 @@ export function AppShell({
   if (!publicPage && (loading || !user || settlingOAuth)) {
     return (
       <div className="grid min-h-[100dvh] place-items-center bg-background">
-        <p className="text-[15px] text-muted-foreground">Loading…</p>
+        <p className="text-[14.5px] text-muted-foreground">Loading…</p>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function AppShell({
   return (
     <div className="h-dvh bg-background">
       <div className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[720px] xl:max-w-[960px]">
-        <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/40 bg-background/75 px-5 py-3 backdrop-blur-xl">
+        <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/40 bg-background/75 px-4 py-2.5 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             {showBack &&
               (canGoBack ? (
@@ -120,7 +120,7 @@ export function AppShell({
               />
               <span className="flex items-center gap-2">
                 <span className="leading-none">
-                  <span className="block font-display text-[27px]">Béa</span>
+                  <span className="block font-display text-[23px]">Béa</span>
                   <span className="block text-[10.5px] font-semibold uppercase text-muted-foreground">
                     v{APP_VERSION}
                   </span>
@@ -135,7 +135,7 @@ export function AppShell({
             {!user && (
               <Link
                 to="/auth"
-                className="rounded-xl bg-primary px-3 py-1.5 text-[13.5px] font-semibold text-primary-foreground"
+                className="rounded-xl bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground"
               >
                 Sign in
               </Link>
@@ -153,13 +153,13 @@ export function AppShell({
         </header>
 
         {(eyebrow || title) && (
-          <div className="rise shrink-0 px-5 pt-6">
+          <div className="rise shrink-0 px-4 pt-4">
             {eyebrow && <p className="label-caps">{eyebrow}</p>}
-            {title && <h1 className="mt-1.5 text-[36px] leading-[1.02]">{title}</h1>}
+            {title && <h1 className="mt-1.5 text-[27px] leading-[1.06]">{title}</h1>}
           </div>
         )}
 
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pb-10 pt-4">
+        <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3">
           {children}
         </main>
 

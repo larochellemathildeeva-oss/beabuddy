@@ -460,12 +460,12 @@ export function PageGuide() {
                   <X className="size-4" />
                 </button>
               </div>
-              <h2 className="mt-1.5 font-display text-[23px] leading-tight">{step?.title}</h2>
-              <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">
+              <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step?.title}</h2>
+              <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">
                 {step?.body}
               </p>
               {!box && (
-                <p className="mt-1.5 text-[12.5px] italic text-muted-foreground">
+                <p className="mt-1.5 text-[12px] italic text-muted-foreground">
                   This part isn't on screen right now.
                 </p>
               )}
@@ -483,14 +483,14 @@ export function PageGuide() {
                 {i > 0 && (
                   <button
                     onClick={() => setI(i - 1)}
-                    className="flex-1 rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
+                    className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
                   >
                     Back
                   </button>
                 )}
                 <button
                   onClick={() => (last ? setOpen(false) : setI(i + 1))}
-                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
+                  className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
                 >
                   {last ? "Got it" : "Next"}
                 </button>

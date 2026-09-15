@@ -182,8 +182,8 @@ function ExpensesPage() {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-sm rounded-t-3xl bg-card p-5 sm:rounded-2xl"
           >
-            <p className="font-display text-[24px] leading-snug">Before you start</p>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            <p className="font-display text-[21px] leading-snug">Before you start</p>
+            <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
               Béa is here to help you stay organised — nothing more. This is not tax advice and the
               export is not an official document. Béa is not responsible for any tax issue, missing
               receipt or filing problem. Always check the figures with your accountant or tax
@@ -191,7 +191,7 @@ function ExpensesPage() {
             </p>
             <button
               onClick={acceptDisclaimer}
-              className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground"
+              className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
             >
               I understand
             </button>
@@ -199,12 +199,12 @@ function ExpensesPage() {
         </div>
       )}
       <div className="space-y-5">
-        <p className="text-[15px] text-muted-foreground">
+        <p className="text-[14.5px] text-muted-foreground">
           Photograph a receipt the moment you pay. Béa keeps the picture privately in your account
           and builds a spending record you can send to accounting.
         </p>
 
-        <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-[13px] leading-relaxed text-muted-foreground">
+        <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-[12.5px] leading-relaxed text-muted-foreground">
           Organising help only — not tax advice, and not an official document. Béa isn’t responsible
           for any tax issue; check the numbers with your accountant.
         </p>
@@ -236,16 +236,16 @@ function ExpensesPage() {
                 className="max-h-52 w-full rounded-xl object-contain"
               />
               {scanning && (
-                <p className="text-[13.5px] text-muted-foreground">
+                <p className="text-[13px] text-muted-foreground">
                   Reading your receipt to fill in the details…
                 </p>
               )}
               {!scanning && scanNote && (
-                <p className="text-[13.5px] text-muted-foreground">{scanNote}</p>
+                <p className="text-[13px] text-muted-foreground">{scanNote}</p>
               )}
               <button
                 onClick={() => pick(null)}
-                className="text-[13.5px] font-medium text-muted-foreground underline"
+                className="text-[13px] font-medium text-muted-foreground underline"
               >
                 Remove this picture
               </button>
@@ -254,13 +254,13 @@ function ExpensesPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => camera.current?.click()}
-                className="rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground"
+                className="rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
               >
                 Take a photo
               </button>
               <button
                 onClick={() => library.current?.click()}
-                className="rounded-xl border border-border px-4 py-3 text-[16.5px] font-semibold"
+                className="rounded-xl border border-border px-4 py-3 text-[15px] font-semibold"
               >
                 Choose a picture
               </button>
@@ -272,19 +272,19 @@ function ExpensesPage() {
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               placeholder="Where you paid"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             />
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Amount"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             />
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             >
               {currencies.map((c) => (
                 <option key={c} value={c}>
@@ -295,7 +295,7 @@ function ExpensesPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             >
               {expenseCategories.map((c) => (
                 <option key={c} value={c}>
@@ -307,12 +307,12 @@ function ExpensesPage() {
               type="date"
               value={spentOn}
               onChange={(e) => setSpentOn(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             />
             <select
               value={tripId}
               onChange={(e) => setTripId(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
             >
               <option value="">No trip</option>
               {t.trips.map((trip) => (
@@ -328,10 +328,10 @@ function ExpensesPage() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="What was it for?"
             rows={2}
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
           />
 
-          <label className="flex items-center gap-2.5 text-[15px] text-muted-foreground">
+          <label className="flex items-center gap-2.5 text-[14.5px] text-muted-foreground">
             <input
               type="checkbox"
               checked={billable}
@@ -344,11 +344,11 @@ function ExpensesPage() {
           <button
             onClick={() => void save()}
             disabled={busy || (!file && !amount)}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy ? "Saving…" : "Save receipt"}
           </button>
-          {status && <p className="text-[13.5px] text-muted-foreground">{status}</p>}
+          {status && <p className="text-[13px] text-muted-foreground">{status}</p>}
         </div>
 
         {rows.length > 0 && (
@@ -359,7 +359,7 @@ function ExpensesPage() {
                 value={rates.home}
                 onChange={(e) => rates.setHomeCurrency(e.target.value)}
                 aria-label="Your home currency"
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[13.5px]"
+                className="rounded-lg border border-border bg-card px-2 py-1 text-[13px]"
               >
                 {homeCurrencies.map((c) => (
                   <option key={c} value={c}>
@@ -370,21 +370,21 @@ function ExpensesPage() {
             </div>
 
             <div>
-              <p className="text-[25px] font-semibold">{rates.format(totals.allHome)}</p>
-              <p className="text-[13.5px] text-muted-foreground">
+              <p className="text-[22px] font-semibold">{rates.format(totals.allHome)}</p>
+              <p className="text-[13px] text-muted-foreground">
                 Everything together in {rates.home}
                 {rates.asOf ? ` · rates from ${rates.asOf}` : ""}
               </p>
             </div>
 
-            <p className="text-[15px]">
+            <p className="text-[14.5px]">
               <span className="font-semibold">{rates.format(totals.billableHome)}</span>{" "}
               <span className="text-muted-foreground">marked claimable</span>
             </p>
 
             <div className="space-y-0.5 border-t border-border pt-2">
               {totals.byCurrency.map(([cur, sum]) => (
-                <p key={cur} className="text-[13.5px] text-muted-foreground">
+                <p key={cur} className="text-[13px] text-muted-foreground">
                   {sum.toFixed(2)} {cur}
                   {cur !== rates.home && rates.convert(sum, cur) !== null
                     ? ` · ${rates.format(rates.convert(sum, cur) as number)}`
@@ -393,7 +393,7 @@ function ExpensesPage() {
               ))}
             </div>
 
-            <p className="text-[13.5px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {totals.count} receipt{totals.count > 1 ? "s" : ""}
               {totals.missing > 0
                 ? ` · ${totals.missing} left out, no rate for that currency yet`
@@ -404,7 +404,7 @@ function ExpensesPage() {
             <button
               data-guide="expense-export"
               onClick={exportCsv}
-              className="w-full rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
+              className="w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
             >
               Download a spreadsheet
             </button>
@@ -412,11 +412,11 @@ function ExpensesPage() {
         )}
 
         <div className="space-y-3">
-          {loading && <p className="text-[15px] text-muted-foreground">Loading…</p>}
+          {loading && <p className="text-[14.5px] text-muted-foreground">Loading…</p>}
           {!loading && rows.length === 0 && (
             <div className="card-soft p-5 text-center">
-              <p className="text-[16.5px] font-semibold">No receipts yet</p>
-              <p className="mt-1 text-[15px] text-muted-foreground">
+              <p className="text-[15px] font-semibold">No receipts yet</p>
+              <p className="mt-1 text-[14.5px] text-muted-foreground">
                 Take a photo of your next one and it will land here.
               </p>
             </div>
@@ -435,20 +435,20 @@ function ExpensesPage() {
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[16.5px] font-semibold">{r.merchant || r.category}</p>
-                <p className="text-[13.5px] text-muted-foreground">
+                <p className="truncate text-[15px] font-semibold">{r.merchant || r.category}</p>
+                <p className="text-[13px] text-muted-foreground">
                   {r.spent_on} · {r.category}
                   {r.billable ? " · claimable" : ""}
                 </p>
-                {r.notes && <p className="mt-1 text-[13.5px] text-muted-foreground">{r.notes}</p>}
+                {r.notes && <p className="mt-1 text-[13px] text-muted-foreground">{r.notes}</p>}
               </div>
               <div className="flex flex-col items-end justify-between">
                 <div className="text-right">
-                  <p className="text-[16.5px] font-semibold">
+                  <p className="text-[15px] font-semibold">
                     {r.amount.toFixed(2)} {r.currency}
                   </p>
                   {r.currency !== rates.home && rates.convert(r.amount, r.currency) !== null && (
-                    <p className="text-[12.5px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       ≈ {rates.format(rates.convert(r.amount, r.currency) as number)}
                     </p>
                   )}
@@ -456,7 +456,7 @@ function ExpensesPage() {
 
                 <button
                   onClick={() => void removeExpense(r)}
-                  className="text-[12.5px] text-muted-foreground underline"
+                  className="text-[12px] text-muted-foreground underline"
                 >
                   Delete
                 </button>
@@ -467,7 +467,7 @@ function ExpensesPage() {
 
         <Link
           to="/profile"
-          className="block text-center text-[15px] text-muted-foreground underline"
+          className="block text-center text-[14.5px] text-muted-foreground underline"
         >
           Back to your profile
         </Link>

@@ -73,13 +73,13 @@ export function SavedPlacePicker({
   };
 
   return (
-    <div className="space-y-2 rounded-2xl bg-elevated p-3.5">
+    <div className="space-y-2 rounded-xl bg-elevated p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[15px] font-medium">
+          <p className="flex items-center gap-1.5 text-[14.5px] font-medium">
             <Bookmark className="size-3.5 text-primary" aria-hidden /> From your saved places
           </p>
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {near ? `Places near ${near} first.` : "Everything you've saved."} Adding one keeps its
             address and map pin.
           </p>
@@ -87,18 +87,16 @@ export function SavedPlacePicker({
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12.5px]"
+          className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px]"
         >
           Close
         </button>
       </div>
 
-      {vault.loading && (
-        <p className="text-[13.5px] text-muted-foreground">Fetching your places…</p>
-      )}
+      {vault.loading && <p className="text-[13px] text-muted-foreground">Fetching your places…</p>}
 
       {!vault.loading && vault.rows.length === 0 && (
-        <p className="text-[13.5px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           Nothing saved yet. Anything you keep on the Recs tab shows up here.
         </p>
       )}
@@ -110,7 +108,7 @@ export function SavedPlacePicker({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your saved places"
             aria-label="Search your saved places"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
           />
           <ul className="max-h-64 space-y-1 overflow-y-auto">
             {rows.slice(0, 40).map((row) => {
@@ -133,8 +131,8 @@ export function SavedPlacePicker({
                       aria-hidden
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[15px] font-medium">{row.name}</span>
-                      <span className="block truncate text-[12.5px] text-muted-foreground">
+                      <span className="block truncate text-[14.5px] font-medium">{row.name}</span>
+                      <span className="block truncate text-[12px] text-muted-foreground">
                         {[row.city, row.country].filter(Boolean).join(", ") ||
                           pinLabel[row.type] ||
                           "Saved place"}
@@ -149,7 +147,7 @@ export function SavedPlacePicker({
               );
             })}
             {rows.length === 0 && (
-              <li className="px-1 py-2 text-[13.5px] text-muted-foreground">
+              <li className="px-1 py-2 text-[13px] text-muted-foreground">
                 Nothing saved matches that.
               </li>
             )}

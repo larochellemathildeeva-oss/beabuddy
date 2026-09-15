@@ -155,11 +155,11 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
   };
 
   return (
-    <div className="mb-3 rounded-2xl bg-elevated p-3.5">
+    <div className="mb-3 rounded-xl bg-elevated p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="label-caps text-foreground">Where you're going</p>
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-[12px] text-muted-foreground">
             {s.stops.length === 0
               ? "Add every city — and any stopover along the way."
               : `${s.stops.length} stop${s.stops.length === 1 ? "" : "s"}${
@@ -170,14 +170,14 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <button
             onClick={openForNew}
-            className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+            className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
           >
             {adding && !editingId ? "Cancel" : "Add a stop"}
           </button>
           <button
             type="button"
             onClick={() => setPickingSaved((v) => !v)}
-            className="rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
+            className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
           >
             {pickingSaved ? "Close saved" : "From saved"}
           </button>
@@ -202,7 +202,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
       {s.countries.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {s.countries.map((c) => (
-            <span key={c} className="rounded-full bg-elevated px-2.5 py-1 text-[12.5px]">
+            <span key={c} className="rounded-full bg-elevated px-2.5 py-1 text-[12px]">
               {c}
             </span>
           ))}
@@ -215,31 +215,29 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
             <li key={stop.id} className="rounded-xl bg-elevated px-3 py-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-medium">
+                  <p className="text-[14.5px] font-medium">
                     {stop.kind === "layover" ? "✈️ Stopover · " : `${i + 1}. `}
                     {stop.city}
                     {stop.country ? `, ${stop.country}` : ""}
                   </p>
                   {(stop.arrive_on || stop.depart_on) && (
-                    <p className="text-[12.5px] text-muted-foreground">
+                    <p className="text-[12px] text-muted-foreground">
                       {[stop.arrive_on, stop.depart_on].filter(Boolean).join(" → ")}
                     </p>
                   )}
                   {stop.place_name && (
-                    <p className="truncate text-[12.5px] text-muted-foreground">
+                    <p className="truncate text-[12px] text-muted-foreground">
                       📍 {stop.place_name}
                     </p>
                   )}
-                  {stop.notes && (
-                    <p className="text-[12.5px] text-muted-foreground">{stop.notes}</p>
-                  )}
+                  {stop.notes && <p className="text-[12px] text-muted-foreground">{stop.notes}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     aria-label="Move stop earlier"
                     disabled={i === 0}
                     onClick={() => void s.moveStop(stop.id, -1)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12.5px] disabled:opacity-30"
+                    className="rounded-lg border border-border px-2 py-1 text-[12px] disabled:opacity-30"
                   >
                     ↑
                   </button>
@@ -247,14 +245,14 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                     aria-label="Move stop later"
                     disabled={i === s.stops.length - 1}
                     onClick={() => void s.moveStop(stop.id, 1)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12.5px] disabled:opacity-30"
+                    className="rounded-lg border border-border px-2 py-1 text-[12px] disabled:opacity-30"
                   >
                     ↓
                   </button>
                   <button
                     aria-label={`Edit ${stop.city}`}
                     onClick={() => openForEdit(stop)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12.5px]"
+                    className="rounded-lg border border-border px-2 py-1 text-[12px]"
                   >
                     {editingId === stop.id ? "Close" : "Edit"}
                   </button>
@@ -268,7 +266,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                         restore: () => s.addStop(stopFields(stop)),
                       })
                     }
-                    className="rounded-lg px-1.5 py-1 text-[12.5px] text-muted-foreground underline"
+                    className="rounded-lg px-1.5 py-1 text-[12px] text-muted-foreground underline"
                   >
                     Remove
                   </button>
@@ -334,7 +332,7 @@ function StopDraftForm({
   const showCountry = forceCountry || !draft.country.trim();
 
   return (
-    <div className="mt-2 space-y-2 rounded-2xl bg-elevated p-3.5">
+    <div className="mt-2 space-y-2 rounded-xl bg-elevated p-3">
       <div className="flex gap-1.5">
         {[
           ["destination", "Destination"],
@@ -348,7 +346,7 @@ function StopDraftForm({
               setKindTouched(true);
               setDraft({ ...draft, kind: v as string });
             }}
-            className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
+            className={`rounded-full border px-3 py-1.5 text-[13px] ${
               draft.kind === v
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border"
@@ -390,7 +388,7 @@ function StopDraftForm({
         placeholder="Type a city, airport or hotel name"
       />
       {draft.filled && (
-        <p aria-live="polite" className="px-1 text-[12.5px] text-muted-foreground">
+        <p aria-live="polite" className="px-1 text-[12px] text-muted-foreground">
           {draft.filled}
           {draft.kind === "layover" && !kindTouched ? " Marked as a stopover." : ""}
         </p>
@@ -402,10 +400,10 @@ function StopDraftForm({
           onChange={(e) => setDraft({ ...draft, country: e.target.value })}
           placeholder="Country"
           aria-label="Country"
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
         />
       ) : (
-        <p className="flex items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
+        <p className="flex items-center gap-2 px-1 text-[12px] text-muted-foreground">
           <span>Country: {draft.country}</span>
           <button type="button" onClick={() => setForceCountry(true)} className="underline">
             Change
@@ -419,7 +417,7 @@ function StopDraftForm({
           aria-label="Arrive on"
           value={draft.arrive_on}
           onChange={(e) => setDraft({ ...draft, arrive_on: e.target.value })}
-          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
         />
         <input
           type="date"
@@ -427,29 +425,29 @@ function StopDraftForm({
           value={draft.depart_on}
           {...(draft.arrive_on ? { min: draft.arrive_on } : {})}
           onChange={(e) => setDraft({ ...draft, depart_on: e.target.value })}
-          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
         />
       </div>
       <input
         value={draft.notes}
         onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
         placeholder={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
       />
-      {error && <p className="text-[12.5px] text-destructive">{error}</p>}
+      {error && <p className="text-[12px] text-destructive">{error}</p>}
       <div className="flex gap-2">
         <button
           type="button"
           disabled={!draft.city.trim() || busy}
           onClick={() => void onSubmit()}
-          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           {busy ? "Saving…" : submitLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
+          className="rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
         >
           Cancel
         </button>

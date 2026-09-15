@@ -76,14 +76,14 @@ function ResetPasswordPage() {
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
         <div className="flex flex-1 flex-col justify-center">
           <p className="label-caps">Béa</p>
-          <h1 className="mt-2 text-[38px] leading-[1.05]">Choose a new password</h1>
+          <h1 className="mt-2 text-[30px] leading-[1.05]">Choose a new password</h1>
 
           {done ? (
-            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[15px]">
+            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[14.5px]">
               Password updated — taking you back into Béa.
             </p>
           ) : !ready ? (
-            <p className="mt-6 text-[15px] text-muted-foreground">
+            <p className="mt-6 text-[14.5px] text-muted-foreground">
               Open this page from the link in your reset email. If you got here another way, ask for
               a new link on the{" "}
               <Link to="/forgot-password" className="underline underline-offset-4">
@@ -102,7 +102,7 @@ function ResetPasswordPage() {
                 placeholder="New password"
                 autoComplete="new-password"
                 aria-describedby="password-rules"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
               />
               <input
                 value={confirm}
@@ -112,16 +112,16 @@ function ResetPasswordPage() {
                 minLength={MIN_NEW_PASSWORD_LENGTH}
                 placeholder="Repeat new password"
                 autoComplete="new-password"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
               />
               <div id="password-rules">
                 <PasswordCreationRules password={password} />
               </div>
-              {error && <p className="text-[13.5px] text-destructive">{error}</p>}
+              {error && <p className="text-[13px] text-destructive">{error}</p>}
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-60"
+                className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
               >
                 {busy ? "Saving…" : "Save new password"}
               </button>

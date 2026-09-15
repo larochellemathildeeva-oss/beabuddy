@@ -130,18 +130,18 @@ function StoryPage() {
     <AppShell eyebrow="Travel story" title="Your journey, played back.">
       <div className="space-y-5">
         {loading && (
-          <p className="card-soft p-5 text-[16.5px] text-muted-foreground">Opening your story…</p>
+          <p className="card-soft p-5 text-[15px] text-muted-foreground">Opening your story…</p>
         )}
 
         {!loading && stops.length === 0 && (
           <div className="card-soft p-5">
-            <p className="font-display text-[21.5px] leading-snug">No story to play yet.</p>
-            <p className="mt-1 text-[15px] text-muted-foreground">
+            <p className="font-display text-[19px] leading-snug">No story to play yet.</p>
+            <p className="mt-1 text-[14.5px] text-muted-foreground">
               Import a few photos with location on and Béa will turn them into a city-by-city story.
             </p>
             <Link
               to="/photos"
-              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
+              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
             >
               Import photos
             </Link>
@@ -165,18 +165,18 @@ function StoryPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
                   <div className="absolute bottom-3 left-4 right-4 text-white">
                     <p className="label-caps opacity-90">{stop?.country || "Somewhere"}</p>
-                    <h2 className="font-display text-[30px] leading-tight">{stop?.city}</h2>
+                    <h2 className="font-display text-[25px] leading-tight">{stop?.city}</h2>
                   </div>
                 </div>
               )}
               {!url && (
                 <div className="px-4 pt-4">
                   <p className="label-caps">{stop?.country || "Somewhere"}</p>
-                  <h2 className="mt-1 font-display text-[30px] leading-tight">{stop?.city}</h2>
+                  <h2 className="mt-1 font-display text-[25px] leading-tight">{stop?.city}</h2>
                 </div>
               )}
               <div className="px-4 py-3.5">
-                <p className="text-[15px] text-muted-foreground">
+                <p className="text-[14.5px] text-muted-foreground">
                   {pretty(stop?.first ?? null)}
                   {stop?.first && stop?.last && stop.first.slice(0, 10) !== stop.last.slice(0, 10)
                     ? ` – ${pretty(stop.last)}`
@@ -193,7 +193,7 @@ function StoryPage() {
                   setPlaying(false);
                 }}
                 disabled={index === 0}
-                className="rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-40"
+                className="rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-40"
               >
                 Back
               </button>
@@ -206,7 +206,7 @@ function StoryPage() {
                     setPlaying((p) => !p);
                   }
                 }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
+                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
                 {playing ? "Pause" : index >= stops.length - 1 ? "Replay" : "Play story"}
               </button>
@@ -216,7 +216,7 @@ function StoryPage() {
                   setPlaying(false);
                 }}
                 disabled={index >= stops.length - 1}
-                className="rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-40"
+                className="rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-40"
               >
                 Next
               </button>
@@ -225,7 +225,7 @@ function StoryPage() {
             <div className="rise card-soft p-4">
               <div className="mb-2 flex items-center justify-between">
                 <p className="label-caps text-foreground">Stops</p>
-                <span className="text-[12.5px] text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   {index + 1} / {stops.length}
                 </span>
               </div>
@@ -237,7 +237,7 @@ function StoryPage() {
                       setIndex(i);
                       setPlaying(false);
                     }}
-                    className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold ${
+                    className={`shrink-0 rounded-lg px-2.5 py-1.5 text-[12px] font-semibold ${
                       i === index
                         ? "bg-primary text-primary-foreground"
                         : i < index

@@ -26,8 +26,8 @@ export const Route = createFileRoute("/privacy")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="card-soft p-4">
-      <h2 className="font-display text-[21.5px] leading-snug">{title}</h2>
-      <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-muted-foreground">
+      <h2 className="font-display text-[19px] leading-snug">{title}</h2>
+      <div className="mt-2 space-y-2 text-[14.5px] leading-relaxed text-muted-foreground">
         {children}
       </div>
     </section>
@@ -38,7 +38,7 @@ function PrivacyPage() {
   return (
     <AppShell publicPage eyebrow="Privacy" title="What Béa keeps, and what only you can read.">
       <div className="space-y-4 pb-4">
-        <p className="text-[15px] leading-relaxed text-muted-foreground">
+        <p className="text-[14.5px] leading-relaxed text-muted-foreground">
           Béa is a private vault for your travels. This page explains, in plain words, what is
           stored, where it lives, who can see it and how to remove it. Last updated 5 September
           2026.
@@ -183,7 +183,7 @@ function PrivacyPage() {
 
         <Link
           to="/profile"
-          className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[15px] font-semibold"
+          className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[14.5px] font-semibold"
         >
           Back to profile
         </Link>

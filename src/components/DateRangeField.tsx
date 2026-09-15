@@ -16,7 +16,7 @@ export function DateRangeField({
   datesStatus,
   onDatesStatusChange,
   placeholder = "Dates",
-  className = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[16.5px]",
+  className = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[15px]",
 }: {
   start: string;
   end: string;
@@ -70,10 +70,10 @@ export function DateRangeField({
             onClick={(event) => event.stopPropagation()}
             className="w-full max-w-sm rounded-t-3xl border border-border bg-card p-4 sm:rounded-2xl"
           >
-            <p id={titleId} className="px-1 font-display text-[21.5px] leading-snug">
+            <p id={titleId} className="px-1 font-display text-[19px] leading-snug">
               Trip dates
             </p>
-            <p className="mb-2 px-1 text-[13.5px] text-muted-foreground">
+            <p className="mb-2 px-1 text-[13px] text-muted-foreground">
               Tap the start, then the finish.
             </p>
             <Calendar
@@ -96,14 +96,14 @@ export function DateRangeField({
                   onChange("", "");
                   setOpen(false);
                 }}
-                className="flex-1 rounded-xl border border-border px-3 py-2.5 text-[15px] font-semibold"
+                className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
               >
                 Clear
               </button>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex-1 rounded-xl bg-primary px-3 py-2.5 text-[15px] font-semibold text-primary-foreground"
+                className="flex-1 rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
                 Done
               </button>
@@ -124,7 +124,7 @@ export function DateRangeField({
               key={value}
               type="button"
               onClick={() => onDatesStatusChange(value)}
-              className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
+              className={`rounded-full border px-3 py-1.5 text-[13px] ${
                 datesStatus === value
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border"

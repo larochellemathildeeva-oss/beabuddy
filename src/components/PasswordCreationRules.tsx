@@ -14,7 +14,7 @@ export function PasswordCreationRules({ password = "" }: PasswordCreationRulesPr
   const longEnough = password.length >= MIN_NEW_PASSWORD_LENGTH;
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 px-3.5 py-3 text-[13.5px] leading-relaxed text-muted-foreground">
+    <div className="rounded-xl border border-border bg-card/60 px-3.5 py-3 text-[13px] leading-relaxed text-muted-foreground">
       <p className="font-medium text-foreground">Password rules</p>
       <ul className="mt-1.5 list-none space-y-1">
         <li className={longEnough ? "text-foreground" : undefined}>
@@ -24,7 +24,7 @@ export function PasswordCreationRules({ password = "" }: PasswordCreationRulesPr
         </li>
         <li>· Must not appear in known data breaches</li>
       </ul>
-      <p className="mt-2 text-[12.5px]">
+      <p className="mt-2 text-[12px]">
         We check new passwords against a public breach list when you submit. Your password itself is
         never sent — only a short hash prefix.
       </p>
