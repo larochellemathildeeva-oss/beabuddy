@@ -4,23 +4,13 @@ import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
 import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
 
-import {
-  ArrowLeft,
-  Compass,
-  Globe2,
-  Home,
-  MapPinned,
-  Bookmark,
-  User,
-} from "lucide-react";
+import { ArrowLeft, Compass, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 import { PageGuide } from "./PageGuide";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 // Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
-
-
 
 const tabs = [
   { to: "/", label: "Home", icon: Home },
@@ -55,9 +45,7 @@ export function AppShell({
   const { user, loading } = useAuth();
   useLegalConsent();
   useIdleLogout(!!user);
-  const [online, setOnline] = useState(
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
+  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
 
   useEffect(() => {
     const on = () => setOnline(true);
@@ -102,7 +90,7 @@ export function AppShell({
   return (
     <div className="h-dvh bg-background">
       <div className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[720px] xl:max-w-[960px]">
-        <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/60 bg-background/85 px-4 py-2.5 backdrop-blur-xl">
+        <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/50 bg-background/80 px-4 py-2.5 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             {showBack &&
               (canGoBack ? (
@@ -123,7 +111,13 @@ export function AppShell({
                 </Link>
               ))}
             <Link to="/" className="flex items-center gap-2">
-              <img src={logo} alt="Béa logo" className="size-9 object-contain" width={36} height={36} />
+              <img
+                src={logo}
+                alt="Béa logo"
+                className="size-9 object-contain"
+                width={36}
+                height={36}
+              />
               <span className="flex items-center gap-2">
                 <span className="leading-none">
                   <span className="block font-display text-[24px]">Béa</span>
@@ -159,9 +153,9 @@ export function AppShell({
         </header>
 
         {(eyebrow || title) && (
-          <div className="rise shrink-0 px-4 pt-3.5">
+          <div className="rise shrink-0 px-4 pt-4">
             {eyebrow && <p className="label-caps">{eyebrow}</p>}
-            {title && <h1 className="mt-0.5 text-[26px] leading-[1.08]">{title}</h1>}
+            {title && <h1 className="mt-1 text-[29px] leading-[1.04]">{title}</h1>}
           </div>
         )}
 
@@ -170,26 +164,31 @@ export function AppShell({
         </main>
 
         {showTabs && (
-        <nav
-          aria-label="Main"
-          className="z-20 grid shrink-0 grid-cols-6 border-t border-border/70 bg-background/90 px-2 pt-1.5 backdrop-blur-xl pb-[max(0.375rem,env(safe-area-inset-bottom))]"
-        >
-          {tabs.map(({ to, label, icon: Icon }) => {
-            const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-            return (
-              <Link
-                key={to}
-                to={to}
-                className={`flex flex-col items-center gap-1 rounded-xl py-1.5 transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <Icon className="size-[18px]" strokeWidth={active ? 2.2 : 1.7} />
-                <span className="text-[9px] font-semibold uppercase tracking-wider">{label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+          <nav
+            aria-label="Main"
+            className="z-20 grid shrink-0 grid-cols-6 border-t border-border/50 bg-background/85 px-2 pt-1.5 backdrop-blur-xl pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+          >
+            {tabs.map(({ to, label, icon: Icon }) => {
+              const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
+              return (
+                <Link
+                  key={to}
+                  to={to}
+                  aria-current={active ? "page" : undefined}
+                  // The active tab gets a tinted pill, not just a colour change —
+                  // colour alone is a weak anchor at this size.
+                  className={`flex flex-col items-center gap-1 rounded-2xl py-1.5 ${
+                    active ? "bg-primary-soft text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  <Icon className="size-[19px]" strokeWidth={active ? 2.3 : 1.7} />
+                  <span className="text-[9.5px] font-semibold uppercase tracking-[0.06em]">
+                    {label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
         )}
       </div>
     </div>
