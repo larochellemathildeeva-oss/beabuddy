@@ -134,7 +134,7 @@ export function PlaceSearchInput({
           autoCorrect="off"
           spellCheck={false}
           placeholder={placeholder}
-          className="flex-1 resize-none rounded-xl border border-border bg-elevated px-3 py-2.5 text-[13px]"
+          className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
         />
         <button
           type="button"
@@ -145,7 +145,7 @@ export function PlaceSearchInput({
           className="grid size-[42px] shrink-0 place-items-center rounded-xl border border-border disabled:opacity-50"
         >
           {busy ? (
-            <span className="text-[12px]">…</span>
+            <span className="text-[13.5px]">…</span>
           ) : linkPaste ? (
             <Link2 className="size-4" aria-hidden />
           ) : (
@@ -153,7 +153,7 @@ export function PlaceSearchInput({
           )}
         </button>
       </div>
-      {err && <p className="text-[11px] text-muted-foreground">{err}</p>}
+      {err && <p className="text-[12.5px] text-muted-foreground">{err}</p>}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">
           {hits.slice(0, 5).map((h, i) => {
@@ -165,9 +165,9 @@ export function PlaceSearchInput({
                   onClick={() => choose(h)}
                   className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
                 >
-                  <p className="truncate text-[13px] font-medium">{line.title}</p>
+                  <p className="truncate text-[15px] font-medium">{line.title}</p>
                   {line.subtitle ? (
-                    <p className="truncate text-[11px] text-muted-foreground">{line.subtitle}</p>
+                    <p className="truncate text-[12.5px] text-muted-foreground">{line.subtitle}</p>
                   ) : null}
                 </button>
                 {quickAdd && (
@@ -185,7 +185,7 @@ export function PlaceSearchInput({
                         })
                         .finally(() => setAddingIndex(-1));
                     }}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[12.5px] font-semibold text-primary disabled:opacity-50"
                   >
                     {addingIndex === i ? (
                       (quickAdd.busyLabel ?? "Adding…")

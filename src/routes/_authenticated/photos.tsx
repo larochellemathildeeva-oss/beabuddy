@@ -56,7 +56,6 @@ function PhotosPage() {
   const [showLibrary, setShowLibrary] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem(SKIP_KEY) === "yes") {
       setSkipPrompt(true);
@@ -131,7 +130,8 @@ function PhotosPage() {
           path = `${uid}/${crypto.randomUUID()}.${ext}`;
           // Drop GPS from file bytes; lat/lon still go into photo_memories columns.
           const uploadFile = await stripImageFileMetadata(file);
-          const uploadPath = uploadFile.type === "image/jpeg" ? path.replace(/\.[^.]+$/, ".jpg") : path;
+          const uploadPath =
+            uploadFile.type === "image/jpeg" ? path.replace(/\.[^.]+$/, ".jpg") : path;
           path = uploadPath;
           const { error: upErr } = await supabase.storage
             .from("photo-memories")
@@ -157,7 +157,9 @@ function PhotosPage() {
               detected ? ` · ${detected} placed automatically from their own location` : ""
             }.`
           : `${kept} location${kept === 1 ? "" : "s"} added to your map. No photo was kept.${
-              skipped ? ` ${skipped} had no location saved inside, so ${skipped > 1 ? "they were" : "it was"} skipped.` : ""
+              skipped
+                ? ` ${skipped} had no location saved inside, so ${skipped > 1 ? "they were" : "it was"} skipped.`
+                : ""
             }`,
       );
 
@@ -184,7 +186,6 @@ function PhotosPage() {
     await load();
   };
 
-
   const groups = rows.reduce<Record<string, PhotoRow[]>>((acc, r) => {
     const key = r.city ? `${r.city}${r.country ? `, ${r.country}` : ""}` : "Unsorted";
     (acc[key] ||= []).push(r);
@@ -194,27 +195,34 @@ function PhotosPage() {
   return (
     <AppShell eyebrow="Photo memories" title="Import from your phone">
       <div className="space-y-5">
-        <ol className="card-soft space-y-2 p-4 text-[13px] text-muted-foreground">
+        <ol className="card-soft space-y-2 p-4 text-[15px] text-muted-foreground">
           <li>1. Tap Choose photos and pick them from your camera roll.</li>
           <li>
             2. Béa reads the location saved inside each photo and works out the city and country on
             its own.
           </li>
           <li>3. Only fill the boxes below for photos with no location saved in them.</li>
-
         </ol>
 
         {!consented && (
           <div data-guide="photo-privacy" className="card-soft space-y-2 p-4">
             <p className="label-caps text-foreground">Privacy, in plain words</p>
-            <ul className="space-y-1.5 text-[13px] text-muted-foreground">
-              <li>· Your account details and photos live in your private Béa account (our secure Supabase database), tied only to your email.</li>
-              <li>· Photos are stored privately — only you can see them, and only while signed in.</li>
-              <li>· If a photo has a location saved inside it, Béa reads that spot to place it on your map. Nothing else is taken from the photo.</li>
+            <ul className="space-y-1.5 text-[15px] text-muted-foreground">
+              <li>
+                · Your account details and photos live in your private Béa account (our secure
+                Supabase database), tied only to your email.
+              </li>
+              <li>
+                · Photos are stored privately — only you can see them, and only while signed in.
+              </li>
+              <li>
+                · If a photo has a location saved inside it, Béa reads that spot to place it on your
+                map. Nothing else is taken from the photo.
+              </li>
               <li>· Your photos are never shared, sold, or used to advertise to you.</li>
               <li>· You can delete any photo at any time and it's gone for good.</li>
             </ul>
-            <label className="flex items-start gap-2.5 pt-1 text-[13px] text-muted-foreground">
+            <label className="flex items-start gap-2.5 pt-1 text-[15px] text-muted-foreground">
               <input
                 type="checkbox"
                 checked={dontAsk}
@@ -225,13 +233,12 @@ function PhotosPage() {
             </label>
             <button
               onClick={agreeAndPick}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[14px] font-semibold text-primary-foreground"
+              className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground"
             >
               I understand — choose photos
             </button>
           </div>
         )}
-
 
         <div data-guide="photo-keep" className="card-soft space-y-2 p-4">
           <p className="label-caps text-foreground">What should Béa keep?</p>
@@ -239,8 +246,8 @@ function PhotosPage() {
             onClick={() => setMode("both")}
             className={`w-full rounded-xl border p-3 text-left ${mode === "both" ? "border-primary bg-elevated" : "border-border/60"}`}
           >
-            <p className="text-[13px] font-medium">Locations and the photos</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="text-[15px] font-medium">Locations and the photos</p>
+            <p className="mt-0.5 text-[13.5px] text-muted-foreground">
               Your photos are saved privately in your account and shown on your city memory pages.
             </p>
           </button>
@@ -248,10 +255,11 @@ function PhotosPage() {
             onClick={() => setMode("locations")}
             className={`w-full rounded-xl border p-3 text-left ${mode === "locations" ? "border-primary bg-elevated" : "border-border/60"}`}
           >
-            <p className="text-[13px] font-medium">Locations only — don't keep my photos</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="text-[15px] font-medium">Locations only — don't keep my photos</p>
+            <p className="mt-0.5 text-[13.5px] text-muted-foreground">
               Béa reads only where each photo was taken to place a pin on your map. Nothing from the
-              picture itself is uploaded or stored. Photos with no location saved inside are skipped.
+              picture itself is uploaded or stored. Photos with no location saved inside are
+              skipped.
             </p>
           </button>
         </div>
@@ -261,13 +269,13 @@ function PhotosPage() {
             value={city}
             onChange={(e) => setCity(e.target.value)}
             placeholder="City (fallback)"
-            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
           />
           <input
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             placeholder="Country"
-            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
           />
         </div>
 
@@ -285,12 +293,12 @@ function PhotosPage() {
 
         {pending.length > 0 ? (
           <div className="card-soft space-y-3 p-4">
-            <p className="font-display text-[18px] leading-snug">
+            <p className="font-display text-[20px] leading-snug">
               {mode === "both"
                 ? "Are you certain you want to upload all these photos?"
                 : "Read the locations from these photos?"}
             </p>
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-[15px] text-muted-foreground">
               {mode === "both"
                 ? `${pending.length} photo${pending.length > 1 ? "s" : ""} selected. They'll be saved privately to your Béa account.`
                 : `${pending.length} photo${pending.length > 1 ? "s" : ""} selected. Only the place each one was taken is kept — no picture is uploaded.`}
@@ -303,14 +311,14 @@ function PhotosPage() {
                   if (fileInput.current) fileInput.current.value = "";
                 }}
                 disabled={busy}
-                className="flex-1 rounded-xl border border-border px-4 py-3 text-[14px] font-semibold disabled:opacity-60"
+                className="flex-1 rounded-xl border border-border px-4 py-3 text-[16.5px] font-semibold disabled:opacity-60"
               >
                 Cancel
               </button>
               <button
                 onClick={() => void onFiles(pending)}
                 disabled={busy}
-                className="flex-1 rounded-xl bg-primary px-4 py-3 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
+                className="flex-1 rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-60"
               >
                 {busy
                   ? mode === "both"
@@ -326,12 +334,12 @@ function PhotosPage() {
           <button
             onClick={() => (consented ? fileInput.current?.click() : undefined)}
             disabled={busy || !consented}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
+            className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-60"
           >
             Choose photos
           </button>
         )}
-        {status && <p className="text-[12px] text-muted-foreground">{status}</p>}
+        {status && <p className="text-[13.5px] text-muted-foreground">{status}</p>}
 
         {rows.length > 0 && (
           <section className="card-soft p-4">
@@ -339,15 +347,15 @@ function PhotosPage() {
               <p className="label-caps text-foreground">Already imported</p>
               <button
                 onClick={() => setShowLibrary((v) => !v)}
-                className="text-[11px] text-primary"
+                className="text-[12.5px] text-primary"
               >
                 {showLibrary ? "Hide" : "Show"}
               </button>
             </div>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              {rows.length} item{rows.length > 1 ? "s" : ""} across{" "}
-              {Object.keys(groups).length} place{Object.keys(groups).length > 1 ? "s" : ""}. They
-              live on your city memory pages — open them here only if you want to remove one.
+            <p className="mt-1 text-[13.5px] text-muted-foreground">
+              {rows.length} item{rows.length > 1 ? "s" : ""} across {Object.keys(groups).length}{" "}
+              place{Object.keys(groups).length > 1 ? "s" : ""}. They live on your city memory pages
+              — open them here only if you want to remove one.
             </p>
 
             {showLibrary && (
@@ -363,7 +371,7 @@ function PhotosPage() {
                           key={r.id}
                           onClick={() => remove(r)}
                           title="Tap to remove"
-                          className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-border bg-muted p-1 text-center text-[10px] text-muted-foreground"
+                          className="flex aspect-square items-center justify-center overflow-hidden rounded-xl border border-border bg-muted p-1 text-center text-[11.5px] text-muted-foreground"
                         >
                           {urls[r.id] ? (
                             <img
@@ -386,23 +394,24 @@ function PhotosPage() {
         )}
 
         {rows.length === 0 && (
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-[15px] text-muted-foreground">
             No photos yet. Once you import a few, each city becomes its own memory page.
           </p>
         )}
 
-
         <Link
           to="/memories"
-          className="block rounded-xl bg-primary px-4 py-3 text-center text-[13px] font-semibold text-primary-foreground"
+          className="block rounded-xl bg-primary px-4 py-3 text-center text-[15px] font-semibold text-primary-foreground"
         >
           See your city memory pages
         </Link>
 
-        <Link to="/profile" className="block text-[13px] text-muted-foreground underline underline-offset-4">
+        <Link
+          to="/profile"
+          className="block text-[15px] text-muted-foreground underline underline-offset-4"
+        >
           Back to your profile
         </Link>
-
       </div>
     </AppShell>
   );

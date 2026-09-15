@@ -441,7 +441,7 @@ function RecommendationsPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search places, cities, people — typos are fine"
-          className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[13px] outline-none placeholder:text-muted-foreground focus:border-primary"
+          className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
         />
 
         <div>
@@ -451,7 +451,7 @@ function RecommendationsPage() {
               <button
                 key={c}
                 onClick={() => setPlaceFilter(c)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[13.5px] transition-colors ${
                   placeFilter === c
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card"
@@ -470,7 +470,7 @@ function RecommendationsPage() {
               <button
                 key={c}
                 onClick={() => setCategory(c)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[12px] transition-colors ${
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-[13.5px] transition-colors ${
                   category === c
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border bg-card"
@@ -525,7 +525,7 @@ function RecommendationsPage() {
                   setError(null);
                   if (m === "here") handleHere();
                 }}
-                className={`rounded-xl border px-3 py-3 text-left text-[13px] transition-colors ${
+                className={`rounded-xl border px-3 py-3 text-left text-[15px] transition-colors ${
                   mode === m ? "border-primary bg-elevated" : "border-border bg-card"
                 }`}
               >
@@ -541,7 +541,7 @@ function RecommendationsPage() {
                 setLocResults(null);
                 setError(null);
               }}
-              className={`col-span-2 rounded-xl border px-3 py-3 text-left text-[13px] transition-colors ${
+              className={`col-span-2 rounded-xl border px-3 py-3 text-left text-[15px] transition-colors ${
                 mode === "list" ? "border-primary bg-elevated" : "border-border bg-card"
               }`}
             >
@@ -552,7 +552,7 @@ function RecommendationsPage() {
           {mode === "link" && (
             <div className="rise mt-3 card-soft p-4">
               <p className="label-caps">Paste a link</p>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">
+              <p className="mt-1.5 text-[15px] text-muted-foreground">
                 A map link, a restaurant page, an article — or the whole share from Maps. Béa pulls
                 out the name, the address and the exact spot on the map.
               </p>
@@ -565,17 +565,17 @@ function RecommendationsPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="Paste a Maps link — or the whole share"
-                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
               />
               <button
                 onClick={handleLink}
                 disabled={!looksLikePastedPlaceLink(link) || busy === "link"}
-                className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "link" ? "Reading the link…" : "Read this link"}
               </button>
               {link.trim().length > 0 && !looksLikePastedPlaceLink(link) && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-[12.5px] text-muted-foreground">
                   Béa can't see a link in that. Paste the whole share from Maps, or a web address
                   starting with http.
                 </p>
@@ -586,7 +586,7 @@ function RecommendationsPage() {
           {mode === "search" && (
             <div className="rise mt-3 card-soft p-4">
               <p className="label-caps">Search the web</p>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">
+              <p className="mt-1.5 text-[15px] text-muted-foreground">
                 Type a place name — add the city if you know it — or paste a Maps link. Béa finds it
                 on the map.
               </p>
@@ -604,7 +604,7 @@ function RecommendationsPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="Café de Flore, Paris — or paste a Maps link"
-                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
               />
               <button
                 onClick={() => void handleSearch()}
@@ -612,7 +612,7 @@ function RecommendationsPage() {
                   (looksLikePastedPlaceLink(term) ? false : term.trim().length < 2) ||
                   busy === "search"
                 }
-                className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "search"
                   ? looksLikePastedPlaceLink(term)
@@ -638,9 +638,9 @@ function RecommendationsPage() {
                           onClick={() => showDraft({ ...r, category: prettyPlaceCategory(r) })}
                           className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
                         >
-                          <p className="truncate text-[13px] font-semibold">{line.title}</p>
+                          <p className="truncate text-[15px] font-semibold">{line.title}</p>
                           {line.subtitle ? (
-                            <p className="truncate text-[11px] text-muted-foreground">
+                            <p className="truncate text-[12.5px] text-muted-foreground">
                               {line.subtitle}
                             </p>
                           ) : null}
@@ -650,7 +650,7 @@ function RecommendationsPage() {
                           disabled={busy === "quick"}
                           aria-label={`Save ${line.title} now`}
                           onClick={() => void quickSave(r)}
-                          className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50"
+                          className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[12.5px] font-semibold text-primary disabled:opacity-50"
                         >
                           <Plus className="size-3.5" aria-hidden />
                           {busy === "quick" ? "Saving…" : "Save"}
@@ -664,7 +664,7 @@ function RecommendationsPage() {
           )}
 
           {mode === "here" && busy === "here" && (
-            <p className="mt-3 text-[13px] text-muted-foreground">Finding where you are…</p>
+            <p className="mt-3 text-[15px] text-muted-foreground">Finding where you are…</p>
           )}
 
           {mode === "list" && (
@@ -678,7 +678,7 @@ function RecommendationsPage() {
             />
           )}
 
-          {error && <p className="mt-3 text-[12px] text-destructive">{error}</p>}
+          {error && <p className="mt-3 text-[13.5px] text-destructive">{error}</p>}
 
           {/* Saved first, filled in after. Who told you about it and which pin
               it is are the two things worth asking, and neither is worth
@@ -686,7 +686,7 @@ function RecommendationsPage() {
           {justSaved && (
             <div className="rise mt-3 space-y-2 rounded-xl border border-primary/40 bg-elevated p-3">
               <div className="flex items-start justify-between gap-2">
-                <p aria-live="polite" className="min-w-0 text-[13px]">
+                <p aria-live="polite" className="min-w-0 text-[15px]">
                   <Check className="mr-1 inline size-4 text-primary" aria-hidden />
                   Saved <span className="font-medium">{justSaved.name}</span>
                 </p>
@@ -709,7 +709,7 @@ function RecommendationsPage() {
                   <button
                     type="button"
                     onClick={() => setRefining("pin")}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12.5px]"
                   >
                     <Bookmark className="size-3.5" aria-hidden /> Which pin
                   </button>
@@ -719,7 +719,7 @@ function RecommendationsPage() {
                       setRefining("who");
                       setRefineText("");
                     }}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12.5px]"
                   >
                     <UserRound className="size-3.5" aria-hidden /> Who told you
                   </button>
@@ -729,7 +729,7 @@ function RecommendationsPage() {
                       setRefining("note");
                       setRefineText("");
                     }}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12.5px]"
                   >
                     <StickyNote className="size-3.5" aria-hidden /> Add a note
                   </button>
@@ -743,7 +743,7 @@ function RecommendationsPage() {
                       key={t}
                       type="button"
                       onClick={() => void refineSaved({ pin_type: t })}
-                      className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px]"
+                      className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13.5px]"
                     >
                       <span className={`size-2 rounded-full ${pinColorClass[t]}`} aria-hidden />
                       {pinLabel[t]}
@@ -771,7 +771,7 @@ function RecommendationsPage() {
                       refining === "who" ? "A friend, a guide, a stranger…" : "Why it's worth it"
                     }
                     aria-label={refining === "who" ? "Who told you" : "Note"}
-                    className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[13px]"
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
                   />
                   <button
                     type="button"
@@ -783,7 +783,7 @@ function RecommendationsPage() {
                           : { notes: refineText.trim() },
                       )
                     }
-                    className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                    className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     Save
                   </button>
@@ -797,7 +797,7 @@ function RecommendationsPage() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="label-caps">Check the details</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12.5px] text-muted-foreground">
                     Name is the only part Béa needs. Everything else can wait.
                   </p>
                 </div>
@@ -810,13 +810,13 @@ function RecommendationsPage() {
                     setLocResults(null);
                     setError(null);
                   }}
-                  className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                  className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12.5px] text-muted-foreground"
                 >
                   Discard
                 </button>
               </div>
               {existingMatch && (
-                <p className="rounded-xl border border-border bg-elevated px-3 py-2 text-[12px] text-muted-foreground">
+                <p className="rounded-xl border border-border bg-card px-3 py-2 text-[13.5px] text-muted-foreground">
                   You already saved{" "}
                   <span className="font-medium text-foreground">{existingMatch.name}</span>
                   {existingMatch.city ? ` in ${existingMatch.city}` : ""}. Saving again makes a
@@ -829,7 +829,7 @@ function RecommendationsPage() {
               <button
                 onClick={save}
                 disabled={busy === "save" || !draft.name.trim()}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "save" ? "Saving…" : "Save to vault"}
               </button>
@@ -841,10 +841,10 @@ function RecommendationsPage() {
                 onChange={(e) => setDraftField("name", e.target.value)}
                 placeholder="Name"
                 aria-label="Name"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
               />
               {[draft.address, draft.city, draft.country].some(Boolean) && (
-                <p className="px-1 text-[11px] text-muted-foreground">
+                <p className="px-1 text-[12.5px] text-muted-foreground">
                   📍 {[draft.address || draft.city, draft.country].filter(Boolean).join(", ")}
                 </p>
               )}
@@ -858,7 +858,7 @@ function RecommendationsPage() {
                       type="button"
                       aria-expanded={open}
                       onClick={() => setDraftField2(open ? null : field)}
-                      className={`rounded-full border px-2.5 py-1.5 text-[12px] ${
+                      className={`rounded-full border px-2.5 py-1.5 text-[13.5px] ${
                         open
                           ? "border-primary bg-primary text-primary-foreground"
                           : value
@@ -881,12 +881,12 @@ function RecommendationsPage() {
                   }}
                   placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
                   aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
                 />
               )}
               <div className="pt-1">
                 <p className="label-caps">Travel tags</p>
-                <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
                   Béa guessed these so she can pick this rec when you ask her to plan. Tap to
                   change.
                 </p>
@@ -905,7 +905,7 @@ function RecommendationsPage() {
                           });
                         }}
                         aria-pressed={on}
-                        className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                        className={`rounded-full border px-2.5 py-1 text-[12.5px] transition-colors ${
                           on
                             ? "border-primary bg-card text-foreground"
                             : "border-border/60 text-muted-foreground"
@@ -918,7 +918,7 @@ function RecommendationsPage() {
                   <button
                     type="button"
                     onClick={() => setMoreTags((v) => !v)}
-                    className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[11px] text-muted-foreground"
+                    className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[12.5px] text-muted-foreground"
                   >
                     {moreTags ? "Fewer tags" : "Add a tag"}
                   </button>
@@ -927,12 +927,12 @@ function RecommendationsPage() {
               <div data-guide="reco-location" className="pt-1">
                 <p className="label-caps">Location on the map</p>
                 {draft.lat != null ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-[12.5px] text-muted-foreground">
                     Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to move
                     it.
                   </p>
                 ) : (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-[12.5px] text-muted-foreground">
                     No exact spot yet. Search a place or address and pick the pin yourself — Near
                     and directions need it.
                   </p>
@@ -947,13 +947,13 @@ function RecommendationsPage() {
                     }
                   }}
                   placeholder="Search a place, street, or city"
-                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
                 />
                 <button
                   type="button"
                   onClick={() => void findLocation()}
                   disabled={busy === "location"}
-                  className="mt-2 w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+                  className="mt-2 w-full rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-50"
                 >
                   {busy === "location" ? "Searching the map…" : "Find this spot"}
                 </button>
@@ -968,9 +968,9 @@ function RecommendationsPage() {
                           onClick={() => pickLocation(r)}
                           className="w-full rounded-xl border border-border bg-background p-3 text-left"
                         >
-                          <p className="text-[13px] font-semibold">{line.title}</p>
+                          <p className="text-[15px] font-semibold">{line.title}</p>
                           {line.subtitle ? (
-                            <p className="text-[11px] text-muted-foreground">{line.subtitle}</p>
+                            <p className="text-[12.5px] text-muted-foreground">{line.subtitle}</p>
                           ) : null}
                         </button>
                       );
@@ -989,7 +989,7 @@ function RecommendationsPage() {
                         type="button"
                         onClick={() => setDraft({ ...draft, pin_type: t })}
                         aria-pressed={on}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13.5px] font-medium transition-colors ${
                           on ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
                         }`}
                       >
@@ -1003,17 +1003,17 @@ function RecommendationsPage() {
               <button
                 onClick={save}
                 disabled={busy === "save" || !draft.name.trim()}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy === "save" ? "Saving…" : "Save to vault"}
               </button>
               {!draft.name.trim() && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12.5px] text-muted-foreground">
                   Give it a name first — that's the only required field.
                 </p>
               )}
               {!vault.signedIn && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12.5px] text-muted-foreground">
                   Sign in on the You tab to keep this saved to your account.
                 </p>
               )}
@@ -1027,22 +1027,24 @@ function RecommendationsPage() {
               <div className="flex items-start gap-3">
                 <span className={`mt-1.5 size-2 shrink-0 rounded-full ${pinColorClass[v.type]}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-display text-[18px] leading-tight">{v.name}</p>
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className="font-display text-[20px] leading-tight">{v.name}</p>
+                  <p className="text-[13.5px] text-muted-foreground">
                     {[v.city, v.country].filter(Boolean).join(", ")}
                     {v.by ? ` · by ${v.by}` : ""}
                     {v.source ? ` · ${v.source}` : ""}
                   </p>
-                  {v.notes && <p className="mt-1.5 text-[13px] leading-snug">{v.notes}</p>}
+                  {v.notes && <p className="mt-1.5 text-[15px] leading-snug">{v.notes}</p>}
                   {v.tags.length > 0 && (
-                    <p className="mt-1.5 text-[11px] text-muted-foreground">{v.tags.join(" · ")}</p>
+                    <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+                      {v.tags.join(" · ")}
+                    </p>
                   )}
                 </div>
                 <div className="shrink-0 text-right">
-                  <span className="rounded-full border border-border px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
                     {v.category}
                   </span>
-                  <p className="mt-1.5 text-[10px] text-muted-foreground">{v.year}</p>
+                  <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
                   {v.removable && (
                     <button
                       onClick={() => {
@@ -1066,7 +1068,7 @@ function RecommendationsPage() {
                           },
                         });
                       }}
-                      className="mt-1.5 text-[10px] text-muted-foreground underline"
+                      className="mt-1.5 text-[11.5px] text-muted-foreground underline"
                     >
                       Remove
                     </button>
@@ -1077,12 +1079,12 @@ function RecommendationsPage() {
           ))}
           {views.length === 0 && (
             <div className="py-8 text-center">
-              <p className="font-display text-[18px] leading-snug">{beaLine("empty.recs").title}</p>
-              <p className="mt-1 text-[13px] text-muted-foreground">{beaLine("empty.recs").body}</p>
+              <p className="font-display text-[20px] leading-snug">{beaLine("empty.recs").title}</p>
+              <p className="mt-1 text-[15px] text-muted-foreground">{beaLine("empty.recs").body}</p>
             </div>
           )}
           {views.length > 0 && filtered.length === 0 && (
-            <p className="py-8 text-center text-[13px] text-muted-foreground">
+            <p className="py-8 text-center text-[15px] text-muted-foreground">
               Nothing saved matches that yet.
             </p>
           )}

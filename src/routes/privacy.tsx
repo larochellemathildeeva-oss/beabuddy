@@ -13,7 +13,8 @@ export const Route = createFileRoute("/privacy")({
       { property: "og:title", content: "Privacy policy — Béa" },
       {
         property: "og:description",
-        content: "Plain-English privacy: what Béa keeps, where it lives, and what only you can read.",
+        content:
+          "Plain-English privacy: what Béa keeps, where it lives, and what only you can read.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -25,8 +26,8 @@ export const Route = createFileRoute("/privacy")({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="card-soft p-4">
-      <h2 className="font-display text-[19px] leading-snug">{title}</h2>
-      <div className="mt-2 space-y-2 text-[13px] leading-relaxed text-muted-foreground">
+      <h2 className="font-display text-[21.5px] leading-snug">{title}</h2>
+      <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-muted-foreground">
         {children}
       </div>
     </section>
@@ -37,7 +38,7 @@ function PrivacyPage() {
   return (
     <AppShell publicPage eyebrow="Privacy" title="What Béa keeps, and what only you can read.">
       <div className="space-y-4 pb-4">
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-[15px] leading-relaxed text-muted-foreground">
           Béa is a private vault for your travels. This page explains, in plain words, what is
           stored, where it lives, who can see it and how to remove it. Last updated 5 September
           2026.
@@ -99,7 +100,6 @@ function PrivacyPage() {
           </p>
         </Section>
 
-
         <Section title="The document vault">
           <p>
             The Vault is for trip-useful documents — reservations, tickets, booking confirmations,
@@ -124,9 +124,9 @@ function PrivacyPage() {
           <p>
             Béa asks for your location only when you open Near or save a place with “I'm here now”.
             Before the first request you're told exactly what it's used for and you choose how long
-            to share it for — just this once, an hour, the rest of the day, or until you turn it off.
-            Your position is used on the spot to measure distances and is not stored as a history of
-            where you have been. You can stop sharing at any time from the Near screen.
+            to share it for — just this once, an hour, the rest of the day, or until you turn it
+            off. Your position is used on the spot to measure distances and is not stored as a
+            history of where you have been. You can stop sharing at any time from the Near screen.
           </p>
         </Section>
 
@@ -145,16 +145,15 @@ function PrivacyPage() {
           <p>
             When you use an AI feature — building a trip, importing a plan from a photo or pasted
             text, comparing two itineraries or places — the text or image you provide is sent to an
-            AI provider (Google Gemini) purely to produce your answer.
-            Your saved travel preferences (style, budget, interests, dietary rules) are included so
-            suggestions fit you.
+            AI provider (Google Gemini) purely to produce your answer. Your saved travel preferences
+            (style, budget, interests, dietary rules) are included so suggestions fit you.
           </p>
           <p>
             This content is used only to generate your result; it is not sold and not used for
-            advertising by Béa. The AI provider may process or retain prompts under their own
-            policy — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories
-            are never sent to the AI provider. Avoid pasting or photographing sensitive details such
-            as passport or card numbers. Vault documents are not sent into AI prompts.
+            advertising by Béa. The AI provider may process or retain prompts under their own policy
+            — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories are
+            never sent to the AI provider. Avoid pasting or photographing sensitive details such as
+            passport or card numbers. Vault documents are not sent into AI prompts.
           </p>
         </Section>
 
@@ -177,12 +176,14 @@ function PrivacyPage() {
             (ownership hands off); trips only you were on are removed. Backups, logs, and the AI
             provider may lag for a short time.
           </p>
-          <p>Béa does not sell data, does not run advertising and does not track you across the web.</p>
+          <p>
+            Béa does not sell data, does not run advertising and does not track you across the web.
+          </p>
         </Section>
 
         <Link
           to="/profile"
-          className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[13px] font-semibold"
+          className="mt-4 block rounded-xl border border-border px-4 py-3 text-center text-[15px] font-semibold"
         >
           Back to profile
         </Link>

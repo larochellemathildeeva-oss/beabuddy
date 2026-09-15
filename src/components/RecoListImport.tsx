@@ -245,7 +245,7 @@ export function RecoListImport({
   return (
     <div className="rise mt-3 card-soft space-y-3 p-4">
       <p className="label-caps">Paste or upload a list</p>
-      <p className="text-[13px] text-muted-foreground">
+      <p className="text-[15px] text-muted-foreground">
         Paste names from your notes, a page of things to do, or upload a photo or file. Béa reads
         them, looks each one up, then you can edit and pick the right pin before anything is saved.
       </p>
@@ -255,10 +255,10 @@ export function RecoListImport({
         rows={4}
         maxLength={20000}
         placeholder="One place per line, or paste a whole note…"
-        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
       />
       <label className="block">
-        <span className="text-[12px] font-medium">Or a page of suggestions</span>
+        <span className="text-[13.5px] font-medium">Or a page of suggestions</span>
         <input
           value={pageUrl}
           onChange={(e) => setPageUrl(e.target.value)}
@@ -267,7 +267,7 @@ export function RecoListImport({
           autoCorrect="off"
           spellCheck={false}
           placeholder="https:// — Time Out, a blog, things to do…"
-          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+          className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
         />
       </label>
       <button
@@ -280,7 +280,7 @@ export function RecoListImport({
             !extractPastedPlaceLink(pageUrl) &&
             !extractPastedPlaceLink(paste))
         }
-        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy === "read"
           ? "Reading…"
@@ -309,7 +309,7 @@ export function RecoListImport({
           type="button"
           onClick={() => cameraRef.current?.click()}
           disabled={busy !== null || looking}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
         >
           <Camera className="size-4" /> Take a picture
         </button>
@@ -317,31 +317,31 @@ export function RecoListImport({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy !== null || looking}
-          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
         >
           <ImageIcon className="size-4" /> Upload a list
         </button>
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[12.5px] leading-relaxed text-muted-foreground">
         Lists, pictures and public pages are sent to an AI provider to read them — skip passport
         numbers, card details or other sensitive information.
       </p>
-      {busy === "read" && <p className="text-[13px] text-muted-foreground">Reading the list…</p>}
+      {busy === "read" && <p className="text-[15px] text-muted-foreground">Reading the list…</p>}
       {looking && (
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-[15px] text-muted-foreground">
           Looking up {searchingAt + 1} of {drafts?.length ?? 0}…
         </p>
       )}
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="text-[13.5px] text-destructive">{error}</p>}
 
       {drafts && (
         <div className="space-y-3">
-          {summary && <p className="text-[12px] text-muted-foreground">{summary}</p>}
+          {summary && <p className="text-[13.5px] text-muted-foreground">{summary}</p>}
           <input
             value={recommendedBy}
             onChange={(e) => setRecommendedBy(e.target.value)}
             placeholder="Who told you (optional — applies to all)"
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[15px] outline-none focus:border-primary"
           />
           {drafts.map((row, i) => (
             <article
@@ -349,7 +349,7 @@ export function RecoListImport({
               className="rounded-xl border border-border bg-background p-3"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12.5px] text-muted-foreground">
                   {row.status === "searching"
                     ? "Searching the map…"
                     : row.status === "pending"
@@ -361,7 +361,7 @@ export function RecoListImport({
                 <button
                   type="button"
                   onClick={() => patch(i, { skip: !row.skip })}
-                  className="shrink-0 text-[11px] text-muted-foreground underline"
+                  className="shrink-0 text-[12.5px] text-muted-foreground underline"
                 >
                   {row.skip ? "Include" : "Skip"}
                 </button>
@@ -378,7 +378,7 @@ export function RecoListImport({
                       });
                     }}
                     aria-label={`Name for suggestion ${i + 1}`}
-                    className="w-full rounded-lg border border-border bg-elevated px-2.5 py-2 text-[13px] font-medium outline-none focus:border-primary"
+                    className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] font-medium outline-none focus:border-primary"
                   />
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -392,13 +392,13 @@ export function RecoListImport({
                       }}
                       aria-label={`City for ${row.originalName || `suggestion ${i + 1}`}`}
                       placeholder="City"
-                      className="rounded-lg border border-border bg-elevated px-2.5 py-2 text-[13px] outline-none focus:border-primary"
+                      className="rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
                     />
                     <select
                       value={row.category ?? "Place"}
                       onChange={(e) => patch(i, { category: e.target.value })}
                       aria-label={`Category for ${row.originalName || `suggestion ${i + 1}`}`}
-                      className="rounded-lg border border-border bg-elevated px-2.5 py-2 text-[13px] outline-none"
+                      className="rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none"
                     >
                       {RECO_LIST_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>
@@ -414,13 +414,13 @@ export function RecoListImport({
                     maxLength={400}
                     aria-label={`Note for ${row.originalName || `suggestion ${i + 1}`}`}
                     placeholder="Note — why it's here, a dish, a neighbourhood…"
-                    className="w-full rounded-lg border border-border bg-elevated px-2.5 py-2 text-[13px] outline-none focus:border-primary"
+                    className="w-full rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none focus:border-primary"
                   />
                   <button
                     type="button"
                     onClick={() => void lookupRow(i)}
                     disabled={looking || row.originalName.trim().length < 2}
-                    className="text-[12px] font-medium text-primary underline disabled:opacity-50"
+                    className="text-[13.5px] font-medium text-primary underline disabled:opacity-50"
                   >
                     Look up this name
                   </button>
@@ -440,9 +440,9 @@ export function RecoListImport({
                           on ? "border-primary bg-elevated" : "border-border/60"
                         }`}
                       >
-                        <p className="text-[13px] font-medium">{line.title}</p>
+                        <p className="text-[15px] font-medium">{line.title}</p>
                         {line.subtitle ? (
-                          <p className="text-[11px] text-muted-foreground">{line.subtitle}</p>
+                          <p className="text-[12.5px] text-muted-foreground">{line.subtitle}</p>
                         ) : null}
                       </button>
                     );
@@ -459,7 +459,7 @@ export function RecoListImport({
                         type="button"
                         onClick={() => patch(i, { pin_type: t })}
                         aria-pressed={on}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium ${
+                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13.5px] font-medium ${
                           on ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
                         }`}
                       >
@@ -476,14 +476,14 @@ export function RecoListImport({
             type="button"
             onClick={() => void save()}
             disabled={busy === "save" || looking || readyCount === 0}
-            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy === "save"
               ? "Saving…"
               : `Save ${readyCount} ${readyCount === 1 ? "place" : "places"}`}
           </button>
           {!signedIn && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[12.5px] text-muted-foreground">
               Sign in on the You tab to keep these saved to your account.
             </p>
           )}

@@ -37,14 +37,14 @@ export function DocumentVault() {
   if (!v.signedIn) {
     return (
       <div className="card-soft p-4 text-center">
-        <p className="font-display text-[20px]">Trip confirmations & tickets</p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+        <p className="font-display text-[23px]">Trip confirmations & tickets</p>
+        <p className="mt-1 text-[13.5px] text-muted-foreground">
           Keep reservations, tickets, and booking confirmations handy for the trip — encrypted on
           your device before they sync.
         </p>
         <Link
           to="/auth"
-          className="mt-4 block w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
+          className="mt-4 block w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
         >
           Sign in to set up your vault
         </Link>
@@ -56,10 +56,10 @@ export function DocumentVault() {
     return (
       <div className="card-soft p-4">
         <div className="text-center">
-          <p className="font-display text-[20px]">
+          <p className="font-display text-[23px]">
             {v.hasVault ? "Vault locked" : "Set a vault passcode"}
           </p>
-          <p className="mt-1 text-[12px] text-muted-foreground">
+          <p className="mt-1 text-[13.5px] text-muted-foreground">
             {v.hasVault
               ? "Your trip documents stay locked until you unlock them."
               : "Choose a passcode to protect reservations, tickets, and confirmations. Designed so only someone with your Vault credentials can view them."}
@@ -71,7 +71,7 @@ export function DocumentVault() {
           type="password"
           inputMode="numeric"
           placeholder="Passcode"
-          className="mt-4 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+          className="mt-4 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
         />
         {!v.hasVault && (
           <input
@@ -80,10 +80,10 @@ export function DocumentVault() {
             type="password"
             inputMode="numeric"
             placeholder="Repeat passcode"
-            className="mt-2 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
           />
         )}
-        {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+        {error && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
         <button
           disabled={busy || passcode.length < 4}
           onClick={() =>
@@ -97,7 +97,7 @@ export function DocumentVault() {
               setConfirmCode("");
             })
           }
-          className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           {v.hasVault ? "Unlock vault" : "Create vault"}
         </button>
@@ -109,7 +109,7 @@ export function DocumentVault() {
     <div className="card-soft p-4">
       <div className="flex items-center justify-between">
         <p className="label-caps text-foreground">Unlocked</p>
-        <button onClick={v.lock} className="text-[12px] text-muted-foreground underline">
+        <button onClick={v.lock} className="text-[13.5px] text-muted-foreground underline">
           Lock now
         </button>
       </div>
@@ -132,18 +132,18 @@ export function DocumentVault() {
               className="flex w-full items-center justify-between text-left"
             >
               <div>
-                <p className="text-[14px] font-medium">{row.label}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[16.5px] font-medium">{row.label}</p>
+                <p className="text-[12.5px] text-muted-foreground">
                   {row.kind}
                   {row.expires_on ? ` · expires ${row.expires_on}` : ""}
                 </p>
               </div>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[12.5px] text-muted-foreground">
                 {openId === row.id ? "Hide" : "Reveal"}
               </span>
             </button>
             {openId === row.id && secret && (
-              <div className="rise mt-2 rounded-xl border border-border bg-elevated p-3 text-[13px]">
+              <div className="rise mt-2 rounded-xl border border-border bg-elevated p-3 text-[15px]">
                 {secret.number && <p>Number: {secret.number}</p>}
                 {secret.notes && <p className="mt-1 text-muted-foreground">{secret.notes}</p>}
                 {secret.fileData && (
@@ -157,7 +157,7 @@ export function DocumentVault() {
                 )}
                 <button
                   onClick={() => run(() => v.removeDoc(row.id))}
-                  className="mt-3 block text-[12px] text-destructive underline"
+                  className="mt-3 block text-[13.5px] text-destructive underline"
                 >
                   Delete this document
                 </button>
@@ -166,21 +166,23 @@ export function DocumentVault() {
           </div>
         ))}
         {v.rows.length === 0 && (
-          <p className="py-4 text-center text-[12px] text-muted-foreground">
+          <p className="py-4 text-center text-[13.5px] text-muted-foreground">
             Nothing stored yet. Add a reservation, ticket, or confirmation for the trip.
           </p>
         )}
       </div>
 
       {adding ? (
-        <div className="rise mt-3 space-y-2 rounded-xl border border-border p-3">
+        <div className="rise mt-3 space-y-2 rounded-2xl bg-elevated p-3.5">
           <div className="flex flex-wrap gap-1.5">
             {kinds.map((k) => (
               <button
                 key={k}
                 onClick={() => setForm({ ...form, kind: k })}
-                className={`rounded-full border px-3 py-1.5 text-[12px] ${
-                  form.kind === k ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
+                  form.kind === k
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border"
                 }`}
               >
                 {k}
@@ -191,19 +193,19 @@ export function DocumentVault() {
             value={form.label}
             onChange={(e) => setForm({ ...form, label: e.target.value })}
             placeholder="Label (e.g. Hotel confirmation)"
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
           />
           <input
             value={form.number}
             onChange={(e) => setForm({ ...form, number: e.target.value })}
             placeholder="Confirmation / booking reference"
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
           />
           <input
             value={form.expires}
             onChange={(e) => setForm({ ...form, expires: e.target.value })}
             type="date"
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
             aria-label="Travel or stay date"
           />
           <textarea
@@ -211,14 +213,14 @@ export function DocumentVault() {
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             placeholder="Notes (gate, seat, check-in time…)"
             rows={2}
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
           />
-          <label className="block text-[12px] text-muted-foreground">
+          <label className="block text-[13.5px] text-muted-foreground">
             {file ? `Attached: ${file.name}` : "Attach a scan or photo (optional)"}
             <input
               type="file"
               accept="image/*,application/pdf"
-              className="mt-1 block w-full text-[12px]"
+              className="mt-1 block w-full text-[13.5px]"
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;
@@ -228,7 +230,7 @@ export function DocumentVault() {
               }}
             />
           </label>
-          {error && <p className="text-[12px] text-destructive">{error}</p>}
+          {error && <p className="text-[13.5px] text-destructive">{error}</p>}
           <div className="flex gap-2">
             <button
               disabled={busy || !form.label.trim()}
@@ -255,13 +257,13 @@ export function DocumentVault() {
                   setAdding(false);
                 })
               }
-              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
             >
               Encrypt and save
             </button>
             <button
               onClick={() => setAdding(false)}
-              className="rounded-xl border border-border px-4 py-2.5 text-[13px]"
+              className="rounded-xl border border-border px-4 py-2.5 text-[15px]"
             >
               Cancel
             </button>
@@ -270,17 +272,17 @@ export function DocumentVault() {
       ) : (
         <button
           onClick={() => setAdding(true)}
-          className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground"
+          className="mt-3 w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground"
         >
           Add a reservation or ticket
         </button>
       )}
 
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-[12.5px] text-muted-foreground">
         Unlock with your passcode. Labels and expiry dates stay readable when locked; only
         attachment contents are encrypted.
       </p>
-      {error && !adding && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+      {error && !adding && <p className="mt-2 text-[13.5px] text-destructive">{error}</p>}
     </div>
   );
 }

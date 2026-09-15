@@ -129,9 +129,7 @@ function CalendarPage() {
 
   const upcoming = useMemo(() => {
     const today = iso(new Date());
-    return items
-      .filter((i) => i.day_date && i.day_date >= today)
-      .slice(0, 8);
+    return items.filter((i) => i.day_date && i.day_date >= today).slice(0, 8);
   }, [items]);
 
   const tripTitle = (id: string) => trips.find((t) => t.id === id)?.title ?? "Trip";
@@ -145,14 +143,14 @@ function CalendarPage() {
           <div className="flex items-center justify-between">
             <button
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
-              className="rounded-xl border border-border px-3 py-1.5 text-[13px]"
+              className="rounded-xl border border-border px-3 py-1.5 text-[15px]"
             >
               ‹
             </button>
-            <p className="font-display text-[20px]">{monthLabel(cursor)}</p>
+            <p className="font-display text-[23px]">{monthLabel(cursor)}</p>
             <button
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
-              className="rounded-xl border border-border px-3 py-1.5 text-[13px]"
+              className="rounded-xl border border-border px-3 py-1.5 text-[15px]"
             >
               ›
             </button>
@@ -174,7 +172,7 @@ function CalendarPage() {
                 <button
                   key={day}
                   onClick={() => setSelected(day)}
-                  className={`flex aspect-square flex-col items-center justify-center rounded-xl border text-[13px] transition-colors ${
+                  className={`flex aspect-square flex-col items-center justify-center rounded-xl border text-[15px] transition-colors ${
                     isSelected
                       ? "border-primary bg-primary text-primary-foreground"
                       : onTrip
@@ -185,7 +183,11 @@ function CalendarPage() {
                   {Number(day.slice(8))}
                   <span
                     className={`mt-0.5 size-1.5 rounded-full ${
-                      hasItems ? (isSelected ? "bg-primary-foreground" : "bg-primary") : "bg-transparent"
+                      hasItems
+                        ? isSelected
+                          ? "bg-primary-foreground"
+                          : "bg-primary"
+                        : "bg-transparent"
                     }`}
                   />
                 </button>
@@ -197,36 +199,33 @@ function CalendarPage() {
         <section className="card-soft p-4">
           <p className="label-caps">{pretty(selected)}</p>
           {dayTrips.length > 0 && (
-            <p className="mt-1 text-[13px] text-muted-foreground">On trip: {dayTrips.join(", ")}</p>
+            <p className="mt-1 text-[15px] text-muted-foreground">On trip: {dayTrips.join(", ")}</p>
           )}
           {dayItems.length === 0 ? (
-            <p className="mt-2 text-[13px] text-muted-foreground">
+            <p className="mt-2 text-[15px] text-muted-foreground">
               Nothing planned. Add flights, hotels and reservations to a trip timeline and they land
               here.
             </p>
           ) : (
             <ul className="mt-3 space-y-2">
               {dayItems.map((it) => (
-                <li
-                  key={it.id}
-                  className="rounded-xl border border-border bg-elevated px-3 py-2"
-                >
+                <li key={it.id} className="rounded-xl border border-border bg-card px-3 py-2">
                   <div className="flex items-center gap-2">
                     <span>{KIND_ICON[it.kind] ?? "📍"}</span>
-                    <p className="text-[14px] font-semibold">{it.title}</p>
+                    <p className="text-[16.5px] font-semibold">{it.title}</p>
                   </div>
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className="text-[13.5px] text-muted-foreground">
                     {it.time_label ? `${it.time_label} · ` : ""}
                     {it.kind} · {tripTitle(it.trip_id)}
                   </p>
-                  {it.detail && <p className="mt-1 text-[12px]">{it.detail}</p>}
+                  {it.detail && <p className="mt-1 text-[13.5px]">{it.detail}</p>}
                 </li>
               ))}
             </ul>
           )}
           <Link
             to="/trips"
-            className="mt-3 inline-block rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+            className="mt-3 inline-block rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
           >
             Open trips
           </Link>
@@ -234,19 +233,17 @@ function CalendarPage() {
 
         <section className="card-soft p-4">
           <p className="label-caps">Coming up</p>
-          {loading && <p className="mt-2 text-[13px] text-muted-foreground">Loading…</p>}
+          {loading && <p className="mt-2 text-[15px] text-muted-foreground">Loading…</p>}
           {!loading && upcoming.length === 0 && (
-            <p className="mt-2 text-[13px] text-muted-foreground">
-              No future plans saved yet.
-            </p>
+            <p className="mt-2 text-[15px] text-muted-foreground">No future plans saved yet.</p>
           )}
           <ul className="mt-2 space-y-2">
             {upcoming.map((it) => (
               <li key={it.id} className="flex items-start gap-3">
-                <span className="w-24 shrink-0 text-[12px] text-muted-foreground">
+                <span className="w-24 shrink-0 text-[13.5px] text-muted-foreground">
                   {it.day_date ? pretty(it.day_date) : ""}
                 </span>
-                <span className="text-[13px]">
+                <span className="text-[15px]">
                   {KIND_ICON[it.kind] ?? "📍"} {it.title}
                 </span>
               </li>

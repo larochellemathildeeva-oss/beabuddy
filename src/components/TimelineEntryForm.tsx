@@ -246,7 +246,7 @@ export function TimelineEntryForm({
   };
 
   const chip = (active: boolean, set: boolean) =>
-    `flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[12px] ${
+    `flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[13.5px] ${
       active
         ? "border-primary bg-primary text-primary-foreground"
         : set
@@ -255,7 +255,7 @@ export function TimelineEntryForm({
     }`;
 
   return (
-    <div className="space-y-2.5 rounded-xl border border-border p-3">
+    <div className="space-y-2.5 rounded-2xl bg-elevated p-3.5">
       {/* The name is the only thing that is not optional, so it is the only
           thing on screen by default. */}
       <PlaceSearchInput
@@ -272,12 +272,12 @@ export function TimelineEntryForm({
       {placeAddress && (
         <div className="flex items-start justify-between gap-2 rounded-xl border border-primary/40 bg-elevated px-3 py-2">
           <div className="min-w-0">
-            <p className="min-w-0 break-words text-[12px]">
+            <p className="min-w-0 break-words text-[13.5px]">
               <MapPin className="mr-1 inline size-3.5 text-primary" aria-hidden />
               {placeAddress}
             </p>
             {place.note && (
-              <p aria-live="polite" className="mt-0.5 text-[11px] text-muted-foreground">
+              <p aria-live="polite" className="mt-0.5 text-[12.5px] text-muted-foreground">
                 {place.note}
                 {!kindTouched && ` Set as a ${kind}.`}
               </p>
@@ -344,7 +344,7 @@ export function TimelineEntryForm({
       </div>
 
       {panel === "kind" && (
-        <div className="flex flex-wrap gap-1.5 rounded-xl border border-border/60 p-2">
+        <div className="flex flex-wrap gap-1.5 rounded-2xl bg-elevated p-2.5">
           {KINDS.map(([value, label]) => (
             <button
               key={value}
@@ -355,7 +355,7 @@ export function TimelineEntryForm({
                 setKindTouched(true);
                 setPanel(null);
               }}
-              className={`rounded-full border px-3 py-1.5 text-[12px] ${
+              className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
                 kind === value
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border"
@@ -368,7 +368,7 @@ export function TimelineEntryForm({
       )}
 
       {panel === "day" && (
-        <div className="space-y-2 rounded-xl border border-border/60 p-2">
+        <div className="space-y-2 rounded-2xl bg-elevated p-2.5">
           {days.length > 1 && (
             <div className="flex flex-wrap gap-1.5" role="group" aria-label="Day of the trip">
               {days.map((value, index) => (
@@ -381,7 +381,7 @@ export function TimelineEntryForm({
                     setDay(day === value ? "" : value);
                     setPanel(null);
                   }}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                  className={`rounded-full border px-2.5 py-1 text-[12.5px] ${
                     day === value
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-muted-foreground"
@@ -392,7 +392,7 @@ export function TimelineEntryForm({
               ))}
             </div>
           )}
-          <label className="block text-[11px] text-muted-foreground">
+          <label className="block text-[12.5px] text-muted-foreground">
             Or a specific date
             <input
               type="date"
@@ -403,10 +403,10 @@ export function TimelineEntryForm({
                 setDayTouched(true);
                 setDay(e.target.value);
               }}
-              className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] text-foreground"
             />
           </label>
-          {outside && <p className="text-[11px] text-muted-foreground">{outside}</p>}
+          {outside && <p className="text-[12.5px] text-muted-foreground">{outside}</p>}
           {day && (
             <button
               type="button"
@@ -415,7 +415,7 @@ export function TimelineEntryForm({
                 setDay("");
                 setPanel(null);
               }}
-              className="text-[11px] text-muted-foreground underline"
+              className="text-[12.5px] text-muted-foreground underline"
             >
               No day yet
             </button>
@@ -424,7 +424,7 @@ export function TimelineEntryForm({
       )}
 
       {panel === "time" && (
-        <div className="space-y-2 rounded-xl border border-border/60 p-2">
+        <div className="space-y-2 rounded-2xl bg-elevated p-2.5">
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="Rough time of day">
             {TIME_CHIPS.map((preset) => (
               <button
@@ -436,7 +436,7 @@ export function TimelineEntryForm({
                   setFreeTime("");
                   setPanel(null);
                 }}
-                className={`rounded-full border px-3 py-1 text-[11px] ${
+                className={`rounded-full border px-3 py-1 text-[12.5px] ${
                   time === preset.value
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-border text-muted-foreground"
@@ -446,7 +446,7 @@ export function TimelineEntryForm({
               </button>
             ))}
           </div>
-          <label className="block text-[11px] text-muted-foreground">
+          <label className="block text-[12.5px] text-muted-foreground">
             Or a clock time
             <input
               type="time"
@@ -455,18 +455,18 @@ export function TimelineEntryForm({
                 setTime(e.target.value);
                 setFreeTime("");
               }}
-              className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] text-foreground"
             />
           </label>
           {!time && (
-            <label className="block text-[11px] text-muted-foreground">
+            <label className="block text-[12.5px] text-muted-foreground">
               Or in your own words
               <input
                 value={freeTime}
                 onChange={(e) => setFreeTime(e.target.value)}
                 onBlur={() => setFreeTime(normalizeTimeLabel(freeTime))}
                 placeholder="after check-in"
-                className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-foreground"
+                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] text-foreground"
               />
             </label>
           )}
@@ -478,7 +478,7 @@ export function TimelineEntryForm({
                 setFreeTime("");
                 setPanel(null);
               }}
-              className="text-[11px] text-muted-foreground underline"
+              className="text-[12.5px] text-muted-foreground underline"
             >
               No time
             </button>
@@ -496,7 +496,7 @@ export function TimelineEntryForm({
           }}
           placeholder="Anything worth remembering"
           aria-label="Note"
-          className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
         />
       )}
 
@@ -513,14 +513,14 @@ export function TimelineEntryForm({
         />
       )}
 
-      {error && <p className="text-[11px] text-destructive">{error}</p>}
+      {error && <p className="text-[12.5px] text-destructive">{error}</p>}
 
       {/* Added first, scheduled after — the day and time are offered once the
           thing exists, rather than asked for before it does. */}
       {justAdded && !error && (
         <div className="space-y-2 rounded-xl border border-primary/40 bg-elevated p-2.5">
           <div className="flex items-start justify-between gap-2">
-            <p aria-live="polite" className="min-w-0 text-[12px]">
+            <p aria-live="polite" className="min-w-0 text-[13.5px]">
               <Check className="mr-1 inline size-3.5 text-primary" aria-hidden />
               Added <span className="font-medium">{justAdded.title}</span>
               {day || timeLabel ? (
@@ -550,7 +550,7 @@ export function TimelineEntryForm({
               <button
                 type="button"
                 onClick={() => setScheduling("day")}
-                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12.5px]"
               >
                 <CalendarDays className="size-3.5" aria-hidden />
                 {day ? `Change day (${dayChipLabel(day, days)})` : "Set a day"}
@@ -558,7 +558,7 @@ export function TimelineEntryForm({
               <button
                 type="button"
                 onClick={() => setScheduling("time")}
-                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12.5px]"
               >
                 <Clock className="size-3.5" aria-hidden />
                 {timeLabel ? `Change time (${timeLabel})` : "Set a time"}
@@ -573,7 +573,7 @@ export function TimelineEntryForm({
                   key={value}
                   type="button"
                   onClick={() => void scheduleJustAdded({ day_date: value })}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                  className={`rounded-full border px-2.5 py-1 text-[12.5px] ${
                     day === value
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border"
@@ -587,13 +587,13 @@ export function TimelineEntryForm({
                   type="date"
                   aria-label="Day for the entry just added"
                   onChange={(e) => void scheduleJustAdded({ day_date: e.target.value })}
-                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px]"
+                  className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
                 />
               )}
               <button
                 type="button"
                 onClick={() => void scheduleJustAdded({ day_date: null })}
-                className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                className="rounded-full border border-border px-2.5 py-1 text-[12.5px] text-muted-foreground"
               >
                 No day
               </button>
@@ -607,7 +607,7 @@ export function TimelineEntryForm({
                   key={preset.id}
                   type="button"
                   onClick={() => void scheduleJustAdded({ time_label: preset.value })}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] ${
+                  className={`rounded-full border px-2.5 py-1 text-[12.5px] ${
                     time === preset.value
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border"
@@ -620,12 +620,12 @@ export function TimelineEntryForm({
                 type="time"
                 aria-label="Time for the entry just added"
                 onChange={(e) => void scheduleJustAdded({ time_label: e.target.value || null })}
-                className="rounded-xl border border-border bg-card px-2 py-1 text-[12px]"
+                className="rounded-xl border border-border bg-card px-2 py-1 text-[13.5px]"
               />
               <button
                 type="button"
                 onClick={() => void scheduleJustAdded({ time_label: null })}
-                className="rounded-full border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+                className="rounded-full border border-border px-2.5 py-1 text-[12.5px] text-muted-foreground"
               >
                 No time
               </button>
@@ -635,7 +635,7 @@ export function TimelineEntryForm({
       )}
 
       {added > 0 && !justAdded && !error && (
-        <p aria-live="polite" className="text-[11px] text-primary">
+        <p aria-live="polite" className="text-[12.5px] text-primary">
           {added === 1 ? "Added." : `${added} added.`} Keep going, or tap Done.
         </p>
       )}
@@ -645,14 +645,14 @@ export function TimelineEntryForm({
           type="button"
           disabled={!title.trim() || busy}
           onClick={() => void save()}
-          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           {busy ? "Adding…" : added > 0 ? "Add another" : "Add to timeline"}
         </button>
         <button
           type="button"
           onClick={onDone}
-          className="rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold"
+          className="rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold"
         >
           Done
         </button>

@@ -58,9 +58,12 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
   const [error, setError] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
-  const [draft, setDraft] = useState<{ name: string; lat: number; lon: number; category: string } | null>(
-    null,
-  );
+  const [draft, setDraft] = useState<{
+    name: string;
+    lat: number;
+    lon: number;
+    category: string;
+  } | null>(null);
   const [draftType, setDraftType] = useState<PinType>("wishlist");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState("");
@@ -233,8 +236,8 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
         }}
         className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left"
       >
-        <p className="font-display text-[17px]">Pin somewhere nearby</p>
-        <p className="text-[12px] text-muted-foreground">
+        <p className="font-display text-[19px]">Pin somewhere nearby</p>
+        <p className="text-[13.5px] text-muted-foreground">
           Open a map of where you are and drop a pin on anything around you.
         </p>
       </button>
@@ -246,20 +249,20 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="label-caps text-foreground">Pin nearby places</p>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-[13.5px] text-muted-foreground">
             Tap a suggested place, or tap anywhere on the map to pin that exact spot.
           </p>
         </div>
         <button
           onClick={() => setOpen(false)}
-          className="rounded-lg border border-border px-2.5 py-1 text-[11px] text-muted-foreground"
+          className="rounded-lg border border-border px-2.5 py-1 text-[12.5px] text-muted-foreground"
         >
           Close
         </button>
       </div>
 
       {state === "error" && (
-        <div className="rounded-xl border border-border bg-elevated p-3 text-[12px] text-muted-foreground">
+        <div className="rounded-xl border border-border bg-elevated p-3 text-[13.5px] text-muted-foreground">
           {error}
           <button onClick={locate} className="ml-2 text-primary">
             Try again
@@ -267,12 +270,12 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
         </div>
       )}
       {state === "locating" && (
-        <p className="text-[12px] text-muted-foreground">Finding where you are…</p>
+        <p className="text-[13.5px] text-muted-foreground">Finding where you are…</p>
       )}
       {state === "idle" && (
         <button
           onClick={locate}
-          className="rounded-xl bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground"
+          className="rounded-xl bg-primary px-3 py-2 text-[13.5px] font-medium text-primary-foreground"
         >
           Use my location
         </button>
@@ -352,7 +355,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
                   setDraft({ name: p.name, lat: p.lat, lon: p.lon, category: p.category });
                   setSaved("");
                 }}
-                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[9px] font-medium text-background"
+                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[11px] font-medium text-background"
                 style={{ left: x - 8, top: y - 8, maxWidth: 120 }}
               >
                 <span className="block truncate">{p.name}</span>
@@ -363,15 +366,20 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
           {here && (
             <span
               className="pointer-events-none absolute size-3.5 rounded-full bg-primary ring-4 ring-primary/30"
-              style={{ left: project(here.lat, here.lon).x - 7, top: project(here.lat, here.lon).y - 7 }}
+              style={{
+                left: project(here.lat, here.lon).x - 7,
+                top: project(here.lat, here.lon).y - 7,
+              }}
             />
           )}
         </div>
       )}
 
       {center && (
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{loadingPlaces ? "Looking around you…" : `${places.length} places around here`}</span>
+        <div className="flex items-center justify-between text-[12.5px] text-muted-foreground">
+          <span>
+            {loadingPlaces ? "Looking around you…" : `${places.length} places around here`}
+          </span>
           {here && (
             <button onClick={() => setCenter(here)} className="text-primary">
               Back to me
@@ -390,14 +398,14 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Little bakery on the corner"
-            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14px]"
+            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[16.5px]"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             {pinTypes.map((t) => (
               <button
                 key={t.type}
                 onClick={() => setDraftType(t.type)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] ${
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13.5px] ${
                   draftType === t.type
                     ? "border-border bg-card"
                     : "border-border/60 text-muted-foreground"
@@ -412,13 +420,13 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
             <button
               onClick={() => void save()}
               disabled={saving}
-              className="rounded-xl bg-primary px-3 py-2 text-[12px] font-medium text-primary-foreground disabled:opacity-60"
+              className="rounded-xl bg-primary px-3 py-2 text-[13.5px] font-medium text-primary-foreground disabled:opacity-60"
             >
               {saving ? "Saving…" : `Save as ${pinLabel[draftType].toLowerCase()}`}
             </button>
             <button
               onClick={() => setDraft(null)}
-              className="rounded-xl border border-border px-3 py-2 text-[12px] text-muted-foreground"
+              className="rounded-xl border border-border px-3 py-2 text-[13.5px] text-muted-foreground"
             >
               Cancel
             </button>
@@ -426,7 +434,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
         </div>
       )}
 
-      {saved && <p className="text-[12px] text-primary">{saved}</p>}
+      {saved && <p className="text-[13.5px] text-primary">{saved}</p>}
 
       {nearbyList.length > 0 && (
         <div className="divide-y divide-border rounded-2xl border border-border">
@@ -441,10 +449,10 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
               className="flex w-full items-center justify-between gap-3 p-3 text-left"
             >
               <span>
-                <span className="block font-display text-[15px]">{p.name}</span>
-                <span className="block text-[11px] text-muted-foreground">{p.category}</span>
+                <span className="block font-display text-[17px]">{p.name}</span>
+                <span className="block text-[12.5px] text-muted-foreground">{p.category}</span>
               </span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">
+              <span className="shrink-0 text-[12.5px] text-muted-foreground">
                 {p.d < 1000 ? `${Math.round(p.d)} m` : `${(p.d / 1000).toFixed(1)} km`}
               </span>
             </button>

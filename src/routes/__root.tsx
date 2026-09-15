@@ -17,7 +17,6 @@ import { THEME_BOOT_SCRIPT } from "@/lib/theme";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">

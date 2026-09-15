@@ -21,7 +21,7 @@ function TripAttachForm({
 
   if (templates.packs.length === 0) {
     return (
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13.5px] text-muted-foreground">
         No saved lists yet. Create one under You → Create packing lists, then add it here.
       </p>
     );
@@ -29,13 +29,13 @@ function TripAttachForm({
 
   return (
     <>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-[12.5px] text-muted-foreground">
         Add a copy of a list from You. Ticking things off only affects this trip.
       </p>
       <select
         value={attachId}
         onChange={(e) => setAttachId(e.target.value)}
-        className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
       >
         <option value="">Choose a list…</option>
         {templates.packs.map((pack) => (
@@ -56,7 +56,7 @@ function TripAttachForm({
             setBusy(false);
           }
         }}
-        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         Add to this trip
       </button>
@@ -220,10 +220,10 @@ export function PackingLists({
         <button
           data-guide="packing-lists"
           onClick={() => setOpen(true)}
-          className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-[12px] font-semibold"
+          className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-left text-[13.5px] font-semibold"
         >
           <span>🧳 {label ?? "Packing lists"}</span>
-          <span className="text-[11px] font-normal text-muted-foreground">
+          <span className="text-[12.5px] font-normal text-muted-foreground">
             {p.packs.length === 0
               ? "Create a list"
               : `${p.packs.length} list${p.packs.length > 1 ? "s" : ""}`}
@@ -246,21 +246,21 @@ export function PackingLists({
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <p className="label-caps text-foreground">{label ?? "Packing lists"}</p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[12.5px] text-muted-foreground">
                     {hint ?? "Tick things off as you pack."}
                   </p>
                 </div>
                 <button
                   onClick={() => setOpen(false)}
                   aria-label="Close packing lists"
-                  className="rounded-full border border-border px-3 py-1 text-[12px]"
+                  className="rounded-full border border-border px-3 py-1 text-[13.5px]"
                 >
                   Close
                 </button>
               </div>
 
               {!p.signedIn ? (
-                <p className="p-6 text-center text-[13px] text-muted-foreground">
+                <p className="p-6 text-center text-[15px] text-muted-foreground">
                   Sign in to save packing lists to your account.
                 </p>
               ) : (
@@ -270,7 +270,7 @@ export function PackingLists({
                       <button
                         key={pack.id}
                         onClick={() => setActiveId(pack.id)}
-                        className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                        className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
                           pack.id === activeId
                             ? "border-primary bg-primary text-primary-foreground"
                             : "border-border"
@@ -286,7 +286,7 @@ export function PackingLists({
                           setImportPreview(null);
                           setImportError(null);
                         }}
-                        className="rounded-full border border-dashed border-border px-3 py-1.5 text-[12px]"
+                        className="rounded-full border border-dashed border-border px-3 py-1.5 text-[13.5px]"
                       >
                         + New pack
                       </button>
@@ -294,7 +294,7 @@ export function PackingLists({
                     {tripId && (
                       <button
                         onClick={() => setShowAttach(!showAttach)}
-                        className="rounded-full border border-dashed border-border px-3 py-1.5 text-[12px]"
+                        className="rounded-full border border-dashed border-border px-3 py-1.5 text-[13.5px]"
                       >
                         + Add saved list
                       </button>
@@ -302,7 +302,7 @@ export function PackingLists({
                   </div>
 
                   {showAttach && tripId && (
-                    <div className="mb-3 space-y-2 rounded-xl border border-border p-3">
+                    <div className="mb-3 space-y-2 rounded-2xl bg-elevated p-3.5">
                       <TripAttachForm
                         tripId={tripId}
                         onAttached={async (id) => {
@@ -315,12 +315,12 @@ export function PackingLists({
                   )}
 
                   {showNew && allowCreate && (
-                    <div className="mb-3 space-y-2 rounded-xl border border-border p-3">
+                    <div className="mb-3 space-y-2 rounded-2xl bg-elevated p-3.5">
                       <input
                         value={newPack}
                         onChange={(e) => setNewPack(e.target.value)}
                         placeholder="Pack name — e.g. Ski week"
-                        className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
                       />
                       <div className="flex flex-wrap gap-1.5">
                         {Object.keys(STARTERS).map((k) => (
@@ -330,7 +330,7 @@ export function PackingLists({
                               setStarter(starter === k ? "" : k);
                               setImportPreview(null);
                             }}
-                            className={`rounded-full border px-3 py-1.5 text-[12px] ${
+                            className={`rounded-full border px-3 py-1.5 text-[13.5px] ${
                               starter === k
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border"
@@ -340,7 +340,7 @@ export function PackingLists({
                           </button>
                         ))}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[12.5px] text-muted-foreground">
                         Pick a starter to fill the pack, leave it blank and add your own, or let Béa
                         read photos or a file (up to 4 at once).
                       </p>
@@ -365,7 +365,7 @@ export function PackingLists({
                           type="button"
                           disabled={importBusy}
                           onClick={() => cameraRef.current?.click()}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
                         >
                           <Camera className="size-4" /> Take a picture
                         </button>
@@ -373,25 +373,27 @@ export function PackingLists({
                           type="button"
                           disabled={importBusy}
                           onClick={() => fileRef.current?.click()}
-                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
                         >
                           <ImageIcon className="size-4" /> Upload photos
                         </button>
                       </div>
-                      <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      <p className="text-[12.5px] leading-relaxed text-muted-foreground">
                         Pictures and files are sent to an AI provider to organize them — skip
                         passport numbers, card details or other sensitive information.
                       </p>
                       {importBusy && (
-                        <p className="text-[12px] text-muted-foreground">
+                        <p className="text-[13.5px] text-muted-foreground">
                           Béa is organizing your list…
                         </p>
                       )}
-                      {importError && <p className="text-[12px] text-destructive">{importError}</p>}
+                      {importError && (
+                        <p className="text-[13.5px] text-destructive">{importError}</p>
+                      )}
                       {importPreview && (
                         <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">
                           {importPreview.summary && (
-                            <p className="text-[12px] text-muted-foreground">
+                            <p className="text-[13.5px] text-muted-foreground">
                               {importPreview.summary}
                             </p>
                           )}
@@ -409,7 +411,7 @@ export function PackingLists({
                               )}
                               <ul className="space-y-0.5">
                                 {group.items.map((item, i) => (
-                                  <li key={`${item.label}-${i}`} className="text-[13px]">
+                                  <li key={`${item.label}-${i}`} className="text-[15px]">
                                     {item.label}
                                     {item.quantity && item.quantity > 1 ? ` ×${item.quantity}` : ""}
                                   </li>
@@ -446,7 +448,7 @@ export function PackingLists({
                           setImportError(null);
                           setShowNew(false);
                         }}
-                        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
                       >
                         {importPreview ? "Save this list" : "Create pack"}
                       </button>
@@ -454,7 +456,7 @@ export function PackingLists({
                   )}
 
                   {!active && !showNew && !showAttach && (
-                    <p className="py-6 text-center text-[13px] text-muted-foreground">
+                    <p className="py-6 text-center text-[15px] text-muted-foreground">
                       {tripId
                         ? "No packing list on this trip yet. Add one of your saved lists from You."
                         : "No packs yet. Create one here and reuse it on any trip."}
@@ -464,25 +466,25 @@ export function PackingLists({
                   {active && (
                     <>
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-[12px] text-muted-foreground">
+                        <p className="text-[13.5px] text-muted-foreground">
                           {done} of {activeItems.length} packed
                         </p>
                         <div className="flex gap-2">
                           <button
                             onClick={() => void p.resetPack(active.id)}
-                            className="text-[11px] text-muted-foreground underline"
+                            className="text-[12.5px] text-muted-foreground underline"
                           >
                             Uncheck all
                           </button>
                           <button
                             onClick={() => void p.duplicatePack(active.id)}
-                            className="text-[11px] text-muted-foreground underline"
+                            className="text-[12.5px] text-muted-foreground underline"
                           >
                             Duplicate
                           </button>
                           <button
                             onClick={() => void p.deletePack(active.id)}
-                            className="text-[11px] text-muted-foreground underline"
+                            className="text-[12.5px] text-muted-foreground underline"
                           >
                             Delete pack
                           </button>
@@ -518,7 +520,7 @@ export function PackingLists({
                                   />
                                   <label
                                     htmlFor={`pack-${item.id}`}
-                                    className={`flex-1 text-[14px] ${
+                                    className={`flex-1 text-[16.5px] ${
                                       item.packed ? "text-muted-foreground line-through" : ""
                                     }`}
                                   >
@@ -528,7 +530,7 @@ export function PackingLists({
                                   <button
                                     onClick={() => void p.removeItem(item.id)}
                                     aria-label={`Remove ${item.label}`}
-                                    className="px-1 text-[12px] text-muted-foreground"
+                                    className="px-1 text-[13.5px] text-muted-foreground"
                                   >
                                     ✕
                                   </button>
@@ -538,7 +540,7 @@ export function PackingLists({
                           </div>
                         ))}
                         {activeItems.length === 0 && (
-                          <p className="py-4 text-center text-[12px] text-muted-foreground">
+                          <p className="py-4 text-center text-[13.5px] text-muted-foreground">
                             Nothing in this pack yet.
                           </p>
                         )}
@@ -557,12 +559,12 @@ export function PackingLists({
                           value={itemDraft}
                           onChange={(e) => setItemDraft(e.target.value)}
                           placeholder="Add an item"
-                          className="flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                          className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
                         />
                         <button
                           type="submit"
                           disabled={!itemDraft.trim()}
-                          className="rounded-xl bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                          className="rounded-xl bg-primary px-4 py-2 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
                         >
                           Add
                         </button>

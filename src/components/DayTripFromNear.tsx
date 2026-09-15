@@ -128,13 +128,13 @@ export function DayTripFromNear({
   if (!user) {
     return (
       <div data-guide="day-trip" className="card-soft p-4">
-        <p className="font-display text-[17px] leading-snug">Plan a day trip</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p className="font-display text-[19px] leading-snug">Plan a day trip</p>
+        <p className="mt-1 text-[15px] text-muted-foreground">
           Sign in to let Béa arrange the recs you ticked into a one-day trip.
         </p>
         <Link
           to="/auth"
-          className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-primary-foreground"
+          className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
         >
           Sign in
         </Link>
@@ -145,8 +145,8 @@ export function DayTripFromNear({
   return (
     <div data-guide="day-trip" className="card-soft space-y-3 p-4">
       <div>
-        <p className="font-display text-[17px] leading-snug">Plan a day trip</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p className="font-display text-[19px] leading-snug">Plan a day trip</p>
+        <p className="mt-1 text-[15px] text-muted-foreground">
           {selected.length} saved place{selected.length === 1 ? "" : "s"} ticked. Béa will line them
           up for one day using your travel preferences
           {emphasize.length ? " and whatever you lean into today" : ""}.
@@ -154,17 +154,17 @@ export function DayTripFromNear({
       </div>
 
       <label className="block">
-        <span className="text-[12px] font-medium">When</span>
+        <span className="text-[13.5px] font-medium">When</span>
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[14px]"
+          className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16.5px]"
         />
       </label>
 
       <div>
-        <p className="text-[12px] font-medium">Pace for this day</p>
+        <p className="text-[13.5px] font-medium">Pace for this day</p>
         <div className="mt-1.5 grid grid-cols-3 gap-2">
           {DAY_TRIP_PACES.map((option) => (
             <button
@@ -175,8 +175,8 @@ export function DayTripFromNear({
                 pace === option.id ? "border-primary bg-primary/10" : "border-border"
               }`}
             >
-              <span className="block text-[12px] font-semibold">{option.label}</span>
-              <span className="block text-[10px] leading-snug text-muted-foreground">
+              <span className="block text-[13.5px] font-semibold">{option.label}</span>
+              <span className="block text-[11.5px] leading-snug text-muted-foreground">
                 {option.hint}
               </span>
             </button>
@@ -186,7 +186,7 @@ export function DayTripFromNear({
 
       {tags.length > 0 && (
         <div>
-          <p className="text-[12px] font-medium">Lean into today</p>
+          <p className="text-[13.5px] font-medium">Lean into today</p>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {tags.map((tag) => {
               const on = emphasize.includes(tag);
@@ -197,7 +197,7 @@ export function DayTripFromNear({
                   onClick={() =>
                     setEmphasize((cur) => (on ? cur.filter((t) => t !== tag) : [...cur, tag]))
                   }
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                  className={`rounded-full border px-2.5 py-1 text-[12.5px] font-medium ${
                     on ? "border-primary bg-primary text-primary-foreground" : "border-border"
                   }`}
                 >
@@ -215,24 +215,24 @@ export function DayTripFromNear({
         maxLength={400}
         rows={2}
         placeholder="Anything else for today — lunch first, no museums…"
-        className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+        className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] outline-none focus:border-primary"
       />
 
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && <p className="text-[13.5px] text-destructive">{error}</p>}
 
       <div className="flex gap-2">
         <button
           type="button"
           onClick={() => void arrange()}
           disabled={busy || selected.length < 2}
-          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           {busy && !draft ? "Béa is arranging…" : "Arrange with Béa"}
         </button>
         <button
           type="button"
           onClick={onClear}
-          className="rounded-xl border border-border px-4 py-2.5 text-[13px]"
+          className="rounded-xl border border-border px-4 py-2.5 text-[15px]"
         >
           Clear
         </button>
@@ -240,31 +240,29 @@ export function DayTripFromNear({
 
       {draft && (
         <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">
-          <p className="text-[13px] font-semibold">{draft.title}</p>
-          {draft.summary && (
-            <p className="text-[12px] text-muted-foreground">{draft.summary}</p>
-          )}
+          <p className="text-[15px] font-semibold">{draft.title}</p>
+          {draft.summary && <p className="text-[13.5px] text-muted-foreground">{draft.summary}</p>}
           <ol className="space-y-2">
             {draft.items.map((item, i) => (
-              <li key={`${item.title}-${i}`} className="text-[13px]">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              <li key={`${item.title}-${i}`} className="text-[15px]">
+                <span className="text-[12.5px] uppercase tracking-wider text-muted-foreground">
                   {[item.time_label, item.kind].filter(Boolean).join(" · ")}
                 </span>
                 <span className="mt-0.5 block font-medium">{item.title}</span>
                 {item.detail && (
-                  <span className="block text-[12px] text-muted-foreground">{item.detail}</span>
+                  <span className="block text-[13.5px] text-muted-foreground">{item.detail}</span>
                 )}
               </li>
             ))}
           </ol>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground">
             Nothing is booked. You can still change the trip after it is added.
           </p>
           <button
             type="button"
             onClick={() => void save()}
             disabled={busy || draft.items.length === 0}
-            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy ? "Saving the day…" : "Save as a trip"}
           </button>

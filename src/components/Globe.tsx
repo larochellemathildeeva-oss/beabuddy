@@ -529,7 +529,7 @@ export function Globe({
               key={`city-${pin.city}-${pin.id}`}
               x={x + 7}
               y={y - 6}
-              className="pointer-events-none fill-foreground text-[9px] font-semibold"
+              className="pointer-events-none fill-foreground text-[11px] font-semibold"
               stroke="var(--card)"
               strokeWidth={3}
               paintOrder="stroke"
@@ -574,7 +574,7 @@ export function Globe({
           </button>
         </div>
 
-        <p className="absolute bottom-3 left-4 right-16 text-[11px] text-muted-foreground">
+        <p className="absolute bottom-3 left-4 right-16 text-[12.5px] text-muted-foreground">
           Drag or use the arrow keys to rotate · pinch, scroll or +/− to zoom
         </p>
       </div>

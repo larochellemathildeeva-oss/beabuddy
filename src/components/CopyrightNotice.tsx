@@ -5,7 +5,7 @@ export function CopyrightNotice({ className }: { className?: string }) {
     <p
       className={
         className ??
-        "px-4 pb-3 pt-2 text-center text-[11px] leading-relaxed text-muted-foreground"
+        "px-4 pb-3 pt-2 text-center text-[12.5px] leading-relaxed text-muted-foreground"
       }
     >
       {COPYRIGHT_LINE}

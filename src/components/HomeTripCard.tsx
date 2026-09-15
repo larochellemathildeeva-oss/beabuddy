@@ -4,7 +4,13 @@ import { supabase } from "../integrations/supabase/client";
 import { useTrips, type TripRow } from "../hooks/useTrips";
 import { formatTripLocation } from "../lib/place-label";
 
-type NextItem = { id: string; day_date: string | null; time_label: string | null; title: string; kind: string };
+type NextItem = {
+  id: string;
+  day_date: string | null;
+  time_label: string | null;
+  title: string;
+  kind: string;
+};
 
 function startOfToday() {
   const d = new Date();
@@ -33,7 +39,10 @@ export function pickActiveTrip(trips: TripRow[]): TripRow | null {
 
 function fmt(iso: string | null) {
   if (!iso) return "";
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 export function HomeTripCard() {
@@ -92,35 +101,35 @@ export function HomeTripCard() {
         : `In ${countdown} day${countdown > 1 ? "s" : ""}`
       : "Coming up";
 
-  const countryTags = Array.from(
-    new Set(stops.map((s) => s.country).filter(Boolean) as string[]),
-  );
+  const countryTags = Array.from(new Set(stops.map((s) => s.country).filter(Boolean) as string[]));
 
   return (
     <section data-guide="home-trip" className="rise">
       <div className="mb-3 flex items-baseline justify-between">
-        <p className="label-caps text-foreground">{started ? "Your trip right now" : "Your next trip"}</p>
-        <span className="text-[11px] text-muted-foreground">{status}</span>
+        <p className="label-caps text-foreground">
+          {started ? "Your trip right now" : "Your next trip"}
+        </p>
+        <span className="text-[12.5px] text-muted-foreground">{status}</span>
       </div>
 
       <div className="card-soft p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-[22px] leading-tight">{trip.title}</h2>
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
+            <h2 className="font-display text-[25px] leading-tight">{trip.title}</h2>
+            <p className="mt-0.5 text-[15px] text-muted-foreground">
               {formatTripLocation(trip.city, trip.country) || "Destination to be decided"}
             </p>
           </div>
           {trip.start_date && (
             <div className="shrink-0 rounded-xl bg-elevated px-3 py-2 text-center">
-              <p className="font-display text-[18px] leading-none">{fmt(trip.start_date)}</p>
+              <p className="font-display text-[20px] leading-none">{fmt(trip.start_date)}</p>
               {trip.end_date && (
-                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="mt-1 text-[11.5px] uppercase tracking-[0.14em] text-muted-foreground">
                   to {fmt(trip.end_date)}
                 </p>
               )}
               {trip.dates_status === "tentative" && (
-                <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="mt-1 text-[11.5px] uppercase tracking-[0.14em] text-muted-foreground">
                   Tentative
                 </p>
               )}
@@ -133,7 +142,7 @@ export function HomeTripCard() {
             {countryTags.map((c) => (
               <span
                 key={c}
-                className="rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground"
+                className="rounded-full border border-border/60 px-2.5 py-1 text-[12.5px] text-muted-foreground"
               >
                 {c}
               </span>
@@ -144,8 +153,8 @@ export function HomeTripCard() {
         {items.length > 0 && (
           <ul className="mt-3 space-y-2 border-t border-border/60 pt-3">
             {items.map((i) => (
-              <li key={i.id} className="flex items-baseline gap-2 text-[13px]">
-                <span className="w-16 shrink-0 text-[11px] text-muted-foreground">
+              <li key={i.id} className="flex items-baseline gap-2 text-[15px]">
+                <span className="w-16 shrink-0 text-[12.5px] text-muted-foreground">
                   {i.day_date ? fmt(i.day_date) : i.time_label || "Anytime"}
                 </span>
                 <span className="truncate">{i.title}</span>
@@ -156,7 +165,7 @@ export function HomeTripCard() {
 
         <Link
           to="/trips"
-          className="mt-4 block rounded-xl bg-primary px-4 py-2.5 text-center text-[13px] font-semibold text-primary-foreground"
+          className="mt-4 block rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
         >
           Open this trip
         </Link>

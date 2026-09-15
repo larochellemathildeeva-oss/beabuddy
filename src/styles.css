@@ -49,22 +49,22 @@
 }
 
 :root {
-  --radius: 0.95rem;
+  --radius: 1.15rem;
 
   /* Warm editorial cream / clay.
      Cards sit *lighter* than the ground so depth comes from surface, not from
      a border on every element. */
-  --background: oklch(0.971 0.013 79);
+  --background: oklch(0.963 0.016 76);
   --foreground: oklch(0.245 0.024 52);
-  --card: oklch(0.995 0.005 86);
+  --card: oklch(0.998 0.004 88);
   --card-foreground: oklch(0.245 0.024 52);
-  --elevated: oklch(0.951 0.016 76);
+  --elevated: oklch(0.938 0.02 74);
   --popover: oklch(0.995 0.005 86);
   --popover-foreground: oklch(0.245 0.024 52);
-  --primary: oklch(0.545 0.146 41);
+  --primary: oklch(0.535 0.162 39);
   --primary-foreground: oklch(0.99 0.008 86);
   /* A tint of the primary, for selected chips and quiet highlights. */
-  --primary-soft: oklch(0.545 0.146 41 / 0.1);
+  --primary-soft: oklch(0.535 0.162 39 / 0.11);
   --secondary: oklch(0.932 0.019 76);
   --secondary-foreground: oklch(0.33 0.03 52);
   --muted: oklch(0.932 0.017 78);
@@ -73,9 +73,9 @@
   --accent-foreground: oklch(0.3 0.03 52);
   --destructive: oklch(0.55 0.185 27);
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.902 0.015 74);
-  --input: oklch(0.902 0.015 74);
-  --ring: oklch(0.545 0.146 41);
+  --border: oklch(0.917 0.014 74);
+  --input: oklch(0.917 0.014 74);
+  --ring: oklch(0.535 0.162 39);
 
   --visited: oklch(0.55 0.135 249);
   --nexttime: oklch(0.56 0.12 158);
@@ -87,10 +87,10 @@
   --shadow-sm: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 3px 8px -4px oklch(0.3 0.03 55 / 0.1);
   --shadow-md: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 10px 24px -14px oklch(0.3 0.03 55 / 0.28);
   --shadow-lg: 0 2px 4px oklch(0.3 0.03 55 / 0.04), 0 24px 48px -24px oklch(0.3 0.03 55 / 0.34);
-  --shadow-primary: 0 8px 22px -10px oklch(0.545 0.146 41 / 0.55);
+  --shadow-primary: 0 10px 26px -12px oklch(0.535 0.162 39 / 0.55);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.63 0.142 52), oklch(0.5 0.145 32));
+  --gradient-clay: linear-gradient(142deg, oklch(0.625 0.155 50), oklch(0.485 0.16 30));
   /* Barely-there warmth so the page is not a flat fill. */
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 78 / 0.85), transparent 70%);
 
@@ -102,16 +102,16 @@
   /* Warm charcoal, not black — and the clay survives, so the brand is still
      the brand after dark. It used to go fully desaturated, which turned every
      primary button grey. */
-  --background: oklch(0.168 0.012 58);
+  --background: oklch(0.182 0.014 56);
   --foreground: oklch(0.948 0.008 76);
-  --card: oklch(0.206 0.013 60);
+  --card: oklch(0.228 0.016 58);
   --card-foreground: oklch(0.948 0.008 76);
-  --elevated: oklch(0.247 0.014 62);
-  --popover: oklch(0.216 0.013 60);
+  --elevated: oklch(0.272 0.017 60);
+  --popover: oklch(0.238 0.016 58);
   --popover-foreground: oklch(0.948 0.008 76);
-  --primary: oklch(0.705 0.145 47);
+  --primary: oklch(0.715 0.158 45);
   --primary-foreground: oklch(0.17 0.025 44);
-  --primary-soft: oklch(0.705 0.145 47 / 0.16);
+  --primary-soft: oklch(0.715 0.158 45 / 0.18);
   --secondary: oklch(0.262 0.014 60);
   --secondary-foreground: oklch(0.93 0.01 74);
   --muted: oklch(0.262 0.014 60);
@@ -120,9 +120,9 @@
   --accent-foreground: oklch(0.94 0.01 74);
   --destructive: oklch(0.65 0.175 27);
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.315 0.014 60);
-  --input: oklch(0.315 0.014 60);
-  --ring: oklch(0.705 0.145 47);
+  --border: oklch(0.335 0.016 58);
+  --input: oklch(0.335 0.016 58);
+  --ring: oklch(0.715 0.158 45);
 
   --visited: oklch(0.7 0.135 249);
   --nexttime: oklch(0.72 0.13 158);
@@ -133,10 +133,10 @@
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
   --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
   --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 8px 24px -10px oklch(0.705 0.145 47 / 0.5);
+  --shadow-primary: 0 10px 28px -12px oklch(0.715 0.158 45 / 0.5);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.74 0.14 52), oklch(0.6 0.15 34));
+  --gradient-clay: linear-gradient(142deg, oklch(0.755 0.15 50), oklch(0.61 0.162 32));
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.32 0.03 52 / 0.55), transparent 70%);
 
   color-scheme: dark;
@@ -155,6 +155,8 @@
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }

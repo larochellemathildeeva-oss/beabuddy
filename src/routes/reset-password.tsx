@@ -74,60 +74,60 @@ function ResetPasswordPage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
-      <div className="flex flex-1 flex-col justify-center">
-        <p className="label-caps">Béa</p>
-        <h1 className="mt-2 text-[34px] leading-[1.05]">Choose a new password</h1>
+        <div className="flex flex-1 flex-col justify-center">
+          <p className="label-caps">Béa</p>
+          <h1 className="mt-2 text-[38px] leading-[1.05]">Choose a new password</h1>
 
-        {done ? (
-          <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[13px]">
-            Password updated — taking you back into Béa.
-          </p>
-        ) : !ready ? (
-          <p className="mt-6 text-[13px] text-muted-foreground">
-            Open this page from the link in your reset email. If you got here another way, ask for a
-            new link on the{" "}
-            <Link to="/forgot-password" className="underline underline-offset-4">
-              forgot password
-            </Link>{" "}
-            page.
-          </p>
-        ) : (
-          <form onSubmit={submit} className="mt-6 space-y-3">
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required
-              minLength={MIN_NEW_PASSWORD_LENGTH}
-              placeholder="New password"
-              autoComplete="new-password"
-              aria-describedby="password-rules"
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
-            />
-            <input
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              type="password"
-              required
-              minLength={MIN_NEW_PASSWORD_LENGTH}
-              placeholder="Repeat new password"
-              autoComplete="new-password"
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[14px] outline-none focus:border-primary"
-            />
-            <div id="password-rules">
-              <PasswordCreationRules password={password} />
-            </div>
-            {error && <p className="text-[12px] text-destructive">{error}</p>}
-            <button
-              type="submit"
-              disabled={busy}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
-            >
-              {busy ? "Saving…" : "Save new password"}
-            </button>
-          </form>
-        )}
-      </div>
+          {done ? (
+            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[15px]">
+              Password updated — taking you back into Béa.
+            </p>
+          ) : !ready ? (
+            <p className="mt-6 text-[15px] text-muted-foreground">
+              Open this page from the link in your reset email. If you got here another way, ask for
+              a new link on the{" "}
+              <Link to="/forgot-password" className="underline underline-offset-4">
+                forgot password
+              </Link>{" "}
+              page.
+            </p>
+          ) : (
+            <form onSubmit={submit} className="mt-6 space-y-3">
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                required
+                minLength={MIN_NEW_PASSWORD_LENGTH}
+                placeholder="New password"
+                autoComplete="new-password"
+                aria-describedby="password-rules"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+              />
+              <input
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                type="password"
+                required
+                minLength={MIN_NEW_PASSWORD_LENGTH}
+                placeholder="Repeat new password"
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[16.5px] outline-none focus:border-primary"
+              />
+              <div id="password-rules">
+                <PasswordCreationRules password={password} />
+              </div>
+              {error && <p className="text-[13.5px] text-destructive">{error}</p>}
+              <button
+                type="submit"
+                disabled={busy}
+                className="w-full rounded-xl bg-primary px-4 py-3 text-[16.5px] font-semibold text-primary-foreground disabled:opacity-60"
+              >
+                {busy ? "Saving…" : "Save new password"}
+              </button>
+            </form>
+          )}
+        </div>
         <CopyrightNotice />
       </div>
     </div>

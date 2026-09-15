@@ -99,9 +99,9 @@ export function TripTodos({
 
   if (t.unavailable) {
     return (
-      <div className="mb-3 rounded-xl border border-border p-3">
+      <div className="mb-3 rounded-2xl bg-elevated p-3.5">
         <p className="label-caps text-foreground">Things to do</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
           Not switched on for this database yet — the <code>trip_todos</code> migration still needs
           to be run.
         </p>
@@ -110,7 +110,7 @@ export function TripTodos({
   }
 
   return (
-    <div className="mb-3 rounded-xl border border-border p-3">
+    <div className="mb-3 rounded-2xl bg-elevated p-3.5">
       <div className="flex items-start justify-between gap-2">
         <button
           type="button"
@@ -126,14 +126,14 @@ export function TripTodos({
           />
           <div className="min-w-0">
             <p className="label-caps text-foreground">Things to do</p>
-            <p className="text-[11px] text-muted-foreground">{todoProgressLine(t.todos)}</p>
+            <p className="text-[12.5px] text-muted-foreground">{todoProgressLine(t.todos)}</p>
           </div>
         </button>
         {t.done.length > 0 && (
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
-            className="shrink-0 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+            className="shrink-0 rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
           >
             {showDone ? "Hide done" : `Done (${t.done.length})`}
           </button>
@@ -161,19 +161,19 @@ export function TripTodos({
                     />
                     <div className="min-w-0 flex-1">
                       <p
-                        className={`text-[13px] ${
+                        className={`text-[15px] ${
                           todo.done ? "text-muted-foreground line-through" : "font-medium"
                         }`}
                       >
                         {todo.title}
                       </p>
                       {todo.notes && (
-                        <p className="text-[11px] text-muted-foreground">{todo.notes}</p>
+                        <p className="text-[12.5px] text-muted-foreground">{todo.notes}</p>
                       )}
                     </div>
                     {label && !todo.done && (
                       <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${DUE_TONE[state]}`}
+                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[11.5px] font-semibold ${DUE_TONE[state]}`}
                       >
                         {label}
                       </span>
@@ -181,7 +181,7 @@ export function TripTodos({
                     <button
                       type="button"
                       onClick={() => void t.removeTodo(todo.id)}
-                      className="shrink-0 text-[11px] text-muted-foreground underline"
+                      className="shrink-0 text-[12.5px] text-muted-foreground underline"
                     >
                       Remove
                     </button>
@@ -192,8 +192,8 @@ export function TripTodos({
           )}
 
           {t.todos.length === 0 && !t.loading && (
-            <div className="rounded-xl border border-border/60 p-3">
-              <p className="text-[13px]">
+            <div className="rounded-2xl bg-elevated p-3.5">
+              <p className="text-[15px]">
                 Nothing here yet. The passport, the transfer, the thing you always remember at the
                 airport.
               </p>
@@ -201,7 +201,7 @@ export function TripTodos({
                 type="button"
                 disabled={busy}
                 onClick={() => void addStarters()}
-                className="mt-2 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold disabled:opacity-50"
+                className="mt-2 rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold disabled:opacity-50"
               >
                 Start me off
               </button>
@@ -220,7 +220,7 @@ export function TripTodos({
               }}
               placeholder="Add something to do"
               aria-label="Add something to do"
-              className="min-w-0 flex-1 rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
             />
             <input
               type="date"
@@ -228,11 +228,11 @@ export function TripTodos({
               aria-label="Due date"
               {...(tripStart ? { max: tripStart } : {})}
               onChange={(e) => setDue(e.target.value)}
-              className="w-[8.5rem] shrink-0 rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+              className="w-[8.5rem] shrink-0 rounded-xl border border-border bg-card px-2 py-2 text-[13.5px]"
             />
           </div>
           {tripStart && (
-            <p className="px-1 text-[11px] text-muted-foreground">
+            <p className="px-1 text-[12.5px] text-muted-foreground">
               Due dates are for before you go — most of these want doing ahead of time.
             </p>
           )}
@@ -242,14 +242,14 @@ export function TripTodos({
               type="button"
               disabled={!title.trim() || busy}
               onClick={() => void add()}
-              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+              className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
             >
               {busy ? "Adding…" : "Add"}
             </button>
             <button
               type="button"
               onClick={() => setPasting((v) => !v)}
-              className="rounded-xl border border-border px-3 py-2.5 text-[12px] font-semibold"
+              className="rounded-xl border border-border px-3 py-2.5 text-[13.5px] font-semibold"
             >
               <ListChecks className="mr-1 inline size-3.5" aria-hidden />
               {pasting ? "Cancel" : "Paste a list"}
@@ -257,8 +257,8 @@ export function TripTodos({
           </div>
 
           {pasting && (
-            <div className="space-y-2 rounded-xl border border-border p-3">
-              <p className="text-[12px] text-muted-foreground">
+            <div className="space-y-2 rounded-2xl bg-elevated p-3.5">
+              <p className="text-[13.5px] text-muted-foreground">
                 One per line. Bullets and numbers get trimmed off.
               </p>
               <textarea
@@ -267,20 +267,20 @@ export function TripTodos({
                 rows={4}
                 aria-label="Paste a list of things to do"
                 placeholder={"Renew passport\nBook airport transfer\nTell the bank"}
-                className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
               />
               <button
                 type="button"
                 disabled={busy || todosFromPaste(paste).length === 0}
                 onClick={() => void addPasted()}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 Add {todosFromPaste(paste).length || ""} to-dos
               </button>
             </div>
           )}
 
-          {error && <p className="text-[11px] text-destructive">{error}</p>}
+          {error && <p className="text-[12.5px] text-destructive">{error}</p>}
         </div>
       )}
     </div>

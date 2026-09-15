@@ -102,8 +102,8 @@ export function ItineraryImport({
         <div className="mb-3 flex items-center gap-3">
           <img src={logo} alt="" className="size-10 object-contain" />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-[19px] leading-tight">Let Béa plan this trip</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="font-display text-[21.5px] leading-tight">Let Béa plan this trip</p>
+            <p className="text-[12.5px] text-muted-foreground">
               Built around your travel preferences and tagged recs
             </p>
           </div>
@@ -118,7 +118,7 @@ export function ItineraryImport({
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => setTab("import")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12.5px] ${
               tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
             }`}
           >
@@ -127,7 +127,7 @@ export function ItineraryImport({
           <button
             data-guide="bea-optimize"
             onClick={() => setTab("optimize")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12.5px] ${
               tab === "optimize"
                 ? "border-primary bg-card"
                 : "border-border/60 text-muted-foreground"
@@ -137,7 +137,7 @@ export function ItineraryImport({
           </button>
           <button
             onClick={() => setTab("compare")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[11px] ${
+            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12.5px] ${
               tab === "compare"
                 ? "border-primary bg-card"
                 : "border-border/60 text-muted-foreground"
@@ -427,11 +427,11 @@ function ImportPanel({
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13.5px] text-muted-foreground">
         Build a new trip from a few details, or turn a photo or pasted plan into dates and a
         complete timeline.
       </p>
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13.5px] text-muted-foreground">
         Béa drafts a plan. She does not book hotels, restaurants or tickets, and she cannot check
         whether a table or room is actually free. You reserve and confirm those yourself.
       </p>
@@ -439,7 +439,7 @@ function ImportPanel({
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => setMode("build")}
-          className={`rounded-xl border px-3 py-2 text-[12px] font-semibold ${mode === "build" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+          className={`rounded-xl border px-3 py-2 text-[13.5px] font-semibold ${mode === "build" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
         >
           Build a new trip
         </button>
@@ -450,7 +450,7 @@ function ImportPanel({
             // should never come back with invented prices.
             setIncludeCosts(false);
           }}
-          className={`rounded-xl border px-3 py-2 text-[12px] font-semibold ${mode === "import" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+          className={`rounded-xl border px-3 py-2 text-[13.5px] font-semibold ${mode === "import" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
         >
           Import a plan
         </button>
@@ -463,7 +463,7 @@ function ImportPanel({
               value={pace}
               onChange={(e) => setPace(e.target.value as typeof pace)}
               aria-label="Trip pace"
-              className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+              className="rounded-xl border border-border bg-card px-2 py-2 text-[13.5px]"
             >
               <option value="relaxed">Relaxed</option>
               <option value="balanced">Balanced</option>
@@ -473,7 +473,7 @@ function ImportPanel({
               value={budgetLevel}
               onChange={(e) => setBudgetLevel(e.target.value as typeof budgetLevel)}
               aria-label="Budget style"
-              className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+              className="rounded-xl border border-border bg-card px-2 py-2 text-[13.5px]"
             >
               <option value="value">Value</option>
               <option value="comfortable">Comfort</option>
@@ -484,7 +484,7 @@ function ImportPanel({
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 aria-label="Currency"
-                className="rounded-xl border border-border bg-elevated px-2 py-2 text-[12px]"
+                className="rounded-xl border border-border bg-card px-2 py-2 text-[13.5px]"
               >
                 {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
                   <option key={value}>{value}</option>
@@ -494,8 +494,8 @@ function ImportPanel({
           </div>
           <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
             <div>
-              <p className="text-[13px] font-medium">Approximate costs</p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[15px] font-medium">Approximate costs</p>
+              <p className="text-[12.5px] text-muted-foreground">
                 Off unless you ask. Estimates only — not quotes.
               </p>
             </div>
@@ -530,14 +530,14 @@ function ImportPanel({
           <button
             onClick={() => fileRef.current?.click()}
             disabled={busy || images.length >= MAX_IMAGES}
-            className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
           >
             <Camera className="size-4" /> Take a photo
           </button>
           <button
             onClick={() => libraryRef.current?.click()}
             disabled={busy || images.length >= MAX_IMAGES}
-            className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[13px] font-medium disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2.5 text-[15px] font-medium disabled:opacity-50"
           >
             <ImageIcon className="size-4" /> Choose photos
           </button>
@@ -545,7 +545,7 @@ function ImportPanel({
       )}
       {mode === "import" && images.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground">
             {images.length} of {MAX_IMAGES} pictures — Béa reads them together as one plan.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -569,7 +569,7 @@ function ImportPanel({
         </div>
       )}
       {mode === "import" && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-[12.5px] leading-relaxed text-muted-foreground">
           Pictures and pasted plans are sent to an AI provider to read them — avoid including
           passport numbers, card details or other sensitive information.
         </p>
@@ -585,12 +585,12 @@ function ImportPanel({
             ? "Describe the trip you want: interests, must-dos, mobility needs, or anything Béa should know…"
             : "Paste an itinerary here, or add notes about the pictures…"
         }
-        className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none"
       />
       <button
         onClick={() => void read()}
         disabled={busy || (mode === "import" && !images.length && text.trim().length < 10)}
-        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
           ? beaLine("plan.working").title
@@ -600,31 +600,33 @@ function ImportPanel({
               ? `Read these ${images.length} pictures`
               : "Read this itinerary"}
       </button>
-      {busy && <p className="text-[12px] text-muted-foreground">{beaLine("plan.working").body}</p>}
+      {busy && (
+        <p className="text-[13.5px] text-muted-foreground">{beaLine("plan.working").body}</p>
+      )}
       {mode === "import" && !images.length && text.trim().length < 10 && (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[12.5px] text-muted-foreground">
           Add one or more pictures above, or paste the plan first.
         </p>
       )}
 
-      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
+      {error && <p className="break-words text-[13.5px] text-destructive">{error}</p>}
       {saved && (
-        <p className="text-[12px] text-primary">
+        <p className="text-[13.5px] text-primary">
           {beaLine("plan.complete").title} {tripStillEditableNote()}
         </p>
       )}
 
       {items && (
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
-          {summary && <p className="text-[12px] text-muted-foreground">{summary}</p>}
+          {summary && <p className="text-[13.5px] text-muted-foreground">{summary}</p>}
           {includeCosts && plan?.estimated_total != null && (
-            <p className="text-[13px] font-semibold">
+            <p className="text-[15px] font-semibold">
               Estimated trip total: {plan.estimated_total.toLocaleString()} {plan.currency}
             </p>
           )}
           {items.length > 0 && (
             <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-border bg-card p-2 shadow-sm">
-              <p className="mb-2 text-[11px] text-muted-foreground">
+              <p className="mb-2 text-[12.5px] text-muted-foreground">
                 {picked.length} of {items.length} stops selected.
                 {duplicateIndexes.size > 0 &&
                   ` ${duplicateIndexes.size} already on your timeline, left unticked.`}{" "}
@@ -633,7 +635,7 @@ function ImportPanel({
               <button
                 onClick={() => void addChosen()}
                 disabled={busy || picked.length === 0}
-                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy
                   ? saveStatus || "Saving your trip…"
@@ -642,7 +644,7 @@ function ImportPanel({
             </div>
           )}
           {items.length === 0 && (
-            <p className="text-[12px] text-muted-foreground">Nothing readable in there.</p>
+            <p className="text-[13.5px] text-muted-foreground">Nothing readable in there.</p>
           )}
           {items.map((it, i) => (
             <label
@@ -658,29 +660,29 @@ function ImportPanel({
                 className="mt-1"
               />
               <span className="min-w-0">
-                <span className="block text-[11px] uppercase tracking-wider text-muted-foreground">
+                <span className="block text-[12.5px] uppercase tracking-wider text-muted-foreground">
                   {[it.day_date, it.time_label].filter(Boolean).join(" · ")}
                   {it.day_date || it.time_label ? " · " : ""}
                   {it.kind}
                 </span>
-                <span className="block text-[13px] font-medium">
+                <span className="block text-[15px] font-medium">
                   {it.title}
                   {it.source === "vault" && (
-                    <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                    <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[11.5px] font-semibold text-primary">
                       From your vault
                     </span>
                   )}
                   {duplicateIndexes.has(i) && (
-                    <span className="ml-1.5 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    <span className="ml-1.5 rounded-full border border-border px-1.5 py-0.5 text-[11.5px] font-semibold text-muted-foreground">
                       Already on your timeline
                     </span>
                   )}
                 </span>
                 {it.detail && (
-                  <span className="block text-[12px] text-muted-foreground">{it.detail}</span>
+                  <span className="block text-[13.5px] text-muted-foreground">{it.detail}</span>
                 )}
                 {includeCosts && it.estimated_cost != null && (
-                  <span className="block text-[12px] text-muted-foreground">
+                  <span className="block text-[13.5px] text-muted-foreground">
                     Est. {it.estimated_cost} {it.currency ?? plan?.currency ?? currency}
                   </span>
                 )}
@@ -689,12 +691,12 @@ function ImportPanel({
           ))}
           {items.length > 0 && (
             <div className="space-y-2 border-t border-border pt-3">
-              <p className="text-[12px] text-muted-foreground">
+              <p className="text-[13.5px] text-muted-foreground">
                 Tick the stops you want swapped, then tell Béa why. Untick anything that should
                 stay.
               </p>
               {picked.length === items.length && (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[12.5px] text-muted-foreground">
                   Every stop is ticked — this will suggest a new version of the whole list.
                 </p>
               )}
@@ -704,16 +706,16 @@ function ImportPanel({
                 rows={2}
                 maxLength={800}
                 placeholder="Rainy-day activities, something less expensive…"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none"
               />
               <button
                 onClick={() => void findAlternatives()}
                 disabled={busy || picked.length === 0 || altReason.trim().length < 3}
-                className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-50"
               >
                 {busy ? "Béa is working…" : "Ask Béa to find alternatives for these suggestions"}
               </button>
-              <p className="pt-1 text-[12px] text-muted-foreground">
+              <p className="pt-1 text-[13.5px] text-muted-foreground">
                 Or start over from this draft.
               </p>
               <textarea
@@ -722,12 +724,12 @@ function ImportPanel({
                 rows={2}
                 maxLength={800}
                 placeholder="Fewer museums, more food, a slower first day…"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[13px] outline-none"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none"
               />
               <button
                 onClick={() => void rebuildTrip()}
                 disabled={busy || rebuildReason.trim().length < 3}
-                className="w-full rounded-xl border border-border px-4 py-2.5 text-[13px] font-semibold disabled:opacity-50"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-[15px] font-semibold disabled:opacity-50"
               >
                 {busy ? "Béa is working…" : "Rebuild my trip"}
               </button>
@@ -835,19 +837,19 @@ function OptimizePanel({
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13.5px] text-muted-foreground">
         Béa keeps every stop you already have and reshuffles the days — closest together, indoor on
         a wet day, easier mornings, whatever you pick. She does not check whether a reservation is
         still available.
       </p>
 
       {items.length < 2 ? (
-        <p className="rounded-xl border border-border bg-elevated px-3 py-2.5 text-[12px] text-muted-foreground">
+        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] text-muted-foreground">
           Add at least two timeline stops first, then come back to rearrange them.
         </p>
       ) : (
         <>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground">
             {items.length} stop{items.length === 1 ? "" : "s"} on this trip
             {goals.length ? ` · ${goals.length} preference${goals.length === 1 ? "" : "s"}` : ""}
           </p>
@@ -858,7 +860,7 @@ function OptimizePanel({
                 <button
                   key={goal.id}
                   onClick={() => toggleGoal(goal.id)}
-                  className={`rounded-full border px-3 py-1.5 text-left text-[12px] ${
+                  className={`rounded-full border px-3 py-1.5 text-left text-[13.5px] ${
                     on
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border text-muted-foreground"
@@ -869,7 +871,7 @@ function OptimizePanel({
               );
             })}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[12.5px] text-muted-foreground">
             {OPTIMIZE_GOALS.filter((g) => goals.includes(g.id))
               .map((g) => g.hint)
               .join(" · ")}
@@ -880,25 +882,25 @@ function OptimizePanel({
             rows={2}
             maxLength={400}
             placeholder="Anything else — one slow museum day, keep the dinner reservation…"
-            className="w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none"
           />
           <button
             onClick={() => void rearrange()}
             disabled={busy || goals.length === 0}
-            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy && !plan ? "Béa is rearranging…" : "Ask Béa to rearrange"}
           </button>
         </>
       )}
 
-      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
-      {saved && <p className="text-[12px] text-primary">Timeline updated.</p>}
+      {error && <p className="break-words text-[13.5px] text-destructive">{error}</p>}
+      {saved && <p className="text-[13.5px] text-primary">Timeline updated.</p>}
 
       {plan && (
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
-          <p className="text-[13px] font-medium">{plan.summary}</p>
-          <p className="text-[12px] text-muted-foreground">{plan.changes}</p>
+          <p className="text-[15px] font-medium">{plan.summary}</p>
+          <p className="text-[13.5px] text-muted-foreground">{plan.changes}</p>
           <ol className="space-y-1.5">
             {plan.items.map((row) => {
               const original = byId.get(row.id);
@@ -908,14 +910,14 @@ function OptimizePanel({
               const moved = when !== before;
               return (
                 <li key={row.id} className="rounded-lg border border-border/60 p-2">
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[12.5px] uppercase tracking-wider text-muted-foreground">
                     {when || "Unscheduled"}
                     {moved && before ? ` · was ${before}` : ""}
                     {moved ? "" : " · stayed"}
                   </p>
-                  <p className="break-words text-[13px] font-medium">{original.title}</p>
+                  <p className="break-words text-[15px] font-medium">{original.title}</p>
                   {row.reason && (
-                    <p className="break-words text-[12px] text-muted-foreground">{row.reason}</p>
+                    <p className="break-words text-[13.5px] text-muted-foreground">{row.reason}</p>
                   )}
                 </li>
               );
@@ -924,7 +926,7 @@ function OptimizePanel({
           <button
             onClick={() => void apply()}
             disabled={busy || !onApplySchedule}
-            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy && plan ? "Saving the new order…" : "Use this arrangement"}
           </button>
@@ -967,18 +969,18 @@ function ComparePanel() {
 
   return (
     <div className="mt-3 space-y-2">
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13.5px] text-muted-foreground">
         Paste two versions of a plan — from two AI answers, a friend, or a tour page. Béa reads each
         one first, then compares. That takes a little longer.
       </p>
 
       {[[a, setA] as const, [b, setB] as const].map(([plan, set], i) => (
-        <div key={i} className="space-y-1.5 rounded-xl border border-border/60 p-2">
+        <div key={i} className="space-y-1.5 rounded-2xl bg-elevated p-2.5">
           <input
             value={plan.label}
             onChange={(e) => set({ ...plan, label: e.target.value })}
             maxLength={60}
-            className="w-full bg-transparent text-[12px] font-semibold outline-none"
+            className="w-full bg-transparent text-[13.5px] font-semibold outline-none"
           />
           <textarea
             value={plan.text}
@@ -986,7 +988,7 @@ function ComparePanel() {
             rows={4}
             maxLength={20000}
             placeholder="Paste this plan here…"
-            className="w-full rounded-lg border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+            className="w-full rounded-lg border border-border bg-card px-3 py-2 text-[15px] outline-none"
           />
         </div>
       ))}
@@ -998,14 +1000,14 @@ function ComparePanel() {
           onChange={(e) => setPriorities(e.target.value)}
           maxLength={400}
           placeholder="Slow mornings, good food, easy on the budget…"
-          className="mt-1 w-full rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] outline-none"
+          className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] outline-none"
         />
       </label>
 
       <button
         onClick={() => void compare()}
         disabled={busy || !ready}
-        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="w-full rounded-xl bg-primary px-4 py-2.5 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
           ? "Reading both plans, then comparing…"
@@ -1014,7 +1016,7 @@ function ComparePanel() {
             : "Paste both plans first"}
       </button>
 
-      {error && <p className="break-words text-[12px] text-destructive">{error}</p>}
+      {error && <p className="break-words text-[13.5px] text-destructive">{error}</p>}
 
       {result && <ComparisonResult result={result} />}
     </div>
@@ -1090,8 +1092,8 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
     <div className="rise space-y-4 rounded-2xl border border-border bg-elevated p-3">
       {/* 1 — the verdict */}
       <div>
-        <h3 className="font-display text-[18px] leading-tight">{result.headline}</h3>
-        <p className="mt-1 text-[13px]">
+        <h3 className="font-display text-[20px] leading-tight">{result.headline}</h3>
+        <p className="mt-1 text-[15px]">
           <span className="inline-flex items-center gap-1 font-semibold">
             <Sparkles className="size-3.5 text-primary" />
             Béa would pick {result.pick}.
@@ -1103,14 +1105,14 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
       {/* 2 — the numbers */}
       <div>
         <p className="label-caps mb-1.5">Side by side</p>
-        <table className="w-full table-fixed border-collapse text-[12px] tabular-nums">
+        <table className="w-full table-fixed border-collapse text-[13.5px] tabular-nums">
           <thead>
             <tr>
               <th className="w-[34%] p-1 text-left font-normal text-muted-foreground">Measure</th>
               {[result.a, result.b].map((side) => (
                 <th
                   key={side.label}
-                  className={`rounded-t-lg p-1 text-left text-[12px] ${
+                  className={`rounded-t-lg p-1 text-left text-[13.5px] ${
                     side.label === result.pick ? "text-primary" : ""
                   }`}
                 >
@@ -1131,7 +1133,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                     </td>
                     <td
                       colSpan={2}
-                      className="border-t border-border/60 p-1 text-[11px] text-muted-foreground"
+                      className="border-t border-border/60 p-1 text-[12.5px] text-muted-foreground"
                     >
                       Not measured — {row.omitHint || "we didn't have enough to compute this"}.
                     </td>
@@ -1161,7 +1163,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                   <td className="border-t border-border/60 p-1 text-muted-foreground">
                     {row.label}
                     {diff > 0 && (
-                      <span className="block text-[10px]">
+                      <span className="block text-[11.5px]">
                         {row.key === "estimatedCost"
                           ? `${money(diff)} apart`
                           : `${Math.round(diff * 10) / 10}${row.unit ? ` ${row.unit}` : ""} apart`}
@@ -1175,7 +1177,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
             })}
           </tbody>
         </table>
-        <p className="mt-1 text-[10px] text-muted-foreground">
+        <p className="mt-1 text-[11.5px] text-muted-foreground">
           Cost and stop counts are added up in the app. A blank row means we could not measure it —
           never a guess. Nothing here is a quote or a booking.
         </p>
@@ -1190,7 +1192,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
               <button
                 key={side}
                 onClick={() => setDayTab(side)}
-                className={`rounded-xl border px-3 py-1.5 text-[12px] ${
+                className={`rounded-xl border px-3 py-1.5 text-[13.5px] ${
                   dayTab === side
                     ? "border-primary text-primary"
                     : "border-border/60 text-muted-foreground"
@@ -1202,8 +1204,8 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
           </div>
           <div className="space-y-2">
             {result.days.map((day) => (
-              <div key={day.dayNumber} className="rounded-xl border border-border/60 p-2">
-                <p className="mb-1 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <div key={day.dayNumber} className="rounded-2xl bg-elevated p-2.5">
+                <p className="mb-1 text-[12.5px] uppercase tracking-wider text-muted-foreground">
                   Day {day.dayNumber}
                   {day.date ? ` · ${day.date}` : ""}
                 </p>
@@ -1211,9 +1213,9 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                   {(["a", "b"] as const).map((side) => (
                     <div
                       key={side}
-                      className={`space-y-0.5 text-[12px] ${dayTab === side ? "" : "hidden sm:block"}`}
+                      className={`space-y-0.5 text-[13.5px] ${dayTab === side ? "" : "hidden sm:block"}`}
                     >
-                      <p className="text-[11px] font-semibold">{result[side].label}</p>
+                      <p className="text-[12.5px] font-semibold">{result[side].label}</p>
                       <p>
                         <span className="text-muted-foreground">Morning · </span>
                         {side === "a" ? day.aMorning : day.bMorning}
@@ -1229,7 +1231,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                     </div>
                   ))}
                 </div>
-                <p className="mt-1.5 border-t border-border/60 pt-1.5 text-[12px] font-medium">
+                <p className="mt-1.5 border-t border-border/60 pt-1.5 text-[13.5px] font-medium">
                   {day.divergence}
                 </p>
               </div>
@@ -1241,7 +1243,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
       {/* 4 — the one thing to borrow */}
       <div className="rounded-xl border border-primary/40 bg-card p-2.5">
         <p className="label-caps mb-0.5 text-primary">Borrow this</p>
-        <p className="text-[13px]">{result.mix}</p>
+        <p className="text-[15px]">{result.mix}</p>
       </div>
 
       {result.reasoningText && (
@@ -1249,13 +1251,13 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
           <button
             onClick={() => setShowThoughts((v) => !v)}
             aria-expanded={showThoughts}
-            className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+            className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
           >
             <span>How Béa decided</span>
             <span className={`transition-transform ${showThoughts ? "rotate-90" : ""}`}>▸</span>
           </button>
           {showThoughts && (
-            <p className="mt-2 whitespace-pre-wrap text-[12px] text-muted-foreground">
+            <p className="mt-2 whitespace-pre-wrap text-[13.5px] text-muted-foreground">
               {result.reasoningText}
             </p>
           )}
@@ -1267,7 +1269,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
         <button
           onClick={() => setShowProse((v) => !v)}
           aria-expanded={showProse}
-          className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+          className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-[13.5px] font-semibold"
         >
           <span>In Béa's words</span>
           <span className={`transition-transform ${showProse ? "rotate-90" : ""}`}>▸</span>
@@ -1276,13 +1278,13 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
           <div className="mt-2 grid grid-cols-2 gap-2">
             {proseRows.map(([title, key]) => (
               <div key={key} className="col-span-2 grid grid-cols-2 gap-2">
-                <p className="col-span-2 text-[11px] uppercase tracking-wider text-muted-foreground">
+                <p className="col-span-2 text-[12.5px] uppercase tracking-wider text-muted-foreground">
                   {title}
                 </p>
-                <p className="rounded-lg border border-border/60 p-2 text-[12px]">
+                <p className="rounded-lg border border-border/60 p-2 text-[13.5px]">
                   {result.a[key]}
                 </p>
-                <p className="rounded-lg border border-border/60 p-2 text-[12px]">
+                <p className="rounded-lg border border-border/60 p-2 text-[13.5px]">
                   {result.b[key]}
                 </p>
               </div>
