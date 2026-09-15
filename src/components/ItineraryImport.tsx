@@ -16,6 +16,9 @@ import {
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
 import { aiFailure } from "@/lib/ai-errors";
+import { findDuplicate } from "@/lib/captured-place";
+import { useUndo } from "@/hooks/useUndo";
+import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
@@ -48,6 +51,7 @@ export function ItineraryImport({
   existingItems = [],
   cities = [],
   onAddItems,
+  onRemoveItems,
   onAddCosts,
   onApplyDates,
   onApplySchedule,
@@ -60,7 +64,10 @@ export function ItineraryImport({
   defaultTab?: PlannerTab;
   existingItems?: OptimizeSourceItem[];
   cities?: OptimizeSourceCity[];
-  onAddItems: (items: NewItineraryItem[]) => Promise<void>;
+  /** Returns the inserted row ids, so a bulk save can be undone. */
+  onAddItems: (items: NewItineraryItem[]) => Promise<string[] | void>;
+  /** Takes a batch back out again, for that undo. */
+  onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
   onApplySchedule?: (
@@ -142,10 +149,12 @@ export function ItineraryImport({
 
         {tab === "import" && (
           <ImportPanel
+            existingItems={existingItems}
             tripCity={tripCity}
             startDate={startDate}
             endDate={endDate}
             onAddItems={onAddItems}
+            {...(onRemoveItems ? { onRemoveItems } : {})}
             onAddCosts={onAddCosts}
             onApplyDates={onApplyDates}
           />
@@ -167,22 +176,35 @@ export function ItineraryImport({
 }
 
 function ImportPanel({
+  existingItems,
   tripCity,
   startDate,
   endDate,
   onAddItems,
+  onRemoveItems,
   onAddCosts,
   onApplyDates,
 }: {
+  existingItems: OptimizeSourceItem[];
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
-  onAddItems: (items: NewItineraryItem[]) => Promise<void>;
+  /** Returns the inserted row ids, so a bulk save can be undone. */
+  onAddItems: (items: NewItineraryItem[]) => Promise<string[] | void>;
+  /** Takes a batch back out again, for that undo. */
+  onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
+  const { addedWithUndo } = useUndo();
+
+  /** Indexes of the parsed rows the timeline does not already have. */
+  const freshIndexes = (rows: { title: string }[]) =>
+    rows
+      .map((row, i) => (findDuplicate(existingItems, { name: row.title }) ? -1 : i))
+      .filter((i) => i >= 0);
   const fileRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const MAX_IMAGES = 6;
@@ -195,9 +217,7 @@ function ImportPanel({
       const room = MAX_IMAGES - images.length;
       const small = await Promise.all(files.slice(0, room).map((f) => downscaleImage(f)));
       setImages((cur) => [...cur, ...small]);
-      setError(
-        files.length > room ? `Béa can read up to ${MAX_IMAGES} pictures at a time.` : null,
-      );
+      setError(files.length > room ? `Béa can read up to ${MAX_IMAGES} pictures at a time.` : null);
     } catch (err) {
       setError(aiFailure(err).message);
     }
@@ -246,7 +266,7 @@ function ImportPanel({
       setSummary(out.summary);
       setItems(out.items);
       setPlan(out);
-      setPicked(out.items.map((_, i) => i));
+      setPicked(freshIndexes(out.items));
       setAltReason("");
       setRebuildReason("");
       if (out.items.length > 0) {
@@ -259,6 +279,20 @@ function ImportPanel({
       setBusy(false);
     }
   };
+
+  /**
+   * Which parsed rows the timeline already has. Re-reading the same booking
+   * email used to silently double the trip; now the repeats are named and
+   * left unticked.
+   */
+  const duplicateIndexes = new Set(
+    (items ?? [])
+      // Matched on title alone: every row here belongs to this one trip, so a
+      // repeated name is a repeat rather than a same-named place elsewhere.
+      // isSamePlace does not read addresses, so a hint here did nothing.
+      .map((item, index) => (findDuplicate(existingItems, { name: item.title }) ? index : -1))
+      .filter((index) => index >= 0),
+  );
 
   const addChosen = async () => {
     if (!items) return;
@@ -292,7 +326,7 @@ function ImportPanel({
         ];
       });
       setSaveStatus(`Saving ${chosen.length} timeline stops…`);
-      await onAddItems(chosen);
+      const insertedIds = await onAddItems(chosen);
       if (includeCosts && onAddCosts && plan?.costs.length) {
         setSaveStatus("Saving the budget…");
         await onAddCosts(plan.costs);
@@ -306,7 +340,17 @@ function ImportPanel({
       setSaved(true);
       setSaveStatus("");
       const done = beaLine("plan.complete");
-      toast.success(done.title, { description: done.body });
+      // A fourteen-stop save used to take fourteen taps to unpick.
+      if (Array.isArray(insertedIds) && insertedIds.length > 0 && onRemoveItems) {
+        addedWithUndo({
+          message: `${done.title} ${addedLine("stop", insertedIds.length)}`,
+          label: "stop",
+          count: insertedIds.length,
+          undo: () => onRemoveItems(insertedIds),
+        });
+      } else {
+        toast.success(done.title, { description: done.body });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save those. Try again.");
     } finally {
@@ -318,7 +362,7 @@ function ImportPanel({
     setSummary(out.summary);
     setItems(out.items);
     setPlan(out);
-    setPicked(out.items.map((_, i) => i));
+    setPicked(freshIndexes(out.items));
   };
 
   const findAlternatives = async () => {
@@ -556,9 +600,7 @@ function ImportPanel({
               ? `Read these ${images.length} pictures`
               : "Read this itinerary"}
       </button>
-      {busy && (
-        <p className="text-[12px] text-muted-foreground">{beaLine("plan.working").body}</p>
-      )}
+      {busy && <p className="text-[12px] text-muted-foreground">{beaLine("plan.working").body}</p>}
       {mode === "import" && !images.length && text.trim().length < 10 && (
         <p className="text-[11px] text-muted-foreground">
           Add one or more pictures above, or paste the plan first.
@@ -583,8 +625,10 @@ function ImportPanel({
           {items.length > 0 && (
             <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-border bg-card p-2 shadow-sm">
               <p className="mb-2 text-[11px] text-muted-foreground">
-                {picked.length} of {items.length} stops selected. Nothing here is reserved — book
-                hotels, tables and tickets yourself.
+                {picked.length} of {items.length} stops selected.
+                {duplicateIndexes.size > 0 &&
+                  ` ${duplicateIndexes.size} already on your timeline, left unticked.`}{" "}
+                Nothing here is reserved — book hotels, tables and tickets yourself.
               </p>
               <button
                 onClick={() => void addChosen()}
@@ -624,6 +668,11 @@ function ImportPanel({
                   {it.source === "vault" && (
                     <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
                       From your vault
+                    </span>
+                  )}
+                  {duplicateIndexes.has(i) && (
+                    <span className="ml-1.5 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                      Already on your timeline
                     </span>
                   )}
                 </span>
@@ -787,9 +836,9 @@ function OptimizePanel({
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[12px] text-muted-foreground">
-        Béa keeps every stop you already have and reshuffles the days — closest together, indoor
-        on a wet day, easier mornings, whatever you pick. She does not check whether a reservation
-        is still available.
+        Béa keeps every stop you already have and reshuffles the days — closest together, indoor on
+        a wet day, easier mornings, whatever you pick. She does not check whether a reservation is
+        still available.
       </p>
 
       {items.length < 2 ? (
@@ -919,8 +968,8 @@ function ComparePanel() {
   return (
     <div className="mt-3 space-y-2">
       <p className="text-[12px] text-muted-foreground">
-        Paste two versions of a plan — from two AI answers, a friend, or a tour page. Béa reads
-        each one first, then compares. That takes a little longer.
+        Paste two versions of a plan — from two AI answers, a friend, or a tour page. Béa reads each
+        one first, then compares. That takes a little longer.
       </p>
 
       {[[a, setA] as const, [b, setB] as const].map(([plan, set], i) => (
@@ -985,11 +1034,42 @@ const METRIC_ROWS: Array<{
 }> = [
   { key: "estimatedCost", label: "Estimated cost", unit: "", better: "low", omitHint: "" },
   { key: "stopCount", label: "Places visited", unit: "", better: "high", omitHint: "" },
-  { key: "activeHoursPerDay", label: "Active hours / day", unit: "h", better: null, omitHint: "Need stop durations" },
-  { key: "indoorShare", label: "Works in bad weather", unit: "", better: "high", format: (v) => `${Math.round(v * 100)}%`, omitHint: "Need indoor/outdoor labels" },
-  { key: "walkingKmPerDay", label: "Walking / day", unit: "km", better: null, omitHint: "Need a map pin on every stop" },
-  { key: "transitMinutesPerDay", label: "Transit / day", unit: "min", better: "low", omitHint: "Need routed times" },
-  { key: "longestTravelLegMinutes", label: "Longest single trip", unit: "min", better: "low", omitHint: "Need routed times" },
+  {
+    key: "activeHoursPerDay",
+    label: "Active hours / day",
+    unit: "h",
+    better: null,
+    omitHint: "Need stop durations",
+  },
+  {
+    key: "indoorShare",
+    label: "Works in bad weather",
+    unit: "",
+    better: "high",
+    format: (v) => `${Math.round(v * 100)}%`,
+    omitHint: "Need indoor/outdoor labels",
+  },
+  {
+    key: "walkingKmPerDay",
+    label: "Walking / day",
+    unit: "km",
+    better: null,
+    omitHint: "Need a map pin on every stop",
+  },
+  {
+    key: "transitMinutesPerDay",
+    label: "Transit / day",
+    unit: "min",
+    better: "low",
+    omitHint: "Need routed times",
+  },
+  {
+    key: "longestTravelLegMinutes",
+    label: "Longest single trip",
+    unit: "min",
+    better: "low",
+    omitHint: "Need routed times",
+  },
 ];
 
 function ComparisonResult({ result }: { result: ItineraryComparison }) {
@@ -1046,8 +1126,13 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
               if (av == null || bv == null) {
                 return (
                   <tr key={row.key}>
-                    <td className="border-t border-border/60 p-1 text-muted-foreground">{row.label}</td>
-                    <td colSpan={2} className="border-t border-border/60 p-1 text-[11px] text-muted-foreground">
+                    <td className="border-t border-border/60 p-1 text-muted-foreground">
+                      {row.label}
+                    </td>
+                    <td
+                      colSpan={2}
+                      className="border-t border-border/60 p-1 text-[11px] text-muted-foreground"
+                    >
                       Not measured — {row.omitHint || "we didn't have enough to compute this"}.
                     </td>
                   </tr>
@@ -1106,7 +1191,9 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                 key={side}
                 onClick={() => setDayTab(side)}
                 className={`rounded-xl border px-3 py-1.5 text-[12px] ${
-                  dayTab === side ? "border-primary text-primary" : "border-border/60 text-muted-foreground"
+                  dayTab === side
+                    ? "border-primary text-primary"
+                    : "border-border/60 text-muted-foreground"
                 }`}
               >
                 {result[side].label}

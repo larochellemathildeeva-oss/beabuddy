@@ -2,6 +2,9 @@ import { useState } from "react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
+import { useUndo } from "@/hooks/useUndo";
+import { SavedPlacePicker } from "@/components/SavedPlacePicker";
+import { toNewStop, type CapturedPlace } from "@/lib/captured-place";
 
 type Draft = {
   kind: string;
@@ -29,6 +32,22 @@ const EMPTY: Draft = {
   notes: "",
 };
 
+/** The fields needed to put a removed stop back. */
+function stopFields(stop: StopRow) {
+  return {
+    kind: stop.kind,
+    city: stop.city,
+    country: stop.country ?? "",
+    place_name: stop.place_name ?? "",
+    address: stop.address ?? "",
+    ...(stop.lat != null ? { lat: stop.lat } : {}),
+    ...(stop.lon != null ? { lon: stop.lon } : {}),
+    arrive_on: stop.arrive_on ?? "",
+    depart_on: stop.depart_on ?? "",
+    notes: stop.notes ?? "",
+  };
+}
+
 function draftFromStop(stop: StopRow): Draft {
   return {
     kind: stop.kind,
@@ -46,12 +65,14 @@ function draftFromStop(stop: StopRow): Draft {
 
 export function TripStops({ tripId, uid }: { tripId: string; uid: string | null }) {
   const s = useTripStops(tripId, uid);
+  const { removeWithUndo } = useUndo();
   const [adding, setAdding] = useState(false);
   /** Stop id being edited, or "" while adding a new one. */
   const [editingId, setEditingId] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pickingSaved, setPickingSaved] = useState(false);
 
   const close = () => {
     setAdding(false);
@@ -80,6 +101,16 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
     setError("");
     setEditingId(stop.id);
     setAdding(true);
+  };
+
+  /** A saved rec becomes a stop, keeping its city, address and map pin. */
+  const addSaved = async (place: CapturedPlace) => {
+    setError("");
+    try {
+      await s.addStop(toNewStop(place));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add that one");
+    }
   };
 
   const save = async () => {
@@ -136,13 +167,37 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                 }`}
           </p>
         </div>
-        <button
-          onClick={openForNew}
-          className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
-        >
-          {adding && !editingId ? "Cancel" : "Add a stop"}
-        </button>
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <button
+            onClick={openForNew}
+            className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+          >
+            {adding && !editingId ? "Cancel" : "Add a stop"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPickingSaved((v) => !v)}
+            className="rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+          >
+            {pickingSaved ? "Close saved" : "From saved"}
+          </button>
+        </div>
       </div>
+
+      {pickingSaved && (
+        <div className="mt-3">
+          <SavedPlacePicker
+            alreadyHere={s.stops.map((stop) => ({
+              name: stop.place_name || stop.city,
+              city: stop.city,
+              ...(stop.lat != null ? { lat: stop.lat } : {}),
+              ...(stop.lon != null ? { lon: stop.lon } : {}),
+            }))}
+            onPick={addSaved}
+            onClose={() => setPickingSaved(false)}
+          />
+        </div>
+      )}
 
       {s.countries.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -202,7 +257,15 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                     {editingId === stop.id ? "Close" : "Edit"}
                   </button>
                   <button
-                    onClick={() => void s.removeStop(stop.id)}
+                    onClick={() =>
+                      void removeWithUndo({
+                        label: stop.city,
+                        remove: () => s.removeStop(stop.id),
+                        // Position is not restored: the stop returns at the end
+                        // of the list, where the arrows can move it back.
+                        restore: () => s.addStop(stopFields(stop)),
+                      })
+                    }
                     className="rounded-lg px-1.5 py-1 text-[11px] text-muted-foreground underline"
                   >
                     Remove

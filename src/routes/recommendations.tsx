@@ -22,6 +22,8 @@ import {
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
+import { useUndo } from "@/hooks/useUndo";
+import { capturedFromReco, findDuplicate, toNewReco } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
@@ -118,6 +120,7 @@ function RecommendationsPage() {
   };
 
   const vault = useRecommendations();
+  const { removeWithUndo } = useUndo();
   const scorePrefs = useScorePrefs();
   const parseLink = useServerFn(parsePlaceLink);
   const lookup = useServerFn(lookupCoords);
@@ -302,6 +305,25 @@ function RecommendationsPage() {
     setLocQuery("");
     setError(null);
   };
+
+  /** The saved rec this draft would duplicate, if any. */
+  const existingMatch = draft?.name.trim()
+    ? findDuplicate(
+        vault.rows.map((r) => ({
+          id: r.id,
+          name: r.name,
+          city: r.city,
+          lat: r.lat,
+          lon: r.lon,
+        })),
+        {
+          name: draft.name,
+          ...(draft.city ? { city: draft.city } : {}),
+          ...(draft.lat != null ? { lat: draft.lat } : {}),
+          ...(draft.lon != null ? { lon: draft.lon } : {}),
+        },
+      )
+    : undefined;
 
   const save = async () => {
     if (!draft?.name.trim()) {
@@ -578,6 +600,14 @@ function RecommendationsPage() {
                   Discard
                 </button>
               </div>
+              {existingMatch && (
+                <p className="rounded-xl border border-border bg-elevated px-3 py-2 text-[12px] text-muted-foreground">
+                  You already saved{" "}
+                  <span className="font-medium text-foreground">{existingMatch.name}</span>
+                  {existingMatch.city ? ` in ${existingMatch.city}` : ""}. Saving again makes a
+                  second copy — fine if that is what you want.
+                </p>
+              )}
               {/* Save sits at the top as well as the bottom: the card is long,
                   and on a phone the only Save button used to be several
                   scrolls past the point where the rec was already complete. */}
@@ -777,7 +807,27 @@ function RecommendationsPage() {
                   <p className="mt-1.5 text-[10px] text-muted-foreground">{v.year}</p>
                   {v.removable && (
                     <button
-                      onClick={() => void vault.remove(v.id)}
+                      onClick={() => {
+                        // Keep enough to re-create it before the row is gone.
+                        const row = vault.rows.find((r) => r.id === v.id);
+                        void removeWithUndo({
+                          label: v.name,
+                          remove: () => vault.remove(v.id),
+                          restore: async () => {
+                            if (!row) throw new Error("gone");
+                            await vault.add({
+                              ...toNewReco(capturedFromReco(row), {
+                                ...(row.category ? { category: row.category } : {}),
+                                ...(row.recommended_by
+                                  ? { recommended_by: row.recommended_by }
+                                  : {}),
+                              }),
+                              ...(row.pin_type ? { pin_type: row.pin_type as PinType } : {}),
+                              ...(row.travel_tags ? { travel_tags: row.travel_tags } : {}),
+                            });
+                          },
+                        });
+                      }}
                       className="mt-1.5 text-[10px] text-muted-foreground underline"
                     >
                       Remove

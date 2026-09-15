@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MapPin, X } from "lucide-react";
+import { Bookmark, MapPin, X } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { formatDateRangeLabel } from "@/lib/trip-dates";
 import {
@@ -11,6 +11,8 @@ import {
 } from "@/lib/timeline-entry";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
+import { SavedPlacePicker } from "@/components/SavedPlacePicker";
+import { addressLine, toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
 
 export type NewTimelineEntry = {
   kind: string;
@@ -55,6 +57,7 @@ export function TimelineEntryForm({
   near,
   onAdd,
   onDone,
+  existing = [],
 }: {
   tripStart?: string | null | undefined;
   tripEnd?: string | null | undefined;
@@ -64,6 +67,8 @@ export function TimelineEntryForm({
   near?: string | undefined;
   onAdd: (entry: NewTimelineEntry) => Promise<void>;
   onDone: () => void;
+  /** Existing rows, so a saved place is not offered twice. */
+  existing?: { title: string; address?: string | null; lat?: number | null; lon?: number | null }[];
 }) {
   const [kind, setKind] = useState("activity");
   /** True once the kind was chosen by hand — then a pick must not override it. */
@@ -77,6 +82,7 @@ export function TimelineEntryForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [added, setAdded] = useState(0);
+  const [pickingSaved, setPickingSaved] = useState(false);
 
   // Following the user to another day should move the form with them, but only
   // while they have not chosen a day themselves.
@@ -125,6 +131,23 @@ export function TimelineEntryForm({
   };
 
   const placeAddress = place.address || [place.city, place.country].filter(Boolean).join(", ");
+
+  /** Put a saved place on the timeline with the day and time already set here. */
+  const addSaved = async (place: CapturedPlace) => {
+    setError("");
+    try {
+      await onAdd(
+        toTimelineItem(place, {
+          ...(kindTouched ? { kind } : {}),
+          ...(day ? { day_date: day } : {}),
+          ...(timeLabel ? { time_label: timeLabel } : {}),
+        }),
+      );
+      setAdded((n) => n + 1);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't add that one");
+    }
+  };
 
   const save = async () => {
     const name = title.trim();
@@ -189,6 +212,29 @@ export function TimelineEntryForm({
         Type a name and pick it from the list — Béa fills in the address, the city, the point on the
         map and what sort of stop it is. Plain text works fine too.
       </p>
+
+      {!pickingSaved && (
+        <button
+          type="button"
+          onClick={() => setPickingSaved(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2 text-[12px] font-semibold"
+        >
+          <Bookmark className="size-3.5 text-primary" aria-hidden />
+          Or add one you already saved
+        </button>
+      )}
+      {pickingSaved && (
+        <SavedPlacePicker
+          {...(near ? { near } : {})}
+          alreadyHere={existing.map((row) => ({
+            name: row.title,
+            ...(row.lat != null ? { lat: row.lat } : {}),
+            ...(row.lon != null ? { lon: row.lon } : {}),
+          }))}
+          onPick={addSaved}
+          onClose={() => setPickingSaved(false)}
+        />
+      )}
 
       {(place.address || place.lat != null) && (
         <div className="flex items-start justify-between gap-2 rounded-xl border border-primary/40 bg-elevated px-3 py-2">

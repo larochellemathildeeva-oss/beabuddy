@@ -80,7 +80,15 @@ async function insertTrip(row: {
 type TripPatch = Partial<
   Pick<
     TripRow,
-    "title" | "city" | "country" | "start_date" | "end_date" | "dates_status" | "status" | "budget_enabled" | "notes"
+    | "title"
+    | "city"
+    | "country"
+    | "start_date"
+    | "end_date"
+    | "dates_status"
+    | "status"
+    | "budget_enabled"
+    | "notes"
   >
 >;
 
@@ -91,7 +99,8 @@ async function updateTripRow(id: string, patch: TripPatch): Promise<void> {
   }
   const first = await supabase.from("trips").update(withStatus).eq("id", id);
   if (!first.error) return;
-  if (!markDatesStatusUnavailable(first.error) || patch.dates_status === undefined) throw first.error;
+  if (!markDatesStatusUnavailable(first.error) || patch.dates_status === undefined)
+    throw first.error;
   const { dates_status: _datesStatus, ...withoutStatus } = patch;
   const retry = await supabase.from("trips").update(withoutStatus).eq("id", id);
   if (retry.error) throw retry.error;
@@ -311,9 +320,7 @@ export function useTrips() {
       if (trip.owner_id === userId) {
         const others = members.filter((m) => m.trip_id === tripId && m.user_id !== userId);
         if (others.length > 0) {
-          throw new Error(
-            "You're the trip owner. Remove the others first, or delete the trip.",
-          );
+          throw new Error("You're the trip owner. Remove the others first, or delete the trip.");
         }
         await deleteTrip(tripId);
         return;
@@ -520,26 +527,43 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
 
-      const { error } = await supabase.from("itinerary_items").insert(
-        additions.map((item, index) => ({
-          trip_id: id,
-          day_date: item.day_date || null,
-          time_label: item.time_label || null,
-          kind: item.kind,
-          title: item.title,
-          detail: item.detail || null,
-          address: item.address || null,
-          lat: item.lat ?? null,
-          lon: item.lon ?? null,
-          position: items.length + index,
-          created_by: authorId,
-          updated_by: authorId,
-        })),
-      );
+      const { data, error } = await supabase
+        .from("itinerary_items")
+        .insert(
+          additions.map((item, index) => ({
+            trip_id: id,
+            day_date: item.day_date || null,
+            time_label: item.time_label || null,
+            kind: item.kind,
+            title: item.title,
+            detail: item.detail || null,
+            address: item.address || null,
+            lat: item.lat ?? null,
+            lon: item.lon ?? null,
+            position: items.length + index,
+            created_by: authorId,
+            updated_by: authorId,
+          })),
+        )
+        // The ids come back so a bulk save can be undone in one go rather
+        // than one Remove tap per row.
+        .select("id");
+      if (error) throw error;
+      await load();
+      return (data ?? []).map((row) => row.id);
+    },
+    [tripId, me.id, items.length, load],
+  );
+
+  /** Take a whole batch back out — the undo half of addItems. */
+  const removeItems = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      const { error } = await supabase.from("itinerary_items").delete().in("id", ids);
       if (error) throw error;
       await load();
     },
-    [tripId, me.id, items.length, load],
+    [load],
   );
 
   const upsertItems = useCallback(
@@ -662,7 +686,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
 
   const removeItem = useCallback(
     async (id: string) => {
-      await supabase.from("itinerary_items").delete().eq("id", id);
+      // Must throw: the undo toast only makes sense if the row really went,
+      // and re-inserting after a failed delete leaves two copies.
+      const { error } = await supabase.from("itinerary_items").delete().eq("id", id);
+      if (error) throw error;
       await load();
     },
     [load],
@@ -674,6 +701,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     present,
     addItem,
     addItems,
+    removeItems,
     upsertItems,
     applySchedule,
     updateItem,

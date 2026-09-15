@@ -22,3 +22,7 @@
 - [x] Accept http and scheme-less Yelp / g.page links when pasting
 - [x] Keep directions for offline from where you got them, and warn when stale
 - [x] Add a stop by typing the place name — address, city, pin and kind fill themselves in
+- [x] One captured-place model behind the rec, stop and timeline add forms
+- [x] Duplicate detection before saving a rec, a stop or an imported plan
+- [x] Undo on every remove, and on a bulk import save
+- [x] Add a saved rec to a trip, and keep a trip stop as a rec

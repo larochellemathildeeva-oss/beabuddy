@@ -12,6 +12,9 @@ import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { TripTodos } from "@/components/TripTodos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
+import { useUndo } from "@/hooks/useUndo";
+import { addRecommendationOnce } from "@/hooks/useRecommendations";
+import { toNewReco } from "@/lib/captured-place";
 import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 
@@ -34,6 +37,7 @@ import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
+import { toast } from "sonner";
 import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
@@ -385,6 +389,7 @@ function LiveTripCard({
   // otherwise saving its plan failed with "Open a trip first".
   const activeId = open || plannerOpen ? trip.id : null;
   const board = useTripBoard(activeId, me);
+  const { removeWithUndo } = useUndo();
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
@@ -394,6 +399,53 @@ function LiveTripCard({
   // Saved directions are only the right legs for these rows when they were
   // built from this exact stop list. They used to be indexed in blindly, so a
   // city-to-city download showed up underneath timeline entries.
+  /**
+   * Keep a timeline stop in the vault. A place worth going to on this trip is
+   * a place worth remembering after it — that is the whole premise, and the
+   * timeline had no way to get anything back out.
+   */
+  const keepItemAsReco = async (item: ItineraryRow) => {
+    await addRecommendationOnce(
+      toNewReco(
+        {
+          name: item.title,
+          ...(item.address ? { address: item.address } : {}),
+          ...(trip.city ? { city: trip.city } : {}),
+          ...(trip.country ? { country: trip.country } : {}),
+          ...(item.lat != null ? { lat: item.lat } : {}),
+          ...(item.lon != null ? { lon: item.lon } : {}),
+          source: `Trip: ${trip.title}`,
+        },
+        {
+          category:
+            item.kind === "meal" ? "Restaurant" : item.kind === "lodging" ? "Stay" : "Place",
+          ...(item.detail ? { notes: item.detail } : {}),
+        },
+      ),
+    );
+    const line = beaLine("recs.saved");
+    toast.success(line.title, { description: line.body });
+  };
+
+  /** Remove a timeline row, offering to put it back for a few seconds. */
+  const removeTimelineItem = (item: ItineraryRow) =>
+    removeWithUndo({
+      label: item.title,
+      remove: () => board.removeItem(item.id),
+      // Comes back at the end of its day rather than its old position.
+      restore: () =>
+        board.addItem({
+          kind: item.kind,
+          title: item.title,
+          ...(item.day_date ? { day_date: item.day_date } : {}),
+          ...(item.time_label ? { time_label: item.time_label } : {}),
+          ...(item.detail ? { detail: item.detail } : {}),
+          ...(item.address ? { address: item.address } : {}),
+          ...(item.lat != null ? { lat: item.lat } : {}),
+          ...(item.lon != null ? { lon: item.lon } : {}),
+        }),
+    });
+
   const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
   const legFor = (index: number) => (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   const templates = usePacking(null);
@@ -671,7 +723,8 @@ function LiveTripCard({
                                   leg={legFor(itemIndexById.get(item.id) ?? -1)}
                                   onEdit={(field) => board.setEditing(field)}
                                   onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                                  onRemove={() => void board.removeItem(item.id)}
+                                  onRemove={() => void removeTimelineItem(item)}
+                                  onKeep={keepItemAsReco}
                                 />
                               ))}
                             </ol>
@@ -690,7 +743,8 @@ function LiveTripCard({
                         leg={legFor(i)}
                         onEdit={(field) => board.setEditing(field)}
                         onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                        onRemove={() => void board.removeItem(item.id)}
+                        onRemove={() => void removeTimelineItem(item)}
+                        onKeep={keepItemAsReco}
                       />
                     ))}
                   </ol>
@@ -702,6 +756,12 @@ function LiveTripCard({
                     tripEnd={trip.end_date}
                     {...(addDay ? { openDay: addDay } : {})}
                     {...(directionArea ? { near: directionArea } : {})}
+                    existing={board.items.map((item) => ({
+                      title: item.title,
+                      address: item.address,
+                      lat: item.lat,
+                      lon: item.lon,
+                    }))}
                     onAdd={board.addItem}
                     onDone={() => {
                       setAddingTimeline(false);
@@ -752,6 +812,7 @@ function LiveTripCard({
         {...(trip.start_date ? { startDate: trip.start_date } : {})}
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
+        onRemoveItems={board.removeItems}
         onAddCosts={async (items) => {
           if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
           await budget.addItems(items);
@@ -1269,6 +1330,7 @@ function TimelineEntry({
   onEdit,
   onUpdate,
   onRemove,
+  onKeep,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -1278,7 +1340,10 @@ function TimelineEntry({
     patch: Partial<Pick<ItineraryRow, "title" | "detail" | "time_label" | "kind" | "day_date">>,
   ) => void;
   onRemove: () => void;
+  /** Save this stop to the vault, so a good find outlives the trip. */
+  onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
 }) {
+  const [kept, setKept] = useState(false);
   const when = showDay
     ? [item.day_date, item.time_label].filter(Boolean).join(" · ")
     : (item.time_label ?? "");
@@ -1324,13 +1389,33 @@ function TimelineEntry({
         </p>
       )}
       <StopDirections leg={leg} />
-      <button
-        type="button"
-        onClick={onRemove}
-        className="mt-0.5 text-[11px] text-muted-foreground underline"
-      >
-        Remove
-      </button>
+      <div className="mt-0.5 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-[11px] text-muted-foreground underline"
+        >
+          Remove
+        </button>
+        {onKeep && item.kind !== "note" && (
+          <button
+            type="button"
+            disabled={kept}
+            onClick={() => {
+              void onKeep(item).then(
+                () => setKept(true),
+                (e: unknown) =>
+                  toast.error(
+                    e instanceof Error ? e.message : "Couldn't save that to your places.",
+                  ),
+              );
+            }}
+            className="text-[11px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
+          >
+            {kept ? "Saved to your places" : "Save to my places"}
+          </button>
+        )}
+      </div>
     </li>
   );
 }

@@ -144,6 +144,20 @@ async function insertRecos(uid: string, recos: NewReco[]) {
   if (error) throw error;
 }
 
+/**
+ * Save one recommendation without subscribing to the vault.
+ *
+ * The trip screen renders a card per trip; calling useRecommendations there
+ * meant a full table select and an auth listener for every trip on the page,
+ * just to have an insert available.
+ */
+export async function addRecommendationOnce(reco: NewReco): Promise<void> {
+  const { data: session } = await supabase.auth.getSession();
+  const uid = session.session?.user.id;
+  if (!uid) throw new Error("Sign in to save recommendations");
+  await insertRecos(uid, [reco]);
+}
+
 export function useRecommendations() {
   const [rows, setRows] = useState<RecoRowDB[]>([]);
   const [loading, setLoading] = useState(true);
@@ -196,7 +210,8 @@ export function useRecommendations() {
 
   const remove = useCallback(
     async (id: string) => {
-      await supabase.from("recommendations").delete().eq("id", id);
+      const { error } = await supabase.from("recommendations").delete().eq("id", id);
+      if (error) throw error;
       await reload();
     },
     [reload],

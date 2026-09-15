@@ -91,13 +91,16 @@ export function useTripStops(tripId: string | null, uid: string | null) {
         arrive_on: s.arrive_on || null,
         depart_on: s.depart_on || null,
         notes: s.notes || null,
-        position: stops.length,
+        // One past the highest, not stops.length: after a remove the list is
+        // shorter than its highest position, so two removes and two undos gave
+        // two rows the same position and left moveStop unable to separate them.
+        position: stops.reduce((max, stop) => Math.max(max, stop.position + 1), 0),
         created_by: authorId,
       });
       if (error) throw error;
       await load();
     },
-    [tripId, uid, stops.length, load],
+    [tripId, uid, stops, load],
   );
 
   const updateStop = useCallback(
@@ -114,7 +117,8 @@ export function useTripStops(tripId: string | null, uid: string | null) {
 
   const removeStop = useCallback(
     async (id: string) => {
-      await supabase.from("trip_stops").delete().eq("id", id);
+      const { error } = await supabase.from("trip_stops").delete().eq("id", id);
+      if (error) throw error;
       await load();
     },
     [load],
