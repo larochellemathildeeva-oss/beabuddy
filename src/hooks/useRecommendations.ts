@@ -127,21 +127,26 @@ async function selectRecos(): Promise<RecoRowDB[]> {
   return (data ?? []) as RecoRowDB[];
 }
 
-async function insertRecos(uid: string, recos: NewReco[]) {
+async function insertRecos(uid: string, recos: NewReco[]): Promise<string[]> {
   if (travelTagsColumnAvailable !== false) {
     const first = await supabase
       .from("recommendations")
-      .insert(recos.map((reco) => toInsert(uid, reco, true)));
+      .insert(recos.map((reco) => toInsert(uid, reco, true)))
+      // The ids come back so a saved rec can be refined straight after,
+      // instead of asking for every optional field up front.
+      .select("id");
     if (!first.error) {
       travelTagsColumnAvailable = true;
-      return;
+      return (first.data ?? []).map((row) => row.id);
     }
     if (!markTravelTagsUnavailable(first.error)) throw first.error;
   }
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("recommendations")
-    .insert(recos.map((reco) => toInsert(uid, reco, false)));
+    .insert(recos.map((reco) => toInsert(uid, reco, false)))
+    .select("id");
   if (error) throw error;
+  return (data ?? []).map((row) => row.id);
 }
 
 /**
@@ -190,7 +195,28 @@ export function useRecommendations() {
       const { data: session } = await supabase.auth.getSession();
       const uid = session.session?.user.id;
       if (!uid) throw new Error("Sign in to save recommendations");
-      await insertRecos(uid, [reco]);
+      const ids = await insertRecos(uid, [reco]);
+      await reload();
+      return ids[0];
+    },
+    [reload],
+  );
+
+  /** Fill in something optional after the rec already exists. */
+  const update = useCallback(
+    async (id: string, patch: Partial<NewReco>) => {
+      const { error } = await supabase
+        .from("recommendations")
+        .update({
+          ...(patch.notes !== undefined ? { notes: patch.notes || null } : {}),
+          ...(patch.recommended_by !== undefined
+            ? { recommended_by: patch.recommended_by || null }
+            : {}),
+          ...(patch.category !== undefined ? { category: patch.category || null } : {}),
+          ...(patch.pin_type !== undefined ? { pin_type: patch.pin_type } : {}),
+        })
+        .eq("id", id);
+      if (error) throw error;
       await reload();
     },
     [reload],
@@ -222,6 +248,7 @@ export function useRecommendations() {
     loading,
     signedIn,
     add,
+    update,
     addMany,
     remove,
     reload,

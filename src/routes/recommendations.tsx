@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { Bookmark, Check, Plus, StickyNote, UserRound, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
@@ -23,7 +24,12 @@ import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-pa
 import { placeSuggestionLines } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
-import { capturedFromReco, findDuplicate, toNewReco } from "@/lib/captured-place";
+import {
+  capturedFromParsedPlace,
+  capturedFromReco,
+  findDuplicate,
+  toNewReco,
+} from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
@@ -52,6 +58,18 @@ export const Route = createFileRoute("/recommendations")({
 });
 
 const pinChoices: PinType[] = ["reco", "wishlist", "nexttime", "visited"];
+
+/** Optional draft fields, shown as chips rather than seven stacked inputs. */
+const DRAFT_FIELDS = [
+  ["category", "Category"],
+  ["recommended_by", "Who told you"],
+  ["notes", "Note"],
+  ["city", "City"],
+  ["country", "Country"],
+  ["address", "Address"],
+] as const;
+
+type DraftField = (typeof DRAFT_FIELDS)[number][0] | "name";
 
 type Draft = {
   name: string;
@@ -98,6 +116,12 @@ function RecommendationsPage() {
   const [locResults, setLocResults] = useState<ParsedPlace[] | null>(null);
   const draftRef = useRef<HTMLDivElement | null>(null);
   const [justDrafted, setJustDrafted] = useState(0);
+  /** The rec just saved, while the offer to fill in the rest is still up. */
+  const [justSaved, setJustSaved] = useState<{ id: string; name: string } | null>(null);
+  const [refining, setRefining] = useState<"pin" | "who" | "note" | null>(null);
+  const [refineText, setRefineText] = useState("");
+  /** Which optional draft field is open, if any. */
+  const [draftField, setDraftField2] = useState<Exclude<DraftField, "name"> | null>(null);
 
   // The draft card is appended below the paste/search card, which on a phone
   // puts it off-screen — the reason reading a link looked like it did nothing.
@@ -325,6 +349,61 @@ function RecommendationsPage() {
       )
     : undefined;
 
+  /**
+   * Edit one draft field, re-guessing the travel tags from the fields that
+   * feed them — unless the traveller has already set the tags by hand.
+   */
+  const setDraftField = (field: DraftField, value: string) => {
+    if (!draft) return;
+    const next = { ...draft, [field]: value };
+    const retag =
+      !tagsTouched &&
+      (field === "name" || field === "category" || field === "notes" || field === "address");
+    setDraft(retag ? { ...next, travel_tags: suggestTravelTags(next) } : next);
+  };
+
+  /**
+   * Save a looked-up place in one tap. Everything optional — who told you
+   * about it, a note, which pin it is — is offered afterwards, once the rec
+   * exists, rather than asked for before it does.
+   */
+  const quickSave = async (found: ParsedPlace) => {
+    setBusy("quick");
+    setError(null);
+    try {
+      const captured = capturedFromParsedPlace(found);
+      const id = await vault.add({
+        ...toNewReco(captured, { category: prettyPlaceCategory(found) }),
+        travel_tags: suggestTravelTags({ name: found.name, category: prettyPlaceCategory(found) }),
+      });
+      setResults(null);
+      setDraft(null);
+      setRefining(null);
+      setRefineText("");
+      if (id) setJustSaved({ id, name: found.name });
+      else {
+        const line = beaLine("recs.saved");
+        toast.success(line.title, { description: line.body });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save that one.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /** Fill in one optional thing on the rec just saved. */
+  const refineSaved = async (patch: Parameters<typeof vault.update>[1]) => {
+    if (!justSaved) return;
+    try {
+      await vault.update(justSaved.id, patch);
+      setRefining(null);
+      setRefineText("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't update that.");
+    }
+  };
+
   const save = async () => {
     if (!draft?.name.trim()) {
       setError("Give it a name first.");
@@ -332,10 +411,14 @@ function RecommendationsPage() {
     }
     setBusy("save");
     try {
-      await vault.add(draft);
+      const savedId = await vault.add(draft);
       const line = beaLine("recs.saved");
       toast.success(line.title, { description: line.body });
+      if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
+      setRefining(null);
+      setRefineText("");
       setDraft(null);
+      setDraftField2(null);
       setTagsTouched(false);
       setMoreTags(false);
       setLocQuery("");
@@ -482,7 +565,7 @@ function RecommendationsPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="Paste a Maps link — or the whole share"
-                className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
               />
               <button
                 onClick={handleLink}
@@ -521,7 +604,7 @@ function RecommendationsPage() {
                 autoCorrect="off"
                 spellCheck={false}
                 placeholder="Café de Flore, Paris — or paste a Maps link"
-                className="mt-3 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
               />
               <button
                 onClick={() => void handleSearch()}
@@ -543,17 +626,36 @@ function RecommendationsPage() {
                 <div className="mt-3 space-y-2">
                   {results.map((r) => {
                     const line = placeSuggestionLines(r);
+                    const key = `${r.lat}-${r.lon}-${r.name}`;
                     return (
-                      <button
-                        key={`${r.lat}-${r.lon}-${r.name}`}
-                        onClick={() => showDraft({ ...r, category: prettyPlaceCategory(r) })}
-                        className="w-full rounded-xl border border-border bg-background p-3 text-left"
+                      <div
+                        key={key}
+                        className="flex items-center gap-1 rounded-xl border border-border bg-background p-1.5"
                       >
-                        <p className="text-[13px] font-semibold">{line.title}</p>
-                        {line.subtitle ? (
-                          <p className="text-[11px] text-muted-foreground">{line.subtitle}</p>
-                        ) : null}
-                      </button>
+                        {/* The row still opens the full form for anyone who
+                            wants to fill things in first. */}
+                        <button
+                          onClick={() => showDraft({ ...r, category: prettyPlaceCategory(r) })}
+                          className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
+                        >
+                          <p className="truncate text-[13px] font-semibold">{line.title}</p>
+                          {line.subtitle ? (
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {line.subtitle}
+                            </p>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy === "quick"}
+                          aria-label={`Save ${line.title} now`}
+                          onClick={() => void quickSave(r)}
+                          className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[11px] font-semibold text-primary disabled:opacity-50"
+                        >
+                          <Plus className="size-3.5" aria-hidden />
+                          {busy === "quick" ? "Saving…" : "Save"}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -578,6 +680,118 @@ function RecommendationsPage() {
 
           {error && <p className="mt-3 text-[12px] text-destructive">{error}</p>}
 
+          {/* Saved first, filled in after. Who told you about it and which pin
+              it is are the two things worth asking, and neither is worth
+              blocking the save over. */}
+          {justSaved && (
+            <div className="rise mt-3 space-y-2 rounded-xl border border-primary/40 bg-elevated p-3">
+              <div className="flex items-start justify-between gap-2">
+                <p aria-live="polite" className="min-w-0 text-[13px]">
+                  <Check className="mr-1 inline size-4 text-primary" aria-hidden />
+                  Saved <span className="font-medium">{justSaved.name}</span>
+                </p>
+                <button
+                  type="button"
+                  aria-label="Done with this one"
+                  onClick={() => {
+                    setJustSaved(null);
+                    setRefining(null);
+                    setRefineText("");
+                  }}
+                  className="grid size-6 shrink-0 place-items-center rounded-full border border-border"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+
+              {refining === null && (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setRefining("pin")}
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                  >
+                    <Bookmark className="size-3.5" aria-hidden /> Which pin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRefining("who");
+                      setRefineText("");
+                    }}
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                  >
+                    <UserRound className="size-3.5" aria-hidden /> Who told you
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRefining("note");
+                      setRefineText("");
+                    }}
+                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px]"
+                  >
+                    <StickyNote className="size-3.5" aria-hidden /> Add a note
+                  </button>
+                </div>
+              )}
+
+              {refining === "pin" && (
+                <div className="flex flex-wrap gap-1.5">
+                  {pinChoices.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => void refineSaved({ pin_type: t })}
+                      className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[12px]"
+                    >
+                      <span className={`size-2 rounded-full ${pinColorClass[t]}`} aria-hidden />
+                      {pinLabel[t]}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {(refining === "who" || refining === "note") && (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    value={refineText}
+                    onChange={(e) => setRefineText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      void refineSaved(
+                        refining === "who"
+                          ? { recommended_by: refineText.trim() }
+                          : { notes: refineText.trim() },
+                      );
+                    }}
+                    placeholder={
+                      refining === "who" ? "A friend, a guide, a stranger…" : "Why it's worth it"
+                    }
+                    aria-label={refining === "who" ? "Who told you" : "Note"}
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[13px]"
+                  />
+                  <button
+                    type="button"
+                    disabled={!refineText.trim()}
+                    onClick={() =>
+                      void refineSaved(
+                        refining === "who"
+                          ? { recommended_by: refineText.trim() }
+                          : { notes: refineText.trim() },
+                      )
+                    }
+                    className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[12px] font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {draft && (
             <div ref={draftRef} className="rise mt-3 card-soft space-y-2 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -591,6 +805,7 @@ function RecommendationsPage() {
                   type="button"
                   onClick={() => {
                     setDraft(null);
+                    setDraftField2(null);
                     setLocQuery("");
                     setLocResults(null);
                     setError(null);
@@ -618,34 +833,57 @@ function RecommendationsPage() {
               >
                 {busy === "save" ? "Saving…" : "Save to vault"}
               </button>
-              {(
-                [
-                  ["name", "Name"],
-                  ["category", "Category"],
-                  ["city", "City"],
-                  ["country", "Country"],
-                  ["address", "Address"],
-                  ["recommended_by", "Who told you"],
-                  ["notes", "Note"],
-                ] as const
-              ).map(([field, label]) => (
+              {/* The name is the only thing Béa needs. The rest are chips that
+                  read as their own value and open one field at a time, the
+                  same shape as adding to a trip timeline. */}
+              <input
+                value={draft.name ?? ""}
+                onChange={(e) => setDraftField("name", e.target.value)}
+                placeholder="Name"
+                aria-label="Name"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
+              />
+              {[draft.address, draft.city, draft.country].some(Boolean) && (
+                <p className="px-1 text-[11px] text-muted-foreground">
+                  📍 {[draft.address || draft.city, draft.country].filter(Boolean).join(", ")}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Optional details">
+                {DRAFT_FIELDS.map(([field, label]) => {
+                  const value = (draft[field] as string | undefined) ?? "";
+                  const open = draftField === field;
+                  return (
+                    <button
+                      key={field}
+                      type="button"
+                      aria-expanded={open}
+                      onClick={() => setDraftField2(open ? null : field)}
+                      className={`rounded-full border px-2.5 py-1.5 text-[12px] ${
+                        open
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : value
+                            ? "border-primary/50 text-foreground"
+                            : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {value ? (value.length > 18 ? `${value.slice(0, 17)}…` : value) : label}
+                    </button>
+                  );
+                })}
+              </div>
+              {draftField && (
                 <input
-                  key={field}
-                  value={(draft[field] as string | undefined) ?? ""}
-                  onChange={(e) => {
-                    const next = { ...draft, [field]: e.target.value };
-                    const retag =
-                      !tagsTouched &&
-                      (field === "name" ||
-                        field === "category" ||
-                        field === "notes" ||
-                        field === "address");
-                    setDraft(retag ? { ...next, travel_tags: suggestTravelTags(next) } : next);
+                  autoFocus
+                  value={(draft[draftField] as string | undefined) ?? ""}
+                  onChange={(e) => setDraftField(draftField, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") setDraftField2(null);
                   }}
-                  placeholder={label}
+                  placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
+                  aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
                   className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none focus:border-primary"
                 />
-              ))}
+              )}
               <div className="pt-1">
                 <p className="label-caps">Travel tags</p>
                 <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
