@@ -11,7 +11,10 @@ test("quick tour is a story walk around the block", () => {
     QUICK_STEPS.some((s) => s.selector),
     "quick walk spotlights real controls",
   );
-  assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 3);
+  // Two taps, not three: the Opportunity-mode step used to wait for a click on
+  // a demo-city button, and those were removed from Near. A step that waits for
+  // a control that no longer exists leaves Next disabled with nothing to tap.
+  assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 2);
   const taps = QUICK_STEPS.filter((s) => s.awaitClick);
   for (const s of taps) {
     assert.ok(s.actionHint, `${s.title} needs an actionHint`);

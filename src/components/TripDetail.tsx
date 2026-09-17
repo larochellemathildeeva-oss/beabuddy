@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, FileText, ListChecks, Plus, Settings, Sparkles, X } from "lucide-react";
+import {
+  ChevronDown,
+  FileText,
+  ListChecks,
+  MapPinPlus,
+  Plus,
+  Settings,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { PackingLists } from "@/components/PackingLists";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -144,6 +153,7 @@ export function TripDetail({
   const [packMsg, setPackMsg] = useState("");
   const [packSignal, setPackSignal] = useState(0);
   const [todoSignal, setTodoSignal] = useState(0);
+  const [stopSignal, setStopSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingTimeline, setAddingTimeline] = useState(false);
@@ -201,6 +211,15 @@ export function TripDetail({
         >
           <img src={logo} alt="" className="size-7 object-contain" />
           <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
+        </button>
+        <button
+          data-guide="add-stop"
+          aria-label="Add a stop to this trip"
+          title="Add a stop"
+          onClick={() => setStopSignal((n) => n + 1)}
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
+        >
+          <MapPinPlus className="size-4" />
         </button>
         <button
           data-guide="trip-todos"
@@ -265,7 +284,7 @@ export function TripDetail({
           </div>
         </div>
 
-        <TripStops tripId={trip.id} uid={me.id} />
+        <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
 
         <TripTodos
           tripId={trip.id}

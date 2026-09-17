@@ -87,11 +87,9 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Opportunity mode",
-    body: "You're near something Future You wanted. Near ranks your own saves by distance and why they matter right now. Demo as Lisbon.",
+    body: "You're near something Future You wanted. Share your location and Near ranks your own saves by distance and why they matter right now.",
     to: "/opportunities",
-    selector: "[data-guide='demo-city-lisbon']",
-    awaitClick: true,
-    actionHint: "Tap Lisbon, then Next",
+    selector: "[data-guide='location-card']",
   },
   {
     title: "Your travel story",

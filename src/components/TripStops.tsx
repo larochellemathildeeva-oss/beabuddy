@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section, SectionAction } from "@/components/Section";
@@ -65,7 +65,20 @@ function draftFromStop(stop: StopRow): Draft {
   };
 }
 
-export function TripStops({ tripId, uid }: { tripId: string; uid: string | null }) {
+export function TripStops({
+  tripId,
+  uid,
+  openSignal,
+}: {
+  tripId: string;
+  uid: string | null;
+  /**
+   * Bumped by the pin button in the trip's action row. A counter rather than a
+   * boolean so pressing it again re-opens the form after you have closed it —
+   * the same shape the to-do and packing buttons use.
+   */
+  openSignal?: number | undefined;
+}) {
   const s = useTripStops(tripId, uid);
   const { removeWithUndo } = useUndo();
   const [adding, setAdding] = useState(false);
@@ -95,6 +108,16 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
     setEditingId("");
     setAdding(true);
   };
+
+  // The action row's pin button opens the same form as the section's own
+  // button, rather than a second way of adding a stop.
+  useEffect(() => {
+    if (!openSignal) return;
+    setDraft(EMPTY);
+    setError("");
+    setEditingId("");
+    setAdding(true);
+  }, [openSignal]);
 
   const openForEdit = (stop: StopRow) => {
     if (editingId === stop.id) {
@@ -171,9 +194,15 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
       }
       actions={
         <>
-          <SectionAction onClick={openForNew}>
-            {adding && !editingId ? "Cancel" : "Add a stop"}
-          </SectionAction>
+          {/* Adding a stop lives in the trip's action row now — two full-width
+              buttons under the heading cost more vertical space than the
+              section's actual contents on a phone. The inline one stays only
+              while there is nothing here yet, where it is the thing to do. */}
+          {(s.stops.length === 0 || (adding && !editingId)) && (
+            <SectionAction onClick={openForNew}>
+              {adding && !editingId ? "Cancel" : "Add a stop"}
+            </SectionAction>
+          )}
           <SectionAction onClick={() => setPickingSaved((v) => !v)}>
             {pickingSaved ? "Close" : "From saved"}
           </SectionAction>

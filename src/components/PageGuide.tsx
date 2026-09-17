@@ -130,6 +130,11 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='trip-stops']",
       },
       {
+        title: "Add a stop quickly",
+        body: "The pin icon adds a city or stopover without scrolling to the section. From saved pulls one out of your recommendation vault instead, keeping its address and map pin.",
+        selector: "[data-guide='add-stop']",
+      },
+      {
         title: "The shared timeline",
         body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn stays offline only if you download it in trip settings.",
         selector: "[data-guide='trip-timeline']",
