@@ -8,7 +8,7 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
-import { SectionAction, TripSection } from "@/components/TripSection";
+import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
@@ -620,7 +620,7 @@ function LiveTripCard({
 
           {trip.budget_enabled && <TripBudget tripId={trip.id} />}
 
-          <TripSection
+          <Section
             guide="trip-timeline"
             title="Your itinerary"
             hint={
@@ -797,7 +797,7 @@ function LiveTripCard({
                 )}
               </div>
             )}
-          </TripSection>
+          </Section>
 
           <ItineraryDirections
             stops={directionStops}

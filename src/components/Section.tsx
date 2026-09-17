@@ -2,18 +2,21 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 /**
- * One section of a trip: stops, to-dos, the itinerary.
+ * A named block of content, optionally collapsible.
  *
- * Every trip section used to draw its own header, and they drifted — the title
- * was `label-caps` (11px, grey, uppercase) sitting above 14.5px near-black body
- * text, so the smallest, faintest thing in each section was its name. They also
- * each nested a cream panel inside a cream panel inside a cream card, which
- * read as one undifferentiated blob.
+ * This began life inside trips, where every section drew its own header and
+ * they drifted — the title was `label-caps` (11px, grey, uppercase) sitting
+ * above 14.5px near-black body text, so the smallest, faintest thing in each
+ * section was its name. They also nested a cream panel inside a cream panel
+ * inside a cream card, which read as one undifferentiated blob.
  *
  * So: one cream surface per section, a title that outranks its own contents,
- * and rows separated by hairlines rather than by another box.
+ * and rows separated by hairlines rather than by another box. That is not a
+ * trip-specific idea, which is why it is no longer called TripSection — every
+ * tab should group content the same way, and the fastest route to that is
+ * making the shared component less work than a bespoke one.
  */
-export function TripSection({
+export function Section({
   title,
   hint,
   open,
@@ -58,7 +61,7 @@ export function TripSection({
             className="flex min-w-0 flex-1 items-start gap-2 text-left"
           >
             <ChevronDown
-              className={`mt-1 size-4 shrink-0 text-muted-foreground transition-transform ${
+              className={`mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-(--t-shift) ease-(--ease-standard) ${
                 expanded ? "" : "-rotate-90"
               }`}
               aria-hidden

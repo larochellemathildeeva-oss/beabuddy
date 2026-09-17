@@ -94,8 +94,39 @@
   /* Barely-there warmth so the page is not a flat fill. */
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 78 / 0.85), transparent 70%);
 
-  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
+  /**
+   * Motion is configured where colour is configured — one place, not forty
+   * component files.
+   *
+   * The four durations are named for what the movement *is* rather than how
+   * long it takes, so a reviewer can tell a wrong one from a right one:
+   *   tap    — the element you touched acknowledges you
+   *   shift  — something changes in place (colour, weight, rotation)
+   *   move   — something travels across the screen
+   *   arrive — a new surface lands
+   *
+   * Tailwind v4's variable shorthand reads them straight out of here:
+   * `duration-(--t-move)`, `ease-(--ease-standard)`. Component code then says
+   * what the motion means instead of guessing a number.
+   *
+   * These live on :root rather than in @theme so they are emitted whether or
+   * not a utility happens to reference them — plain CSS below uses them too.
+   */
+  --t-tap: 120ms;
+  --t-shift: 200ms;
+  --t-move: 320ms;
+  --t-arrive: 420ms;
+
+  /* Standard: decelerating, for anything entering or moving in place.
+     Exit: accelerating, for anything leaving — it should not linger.
+     Confirm: slight overshoot, reserved for "that worked" moments. */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-confirm: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* The original names, kept as aliases so older call sites stay correct. */
+  --ease-out: var(--ease-standard);
+  --ease-spring: var(--ease-confirm);
 }
 
 .dark {
@@ -186,11 +217,11 @@
   a,
   [role="button"] {
     transition:
-      background-color 0.18s var(--ease-out),
-      border-color 0.18s var(--ease-out),
-      color 0.18s var(--ease-out),
-      box-shadow 0.18s var(--ease-out),
-      transform 0.12s var(--ease-out);
+      background-color var(--t-shift) var(--ease-standard),
+      border-color var(--t-shift) var(--ease-standard),
+      color var(--t-shift) var(--ease-standard),
+      box-shadow var(--t-shift) var(--ease-standard),
+      transform var(--t-tap) var(--ease-standard);
   }
 
   button:active:not(:disabled),
@@ -198,15 +229,28 @@
     transform: scale(0.975);
   }
 
+  /**
+   * One reduced-motion rule for the whole app, rather than a check in every
+   * component that happens to animate. Anything added later is covered on the
+   * day it is written.
+   *
+   * Transitions are stilled, not removed: a 1ms transition still *ends* at the
+   * right value, so a disclosure that animates height still opens to the right
+   * height. Removing the property would leave it mid-way.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
-      animation-duration: 0.001ms !important;
+      animation-duration: 1ms !important;
       animation-iteration-count: 1 !important;
-      transition-duration: 0.001ms !important;
+      animation-delay: 0ms !important;
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
+      scroll-behavior: auto !important;
     }
 
+    /* The press-down is motion for its own sake; drop it entirely. */
     button:active:not(:disabled),
     [role="button"]:active {
       transform: none;
@@ -244,6 +288,81 @@
     letter-spacing: -0.018em;
     text-wrap: balance;
   }
+}
+
+/**
+ * Tab identity.
+ *
+ * Each tab gets one hue rotation of the same accent — never a different
+ * colour. Lightness and chroma are fixed across the set, so every tab has
+ * identical contrast against the page and against its own text. This is what
+ * the palette being in oklch buys: rotating a hex accent changes its
+ * perceived brightness, rotating an oklch hue does not.
+ *
+ * Two usages only, both in the shell: the active tab pill and the header rule.
+ * The moment a third appears, the app has six colour schemes rather than one
+ * with a compass.
+ */
+/* The accent is computed on the element that carries the hue. Putting it on
+   :root would resolve var(--tab-hue) there — before any tab has set one — and
+   every tab would come out the same colour. */
+[data-tab] {
+  --tab-hue: 39;
+  --tab-accent: oklch(0.535 0.155 var(--tab-hue));
+}
+
+.dark [data-tab] {
+  /* Same chroma, lifted lightness — the dark palette's primary sits at 0.715,
+     and an accent that did not follow would read as muddy after dark. */
+  --tab-accent: oklch(0.715 0.152 var(--tab-hue));
+}
+
+/* The band runs upward from the brand's 39°, in even steps, in tab order — so
+   the accent walks along the bar with you.
+ *
+ * Upward on purpose: below 39° the warm terracotta turns rosy within twenty
+ * degrees and stops reading as the same colour family, while above it the hue
+ * travels terracotta → amber → gold and stays unmistakably Béa. Forty degrees
+ * is the whole range; wider and the tabs read as five apps rather than one
+ * app wearing five hats, which is the failure this is meant to fix.
+ */
+[data-tab="home"] {
+  --tab-hue: 39;
+}
+[data-tab="world"] {
+  --tab-hue: 47;
+}
+[data-tab="trips"] {
+  --tab-hue: 55;
+}
+[data-tab="recs"] {
+  --tab-hue: 63;
+}
+[data-tab="near"] {
+  --tab-hue: 71;
+}
+[data-tab="you"] {
+  --tab-hue: 79;
+}
+
+/** The moving tab pill and the rule under the header, and nowhere else. */
+@utility tab-tint {
+  background-color: color-mix(in oklch, var(--tab-accent, var(--color-primary)) 13%, transparent);
+}
+
+@utility tab-ink {
+  color: var(--tab-accent, var(--color-primary));
+}
+
+/**
+ * The hairline under the app header, tinted by the tab you are in. It is the
+ * quietest possible way to say "you are somewhere else now" — noticed only
+ * once you move, which is exactly when it should be.
+ */
+@utility tab-rule {
+  border-bottom: 1px solid
+    color-mix(in oklch, var(--tab-accent, var(--color-border)) 30%, var(--color-border));
+  transition: border-color var(--t-move) var(--ease-standard);
 }
 
 /**
@@ -335,9 +454,9 @@
 }
 
 @utility rise {
-  animation: rise-in 0.5s var(--ease-out) both;
+  animation: rise-in var(--t-arrive) var(--ease-standard) both;
 }
 
 @utility pin-pop {
-  animation: pin-pop 0.5s var(--ease-spring) both;
+  animation: pin-pop var(--t-arrive) var(--ease-confirm) both;
 }

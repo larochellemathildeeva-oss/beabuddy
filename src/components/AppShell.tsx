@@ -1,8 +1,11 @@
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
 import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
+import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
+import { nextCompressed, tabIdForPath } from "../lib/page-header";
+import { PageHeader } from "./PageHeader";
 
 import { ArrowLeft, Compass, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
 import logo from "../assets/bea-logo.png";
@@ -25,11 +28,14 @@ export function AppShell({
   children,
   eyebrow,
   title,
+  headerAction,
   publicPage = false,
 }: {
   children: ReactNode;
   eyebrow?: string;
-  title?: string;
+  title?: ReactNode;
+  /** One action beside the title. More than one belongs in the content. */
+  headerAction?: ReactNode;
   /**
    * Pages a signed-out visitor must be able to read. The sign-up form asks
    * people to agree to the Privacy Policy and links to it, so gating that link
@@ -42,10 +48,27 @@ export function AppShell({
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
   const showBack = pathname !== "/";
+  const tabIndex = activeTabIndex(pathname, tabs);
+  const tabId = tabIdForPath(pathname);
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const [compressed, setCompressed] = useState(false);
   const { user, loading } = useAuth();
   useLegalConsent();
   useIdleLogout(!!user);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+
+  // The shell owns the only scroll container in the app, so header compression
+  // is one listener here rather than one per screen. Passive, and it only sets
+  // state when the answer actually changes — a scroll handler that re-renders
+  // on every frame is how a phone loses its frame rate.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => setCompressed((cur) => nextCompressed(el.scrollTop, cur));
+    onScroll();
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [pathname]);
 
   useEffect(() => {
     const on = () => setOnline(true);
@@ -89,8 +112,15 @@ export function AppShell({
   // until iOS scroll/visual-viewport churn left it floating mid-page.
   return (
     <div className="h-dvh bg-background">
-      <div className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]">
-        <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/40 bg-background/75 px-4 py-2.5 backdrop-blur-xl">
+      {/* One hue per tab, set once here. Everything that wants the current
+          tab's accent reads `--tab-accent`; nothing re-derives it from the
+          path. Lightness and chroma are fixed across the set, so contrast is
+          identical wherever you are. */}
+      <div
+        data-tab={tabId ?? undefined}
+        className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"
+      >
+        <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             {showBack &&
               (canGoBack ? (
@@ -152,42 +182,64 @@ export function AppShell({
           </div>
         </header>
 
-        {(eyebrow || title) && (
-          <div className="rise shrink-0 px-4 pt-4">
-            {eyebrow && <p className="label-caps">{eyebrow}</p>}
-            {title && <h1 className="mt-1.5 text-[27px] leading-[1.06]">{title}</h1>}
-          </div>
-        )}
+        <PageHeader eyebrow={eyebrow} title={title} action={headerAction} compressed={compressed} />
 
-        <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3">
+        <main
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3"
+        >
           {children}
         </main>
 
         {showTabs && (
           <nav
             aria-label="Main"
-            className="z-20 grid shrink-0 grid-cols-6 border-t border-border/40 bg-background/80 px-2 pt-2 backdrop-blur-xl pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+            className="z-20 shrink-0 border-t border-border/40 bg-background/80 px-2 pt-2 backdrop-blur-xl pb-[max(0.375rem,env(safe-area-inset-bottom))]"
           >
-            {tabs.map(({ to, label, icon: Icon }) => {
-              const active = to === "/" ? pathname === "/" : pathname.startsWith(to);
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  aria-current={active ? "page" : undefined}
-                  // The active tab gets a tinted pill, not just a colour change —
-                  // colour alone is a weak anchor at this size.
-                  className={`flex flex-col items-center gap-1 rounded-2xl py-1.5 ${
-                    active ? "bg-primary-soft text-primary" : "text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="size-[19px]" strokeWidth={active ? 2.3 : 1.7} />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em]">
-                    {label}
-                  </span>
-                </Link>
-              );
-            })}
+            {/* The grid is its own box so the indicator can be `inset-0` against
+                exactly the row of links — anchoring it to the padded <nav>
+                instead would leave the pill hanging below them on a phone with
+                a home-indicator inset. */}
+            <div className="relative grid grid-cols-6">
+              {/* One pill that travels, rather than a class jumping between six.
+                  The tabs are equal columns, so the whole geometry is index ×
+                  100% of the indicator's own width — nothing to measure and
+                  nothing to go stale on resize.
+
+                  It is decorative: `aria-current` on the link is what a screen
+                  reader announces, so this is hidden from the tree entirely. */}
+              <span
+                aria-hidden
+                className={`pointer-events-none absolute inset-0 w-1/6 rounded-2xl tab-tint transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
+                  tabIndex === -1 ? "opacity-0" : "opacity-100"
+                }`}
+                style={{ transform: indicatorOffset(tabIndex) }}
+              />
+
+              {tabs.map(({ to, label, icon: Icon }, i) => {
+                const active = i === tabIndex;
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative flex flex-col items-center gap-1 rounded-2xl py-1.5 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
+                      active ? "tab-ink" : "text-muted-foreground"
+                    }`}
+                  >
+                    {/* The stroke thickens as well as changing hue, so the active
+                      tab survives a glance without relying on colour alone. */}
+                    <Icon
+                      className="size-[19px] transition-[stroke-width] duration-(--t-shift) ease-(--ease-standard)"
+                      strokeWidth={active ? 2.3 : 1.7}
+                    />
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em]">
+                      {label}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </nav>
         )}
       </div>

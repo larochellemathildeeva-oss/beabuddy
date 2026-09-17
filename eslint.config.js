@@ -36,5 +36,46 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
     },
   },
+  {
+    /**
+     * Motion is a design token, not a number typed at the call site.
+     *
+     * Durations and curves live in `src/styles.css` as `--t-*` and `--ease-*`.
+     * A component says what the motion means — `duration-(--t-move)` — and the
+     * timing stays consistent because there is one place to change it. An
+     * arbitrary value here is how the app ended up with seventeen different
+     * ideas of how fast a thing should move.
+     *
+     * `src/components/ui` is vendored shadcn and is exempt: those files are
+     * upstream code we re-sync, not ours to restyle.
+     */
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/components/ui/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value=/duration-\\[/]",
+          message:
+            "Use a motion token: duration-(--t-tap|--t-shift|--t-move|--t-arrive), defined in src/styles.css.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/duration-\\[/]",
+          message:
+            "Use a motion token: duration-(--t-tap|--t-shift|--t-move|--t-arrive), defined in src/styles.css.",
+        },
+        {
+          selector: "Literal[value=/cubic-bezier\\(/]",
+          message:
+            "Use an easing token: ease-(--ease-standard|--ease-exit|--ease-confirm), defined in src/styles.css.",
+        },
+        {
+          selector: "TemplateElement[value.raw=/cubic-bezier\\(/]",
+          message:
+            "Use an easing token: ease-(--ease-standard|--ease-exit|--ease-confirm), defined in src/styles.css.",
+        },
+      ],
+    },
+  },
   eslintPluginPrettier,
 );

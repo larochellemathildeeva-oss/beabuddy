@@ -361,7 +361,9 @@ function WorldPage() {
               aria-expanded={statsOpen}
               aria-controls="travel-stats-body"
             >
-              <span className={`transition-transform duration-200 ${statsOpen ? "rotate-90" : ""}`}>
+              <span
+                className={`transition-transform duration-(--t-shift) ease-(--ease-standard) ${statsOpen ? "rotate-90" : ""}`}
+              >
                 ▸
               </span>
               Travel statistics
@@ -509,7 +511,9 @@ function WorldPage() {
               aria-expanded={heatOpen}
               aria-controls="heatmap-body"
             >
-              <span className={`transition-transform duration-200 ${heatOpen ? "rotate-90" : ""}`}>
+              <span
+                className={`transition-transform duration-(--t-shift) ease-(--ease-standard) ${heatOpen ? "rotate-90" : ""}`}
+              >
                 ▸
               </span>
               Heatmap
@@ -535,7 +539,7 @@ function WorldPage() {
                       <span className="w-24 shrink-0 font-display text-[16.5px]">{c.city}</span>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-primary transition-all duration-500"
+                          className="h-full rounded-full bg-primary transition-all duration-(--t-move) ease-(--ease-standard)"
                           style={{ width: `${Math.max(8, (value / max) * 100)}%` }}
                         />
                       </div>

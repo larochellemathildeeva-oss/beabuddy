@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { SectionAction, TripSection } from "@/components/TripSection";
+import { Section, SectionAction } from "@/components/Section";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
@@ -159,7 +159,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
   };
 
   return (
-    <TripSection
+    <Section
       title="Where you're going"
       hint={
         s.stops.length === 0
@@ -316,7 +316,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
           />
         </div>
       )}
-    </TripSection>
+    </Section>
   );
 }
 

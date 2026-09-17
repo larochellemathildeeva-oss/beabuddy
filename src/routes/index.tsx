@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import { HomeTripCard } from "@/components/HomeTripCard";
+import { ContentCard } from "@/components/ContentCard";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -171,30 +172,31 @@ function SignedInHome() {
 
         {layout.shortcuts && (
           <div data-guide="home-shortcuts" className="grid grid-cols-2 gap-3">
-            <Link
+            <ContentCard
               to="/story"
-              data-guide="home-story"
-              className="rise card-soft p-4 transition-colors hover:bg-elevated"
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-visited" />
-                <span className="label-caps">Playback</span>
-              </div>
-              <p className="mt-1.5 font-display text-[19px] leading-tight">Travel story</p>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">
-                Play your journey city by city.
-              </p>
-            </Link>
-            <Link to="/memories" className="rise card-soft p-4 transition-colors hover:bg-elevated">
-              <div className="flex items-center gap-1.5">
-                <span className="size-1.5 rounded-full bg-reco" />
-                <span className="label-caps">Every place</span>
-              </div>
-              <p className="mt-1.5 font-display text-[19px] leading-tight">City memories</p>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">
-                Photos, notes and saved spots by city.
-              </p>
-            </Link>
+              guide="home-story"
+              className="rise"
+              eyebrow={
+                <>
+                  <span className="size-1.5 rounded-full bg-visited" />
+                  <span className="label-caps">Playback</span>
+                </>
+              }
+              title="Travel story"
+              meta={["Play your journey city by city."]}
+            />
+            <ContentCard
+              to="/memories"
+              className="rise"
+              eyebrow={
+                <>
+                  <span className="size-1.5 rounded-full bg-reco" />
+                  <span className="label-caps">Every place</span>
+                </>
+              }
+              title="City memories"
+              meta={["Photos, notes and saved spots by city."]}
+            />
           </div>
         )}
 
@@ -255,25 +257,20 @@ function SignedInHome() {
             <SectionHead title="Recent memories" aside={`${photo.stats.cities} cities`} />
             <div className="grid grid-cols-2 gap-3">
               {recentCities.map((c) => (
-                <Link
+                <ContentCard
                   key={c.city}
                   to="/memories"
-                  className="card-soft p-3.5 transition-colors hover:bg-elevated"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="size-1.5 rounded-full bg-visited" />
-                    <span className="font-display text-[18px] leading-none">{c.city}</span>
-                  </div>
-                  <p className="mt-1.5 text-[12px] text-muted-foreground">{c.photos} photos</p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {c.last
+                  title={c.city}
+                  meta={[
+                    `${c.photos} photo${c.photos === 1 ? "" : "s"}`,
+                    c.last
                       ? new Date(c.last).toLocaleDateString(undefined, {
                           month: "long",
                           year: "numeric",
                         })
-                      : ""}
-                  </p>
-                </Link>
+                      : null,
+                  ]}
+                />
               ))}
             </div>
           </section>

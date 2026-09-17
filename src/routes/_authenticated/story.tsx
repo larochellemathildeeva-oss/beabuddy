@@ -251,7 +251,7 @@ function StoryPage() {
               </div>
               <div className="mt-3 h-1 overflow-hidden rounded-full bg-elevated">
                 <div
-                  className="h-full rounded-full bg-primary transition-all duration-500"
+                  className="h-full rounded-full bg-primary transition-all duration-(--t-move) ease-(--ease-standard)"
                   style={{ width: `${((index + 1) / stops.length) * 100}%` }}
                 />
               </div>

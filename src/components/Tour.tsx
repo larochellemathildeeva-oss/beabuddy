@@ -394,7 +394,7 @@ export function Tour({
       {mode === "deep" ? (
         <div className="mt-3 h-1 rounded-full bg-border">
           <div
-            className="h-1 rounded-full bg-primary transition-[width] duration-200"
+            className="h-1 rounded-full bg-primary transition-[width] duration-(--t-move) ease-(--ease-standard)"
             style={{ width: `${((i + 1) / steps.length) * 100}%` }}
           />
         </div>

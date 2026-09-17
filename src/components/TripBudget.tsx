@@ -72,7 +72,7 @@ export function TripBudget({ tripId }: { tripId: string }) {
         <div className="mt-3">
           <div className="h-2 w-full overflow-hidden rounded-full bg-elevated">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${
+              className={`h-full rounded-full transition-all duration-(--t-move) ease-(--ease-standard) ${
                 b.totals.over ? "bg-destructive" : "bg-primary"
               }`}
               style={{ width: `${Math.max(2, b.totals.pct)}%` }}
