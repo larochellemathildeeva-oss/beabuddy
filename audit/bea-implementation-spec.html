@@ -1,0 +1,740 @@
+<title>Béa Overhaul Build Spec</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --paper: #f5f6f8;
+    --card: #ffffff;
+    --sunk: #eef0f4;
+    --code-bg: #1a1d25;
+    --code-ink: #e4e7ef;
+    --code-key: #b4aef5;
+    --code-str: #86c8a8;
+    --code-dim: #79808f;
+    --rule: #dcdfe6;
+    --ink: #14161c;
+    --ink-2: #3c404c;
+    --quiet: #6b7180;
+    --signal: #4f46c9;
+    --signal-soft: #ecebfa;
+    --risk: #a8263f;
+    --risk-soft: #fbecee;
+    --done: #1a6a52;
+    --done-soft: #e6f2ed;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper: #0e0f13;
+      --card: #16181f;
+      --sunk: #1d202a;
+      --code-bg: #0a0c11;
+      --rule: #2a2e39;
+      --ink: #f1f2f6;
+      --ink-2: #c6cad4;
+      --quiet: #8a909e;
+      --signal: #a7a2f6;
+      --signal-soft: #1b1933;
+      --risk: #f28ba2;
+      --risk-soft: #2b161c;
+      --done: #6ac5a4;
+      --done-soft: #12251f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e0f13;
+    --card: #16181f;
+    --sunk: #1d202a;
+    --code-bg: #0a0c11;
+    --rule: #2a2e39;
+    --ink: #f1f2f6;
+    --ink-2: #c6cad4;
+    --quiet: #8a909e;
+    --signal: #a7a2f6;
+    --signal-soft: #1b1933;
+    --risk: #f28ba2;
+    --risk-soft: #2b161c;
+    --done: #6ac5a4;
+    --done-soft: #12251f;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding-inline: 20px; padding-block: 42px 80px; }
+
+  h1, h2 { font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif; font-weight: 700; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+  h1 { font-size: clamp(31px, 5.2vw, 46px); line-height: 1.05; }
+  h2 { font-size: 24px; line-height: 1.15; }
+  h3 { font-size: 15px; font-weight: 600; margin: 0; }
+  p { margin: 0; }
+
+  .eyebrow { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10.5px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--signal); }
+
+  header.doc { display: flex; flex-direction: column; gap: 13px; }
+  .standfirst { font-size: 17.5px; line-height: 1.5; color: var(--ink-2); max-width: 60ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--quiet); border-top: 1px solid var(--rule); padding-top: 12px; }
+
+  .item {
+    margin-top: 40px; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 6px; overflow: hidden;
+  }
+  .item-head {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+    padding: 18px 22px 14px; border-bottom: 1px solid var(--rule);
+  }
+  .num {
+    font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--signal);
+    background: var(--signal-soft); padding: 4px 9px; border-radius: 4px;
+  }
+  .item-head h2 { flex: 1 1 240px; font-size: 22px; }
+  .effort { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--quiet); white-space: nowrap; }
+
+  .item-body { padding: 20px 22px 22px; display: flex; flex-direction: column; gap: 18px; }
+  .lede { color: var(--ink-2); max-width: 68ch; }
+
+  .block { display: flex; flex-direction: column; gap: 8px; }
+  .block > h3 {
+    font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--quiet); font-weight: 500;
+  }
+  .block p, .block li { color: var(--ink-2); }
+
+  pre {
+    margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 5px;
+    padding: 14px 16px; overflow-x: auto; font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 12.5px; line-height: 1.62; -webkit-overflow-scrolling: touch;
+  }
+  pre .k { color: var(--code-key); }
+  pre .s { color: var(--code-str); }
+  pre .c { color: var(--code-dim); }
+
+  code {
+    font-family: "JetBrains Mono", monospace; font-size: 12.5px; background: var(--sunk);
+    padding: 1px 5px; border-radius: 3px; color: var(--ink); word-break: break-word;
+  }
+
+  ul { margin: 0; padding-left: 19px; display: flex; flex-direction: column; gap: 6px; }
+  li::marker { color: var(--quiet); }
+
+  .risk {
+    background: var(--risk-soft); border: 1px solid color-mix(in srgb, var(--risk) 26%, transparent);
+    border-radius: 5px; padding: 13px 15px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .risk h3 { color: var(--risk); font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 500; }
+  .risk p { font-size: 14px; color: var(--ink-2); }
+
+  .done {
+    background: var(--done-soft); border: 1px solid color-mix(in srgb, var(--done) 26%, transparent);
+    border-radius: 5px; padding: 13px 15px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .done h3 { color: var(--done); font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: 0.11em; text-transform: uppercase; font-weight: 500; }
+  .done ul { gap: 4px; }
+  .done li { font-size: 14px; }
+
+  .files {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .files span {
+    font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-2);
+    background: var(--sunk); border: 1px solid var(--rule); border-radius: 3px; padding: 3px 7px;
+  }
+
+  .intro-callout {
+    margin-top: 28px; background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal); border-radius: 5px; padding: 19px 22px;
+    display: flex; flex-direction: column; gap: 11px;
+  }
+  .intro-callout p { color: var(--ink-2); max-width: 66ch; }
+  .intro-callout strong { color: var(--ink); font-weight: 600; }
+
+  footer.doc { margin-top: 48px; border-top: 1px solid var(--rule); padding-top: 16px; color: var(--quiet); font-size: 12.5px; max-width: 72ch; }
+</style>
+
+<div class="wrap">
+  <header class="doc">
+    <p class="eyebrow">Build specification · companion to the motion proposal</p>
+    <h1>How to actually land it</h1>
+    <p class="standfirst">
+      Each point of the overhaul, taken down to the level a developer can start on Monday: the
+      change, the code, the edge cases that will bite, and the test that proves it shipped.
+    </p>
+    <div class="meta">
+      <span>Baseline v8.4.3</span><span>Tailwind v4 · @theme inline</span>
+      <span>TanStack Router 1.170.18</span><span>No new dependencies</span>
+    </div>
+  </header>
+
+  <div class="intro-callout">
+    <p class="eyebrow">Two constraints that shape everything below</p>
+    <p>
+      <strong>No animation library.</strong> The installed router already supports
+      <code>viewTransition</code> on <code>&lt;Link&gt;</code>, and Tailwind v4's
+      <code>@theme inline</code> block already holds <code>--ease-out</code> and
+      <code>--ease-spring</code>. Every effect specified here is CSS plus about forty lines of
+      tokens. Adding Framer Motion would add 40KB to fix a problem that is architectural.
+    </p>
+    <p>
+      <strong>Every step ships alone.</strong> No item below depends on a later one. If the work
+      stops after week two, what shipped is still coherent — which is the only honest way to plan
+      a redesign around a one-person team.
+    </p>
+  </div>
+
+  <!-- 01 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">01</span>
+      <h2>Three planes, enforced by the router</h2>
+      <span class="effort">3 days</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        A plane is not a style — it is a property of the destination. Declare it once per route and
+        let the shell read it, so no screen can accidentally animate two ways.
+      </p>
+
+      <div class="block">
+        <h3>Implementation</h3>
+        <p>Put the plane in route context, where it travels with the route rather than the component:</p>
+        <pre><span class="c">// src/routes/_authenticated/trips.$tripId.tsx</span>
+<span class="k">export const</span> Route = createFileRoute(<span class="s">"/_authenticated/trips/$tripId"</span>)({
+  staticData: { plane: <span class="s">"detail"</span> },
+  component: TripPage,
+});</pre>
+        <p>The shell reads it and stamps the frame. One attribute drives every transition rule:</p>
+        <pre><span class="c">// AppShell.tsx</span>
+<span class="k">const</span> plane = useRouterState({
+  select: (s) =&gt; s.matches.at(-1)?.staticData?.plane ?? <span class="s">"tab"</span>,
+});
+<span class="c">// …</span>
+&lt;div data-plane={plane}&gt;{children}&lt;/div&gt;</pre>
+      </div>
+
+      <div class="block">
+        <h3>The rule to write down</h3>
+        <ul>
+          <li><strong>tab</strong> — cross-fade, 6px drift in the direction of travel. Never pushes.</li>
+          <li><strong>detail</strong> — grows from origin, back shrinks to origin. Always has a back affordance.</li>
+          <li><strong>sheet</strong> — rises over a scrim, dismissible by scrim tap, Escape and swipe-down. Never navigates onward.</li>
+        </ul>
+        <p>
+          Audit every current surface against this once. The trip to-do list is a sheet while trip
+          stops are inline, at identical importance — pick one and apply it.
+        </p>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you</h3>
+        <p>
+          Sheets that contain navigation. Béa's planner sheet currently opens other surfaces from
+          inside itself. A sheet that navigates has no coherent back behaviour — the browser back
+          button will dismiss the sheet <em>and</em> the page underneath. Either the planner becomes
+          a detail route, or its inner links become in-sheet steps.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>Every route declares exactly one plane; a missing plane defaults to <code>tab</code> and logs in dev.</li>
+          <li>Browser back reverses the entering animation on all three planes.</li>
+          <li>No surface appears on two planes in different contexts.</li>
+        </ul>
+      </div>
+
+      <div class="files">
+        <span>AppShell.tsx</span><span>routes/*</span><span>styles.css</span>
+      </div>
+    </div>
+  </article>
+
+  <!-- 02 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">02</span>
+      <h2>Motion tokens, and removing the other seventeen</h2>
+      <span class="effort">2 days</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        The theme block already holds the two curves. Add the durations beside them so motion is
+        configured in the same place as colour, then sweep the ad-hoc values.
+      </p>
+
+      <div class="block">
+        <h3>Tokens</h3>
+        <pre><span class="c">/* styles.css — inside the existing @theme inline block */</span>
+--ease-standard: cubic-bezier(0.32, 0.72, 0, 1);  <span class="c">/* rename of --ease-out */</span>
+--ease-exit:     cubic-bezier(0.4, 0, 1, 1);
+--ease-confirm:  cubic-bezier(0.34, 1.4, 0.5, 1); <span class="c">/* was --ease-spring */</span>
+
+--t-tap:    120ms;
+--t-shift:  200ms;
+--t-move:   320ms;
+--t-arrive: 420ms;</pre>
+        <p>
+          Tailwind v4 exposes these automatically as <code>duration-(--t-move)</code> and
+          <code>ease-(--ease-standard)</code>, so component code reads as intent rather than
+          numbers.
+        </p>
+      </div>
+
+      <div class="block">
+        <h3>Sweeping the existing values</h3>
+        <p>
+          Seventeen <code>duration-*</code> declarations exist today. Map them by role, not by
+          nearest number — a 300ms colour fade was wrong before and should become
+          <code>--t-tap</code>, not <code>--t-move</code>:
+        </p>
+        <pre><span class="c"># find every one, with context, before changing any</span>
+grep -rn <span class="s">"duration-\[\?[0-9]"</span> src/ --include=*.tsx</pre>
+      </div>
+
+      <div class="block">
+        <h3>The global rule</h3>
+        <pre><span class="k">@media</span> (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}</pre>
+        <p>
+          Write this once, globally, rather than per component. Four scattered reduced-motion
+          checks exist today; this replaces all of them and covers everything added later.
+        </p>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you</h3>
+        <p>
+          <code>!important</code> in that block will also flatten any transition someone later
+          relies on for <em>function</em> — a height animation that reveals content, say. That is
+          correct behaviour, but test the disclosure components under reduced motion before
+          shipping, since a 1ms height transition must still end at the right height.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>Zero arbitrary duration values remain in <code>src/</code>.</li>
+          <li>A lint rule rejects <code>duration-[…]</code> and raw <code>cubic-bezier(</code> outside the theme file.</li>
+          <li>Toggling reduced motion in OS settings visibly stills the app with no broken layout.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>styles.css</span><span>eslint.config.js</span><span>~30 components</span></div>
+    </div>
+  </article>
+
+  <!-- 03 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">03</span>
+      <h2>The sliding tab indicator</h2>
+      <span class="effort">1 day</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        A single element that moves, rather than a class that jumps between five. With equal-width
+        tabs this is one transform and no measurement.
+      </p>
+
+      <div class="block">
+        <h3>Implementation</h3>
+        <pre><span class="c">// AppShell.tsx — tabs are a 5-column grid, so index → percentage</span>
+<span class="k">const</span> index = tabs.findIndex((t) =&gt;
+  t.to === <span class="s">"/"</span> ? pathname === <span class="s">"/"</span> : pathname.startsWith(t.to)
+);
+
+&lt;nav className=<span class="s">"relative grid grid-cols-5"</span>&gt;
+  &lt;span
+    aria-hidden
+    className=<span class="s">"absolute inset-y-0 left-0 w-1/5 rounded-2xl bg-primary-soft
+               transition-transform duration-(--t-move) ease-(--ease-standard)"</span>
+    style={{ transform: <span class="s">`translateX(${Math.max(index, 0) * 100}%)`</span> }}
+  /&gt;
+  {<span class="c">/* buttons sit above it with z-index */</span>}
+&lt;/nav&gt;</pre>
+      </div>
+
+      <div class="block">
+        <h3>Detail that separates good from adequate</h3>
+        <ul>
+          <li>Icon stroke thickens 1.7 → 2.3 over <code>--t-shift</code>, so activation survives a glance without relying on hue.</li>
+          <li>Label colour crossfades over <code>--t-tap</code>, faster than the indicator, so the destination reads as arriving before the pill lands.</li>
+          <li>Keep <code>aria-current="page"</code> on the link; the indicator is decorative and must be <code>aria-hidden</code>.</li>
+        </ul>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you</h3>
+        <p>
+          Index <code>-1</code> on the fifteen routes with no tab. Clamping to <code>0</code> parks
+          the pill under Home, implying you are on Home when you are on Settings. Better: hide the
+          indicator entirely when <code>index === -1</code> by fading it out — which also gives you
+          a free signal that a route has no home in the navigation, the exact problem item 05 fixes.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>The pill slides on every tab change and never jumps.</li>
+          <li>Screen readers announce only the tab, never the indicator.</li>
+          <li>On a route with no tab, no tab appears active.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>AppShell.tsx</span></div>
+    </div>
+  </article>
+
+  <!-- 04 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">04</span>
+      <h2>Card to page, with the photo carrying across</h2>
+      <span class="effort">1 week</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        The highest-value item on the list, and the one with the most edge cases. Two halves: make
+        trips a route, then let the browser tween the shared photo.
+      </p>
+
+      <div class="block">
+        <h3>Half one — the route</h3>
+        <p>
+          Retire the accordion. The expanded block in <code>trips.tsx</code> moves wholesale into
+          <code>trips.$tripId.tsx</code>; the list keeps only the card. This also deletes the
+          <code>sessionStorage</code> workaround that exists solely to stop the accordion collapsing
+          on tab change — a real sign the route was always the right model.
+        </p>
+      </div>
+
+      <div class="block">
+        <h3>Half two — the shared element</h3>
+        <pre><span class="c">// The card and the page name the same element.</span>
+<span class="c">// The name must be unique per document, so key it by trip id.</span>
+&lt;img style={{ viewTransitionName: <span class="s">`trip-photo-${trip.id}`</span> }} … /&gt;
+
+<span class="c">// The link opts in — router 1.170 supports this directly.</span>
+&lt;Link to=<span class="s">"/trips/$tripId"</span> params={{ tripId: trip.id }} viewTransition&gt;</pre>
+        <pre><span class="c">/* styles.css — the browser tweens position and size for free; */</span>
+<span class="c">/* you only choose the timing. */</span>
+::view-transition-group(*) {
+  animation-duration: <span class="k">var</span>(--t-arrive);
+  animation-timing-function: <span class="k">var</span>(--ease-standard);
+}</pre>
+      </div>
+
+      <div class="block">
+        <h3>The stagger</h3>
+        <p>
+          Sections arrive 45–60ms apart, not together. Three or four steps maximum — beyond that it
+          reads as slow rather than considered:
+        </p>
+        <pre>.section-stagger &gt; * { animation: rise <span class="k">var</span>(--t-move) <span class="k">var</span>(--ease-standard) both; }
+.section-stagger &gt; *:nth-child(2) { animation-delay: 45ms; }
+.section-stagger &gt; *:nth-child(3) { animation-delay: 90ms; }
+.section-stagger &gt; *:nth-child(n+4) { animation-delay: 135ms; }</pre>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you — four things</h3>
+        <p>
+          <strong>Duplicate names.</strong> Two cards with the same
+          <code>view-transition-name</code> in one document silently disables the transition. Key by
+          id, never by kind.
+        </p>
+        <p>
+          <strong>Safari support.</strong> Same-document view transitions have uneven support. The
+          API degrades to a hard cut on its own, so no fallback code is needed — but test on a real
+          iPhone and accept that some users get the old behaviour.
+        </p>
+        <p>
+          <strong>Scroll restoration.</strong> Returning to the list must land on the card you left,
+          not the top. TanStack restores scroll by default; verify it survives the transition, since
+          the snapshot is taken at navigation time.
+        </p>
+        <p>
+          <strong>Photos that have not loaded.</strong> A signed URL that is still fetching has no
+          intrinsic size, so the tween starts from zero and the photo appears to explode. Hold the
+          space with the fallback tint and only assign the transition name once the image has
+          decoded.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>Opening a trip grows from the tapped card; back shrinks into it.</li>
+          <li>The list returns to the previous scroll position.</li>
+          <li>With reduced motion on, it is an instant cut with correct layout.</li>
+          <li>A trip with no photo transitions as smoothly as one with.</li>
+          <li><code>sessionStorage</code> trip-memory code is deleted.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>routes/trips.tsx</span><span>routes/trips.$tripId.tsx</span><span>TripBanner.tsx</span><span>styles.css</span></div>
+    </div>
+  </article>
+
+  <!-- 05 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">05</span>
+      <h2>Five tabs: folding Near into Places</h2>
+      <span class="effort">1 week</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        The riskiest item, because it moves a destination people have learned. Do it as a merge
+        with a redirect, not a deletion.
+      </p>
+
+      <div class="block">
+        <h3>Sequence</h3>
+        <ul>
+          <li><strong>Rename first, separately.</strong> Recs becomes Places in its own release. One change, easy to reason about, easy to revert.</li>
+          <li><strong>Add the filter.</strong> A <em>Near me</em> chip beside the existing place filters, using the same location code Near already owns.</li>
+          <li><strong>Move the distinctive parts.</strong> Near is not only a filter — it has pace-picking and "Arrange with Béa". Those become actions <em>within</em> the filtered view, not a separate screen.</li>
+          <li><strong>Redirect, do not delete.</strong> <code>/opportunities</code> redirects to <code>/recommendations?near=1</code> permanently. Old links, bookmarks and the guide steps keep working.</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <h3>What the URL must carry</h3>
+        <pre><span class="c">// Filter state belongs in the URL, not component state.</span>
+<span class="c">// Otherwise the redirect above cannot land anywhere meaningful.</span>
+validateSearch: (s) =&gt; ({
+  near: s.near === <span class="s">"1"</span> ? <span class="s">"1"</span> : <span class="k">undefined</span>,
+  place: <span class="k">typeof</span> s.place === <span class="s">"string"</span> ? s.place : <span class="k">undefined</span>,
+  kind: <span class="k">typeof</span> s.kind === <span class="s">"string"</span> ? s.kind : <span class="k">undefined</span>,
+}),</pre>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you</h3>
+        <p>
+          <strong>Near is the product's best argument and it is about to lose its front door.</strong>
+          "Past You left a breadcrumb" is the moment that justifies the whole app, and a filter chip
+          is a quieter home than a tab. Compensate deliberately: the proximity nudge should surface
+          on Home and inside a trip, where it is arguably more useful than in a tab nobody opens
+          while walking. If that compensation does not ship in the same release, keep six tabs.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>Five tabs; every one of the 21 routes has a parent tab.</li>
+          <li><code>/opportunities</code> redirects and the guide steps still resolve.</li>
+          <li>Filter state round-trips through the URL and survives a share.</li>
+          <li>A proximity nudge appears on Home.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>AppShell.tsx</span><span>routes/opportunities.tsx</span><span>routes/recommendations.tsx</span><span>lib/tour.ts</span><span>PageGuide.tsx</span></div>
+    </div>
+  </article>
+
+  <!-- 06 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">06</span>
+      <h2>Four primitives, applied everywhere</h2>
+      <span class="effort">2 weeks</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        Cohesion is enforced by making the consistent path the easy path. Each primitive should be
+        less work to use than to avoid.
+      </p>
+
+      <div class="block">
+        <h3>PageHeader</h3>
+        <pre>&lt;PageHeader
+  eyebrow=<span class="s">"14 saved"</span>
+  title=<span class="s">"Recommendation vault."</span>
+  action={&lt;Button&gt;Share&lt;/Button&gt;}   <span class="c">// optional, max one</span>
+  compress                          <span class="c">// scroll-linked, default on</span>
+/&gt;</pre>
+        <p>
+          Compression is the highest-value shared behaviour: at 48px of scroll the serif title
+          shrinks to a 44px bar. Drive it with a scroll listener on the shell's single scroll
+          container — the app has exactly one, which makes this cheap.
+        </p>
+      </div>
+
+      <div class="block">
+        <h3>Section — already built, needs promoting</h3>
+        <p>
+          <code>TripSection</code> exists and works. Move it to <code>components/Section.tsx</code>,
+          drop the trip-specific naming, and use it on every tab. This alone removes most visual
+          drift between screens.
+        </p>
+      </div>
+
+      <div class="block">
+        <h3>Card anatomy</h3>
+        <pre>&lt;ContentCard
+  media={&lt;Banner … /&gt;}      <span class="c">// optional, always first</span>
+  title=<span class="s">"Japan, September"</span>
+  meta={[<span class="s">"Kyoto &amp; Sapporo · 12 days"</span>, <span class="s">"Sep 17 – 28"</span>]}  <span class="c">// max 2 lines</span>
+  badge=<span class="s">"in 2 months"</span>
+  actions={&lt;IconRow … /&gt;}   <span class="c">// optional, always last</span>
+/&gt;</pre>
+        <p>Trips, saved places, cities and memories all use it. Different content, identical skeleton.</p>
+      </div>
+
+      <div class="block">
+        <h3>Tab identity</h3>
+        <pre><span class="c">/* One hue rotation of the accent, two usages only. */</span>
+[data-tab=<span class="s">"trips"</span>]  { --tab-accent: oklch(0.535 0.162 39); }  <span class="c">/* terracotta */</span>
+[data-tab=<span class="s">"places"</span>] { --tab-accent: oklch(0.535 0.150 55); }
+[data-tab=<span class="s">"world"</span>]  { --tab-accent: oklch(0.535 0.140 22); }</pre>
+        <p>
+          Used in the header rule and the active pill. Nowhere else. Lightness and chroma stay
+          fixed so every tab has identical contrast — this is why the palette is in oklch, and it is
+          the payoff for that choice.
+        </p>
+      </div>
+
+      <div class="risk">
+        <h3>Will bite you</h3>
+        <p>
+          Primitives added without deleting what they replace. Béa already has five surface
+          treatments because each new one was added alongside the last. Every primitive lands with
+          a migration commit that converts existing call sites, or it becomes the sixth option.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>No screen starts with anything but <code>PageHeader</code>.</li>
+          <li>Raw <code>bg-card</code> / <code>bg-elevated</code> fail lint outside the primitives.</li>
+          <li>Header compression behaves identically on all five tabs.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>components/PageHeader.tsx</span><span>components/Section.tsx</span><span>components/ContentCard.tsx</span><span>all routes</span></div>
+    </div>
+  </article>
+
+  <!-- 07 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">07</span>
+      <h2>The details people cannot name</h2>
+      <span class="effort">1 week</span>
+    </div>
+    <div class="item-body">
+      <div class="block">
+        <h3>Optimistic writes</h3>
+        <p>
+          Partly present. Make it the rule and make failure visible: apply locally, reconcile on
+          response, and on error revert <em>with a toast naming what failed</em> — never a silent
+          snap-back, which reads as the app being broken.
+        </p>
+        <pre><span class="c">// The existing toggle already does this well — generalise the shape.</span>
+setRows((cur) =&gt; cur.map(apply));        <span class="c">// 1. local, instant</span>
+<span class="k">const</span> { error } = <span class="k">await</span> write();          <span class="c">// 2. network</span>
+<span class="k">if</span> (error) { <span class="k">await</span> reload(); toast.error(…); }  <span class="c">// 3. revert loudly</span></pre>
+      </div>
+
+      <div class="block">
+        <h3>Skeletons shaped like the content</h3>
+        <p>
+          One skeleton per card type, matching its real dimensions, so nothing reflows on arrival.
+          Fifteen skeleton references exist against 28 loading flags — the gap is where the layout
+          jumps today.
+        </p>
+      </div>
+
+      <div class="block">
+        <h3>Haptics, honestly scoped</h3>
+        <pre><span class="k">export const</span> tap = () =&gt; {
+  <span class="k">if</span> (matchMedia(<span class="s">"(prefers-reduced-motion: reduce)"</span>).matches) <span class="k">return</span>;
+  navigator.vibrate?.(8);  <span class="c">// Android only; iOS Safari has no API</span>
+};</pre>
+        <p>
+          Use on save and undo. Because iOS cannot receive it, haptics must never be the only
+          feedback for anything — treat it as a bonus on the platforms that support it.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>No write blocks the interface; every failure surfaces a message.</li>
+          <li>No layout shift between skeleton and content (CLS under 0.1).</li>
+          <li>Every list with a loading state has a matching skeleton.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>hooks/*</span><span>components/Skeleton.tsx</span><span>lib/haptics.ts</span></div>
+    </div>
+  </article>
+
+  <!-- 08 -->
+  <article class="item">
+    <div class="item-head">
+      <span class="num">08</span>
+      <h2>Proving it worked</h2>
+      <span class="effort">2 days</span>
+    </div>
+    <div class="item-body">
+      <p class="lede">
+        A redesign with no measurement is an opinion. None of this is measurable today, because the
+        app collects nothing — so instrumentation is the first item, not the last.
+      </p>
+
+      <div class="block">
+        <h3>Instrument before you start</h3>
+        <ul>
+          <li><strong>INP</strong> — interaction to next paint, per route. Transitions must not push it above 200ms; if they do, the animation is running on the main thread and needs to be transform-only.</li>
+          <li><strong>CLS</strong> — cumulative layout shift. Skeletons should drive it down; a rise means they are the wrong shape.</li>
+          <li><strong>Guide step triggers</strong> — which of the 55 steps people actually open. This turns the tour into the design backlog rather than a guess about which screens confuse people.</li>
+          <li><strong>Trip open → first edit</strong> — the clearest proxy for whether the detail page reads as a place you can act, rather than a page you read.</li>
+        </ul>
+      </div>
+
+      <div class="block">
+        <h3>The honest test</h3>
+        <p>
+          Five people, twenty minutes each, before and after. Nothing in this document substitutes
+          for watching someone fail to find the thing. It is also the cheapest research available
+          and the only one that can tell you the five tabs were right.
+        </p>
+      </div>
+
+      <div class="done">
+        <h3>Done when</h3>
+        <ul>
+          <li>INP and CLS reported per route, with a before/after baseline captured this week.</li>
+          <li>Guide-step opens tracked, reviewed monthly, feeding the redesign backlog.</li>
+          <li>One round of five-person testing completed before the tab merge ships.</li>
+        </ul>
+      </div>
+
+      <div class="files"><span>lib/analytics.ts</span><span>AppShell.tsx</span></div>
+    </div>
+  </article>
+
+  <footer class="doc">
+    Companion to the motion and cohesion proposal against v8.4.3. Effort assumes one engineer
+    working with design review. Every item ships independently; the order given front-loads
+    visible change so the investment reads early.
+  </footer>
+</div>
