@@ -7,6 +7,14 @@ import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
 import { ShareRecos } from "@/components/ShareRecos";
+import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import {
+  addPlaceholder,
+  anyFilterWorthShowing,
+  kindFilterWorthShowing,
+  placeFilterWorthShowing,
+  searchWorthShowing,
+} from "@/lib/reco-ui";
 import { useAuth } from "@/hooks/useAuth";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
@@ -114,6 +122,10 @@ function RecommendationsPage() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [tagsTouched, setTagsTouched] = useState(false);
   const [moreTags, setMoreTags] = useState(false);
+  /** The other ways in, folded away until asked for. */
+  const [moreWays, setMoreWays] = useState(false);
+  /** What the one add field currently holds. */
+  const [addText, setAddText] = useState("");
   const [locQuery, setLocQuery] = useState("");
   const [locResults, setLocResults] = useState<ParsedPlace[] | null>(null);
   const draftRef = useRef<HTMLDivElement | null>(null);
@@ -445,233 +457,104 @@ function RecommendationsPage() {
   return (
     <AppShell eyebrow={`${views.length} saved`} title="Recommendation vault.">
       <div className="space-y-5">
-        <input
-          data-guide="reco-search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search places, cities, people — typos are fine"
-          className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
-        />
-
-        <div>
-          <p className="label-caps mb-2 text-muted-foreground">Places</p>
-          <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
-            {places.map((c) => (
-              <button
-                key={c}
-                onClick={() => setPlaceFilter(c)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                  placeFilter === c
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <p className="label-caps mb-2 text-muted-foreground">Kind</p>
-          <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                  category === c
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <section>
-          <p className="label-caps mb-2 text-foreground">Pin nearby places</p>
-          <NearbyMapPin
-            existing={venues
-              .filter((r): r is RecoRowDB => "lat" in r && r.lat != null && r.lon != null)
-              .map((r) => ({
-                id: r.id,
-                type: (r.pin_type as PinType) || "reco",
-                name: r.name,
-                city: r.city ?? "",
-                country: r.country ?? "",
-                lat: r.lat!,
-                lon: r.lon!,
-                ...(r.category ? { category: r.category } : {}),
-              }))}
+        {/* One field, whatever you have. A name gets looked up as you type; a
+            pasted link gets read. The five equal-weight buttons that used to
+            live here are folded into "Other ways" below, because four of them
+            are rare and the fifth was this. */}
+        <section data-guide="reco-add" className="surface border border-border/50 p-3.5">
+          <p className="font-display text-[16.5px] leading-tight">Save a place</p>
+          <p className="mb-2.5 mt-0.5 text-[12.5px] text-muted-foreground">
+            Type a name, or paste a link from Maps, Instagram, a blog — anywhere.
+          </p>
+          <PlaceSearchInput
+            value={addText}
+            onChange={setAddText}
+            onPick={(place) => {
+              setAddText("");
+              showDraft({ ...place, category: prettyPlaceCategory(place) });
+            }}
+            placeholder={addPlaceholder(views.length > 0)}
+            quickAdd={{
+              label: "Save",
+              busyLabel: "Saving…",
+              onAdd: async (place) => {
+                await quickSave(place);
+                setAddText("");
+              },
+            }}
           />
-        </section>
 
-        <section>
-          <p className="label-caps mb-2 text-foreground">Save something new</p>
-          <div data-guide="reco-add" className="grid grid-cols-2 gap-2">
-            {(
-              [
-                ["link", "Paste a link"],
-                ["search", "Search the web"],
-                ["here", "I'm here now"],
-                ["manual", "By hand"],
-              ] as const
-            ).map(([m, label]) => (
+          <button
+            type="button"
+            onClick={() => setMoreWays((v) => !v)}
+            aria-expanded={moreWays}
+            className="mt-2 text-[12.5px] text-muted-foreground underline"
+          >
+            {moreWays ? "Fewer ways" : "Other ways to save"}
+          </button>
+
+          {moreWays && (
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["here", "I'm here now"],
+                  ["manual", "By hand"],
+                ] as const
+              ).map(([m, label]) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    setMode(mode === m ? null : m);
+                    setTagsTouched(false);
+                    setMoreTags(false);
+                    if (m === "manual") showDraft({ name: "" });
+                    else setDraft(null);
+                    setResults(null);
+                    setLocQuery("");
+                    setLocResults(null);
+                    setError(null);
+                    if (m === "here") handleHere();
+                  }}
+                  className={`rounded-xl border px-3 py-2.5 text-left text-[14px] transition-colors ${
+                    mode === m ? "border-primary bg-elevated" : "border-border bg-card"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
               <button
-                key={m}
                 onClick={() => {
-                  setMode(mode === m ? null : m);
-                  setTagsTouched(false);
-                  setMoreTags(false);
-                  if (m === "manual") showDraft({ name: "" });
-                  else setDraft(null);
+                  setMode(mode === "list" ? null : "list");
+                  setDraft(null);
                   setResults(null);
                   setLocQuery("");
                   setLocResults(null);
                   setError(null);
-                  if (m === "here") handleHere();
                 }}
-                className={`rounded-xl border px-3 py-3 text-left text-[14.5px] transition-colors ${
-                  mode === m ? "border-primary bg-elevated" : "border-border bg-card"
+                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14px] transition-colors ${
+                  mode === "list" ? "border-primary bg-elevated" : "border-border bg-card"
                 }`}
               >
-                {label}
+                Paste or upload a list
               </button>
-            ))}
-            <button
-              onClick={() => {
-                setMode(mode === "list" ? null : "list");
-                setDraft(null);
-                setResults(null);
-                setLocQuery("");
-                setLocResults(null);
-                setError(null);
-              }}
-              className={`col-span-2 rounded-xl border px-3 py-3 text-left text-[14.5px] transition-colors ${
-                mode === "list" ? "border-primary bg-elevated" : "border-border bg-card"
-              }`}
-            >
-              Paste or upload a list
-            </button>
-          </div>
-
-          {mode === "link" && (
-            <div className="rise mt-3 card-soft p-4">
-              <p className="label-caps">Paste a link</p>
-              <p className="mt-1.5 text-[14.5px] text-muted-foreground">
-                A map link, a restaurant page, an article — or the whole share from Maps. Béa pulls
-                out the name, the address and the exact spot on the map.
-              </p>
-              <textarea
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                rows={3}
-                inputMode="url"
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Paste a Maps link — or the whole share"
-                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-              />
-              <button
-                onClick={handleLink}
-                disabled={!looksLikePastedPlaceLink(link) || busy === "link"}
-                className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {busy === "link" ? "Reading the link…" : "Read this link"}
-              </button>
-              {link.trim().length > 0 && !looksLikePastedPlaceLink(link) && (
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Béa can't see a link in that. Paste the whole share from Maps, or a web address
-                  starting with http.
-                </p>
-              )}
+              <div className="col-span-2">
+                <NearbyMapPin
+                  existing={venues
+                    .filter((r): r is RecoRowDB => "lat" in r && r.lat != null && r.lon != null)
+                    .map((r) => ({
+                      id: r.id,
+                      type: (r.pin_type as PinType) || "reco",
+                      name: r.name,
+                      city: r.city ?? "",
+                      country: r.country ?? "",
+                      lat: r.lat!,
+                      lon: r.lon!,
+                      ...(r.category ? { category: r.category } : {}),
+                    }))}
+                />
+              </div>
             </div>
           )}
-
-          {mode === "search" && (
-            <div className="rise mt-3 card-soft p-4">
-              <p className="label-caps">Search the web</p>
-              <p className="mt-1.5 text-[14.5px] text-muted-foreground">
-                Type a place name — add the city if you know it — or paste a Maps link. Béa finds it
-                on the map.
-              </p>
-              <textarea
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey && term.trim().length > 1) {
-                    e.preventDefault();
-                    void handleSearch();
-                  }
-                }}
-                rows={2}
-                autoCapitalize="off"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Café de Flore, Paris — or paste a Maps link"
-                className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-              />
-              <button
-                onClick={() => void handleSearch()}
-                disabled={
-                  (looksLikePastedPlaceLink(term) ? false : term.trim().length < 2) ||
-                  busy === "search"
-                }
-                className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {busy === "search"
-                  ? looksLikePastedPlaceLink(term)
-                    ? "Reading the link…"
-                    : "Searching…"
-                  : looksLikePastedPlaceLink(term)
-                    ? "Read this link"
-                    : "Search"}
-              </button>
-              {results && results.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {results.map((r) => {
-                    const line = placeSuggestionLines(r);
-                    const key = `${r.lat}-${r.lon}-${r.name}`;
-                    return (
-                      <div
-                        key={key}
-                        className="flex items-center gap-1 rounded-xl border border-border bg-background p-1.5"
-                      >
-                        {/* The row still opens the full form for anyone who
-                            wants to fill things in first. */}
-                        <button
-                          onClick={() => showDraft({ ...r, category: prettyPlaceCategory(r) })}
-                          className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
-                        >
-                          <p className="truncate text-[14.5px] font-semibold">{line.title}</p>
-                          {line.subtitle ? (
-                            <p className="truncate text-[12px] text-muted-foreground">
-                              {line.subtitle}
-                            </p>
-                          ) : null}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy === "quick"}
-                          aria-label={`Save ${line.title} now`}
-                          onClick={() => void quickSave(r)}
-                          className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[12px] font-semibold text-primary disabled:opacity-50"
-                        >
-                          <Plus className="size-3.5" aria-hidden />
-                          {busy === "quick" ? "Saving…" : "Save"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
           {mode === "here" && busy === "here" && (
             <p className="mt-3 text-[14.5px] text-muted-foreground">Finding where you are…</p>
           )}
@@ -1036,6 +919,67 @@ function RecommendationsPage() {
           myName={myName}
           onKept={vault.addMany}
         />
+
+        {(searchWorthShowing({ total: views.length }) ||
+          anyFilterWorthShowing({
+            total: views.length,
+            places: places.length - 1,
+            kinds: categories.length - 1,
+          })) && (
+          <div className="space-y-2">
+            {searchWorthShowing({ total: views.length }) && (
+              <input
+                data-guide="reco-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search places, cities, people — typos are fine"
+                className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+            )}
+            {placeFilterWorthShowing({
+              total: views.length,
+              places: places.length - 1,
+              kinds: categories.length - 1,
+            }) && (
+              <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
+                {places.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setPlaceFilter(c)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+                      placeFilter === c
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            {kindFilterWorthShowing({
+              total: views.length,
+              places: places.length - 1,
+              kinds: categories.length - 1,
+            }) && (
+              <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+                      category === c
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <section data-guide="reco-list" className="space-y-3">
           {filtered.map((v) => (
