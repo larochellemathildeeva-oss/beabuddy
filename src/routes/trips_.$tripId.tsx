@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { tripCompanionsLine } from "@/lib/trip-copy";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 
-export const Route = createFileRoute("/trips/$tripId")({
+export const Route = createFileRoute("/trips_/$tripId")({
   staticData: { plane: "detail" },
   head: () => ({
     meta: [
