@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import { SectionAction, TripSection } from "@/components/TripSection";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
@@ -69,6 +71,8 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
   const [adding, setAdding] = useState(false);
   /** Stop id being edited, or "" while adding a new one. */
   const [editingId, setEditingId] = useState("");
+  /** Which stop row has its reorder/remove actions showing. One at a time. */
+  const [rowMenuId, setRowMenuId] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -155,37 +159,28 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
   };
 
   return (
-    <div className="mb-3 rounded-xl bg-elevated p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="label-caps text-foreground">Where you're going</p>
-          <p className="text-[12px] text-muted-foreground">
-            {s.stops.length === 0
-              ? "Add every city — and any stopover along the way."
-              : `${s.stops.length} stop${s.stops.length === 1 ? "" : "s"}${
-                  s.countries.length > 1 ? ` · ${s.countries.length} countries` : ""
-                }`}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <button
-            onClick={openForNew}
-            className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
-          >
+    <TripSection
+      title="Where you're going"
+      hint={
+        s.stops.length === 0
+          ? "Add every city — and any stopover along the way."
+          : `${s.stops.length} stop${s.stops.length === 1 ? "" : "s"}${
+              s.countries.length > 1 ? ` · ${s.countries.length} countries` : ""
+            }`
+      }
+      actions={
+        <>
+          <SectionAction onClick={openForNew}>
             {adding && !editingId ? "Cancel" : "Add a stop"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setPickingSaved((v) => !v)}
-            className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
-          >
-            {pickingSaved ? "Close saved" : "From saved"}
-          </button>
-        </div>
-      </div>
-
+          </SectionAction>
+          <SectionAction onClick={() => setPickingSaved((v) => !v)}>
+            {pickingSaved ? "Close" : "From saved"}
+          </SectionAction>
+        </>
+      }
+    >
       {pickingSaved && (
-        <div className="mt-3">
+        <div className="mb-3">
           <SavedPlacePicker
             alreadyHere={s.stops.map((stop) => ({
               name: stop.place_name || stop.city,
@@ -200,9 +195,12 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
       )}
 
       {s.countries.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mb-2 flex flex-wrap gap-1.5">
           {s.countries.map((c) => (
-            <span key={c} className="rounded-full bg-elevated px-2.5 py-1 text-[12px]">
+            <span
+              key={c}
+              className="rounded-full border border-border bg-card px-2.5 py-1 text-[12px]"
+            >
               {c}
             </span>
           ))}
@@ -210,11 +208,16 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
       )}
 
       {s.stops.length > 0 && (
-        <ol className="mt-3 space-y-2">
+        <ol className="divide-y divide-border/60 border-y border-border/60">
           {s.stops.map((stop, i) => (
-            <li key={stop.id} className="rounded-xl bg-elevated px-3 py-2">
+            <li key={stop.id} className="py-2.5">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                <button
+                  type="button"
+                  aria-label={`Edit ${stop.city}`}
+                  onClick={() => openForEdit(stop)}
+                  className="min-w-0 flex-1 text-left"
+                >
                   <p className="text-[14.5px] font-medium">
                     {stop.kind === "layover" ? "✈️ Stopover · " : `${i + 1}. `}
                     {stop.city}
@@ -231,47 +234,58 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
                     </p>
                   )}
                   {stop.notes && <p className="text-[12px] text-muted-foreground">{stop.notes}</p>}
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Options for ${stop.city}`}
+                  aria-expanded={rowMenuId === stop.id}
+                  onClick={() => setRowMenuId(rowMenuId === stop.id ? "" : stop.id)}
+                  className="-mr-1 grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </button>
+              </div>
+
+              {/* Reordering and removing are rare next to editing, so they wait
+                  behind one control instead of four riding every row. */}
+              {rowMenuId === stop.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <button
+                    type="button"
                     aria-label="Move stop earlier"
                     disabled={i === 0}
                     onClick={() => void s.moveStop(stop.id, -1)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12px] disabled:opacity-30"
+                    className="rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] disabled:opacity-30"
                   >
-                    ↑
+                    ↑ Earlier
                   </button>
                   <button
+                    type="button"
                     aria-label="Move stop later"
                     disabled={i === s.stops.length - 1}
                     onClick={() => void s.moveStop(stop.id, 1)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12px] disabled:opacity-30"
+                    className="rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] disabled:opacity-30"
                   >
-                    ↓
+                    ↓ Later
                   </button>
                   <button
-                    aria-label={`Edit ${stop.city}`}
-                    onClick={() => openForEdit(stop)}
-                    className="rounded-lg border border-border px-2 py-1 text-[12px]"
-                  >
-                    {editingId === stop.id ? "Close" : "Edit"}
-                  </button>
-                  <button
-                    onClick={() =>
+                    type="button"
+                    onClick={() => {
+                      setRowMenuId("");
                       void removeWithUndo({
                         label: stop.city,
                         remove: () => s.removeStop(stop.id),
                         // Position is not restored: the stop returns at the end
                         // of the list, where the arrows can move it back.
                         restore: () => s.addStop(stopFields(stop)),
-                      })
-                    }
-                    className="rounded-lg px-1.5 py-1 text-[12px] text-muted-foreground underline"
+                      });
+                    }}
+                    className="rounded-lg border border-destructive/40 px-2.5 py-1 text-[12.5px] font-semibold text-destructive"
                   >
                     Remove
                   </button>
                 </div>
-              </div>
+              )}
 
               {editingId === stop.id && (
                 <StopDraftForm
@@ -302,7 +316,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
           />
         </div>
       )}
-    </div>
+    </TripSection>
   );
 }
 

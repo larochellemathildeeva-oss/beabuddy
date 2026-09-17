@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { ChevronDown, ListChecks } from "lucide-react";
+import { MoreHorizontal, Plus } from "lucide-react";
 import { useTripTodos } from "@/hooks/useTripTodos";
+import { TripSection } from "@/components/TripSection";
 import { toLocalISODate } from "@/lib/trip-dates";
 import {
   dueLabel,
@@ -42,12 +43,13 @@ export function TripTodos({
   const t = useTripTodos(tripId, uid);
   const [open, setOpen] = useState(true);
   const [title, setTitle] = useState("");
-  const [due, setDue] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [showDone, setShowDone] = useState(false);
   const [pasting, setPasting] = useState(false);
   const [paste, setPaste] = useState("");
+  /** Which row has its actions showing. One at a time. */
+  const [menuId, setMenuId] = useState("");
 
   const today = toLocalISODate(new Date());
   const sorted = sortTodos(t.todos);
@@ -59,9 +61,8 @@ export function TripTodos({
     setBusy(true);
     setError("");
     try {
-      await t.addTodo({ title: name, ...(due ? { due_on: due } : {}) });
+      await t.addTodo({ title: name });
       setTitle("");
-      // The due date usually repeats down a list ("all before we fly"), so it stays.
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that");
     } finally {
@@ -97,192 +98,200 @@ export function TripTodos({
     }
   };
 
+  const setDue = async (id: string, value: string) => {
+    setError("");
+    try {
+      await t.updateTodo(id, { due_on: value });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't set that date");
+    }
+  };
+
   if (t.unavailable) {
     return (
-      <div className="mb-3 rounded-xl bg-elevated p-3">
-        <p className="label-caps text-foreground">Things to do</p>
-        <p className="mt-1 text-[12px] text-muted-foreground">
+      <TripSection title="Things to do">
+        <p className="text-[13px] text-muted-foreground">
           Not switched on for this database yet — the <code>trip_todos</code> migration still needs
           to be run.
         </p>
-      </div>
+      </TripSection>
     );
   }
 
   return (
-    <div className="mb-3 rounded-xl bg-elevated p-3">
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
-        >
-          <ChevronDown
-            className={`mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform ${
-              open ? "" : "-rotate-90"
-            }`}
-            aria-hidden
-          />
-          <div className="min-w-0">
-            <p className="label-caps text-foreground">Things to do</p>
-            <p className="text-[12px] text-muted-foreground">{todoProgressLine(t.todos)}</p>
-          </div>
-        </button>
-        {t.done.length > 0 && (
+    <TripSection
+      title="Things to do"
+      hint={
+        t.todos.length === 0
+          ? "Passports, transfers, the things that are not packing."
+          : todoProgressLine(t.todos)
+      }
+      open={open}
+      onToggle={() => setOpen((v) => !v)}
+      actions={
+        t.done.length > 0 ? (
           <button
             type="button"
             onClick={() => setShowDone((v) => !v)}
-            className="shrink-0 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
+            className="rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
           >
             {showDone ? "Hide done" : `Done (${t.done.length})`}
           </button>
-        )}
-      </div>
-
-      {open && (
-        <div className="mt-3 space-y-3">
-          {visible.length > 0 && (
-            <ul className="space-y-1.5">
-              {visible.map((todo) => {
-                const state = dueState(todo.due_on, today);
-                const label = dueLabel(todo.due_on, today);
-                return (
-                  <li
-                    key={todo.id}
-                    className="flex items-start gap-2.5 rounded-xl bg-elevated px-3 py-2"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={todo.done}
-                      aria-label={todo.done ? `Undo ${todo.title}` : `Mark ${todo.title} done`}
-                      onChange={(e) => void t.toggleTodo(todo.id, e.target.checked)}
-                      className="mt-0.5 size-5 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`text-[14.5px] ${
-                          todo.done ? "text-muted-foreground line-through" : "font-medium"
-                        }`}
-                      >
-                        {todo.title}
-                      </p>
-                      {todo.notes && (
-                        <p className="text-[12px] text-muted-foreground">{todo.notes}</p>
-                      )}
-                    </div>
-                    {label && !todo.done && (
-                      <span
-                        className={`shrink-0 rounded-full border px-2 py-0.5 text-[11.5px] font-semibold ${DUE_TONE[state]}`}
-                      >
-                        {label}
-                      </span>
+        ) : null
+      }
+    >
+      {visible.length > 0 && (
+        <ul className="divide-y divide-border/60 border-b border-border/60">
+          {visible.map((todo) => {
+            const state = dueState(todo.due_on, today);
+            const label = dueLabel(todo.due_on, today);
+            const showing = menuId === todo.id;
+            return (
+              <li key={todo.id} className="py-2.5">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={todo.done}
+                    aria-label={todo.done ? `Undo ${todo.title}` : `Mark ${todo.title} done`}
+                    onChange={(e) => void t.toggleTodo(todo.id, e.target.checked)}
+                    className="mt-0.5 size-5 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-[14.5px] ${
+                        todo.done ? "text-muted-foreground line-through" : "font-medium"
+                      }`}
+                    >
+                      {todo.title}
+                    </p>
+                    {todo.notes && (
+                      <p className="text-[12px] text-muted-foreground">{todo.notes}</p>
                     )}
+                  </div>
+                  {label && !todo.done && (
+                    <span
+                      className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11.5px] font-semibold ${DUE_TONE[state]}`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={`Options for ${todo.title}`}
+                    aria-expanded={showing}
+                    onClick={() => setMenuId(showing ? "" : todo.id)}
+                    className="-mr-1 grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground"
+                  >
+                    <MoreHorizontal className="size-4" aria-hidden />
+                  </button>
+                </div>
+
+                {showing && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 pl-8">
+                    <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                      Due
+                      <input
+                        type="date"
+                        value={todo.due_on ?? ""}
+                        aria-label={`Due date for ${todo.title}`}
+                        {...(tripStart ? { max: tripStart } : {})}
+                        onChange={(e) => void setDue(todo.id, e.target.value)}
+                        className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+                      />
+                    </label>
                     <button
                       type="button"
-                      onClick={() => void t.removeTodo(todo.id)}
-                      className="shrink-0 text-[12px] text-muted-foreground underline"
+                      onClick={() => {
+                        setMenuId("");
+                        void t.removeTodo(todo.id);
+                      }}
+                      className="rounded-lg border border-destructive/40 px-2.5 py-1 text-[12.5px] font-semibold text-destructive"
                     >
                       Remove
                     </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-          {t.todos.length === 0 && !t.loading && (
-            <div className="rounded-xl bg-elevated p-3">
-              <p className="text-[14.5px]">
-                Nothing here yet. The passport, the transfer, the thing you always remember at the
-                airport.
-              </p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void addStarters()}
-                className="mt-2 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold disabled:opacity-50"
-              >
-                Start me off
-              </button>
-            </div>
-          )}
+      {t.todos.length === 0 && !t.loading && (
+        <p className="text-[14px] text-muted-foreground">
+          Nothing here yet. The passport, the transfer, the thing you always remember at the
+          airport.
+        </p>
+      )}
 
-          <div className="flex gap-2">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void add();
-                }
-              }}
-              placeholder="Add something to do"
-              aria-label="Add something to do"
-              className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-            />
-            <input
-              type="date"
-              value={due}
-              aria-label="Due date"
-              {...(tripStart ? { max: tripStart } : {})}
-              onChange={(e) => setDue(e.target.value)}
-              className="w-[8.5rem] shrink-0 rounded-xl border border-border bg-card px-2 py-2 text-[13px]"
-            />
-          </div>
-          {tripStart && (
-            <p className="px-1 text-[12px] text-muted-foreground">
-              Due dates are for before you go — most of these want doing ahead of time.
-            </p>
-          )}
+      <div className="flex gap-2 pt-3">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void add();
+            }
+          }}
+          placeholder="Add something to do"
+          aria-label="Add something to do"
+          className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+        />
+        <button
+          type="button"
+          disabled={!title.trim() || busy}
+          onClick={() => void add()}
+          aria-label="Add this to-do"
+          className="btn-primary grid size-[42px] shrink-0 place-items-center disabled:opacity-40 disabled:shadow-none"
+        >
+          <Plus className="size-4" aria-hidden />
+        </button>
+      </div>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={!title.trim() || busy}
-              onClick={() => void add()}
-              className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-            >
-              {busy ? "Adding…" : "Add"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setPasting((v) => !v)}
-              className="rounded-xl border border-border px-3 py-2.5 text-[13px] font-semibold"
-            >
-              <ListChecks className="mr-1 inline size-3.5" aria-hidden />
-              {pasting ? "Cancel" : "Paste a list"}
-            </button>
-          </div>
+      {/* The other ways in stay as text, so the one primary action keeps its weight. */}
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px]">
+        {t.todos.length === 0 && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void addStarters()}
+            className="font-semibold text-primary disabled:opacity-50"
+          >
+            Start me off
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => setPasting((v) => !v)}
+          className="text-muted-foreground underline"
+        >
+          {pasting ? "Cancel" : "Paste a list"}
+        </button>
+      </div>
 
-          {pasting && (
-            <div className="space-y-2 rounded-xl bg-elevated p-3">
-              <p className="text-[13px] text-muted-foreground">
-                One per line. Bullets and numbers get trimmed off.
-              </p>
-              <textarea
-                value={paste}
-                onChange={(e) => setPaste(e.target.value)}
-                rows={4}
-                aria-label="Paste a list of things to do"
-                placeholder={"Renew passport\nBook airport transfer\nTell the bank"}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-              />
-              <button
-                type="button"
-                disabled={busy || todosFromPaste(paste).length === 0}
-                onClick={() => void addPasted()}
-                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                Add {todosFromPaste(paste).length || ""} to-dos
-              </button>
-            </div>
-          )}
-
-          {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {pasting && (
+        <div className="mt-2 space-y-2">
+          <textarea
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            rows={4}
+            aria-label="Paste a list of things to do"
+            placeholder={"Renew passport\nBook airport transfer\nTell the bank"}
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          />
+          <button
+            type="button"
+            disabled={busy || todosFromPaste(paste).length === 0}
+            onClick={() => void addPasted()}
+            className="btn-primary px-4 py-2 text-[14px] disabled:opacity-40 disabled:shadow-none"
+          >
+            Add {todosFromPaste(paste).length || ""} to-dos
+          </button>
         </div>
       )}
-    </div>
+
+      {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
+    </TripSection>
   );
 }

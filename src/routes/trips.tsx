@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, FileText, Settings, Sparkles, X } from "lucide-react";
+import { ChevronDown, FileText, Plus, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
@@ -8,6 +8,7 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
+import { SectionAction, TripSection } from "@/components/TripSection";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { TripTodos } from "@/components/TripTodos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
@@ -583,59 +584,43 @@ function LiveTripCard({
 
           {trip.budget_enabled && <TripBudget tripId={trip.id} />}
 
-          <div data-guide="trip-timeline" className="mb-3 rounded-xl bg-elevated p-3">
-            <div className="flex items-start justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => setTimelineOpen((v) => !v)}
-                aria-expanded={timelineOpen}
-                className="flex min-w-0 flex-1 items-start gap-2 text-left"
-              >
-                <ChevronDown
-                  className={`mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform ${
-                    timelineOpen ? "" : "-rotate-90"
-                  }`}
-                  aria-hidden
-                />
-                <div className="min-w-0">
-                  <p className="label-caps text-foreground">What you're doing</p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {board.items.length === 0
-                      ? "Add activities, meals, transport and notes."
-                      : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`}
-                  </p>
-                </div>
-              </button>
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                <button
-                  type="button"
+          <TripSection
+            guide="trip-timeline"
+            title="Your itinerary"
+            hint={
+              board.items.length === 0
+                ? "Activities, meals, transport and notes."
+                : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`
+            }
+            open={timelineOpen}
+            onToggle={() => setTimelineOpen((v) => !v)}
+            actions={
+              <>
+                <SectionAction
                   onClick={() => {
                     setAddDay("");
                     setTimelineOpen(true);
                     setAddingTimeline(!addingTimeline);
                   }}
-                  className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                 >
-                  {addingTimeline ? "Cancel" : "Add to timeline"}
-                </button>
+                  {addingTimeline ? "Cancel" : "Add"}
+                </SectionAction>
                 {board.items.length >= 2 && (
-                  <button
-                    type="button"
-                    data-guide="optimize-trip"
+                  <SectionAction
+                    guide="optimize-trip"
                     onClick={() => {
                       setPlannerTab("optimize");
                       setPlannerOpen(true);
                     }}
-                    className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                   >
                     Optimize
-                  </button>
+                  </SectionAction>
                 )}
-              </div>
-            </div>
-
+              </>
+            }
+          >
             {timelineOpen && (
-              <div className="mt-3 space-y-3">
+              <div className="space-y-3">
                 {board.items.length > 0 && (
                   <div
                     role="group"
@@ -708,9 +693,9 @@ function LiveTripCard({
                                   setAddDay(group.key);
                                   setAddingTimeline(true);
                                 }}
-                                className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] font-semibold"
+                                className="grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
                               >
-                                + Add
+                                <Plus className="size-3.5" aria-hidden />
                               </button>
                             )}
                           </div>
@@ -773,7 +758,7 @@ function LiveTripCard({
                 )}
               </div>
             )}
-          </div>
+          </TripSection>
 
           <ItineraryDirections
             stops={directionStops}

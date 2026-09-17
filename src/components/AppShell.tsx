@@ -89,7 +89,7 @@ export function AppShell({
   // until iOS scroll/visual-viewport churn left it floating mid-page.
   return (
     <div className="h-dvh bg-background">
-      <div className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[720px] xl:max-w-[960px]">
+      <div className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]">
         <header className="z-20 flex shrink-0 items-center justify-between border-b border-border/40 bg-background/75 px-4 py-2.5 backdrop-blur-xl">
           <div className="flex items-center gap-2">
             {showBack &&
