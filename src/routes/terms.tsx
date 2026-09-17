@@ -4,6 +4,7 @@ import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { LEGAL_VERSION } from "@/lib/legal";
 
 export const Route = createFileRoute("/terms")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Terms of Service — Béa" },

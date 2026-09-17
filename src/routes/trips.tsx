@@ -48,6 +48,7 @@ import type { DatesStatus } from "@/lib/trip-dates";
 import logo from "@/assets/bea-logo.png";
 
 export const Route = createFileRoute("/trips")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "Trips — Béa" },

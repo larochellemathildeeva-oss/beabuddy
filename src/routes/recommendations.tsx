@@ -47,6 +47,7 @@ import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
 
 export const Route = createFileRoute("/recommendations")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "Recommendation vault — Béa" },

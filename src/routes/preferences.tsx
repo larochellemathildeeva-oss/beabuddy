@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/preferences")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Travel preferences — Béa" },

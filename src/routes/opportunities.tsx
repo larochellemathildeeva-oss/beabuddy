@@ -12,6 +12,7 @@ import { DEMO_PLACES } from "@/lib/demo-seed";
 import { beaLine } from "@/lib/bea-voice";
 
 export const Route = createFileRoute("/opportunities")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "Opportunities near me — Béa" },

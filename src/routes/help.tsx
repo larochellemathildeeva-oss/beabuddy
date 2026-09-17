@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME, type Faq } from "@/lib/help-faq";
 
 export const Route = createFileRoute("/help")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Help — Béa" },

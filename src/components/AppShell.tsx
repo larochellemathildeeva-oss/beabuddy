@@ -1,10 +1,11 @@
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
 import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
 import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
 import { nextCompressed, tabIdForPath } from "../lib/page-header";
+import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { PageHeader } from "./PageHeader";
 
 import { ArrowLeft, Compass, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
@@ -44,6 +45,9 @@ export function AppShell({
   publicPage?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // The plane travels with the route, so the shell asks the router rather than
+  // letting each screen decide how it should arrive.
+  const matches = useRouterState({ select: (s) => s.matches });
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
@@ -52,6 +56,24 @@ export function AppShell({
   const tabId = tabIdForPath(pathname);
   const scrollRef = useRef<HTMLElement | null>(null);
   const [compressed, setCompressed] = useState(false);
+  const plane = planeFromMatches(matches);
+
+  // A tab move drifts the way you travelled along the bar; everything else
+  // drifts nowhere. Held in a ref because the previous tab is a fact about the
+  // last render, not state anything should re-render for.
+  const lastTabIndex = useRef(tabIndex);
+  const direction = travelDirection(lastTabIndex.current, tabIndex);
+  useEffect(() => {
+    lastTabIndex.current = tabIndex;
+  }, [tabIndex]);
+
+  // A route that forgot to declare its plane still works — it cross-fades —
+  // but it should be noisy in development, never in front of a person.
+  useEffect(() => {
+    if (import.meta.env.DEV && planeIsUndeclared(matches)) {
+      console.warn(`[plane] ${pathname} declares no plane; falling back to "tab".`);
+    }
+  }, [matches, pathname]);
   const { user, loading } = useAuth();
   useLegalConsent();
   useIdleLogout(!!user);
@@ -118,6 +140,8 @@ export function AppShell({
           identical wherever you are. */}
       <div
         data-tab={tabId ?? undefined}
+        data-plane={plane}
+        style={{ "--plane-dx": `${direction * 6}px` } as CSSProperties}
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"
       >
         <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
@@ -188,7 +212,13 @@ export function AppShell({
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3"
         >
-          {children}
+          {/* Keyed by path so each destination plays its plane's entrance once.
+              Path, not the whole location: a filter change writes to the search
+              string and must not replay the animation or lose the screen's
+              state. */}
+          <div key={pathname} className="plane-enter">
+            {children}
+          </div>
         </main>
 
         {showTabs && (

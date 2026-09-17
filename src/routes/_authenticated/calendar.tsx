@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTrips, type ItineraryRow } from "@/hooks/useTrips";
 
 export const Route = createFileRoute("/_authenticated/calendar")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Trip calendar — Béa" },

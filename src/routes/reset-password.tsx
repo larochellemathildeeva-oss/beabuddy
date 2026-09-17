@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 
 export const Route = createFileRoute("/reset-password")({
+  staticData: { plane: "detail" },
   ssr: false,
   head: () => ({
     meta: [

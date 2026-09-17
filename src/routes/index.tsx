@@ -20,6 +20,7 @@ import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voic
 import { safeStorage } from "@/lib/tour-state";
 
 export const Route = createFileRoute("/")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "Béa — Your travel life, all in one place" },

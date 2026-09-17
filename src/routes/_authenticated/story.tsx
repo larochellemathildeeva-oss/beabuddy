@@ -7,6 +7,7 @@ import { usePhotoMemories, derivePhotoPins, type PhotoRow } from "@/hooks/usePho
 import { cityKey } from "@/hooks/useFutureNotes";
 
 export const Route = createFileRoute("/_authenticated/story")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Travel story — Béa" },

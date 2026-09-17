@@ -7,6 +7,7 @@ import { useFutureNotes, cityKey } from "@/hooks/useFutureNotes";
 import { useRecommendations } from "@/hooks/useRecommendations";
 
 export const Route = createFileRoute("/_authenticated/memories")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "City memories — Béa" },

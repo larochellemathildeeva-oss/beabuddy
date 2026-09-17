@@ -8,6 +8,7 @@ import { configuredDemoVideo } from "@/lib/demo-video";
 import { HOW_CLOSING, HOW_SCENES, WATCH_LABEL, type Scene } from "@/lib/how-it-works";
 
 export const Route = createFileRoute("/how-it-works")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "How Béa works" },

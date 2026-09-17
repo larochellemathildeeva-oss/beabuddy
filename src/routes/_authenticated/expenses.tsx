@@ -8,6 +8,7 @@ import { downscaleImage } from "@/lib/image";
 import { extractReceiptFields } from "@/lib/receipt.functions";
 
 export const Route = createFileRoute("/_authenticated/expenses")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Receipts & expenses — Béa" },

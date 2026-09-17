@@ -4,6 +4,7 @@ import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/forgot-password")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Reset your password — Béa" },

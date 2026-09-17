@@ -8,6 +8,7 @@ import { isNetworkFailure } from "@/lib/ai-errors";
 import { stripImageFileMetadata } from "@/lib/strip-image-meta";
 
 export const Route = createFileRoute("/_authenticated/photos")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Photo memories — Béa" },

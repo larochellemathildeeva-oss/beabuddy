@@ -20,6 +20,7 @@ import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
 export const Route = createFileRoute("/world")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "World — Béa" },

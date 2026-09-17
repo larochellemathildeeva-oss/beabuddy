@@ -427,6 +427,65 @@
   background-image: var(--gradient-clay);
 }
 
+/**
+ * The three planes.
+ *
+ * The shell stamps `data-plane` from the route, so the destination decides how
+ * it arrives and no screen can animate two ways in two contexts. Each rule is
+ * transform and opacity only: those are the two properties a browser can
+ * animate off the main thread, which is what keeps a transition from eating
+ * the interaction that triggered it.
+ */
+@keyframes plane-tab {
+  from {
+    opacity: 0;
+    transform: translateX(var(--plane-dx, 0px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes plane-detail {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes plane-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A sibling destination: cross-fade with a small drift the way you travelled.
+   It never pushes — a push implies a stack, and tabs are not a stack. */
+[data-plane="tab"] .plane-enter {
+  animation: plane-tab var(--t-move) var(--ease-standard) both;
+}
+
+/* Opened from something on the screen before: grows into place. Paired with a
+   shared-element transition where there is an element worth carrying across. */
+[data-plane="detail"] .plane-enter {
+  animation: plane-detail var(--t-arrive) var(--ease-standard) both;
+}
+
+/* Over the current surface rather than instead of it. */
+[data-plane="sheet"] .plane-enter {
+  animation: plane-sheet var(--t-arrive) var(--ease-standard) both;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;

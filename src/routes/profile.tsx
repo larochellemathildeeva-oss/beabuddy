@@ -33,6 +33,7 @@ import { safeStorage } from "@/lib/tour-state";
 import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
 export const Route = createFileRoute("/profile")({
+  staticData: { plane: "tab" },
   head: () => ({
     meta: [
       { title: "Profile — Béa" },

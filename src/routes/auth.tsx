@@ -8,6 +8,7 @@ import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-p
 import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
 
 export const Route = createFileRoute("/auth")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Sign in — Béa" },

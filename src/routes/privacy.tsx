@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 
 export const Route = createFileRoute("/privacy")({
+  staticData: { plane: "detail" },
   head: () => ({
     meta: [
       { title: "Privacy policy — Béa" },
