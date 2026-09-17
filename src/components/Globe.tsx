@@ -6,6 +6,7 @@ import type { FeatureCollection, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
 import type { Pin } from "@/data/atlas";
 import { foldAccents } from "@/lib/fuzzy";
+import { labelBudget, placeCityLabels } from "@/lib/globe-labels";
 
 const PIN_FILL: Record<Pin["type"], string> = {
   visited: "var(--visited)",
@@ -110,16 +111,16 @@ function pinShape(type: Pin["type"]): { d: string; label: string } {
   switch (type) {
     case "visited":
       // Filled disc.
-      return { d: "M0,-4.2 A4.2,4.2 0 1,1 0,4.2 A4.2,4.2 0 1,1 0,-4.2 Z", label: "circle" };
+      return { d: "M0,-2.9 A2.9,2.9 0 1,1 0,2.9 A2.9,2.9 0 1,1 0,-2.9 Z", label: "circle" };
     case "nexttime":
       // Diamond.
-      return { d: "M0,-5 L5,0 L0,5 L-5,0 Z", label: "diamond" };
+      return { d: "M0,-3.4 L3.4,0 L0,3.4 L-3.4,0 Z", label: "diamond" };
     case "wishlist":
       // Triangle.
-      return { d: "M0,-5 L4.6,3.4 L-4.6,3.4 Z", label: "triangle" };
+      return { d: "M0,-3.4 L3.1,2.3 L-3.1,2.3 Z", label: "triangle" };
     default:
       // Square, for recommendations.
-      return { d: "M-3.8,-3.8 L3.8,-3.8 L3.8,3.8 L-3.8,3.8 Z", label: "square" };
+      return { d: "M-2.6,-2.6 L2.6,-2.6 L2.6,2.6 L-2.6,2.6 Z", label: "square" };
   }
 }
 
@@ -223,13 +224,16 @@ export function Globe({
       .filter(Boolean) as { pin: Pin; x: number; y: number }[];
   }, [pins, projection, clipTest]);
 
-  const cityLabels = useMemo(
-    () =>
-      Array.from(
-        new Map(projected.map((point) => [point.pin.city.trim().toLowerCase(), point])).values(),
-      ).slice(0, zoom > 1.35 ? 20 : 10),
-    [projected, zoom],
-  );
+  // Labels are placed, not just counted: two pins a few pixels apart used to
+  // print over each other ("TcMontreal", Porto inside Lisbon).
+  const cityLabels = useMemo(() => {
+    const placed = placeCityLabels(
+      projected.map(({ pin, x, y }) => ({ id: pin.id, city: pin.city, x, y })),
+      { max: labelBudget(zoom) },
+    );
+    const byId = new Map(projected.map((point) => [point.pin.id, point]));
+    return placed.map((label) => byId.get(label.id)!).filter(Boolean);
+  }, [projected, zoom]);
 
   const flushRotation = () => {
     rafDrag.current = null;
@@ -509,16 +513,16 @@ export function Globe({
                   {/* Invisible hit target — fingers rarely land on the 4px dot. */}
                   <circle r={16} fill="transparent" />
                   <circle
-                    r={selectedId === pin.id ? 11 : 8}
+                    r={selectedId === pin.id ? 8 : 5}
                     fill={PIN_FILL[pin.type] ?? "var(--reco)"}
-                    opacity={0.28}
+                    opacity={selectedId === pin.id ? 0.3 : 0.2}
                   />
                   {/* Shape carries the type as well as the colour. */}
                   <path
                     d={shape.d}
                     fill={PIN_FILL[pin.type] ?? "var(--reco)"}
                     stroke="var(--card)"
-                    strokeWidth={1.2}
+                    strokeWidth={0.9}
                   />
                 </g>
               </g>
@@ -529,9 +533,9 @@ export function Globe({
               key={`city-${pin.city}-${pin.id}`}
               x={x + 7}
               y={y - 6}
-              className="pointer-events-none fill-foreground text-[11px] font-semibold"
+              className="pointer-events-none fill-foreground text-[10.5px] font-semibold"
               stroke="var(--card)"
-              strokeWidth={3}
+              strokeWidth={2.5}
               paintOrder="stroke"
             >
               {pin.city}
