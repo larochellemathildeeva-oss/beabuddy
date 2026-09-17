@@ -1,0 +1,647 @@
+<title>Béa Design Review</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=JetBrains+Mono:wght@400;500&family=Work+Sans:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --paper: #fafafb;
+    --card: #ffffff;
+    --sunk: #f1f1f4;
+    --rule: #e2e2e8;
+    --rule-soft: #ecedf1;
+    --ink: #131318;
+    --ink-2: #3b3b45;
+    --quiet: #6c6c7a;
+    --accent: #2d3f8f;
+    --accent-soft: #eaecf7;
+    --sev-high: #a32240;
+    --sev-high-bg: #fbecef;
+    --sev-mid: #8a5a12;
+    --sev-mid-bg: #fbf1e2;
+    --sev-good: #1e6149;
+    --sev-good-bg: #e6f1ec;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper: #0f0f13;
+      --card: #16161c;
+      --sunk: #1d1d25;
+      --rule: #2b2b35;
+      --rule-soft: #23232c;
+      --ink: #f2f2f6;
+      --ink-2: #c8c8d2;
+      --quiet: #8f8f9e;
+      --accent: #a9b6ea;
+      --accent-soft: #1b1f33;
+      --sev-high: #f28ba5;
+      --sev-high-bg: #2b161c;
+      --sev-mid: #e0b169;
+      --sev-mid-bg: #2a2013;
+      --sev-good: #74c7a5;
+      --sev-good-bg: #13251e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0f0f13;
+    --card: #16161c;
+    --sunk: #1d1d25;
+    --rule: #2b2b35;
+    --rule-soft: #23232c;
+    --ink: #f2f2f6;
+    --ink-2: #c8c8d2;
+    --quiet: #8f8f9e;
+    --accent: #a9b6ea;
+    --accent-soft: #1b1f33;
+    --sev-high: #f28ba5;
+    --sev-high-bg: #2b161c;
+    --sev-mid: #e0b169;
+    --sev-mid-bg: #2a2013;
+    --sev-good: #74c7a5;
+    --sev-good-bg: #13251e;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Work Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 76px; }
+
+  h1, h2, h3 { font-family: "Fraunces", ui-serif, Georgia, serif; font-weight: 600; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(32px, 5.4vw, 46px); line-height: 1.08; letter-spacing: -0.02em; }
+  h2 { font-size: 25px; line-height: 1.18; letter-spacing: -0.01em; }
+  h3 { font-size: 17px; line-height: 1.28; }
+  p { margin: 0; }
+
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--quiet);
+  }
+
+  header.doc { display: flex; flex-direction: column; gap: 14px; }
+  header.doc .standfirst {
+    font-family: "Fraunces", serif; font-size: 18.5px; line-height: 1.5;
+    color: var(--ink-2); max-width: 60ch; font-weight: 400;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 6px 20px;
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: var(--quiet);
+    border-top: 1px solid var(--rule); padding-top: 13px;
+  }
+
+  section { margin-top: 48px; display: flex; flex-direction: column; gap: 18px; }
+  .head { display: flex; flex-direction: column; gap: 5px; }
+  .lede { color: var(--ink-2); max-width: 66ch; }
+
+  .verdict {
+    margin-top: 30px; background: var(--card); border: 1px solid var(--rule);
+    border-radius: 3px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+    box-shadow: 0 10px 30px -22px rgba(19, 19, 24, 0.5);
+  }
+  .verdict .pull {
+    font-family: "Fraunces", serif; font-size: 21px; line-height: 1.35;
+    color: var(--ink); max-width: 46ch;
+  }
+  .verdict p { color: var(--ink-2); max-width: 64ch; }
+  .verdict strong { color: var(--ink); font-weight: 600; }
+
+  /* specimen chart */
+  .specimen { background: var(--card); border: 1px solid var(--rule); border-radius: 3px; padding: 20px; }
+  .spec-rows { display: flex; flex-direction: column; gap: 3px; margin-top: 14px; }
+  .spec-row { display: grid; grid-template-columns: 62px 1fr 46px; gap: 10px; align-items: center; }
+  .spec-row .sz { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--quiet); text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { height: 11px; border-radius: 1px; background: var(--accent); min-width: 2px; }
+  .bar.tail { background: var(--sev-high); opacity: 0.55; }
+  .spec-row .ct { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .spec-note { margin-top: 14px; font-size: 13px; color: var(--quiet); max-width: 62ch; }
+
+  .finding {
+    background: var(--card); border: 1px solid var(--rule);
+    border-left: 3px solid var(--sev); border-radius: 3px;
+    padding: 19px 21px; display: flex; flex-direction: column; gap: 13px;
+  }
+  .finding.high { --sev: var(--sev-high); }
+  .finding.mid { --sev: var(--sev-mid); }
+  .finding.low { --sev: var(--quiet); }
+
+  .f-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+  .f-id { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--quiet); }
+  .f-head h3 { flex: 1 1 250px; }
+  .chip {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.09em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 2px; white-space: nowrap;
+  }
+  .chip.high { background: var(--sev-high-bg); color: var(--sev-high); }
+  .chip.mid { background: var(--sev-mid-bg); color: var(--sev-mid); }
+  .chip.low { background: var(--sunk); color: var(--quiet); }
+
+  dl.rows { display: flex; flex-direction: column; gap: 10px; margin: 0; }
+  .row { display: grid; grid-template-columns: 74px 1fr; gap: 14px; align-items: start; }
+  .row dt {
+    font-family: "JetBrains Mono", monospace; font-size: 10px; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--quiet); padding-top: 4px;
+  }
+  .row dd { margin: 0; color: var(--ink-2); }
+  .row dd strong { color: var(--ink); font-weight: 600; }
+  @media (max-width: 540px) {
+    .row { grid-template-columns: 1fr; gap: 2px; }
+    .row dt { padding-top: 0; }
+  }
+
+  code {
+    font-family: "JetBrains Mono", monospace; font-size: 12.5px;
+    background: var(--sunk); padding: 1px 5px; border-radius: 2px; color: var(--ink); word-break: break-word;
+  }
+
+  ul { margin: 0; padding-left: 19px; color: var(--ink-2); display: flex; flex-direction: column; gap: 6px; }
+  li::marker { color: var(--quiet); }
+
+  .wins { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 12px; }
+  .win {
+    background: var(--card); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 15px 17px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .win h3 { font-family: "Work Sans", sans-serif; font-size: 14.5px; font-weight: 600; }
+  .win p { font-size: 13.5px; color: var(--quiet); }
+  .win .mark { color: var(--sev-good); font-weight: 600; }
+
+  .plan { border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+  .phase { display: grid; grid-template-columns: 110px 1fr; gap: 18px; padding: 17px 19px; background: var(--card); }
+  .phase + .phase { border-top: 1px solid var(--rule-soft); }
+  .phase .when { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: var(--accent); }
+  .phase h3 { font-family: "Work Sans", sans-serif; font-size: 14.5px; font-weight: 600; margin-bottom: 6px; }
+  @media (max-width: 540px) { .phase { grid-template-columns: 1fr; gap: 8px; } }
+
+  .scope {
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+    border-radius: 3px; padding: 17px 19px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .scope p { font-size: 14px; color: var(--ink-2); max-width: 64ch; }
+  .scope .eyebrow { color: var(--accent); }
+
+  footer.doc {
+    margin-top: 50px; border-top: 1px solid var(--rule); padding-top: 16px;
+    color: var(--quiet); font-size: 12.5px; max-width: 70ch;
+  }
+</style>
+
+<div class="wrap">
+  <header class="doc">
+    <p class="eyebrow">Design review · investment diligence</p>
+    <h1>Béa — design &amp; experience</h1>
+    <p class="standfirst">
+      A review of the interface, its mechanics and the system underneath, for an investment
+      decision. Read alongside the engineering assessment: this one is about whether people can
+      use the thing, and whether a design team could grow it.
+    </p>
+    <div class="meta">
+      <span>Commit b7d30f2</span><span>Version 8.4.3</span><span>6 tabs · 21 routes</span>
+      <span>17 Sep 2026</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <p class="eyebrow">Verdict</p>
+    <p class="pull">Strong voice. Weak system.</p>
+    <p>
+      Béa has the thing that cannot be bought late: <strong>a real point of view</strong>. The
+      positioning is written down and the product actually obeys it, the copy has a consistent
+      character across every screen, and the colour work is more sophisticated than the stage would
+      suggest. That is the expensive half of design, and it is done.
+    </p>
+    <p>
+      What is missing is the cheap half — <strong>the system that makes the voice
+      repeatable</strong>. Twenty-six ad-hoc type sizes, five overlapping surface treatments, four
+      different ways to delete something, and a second unused component library sitting in the
+      repository. None of that is visible to users today because one person holds the whole design
+      in their head. It becomes visible the moment a second designer joins.
+    </p>
+    <p>
+      <strong>Recommendation: the design is an asset, not a liability</strong> — but budget one
+      quarter of systems work before hiring into it, or the first two hires will spend their time
+      producing inconsistency.
+    </p>
+  </div>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Evidence</p>
+      <h2>The type scale that isn't</h2>
+      <p class="lede">
+        Every font size in the app is written as a one-off pixel value. Three sizes carry the
+        product; twenty-three more exist because nothing stopped them.
+      </p>
+    </div>
+    <div class="specimen">
+      <p class="eyebrow">Font sizes by usage · 750 declarations</p>
+      <div class="spec-rows">
+        <div class="spec-row"><span class="sz">14.5px</span><span class="bar" style="width:100%"></span><span class="ct">284</span></div>
+        <div class="spec-row"><span class="sz">13px</span><span class="bar" style="width:86%"></span><span class="ct">244</span></div>
+        <div class="spec-row"><span class="sz">12px</span><span class="bar" style="width:62%"></span><span class="ct">177</span></div>
+        <div class="spec-row"><span class="sz">15px</span><span class="bar" style="width:25%"></span><span class="ct">72</span></div>
+        <div class="spec-row"><span class="sz">12.5px</span><span class="bar tail" style="width:15%"></span><span class="ct">42</span></div>
+        <div class="spec-row"><span class="sz">11.5px</span><span class="bar tail" style="width:9%"></span><span class="ct">24</span></div>
+        <div class="spec-row"><span class="sz">14px</span><span class="bar tail" style="width:5%"></span><span class="ct">13</span></div>
+        <div class="spec-row"><span class="sz">19px</span><span class="bar tail" style="width:4%"></span><span class="ct">11</span></div>
+        <div class="spec-row"><span class="sz">18px</span><span class="bar tail" style="width:4%"></span><span class="ct">10</span></div>
+        <div class="spec-row"><span class="sz">20px</span><span class="bar tail" style="width:3%"></span><span class="ct">8</span></div>
+        <div class="spec-row"><span class="sz">16.5px</span><span class="bar tail" style="width:3%"></span><span class="ct">8</span></div>
+        <div class="spec-row"><span class="sz">15.5px</span><span class="bar tail" style="width:3%"></span><span class="ct">8</span></div>
+        <div class="spec-row"><span class="sz">+14 more</span><span class="bar tail" style="width:2%"></span><span class="ct">49</span></div>
+      </div>
+      <p class="spec-note">
+        Blue is the de facto scale: four sizes covering 77% of all text. Red is the tail — twenty-two
+        sizes including 12.5px sitting beside 12px and 13px, differences no reader can perceive but
+        every future designer must decide between.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Findings · high</p>
+      <h2>What would cost you</h2>
+    </div>
+
+    <article class="finding high">
+      <div class="f-head">
+        <span class="f-id">D1</span>
+        <h3>The interface needs 1,464 lines to explain itself</h3>
+        <span class="chip high">Usability</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Three separate onboarding systems ship in the app: a replay tour (444 lines), a per-screen
+          guide (515), a spotlight overlay (116), plus 389 lines of step definitions and state.
+          They drive <strong>55 guide steps</strong> against <strong>58 anchor points</strong>
+          planted through the UI. On top of that, <code>trips.tsx</code> alone carries 42 separate
+          blocks of muted explanatory text.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          An interface that requires this much narration is telling you where it is unclear. The
+          guide is not the problem — it is an accurate map of the problem. Every step is a screen
+          that could not speak for itself.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          <strong>Treat the 55 guide steps as a design backlog, not a feature.</strong> Each quarter,
+          pick the ten most-triggered steps and redesign the screen until the step is unnecessary,
+          then delete it. Target halving the count in two quarters. Separately, merge the three
+          systems into one — they do the same job with three codebases.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>Consolidation: 1 week. The backlog: ongoing, and it is the real design roadmap.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding high">
+      <div class="f-head">
+        <span class="f-id">D2</span>
+        <h3>Screens lead with machinery instead of content</h3>
+        <span class="chip high">Information design</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Four instances observed in one week, all shipped to production. The saved-places screen
+          opened with a search box, two filter rows, a map card and five add buttons — roughly two
+          screens of controls — above a vault containing <strong>one saved place</strong>. Trip
+          cards printed <code>2026-09-17 – 2026-09-28</code> rather than a date a person would say.
+          The world screen carried two permanent paragraphs of caveat under a counter reading zero.
+          The globe drew city labels on top of each other, rendering both unreadable.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          This is one failure with four faces: the screen is composed from the builder's point of
+          view — here are the tools — rather than the user's — here is your stuff. Filters that
+          cannot filter anything are not neutral; they push the content below the fold.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Adopt a standing rule: <strong>content first; a control appears only when it can act.</strong>
+          The saved-places screen now implements exactly this — search appears at six items, filters
+          when there is more than one value to filter by — so the pattern is proven in the codebase
+          and needs generalising, not inventing. Audit every screen against it once.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2 weeks for a full sweep.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding high">
+      <div class="f-head">
+        <span class="f-id">D3</span>
+        <h3>No type scale, no spacing scale, no enforcement</h3>
+        <span class="chip high">System</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          26 distinct font sizes, every one an arbitrary value. See the specimen above: 12px, 12.5px
+          and 13px all ship, as do 14px, 14.5px and 15px, 15.5px, 16px and 16.5px.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          Today this costs nothing, because one person decides every value and is consistent enough
+          in practice. The bill arrives with the second designer, who has no way to know that 14.5px
+          is body text and 14px is a mistake.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Name six or seven steps in the theme — caption, small, body, lead, title, display — map the
+          existing 26 onto them, and <strong>make an arbitrary size a lint error</strong>. Do the
+          same for spacing. This is a two-day job now and a two-month job after three more hires.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2–3 days, mostly mechanical.</dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Findings · material</p>
+      <h2>Fix before the team grows</h2>
+    </div>
+
+    <article class="finding mid">
+      <div class="f-head">
+        <span class="f-id">D4</span>
+        <h3>A second design language sits unused in the repo</h3>
+        <span class="chip mid">System</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          46 components from a generic UI kit, <strong>4,355 lines</strong>. Exactly four are used
+          anywhere: a dialog, a calendar, a sheet, a switch. The other 42 — buttons, cards, inputs,
+          badges, forms — are dead, and they look nothing like Béa.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          A new designer or engineer opening <code>components/ui/</code> will reasonably conclude
+          that is the design system, and build against a language the product abandoned.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Delete the 42 unused files and keep the four in a clearly-named folder such as
+          <code>components/vendor/</code>. Decide explicitly: Béa's own components are the system.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>Half a day.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding mid">
+      <div class="f-head">
+        <span class="f-id">D5</span>
+        <h3>The surface vocabulary is bypassed more often than used</h3>
+        <span class="chip mid">System</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Named surfaces exist and are well-documented in the stylesheet — <code>card-soft</code>
+          (64 uses), <code>surface</code> (25), <code>card-raised</code> (1). Raw background classes
+          are used nearly twice as often: <code>bg-card</code> 160, <code>bg-elevated</code> 82.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          The semantic layer is decorative rather than load-bearing, so elevation stops meaning
+          anything. This produced a real bug fixed this week: a cream panel inside a cream panel
+          inside a cream card, which read as one undifferentiated block with text floating in it.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Three surfaces, named by role — page, panel, floating — and a lint rule banning raw
+          background utilities outside the theme file. Elevation should be a decision, not a class
+          someone reached for.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>3 days.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding mid">
+      <div class="f-head">
+        <span class="f-id">D6</span>
+        <h3>Four ways to destroy something, and the worst one guards the worst action</h3>
+        <span class="chip mid">Interaction</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Deletion is handled by an undo toast (8 sites), a styled dialog (89), a native browser
+          <code>confirm()</code> (2), and four bare deletes with no protection at all. The two
+          native confirms guard <strong>leaving a trip</strong> and <strong>removing a member</strong>
+          — among the least reversible things a user can do here, handed to an unstyled system
+          dialog in a system font.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          Users learn safety from consistency. When the same gesture is sometimes undoable,
+          sometimes confirmed, and sometimes instant, they learn to be afraid of all of it.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Two patterns, no exceptions. <strong>Reversible → do it immediately with an undo
+          toast</strong> (the mechanism already exists and works). <strong>Irreversible → a styled
+          confirm naming the consequence.</strong> Replace both native dialogs first; they are the
+          highest-stakes and the cheapest to fix.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2 days.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding mid">
+      <div class="f-head">
+        <span class="f-id">D7</span>
+        <h3>Touch targets below the accessible minimum</h3>
+        <span class="chip mid">Accessibility</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Interactive elements at 36px (8 uses), 28px (9) and 20px (10) against a 44px minimum from
+          both Apple's guidelines and WCAG 2.5.8. This is a phone-first product.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          Small targets fail hardest for the users who are already struggling — in motion, one-handed,
+          older, or with a tremor. It also reads as imprecision even to users who hit them.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Keep the visual size; expand the hit area with padding or a transparent overlay to 44px.
+          The globe already does this — an invisible 32px circle behind a 6px pin — so the pattern is
+          established and needs applying to the icon buttons.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2 days.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding mid">
+      <div class="f-head">
+        <span class="f-id">D8</span>
+        <h3>Most screens have no designed empty state</h3>
+        <span class="chip mid">Onboarding</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Four screens have written empty states — globe, home, saved places, trips. Photos,
+          memories, story, expenses, calendar, packing, documents and to-dos have none or ad-hoc
+          text.
+        </dd></div>
+        <div class="row"><dt>Reading</dt><dd>
+          Every new user sees the empty state before they see anything else. In a product whose
+          entire value comes from accumulated personal data, the empty state <em>is</em> the
+          onboarding — and it is doing more work than the 1,464-line tour ever will.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          One template, applied everywhere: what this screen is for, in Béa's voice; one primary
+          action; nothing else. The four that exist are good and set the standard.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>1 week.</dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Findings · minor</p>
+      <h2>Tickets, not discussions</h2>
+    </div>
+    <article class="finding low">
+      <div class="f-head"><span class="f-id">D9–D11</span><h3>Three smaller items</h3><span class="chip low">Low</span></div>
+      <ul>
+        <li>
+          <strong>The navigation is deeper than it looks.</strong> Six tabs, but 21 routes — fifteen
+          screens reachable only from inside another screen. Expenses, calendar, story and memories
+          have no fixed home. Worth a card-sort before adding anything else.
+        </li>
+        <li>
+          <strong>Loading is inconsistent.</strong> 28 loading flags, 15 skeleton references, and
+          several screens that simply show nothing while fetching. Pick one: skeletons that match
+          the shape of the content that is coming.
+        </li>
+        <li>
+          <strong>Motion is barely used and barely governed.</strong> Four references to reduced-motion
+          across the app. Not a problem today because there is little animation, but establish the
+          rule before someone adds a page transition.
+        </li>
+      </ul>
+    </article>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">The asset</p>
+      <h2>What would be expensive to replace</h2>
+      <p class="lede">
+        These are the parts that make me say asset rather than liability. Most seed-stage products
+        have the opposite profile — a tidy system with nothing to say.
+      </p>
+    </div>
+    <div class="wins">
+      <div class="win">
+        <h3><span class="mark">✓</span> The voice is real and written down</h3>
+        <p>
+          A positioning document, a voice module with six defined modes, and a signature line per
+          surface. The product refuses to call itself an AI travel planner, in writing, and the
+          copy holds that line everywhere.
+        </p>
+      </div>
+      <div class="win">
+        <h3><span class="mark">✓</span> The copy has a character</h3>
+        <p>
+          "Past You left a breadcrumb." "Choosing is harder than dreaming." "Professionally
+          assembled from your own excellent ideas." Distinctive, consistent, and doing product work
+          rather than decoration.
+        </p>
+      </div>
+      <div class="win">
+        <h3><span class="mark">✓</span> The colour work is sophisticated</h3>
+        <p>
+          Built in oklch rather than hex or hsl, so lightness is perceptually even across hues — a
+          choice most teams make years later, if ever. 141 tokens with complete dark-mode coverage.
+        </p>
+      </div>
+      <div class="win">
+        <h3><span class="mark">✓</span> Undo exists</h3>
+        <p>
+          A working undo mechanism for removals, including the careful case: when a delete fails, it
+          declines to offer undo rather than duplicating the row. Most products at this stage have
+          no undo at all.
+        </p>
+      </div>
+      <div class="win">
+        <h3><span class="mark">✓</span> Accessibility has been started, not ignored</h3>
+        <p>
+          99 aria-labels, 35 explicit roles, 22 aria-expanded, 11 aria-pressed, screen-reader-only
+          text where icons carry meaning. Incomplete, but the intent is present in the code.
+        </p>
+      </div>
+      <div class="win">
+        <h3><span class="mark">✓</span> The team responds to real evidence</h3>
+        <p>
+          Eight interface problems were found and fixed in a single week, each traced to an
+          observed failure rather than a preference. That responsiveness is worth more than any
+          individual screen.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Plan</p>
+      <h2>One quarter to a system</h2>
+    </div>
+    <div class="plan">
+      <div class="phase">
+        <span class="when">Weeks 1–2</span>
+        <div>
+          <h3>Stop the drift</h3>
+          <ul>
+            <li>Name the type and spacing scales; lint arbitrary values (D3).</li>
+            <li>Three named surfaces; ban raw background classes (D5).</li>
+            <li>Delete the 42 unused kit components (D4).</li>
+            <li>Replace both native confirm dialogs (D6).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="when">Weeks 3–6</span>
+        <div>
+          <h3>Make the screens speak</h3>
+          <ul>
+            <li>Content-first audit across every screen (D2).</li>
+            <li>Empty state on every screen, one template (D8).</li>
+            <li>Touch targets to 44px throughout (D7).</li>
+            <li>Merge three onboarding systems into one (D1).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="when">Weeks 7–12</span>
+        <div>
+          <h3>Turn the tour into a backlog</h3>
+          <ul>
+            <li>Redesign the ten most-used guide steps out of existence (D1).</li>
+            <li>Card-sort the navigation before adding features (D9).</li>
+            <li>Publish the system so a second designer can join without a briefing.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="scope">
+      <p class="eyebrow">How this review was conducted, and its limits</p>
+      <p>
+        This is a review of <strong>source, stylesheets and rendered output</strong> at commit
+        <code>b7d30f2</code>, plus screenshots of the running app on an iPad and a phone. Counts are
+        measured from the codebase, not estimated.
+      </p>
+      <p>
+        Three things it does not cover, and which should inform any decision as much as the above:
+        <strong>no usability testing with real users</strong>, no analytics on where people actually
+        struggle — none is collected today — and no review of the signed-in experience with a
+        populated account, which I could not access. Findings D1, D2 and D8 in particular would be
+        sharpened considerably by watching five people use the app for twenty minutes.
+      </p>
+    </div>
+  </section>
+
+  <footer class="doc">
+    Prepared as an independent design assessment, to be read with the engineering audit of the same
+    commit. Severity reflects cost to users and to future team velocity, not visual preference.
+    Effort assumes one designer working with one engineer.
+  </footer>
+</div>
