@@ -36,12 +36,12 @@ Instrument Serif over Manrope. Real values are in the master prompt.
 - _"Recommended for people with similar tastes"_ — there is no collaborative
   filtering in the codebase. Nothing compares one user's taste to another's.
   Claiming it in a launch video is a promise the app breaks on day one.
-- _"Two itineraries side by side… travel times… neighborhood clustering"_ —
-  `compare.functions.ts` compares **saved places** ("Help me choose"), not two
-  itineraries. The real reordering feature is **Optimize**, which reshuffles one
-  trip's stops and shows the new order for approval before saving.
+- _"Recommended for people with similar tastes"_ is the only genuine invention.
+  It was replaced with **Near**, which is real and is a better scene anyway.
 
-Both were replaced with real features that happen to be better on camera.
+**Correction:** I originally flagged the side-by-side itinerary comparison as
+invented too. It is not. `itinerary.functions.ts` parses two pasted plans and
+compares them properly — see Scene 6, which is now built on the real thing.
 
 ---
 
@@ -264,34 +264,53 @@ why saving things into Béa pays off later.
 
 ---
 
-## Scene 6 — Help me choose
+## Scene 6 — Compare two plans
 
 ```text
 Scene 6.
 
-Two saved restaurants sit side by side on screen.
+The user has two competing plans for the same trip —
+one from a friend, one from a chat with an AI.
 
-The user cannot decide. They tap "Help me choose".
+They paste both into Béa. Plan A on the left, Plan B on the right.
 
-A calm comparison appears — not a dashboard, a short honest note:
-how far each one is, who recommended it, when it was saved,
-which one fits tonight.
+One line underneath: "Slow mornings, good food, easy on the budget."
 
-Béa gives an opinion, in one line, with a reason.
+Béa reads both plans, then a comparison builds itself, day by day:
 
-The user picks. The other place stays saved for next time.
+Day 3 — A stays central. B loses ninety minutes crossing the bridge each way.
 
-Serif text:
+Indoor share. Active hours per day. Walking kilometres per day.
+Estimated spend, itemised: Accommodation, Transport, Meals, Activities.
 
-"Choosing is harder than dreaming."
+Then, plainly, a verdict:
 
-Trustworthy and analytical, never flashy.
-No percentage scores. No confidence meters. No charts.
+"Plan A. Slower mornings, and the food you said you wanted."
+
+And below it, one borrowed idea:
+
+"Take B's Thursday market. Go early."
+
+Clean, analytical, warm. A well-set table, not a dashboard.
+No confidence percentages. No charts that mean nothing.
 ```
 
-**Real feature:** `compare.functions.ts` — comparison of **saved places**, which
-is what it actually does. The line is the "Help me choose" signature from
-`BRANDING.md`. **This scene replaces the invented itinerary A/B comparison.**
+**Real feature, and stronger than it first appears.** `compareItineraries` in
+`itinerary.functions.ts` parses each pasted plan into stops, then compares them
+per day. Three details worth putting on camera because most tools fake them:
+
+- It **commits to a pick.** The prompt is explicit: _"a comparison with no
+  recommendation is a table, not advice."_
+- It names a real **divergence** per day rather than a summary. _"Both are
+  food-focused" is rejected as useless; the trade is the point._
+- It **refuses to invent numbers.** `itinerary-metrics.ts` returns
+  `transitMinutesPerDay: null` and `longestTravelLegMinutes: null` unless real
+  routed times exist — with the comment _"Do not invent them from a straight
+  line."_ Same for a shorter plan: the day row reads "nothing planned" rather
+  than being padded with fictional activities.
+
+That last one is the most on-brand thing in the whole app. If the film has room
+for one line about honesty, it goes here.
 
 ---
 
@@ -368,7 +387,9 @@ site, the store listing and onboarding, and the video should match them exactly.
 **Generate per scene, not as one 90-second render.** Unchanged from the original
 plan, and correct — a bad scene 5 should cost one regeneration.
 
-**Consider shooting scenes 2, 3, 4 and 6 from the real app instead.** Veo cannot
+**Consider shooting scenes 2, 3, 4 and 6 from the real app instead.** Scene 6
+especially — the comparison output is dense and specific, and no video model
+will invent something as convincing as the real one. Veo cannot
 render Béa's actual interface, and invented UI in a product video is obvious to
 anyone who then opens the app. Screen-record the real screens and use Veo for
 scenes 1, 5 and 7 plus the connective motion graphics. The film will be more
@@ -387,7 +408,7 @@ consistent and more honest, and the real UI is good enough now to carry it.
 | 7   | The map fills in | 14s    | the feeling    |
 | —   | Ending           | 8s     | the ask        |
 
-Roughly 78 seconds plus transitions.
+Roughly 82 seconds plus transitions.
 
 **What never appears:** the phrase "AI travel planner," neural-network or brain
 imagery, teal or blue, confidence percentages, or any claim that Béa decides for
