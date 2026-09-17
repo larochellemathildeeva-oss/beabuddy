@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { PlayCircle, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { type TourMode, tourSteps } from "@/lib/tour";
 import {
@@ -19,6 +19,8 @@ import {
   trackGuideTargetSettle,
   type SpotlightBox,
 } from "./SpotlightOverlay";
+import { DemoVideo } from "@/components/DemoVideo";
+import { configuredDemoVideo } from "@/lib/demo-video";
 
 const TOUR_EVENT = "bea-tour-start";
 /** Wait for route paint + data (seed/trips) before treating a target as missing. */
@@ -88,6 +90,10 @@ export function Tour({
   const [clicked, setClicked] = useState(false);
   /** False while a selector step is still waiting for a painted target. */
   const [targetReady, setTargetReady] = useState(true);
+  const [watching, setWatching] = useState(false);
+  // Null on a deploy with no VITE_DEMO_VIDEO_URL, and then the written walk
+  // stays exactly as it was — an unset variable is never a dead button.
+  const demoVideo = configuredDemoVideo();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const steps = mode ? tourSteps(mode) : EMPTY_STEPS;
@@ -275,22 +281,38 @@ export function Tour({
 
           <h2 className="mt-2 font-display text-[23px] leading-tight">How shall we walk?</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-            First sign-in already took the story walk. Pick that again, or open the Deep Dive on
-            what makes Béa different.
+            {demoVideo
+              ? "Watch the short film, or open the Deep Dive on what makes Béa different."
+              : "First sign-in already took the story walk. Pick that again, or open the Deep Dive on what makes Béa different."}
           </p>
 
           <div className="mt-4 space-y-2">
-            <button
-              onClick={() => pick("quick")}
-              className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
-            >
-              <span className="block text-[15.5px] font-semibold">
-                A quick walk around the block
-              </span>
-              <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                Remember → choose → plan → opportunity → story. About a minute.
-              </span>
-            </button>
+            {demoVideo ? (
+              <button
+                onClick={() => setWatching(true)}
+                className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
+              >
+                <span className="flex items-center gap-2 text-[15.5px] font-semibold">
+                  <PlayCircle className="size-4 text-primary" aria-hidden />
+                  Watch how Béa works
+                </span>
+                <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                  Remember → choose → plan → opportunity → story. About ninety seconds.
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => pick("quick")}
+                className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
+              >
+                <span className="block text-[15.5px] font-semibold">
+                  A quick walk around the block
+                </span>
+                <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                  Remember → choose → plan → opportunity → story. About a minute.
+                </span>
+              </button>
+            )}
             <button
               onClick={() => pick("deep")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
@@ -302,6 +324,11 @@ export function Tour({
             </button>
           </div>
         </div>
+        {watching && demoVideo ? (
+          <div className="pointer-events-auto">
+            <DemoVideo source={demoVideo} onClose={() => setWatching(false)} />
+          </div>
+        ) : null}
       </div>,
       document.body,
     );
