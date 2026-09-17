@@ -119,6 +119,11 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='optimize-trip']",
       },
       {
+        title: "Things to do",
+        body: "The checklist icon opens the trip's errands — renew the passport, book the transfer, tell the bank. Not what you're packing, and not where you're going: the things that have to happen before you leave.",
+        selector: "[data-guide='trip-todos']",
+      },
+      {
         title: "Packing lists",
         body: "The paper icon adds a saved list to this trip. Create and edit those reusable packs under You — weekend, beach, ski, work — then add a copy here to tick things off.",
         selector: "[data-guide='packing-lists']",

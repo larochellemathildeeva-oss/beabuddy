@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, FileText, Plus, Settings, Sparkles, X } from "lucide-react";
+import { ChevronDown, FileText, ListChecks, Plus, Settings, Sparkles, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
@@ -458,6 +458,7 @@ function LiveTripCard({
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [packSignal, setPackSignal] = useState(0);
+  const [todoSignal, setTodoSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [addingTimeline, setAddingTimeline] = useState(false);
@@ -512,6 +513,18 @@ function LiveTripCard({
         >
           <img src={logo} alt="" className="size-7 object-contain" />
           <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
+        </button>
+        <button
+          data-guide="trip-todos"
+          aria-label="Things to do for this trip"
+          title="Things to do for this trip"
+          onClick={() => {
+            if (!open) onToggle();
+            setTodoSignal((n) => n + 1);
+          }}
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
+        >
+          <ListChecks className="size-4" />
         </button>
         <button
           data-guide="packing-lists"
@@ -572,6 +585,7 @@ function LiveTripCard({
             hasLodging={board.items.some((item) => item.kind === "lodging")}
             hasFlights={board.items.some((item) => item.kind === "transport")}
             tripStart={trip.start_date}
+            openSignal={todoSignal}
           />
 
           <PackingLists
