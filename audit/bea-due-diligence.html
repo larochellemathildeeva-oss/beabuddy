@@ -1,0 +1,686 @@
+<title>Béa Technical Due Diligence</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap"
+/>
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --sunk: #eef0f4;
+    --line: #dde1e8;
+    --line-soft: #e8ebf0;
+    --ink: #171b22;
+    --ink-2: #39414e;
+    --muted: #666f7d;
+    --accent: #2f4a72;
+    --accent-soft: #e9eef6;
+    --crit: #a81d33;
+    --crit-soft: #fbecee;
+    --warn: #8a5a05;
+    --warn-soft: #fcf2e0;
+    --good: #1c6047;
+    --good-soft: #e5f1eb;
+    --shadow: 0 1px 2px rgba(23, 27, 34, 0.05), 0 8px 24px -16px rgba(23, 27, 34, 0.25);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ground: #101319;
+      --surface: #171b23;
+      --sunk: #1d222b;
+      --line: #2b323d;
+      --line-soft: #242a34;
+      --ink: #eef1f6;
+      --ink-2: #c3cad5;
+      --muted: #8b95a3;
+      --accent: #9db9e4;
+      --accent-soft: #1c2634;
+      --crit: #f08199;
+      --crit-soft: #2c1a1f;
+      --warn: #e4b062;
+      --warn-soft: #2b2113;
+      --good: #6fc4a1;
+      --good-soft: #142620;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101319;
+    --surface: #171b23;
+    --sunk: #1d222b;
+    --line: #2b323d;
+    --line-soft: #242a34;
+    --ink: #eef1f6;
+    --ink-2: #c3cad5;
+    --muted: #8b95a3;
+    --accent: #9db9e4;
+    --accent-soft: #1c2634;
+    --crit: #f08199;
+    --crit-soft: #2c1a1f;
+    --warn: #e4b062;
+    --warn-soft: #2b2113;
+    --good: #6fc4a1;
+    --good-soft: #142620;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -16px rgba(0, 0, 0, 0.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 40px 72px;
+  }
+
+  h1, h2, h3 {
+    font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+    font-weight: 600;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.12; letter-spacing: -0.015em; }
+  h2 { font-size: 23px; line-height: 1.2; }
+  h3 { font-size: 16.5px; line-height: 1.3; }
+  p { margin: 0; }
+
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  header.doc { display: flex; flex-direction: column; gap: 12px; }
+  header.doc .sub { color: var(--ink-2); font-size: 16.5px; max-width: 62ch; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 6px 18px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px; color: var(--muted);
+    border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px;
+  }
+
+  section { margin-top: 44px; display: flex; flex-direction: column; gap: 16px; }
+  .section-head { display: flex; flex-direction: column; gap: 4px; }
+  .lede { color: var(--ink-2); max-width: 68ch; }
+
+  /* Verdict */
+  .verdict {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    padding: 22px;
+    display: flex; flex-direction: column; gap: 14px;
+    margin-top: 28px;
+  }
+  .verdict p { max-width: 66ch; color: var(--ink-2); }
+  .verdict strong { color: var(--ink); font-weight: 600; }
+
+  /* Metric strip */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+    gap: 1px;
+    background: var(--line-soft);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .metric { background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .metric .v {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 19px; font-weight: 500; color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .k { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+
+  /* Findings */
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--sev);
+    border-radius: 4px;
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .finding.crit { --sev: var(--crit); }
+  .finding.warn { --sev: var(--warn); }
+  .finding.low  { --sev: var(--muted); }
+
+  .f-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+  .f-id {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .f-head h3 { flex: 1 1 260px; }
+  .chip {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 3px; white-space: nowrap;
+  }
+  .chip.crit { background: var(--crit-soft); color: var(--crit); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.low  { background: var(--sunk); color: var(--muted); }
+
+  .rows { display: flex; flex-direction: column; gap: 9px; }
+  .row { display: grid; grid-template-columns: 78px 1fr; gap: 14px; align-items: start; }
+  .row dt {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); padding-top: 3px;
+  }
+  .row dd { margin: 0; color: var(--ink-2); }
+  .row dd strong { color: var(--ink); font-weight: 600; }
+  @media (max-width: 520px) {
+    .row { grid-template-columns: 1fr; gap: 2px; }
+    .row dt { padding-top: 0; }
+  }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    background: var(--sunk);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  ul { margin: 0; padding-left: 18px; color: var(--ink-2); display: flex; flex-direction: column; gap: 5px; }
+  li::marker { color: var(--muted); }
+
+  .strengths { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .strength {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .strength h3 { font-size: 14.5px; font-family: "IBM Plex Sans", sans-serif; font-weight: 600; }
+  .strength p { font-size: 13.5px; color: var(--muted); }
+  .tick { color: var(--good); font-weight: 600; }
+
+  .plan { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .phase { display: grid; grid-template-columns: 96px 1fr; gap: 16px; padding: 16px 18px; background: var(--surface); }
+  .phase + .phase { border-top: 1px solid var(--line-soft); }
+  .phase .when {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px; color: var(--accent); font-weight: 500;
+  }
+  .phase .what { display: flex; flex-direction: column; gap: 6px; }
+  .phase h3 { font-size: 14.5px; font-family: "IBM Plex Sans", sans-serif; font-weight: 600; }
+  @media (max-width: 520px) { .phase { grid-template-columns: 1fr; gap: 6px; } }
+
+  .caveat {
+    background: var(--warn-soft);
+    border: 1px solid color-mix(in srgb, var(--warn) 28%, transparent);
+    border-radius: 4px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .caveat p { color: var(--ink-2); max-width: 66ch; font-size: 14px; }
+  .caveat .eyebrow { color: var(--warn); }
+
+  footer.doc {
+    margin-top: 48px; border-top: 1px solid var(--line); padding-top: 16px;
+    color: var(--muted); font-size: 12.5px; max-width: 70ch;
+  }
+</style>
+
+<div class="wrap">
+  <header class="doc">
+    <p class="eyebrow">Technical due diligence</p>
+    <h1>Béa — engineering assessment</h1>
+    <p class="sub">
+      A read of the codebase behind Béa, a travel memory and planning app, for the purpose of an
+      investment decision. Findings are ordered by what should change the decision, not by what is
+      easiest to fix.
+    </p>
+    <div class="meta">
+      <span>Repo: larochellemathildeeva-oss/beabuddy</span>
+      <span>Commit: b7d30f2</span>
+      <span>Version: 8.4.3</span>
+      <span>Date: 17 Sep 2026</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <p class="eyebrow">Verdict</p>
+    <p>
+      <strong>The engineering is better than the stage of the company.</strong> Authorization is
+      correct everywhere I could check it, the security thinking is unusually mature for a
+      twelve-day-old codebase, and the test suite covers the logic most likely to produce silent
+      data errors. I found no architectural dead ends.
+    </p>
+    <p>
+      The risks are <strong>operational and human, not structural</strong>. One person and an AI
+      assistant wrote all of it in twelve days; the production database is updated by hand; there
+      is no monitoring, no spend cap on the AI features, and a core feature depends on a free
+      public server whose operators ask people not to use it in production. Every one of those is
+      fixable in weeks.
+    </p>
+    <p>
+      <strong>Recommendation: proceed, with conditions.</strong> Make funding contingent on the
+      30-day remediation list below, and treat key-person risk as the dominant term in the
+      valuation rather than code quality.
+    </p>
+  </div>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Measured</p>
+      <h2>What the repository actually contains</h2>
+    </div>
+    <div class="metrics">
+      <div class="metric"><span class="v">42,480</span><span class="k">lines across 266 files</span></div>
+      <div class="metric"><span class="v">108</span><span class="k">commits, 12 days</span></div>
+      <div class="metric"><span class="v">2</span><span class="k">contributors (1 human)</span></div>
+      <div class="metric"><span class="v">491</span><span class="k">unit tests passing</span></div>
+      <div class="metric"><span class="v">0</span><span class="k">component or E2E tests</span></div>
+      <div class="metric"><span class="v">22 / 22</span><span class="k">tables with RLS enabled</span></div>
+      <div class="metric"><span class="v">25 / 25</span><span class="k">server fns authenticated</span></div>
+      <div class="metric"><span class="v">0</span><span class="k">dependency vulnerabilities</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Findings · critical</p>
+      <h2>Issues that should shape the terms</h2>
+      <p class="lede">
+        These four carry real probability of becoming expensive. None is a reason to walk away;
+        each is a reason to attach a condition.
+      </p>
+    </div>
+
+    <article class="finding crit">
+      <div class="f-head">
+        <span class="f-id">F1</span>
+        <h3>The entire company is one person</h3>
+        <span class="chip crit">Key-person</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          108 commits between 5 and 17 September 2026, from two identities: the founder (53) and an
+          AI assistant (55). No second engineer has ever committed. Infrastructure — Supabase,
+          the Canner deploy, the domain — appears to sit in personal accounts.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          If the founder becomes unavailable, there is no one who has read this code. Roughly half
+          the commits were AI-assisted, which means institutional knowledge lives in a chat history
+          rather than in a second head.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          <strong>Move every credential into a company-owned vault</strong> with a break-glass
+          procedure before money moves. Fund a second engineer in the first hire. Require an
+          architecture decision record for each subsystem — the repo already has
+          <code>AGENTS.md</code> and <code>docs/BRANDING.md</code>, so the habit exists and only
+          needs extending to technical decisions.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>Credentials: days. Second engineer: a hiring cycle.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding crit">
+      <div class="f-head">
+        <span class="f-id">F2</span>
+        <h3>Production schema changes are applied by hand</h3>
+        <span class="chip crit">Data integrity</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          28 migration files; five state it outright — <em>"Applied by hand — writing this file does
+          not change the live database alone."</em> The deploy runs no migration step. Two features
+          shipped to production this month and sat inert until someone remembered to paste SQL into
+          a dashboard: <code>trip_todos</code> and <code>reco_shares</code>.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          Nobody can prove the production schema matches <code>main</code>. There is no scripted
+          rollback. A migration applied wrongly at 2am on a Sunday is the single most likely cause
+          of irreversible customer data loss in this system.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Adopt the <strong>Supabase CLI migration flow in CI</strong>: apply to a staging project
+          on every merge, promote to production on release. Add a drift check that fails the build
+          when a repo migration is unapplied — the app already detects this at runtime per feature
+          (<code>isMissingTodosTable</code>), so the signal exists and just needs lifting into CI.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>1–2 weeks including a staging project.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding crit">
+      <div class="f-head">
+        <span class="f-id">F3</span>
+        <h3>No per-user cap on AI or geocoding spend</h3>
+        <span class="chip crit">Cost exposure</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Every AI-backed server function requires a signed-in user — good — but none counts calls.
+          There is no usage ledger table anywhere in the schema. The only limits are Google
+          Gemini's own, applied to the whole account. The team knows: the internal security backlog
+          lists <em>"App-level AI / geocode quotas"</em> as P1, status <strong>Partial</strong>.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          One motivated user, one scripted loop, or one stolen session can exhaust the company's
+          entire AI budget and take the feature down for everyone. Cost scales with abuse, not with
+          revenue.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Add a <code>ai_usage</code> ledger keyed by user and day, checked in the existing
+          <code>requireSupabaseAuth</code> middleware so every function inherits it at once. Daily
+          per-user cap, alert at 80% of the account budget. The invite system already demonstrates
+          this exact pattern with <code>trip_invite_attempts</code> — it is a copy of working code.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>3–5 days.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding crit">
+      <div class="f-head">
+        <span class="f-id">F4</span>
+        <h3>Directions run on someone else's free demo server</h3>
+        <span class="chip crit">Third-party</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          Routing calls <code>router.project-osrm.org</code>, the OSRM project's public demo
+          instance, which its operators state is not for production use. Geocoding calls
+          Nominatim, whose usage policy the code respects by sleeping 1.1&nbsp;seconds between
+          lookups — so building directions for a twelve-stop day takes over thirteen seconds of
+          wall clock before anything renders.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          The feature can be throttled or cut off without notice, by a third party with no
+          obligation to the company. The mandated sleep is also a permanent, unfixable performance
+          ceiling on a headline feature.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Move routing and geocoding to a commercial provider — <strong>Mapbox, Geoapify or
+          HERE</strong>. This removes the terms exposure, the outage risk and the sleep in one
+          change. Avoid Google Maps Platform specifically: its terms forbid storing place data
+          beyond a short cache, and storing saved places permanently is the entire product.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>1 week; the call sites are two functions.</dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Findings · material</p>
+      <h2>Issues to fix before scaling the team</h2>
+    </div>
+
+    <article class="finding warn">
+      <div class="f-head">
+        <span class="f-id">F5</span>
+        <h3>No component or end-to-end tests</h3>
+        <span class="chip warn">Quality</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          491 tests, all of them over pure functions in <code>src/lib</code>. 21 hooks and 33
+          components have none. Nothing exercises a real user journey, an auth redirect, or an RLS
+          policy.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          The untested layer is where users actually live. A concrete example from this month: a
+          public marketing page shipped with a redirect that bounced signed-out visitors to the
+          sign-in form — on the one page written specifically for people without accounts. Type
+          checks and unit tests both passed. It was caught only because someone rendered it by hand.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Playwright against a seeded test Supabase project, covering five paths: sign up, save a
+          place, build a trip, share a list, delete an account. Add an <strong>authorization
+          test</strong> that signs in as user A and asserts it cannot read user B's rows — that is
+          the test which protects the company's reputation.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2 weeks, then hours per feature.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding warn">
+      <div class="f-head">
+        <span class="f-id">F6</span>
+        <h3>The lint gate cannot fail</h3>
+        <span class="chip warn">Process</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          CI runs lint with <code>continue-on-error: true</code>, and <code>main</code> currently
+          carries 1,106 lint errors. Typecheck, test and build do block, correctly.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          Low technically — nearly all are formatting. Culturally it matters: a permanently red
+          check teaches everyone to ignore checks, and hides the day a real rule fires.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Run the formatter across the tree in a single commit, then delete
+          <code>continue-on-error</code>. This is an afternoon and it should be done before a second
+          engineer ever sees the repo.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>Half a day.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding warn">
+      <div class="f-head">
+        <span class="f-id">F7</span>
+        <h3>Production is unobservable</h3>
+        <span class="chip warn">Operations</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          No error reporting, no performance monitoring, no product analytics anywhere in the
+          dependency list or the source. The internal backlog flags a related gap: <em>"Analytics
+          inventory vs Privacy"</em>, P1, Open.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          Every production failure is invisible until a user reports it, and most never do. There is
+          also no evidence base for product decisions — retention, activation and drop-off are all
+          unmeasurable today.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Sentry for errors and a privacy-respecting analytics tool (PostHog EU or Plausible) for
+          behaviour. Update the Privacy Policy in the same change — the app already has a consent
+          system, so the disclosure path exists.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>2–3 days.</dd></div>
+      </dl>
+    </article>
+
+    <article class="finding warn">
+      <div class="f-head">
+        <span class="f-id">F8</span>
+        <h3>A few files carry too much</h3>
+        <span class="chip warn">Maintainability</span>
+      </div>
+      <dl class="rows">
+        <div class="row"><dt>Evidence</dt><dd>
+          <code>routes/trips.tsx</code> is 1,541 lines; <code>ItineraryImport.tsx</code> 1,295;
+          <code>routes/recommendations.tsx</code> 1,055. Together they hold most of the product's
+          complexity.
+        </dd></div>
+        <div class="row"><dt>Risk</dt><dd>
+          These are the files a new engineer must read first and the ones least safe to change.
+          Review quality drops sharply past a few hundred lines.
+        </dd></div>
+        <div class="row"><dt>Fix</dt><dd>
+          Extract by section, not by arbitrary size. The repo already contains the right pattern —
+          <code>TripSection</code> and <code>TripBanner</code> were pulled out of
+          <code>trips.tsx</code> recently — so this is continuing established work, not a rewrite.
+          Target under 400 lines per route.
+        </dd></div>
+        <div class="row"><dt>Effort</dt><dd>1 week, incremental, safe to do between features.</dd></div>
+      </dl>
+    </article>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Findings · minor</p>
+      <h2>Worth a ticket, not a conversation</h2>
+    </div>
+    <article class="finding low">
+      <div class="f-head"><span class="f-id">F9–F12</span><h3>Four small items</h3><span class="chip low">Low</span></div>
+      <ul>
+        <li>
+          <strong>Sample data ships to every user.</strong> The 722-line demo seed is imported by
+          the home, help and opportunities routes, so it downloads whether or not anyone loads
+          samples. Move it behind a dynamic <code>import()</code> at the button.
+        </li>
+        <li>
+          <strong>Hydration mismatch on public routes.</strong> React reports a server/client
+          attribute mismatch on at least two pages. Harmless today; it disables server-rendered
+          markup reuse and can become a visual bug. Trace it in the shared shell.
+        </li>
+        <li>
+          <strong>Accessibility is unverified.</strong> 267 buttons against 92 aria-labels, and many
+          controls are icon-only. Add <code>eslint-plugin-jsx-a11y</code> and an axe pass in the E2E
+          run; this is also a procurement blocker for any B2B channel later.
+        </li>
+        <li>
+          <strong>One P0 remains open internally.</strong> The security backlog lists <em>"Supabase
+          Auth dashboard unknowns"</em> as P0, Open — meaning auth provider settings have not been
+          audited against the documented posture. Close it; it is a settings review, not a build.
+        </li>
+      </ul>
+    </article>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">The other side</p>
+      <h2>What is genuinely good here</h2>
+      <p class="lede">
+        An audit that only lists faults misprices the asset. These are the things most seed-stage
+        codebases get wrong, and this one did not.
+      </p>
+    </div>
+    <div class="strengths">
+      <div class="strength">
+        <h3><span class="tick">✓</span> Authorization is correct</h3>
+        <p>
+          Row-level security is enabled on all 22 tables, and all 25 server functions carry the
+          auth middleware. Cross-user data leakage is the most common fatal flaw in apps at this
+          stage. It is not present.
+        </p>
+      </div>
+      <div class="strength">
+        <h3><span class="tick">✓</span> Security has been thought about, in writing</h3>
+        <p>
+          A triaged backlog with P0/P1 severities, invite-code guessability worked out
+          mathematically, expiring single-use invites with throttled attempts. This is unusual
+          discipline for twelve days of work.
+        </p>
+      </div>
+      <div class="strength">
+        <h3><span class="tick">✓</span> The document vault is real encryption</h3>
+        <p>
+          AES-GCM with a PBKDF2-derived key, performed in the browser before upload. The claim made
+          to users — that the operator cannot read contents — is supported by the implementation.
+        </p>
+      </div>
+      <div class="strength">
+        <h3><span class="tick">✓</span> Privacy defaults favour the user</h3>
+        <p>
+          Sharing sends a snapshot rather than access, personal notes are excluded unless
+          explicitly opted in, and account deletion is implemented with double confirmation.
+        </p>
+      </div>
+      <div class="strength">
+        <h3><span class="tick">✓</span> The tested layer is the right one</h3>
+        <p>
+          491 fast tests concentrated on parsing, deduplication, geography and date handling — the
+          logic where silent wrongness corrupts user data rather than throwing an error.
+        </p>
+      </div>
+      <div class="strength">
+        <h3><span class="tick">✓</span> Clean dependencies</h3>
+        <p>
+          Zero known vulnerabilities, no secrets committed, and a modern stack that a competent
+          hire can be productive in without a bespoke onboarding.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <p class="eyebrow">Remediation</p>
+      <h2>What I would require, and by when</h2>
+    </div>
+    <div class="plan">
+      <div class="phase">
+        <span class="when">Days 0–30</span>
+        <div class="what">
+          <h3>Conditions of funding</h3>
+          <ul>
+            <li>Credentials moved to company ownership with documented recovery (F1).</li>
+            <li>Per-user AI and geocoding quota shipped (F3).</li>
+            <li>Formatter run, lint gate made blocking (F6).</li>
+            <li>Error monitoring live (F7).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="when">Days 30–60</span>
+        <div class="what">
+          <h3>Operational maturity</h3>
+          <ul>
+            <li>Staging project plus CI-applied migrations and a drift check (F2).</li>
+            <li>Routing and geocoding moved to a commercial provider (F4).</li>
+            <li>End-to-end suite over five paths, including a cross-user authorization test (F5).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="phase">
+        <span class="when">Days 60–90</span>
+        <div class="what">
+          <h3>Ready for a second engineer</h3>
+          <ul>
+            <li>Large routes decomposed; architecture decisions written down (F1, F8).</li>
+            <li>Accessibility linting and axe checks in CI (F9–F12).</li>
+            <li>Remaining P0 and P1 items in the security backlog closed or formally accepted.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="caveat">
+      <p class="eyebrow">Scope and limits of this audit</p>
+      <p>
+        This is a <strong>static review of source code</strong> at commit <code>b7d30f2</code>. I had
+        no access to the production database, no signed-in session, and no ability to run the
+        application against real data. Authorization findings are therefore read from migration
+        files and middleware, not proven against a live instance.
+      </p>
+      <p>
+        Three things are consequently <strong>unverified and should be checked before closing</strong>:
+        that the production schema matches the repository; that row-level security behaves as written
+        under a real second user; and that the deployed build corresponds to this commit. Each is an
+        hour's work for someone with credentials, and F2 exists precisely because the first cannot
+        currently be answered from the repository alone.
+      </p>
+    </div>
+  </section>
+
+  <footer class="doc">
+    Prepared as an independent engineering assessment. Severities reflect likelihood of material
+    cost to the business, not technical interest. Effort estimates assume one experienced
+    full-stack engineer familiar with the stack.
+  </footer>
+</div>
