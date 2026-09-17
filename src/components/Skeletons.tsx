@@ -23,24 +23,28 @@ export function ContentCardSkeleton({ media = false }: { media?: boolean }) {
     <div className="card-soft overflow-hidden" aria-hidden>
       {media && <Bar className="h-[136px] w-full rounded-none" />}
       <div className="p-4">
-        <Bar className="h-[19px] w-2/5" />
-        <Bar className="mt-2 h-[13px] w-3/5" />
-        <Bar className="mt-1.5 h-[13px] w-1/3" />
+        <Bar className="h-6 w-2/5" />
+        <Bar className="mt-0.5 h-5 w-3/5" />
+        <Bar className="mt-0.5 h-5 w-1/3" />
       </div>
     </div>
   );
 }
 
-/** Matches the trip card in the list: banner, then the action row. */
+/**
+ * Matches the trip card in the list: the banner, then one line of summary.
+ *
+ * Note it is *not* the trip page's action row — that is a different card, and
+ * borrowing its shape here made the placeholder 17px taller than the thing it
+ * stood in for, which is exactly the jump a skeleton exists to prevent.
+ */
 export function TripCardSkeleton() {
   return (
     <div className="card-soft overflow-hidden" aria-hidden>
       <Bar className="h-[136px] w-full rounded-none" />
-      <div className="flex items-center gap-1 p-3">
-        <Bar className="size-9 shrink-0 rounded-full" />
-        <Bar className="size-9 shrink-0 rounded-full" />
-        <Bar className="size-9 shrink-0 rounded-full" />
-        <Bar className="ml-auto h-[13px] w-24" />
+      <div className="flex items-center gap-2 p-3">
+        <Bar className="h-[19px] w-28" />
+        <Bar className="ml-auto h-[19px] w-12" />
       </div>
     </div>
   );
@@ -89,8 +93,8 @@ export function RowListSkeleton({ count = 3 }: { count?: number }) {
     <div className="space-y-3" aria-hidden>
       {Array.from({ length: count }, (_, i) => (
         <div key={i} className="card-soft p-3.5">
-          <Bar className="h-[18px] w-1/2" />
-          <Bar className="mt-2 h-[13px] w-3/4" />
+          <Bar className="h-[23px] w-1/2" />
+          <Bar className="h-5 w-3/4" />
         </div>
       ))}
     </div>

@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { RowListSkeleton } from "@/components/Skeletons";
+import { confirm } from "@/lib/haptics";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -402,6 +404,7 @@ function RecommendationsPage() {
       setDraft(null);
       setRefining(null);
       setRefineText("");
+      confirm();
       if (id) setJustSaved({ id, name: found.name });
       else {
         const line = beaLine("recs.saved");
@@ -434,6 +437,7 @@ function RecommendationsPage() {
     setBusy("save");
     try {
       const savedId = await vault.add(draft);
+      confirm();
       const line = beaLine("recs.saved");
       toast.success(line.title, { description: line.body });
       if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
@@ -983,6 +987,7 @@ function RecommendationsPage() {
         )}
 
         <section data-guide="reco-list" className="space-y-3">
+          {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
           {filtered.map((v) => (
             <article key={v.id} className="card-soft p-3.5">
               <div className="flex items-start gap-3">

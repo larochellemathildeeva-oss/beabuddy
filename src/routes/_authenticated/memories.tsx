@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ContentCardSkeleton } from "@/components/Skeletons";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,6 +171,8 @@ function MemoriesPage() {
             Import photos
           </Link>
         </div>
+
+        {loading && groups.length === 0 && <ContentCardSkeleton media />}
 
         {!loading && groups.length === 0 && (
           <p className="card-soft p-5 text-[15px] text-muted-foreground">

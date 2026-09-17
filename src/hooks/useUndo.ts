@@ -1,6 +1,8 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { removedLine, restoredLine, undoFailedLine, UNDO_WINDOW_MS } from "@/lib/undo";
+import { readableError } from "@/lib/optimistic";
+import { confirm } from "@/lib/haptics";
 
 /**
  * Run something destructive, then offer to put it back.
@@ -22,12 +24,16 @@ export function useUndo() {
       const count = input.count ?? 1;
       try {
         await input.remove();
-      } catch {
+      } catch (e) {
         // No toast and no undo offer when nothing actually went — offering
         // Undo here would insert a second copy of a row that never left.
-        toast.error(`Couldn't remove ${input.label}. Try again in a moment.`);
+        // Say why where the reason is something a person can act on.
+        toast.error(`Couldn't remove ${input.label}.`, {
+          description: readableError(e) ?? "Try again in a moment.",
+        });
         return;
       }
+      confirm();
       toast(removedLine(input.label, count), {
         duration: UNDO_WINDOW_MS,
         action: {
@@ -36,9 +42,12 @@ export function useUndo() {
             void (async () => {
               try {
                 await input.restore();
+                confirm();
                 toast.success(restoredLine(input.label, count));
-              } catch {
-                toast.error(undoFailedLine(input.label));
+              } catch (e) {
+                toast.error(undoFailedLine(input.label), {
+                  ...(readableError(e) ? { description: readableError(e)! } : {}),
+                });
               }
             })();
           },
@@ -59,9 +68,12 @@ export function useUndo() {
             void (async () => {
               try {
                 await input.undo();
+                confirm();
                 toast.success(`Removed those ${input.count} again.`);
-              } catch {
-                toast.error("Couldn't undo that. Remove them by hand if you need to.");
+              } catch (e) {
+                toast.error("Couldn't undo that.", {
+                  description: readableError(e) ?? "Remove them by hand if you need to.",
+                });
               }
             })();
           },

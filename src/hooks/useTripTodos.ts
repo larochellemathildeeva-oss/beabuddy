@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingTodosTable } from "@/lib/trip-todos";
+import { runOptimistic } from "@/lib/optimistic";
+import { tap } from "@/lib/haptics";
+import { toast } from "sonner";
 
 export type TodoRow = {
   id: string;
@@ -77,24 +80,32 @@ export function useTripTodos(tripId: string | null, uid: string | null) {
 
   const toggleTodo = useCallback(
     async (id: string, done: boolean) => {
-      // Optimistic — ticking something off should feel instant, and the reload
-      // right after puts the row in its proper place anyway.
-      setTodos((cur) => cur.map((t) => (t.id === id ? { ...t, done } : t)));
-      const { error } = await supabase
-        .from("trip_todos")
-        .update({
-          done,
-          done_at: done ? new Date().toISOString() : null,
-          done_by: done ? uid : null,
-        })
-        .eq("id", id);
-      if (error) {
-        await load();
-        throw error;
-      }
-      await load();
+      // Ticking something off should feel instant. The reload right after puts
+      // the row where the server actually has it; on failure that same reload
+      // is what puts the tick back, and the toast is what stops that looking
+      // like the app breaking on its own.
+      const label = todos.find((t) => t.id === id)?.title ?? "that";
+      return runOptimistic({
+        apply: () => {
+          setTodos((cur) => cur.map((t) => (t.id === id ? { ...t, done } : t)));
+          tap();
+        },
+        write: () =>
+          supabase
+            .from("trip_todos")
+            .update({
+              done,
+              done_at: done ? new Date().toISOString() : null,
+              done_by: done ? uid : null,
+            })
+            .eq("id", id),
+        reconcile: load,
+        report: ({ title, body }) => toast.error(title, { description: body }),
+        label,
+        action: done ? "tick off" : "un-tick",
+      });
     },
-    [uid, load],
+    [uid, load, todos],
   );
 
   const updateTodo = useCallback(
