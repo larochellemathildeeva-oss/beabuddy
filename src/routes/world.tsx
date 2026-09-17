@@ -53,6 +53,8 @@ function WorldPage() {
   const [heatOpen, setHeatOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(true);
   const [statsEdit, setStatsEdit] = useState(false);
+  /** The caveat about what the numbers count — asked for, not always on. */
+  const [statsNote, setStatsNote] = useState(false);
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("all");
   const statsLayout = useStatsLayout();
@@ -365,13 +367,26 @@ function WorldPage() {
               Travel statistics
             </button>
             {statsOpen && (
-              <button
-                type="button"
-                onClick={() => setStatsEdit((v) => !v)}
-                className="text-[12px] text-primary"
-              >
-                {statsEdit ? "Done" : "Choose stats"}
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStatsNote((v) => !v)}
+                  aria-expanded={statsNote}
+                  aria-controls="travel-stats-note"
+                  className="grid size-5 place-items-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground"
+                  aria-label="What these numbers count"
+                  title="What these numbers count"
+                >
+                  ?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatsEdit((v) => !v)}
+                  className="text-[12px] text-primary"
+                >
+                  {statsEdit ? "Done" : "Choose stats"}
+                </button>
+              </div>
             )}
           </div>
           {statsOpen && (
@@ -462,18 +477,25 @@ function WorldPage() {
                   </p>
                 </div>
               )}
-              <p className="text-[12px] leading-relaxed text-muted-foreground">
-                These stats only include data Béa has access to — the trips, timeline entries,
-                photos and pins saved in this app.
-              </p>
-              {!statsEdit && (
-                <p className="text-[12px] leading-relaxed text-muted-foreground">
-                  Missing a number that would make you grin?{" "}
-                  <Link to="/profile" className="text-primary underline underline-offset-2">
-                    You → Feedback
-                  </Link>{" "}
-                  is where Béa keeps her ears open.
-                </p>
+              {/* The caveat is true and worth saying once; it was not worth
+                  two paragraphs under every number, every visit. */}
+              {statsNote && (
+                <div
+                  id="travel-stats-note"
+                  className="rounded-xl bg-elevated px-3 py-2.5 text-[12px] leading-relaxed text-muted-foreground"
+                >
+                  <p>
+                    These stats only include data Béa has access to — the trips, timeline entries,
+                    photos and pins saved in this app.
+                  </p>
+                  <p className="mt-1.5">
+                    Missing a number that would make you grin?{" "}
+                    <Link to="/profile" className="text-primary underline underline-offset-2">
+                      You → Feedback
+                    </Link>{" "}
+                    is where Béa keeps her ears open.
+                  </p>
+                </div>
               )}
             </div>
           )}
