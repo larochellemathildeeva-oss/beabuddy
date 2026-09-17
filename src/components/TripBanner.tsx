@@ -1,0 +1,118 @@
+import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import {
+  countdownLabel,
+  fallbackTint,
+  isUnderway,
+  photoCreditLine,
+  tripDateLine,
+  tripLengthLabel,
+  tripMonogram,
+  tripPlacesLine,
+} from "@/lib/trip-card";
+
+/**
+ * The top of a trip card: your own photo of the place, the title over it, and
+ * how soon it is.
+ *
+ * The photo is the point. Other travel apps put stock destination photography
+ * here; Béa has something better sitting in photo_memories, so a trip to Kyoto
+ * shows the Kyoto you already saw. Somewhere new gets a quiet tint instead —
+ * quiet on purpose, because it is a placeholder waiting for a photograph, not
+ * a colour swatch asking to be looked at.
+ */
+export function TripBanner({
+  title,
+  city,
+  country,
+  cities,
+  startDate,
+  endDate,
+  tentative,
+  photo,
+  companions,
+}: {
+  title: string;
+  city?: string | null;
+  country?: string | null;
+  cities: string[];
+  startDate?: string | null;
+  endDate?: string | null;
+  tentative?: boolean;
+  photo: TripPhotoRow | null;
+  companions?: string;
+}) {
+  const url = useSignedPhoto(photo?.storage_path ?? null);
+  const tint = fallbackTint(title || city || "Béa");
+  const soon = countdownLabel(startDate);
+  const now = isUnderway(startDate, endDate);
+  const where = tripPlacesLine(cities, [city, country].filter(Boolean).join(", "));
+  const length = tripLengthLabel(startDate, endDate);
+
+  // Three short lines beat one long one: at phone width a single joined line
+  // truncated the dates away, which is the part the card exists to tell you.
+  const placeLine = [where, length].filter(Boolean).join(" · ");
+  const whenLine = [tripDateLine(startDate, endDate), companions].filter(Boolean).join(" · ");
+
+  const pill = now ? "Underway" : soon ? soon : tentative ? "Tentative" : "";
+
+  if (!url) {
+    return (
+      <div
+        className="relative h-[136px] w-full overflow-hidden"
+        style={{ backgroundImage: `linear-gradient(150deg, ${tint.from}, ${tint.to})` }}
+      >
+        <span
+          aria-hidden
+          className="absolute -right-2 top-1 font-display text-[92px] leading-none text-foreground/10"
+        >
+          {tripMonogram(title, city)}
+        </span>
+        <div className="absolute inset-x-0 bottom-0 flex items-end gap-2 p-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[21px] leading-tight">{title}</p>
+            <p className="truncate text-[12.5px] text-foreground/70">{placeLine}</p>
+            <p className="truncate text-[12.5px] text-foreground/60">{whenLine}</p>
+          </div>
+          {pill ? (
+            <span className="shrink-0 rounded-full border border-foreground/25 bg-card/70 px-2.5 py-1 text-[11.5px] font-semibold">
+              {pill}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-[136px] w-full overflow-hidden">
+      <img src={url} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+      {/* Dark at the bottom only, so the title stays legible over any
+          photograph while the top of the picture stays the picture. */}
+      <span
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(to top, rgba(23,16,12,0.80), rgba(23,16,12,0.28) 45%, rgba(23,16,12,0.02) 78%)",
+        }}
+      />
+      <div className="absolute inset-x-0 bottom-0 flex items-end gap-2 p-3.5">
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-[21px] leading-tight text-white">{title}</p>
+          <p className="truncate text-[12.5px] text-white/80">{placeLine}</p>
+          <p className="truncate text-[12.5px] text-white/70">{whenLine}</p>
+        </div>
+        {pill ? (
+          <span className="shrink-0 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-foreground">
+            {pill}
+          </span>
+        ) : null}
+      </div>
+      {photo ? (
+        <span className="absolute right-2.5 top-2.5 rounded-full bg-black/25 px-2 py-0.5 text-[10.5px] text-white/85">
+          {photoCreditLine(photo)}
+        </span>
+      ) : null}
+    </div>
+  );
+}

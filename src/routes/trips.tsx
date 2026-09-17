@@ -9,6 +9,11 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { SectionAction, TripSection } from "@/components/TripSection";
+import { TripBanner } from "@/components/TripBanner";
+import { TimelineGlyphMark } from "@/components/TimelineGlyph";
+import { useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import { pickTripPhoto } from "@/lib/trip-card";
+import { timeForRail } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { TripTodos } from "@/components/TripTodos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
@@ -117,6 +122,7 @@ function TripsPage() {
     (user?.user_metadata?.["display_name"] as string | undefined) ??
     user?.email?.split("@")[0] ??
     "Traveller";
+  const { photos } = useTripPhotos(t.uid);
 
   return (
     <AppShell eyebrow="Trip folders" title="Everything, already filed.">
@@ -301,6 +307,7 @@ function TripsPage() {
                 <LiveTripCard
                   key={trip.id}
                   trip={trip}
+                  photos={photos}
                   members={t.members.filter((m) => m.trip_id === trip.id)}
                   companionsLine={tripCompanionsLine(
                     t.members.filter((m) => m.trip_id === trip.id),
@@ -358,6 +365,7 @@ function TripsPage() {
 
 function LiveTripCard({
   trip,
+  photos,
   members,
   companionsLine,
   open,
@@ -371,6 +379,7 @@ function LiveTripCard({
   onRemoveMember,
 }: {
   trip: TripRow;
+  photos: TripPhotoRow[];
   members: MemberRow[];
   companionsLine: string;
   open: boolean;
@@ -480,26 +489,29 @@ function LiveTripCard({
   const timelineGroups = groupTimelineByDay(board.items);
   const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
 
+  // The trip's own photo, out of the one list loaded for the whole page.
+  const banner = pickTripPhoto(photos, {
+    city: trip.city,
+    country: trip.country,
+    cities: cities.stops.map((stop) => stop.city),
+  });
+
   return (
     <article className="card-soft overflow-hidden">
-      <div className="flex items-start gap-1 p-4 pb-3">
-        <button onClick={onToggle} className="min-w-0 flex-1 text-left">
-          <span className="label-caps">
-            {trip.status === "past"
-              ? "Past"
-              : trip.status === "active"
-                ? "In progress"
-                : "Upcoming"}
-          </span>
-          <h2 className="mt-1 text-[22px] leading-tight">{trip.title}</h2>
-          <p className="text-[13px] text-muted-foreground">
-            {formatTripLocation(trip.city, trip.country)}
-            {trip.start_date
-              ? ` · ${trip.dates_status === "tentative" ? "Tentative · " : ""}${trip.start_date}${trip.end_date ? ` – ${trip.end_date}` : ""}`
-              : ""}
-          </p>
-          <p className="mt-1 truncate text-[13px] text-muted-foreground">{companionsLine}</p>
-        </button>
+      <button onClick={onToggle} className="block w-full text-left">
+        <TripBanner
+          title={trip.title}
+          city={trip.city}
+          country={trip.country}
+          cities={cities.stops.map((stop) => stop.city)}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          tentative={trip.dates_status === "tentative"}
+          photo={banner}
+          companions={companionsLine}
+        />
+      </button>
+      <div className="flex items-center gap-1 p-3">
         <button
           data-guide="bea-plan"
           aria-label="Let Béa plan this trip"
@@ -548,6 +560,16 @@ function LiveTripCard({
         >
           <Settings className="size-4" />
         </button>
+        <span className="ml-auto truncate pl-2 text-[12.5px] text-muted-foreground">
+          {open
+            ? "Tap the photo to close"
+            : [
+                board.items.length ? `${board.items.length} entries` : "",
+                cities.stops.length ? `${cities.stops.length} stops` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Tap to open"}
+        </span>
       </div>
 
       {open && (
@@ -684,12 +706,15 @@ function LiveTripCard({
                                 }))
                               }
                               aria-expanded={dayOpen}
-                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2 text-left"
+                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
                             >
-                              <span className="text-[13px] font-semibold">
-                                {group.label}
-                                <span className="ml-2 font-normal text-muted-foreground">
-                                  {group.items.length}
+                              <span className="min-w-0">
+                                <span className="block font-display text-[16px] leading-tight">
+                                  {group.label}
+                                </span>
+                                <span className="block text-[12px] text-muted-foreground">
+                                  {group.items.length}{" "}
+                                  {group.items.length === 1 ? "thing" : "things"}
                                 </span>
                               </span>
                               <ChevronDown
@@ -714,7 +739,7 @@ function LiveTripCard({
                             )}
                           </div>
                           {dayOpen && (
-                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden border-l border-border py-3 pl-4">
+                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
                               {group.items.map((item) => (
                                 <TimelineEntry
                                   key={item.id}
@@ -734,7 +759,7 @@ function LiveTripCard({
                     })}
                   </div>
                 ) : (
-                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden border-l border-border pl-4">
+                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
                     {board.items.map((item, i) => (
                       <TimelineEntry
                         key={item.id}
@@ -1345,77 +1370,82 @@ function TimelineEntry({
   onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
 }) {
   const [kept, setKept] = useState(false);
-  const when = showDay
-    ? [item.day_date, item.time_label].filter(Boolean).join(" · ")
-    : (item.time_label ?? "");
+  const rail = timeForRail(item.time_label);
 
   return (
-    <li className="relative min-w-0">
-      <span className="absolute -left-[21px] top-1.5 size-2 rounded-full bg-primary" />
-      <p className="text-[12px] uppercase tracking-wider text-muted-foreground">
-        {[when, item.kind].filter(Boolean).join(" · ")}
+    <li className="relative flex min-w-0 gap-3">
+      {/* Time reads down the page as a column, so a day can be scanned rather
+          than read. The kind moves into the glyph beside it. */}
+      <p className="w-[52px] shrink-0 pt-0.5 text-[13.5px] font-semibold tabular-nums text-foreground">
+        {rail}
       </p>
-      <input
-        defaultValue={item.title}
-        onFocus={() => onEdit(item.title)}
-        onBlur={(e) => {
-          onEdit(null);
-          if (e.target.value.trim() && e.target.value !== item.title)
-            onUpdate({ title: e.target.value.trim() });
-        }}
-        className="w-full min-w-0 truncate bg-transparent text-[15px] font-medium outline-none"
-      />
-      <TimelineDetailInput
-        detail={item.detail}
-        onFocus={() => onEdit(item.title)}
-        onCommit={(next) => {
-          onEdit(null);
-          const prev = stripEmbeddedMapsUrl(item.detail);
-          if (next !== prev) onUpdate({ detail: next || null });
-        }}
-      />
-      {item.address && (
-        <p className="break-words text-[12px] text-muted-foreground">
-          📍 {item.address}
-          {item.lat != null && item.lon != null && (
-            <a
-              href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
-              target="_blank"
-              rel="noreferrer"
-              className="ml-2 font-semibold text-primary underline"
-            >
-              Map
-            </a>
-          )}
-        </p>
-      )}
-      <StopDirections leg={leg} />
-      <div className="mt-0.5 flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-[12px] text-muted-foreground underline"
-        >
-          Remove
-        </button>
-        {onKeep && item.kind !== "note" && (
+      <TimelineGlyphMark item={item} />
+      <div className="min-w-0 flex-1">
+        {showDay && item.day_date ? (
+          <p className="text-[12px] text-muted-foreground">{item.day_date}</p>
+        ) : null}
+        <input
+          defaultValue={item.title}
+          onFocus={() => onEdit(item.title)}
+          onBlur={(e) => {
+            onEdit(null);
+            if (e.target.value.trim() && e.target.value !== item.title)
+              onUpdate({ title: e.target.value.trim() });
+          }}
+          className="w-full min-w-0 truncate bg-transparent text-[15px] font-medium outline-none"
+        />
+        <TimelineDetailInput
+          detail={item.detail}
+          onFocus={() => onEdit(item.title)}
+          onCommit={(next) => {
+            onEdit(null);
+            const prev = stripEmbeddedMapsUrl(item.detail);
+            if (next !== prev) onUpdate({ detail: next || null });
+          }}
+        />
+        {item.address && (
+          <p className="break-words text-[12px] text-muted-foreground">
+            📍 {item.address}
+            {item.lat != null && item.lon != null && (
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-2 font-semibold text-primary underline"
+              >
+                Map
+              </a>
+            )}
+          </p>
+        )}
+        <StopDirections leg={leg} />
+        <div className="mt-0.5 flex items-center gap-3">
           <button
             type="button"
-            disabled={kept}
-            onClick={() => {
-              void onKeep(item).then(
-                () => setKept(true),
-                (e: unknown) =>
-                  toast.error(
-                    e instanceof Error ? e.message : "Couldn't save that to your places.",
-                  ),
-              );
-            }}
-            className="text-[12px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
+            onClick={onRemove}
+            className="text-[12px] text-muted-foreground underline"
           >
-            {kept ? "Saved to your places" : "Save to my places"}
+            Remove
           </button>
-        )}
+          {onKeep && item.kind !== "note" && (
+            <button
+              type="button"
+              disabled={kept}
+              onClick={() => {
+                void onKeep(item).then(
+                  () => setKept(true),
+                  (e: unknown) =>
+                    toast.error(
+                      e instanceof Error ? e.message : "Couldn't save that to your places.",
+                    ),
+                );
+              }}
+              className="text-[12px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
+            >
+              {kept ? "Saved to your places" : "Save to my places"}
+            </button>
+          )}
+        </div>
       </div>
     </li>
   );
