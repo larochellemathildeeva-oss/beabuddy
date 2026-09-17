@@ -210,6 +210,12 @@ export function AppShell({
 
         <main
           ref={scrollRef}
+          // The app scrolls inside this element, not the window, so the
+          // router's scroll restoration has to be told where to look. Without
+          // it, going back to the trips list from a trip lands at the top of
+          // the list rather than on the card you left — the single thing that
+          // makes a back button feel broken.
+          data-scroll-restoration-id="app-main"
           className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3"
         >
           {/* Keyed by path so each destination plays its plane's entrance once.

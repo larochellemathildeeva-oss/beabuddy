@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
+import { guideKeyForPath } from "@/lib/guide-key";
 import { Sparkles, X } from "lucide-react";
 import {
   findGuideTarget,
@@ -104,14 +105,34 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='join-trip']",
       },
       {
+        title: "Open a trip",
+        body: "Tap any trip to open its own page: where you're going city by city, the shared timeline, who's invited, the budget, Béa's planner, things to do, and packing. Everything about one trip lives there rather than unfolding here.",
+        selector: "[data-guide='trip-list']",
+      },
+      {
+        title: "Trip documents",
+        body: "Reservations, tickets, and confirmations for the trip — encrypted on your device and locked behind a passcode.",
+        selector: "[data-guide='document-vault']",
+      },
+    ],
+  },
+  "/trips/$tripId": {
+    name: "Inside a trip",
+    steps: [
+      {
         title: "Let Béa plan",
-        body: "The sparkle on a trip card is Béa's planner, not the page tour. It can build a plan, import one, rearrange the stops you already have, or compare two drafts. Costs are optional. After a draft you can ask for alternatives or rebuild the trip. Béa does not book or check availability — you reserve hotels, tables and tickets yourself.",
+        body: "The sparkle is Béa's planner, not the page tour. It can build a plan, import one, rearrange the stops you already have, or compare two drafts. Costs are optional. After a draft you can ask for alternatives or rebuild the trip. Béa does not book or check availability — you reserve hotels, tables and tickets yourself.",
         selector: "[data-guide='bea-plan']",
       },
       {
-        title: "Inside a trip",
-        body: "Tap any trip to open it: where you're going city by city, the shared timeline, who's invited, the budget, and walking or driving directions. After Get directions you can add those legs to the timeline. Turn-by-turn stays offline only if you download it in trip settings.",
-        selector: "[data-guide='trip-list']",
+        title: "Where you're going",
+        body: "City by city, with arrive and depart dates. Stops feed the timeline, the directions and the map, so filling this in once saves you doing it three times.",
+        selector: "[data-guide='trip-stops']",
+      },
+      {
+        title: "The shared timeline",
+        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn stays offline only if you download it in trip settings.",
+        selector: "[data-guide='trip-timeline']",
       },
       {
         title: "Optimize the timeline",
@@ -127,11 +148,6 @@ const guides: Record<string, Guide> = {
         title: "Packing lists",
         body: "The paper icon adds a saved list to this trip. Create and edit those reusable packs under You — weekend, beach, ski, work — then add a copy here to tick things off.",
         selector: "[data-guide='packing-lists']",
-      },
-      {
-        title: "Trip documents",
-        body: "Reservations, tickets, and confirmations for the trip — encrypted on your device and locked behind a passcode.",
-        selector: "[data-guide='document-vault']",
       },
     ],
   },
@@ -368,7 +384,10 @@ export function PageGuide() {
   const [i, setI] = useState(0);
   const [box, setBox] = useState<SpotlightBox | null>(null);
 
-  const guide = useMemo(() => guides[pathname] ?? null, [pathname]);
+  const guide = useMemo(() => {
+    const key = guideKeyForPath(pathname, Object.keys(guides));
+    return key ? (guides[key] ?? null) : null;
+  }, [pathname]);
   const steps = useMemo(
     () =>
       !guide || typeof document === "undefined"

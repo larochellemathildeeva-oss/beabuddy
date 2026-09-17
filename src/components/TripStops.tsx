@@ -160,6 +160,7 @@ export function TripStops({ tripId, uid }: { tripId: string; uid: string | null 
 
   return (
     <Section
+      guide="trip-stops"
       title="Where you're going"
       hint={
         s.stops.length === 0

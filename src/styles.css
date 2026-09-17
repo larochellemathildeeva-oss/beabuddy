@@ -428,6 +428,59 @@
 }
 
 /**
+ * Shared-element transitions.
+ *
+ * A card in the list and the page it opens give their banner the same
+ * `view-transition-name`, and the browser tweens position and size between
+ * them for free — all that is chosen here is the timing.
+ *
+ * Two things about this are load-bearing. The name must be unique in the
+ * document: two elements sharing one silently disables the transition for
+ * both, which is why it is keyed by trip id. And support is uneven, notably
+ * on Safari; the API degrades to an ordinary cut on its own, so there is no
+ * fallback to write.
+ */
+::view-transition-group(*) {
+  animation-duration: var(--t-arrive);
+  animation-timing-function: var(--ease-standard);
+}
+
+/* The old page should not hang around behind the new one. */
+::view-transition-old(root) {
+  animation-duration: var(--t-move);
+  animation-timing-function: var(--ease-exit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+  }
+}
+
+/**
+ * Sections arrive a beat apart rather than all at once.
+ *
+ * Three steps and then everything else together: past about four the stagger
+ * stops reading as considered and starts reading as slow. The delays are a
+ * fraction of one --t-move, so the whole group is still in place well inside
+ * half a second.
+ */
+.section-stagger > * {
+  animation: rise-in var(--t-move) var(--ease-standard) both;
+}
+.section-stagger > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.section-stagger > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.section-stagger > *:nth-child(n + 4) {
+  animation-delay: 135ms;
+}
+
+/**
  * The three planes.
  *
  * The shell stamps `data-plane` from the route, so the destination decides how

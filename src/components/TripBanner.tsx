@@ -30,6 +30,7 @@ export function TripBanner({
   tentative,
   photo,
   companions,
+  viewTransitionName,
 }: {
   title: string;
   city?: string | null;
@@ -40,6 +41,16 @@ export function TripBanner({
   tentative?: boolean;
   photo: TripPhotoRow | null;
   companions?: string;
+  /**
+   * Names this banner for a cross-document-free view transition. The card in
+   * the list and the page it opens pass the same name, and the browser tweens
+   * the photograph between them instead of cutting.
+   *
+   * It must be unique within the document: two banners sharing a name silently
+   * disables the transition for both, which is why it is keyed by trip id and
+   * never by anything a second trip could also be.
+   */
+  viewTransitionName?: string | undefined;
 }) {
   const url = useSignedPhoto(photo?.storage_path ?? null);
   const tint = fallbackTint(title || city || "Béa");
@@ -59,7 +70,10 @@ export function TripBanner({
     return (
       <div
         className="relative h-[136px] w-full overflow-hidden"
-        style={{ backgroundImage: `linear-gradient(150deg, ${tint.from}, ${tint.to})` }}
+        style={{
+          backgroundImage: `linear-gradient(150deg, ${tint.from}, ${tint.to})`,
+          ...(viewTransitionName ? { viewTransitionName } : {}),
+        }}
       >
         <span
           aria-hidden
@@ -84,8 +98,13 @@ export function TripBanner({
   }
 
   return (
-    <div className="relative h-[136px] w-full overflow-hidden">
-      <img src={url} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />
+    <div
+      className="relative h-[136px] w-full overflow-hidden"
+      style={viewTransitionName ? { viewTransitionName } : undefined}
+    >
+      {/* eager, not lazy: a transition cannot tween an image the browser has
+          not decoded yet, and it would land as a grey box that fills in after. */}
+      <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
       {/* Dark at the bottom only, so the title stays legible over any
           photograph while the top of the picture stays the picture. */}
       <span

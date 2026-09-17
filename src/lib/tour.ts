@@ -226,21 +226,21 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "Let Béa plan",
-    body: "On a trip, build a day-by-day plan from prefs and tagged recs — or import a photo or pasted itinerary. You're never starting from scratch.",
+    body: "Open a trip and the sparkle builds a day-by-day plan from your prefs and tagged recs — or imports a photo or pasted itinerary. You're never starting from scratch.",
     to: "/trips",
-    selector: "[data-guide='bea-plan']",
+    selector: "[data-guide='trip-list']",
   },
   {
     title: "Optimize",
-    body: "Reshuffle stops you already have — closest together, rainy-day indoor, easy mornings, rest day, even pace, meals first. You approve before it saves.",
+    body: "Inside a trip, Optimize reshuffles stops you already have — closest together, rainy-day indoor, easy mornings, rest day, even pace, meals first. You approve before it saves.",
     to: "/trips",
-    selector: "[data-guide='optimize-trip']",
+    selector: "[data-guide='trip-list']",
   },
   {
     title: "Compare drafts",
-    body: "Still deciding? Compare two plan drafts side by side — metrics and a clear pick grounded in how you travel.",
+    body: "Still deciding? Inside a trip, Compare puts two plan drafts side by side — metrics and a clear pick grounded in how you travel.",
     to: "/trips",
-    selector: "[data-guide='bea-plan']",
+    selector: "[data-guide='trip-list']",
   },
 
   // —— Pillar 6: Travel Operating System ——

@@ -1,51 +1,24 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, FileText, ListChecks, Plus, Settings, Sparkles, X } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { PackingLists } from "@/components/PackingLists";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { TripBudget } from "@/components/TripBudget";
-import { TripStops } from "@/components/TripStops";
-import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
-import { TimelineGlyphMark } from "@/components/TimelineGlyph";
+import { TripListSkeleton } from "@/components/Skeletons";
 import { useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
-import { timeForRail } from "@/lib/timeline-kind";
-import { TimelineEntryForm } from "@/components/TimelineEntryForm";
-import { TripTodos } from "@/components/TripTodos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
-import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
-import { useUndo } from "@/hooks/useUndo";
-import { addRecommendationOnce } from "@/hooks/useRecommendations";
-import { toNewReco } from "@/lib/captured-place";
-import { ItineraryImport } from "@/components/ItineraryImport";
-import { ItineraryDirections } from "@/components/ItineraryDirections";
-
 import { useAuth } from "@/hooks/useAuth";
-import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
-import type { RouteLeg } from "@/lib/directions.functions";
-import {
-  useTripBoard,
-  useTrips,
-  type ItineraryRow,
-  type MemberRow,
-  type TripRow,
-} from "@/hooks/useTrips";
+import { useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
-import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
-import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
-import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
-import { groupTimelineByDay } from "@/lib/timeline-groups";
-import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
+import { locationFromParsedPlace } from "@/lib/place-label";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
-import { toast } from "sonner";
 import type { DatesStatus } from "@/lib/trip-dates";
-import logo from "@/assets/bea-logo.png";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -70,36 +43,15 @@ export const Route = createFileRoute("/trips")({
   component: TripsPage,
 });
 
-const OPEN_TRIP_KEY = "bea.trips.open";
-
 function TripsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const t = useTrips();
-  const [openId, setOpenId] = useState<string>("");
-
-  // Switching tabs unmounts this route, so the expanded trip used to collapse and
-  // take its timeline, budget and saved directions with it — which reads as
-  // "everything disappeared" rather than "the card closed". Remember it for the
-  // session. Restored in an effect, not in useState, so SSR and the first client
-  // render agree.
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(OPEN_TRIP_KEY);
-      if (stored) setOpenId(stored);
-    } catch {
-      /* private mode, or storage disabled — just start collapsed */
-    }
-  }, []);
-
-  const openTrip = useCallback((id: string) => {
-    setOpenId(id);
-    try {
-      if (id) sessionStorage.setItem(OPEN_TRIP_KEY, id);
-      else sessionStorage.removeItem(OPEN_TRIP_KEY);
-    } catch {
-      /* not being able to remember it is not worth failing the click over */
-    }
-  }, []);
+  // A trip is a place you go to, not a drawer you open. It used to be an
+  // accordion, which needed a sessionStorage note to survive a tab change —
+  // otherwise the itinerary, budget and saved directions all vanished, which
+  // reads as "everything disappeared" rather than "the card closed". A route
+  // has that for free, and the note is gone.
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
   const [form, setForm] = useState({
@@ -251,7 +203,11 @@ function TripsPage() {
                       });
                       if (packTemplateId) await packing.attachToTrip(packTemplateId, id);
                       setPackTemplateId("");
-                      openTrip(id);
+                      await navigate({
+                        to: "/trips/$tripId",
+                        params: { tripId: id },
+                        viewTransition: true,
+                      });
                       setForm({
                         title: "",
                         city: "",
@@ -287,7 +243,11 @@ function TripsPage() {
                     setError("");
                     try {
                       const id = await t.joinTrip(code, myName);
-                      openTrip(id);
+                      await navigate({
+                        to: "/trips/$tripId",
+                        params: { tripId: id },
+                        viewTransition: true,
+                      });
                       setCode("");
                       setJoining(false);
                     } catch (e) {
@@ -304,25 +264,16 @@ function TripsPage() {
             {error && <p className="text-[13px] text-destructive">{error}</p>}
 
             <div data-guide="trip-list" className="space-y-3">
+              {t.loading && t.trips.length === 0 && <TripListSkeleton />}
               {t.trips.map((trip) => (
-                <LiveTripCard
+                <TripListCard
                   key={trip.id}
                   trip={trip}
                   photos={photos}
-                  members={t.members.filter((m) => m.trip_id === trip.id)}
                   companionsLine={tripCompanionsLine(
                     t.members.filter((m) => m.trip_id === trip.id),
                     t.uid,
                   )}
-                  open={openId === trip.id}
-                  onToggle={() => openTrip(openId === trip.id ? "" : trip.id)}
-                  me={{ id: t.uid, name: myName }}
-                  onInvite={() => t.inviteToTrip(trip.id)}
-                  onRevokeInvite={(code) => t.revokeTripInvite(trip.id, code)}
-                  onUpdate={(patch) => t.updateTrip(trip.id, patch)}
-                  onDelete={() => t.deleteTrip(trip.id)}
-                  onLeave={() => t.leaveTrip(trip.id)}
-                  onRemoveMember={(userId) => t.removeTripMember(trip.id, userId)}
                 />
               ))}
               {t.trips.length === 0 && !t.loading && (
@@ -364,133 +315,25 @@ function TripsPage() {
   );
 }
 
-function LiveTripCard({
+/**
+ * A trip in the list: its photograph, and the way in.
+ *
+ * The card carries the same `view-transition-name` as the banner on the trip's
+ * own page, so tapping it hands the photograph to the destination rather than
+ * cutting. `viewTransition` on the Link is what asks the browser to do it; on
+ * a browser that does not support same-document transitions this degrades to
+ * the ordinary navigation with no fallback code needed.
+ */
+function TripListCard({
   trip,
   photos,
-  members,
   companionsLine,
-  open,
-  onToggle,
-  me,
-  onInvite,
-  onRevokeInvite,
-  onUpdate,
-  onDelete,
-  onLeave,
-  onRemoveMember,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
-  members: MemberRow[];
   companionsLine: string;
-  open: boolean;
-  onToggle: () => void;
-  me: { id: string | null; name: string };
-  onInvite: () => Promise<string>;
-  onRevokeInvite: (code: string) => Promise<void>;
-  onUpdate: (patch: Partial<TripRow>) => Promise<void>;
-  onDelete: () => Promise<void>;
-  onLeave: () => Promise<void>;
-  onRemoveMember: (userId: string) => Promise<void>;
 }) {
-  const [plannerOpen, setPlannerOpen] = useState(false);
-  const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
-  // The Béa planner button lives in the card header, outside the expanded view,
-  // so anything it writes to needs a trip id even while the card is collapsed —
-  // otherwise saving its plan failed with "Open a trip first".
-  const activeId = open || plannerOpen ? trip.id : null;
-  const board = useTripBoard(activeId, me);
-  const { removeWithUndo } = useUndo();
-  const budget = useTripBudget(activeId);
-  const cities = useTripStops(activeId, me.id);
-  const dir = useOfflineDirections(activeId);
-  const directionStops = timelineStopsForDirections(board.items);
-  const routeStops = stopsForDirections(cities.stops, board.items);
-  const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
-  // Saved directions are only the right legs for these rows when they were
-  // built from this exact stop list. They used to be indexed in blindly, so a
-  // city-to-city download showed up underneath timeline entries.
-  /**
-   * Keep a timeline stop in the vault. A place worth going to on this trip is
-   * a place worth remembering after it — that is the whole premise, and the
-   * timeline had no way to get anything back out.
-   */
-  const keepItemAsReco = async (item: ItineraryRow) => {
-    await addRecommendationOnce(
-      toNewReco(
-        {
-          name: item.title,
-          ...(item.address ? { address: item.address } : {}),
-          ...(trip.city ? { city: trip.city } : {}),
-          ...(trip.country ? { country: trip.country } : {}),
-          ...(item.lat != null ? { lat: item.lat } : {}),
-          ...(item.lon != null ? { lon: item.lon } : {}),
-          source: `Trip: ${trip.title}`,
-        },
-        {
-          category:
-            item.kind === "meal" ? "Restaurant" : item.kind === "lodging" ? "Stay" : "Place",
-          ...(item.detail ? { notes: item.detail } : {}),
-        },
-      ),
-    );
-    const line = beaLine("recs.saved");
-    toast.success(line.title, { description: line.body });
-  };
-
-  /** Remove a timeline row, offering to put it back for a few seconds. */
-  const removeTimelineItem = (item: ItineraryRow) =>
-    removeWithUndo({
-      label: item.title,
-      remove: () => board.removeItem(item.id),
-      // Comes back at the end of its day rather than its old position.
-      restore: async () => {
-        await board.addItem({
-          kind: item.kind,
-          title: item.title,
-          ...(item.day_date ? { day_date: item.day_date } : {}),
-          ...(item.time_label ? { time_label: item.time_label } : {}),
-          ...(item.detail ? { detail: item.detail } : {}),
-          ...(item.address ? { address: item.address } : {}),
-          ...(item.lat != null ? { lat: item.lat } : {}),
-          ...(item.lon != null ? { lon: item.lon } : {}),
-        });
-      },
-    });
-
-  const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
-  const legFor = (index: number) => (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
-  const templates = usePacking(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sheetSection, setSheetSection] = useState<
-    "invite" | "budget" | "edit" | "offline" | "packing" | null
-  >(null);
-  const [packTemplateId, setPackTemplateId] = useState("");
-  const [packMsg, setPackMsg] = useState("");
-  const [packSignal, setPackSignal] = useState(0);
-  const [todoSignal, setTodoSignal] = useState(0);
-  const [inviteCode, setInviteCode] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [addingTimeline, setAddingTimeline] = useState(false);
-  const [timelineOpen, setTimelineOpen] = useState(true);
-  const [timelineByDay, setTimelineByDay] = useState(true);
-  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
-  /** Day the add form should land on, set by the per-day "Add here" buttons. */
-  const [addDay, setAddDay] = useState("");
-  const [tripForm, setTripForm] = useState({
-    title: trip.title,
-    city: formatTripLocation(trip.city, trip.country),
-    country: trip.country ?? "",
-    start_date: trip.start_date ?? "",
-    end_date: trip.end_date ?? "",
-    dates_status: trip.dates_status,
-    status: trip.status,
-  });
-  const others = board.present.filter((p) => p.userId !== me.id);
-  const timelineGroups = groupTimelineByDay(board.items);
-  const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
-
-  // The trip's own photo, out of the one list loaded for the whole page.
+  const cities = useTripStops(trip.id, null);
   const banner = pickTripPhoto(photos, {
     city: trip.city,
     country: trip.country,
@@ -498,1045 +341,35 @@ function LiveTripCard({
   });
 
   return (
-    <article className="card-soft overflow-hidden">
-      <button onClick={onToggle} className="block w-full text-left">
-        <TripBanner
-          title={trip.title}
-          city={trip.city}
-          country={trip.country}
-          cities={cities.stops.map((stop) => stop.city)}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-          tentative={trip.dates_status === "tentative"}
-          photo={banner}
-          companions={companionsLine}
-        />
-      </button>
-      <div className="flex items-center gap-1 p-3">
-        <button
-          data-guide="bea-plan"
-          aria-label="Let Béa plan this trip"
-          title="Let Béa plan this trip"
-          onClick={() => {
-            if (!open) onToggle();
-            setPlannerTab("import");
-            setPlannerOpen(true);
-          }}
-          className="relative grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10"
-        >
-          <img src={logo} alt="" className="size-7 object-contain" />
-          <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
-        </button>
-        <button
-          data-guide="trip-todos"
-          aria-label="Things to do for this trip"
-          title="Things to do for this trip"
-          onClick={() => {
-            if (!open) onToggle();
-            setTodoSignal((n) => n + 1);
-          }}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
-        >
-          <ListChecks className="size-4" />
-        </button>
-        <button
-          data-guide="packing-lists"
-          aria-label="Add packing list to this trip"
-          title="Add packing list to this trip"
-          onClick={() => {
-            if (!open) onToggle();
-            setPackSignal((n) => n + 1);
-          }}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
-        >
-          <FileText className="size-4" />
-        </button>
-        <button
-          aria-label="Trip settings"
-          onClick={() => {
-            setSettingsOpen(true);
-            setSheetSection(null);
-          }}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
-        >
-          <Settings className="size-4" />
-        </button>
-        <span className="ml-auto truncate pl-2 text-[12.5px] text-muted-foreground">
-          {open
-            ? "Tap the photo to close"
-            : [
-                board.items.length ? `${board.items.length} entries` : "",
-                cities.stops.length ? `${cities.stops.length} stops` : "",
-              ]
-                .filter(Boolean)
-                .join(" · ") || "Tap to open"}
-        </span>
-      </div>
-
-      {open && (
-        <div className="rise border-t border-border px-4 pb-4 pt-3">
-          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-              <p className="text-[13px] text-muted-foreground">
-                {others.length === 0
-                  ? "You're the only one here right now"
-                  : others.some((o) => o.editing)
-                    ? `${others.find((o) => o.editing)?.name} is editing ${others.find((o) => o.editing)?.editing}`
-                    : `${others.map((o) => o.name).join(", ")} ${others.length === 1 ? "is" : "are"} here`}
-              </p>
-            </div>
-            <div className="flex -space-x-1.5">
-              {others.slice(0, 3).map((o) => (
-                <span
-                  key={o.userId}
-                  title={o.name}
-                  className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[11.5px] font-semibold text-primary-foreground"
-                >
-                  {o.name.slice(0, 1).toUpperCase()}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <TripStops tripId={trip.id} uid={me.id} />
-
-          <TripTodos
-            tripId={trip.id}
-            uid={me.id}
-            international={cities.countries.length > 1 || Boolean(trip.country)}
-            hasLodging={board.items.some((item) => item.kind === "lodging")}
-            hasFlights={board.items.some((item) => item.kind === "transport")}
-            tripStart={trip.start_date}
-            openSignal={todoSignal}
-          />
-
-          <PackingLists
-            tripId={trip.id}
-            label="Packing list for this trip"
-            hint="Only this trip. Tick things off as you pack."
-            openSignal={packSignal}
-            hideTrigger
-          />
-
-          {trip.budget_enabled && <TripBudget tripId={trip.id} />}
-
-          <Section
-            guide="trip-timeline"
-            title="Your itinerary"
-            hint={
-              board.items.length === 0
-                ? "Activities, meals, transport and notes."
-                : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`
-            }
-            open={timelineOpen}
-            onToggle={() => setTimelineOpen((v) => !v)}
-            actions={
-              <>
-                <SectionAction
-                  onClick={() => {
-                    setAddDay("");
-                    setTimelineOpen(true);
-                    setAddingTimeline(!addingTimeline);
-                  }}
-                >
-                  {addingTimeline ? "Cancel" : "Add"}
-                </SectionAction>
-                {board.items.length >= 2 && (
-                  <SectionAction
-                    guide="optimize-trip"
-                    onClick={() => {
-                      setPlannerTab("optimize");
-                      setPlannerOpen(true);
-                    }}
-                  >
-                    Optimize
-                  </SectionAction>
-                )}
-              </>
-            }
-          >
-            {timelineOpen && (
-              <div className="space-y-3">
-                {board.items.length > 0 && (
-                  <div
-                    role="group"
-                    aria-label="Timeline layout"
-                    className="flex gap-1.5 rounded-xl border border-border bg-elevated p-1"
-                  >
-                    {(
-                      [
-                        ["list", "All entries"],
-                        ["day", "By day"],
-                      ] as const
-                    ).map(([mode, label]) => {
-                      const active = mode === "day" ? timelineByDay : !timelineByDay;
-                      return (
-                        <button
-                          key={mode}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setTimelineByDay(mode === "day")}
-                          className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
-                            active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {board.items.length === 0 ? null : timelineByDay ? (
-                  <div className="space-y-3">
-                    {timelineGroups.map((group) => {
-                      const dayOpen = !collapsedDays[group.key];
-                      return (
-                        <div
-                          key={group.key || "undated"}
-                          className="rounded-xl border border-border/60"
-                        >
-                          <div className="flex items-center gap-1 pr-2">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCollapsedDays((prev) => ({
-                                  ...prev,
-                                  [group.key]: !prev[group.key],
-                                }))
-                              }
-                              aria-expanded={dayOpen}
-                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
-                            >
-                              <span className="min-w-0">
-                                <span className="block font-display text-[16px] leading-tight">
-                                  {group.label}
-                                </span>
-                                <span className="block text-[12px] text-muted-foreground">
-                                  {group.items.length}{" "}
-                                  {group.items.length === 1 ? "thing" : "things"}
-                                </span>
-                              </span>
-                              <ChevronDown
-                                className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
-                                  dayOpen ? "" : "-rotate-90"
-                                }`}
-                                aria-hidden
-                              />
-                            </button>
-                            {group.key && (
-                              <button
-                                type="button"
-                                aria-label={`Add something to ${group.label}`}
-                                onClick={() => {
-                                  setAddDay(group.key);
-                                  setAddingTimeline(true);
-                                }}
-                                className="grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
-                              >
-                                <Plus className="size-3.5" aria-hidden />
-                              </button>
-                            )}
-                          </div>
-                          {dayOpen && (
-                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
-                              {group.items.map((item) => (
-                                <TimelineEntry
-                                  key={item.id}
-                                  item={item}
-                                  showDay={false}
-                                  leg={legFor(itemIndexById.get(item.id) ?? -1)}
-                                  onEdit={(field) => board.setEditing(field)}
-                                  onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                                  onRemove={() => void removeTimelineItem(item)}
-                                  onKeep={keepItemAsReco}
-                                />
-                              ))}
-                            </ol>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
-                    {board.items.map((item, i) => (
-                      <TimelineEntry
-                        key={item.id}
-                        item={item}
-                        showDay
-                        leg={legFor(i)}
-                        onEdit={(field) => board.setEditing(field)}
-                        onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                        onRemove={() => void removeTimelineItem(item)}
-                        onKeep={keepItemAsReco}
-                      />
-                    ))}
-                  </ol>
-                )}
-
-                {addingTimeline && (
-                  <TimelineEntryForm
-                    tripStart={trip.start_date}
-                    tripEnd={trip.end_date}
-                    {...(addDay ? { openDay: addDay } : {})}
-                    {...(directionArea ? { near: directionArea } : {})}
-                    existing={board.items.map((item) => ({
-                      title: item.title,
-                      address: item.address,
-                      lat: item.lat,
-                      lon: item.lon,
-                    }))}
-                    onAdd={board.addItem}
-                    onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
-                    onDone={() => {
-                      setAddingTimeline(false);
-                      setAddDay("");
-                    }}
-                  />
-                )}
-              </div>
-            )}
-          </Section>
-
-          <ItineraryDirections
-            stops={directionStops}
-            existingTitles={board.items.map((i) => i.title)}
-            onAddToTimeline={board.upsertItems}
-            onKeepOffline={dir.keep}
-            {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
-            {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
-            {...(directionArea ? { area: directionArea } : {})}
-          />
-        </div>
-      )}
-
-      <ItineraryImport
-        open={plannerOpen}
-        onClose={() => setPlannerOpen(false)}
-        defaultTab={plannerTab}
-        existingItems={board.items.map((item) => ({
-          id: item.id,
-          day_date: item.day_date,
-          time_label: item.time_label,
-          kind: item.kind,
-          title: item.title,
-          detail: item.detail,
-          address: item.address,
-          lat: item.lat,
-          lon: item.lon,
-        }))}
-        cities={cities.stops.map((stop) => ({
-          city: stop.city,
-          country: stop.country,
-          arrive_on: stop.arrive_on,
-          depart_on: stop.depart_on,
-          lat: stop.lat,
-          lon: stop.lon,
-        }))}
-        {...(trip.city ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") } : {})}
-        {...(trip.start_date ? { startDate: trip.start_date } : {})}
-        {...(trip.end_date ? { endDate: trip.end_date } : {})}
-        onAddItems={board.addItems}
-        onRemoveItems={board.removeItems}
-        onAddCosts={async (items) => {
-          if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
-          await budget.addItems(items);
-        }}
-        onApplySchedule={board.applySchedule}
-        onApplyDates={async (dates) => {
-          await onUpdate(dates);
-        }}
+    <Link
+      to="/trips/$tripId"
+      params={{ tripId: trip.id }}
+      viewTransition
+      className="card-soft block overflow-hidden"
+    >
+      <TripBanner
+        title={trip.title}
+        city={trip.city}
+        country={trip.country}
+        cities={cities.stops.map((stop) => stop.city)}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+        tentative={trip.dates_status === "tentative"}
+        photo={banner}
+        companions={companionsLine}
+        viewTransitionName={`trip-photo-${trip.id}`}
       />
-
-      {settingsOpen && (
-        <div
-          role="dialog"
-          aria-label="Trip settings"
-          onClick={() => setSettingsOpen(false)}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-card p-5 sm:rounded-2xl"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-display text-[19px] leading-snug">{trip.title}</p>
-              <button
-                aria-label="Close settings"
-                onClick={() => setSettingsOpen(false)}
-                className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <button
-                onClick={() => setSheetSection(sheetSection === "invite" ? null : "invite")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Invite a friend
-              </button>
-              {sheetSection === "invite" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  <p className="text-[12px] text-muted-foreground">
-                    Codes expire in 7 days and work once. Creating a new code revokes the previous
-                    open one.
-                  </p>
-                  <button
-                    onClick={async () => {
-                      const code = await onInvite();
-                      setInviteCode(code);
-                      await board.reload();
-                    }}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
-                  >
-                    Create an invite code
-                  </button>
-                  {(() => {
-                    const active = inviteCode
-                      ? { code: inviteCode, expires_at: null as string | null }
-                      : board.invites.find(
-                          (inv) =>
-                            !inv.revoked_at &&
-                            inv.use_count < inv.max_uses &&
-                            (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
-                        );
-                    if (!active) return null;
-                    return (
-                      <div className="mt-2 space-y-2 text-center">
-                        <p className="text-[14.5px] text-muted-foreground">
-                          Share this code:{" "}
-                          <span className="font-semibold tracking-widest text-foreground">
-                            {active.code}
-                          </span>
-                        </p>
-                        {active.expires_at && (
-                          <p className="text-[12px] text-muted-foreground">
-                            Expires {new Date(active.expires_at).toLocaleDateString()}
-                          </p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await onRevokeInvite(active.code);
-                            setInviteCode("");
-                            await board.reload();
-                          }}
-                          className="text-[13px] font-semibold text-destructive underline"
-                        >
-                          Revoke this code
-                        </button>
-                      </div>
-                    );
-                  })()}
-
-                  {members.length > 0 && (
-                    <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-[12px] font-semibold text-muted-foreground">
-                        People on this trip
-                      </p>
-                      <ul className="mt-2 space-y-2">
-                        {members.map((m) => {
-                          const isMe = m.user_id === me.id;
-                          const isOwner = m.user_id === trip.owner_id;
-                          const iAmOwner = me.id === trip.owner_id;
-                          const label =
-                            m.display_name?.trim() ||
-                            (isMe ? "You" : isOwner ? "Owner" : "Traveler");
-                          return (
-                            <li
-                              key={m.id}
-                              className="flex items-center justify-between gap-2 text-[14.5px]"
-                            >
-                              <span>
-                                {label}
-                                {isOwner ? " · owner" : ""}
-                                {isMe && !isOwner ? " · you" : ""}
-                              </span>
-                              {iAmOwner && !isMe && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (
-                                      !confirm(
-                                        `Remove ${label} from this trip? They will lose access immediately.`,
-                                      )
-                                    ) {
-                                      return;
-                                    }
-                                    try {
-                                      await onRemoveMember(m.user_id);
-                                    } catch (e) {
-                                      alert(e instanceof Error ? e.message : "Could not remove");
-                                    }
-                                  }}
-                                  className="text-[13px] font-semibold text-destructive underline"
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      {me.id && me.id !== trip.owner_id && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (
-                              !confirm("Leave this trip? You will lose access to the itinerary.")
-                            ) {
-                              return;
-                            }
-                            try {
-                              await onLeave();
-                              setSettingsOpen(false);
-                            } catch (e) {
-                              alert(e instanceof Error ? e.message : "Could not leave");
-                            }
-                          }}
-                          className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
-                        >
-                          Leave trip
-                        </button>
-                      )}
-                      {me.id === trip.owner_id &&
-                        members.some((m) => m.user_id !== me.id) === false && (
-                          <p className="mt-2 text-[12px] text-muted-foreground">
-                            You&apos;re the only person here. Delete the trip from settings if you
-                            want it gone.
-                          </p>
-                        )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "packing" ? null : "packing")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Attach a packing list
-              </button>
-              {sheetSection === "packing" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  {templates.packs.length === 0 ? (
-                    <p className="text-[13px] text-muted-foreground">
-                      No saved lists yet — create one under Profile → Create packing lists.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-[12px] text-muted-foreground">
-                        You get a copy — ticking things off only affects this trip.
-                      </p>
-                      <select
-                        value={packTemplateId}
-                        onChange={(e) => {
-                          setPackTemplateId(e.target.value);
-                          setPackMsg("");
-                        }}
-                        className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                      >
-                        <option value="">Choose a list…</option>
-                        {templates.packs.map((pk) => (
-                          <option key={pk.id} value={pk.id}>
-                            {pk.emoji} {pk.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        disabled={!packTemplateId}
-                        onClick={async () => {
-                          if (!packTemplateId) return;
-                          await templates.attachToTrip(packTemplateId, trip.id);
-                          setPackTemplateId("");
-                          setPackMsg("List attached — open the trip to tick items off.");
-                        }}
-                        className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                      >
-                        Attach a copy to this trip
-                      </button>
-                      {packMsg && (
-                        <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Offline directions
-                {dir.saved && (
-                  <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                    {savedAgoLabel(dir.saved.savedAt)}
-                    {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
-                  </span>
-                )}
-              </button>
-              {sheetSection === "offline" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  <p className="text-[12px] text-muted-foreground">
-                    Download the walk or drive between stops so the steps work with no service.
-                    Adding directions to the timeline saves the summary — not the offline map.
-                  </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
-                    {cities.stops.length >= 2
-                      ? `Covers your ${cities.stops.length} cities, in order.`
-                      : "Covers the timeline stops that have a place on the map."}{" "}
-                    You can also keep the legs from “Directions between stops” on the trip itself.
-                  </p>
-                  <button
-                    disabled={dir.busy || routeStops.length < 2}
-                    onClick={() => void dir.download(routeStops, directionArea)}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    {dir.busy
-                      ? "Saving…"
-                      : dir.saved
-                        ? "Refresh directions"
-                        : "Download directions"}
-                  </button>
-                  {routeStops.length < 2 && (
-                    <p className="mt-2 text-[12px] text-muted-foreground">
-                      Add at least two cities to this trip first (or two timeline entries with
-                      places).
-                    </p>
-                  )}
-                  {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
-                    <p className="mt-2 text-[12px] text-muted-foreground">
-                      Your stops have changed since this was saved — refresh to bring it up to date.
-                    </p>
-                  )}
-                  {dir.error && <p className="mt-2 text-[12px] text-destructive">{dir.error}</p>}
-                  {dir.saved && (
-                    <div className="mt-3 space-y-2">
-                      {dir.saved.legs.map((l, i) => (
-                        <details key={i} className="rounded-xl bg-elevated px-3 py-2">
-                          <summary className="cursor-pointer text-[14.5px] font-medium">
-                            {l.from} → {l.to}
-                            <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                              {l.distance > 0
-                                ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
-                                : unroutedLegCopy(l)}
-                            </span>
-                          </summary>
-                          <ol className="mt-2 space-y-1">
-                            {l.steps.map((s, k) => (
-                              <li key={k} className="text-[13px] text-muted-foreground">
-                                {s.instruction}
-                                {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
-                              </li>
-                            ))}
-                          </ol>
-                          <a
-                            href={l.mapUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-block text-[13px] font-semibold text-primary"
-                          >
-                            Open in maps (needs service)
-                          </a>
-                        </details>
-                      ))}
-                      {dir.saved.unresolved.length > 0 && (
-                        <p className="text-[12px] text-muted-foreground">
-                          Couldn't find on the map: {dir.saved.unresolved.join(", ")}
-                        </p>
-                      )}
-                      {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
-                        <p className="text-[12px] text-muted-foreground">
-                          Later stretches open in maps — Béa stops looking after a long list.
-                        </p>
-                      )}
-                      <button
-                        onClick={dir.clear}
-                        className="text-[12px] text-muted-foreground underline"
-                      >
-                        Delete saved directions
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Budget Options
-              </button>
-              {sheetSection === "budget" && (
-                <div className="space-y-2 rounded-xl bg-elevated p-3">
-                  <label className="flex items-center gap-2 px-1 text-[14.5px]">
-                    <input
-                      type="checkbox"
-                      checked={trip.budget_enabled}
-                      onChange={(e) => void onUpdate({ budget_enabled: e.target.checked })}
-                      className="size-5"
-                    />
-                    Track a budget for this trip
-                  </label>
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  const next = sheetSection === "edit" ? null : "edit";
-                  setSheetSection(next);
-                  if (next === "edit") {
-                    setTripForm({
-                      title: trip.title,
-                      city: formatTripLocation(trip.city, trip.country),
-                      country: trip.country ?? "",
-                      start_date: trip.start_date ?? "",
-                      end_date: trip.end_date ?? "",
-                      dates_status: trip.dates_status,
-                      status: trip.status,
-                    });
-                  }
-                }}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Trip Options
-              </button>
-              {sheetSection === "edit" && (
-                <div className="space-y-2 rounded-xl bg-elevated p-3">
-                  <input
-                    value={tripForm.title}
-                    onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
-                    placeholder="Trip name"
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                  />
-                  <PlaceSearchInput
-                    value={tripForm.city}
-                    onChange={(v) => setTripForm({ ...tripForm, city: v })}
-                    onPick={(p) => {
-                      const loc = locationFromParsedPlace(p);
-                      setTripForm({
-                        ...tripForm,
-                        city: loc.city,
-                        country: loc.country || tripForm.country,
-                      });
-                    }}
-                    placeholder="Starting city — search it"
-                  />
-                  <DateRangeField
-                    start={tripForm.start_date}
-                    end={tripForm.end_date}
-                    onChange={(start_date, end_date) =>
-                      setTripForm({ ...tripForm, start_date, end_date })
-                    }
-                    datesStatus={tripForm.dates_status}
-                    onDatesStatusChange={(dates_status) =>
-                      setTripForm({ ...tripForm, dates_status })
-                    }
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
-                  />
-                  {tripForm.start_date &&
-                    tripForm.end_date &&
-                    tripForm.end_date < tripForm.start_date && (
-                      <p className="px-1 text-[13px] font-medium text-destructive">
-                        End date can't be earlier than the start date.
-                      </p>
-                    )}
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      ["upcoming", "Upcoming"],
-                      ["active", "In progress"],
-                      ["past", "Past"],
-                    ].map(([v, label]) => (
-                      <button
-                        key={v}
-                        onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                        className={`rounded-full border px-3 py-1.5 text-[13px] ${
-                          tripForm.status === v
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    disabled={
-                      !tripForm.title.trim() ||
-                      !!(
-                        tripForm.start_date &&
-                        tripForm.end_date &&
-                        tripForm.end_date < tripForm.start_date
-                      )
-                    }
-                    onClick={async () => {
-                      await onUpdate({
-                        title: tripForm.title.trim(),
-                        city: tripForm.city,
-                        country: tripForm.country,
-                        start_date: tripForm.start_date,
-                        end_date: tripForm.end_date,
-                        dates_status: tripForm.dates_status,
-                        status: tripForm.status,
-                      } as Partial<TripRow>);
-                    }}
-                    className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    Save changes
-                  </button>
-                </div>
-              )}
-
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
-              >
-                Delete trip
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {confirmDelete && (
-        <div
-          role="dialog"
-          aria-label="Delete trip confirmation"
-          onClick={() => setConfirmDelete(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setConfirmDelete(false);
-          }}
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-t-3xl bg-card p-5 text-center sm:rounded-2xl"
-          >
-            <p className="font-display text-[19px] leading-snug">Delete this trip?</p>
-            <p className="mt-2 text-[14.5px] text-muted-foreground">
-              This permanently removes the trip, its timeline, stops, budget and invites. This can't
-              be undone.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setSettingsOpen(false);
-                  void onDelete();
-                }}
-                className="flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </article>
-  );
-}
-
-/**
- * One editable timeline row. Shared by the flat list and the by-day groups so
- * direction legs stay keyed to the same item id either way.
- */
-function TimelineEntry({
-  item,
-  showDay,
-  leg,
-  onEdit,
-  onUpdate,
-  onRemove,
-  onKeep,
-}: {
-  item: ItineraryRow;
-  showDay: boolean;
-  leg?: RouteLeg | undefined;
-  onEdit: (field: string | null) => void;
-  onUpdate: (
-    patch: Partial<Pick<ItineraryRow, "title" | "detail" | "time_label" | "kind" | "day_date">>,
-  ) => void;
-  onRemove: () => void;
-  /** Save this stop to the vault, so a good find outlives the trip. */
-  onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
-}) {
-  const [kept, setKept] = useState(false);
-  const rail = timeForRail(item.time_label);
-
-  return (
-    <li className="relative flex min-w-0 gap-3">
-      {/* Time reads down the page as a column, so a day can be scanned rather
-          than read. The kind moves into the glyph beside it. */}
-      <p className="w-[52px] shrink-0 pt-0.5 text-[13.5px] font-semibold tabular-nums text-foreground">
-        {rail}
-      </p>
-      <TimelineGlyphMark item={item} />
-      <div className="min-w-0 flex-1">
-        {showDay && item.day_date ? (
-          <p className="text-[12px] text-muted-foreground">{item.day_date}</p>
-        ) : null}
-        <input
-          defaultValue={item.title}
-          onFocus={() => onEdit(item.title)}
-          onBlur={(e) => {
-            onEdit(null);
-            if (e.target.value.trim() && e.target.value !== item.title)
-              onUpdate({ title: e.target.value.trim() });
-          }}
-          className="w-full min-w-0 truncate bg-transparent text-[15px] font-medium outline-none"
-        />
-        <TimelineDetailInput
-          detail={item.detail}
-          onFocus={() => onEdit(item.title)}
-          onCommit={(next) => {
-            onEdit(null);
-            const prev = stripEmbeddedMapsUrl(item.detail);
-            if (next !== prev) onUpdate({ detail: next || null });
-          }}
-        />
-        {item.address && (
-          <p className="break-words text-[12px] text-muted-foreground">
-            📍 {item.address}
-            {item.lat != null && item.lon != null && (
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-2 font-semibold text-primary underline"
-              >
-                Map
-              </a>
-            )}
-          </p>
-        )}
-        <StopDirections leg={leg} />
-        <div className="mt-0.5 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-[12px] text-muted-foreground underline"
-          >
-            Remove
-          </button>
-          {onKeep && item.kind !== "note" && (
-            <button
-              type="button"
-              disabled={kept}
-              onClick={() => {
-                void onKeep(item).then(
-                  () => setKept(true),
-                  (e: unknown) =>
-                    toast.error(
-                      e instanceof Error ? e.message : "Couldn't save that to your places.",
-                    ),
-                );
-              }}
-              className="text-[12px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
-            >
-              {kept ? "Saved to your places" : "Save to my places"}
-            </button>
-          )}
-        </div>
+      <div className="flex items-center gap-2 p-3 text-[12.5px] text-muted-foreground">
+        <span className="truncate">
+          {[
+            cities.stops.length ? `${cities.stops.length} stops` : "",
+            trip.budget_enabled ? "Budget on" : "",
+          ]
+            .filter(Boolean)
+            .join(" · ") || "Open to plan it"}
+        </span>
+        <span className="ml-auto shrink-0 font-semibold text-foreground">Open</span>
       </div>
-    </li>
-  );
-}
-
-/** Keeps the detail draft while focused so a realtime row refresh cannot wipe it. */
-function TimelineDetailInput({
-  detail,
-  onFocus,
-  onCommit,
-}: {
-  detail: string | null;
-  onFocus: () => void;
-  onCommit: (next: string) => void;
-}) {
-  const remote = stripEmbeddedMapsUrl(detail);
-  const [focused, setFocused] = useState(false);
-  const [draft, setDraft] = useState(remote);
-
-  useEffect(() => {
-    setDraft((current) => syncDetailDraft(focused, current, detail));
-  }, [detail, focused]);
-
-  return (
-    <input
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      placeholder="Add a detail"
-      onFocus={() => {
-        setFocused(true);
-        onFocus();
-      }}
-      onBlur={() => {
-        setFocused(false);
-        const next = stripEmbeddedMapsUrl(draft);
-        setDraft(next);
-        onCommit(next);
-      }}
-      className="w-full min-w-0 truncate bg-transparent text-[13px] text-muted-foreground outline-none"
-    />
-  );
-}
-
-/**
- * Saved walking/driving directions for the leg that starts at this stop.
- * Collapsed to a single quiet line so the timeline stays readable — the steps
- * are only worth screen space at the moment someone is about to walk them.
- */
-function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
-  const [open, setOpen] = useState(false);
-  if (!leg) return null;
-
-  const measured = leg.distance > 0;
-  const summary = measured
-    ? `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
-    : `Directions to ${leg.to}`;
-
-  return (
-    <div className="mt-1">
-      <button
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="min-w-0 text-left text-[12px] font-medium text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
-      >
-        {open ? "Hide directions" : summary}
-      </button>
-      {open && (
-        <div className="mt-1.5 rounded-lg border border-border bg-elevated p-2">
-          {leg.steps.length > 0 ? (
-            <ol className="space-y-1">
-              {leg.steps.map((step, s) => (
-                <li key={s} className="text-[12px] text-muted-foreground">
-                  {step.instruction}
-                  {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="text-[12px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
-          )}
-          <a
-            href={leg.mapUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1.5 inline-block text-[12px] font-semibold text-primary underline"
-          >
-            Open in maps
-          </a>
-        </div>
-      )}
-    </div>
+    </Link>
   );
 }

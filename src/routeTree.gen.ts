@@ -29,6 +29,7 @@ import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedMemoriesRouteImport } from './routes/_authenticated/memories'
 import { Route as AuthenticatedPhotosRouteImport } from './routes/_authenticated/photos'
 import { Route as AuthenticatedStoryRouteImport } from './routes/_authenticated/story'
+import { Route as TripsTripIdRouteImport } from './routes/trips.$tripId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -129,6 +130,11 @@ const AuthenticatedStoryRoute = AuthenticatedStoryRouteImport.update({
   path: '/story',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const TripsTripIdRoute = TripsTripIdRouteImport.update({
+  id: '/$tripId',
+  path: '/$tripId',
+  getParentRoute: () => TripsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -143,13 +149,14 @@ export interface FileRoutesByFullPath {
   '/recommendations': typeof RecommendationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/trips': typeof TripsRoute
+  '/trips': typeof TripsRouteWithChildren
   '/world': typeof WorldRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/memories': typeof AuthenticatedMemoriesRoute
   '/photos': typeof AuthenticatedPhotosRoute
   '/story': typeof AuthenticatedStoryRoute
+  '/trips/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -164,13 +171,14 @@ export interface FileRoutesByTo {
   '/recommendations': typeof RecommendationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/trips': typeof TripsRoute
+  '/trips': typeof TripsRouteWithChildren
   '/world': typeof WorldRoute
   '/calendar': typeof AuthenticatedCalendarRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/memories': typeof AuthenticatedMemoriesRoute
   '/photos': typeof AuthenticatedPhotosRoute
   '/story': typeof AuthenticatedStoryRoute
+  '/trips/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -187,13 +195,14 @@ export interface FileRoutesById {
   '/recommendations': typeof RecommendationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/terms': typeof TermsRoute
-  '/trips': typeof TripsRoute
+  '/trips': typeof TripsRouteWithChildren
   '/world': typeof WorldRoute
   '/_authenticated/calendar': typeof AuthenticatedCalendarRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/memories': typeof AuthenticatedMemoriesRoute
   '/_authenticated/photos': typeof AuthenticatedPhotosRoute
   '/_authenticated/story': typeof AuthenticatedStoryRoute
+  '/trips/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/photos'
     | '/story'
+    | '/trips/$tripId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/memories'
     | '/photos'
     | '/story'
+    | '/trips/$tripId'
   id:
     | '__root__'
     | '/'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/_authenticated/memories'
     | '/_authenticated/photos'
     | '/_authenticated/story'
+    | '/trips/$tripId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,7 +288,7 @@ export interface RootRouteChildren {
   RecommendationsRoute: typeof RecommendationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   TermsRoute: typeof TermsRoute
-  TripsRoute: typeof TripsRoute
+  TripsRoute: typeof TripsRouteWithChildren
   WorldRoute: typeof WorldRoute
 }
 
@@ -422,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStoryRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/trips/$tripId': {
+      id: '/trips/$tripId'
+      path: '/$tripId'
+      fullPath: '/trips/$tripId'
+      preLoaderRoute: typeof TripsTripIdRouteImport
+      parentRoute: typeof TripsRoute
+    }
   }
 }
 
@@ -444,6 +463,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface TripsRouteChildren {
+  TripsTripIdRoute: typeof TripsTripIdRoute
+}
+
+const TripsRouteChildren: TripsRouteChildren = {
+  TripsTripIdRoute: TripsTripIdRoute,
+}
+
+const TripsRouteWithChildren = TripsRoute._addFileChildren(TripsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -458,7 +487,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecommendationsRoute: RecommendationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   TermsRoute: TermsRoute,
-  TripsRoute: TripsRoute,
+  TripsRoute: TripsRouteWithChildren,
   WorldRoute: WorldRoute,
 }
 export const routeTree = rootRouteImport
