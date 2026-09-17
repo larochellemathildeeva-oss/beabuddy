@@ -403,6 +403,113 @@ export type Database = {
         }
         Relationships: []
       }
+      reco_shares: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          max_uses: number
+          note: string | null
+          owner_id: string
+          revoked_at: string | null
+          shared_by_name: string | null
+          title: string | null
+          updated_at: string
+          use_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_uses?: number
+          note?: string | null
+          owner_id: string
+          revoked_at?: string | null
+          shared_by_name?: string | null
+          title?: string | null
+          updated_at?: string
+          use_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_uses?: number
+          note?: string | null
+          owner_id?: string
+          revoked_at?: string | null
+          shared_by_name?: string | null
+          title?: string | null
+          updated_at?: string
+          use_count?: number
+        }
+        Relationships: []
+      }
+      reco_share_items: {
+        Row: {
+          address: string | null
+          category: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          lat: number | null
+          lon: number | null
+          name: string
+          notes: string | null
+          pin_type: string | null
+          position: number
+          share_id: string
+          source: string | null
+          url: string | null
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          name: string
+          notes?: string | null
+          pin_type?: string | null
+          position?: number
+          share_id: string
+          source?: string | null
+          url?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          name?: string
+          notes?: string | null
+          pin_type?: string | null
+          position?: number
+          share_id?: string
+          source?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reco_share_items_share_id_fkey"
+            columns: ["share_id"]
+            isOneToOne: false
+            referencedRelation: "reco_shares"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
           address: string | null
@@ -847,6 +954,35 @@ export type Database = {
       accept_trip_invite: {
         Args: { _code: string; _display_name?: string }
         Returns: string
+      }
+      claim_reco_share: {
+        Args: { _code: string }
+        Returns: undefined
+      }
+      log_reco_share_attempt: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      read_reco_share: {
+        Args: { _code: string }
+        Returns: {
+          share_id: string
+          title: string | null
+          note: string | null
+          shared_by_name: string | null
+          item_id: string
+          name: string
+          city: string | null
+          country: string | null
+          address: string | null
+          category: string | null
+          notes: string | null
+          source: string | null
+          url: string | null
+          lat: number | null
+          lon: number | null
+          pin_type: string | null
+        }[]
       }
       is_trip_member: {
         Args: { _trip_id: string; _user_id: string }

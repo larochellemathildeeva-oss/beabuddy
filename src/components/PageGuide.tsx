@@ -169,6 +169,11 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='reco-location']",
       },
       {
+        title: "Share places with someone",
+        body: "Tick a few saved places and Béa makes a code you can send. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
+        selector: "[data-guide='reco-share']",
+      },
+      {
         title: "Your vault",
         body: "Everything saved, newest first, with who recommended it, the note you left, and the travel tags Béa guessed. Tap Remove to let one go.",
         selector: "[data-guide='reco-list']",

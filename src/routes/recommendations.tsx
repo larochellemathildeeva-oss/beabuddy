@@ -6,6 +6,8 @@ import { Bookmark, Check, Plus, StickyNote, UserRound, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
+import { ShareRecos } from "@/components/ShareRecos";
+import { useAuth } from "@/hooks/useAuth";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
@@ -144,6 +146,13 @@ function RecommendationsPage() {
   };
 
   const vault = useRecommendations();
+  const { user } = useAuth();
+  // Profiles are readable only by their owner, so a recipient can never look
+  // this up — it is captured onto the share row when the share is made.
+  const myName =
+    (user?.user_metadata?.["display_name"] as string | undefined) ??
+    user?.email?.split("@")[0] ??
+    "";
   const { removeWithUndo } = useUndo();
   const scorePrefs = useScorePrefs();
   const parseLink = useServerFn(parsePlaceLink);
@@ -1020,6 +1029,13 @@ function RecommendationsPage() {
             </div>
           )}
         </section>
+
+        <ShareRecos
+          rows={vault.rows}
+          uid={user?.id ?? null}
+          myName={myName}
+          onKept={vault.addMany}
+        />
 
         <section data-guide="reco-list" className="space-y-3">
           {filtered.map((v) => (
