@@ -69,7 +69,7 @@ function LandingPage() {
             Create an account
           </Link>
           <Link
-            to="/help"
+            to="/how-it-works"
             className="rounded-xl border border-border px-4 py-3 text-center text-[14.5px] font-semibold"
           >
             How Béa works

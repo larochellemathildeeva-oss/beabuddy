@@ -28,7 +28,14 @@ export type TourStep = {
  */
 export function routeNeedsAuth(to?: string): boolean {
   if (!to) return false;
-  if (to === "/" || to === "/help" || to === "/privacy" || to === "/terms") return false;
+  if (
+    to === "/" ||
+    to === "/help" ||
+    to === "/how-it-works" ||
+    to === "/privacy" ||
+    to === "/terms"
+  )
+    return false;
   return true;
 }
 
@@ -153,7 +160,7 @@ export const DEEP_STEPS: TourStep[] = [
   // —— Pillar 2: The Recommendation Vault ——
   {
     title: "Pillar 2 — Recommendations",
-    body: "\"You HAVE to try that place in Lisbon\" usually disappears. Béa treats recommendations like assets — who, note, tags, city — not bookmarks.",
+    body: '"You HAVE to try that place in Lisbon" usually disappears. Béa treats recommendations like assets — who, note, tags, city — not bookmarks.',
     to: "/recommendations",
     selector: "[data-guide='reco-list']",
   },
@@ -179,7 +186,7 @@ export const DEEP_STEPS: TourStep[] = [
   // —— Pillar 3: Decision Support ——
   {
     title: "Pillar 3 — Decide",
-    body: "Most apps answer \"What should I do in Paris?\" Béa answers: of the places you already care about, which one next?",
+    body: 'Most apps answer "What should I do in Paris?" Béa answers: of the places you already care about, which one next?',
     to: "/world",
     selector: "[data-guide='compare-pins']",
   },

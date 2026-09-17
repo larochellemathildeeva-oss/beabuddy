@@ -7,14 +7,19 @@ test("quick tour is a story walk around the block", () => {
   assert.equal(QUICK_STEPS.length, 7);
   assert.equal(QUICK_STEPS[0]?.title, "What is Béa?");
   assert.equal(QUICK_STEPS.at(-1)?.title, "Your travel story");
-  assert.ok(QUICK_STEPS.some((s) => s.selector), "quick walk spotlights real controls");
+  assert.ok(
+    QUICK_STEPS.some((s) => s.selector),
+    "quick walk spotlights real controls",
+  );
   assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 3);
   const taps = QUICK_STEPS.filter((s) => s.awaitClick);
   for (const s of taps) {
     assert.ok(s.actionHint, `${s.title} needs an actionHint`);
     assert.match(s.actionHint!, /then Next/i, `${s.title} hint should mention Next`);
   }
-  const blob = QUICK_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
+  const blob = QUICK_STEPS.map((s) => `${s.title} ${s.body}`)
+    .join(" ")
+    .toLowerCase();
   for (const needle of [
     "remembers",
     "future you",
@@ -49,7 +54,9 @@ test("quick and deep bodies stay under the word caps", () => {
 
 test("deep dive is six pillars of differentiation", () => {
   assert.ok(DEEP_STEPS.length > QUICK_STEPS.length);
-  const blob = DEEP_STEPS.map((s) => `${s.title} ${s.body}`).join(" ").toLowerCase();
+  const blob = DEEP_STEPS.map((s) => `${s.title} ${s.body}`)
+    .join(" ")
+    .toLowerCase();
   for (const needle of [
     "pillar 1",
     "pillar 2",
@@ -88,6 +95,7 @@ test("tourSteps picks the walk and tags gated routes", () => {
   assert.equal(home?.needsAuth, false);
   assert.equal(routeNeedsAuth("/"), false);
   assert.equal(routeNeedsAuth("/help"), false);
+  assert.equal(routeNeedsAuth("/how-it-works"), false);
   assert.equal(routeNeedsAuth("/trips"), true);
   assert.equal(routeNeedsAuth("/calendar"), true);
   assert.equal(routeNeedsAuth("/story"), true);
