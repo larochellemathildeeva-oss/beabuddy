@@ -22,7 +22,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "What exactly is Béa?",
-        a: "Béa is your travel memory, recommendation, and planning companion.\n\nThink of it as one place for places you've visited, places you want to visit, recommendations from friends, future trip ideas, travel memories and photos, and planned adventures.\n\nThe goal isn't to plan every trip for you. The goal is to help you make better use of everything you've already discovered.",
+        a: "Béa is your travel memory, recommendation, and planning companion.\n\nThink of it as one place for places you've visited, places you want to visit, recommendations from friends, future trip ideas, travel memories and photos, and planned adventures.\n\nThe goal isn't to plan every trip for you. The goal is to help you make better use of everything you've already discovered.\n\nHow Béa works walks the whole thing in order, on one page, if you would rather see it than read about it.",
       },
       {
         q: "Why would I use Béa?",
@@ -30,7 +30,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where should I start?",
-        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You, until you remove it). Replay under You opens a quick walk around the block, or the Deep Dive.",
+        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You, until you remove it). Replay under You offers three: See how Béa works (the whole story on one page), a quick walk around the block where Béa points at the real screens, or the Deep Dive.",
       },
       {
         q: "What's the difference between Ask Béa and Let Béa plan?",
@@ -58,8 +58,12 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
         a: "Absolutely. One of the most useful parts of Béa is remembering who told you, why they recommended it, and any notes you added.\n\nRecommendations are often more valuable with context. You can also add travel tags (Museums, Coffee shops, and so on) so planning can match how you travel.",
       },
       {
+        q: "Can I send my saved places to someone?",
+        a: "Yes. On Recs, Send lets you tick a few places and turns them into a code you can text or email. Whoever opens it keeps the ones they want, and each kept place arrives with your name on it.\n\nThey never see the rest of your vault — a share is a copy of exactly what you ticked, so editing or deleting a place later does not change a list someone already has. Your own notes stay private unless you tick Send my notes too. Codes last thirty days and you can stop one at any time.\n\nOpen a share is how you take in a list someone sent you. Anything already in your vault is flagged so you do not keep it twice.",
+      },
+      {
         q: "How do I save a place?",
-        a: "Paste a link, search the web, pin nearby, use I'm here now, type by hand, or paste a list. You review each one — name, note, category, who told you, exact map spot — before anything saves.",
+        a: "One field on Recs takes whatever you have. Type a name and Béa looks it up as you pause — tap Save on a suggestion to keep it straight away, or tap the row to fill in the note, category, who told you and the exact map spot first. Paste a link from Maps, Instagram or a blog and Béa reads it the same way.\n\nOther ways to save opens the rest: I'm here now, By hand, Paste or upload a list, and pinning somewhere nearby on a live map.",
       },
     ],
   },
@@ -76,7 +80,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What are Future Me notes?",
-        a: "They're messages from Present You to Future You.\n\nExamples: \"Try the bakery next visit.\" \"Come back in spring.\" \"Stay longer next time.\"\n\nSmall reminders often become the most valuable ones.",
+        a: 'They\'re messages from Present You to Future You.\n\nExamples: "Try the bakery next visit." "Come back in spring." "Stay longer next time."\n\nSmall reminders often become the most valuable ones.',
       },
       {
         q: "What is Playback?",
@@ -110,6 +114,14 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       {
         q: "Can friends edit a trip with me?",
         a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In trip settings you can revoke a code, remove someone (if you own the trip), or leave the trip yourself.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Offline directions in trip settings if you want turn-by-turn on this phone.",
+      },
+      {
+        q: "What is Things to do on a trip?",
+        a: "The errands a trip needs that are not places and not packing — renew the passport, book the transfer, tell the bank, print the tickets.\n\nOpen it from the checklist icon on a trip card, next to Béa's own button. Add something and give it a due date afterwards if it needs one; Start me off suggests the usual ones based on whether the trip is international, has flights, or has somewhere to stay.",
+      },
+      {
+        q: "Can Béa compare two plans?",
+        a: "Yes, and this is different from Help me choose.\n\nLet Béa plan → Compare takes two whole itineraries — a friend's plan and one from an AI, say — reads each, then goes day by day on what actually differs and what you trade for it. Tell it what matters to you and it commits to a pick, with two plain sentences on why, plus the one thing worth borrowing from the plan it did not choose.\n\nIt reports indoor share, active hours a day, walking distance and estimated spend by category. It will not invent travel times it cannot measure, and if one plan is shorter it says nothing planned for that day rather than filling it in.",
       },
       {
         q: "Can Béa turn nearby saves into a day trip?",
