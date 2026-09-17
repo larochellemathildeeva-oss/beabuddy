@@ -134,6 +134,7 @@ function PhotosPage() {
           const uploadPath =
             uploadFile.type === "image/jpeg" ? path.replace(/\.[^.]+$/, ".jpg") : path;
           path = uploadPath;
+          if (path.includes('..')) throw new Error("Invalid file path");
           const { error: upErr } = await supabase.storage
             .from("photo-memories")
             .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
@@ -181,6 +182,7 @@ function PhotosPage() {
 
   const remove = async (row: PhotoRow) => {
     if (!isLocationOnly(row)) {
+      if (row.storage_path.includes('..')) throw new Error('Invalid path');
       await supabase.storage.from("photo-memories").remove([row.storage_path]);
     }
     await supabase.from("photo_memories").delete().eq("id", row.id);

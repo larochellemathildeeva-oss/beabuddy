@@ -78,6 +78,7 @@ export function useExpenses() {
       if (input.file) {
         const ext = input.file.name.split(".").pop() ?? "jpg";
         storage_path = `${id}/${crypto.randomUUID()}.${ext}`;
+        if (storage_path.includes('..')) throw new Error("Invalid path");
         const { error } = await supabase.storage
           .from("receipts")
           .upload(storage_path, input.file, {
@@ -109,6 +110,7 @@ export function useExpenses() {
   const removeExpense = useCallback(
     async (row: ExpenseRow) => {
       if (row.storage_path) {
+        if (row.storage_path.includes('..')) throw new Error("Invalid path");
         await supabase.storage.from("receipts").remove([row.storage_path]);
       }
       await supabase.from("expenses").delete().eq("id", row.id);

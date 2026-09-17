@@ -16,7 +16,9 @@ async function removeInBatches(
 ) {
   const list = uniquePaths(paths);
   for (let i = 0; i < list.length; i += REMOVE_BATCH) {
-    const { error } = await admin.storage.from(bucket).remove(list.slice(i, i + REMOVE_BATCH));
+    const batch = list.slice(i, i + REMOVE_BATCH);
+    if (batch.some(path => path.includes('..'))) throw new Error('Invalid path');
+    const { error } = await admin.storage.from(bucket).remove(batch);
     if (error) throw new Error(`Could not remove files from ${bucket}: ${error.message}`);
   }
 }
