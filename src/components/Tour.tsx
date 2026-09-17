@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
-import { PlayCircle, X } from "lucide-react";
+import { BookOpen, PlayCircle, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { type TourMode, tourSteps } from "@/lib/tour";
 import {
@@ -282,11 +282,15 @@ export function Tour({
           <h2 className="mt-2 font-display text-[23px] leading-tight">How shall we walk?</h2>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
             {demoVideo
-              ? "Watch the short film, or open the Deep Dive on what makes Béa different."
-              : "First sign-in already took the story walk. Pick that again, or open the Deep Dive on what makes Béa different."}
+              ? "Watch the short film, walk the app, or open the Deep Dive."
+              : "See the whole story on one page, walk the app again, or open the Deep Dive."}
           </p>
 
           <div className="mt-4 space-y-2">
+            {/* The visual answer comes first, whichever one this deploy has.
+                Without a film that is the story page, which exists today —
+                gating the only visual option on a video nobody has made left
+                this chooser looking exactly as it always did. */}
             {demoVideo ? (
               <button
                 onClick={() => setWatching(true)}
@@ -302,17 +306,32 @@ export function Tour({
               </button>
             ) : (
               <button
-                onClick={() => pick("quick")}
+                onClick={() => {
+                  finish();
+                  void navigate({ to: "/how-it-works" });
+                }}
                 className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
               >
-                <span className="block text-[15.5px] font-semibold">
-                  A quick walk around the block
+                <span className="flex items-center gap-2 text-[15.5px] font-semibold">
+                  <BookOpen className="size-4 text-primary" aria-hidden />
+                  See how Béa works
                 </span>
                 <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  Remember → choose → plan → opportunity → story. About a minute.
+                  The whole story on one page. Remember → choose → plan → opportunity → story.
                 </span>
               </button>
             )}
+            <button
+              onClick={() => pick("quick")}
+              className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
+            >
+              <span className="block text-[15.5px] font-semibold">
+                A quick walk around the block
+              </span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                Béa points at the real screens, one at a time. About a minute.
+              </span>
+            </button>
             <button
               onClick={() => pick("deep")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
