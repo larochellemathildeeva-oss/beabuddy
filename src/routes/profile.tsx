@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
+import { Section } from "@/components/Section";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
@@ -52,40 +53,6 @@ export const Route = createFileRoute("/profile")({
   }),
   component: ProfilePage,
 });
-
-function Collapsible({
-  title,
-  summary,
-  children,
-  defaultOpen = false,
-  guide,
-}: {
-  title: string;
-  summary?: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-  guide?: string;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <section data-guide={guide} className="card-soft overflow-hidden">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
-      >
-        <span>
-          <span className="block text-[15px] font-medium">{title}</span>
-          {summary && <span className="block text-[13px] text-muted-foreground">{summary}</span>}
-        </span>
-        <ChevronDown
-          className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && <div className="border-t border-border/70 p-4">{children}</div>}
-    </section>
-  );
-}
 
 function ProfilePage() {
   const navigate = useNavigate();
@@ -254,9 +221,10 @@ function ProfilePage() {
           </div>
         )}
 
-        <Collapsible
+        <Section
+          defaultOpen={false}
           title="Profile settings"
-          summary={`Your details and ${interests.length} travel tag${interests.length === 1 ? "" : "s"}`}
+          hint={`Your details and ${interests.length} travel tag${interests.length === 1 ? "" : "s"}`}
           guide="profile-settings"
         >
           <div className="space-y-5">
@@ -343,11 +311,12 @@ function ProfilePage() {
               </button>
             </div>
           </div>
-        </Collapsible>
+        </Section>
 
-        <Collapsible
+        <Section
+          defaultOpen={false}
           title="Create packing lists"
-          summary="Reusable lists you can attach to a new trip"
+          hint="Reusable lists you can attach to a new trip"
           guide="packing-lists"
         >
           <div className="space-y-2">
@@ -357,11 +326,12 @@ function ProfilePage() {
             </p>
             <PackingLists label="My saved packing lists" hint="Your reusable templates." />
           </div>
-        </Collapsible>
+        </Section>
 
-        <Collapsible
+        <Section
+          defaultOpen={false}
           title="Offline options"
-          summary={
+          hint={
             offlineTrips.length
               ? `${offlineTrips.length} trip${offlineTrips.length === 1 ? "" : "s"} with directions on this phone`
               : "Only trip directions can be kept on this phone"
@@ -398,11 +368,12 @@ function ProfilePage() {
           >
             Open trips
           </Link>
-        </Collapsible>
+        </Section>
 
-        <Collapsible
+        <Section
+          defaultOpen={false}
           title="Legal, privacy and such"
-          summary="Policies, terms and your data"
+          hint="Policies, terms and your data"
           guide="legal"
         >
           <div className="space-y-2">
@@ -440,9 +411,9 @@ function ProfilePage() {
             {user && <EraseDataPanel userId={user.id} />}
             {user && <DeleteAccountPanel userId={user.id} />}
           </div>
-        </Collapsible>
+        </Section>
 
-        <Collapsible title="Work travel" summary="Receipts, expenses and exports">
+        <Section defaultOpen={false} title="Work travel" hint="Receipts, expenses and exports">
           <Link
             to="/expenses"
             className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
@@ -455,7 +426,7 @@ function ProfilePage() {
             </span>
             <span className="shrink-0 text-[14.5px] text-primary">Open</span>
           </Link>
-        </Collapsible>
+        </Section>
 
         <Link to="/help" className="card-soft flex items-center justify-between gap-3 px-4 py-3.5">
           <span>
@@ -467,7 +438,7 @@ function ProfilePage() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </Link>
 
-        <Collapsible title="Feedback" summary="Tell Béa something" guide="feedback">
+        <Section defaultOpen={false} title="Feedback" hint="Tell Béa something" guide="feedback">
           <div className="space-y-2">
             <p className="text-[14.5px] text-muted-foreground">
               Béa is here to make you happy. A missing travel stat, a wish, something that broke —
@@ -475,7 +446,7 @@ function ProfilePage() {
             </p>
             <FeedbackForm alreadySignedIn={!!user} />
           </div>
-        </Collapsible>
+        </Section>
       </div>
     </AppShell>
   );

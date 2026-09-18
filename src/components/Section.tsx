@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 /**
@@ -21,22 +21,36 @@ export function Section({
   hint,
   open,
   onToggle,
+  defaultOpen,
   actions,
   guide,
   children,
 }: {
   title: string;
   hint?: ReactNode;
-  /** Omit `onToggle` for a section that is always open — no chevron is drawn. */
+  /**
+   * Omit `onToggle` and `defaultOpen` for a section that is always open — no
+   * chevron is drawn.
+   */
   open?: boolean;
   onToggle?: () => void;
+  /**
+   * Collapsible, but minding its own state. For a page with a run of these
+   * where the parent has no reason to know which are open — profile drew its
+   * own component for exactly this, which is how it ended up with a second
+   * section shape.
+   */
+  defaultOpen?: boolean;
   /** Header actions, right-aligned. Keep these to one or two compact buttons. */
   actions?: ReactNode;
   guide?: string;
   children?: ReactNode;
 }) {
-  const collapsible = typeof onToggle === "function";
-  const expanded = collapsible ? Boolean(open) : true;
+  const [ownOpen, setOwnOpen] = useState(Boolean(defaultOpen));
+  const controlled = typeof onToggle === "function";
+  const collapsible = controlled || defaultOpen !== undefined;
+  const expanded = controlled ? Boolean(open) : collapsible ? ownOpen : true;
+  const toggle = controlled ? onToggle : () => setOwnOpen((v) => !v);
 
   const heading = (
     <div className="min-w-0">
@@ -56,7 +70,7 @@ export function Section({
         {collapsible ? (
           <button
             type="button"
-            onClick={onToggle}
+            onClick={toggle}
             aria-expanded={expanded}
             className="flex min-w-0 flex-1 items-start gap-2 text-left"
           >
