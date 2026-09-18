@@ -1,0 +1,819 @@
+<title>Fewer, Once, Same</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=JetBrains+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --paper: #f5f6f8;
+    --card: #ffffff;
+    --sunk: #eef0f4;
+    --code-bg: #1a1d25;
+    --code-ink: #e4e7ef;
+    --code-str: #86c8a8;
+    --code-dim: #79808f;
+    --rule: #dcdfe6;
+    --ink: #14161c;
+    --ink-2: #3c404c;
+    --quiet: #6b7180;
+    --signal: #4f46c9;
+    --signal-soft: #ecebfa;
+    --risk: #a8263f;
+    --risk-soft: #fbecee;
+    --done: #1a6a52;
+    --done-soft: #e6f2ed;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper: #0e0f13;
+      --card: #16181f;
+      --sunk: #1d202a;
+      --code-bg: #0a0c11;
+      --rule: #2a2e39;
+      --ink: #f1f2f6;
+      --ink-2: #c6cad4;
+      --quiet: #8a909e;
+      --signal: #a7a2f6;
+      --signal-soft: #1b1933;
+      --risk: #f28ba2;
+      --risk-soft: #2b161c;
+      --done: #7fd0b4;
+      --done-soft: #12261f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0e0f13;
+    --card: #16181f;
+    --sunk: #1d202a;
+    --code-bg: #0a0c11;
+    --rule: #2a2e39;
+    --ink: #f1f2f6;
+    --ink-2: #c6cad4;
+    --quiet: #8a909e;
+    --signal: #a7a2f6;
+    --signal-soft: #1b1933;
+    --risk: #f28ba2;
+    --risk-soft: #2b161c;
+    --done: #7fd0b4;
+    --done-soft: #12261f;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding-inline: 20px;
+    padding-block: 0 72px;
+  }
+  .wrap {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(34px, 7vw, 52px);
+    letter-spacing: -0.02em;
+  }
+  h2 {
+    font-size: clamp(24px, 4.4vw, 31px);
+    letter-spacing: -0.015em;
+  }
+  h3 {
+    font-size: 18px;
+    letter-spacing: -0.005em;
+  }
+  p {
+    margin: 0;
+  }
+  code,
+  pre {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  code {
+    font-size: 0.87em;
+    background: var(--sunk);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 14px 16px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 0;
+  }
+  pre .d {
+    color: var(--code-dim);
+  }
+  pre .s {
+    color: var(--code-str);
+  }
+
+  header.top {
+    padding-block: 56px 40px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 600;
+    color: var(--quiet);
+  }
+  .lede {
+    font-size: 19px;
+    color: var(--ink-2);
+    margin-top: 18px;
+    max-width: 62ch;
+  }
+  .thesis {
+    margin-top: 26px;
+    padding: 18px 20px;
+    background: var(--signal-soft);
+    border-left: 3px solid var(--signal);
+    border-radius: 0 8px 8px 0;
+    font-size: 17px;
+    color: var(--ink);
+  }
+
+  section {
+    padding-block: 44px;
+    border-bottom: 1px solid var(--rule);
+  }
+  section:last-of-type {
+    border-bottom: 0;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .stack-tight {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .part {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .part .num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    color: var(--signal);
+    font-weight: 500;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+  }
+  .scroll {
+    overflow-x: auto;
+  }
+  th {
+    text-align: left;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--quiet);
+    font-weight: 600;
+    padding: 0 12px 8px 0;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td {
+    padding: 9px 12px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink-2);
+  }
+  td:first-child {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  td.n {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pill {
+    display: inline-block;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .keep {
+    background: var(--done-soft);
+    color: var(--done);
+  }
+  .merge {
+    background: var(--signal-soft);
+    color: var(--signal);
+  }
+  .cut {
+    background: var(--risk-soft);
+    color: var(--risk);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .note {
+    background: var(--risk-soft);
+    border-left: 3px solid var(--risk);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 18px;
+    font-size: 15px;
+    color: var(--ink-2);
+  }
+  .note strong {
+    color: var(--ink);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 19px;
+    color: var(--ink-2);
+  }
+  li {
+    margin-block: 5px;
+  }
+  li::marker {
+    color: var(--quiet);
+  }
+  .label {
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    color: var(--quiet);
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .metric {
+    background: var(--card);
+    padding: 16px 18px;
+  }
+  .metric .v {
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .metric .v.bad {
+    color: var(--risk);
+  }
+  .metric .k {
+    font-size: 12.5px;
+    color: var(--quiet);
+    margin-top: 6px;
+  }
+
+  footer {
+    padding-block: 36px;
+    color: var(--quiet);
+    font-size: 14px;
+    max-width: 62ch;
+  }
+  a {
+    color: var(--signal);
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Consolidation plan · Béa v8.7.2</p>
+    <h1>Fewer, Once, Same</h1>
+    <p class="lede">
+      Béa does not read as homemade because it is ugly. The typography, the oklch palette and the
+      motion work are better than most funded apps. It reads as homemade because it does eighteen
+      things in a dozen visual dialects and narrates itself while doing them.
+    </p>
+    <p class="thesis">
+      <strong>Fewer things, said once, drawn the same way each time.</strong> Three workstreams, in
+      that order of leverage. Two are mechanical and I can do them. The first is yours.
+    </p>
+  </header>
+
+  <section>
+    <p class="label">Measured, not estimated</p>
+    <div class="metrics" style="margin-top: 14px">
+      <div class="metric">
+        <p class="v bad">147</p>
+        <p class="k">hand-rolled surfaces<br />(68 card-soft + 79 surface/elevated)</p>
+      </div>
+      <div class="metric">
+        <p class="v">4</p>
+        <p class="k">uses of the ContentCard primitive</p>
+      </div>
+      <div class="metric">
+        <p class="v">21</p>
+        <p class="k">routes</p>
+      </div>
+      <div class="metric">
+        <p class="v bad">86</p>
+        <p class="k">guide + tour steps</p>
+      </div>
+      <div class="metric">
+        <p class="v bad">4,311</p>
+        <p class="k">words explaining the interface</p>
+      </div>
+      <div class="metric">
+        <p class="v">40</p>
+        <p class="k">uses of Section — the one primitive that landed</p>
+      </div>
+    </div>
+    <p style="margin-top: 20px; color: var(--ink-2); max-width: 62ch">
+      The 4-against-147 ratio is the whole problem in one line. Worse: those primitives were added
+      in v8.5.0 without migrating anything, so Béa currently has <em>six</em> ways to draw a card
+      where it previously had five. The spec that proposed them warned about exactly this. Section
+      is the counter-example that proves the approach works when the migration actually happens.
+    </p>
+  </section>
+
+  <section>
+    <div class="part"><span class="num">PART 1</span><h2>Fewer things</h2></div>
+    <div class="stack" style="margin-top: 22px">
+      <p style="max-width: 62ch; color: var(--ink-2)">
+        The tell of a solo-plus-AI app is not bad features. It is breadth without depth — many
+        things, each about 80% finished. In a single session we found trips that would not open,
+        pasted links that never resolved, and a Montreal restaurant saved in Slovakia. Those bugs
+        existed because there is more surface than one person can keep working. They are symptoms,
+        not coincidences.
+      </p>
+      <div class="note">
+        <strong>This part is yours, not mine.</strong> I can measure the surface and argue about
+        cohesion; I cannot tell you what Béa is. What follows is a framework and my read of it — the
+        classification is a proposal to argue with, not a recommendation to execute.
+      </div>
+
+      <h3 style="margin-top: 14px">The test</h3>
+      <p style="color: var(--ink-2); max-width: 62ch">
+        Béa's own mission is the arbiter: <em>remembers your travel life so Future You doesn't miss
+        what matters</em>. The loop that delivers it is save → surface → plan → remember. For each
+        feature, one question: <strong>if this vanished tonight, does the loop still close?</strong>
+      </p>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Role in the loop</th>
+              <th>Read</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Recs vault</td>
+              <td>The <em>save</em>. Nothing works without it.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>Near</td>
+              <td>The <em>surface</em>. "Past You left a breadcrumb" is the moment that justifies the app.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>Trips</td>
+              <td>The <em>plan</em>. Where saved things become an itinerary.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>World / globe</td>
+              <td>The <em>remember</em>, and the only thing no competitor has.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>Trip stops &amp; timeline</td>
+              <td>Trips is not a feature without them.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>Preferences</td>
+              <td>Feeds the planner. Invisible but load-bearing.</td>
+              <td><span class="pill keep">Core</span></td>
+            </tr>
+            <tr>
+              <td>City memories</td>
+              <td>Overlaps the globe and the story page. Three views of one idea.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Travel story</td>
+              <td>A playback of what the globe already shows.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Photo import</td>
+              <td>A pipeline, not a destination. Belongs inside memories.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Calendar</td>
+              <td>Re-presents trip dates you can already see on the trip.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Packing lists</td>
+              <td>Real utility, but a to-do list with a hat on. Merge with trip to-dos.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Trip budget</td>
+              <td>Optional per trip already. Keep, but stop it being a section everyone sees.</td>
+              <td><span class="pill merge">Merge</span></td>
+            </tr>
+            <tr>
+              <td>Business expenses</td>
+              <td>Receipts and billable flags. This is a different product wearing Béa's clothes.</td>
+              <td><span class="pill cut">Cut</span></td>
+            </tr>
+            <tr>
+              <td>Compare drafts</td>
+              <td>Two itineraries side by side. Sophisticated, and for a user who does not exist yet.</td>
+              <td><span class="pill cut">Cut</span></td>
+            </tr>
+            <tr>
+              <td>Heatmap</td>
+              <td>A third visualisation of the same pins.</td>
+              <td><span class="pill cut">Cut</span></td>
+            </tr>
+            <tr>
+              <td>Day trips from Near</td>
+              <td>A feature inside a feature inside a tab.</td>
+              <td><span class="pill cut">Cut</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top: 14px">Cut does not mean delete</h3>
+      <div class="card">
+        <div class="stack-tight">
+          <p>
+            <strong>Demote.</strong> Keep the data and the code; remove the route, the tab entry and
+            the guide steps. The heatmap becomes a toggle on the globe rather than a section. Nobody
+            loses anything; the app gets a screen shorter.
+          </p>
+          <p>
+            <strong>Merge.</strong> Memories, Story and Photos are three routes over one dataset —
+            your photographs, by place, over time. That is one screen with three views, not three
+            screens. Same for Packing and To-dos: both are "things to tick off before you go."
+          </p>
+          <p>
+            <strong>Archive.</strong> Expenses is ~480 lines and a database table serving a use case
+            the mission does not mention. Branch it, remove it from the build, keep the migration.
+            If someone asks, it comes back in a day.
+          </p>
+        </div>
+      </div>
+
+      <p class="label" style="margin-top: 8px">Net effect</p>
+      <p style="color: var(--ink-2); max-width: 62ch">
+        21 routes → roughly 12. Six tabs stay six. The app stops being a suite and starts being a
+        product. Every hour not spent maintaining the other nine is an hour spent finishing these.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="part"><span class="num">PART 2</span><h2>Said once</h2></div>
+    <div class="stack" style="margin-top: 22px">
+      <p style="max-width: 62ch; color: var(--ink-2)">
+        86 guide steps and 4,311 words explaining the interface. Established apps say almost
+        nothing, because the design carries the meaning. Heavy explanation is a symptom rather than
+        a feature: the copy is there because a screen did not communicate on its own.
+      </p>
+      <div class="card">
+        <p class="label">The rule</p>
+        <p style="margin-top: 8px; font-size: 17px">
+          A guide step is a bug report filed against the screen it describes.
+        </p>
+        <p style="margin-top: 10px; color: var(--ink-2)">
+          Every step you delete by making the screen clearer is worth more than the step. Every step
+          you keep is a screen admitting it failed. Read all 86 that way and most of them argue for
+          a change to the interface instead.
+        </p>
+      </div>
+
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Screen</th>
+              <th class="n">Steps</th>
+              <th class="n">Words</th>
+              <th>What the length is telling you</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Recommendation vault</td>
+              <td class="n">8</td>
+              <td class="n">245</td>
+              <td>The 1,062-line route. The biggest screen needs the most explaining — that is the finding.</td>
+            </tr>
+            <tr>
+              <td>Inside a trip</td>
+              <td class="n">7</td>
+              <td class="n">258</td>
+              <td>Four icon buttons with no labels. The guide is the labels.</td>
+            </tr>
+            <tr>
+              <td>You / profile</td>
+              <td class="n">8</td>
+              <td class="n">200</td>
+              <td>A settings page needing 200 words is a settings page with too much in it.</td>
+            </tr>
+            <tr>
+              <td>World</td>
+              <td class="n">6</td>
+              <td class="n">209</td>
+              <td>Globe + stats + heatmap + filters. Three features explaining themselves at once.</td>
+            </tr>
+            <tr>
+              <td>Home</td>
+              <td class="n">6</td>
+              <td class="n">117</td>
+              <td>Six steps for a landing screen means it is not a landing screen.</td>
+            </tr>
+            <tr>
+              <td>Preferences</td>
+              <td class="n">6</td>
+              <td class="n">80</td>
+              <td>Short steps — these are genuine labels, and should become labels.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top: 14px">What to do with each</h3>
+      <div class="card">
+        <div class="stack-tight">
+          <p>
+            <strong>Becomes a label.</strong> Most of them. "The checklist icon opens the trip's
+            errands" is a <code>title</code> attribute that should be visible text under the icon.
+            Label the four trip icons and seven steps evaporate.
+          </p>
+          <p>
+            <strong>Becomes an empty state.</strong> "Add every city — and any stopover along the
+            way" belongs where the list is empty, not in a tour someone takes once.
+          </p>
+          <p>
+            <strong>Becomes nothing.</strong> Anything explaining a feature that Part 1 removes.
+          </p>
+          <p>
+            <strong>Stays.</strong> The genuinely non-obvious: that recs are private, that documents
+            are encrypted on-device, that Béa does not book anything. Trust claims earn their words.
+            Target around 25 steps, down from 86.
+          </p>
+        </div>
+      </div>
+
+      <div class="note">
+        <strong>Do not touch the voice.</strong> <code>bea-voice.ts</code> is the app's personality
+        and it is good. The cut is aimed at <em>instruction</em>, not character. "Past You left a
+        breadcrumb" stays. "Tap the sparkle to open the planner" goes and becomes a labelled button.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="part"><span class="num">PART 3</span><h2>Drawn the same way</h2></div>
+    <div class="stack" style="margin-top: 22px">
+      <p style="max-width: 62ch; color: var(--ink-2)">
+        Mechanical, low-risk, entirely mine to do. This is the part that makes the app look
+        designed rather than assembled, and it is already half-specified — the primitives exist and
+        almost nothing uses them.
+      </p>
+
+      <h3>Sequence, worst offenders first</h3>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Wave</th>
+              <th>Files</th>
+              <th class="n">Surfaces</th>
+              <th>Why here</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>TripDetail, profile, recommendations</td>
+              <td class="n">~30</td>
+              <td>The three screens people spend real time in.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>index, world, opportunities, trips</td>
+              <td class="n">~22</td>
+              <td>The remaining tabs. After this, every tab is consistent.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>TimelineEntryForm, ItineraryImport, PackingLists, ShareRecos</td>
+              <td class="n">~20</td>
+              <td>Shared components — one fix lands on several screens.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Whatever survives Part 1</td>
+              <td class="n">~35</td>
+              <td>Deliberately last. Do not migrate a screen you are about to delete.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top: 14px">What each wave actually does</h3>
+      <div class="card">
+        <div class="stack-tight">
+          <p>Replace every ad-hoc surface with one of four primitives, and nothing else:</p>
+          <ul>
+            <li><code>PageHeader</code> — already on every screen via AppShell. Done.</li>
+            <li><code>Section</code> — 40 uses. Extend to every grouped block.</li>
+            <li><code>ContentCard</code> — 4 uses. This is the wave's real work.</li>
+            <li>
+              <code>Sheet</code> — <em>does not exist yet.</em> Four screens hand-roll a fixed-inset
+              scrim dialog. It is the fifth primitive and the plan should admit that up front rather
+              than discovering it in wave 3.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 style="margin-top: 14px">Then lock the door</h3>
+      <p style="color: var(--ink-2); max-width: 62ch">
+        Consistency decays unless regression is impossible. The motion tokens already have a lint
+        rule rejecting arbitrary durations; surfaces get the same treatment, so the next hand-rolled
+        card fails CI rather than shipping.
+      </p>
+      <pre><span class="d">// eslint.config.js — the rule that keeps this done</span>
+{
+  selector: <span class="s">"Literal[value=/\bcard-soft\b/]"</span>,
+  message:
+    <span class="s">"Use ContentCard or Section. Raw surfaces are how the app "</span> +
+    <span class="s">"ended up with 147 of them."</span>,
+}</pre>
+      <p style="color: var(--ink-2); max-width: 62ch; margin-top: 4px">
+        Scoped to <code>src/routes</code> and <code>src/components</code>, exempting the primitives
+        themselves and vendored <code>components/ui</code>. Add it at the end of wave 2 so it never
+        fires against work still queued.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="part"><span class="num">PART 4</span><h2>Free wins, today</h2></div>
+    <div class="stack" style="margin-top: 22px">
+      <div class="card">
+        <div class="stack-tight">
+          <p>
+            <strong>Remove the version badge.</strong> <code>v8.7.2</code> sits beside the logo on
+            every screen. No consumer app does this; it reads as a dev build, and it is in the
+            corner of every screenshot you will ever show anyone. One line.
+          </p>
+          <p>
+            <strong>Label the four trip icons.</strong> Deletes several guide steps as a side
+            effect, and makes the trip page legible without a tour.
+          </p>
+          <p>
+            <strong>Build the trip map.</strong> Not polish — an absence. Every itinerary item and
+            every stop already stores <code>lat</code>/<code>lon</code> and none of it is ever
+            drawn. A travel app where your trip is not on a map reads as unfinished no matter what
+            else is true, and it needs no new data, no migration and no API.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="part"><span class="num">PART 5</span><h2>Order, and how you will know</h2></div>
+    <div class="stack" style="margin-top: 22px">
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Order</th>
+              <th>Work</th>
+              <th>Whose</th>
+              <th>Reversible</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Free wins — badge, icon labels</td>
+              <td>Mine</td>
+              <td>Trivially</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Migration waves 1–3, then the lint rule</td>
+              <td>Mine</td>
+              <td>Yes, per wave</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Trip map</td>
+              <td>Mine</td>
+              <td>Additive</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>Decide the cut list</td>
+              <td><strong>Yours</strong></td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Demote / merge / archive</td>
+              <td>Mine, once decided</td>
+              <td>Yes — branches, not deletions</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Copy cut, guided by what survives</td>
+              <td>Mine</td>
+              <td>Yes</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>Migration wave 4</td>
+              <td>Mine</td>
+              <td>Yes</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="color: var(--ink-2); max-width: 62ch">
+        Parts 2 and 3 are sequenced <em>after</em> the cut decision on purpose, for the same reason
+        wave 4 is last: polishing and de-narrating a screen you are about to remove is the most
+        wasteful work available. The free wins and waves 1–3 do not depend on the decision, so they
+        can start now.
+      </p>
+
+      <h3 style="margin-top: 14px">Done when</h3>
+      <div class="card">
+        <ul>
+          <li>Raw <code>card-soft</code> and <code>bg-elevated</code> fail lint outside the primitives.</li>
+          <li>Guide steps under 30, and every survivor is a trust claim rather than an instruction.</li>
+          <li>No screen opens with anything but <code>PageHeader</code>.</li>
+          <li>Every route reachable from a tab in two taps or fewer.</li>
+          <li>A trip shows on a map.</li>
+          <li>Nothing in the header identifies the build.</li>
+        </ul>
+      </div>
+
+      <div class="note" style="margin-top: 4px">
+        <strong>The measurement that actually matters is still missing.</strong> None of this is
+        observable today, because the app collects nothing — item 08 of the build spec, still
+        unbuilt. Five people, twenty minutes each, before and after, remains cheaper and more
+        conclusive than every metric in this document.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Companion to the engineering audit, the design audit, the motion proposal and the build spec.
+    Counts measured against v8.7.2 on 18 September 2026. Part 1's classification is a proposal to
+    argue with — the cut list is the owner's call, and the rest of the plan adapts to whatever it
+    turns out to be.
+  </footer>
+</div>
