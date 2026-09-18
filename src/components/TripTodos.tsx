@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { useTripTodos } from "@/hooks/useTripTodos";
 import { toLocalISODate } from "@/lib/trip-dates";
@@ -25,18 +24,17 @@ const DUE_TONE: Record<DueState, string> = {
  * The trip's errands — the things that are not timeline stops and not packing
  * items. Renew the passport, book the transfer, tell the bank, print tickets.
  *
- * Opened from the icon row on the trip card, the same way packing lists are:
- * a to-do list is something you go and look at, not a panel that sits open
- * down the trip screen taking up a third of it.
+ * This is the body only. It lives inside the "Before you go" sheet next to
+ * packing, because both answer the same question: what is left to do before
+ * you leave. See TripPrep for the sheet itself.
  */
-export function TripTodos({
+export function TripTodosBody({
   tripId,
   uid,
   international,
   hasLodging,
   hasFlights,
   tripStart,
-  openSignal,
 }: {
   tripId: string;
   uid: string | null;
@@ -44,11 +42,8 @@ export function TripTodos({
   hasLodging: boolean;
   hasFlights: boolean;
   tripStart?: string | null | undefined;
-  /** Bumped by the trip card's to-do icon to open the sheet. */
-  openSignal?: number;
 }) {
   const t = useTripTodos(tripId, uid);
-  const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -114,30 +109,34 @@ export function TripTodos({
     }
   };
 
-  useEffect(() => {
-    if (openSignal && openSignal > 0) setOpen(true);
-  }, [openSignal]);
+  if (t.unavailable) {
+    return (
+      <p className="p-6 text-center text-[14.5px] text-muted-foreground">
+        Not switched on for this database yet — the <code>trip_todos</code> migration still needs to
+        be run.
+      </p>
+    );
+  }
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[12.5px] text-muted-foreground">
+          {t.todos.length === 0
+            ? "Passports, transfers, the things that are not packing."
+            : todoProgressLine(t.todos)}
+        </p>
+        {t.done.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowDone((v) => !v)}
+            className="shrink-0 rounded-full border border-border px-3 py-1 text-[12.5px] font-semibold"
+          >
+            {showDone ? "Hide done" : `Done (${t.done.length})`}
+          </button>
+        )}
+      </div>
 
-  if (!open) return null;
-
-  const body = t.unavailable ? (
-    <p className="p-6 text-center text-[14.5px] text-muted-foreground">
-      Not switched on for this database yet — the <code>trip_todos</code> migration still needs to
-      be run.
-    </p>
-  ) : (
-    <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3">
       {visible.length > 0 && (
         <ul className="divide-y divide-border/60 border-b border-border/60">
           {visible.map((todo) => {
@@ -291,51 +290,5 @@ export function TripTodos({
 
       {error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
     </div>
-  );
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-      onClick={() => setOpen(false)}
-    >
-      <div
-        role="dialog"
-        aria-label="Things to do"
-        onClick={(e) => e.stopPropagation()}
-        className="rise flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-card sm:rounded-2xl"
-      >
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <div className="min-w-0">
-            <p className="font-display text-[16.5px] leading-tight text-foreground">Things to do</p>
-            <p className="text-[12.5px] text-muted-foreground">
-              {t.todos.length === 0
-                ? "Passports, transfers, the things that are not packing."
-                : todoProgressLine(t.todos)}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {t.done.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setShowDone((v) => !v)}
-                className="rounded-full border border-border px-3 py-1 text-[13px] font-semibold"
-              >
-                {showDone ? "Hide done" : `Done (${t.done.length})`}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close things to do"
-              className="rounded-full border border-border px-3 py-1 text-[13px]"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-        {body}
-      </div>
-    </div>,
-    document.body,
   );
 }

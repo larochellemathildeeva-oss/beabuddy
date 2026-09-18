@@ -1,15 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ChevronDown,
-  FileText,
-  ListChecks,
-  MapPinPlus,
-  Plus,
-  Settings,
-  Sparkles,
-  X,
-} from "lucide-react";
-import { PackingLists } from "@/components/PackingLists";
+import { ChevronDown, ListChecks, MapPinPlus, Plus, Settings, Sparkles, X } from "lucide-react";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
@@ -21,7 +11,7 @@ import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
-import { TripTodos } from "@/components/TripTodos";
+import { TripPrep } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -151,8 +141,7 @@ export function TripDetail({
   >(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
-  const [packSignal, setPackSignal] = useState(0);
-  const [todoSignal, setTodoSignal] = useState(0);
+  const [prepSignal, setPrepSignal] = useState(0);
   const [stopSignal, setStopSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -222,22 +211,13 @@ export function TripDetail({
           <MapPinPlus className="size-4" />
         </button>
         <button
-          data-guide="trip-todos"
-          aria-label="Things to do for this trip"
-          title="Things to do for this trip"
-          onClick={() => setTodoSignal((n) => n + 1)}
+          data-guide="trip-prep"
+          aria-label="Things to do and packing for this trip"
+          title="Before you go"
+          onClick={() => setPrepSignal((n) => n + 1)}
           className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
         >
           <ListChecks className="size-4" />
-        </button>
-        <button
-          data-guide="packing-lists"
-          aria-label="Add packing list to this trip"
-          title="Add packing list to this trip"
-          onClick={() => setPackSignal((n) => n + 1)}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
-        >
-          <FileText className="size-4" />
         </button>
         <button
           aria-label="Trip settings"
@@ -286,22 +266,14 @@ export function TripDetail({
 
         <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
 
-        <TripTodos
+        <TripPrep
           tripId={trip.id}
           uid={me.id}
           international={cities.countries.length > 1 || Boolean(trip.country)}
           hasLodging={board.items.some((item) => item.kind === "lodging")}
           hasFlights={board.items.some((item) => item.kind === "transport")}
           tripStart={trip.start_date}
-          openSignal={todoSignal}
-        />
-
-        <PackingLists
-          tripId={trip.id}
-          label="Packing list for this trip"
-          hint="Only this trip. Tick things off as you pack."
-          openSignal={packSignal}
-          hideTrigger
+          openSignal={prepSignal}
         />
 
         {trip.budget_enabled && <TripBudget tripId={trip.id} />}

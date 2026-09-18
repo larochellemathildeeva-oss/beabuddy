@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
-import { PackingLists } from "@/components/PackingLists";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBanner } from "@/components/TripBanner";

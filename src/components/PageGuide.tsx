@@ -135,14 +135,9 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='optimize-trip']",
       },
       {
-        title: "Things to do",
-        body: "The checklist icon opens the trip's errands — renew the passport, book the transfer, tell the bank. Not what you're packing, and not where you're going: the things that have to happen before you leave.",
-        selector: "[data-guide='trip-todos']",
-      },
-      {
-        title: "Packing lists",
-        body: "The paper icon adds a saved list to this trip. Create and edit those reusable packs under You — weekend, beach, ski, work — then add a copy here to tick things off.",
-        selector: "[data-guide='packing-lists']",
+        title: "Before you go",
+        body: "The checklist icon opens everything still to be done before you leave, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
+        selector: "[data-guide='trip-prep']",
       },
     ],
   },
@@ -221,7 +216,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Customize home",
-        body: "Hide the trip card, the story shortcuts, Waiting for you, Recent memories, or a Future Me note. Saved on this device.",
+        body: "Hide the trip card, Waiting for you, or a Future Me note. Saved on this device.",
         selector: "[data-guide='home-customize']",
       },
       {
