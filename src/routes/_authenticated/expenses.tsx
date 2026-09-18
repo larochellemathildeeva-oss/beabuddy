@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { Sheet } from "@/components/Sheet";
 import { expenseCategories, toCsv, useExpenses } from "@/hooks/useExpenses";
 import { homeCurrencies, useRates } from "@/hooks/useRates";
 import { useTrips } from "@/hooks/useTrips";
@@ -172,33 +173,26 @@ function ExpensesPage() {
 
   return (
     <AppShell eyebrow="Business expenses" title="Receipts, kept tidy">
-      {showDisclaimer && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center"
+      <Sheet
+        open={showDisclaimer}
+        onClose={acceptDisclaimer}
+        title="Before you start"
+        width="sm"
+        showClose={false}
+      >
+        <p className="text-[14.5px] leading-relaxed text-muted-foreground">
+          Béa is here to help you stay organised — nothing more. This is not tax advice and the
+          export is not an official document. Béa is not responsible for any tax issue, missing
+          receipt or filing problem. Always check the figures with your accountant or tax authority
+          before you submit anything.
+        </p>
+        <button
           onClick={acceptDisclaimer}
+          className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
         >
-          <div
-            role="dialog"
-            aria-label="Expense tracking disclaimer"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-t-3xl bg-card p-5 sm:rounded-2xl"
-          >
-            <p className="font-display text-[21px] leading-snug">Before you start</p>
-            <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">
-              Béa is here to help you stay organised — nothing more. This is not tax advice and the
-              export is not an official document. Béa is not responsible for any tax issue, missing
-              receipt or filing problem. Always check the figures with your accountant or tax
-              authority before you submit anything.
-            </p>
-            <button
-              onClick={acceptDisclaimer}
-              className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
-            >
-              I understand
-            </button>
-          </div>
-        </div>
-      )}
+          I understand
+        </button>
+      </Sheet>
       <div className="space-y-5">
         <p className="text-[14.5px] text-muted-foreground">
           Photograph a receipt the moment you pay. Béa keeps the picture privately in your account

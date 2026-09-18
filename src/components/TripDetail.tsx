@@ -11,6 +11,7 @@ import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
+import { Sheet } from "@/components/Sheet";
 import { TripPrep } from "@/components/TripPrep";
 import { TripToday } from "@/components/TripToday";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
@@ -508,498 +509,461 @@ export function TripDetail({
         }}
       />
 
-      {settingsOpen && (
-        <div
-          role="dialog"
-          aria-label="Trip settings"
-          onClick={() => setSettingsOpen(false)}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[85vh] w-full max-w-sm overflow-y-auto rounded-t-3xl bg-card p-5 sm:rounded-2xl"
+      <Sheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={trip.title}
+        width="sm"
+      >
+        <div className="space-y-1">
+          <button
+            onClick={() => setSheetSection(sheetSection === "invite" ? null : "invite")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
           >
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-display text-[19px] leading-snug">{trip.title}</p>
+            Invite a friend
+          </button>
+          {sheetSection === "invite" && (
+            <div className="rounded-xl bg-elevated p-3">
+              <p className="text-[12px] text-muted-foreground">
+                Codes expire in 7 days and work once. Creating a new code revokes the previous open
+                one.
+              </p>
               <button
-                aria-label="Close settings"
-                onClick={() => setSettingsOpen(false)}
-                className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <button
-                onClick={() => setSheetSection(sheetSection === "invite" ? null : "invite")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Invite a friend
-              </button>
-              {sheetSection === "invite" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  <p className="text-[12px] text-muted-foreground">
-                    Codes expire in 7 days and work once. Creating a new code revokes the previous
-                    open one.
-                  </p>
-                  <button
-                    onClick={async () => {
-                      const code = await onInvite();
-                      setInviteCode(code);
-                      await board.reload();
-                    }}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
-                  >
-                    Create an invite code
-                  </button>
-                  {(() => {
-                    const active = inviteCode
-                      ? { code: inviteCode, expires_at: null as string | null }
-                      : board.invites.find(
-                          (inv) =>
-                            !inv.revoked_at &&
-                            inv.use_count < inv.max_uses &&
-                            (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
-                        );
-                    if (!active) return null;
-                    return (
-                      <div className="mt-2 space-y-2 text-center">
-                        <p className="text-[14.5px] text-muted-foreground">
-                          Share this code:{" "}
-                          <span className="font-semibold tracking-widest text-foreground">
-                            {active.code}
-                          </span>
-                        </p>
-                        {active.expires_at && (
-                          <p className="text-[12px] text-muted-foreground">
-                            Expires {new Date(active.expires_at).toLocaleDateString()}
-                          </p>
-                        )}
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await onRevokeInvite(active.code);
-                            setInviteCode("");
-                            await board.reload();
-                          }}
-                          className="text-[13px] font-semibold text-destructive underline"
-                        >
-                          Revoke this code
-                        </button>
-                      </div>
-                    );
-                  })()}
-
-                  {members.length > 0 && (
-                    <div className="mt-3 border-t border-border pt-3">
-                      <p className="text-[12px] font-semibold text-muted-foreground">
-                        People on this trip
-                      </p>
-                      <ul className="mt-2 space-y-2">
-                        {members.map((m) => {
-                          const isMe = m.user_id === me.id;
-                          const isOwner = m.user_id === trip.owner_id;
-                          const iAmOwner = me.id === trip.owner_id;
-                          const label =
-                            m.display_name?.trim() ||
-                            (isMe ? "You" : isOwner ? "Owner" : "Traveler");
-                          return (
-                            <li
-                              key={m.id}
-                              className="flex items-center justify-between gap-2 text-[14.5px]"
-                            >
-                              <span>
-                                {label}
-                                {isOwner ? " · owner" : ""}
-                                {isMe && !isOwner ? " · you" : ""}
-                              </span>
-                              {iAmOwner && !isMe && (
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    if (
-                                      !confirm(
-                                        `Remove ${label} from this trip? They will lose access immediately.`,
-                                      )
-                                    ) {
-                                      return;
-                                    }
-                                    try {
-                                      await onRemoveMember(m.user_id);
-                                    } catch (e) {
-                                      alert(e instanceof Error ? e.message : "Could not remove");
-                                    }
-                                  }}
-                                  className="text-[13px] font-semibold text-destructive underline"
-                                >
-                                  Remove
-                                </button>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      {me.id && me.id !== trip.owner_id && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (
-                              !confirm("Leave this trip? You will lose access to the itinerary.")
-                            ) {
-                              return;
-                            }
-                            try {
-                              await onLeave();
-                              setSettingsOpen(false);
-                            } catch (e) {
-                              alert(e instanceof Error ? e.message : "Could not leave");
-                            }
-                          }}
-                          className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
-                        >
-                          Leave trip
-                        </button>
-                      )}
-                      {me.id === trip.owner_id &&
-                        members.some((m) => m.user_id !== me.id) === false && (
-                          <p className="mt-2 text-[12px] text-muted-foreground">
-                            You&apos;re the only person here. Delete the trip from settings if you
-                            want it gone.
-                          </p>
-                        )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "packing" ? null : "packing")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Attach a packing list
-              </button>
-              {sheetSection === "packing" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  {templates.packs.length === 0 ? (
-                    <p className="text-[13px] text-muted-foreground">
-                      No saved lists yet — create one under Profile → Create packing lists.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-[12px] text-muted-foreground">
-                        You get a copy — ticking things off only affects this trip.
-                      </p>
-                      <select
-                        value={packTemplateId}
-                        onChange={(e) => {
-                          setPackTemplateId(e.target.value);
-                          setPackMsg("");
-                        }}
-                        className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                      >
-                        <option value="">Choose a list…</option>
-                        {templates.packs.map((pk) => (
-                          <option key={pk.id} value={pk.id}>
-                            {pk.emoji} {pk.name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        disabled={!packTemplateId}
-                        onClick={async () => {
-                          if (!packTemplateId) return;
-                          await templates.attachToTrip(packTemplateId, trip.id);
-                          setPackTemplateId("");
-                          setPackMsg("List attached — open the trip to tick items off.");
-                        }}
-                        className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                      >
-                        Attach a copy to this trip
-                      </button>
-                      {packMsg && (
-                        <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Offline directions
-                {dir.saved && (
-                  <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                    {savedAgoLabel(dir.saved.savedAt)}
-                    {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
-                  </span>
-                )}
-              </button>
-              {sheetSection === "offline" && (
-                <div className="rounded-xl bg-elevated p-3">
-                  <p className="text-[12px] text-muted-foreground">
-                    Download the walk or drive between stops so the steps work with no service.
-                    Adding directions to the timeline saves the summary — not the offline map.
-                  </p>
-                  <p className="mt-1 text-[12px] text-muted-foreground">
-                    {cities.stops.length >= 2
-                      ? `Covers your ${cities.stops.length} cities, in order.`
-                      : "Covers the timeline stops that have a place on the map."}{" "}
-                    You can also keep the legs from “Directions between stops” on the trip itself.
-                  </p>
-                  <button
-                    disabled={dir.busy || routeStops.length < 2}
-                    onClick={() => void dir.download(routeStops, directionArea)}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    {dir.busy
-                      ? "Saving…"
-                      : dir.saved
-                        ? "Refresh directions"
-                        : "Download directions"}
-                  </button>
-                  {routeStops.length < 2 && (
-                    <p className="mt-2 text-[12px] text-muted-foreground">
-                      Add at least two cities to this trip first (or two timeline entries with
-                      places).
-                    </p>
-                  )}
-                  {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
-                    <p className="mt-2 text-[12px] text-muted-foreground">
-                      Your stops have changed since this was saved — refresh to bring it up to date.
-                    </p>
-                  )}
-                  {dir.error && <p className="mt-2 text-[12px] text-destructive">{dir.error}</p>}
-                  {dir.saved && (
-                    <div className="mt-3 space-y-2">
-                      {dir.saved.legs.map((l, i) => (
-                        <details key={i} className="rounded-xl bg-elevated px-3 py-2">
-                          <summary className="cursor-pointer text-[14.5px] font-medium">
-                            {l.from} → {l.to}
-                            <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                              {l.distance > 0
-                                ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
-                                : unroutedLegCopy(l)}
-                            </span>
-                          </summary>
-                          <ol className="mt-2 space-y-1">
-                            {l.steps.map((s, k) => (
-                              <li key={k} className="text-[13px] text-muted-foreground">
-                                {s.instruction}
-                                {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
-                              </li>
-                            ))}
-                          </ol>
-                          <a
-                            href={l.mapUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-block text-[13px] font-semibold text-primary"
-                          >
-                            Open in maps (needs service)
-                          </a>
-                        </details>
-                      ))}
-                      {dir.saved.unresolved.length > 0 && (
-                        <p className="text-[12px] text-muted-foreground">
-                          Couldn't find on the map: {dir.saved.unresolved.join(", ")}
-                        </p>
-                      )}
-                      {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
-                        <p className="text-[12px] text-muted-foreground">
-                          Later stretches open in maps — Béa stops looking after a long list.
-                        </p>
-                      )}
-                      <button
-                        onClick={dir.clear}
-                        className="text-[12px] text-muted-foreground underline"
-                      >
-                        Delete saved directions
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button
-                onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-              >
-                Budget Options
-              </button>
-              {sheetSection === "budget" && (
-                <div className="space-y-2 rounded-xl bg-elevated p-3">
-                  <label className="flex items-center gap-2 px-1 text-[14.5px]">
-                    <input
-                      type="checkbox"
-                      checked={trip.budget_enabled}
-                      onChange={(e) => void onUpdate({ budget_enabled: e.target.checked })}
-                      className="size-5"
-                    />
-                    Track a budget for this trip
-                  </label>
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  const next = sheetSection === "edit" ? null : "edit";
-                  setSheetSection(next);
-                  if (next === "edit") {
-                    setTripForm({
-                      title: trip.title,
-                      city: formatTripLocation(trip.city, trip.country),
-                      country: trip.country ?? "",
-                      start_date: trip.start_date ?? "",
-                      end_date: trip.end_date ?? "",
-                      dates_status: trip.dates_status,
-                      status: trip.status,
-                    });
-                  }
+                onClick={async () => {
+                  const code = await onInvite();
+                  setInviteCode(code);
+                  await board.reload();
                 }}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+                className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
-                Trip Options
+                Create an invite code
               </button>
-              {sheetSection === "edit" && (
-                <div className="space-y-2 rounded-xl bg-elevated p-3">
-                  <input
-                    value={tripForm.title}
-                    onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
-                    placeholder="Trip name"
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                  />
-                  <PlaceSearchInput
-                    value={tripForm.city}
-                    onChange={(v) => setTripForm({ ...tripForm, city: v })}
-                    onPick={(p) => {
-                      const loc = locationFromParsedPlace(p);
-                      setTripForm({
-                        ...tripForm,
-                        city: loc.city,
-                        country: loc.country || tripForm.country,
-                      });
-                    }}
-                    placeholder="Starting city — search it"
-                  />
-                  <DateRangeField
-                    start={tripForm.start_date}
-                    end={tripForm.end_date}
-                    onChange={(start_date, end_date) =>
-                      setTripForm({ ...tripForm, start_date, end_date })
-                    }
-                    datesStatus={tripForm.dates_status}
-                    onDatesStatusChange={(dates_status) =>
-                      setTripForm({ ...tripForm, dates_status })
-                    }
-                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
-                  />
-                  {tripForm.start_date &&
-                    tripForm.end_date &&
-                    tripForm.end_date < tripForm.start_date && (
-                      <p className="px-1 text-[13px] font-medium text-destructive">
-                        End date can't be earlier than the start date.
+              {(() => {
+                const active = inviteCode
+                  ? { code: inviteCode, expires_at: null as string | null }
+                  : board.invites.find(
+                      (inv) =>
+                        !inv.revoked_at &&
+                        inv.use_count < inv.max_uses &&
+                        (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
+                    );
+                if (!active) return null;
+                return (
+                  <div className="mt-2 space-y-2 text-center">
+                    <p className="text-[14.5px] text-muted-foreground">
+                      Share this code:{" "}
+                      <span className="font-semibold tracking-widest text-foreground">
+                        {active.code}
+                      </span>
+                    </p>
+                    {active.expires_at && (
+                      <p className="text-[12px] text-muted-foreground">
+                        Expires {new Date(active.expires_at).toLocaleDateString()}
                       </p>
                     )}
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      ["upcoming", "Upcoming"],
-                      ["active", "In progress"],
-                      ["past", "Past"],
-                    ].map(([v, label]) => (
-                      <button
-                        key={v}
-                        onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                        className={`rounded-full border px-3 py-1.5 text-[13px] ${
-                          tripForm.status === v
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onRevokeInvite(active.code);
+                        setInviteCode("");
+                        await board.reload();
+                      }}
+                      className="text-[13px] font-semibold text-destructive underline"
+                    >
+                      Revoke this code
+                    </button>
                   </div>
-                  <button
-                    disabled={
-                      !tripForm.title.trim() ||
-                      !!(
-                        tripForm.start_date &&
-                        tripForm.end_date &&
-                        tripForm.end_date < tripForm.start_date
-                      )
-                    }
-                    onClick={async () => {
-                      await onUpdate({
-                        title: tripForm.title.trim(),
-                        city: tripForm.city,
-                        country: tripForm.country,
-                        start_date: tripForm.start_date,
-                        end_date: tripForm.end_date,
-                        dates_status: tripForm.dates_status,
-                        status: tripForm.status,
-                      } as Partial<TripRow>);
+                );
+              })()}
+
+              {members.length > 0 && (
+                <div className="mt-3 border-t border-border pt-3">
+                  <p className="text-[12px] font-semibold text-muted-foreground">
+                    People on this trip
+                  </p>
+                  <ul className="mt-2 space-y-2">
+                    {members.map((m) => {
+                      const isMe = m.user_id === me.id;
+                      const isOwner = m.user_id === trip.owner_id;
+                      const iAmOwner = me.id === trip.owner_id;
+                      const label =
+                        m.display_name?.trim() || (isMe ? "You" : isOwner ? "Owner" : "Traveler");
+                      return (
+                        <li
+                          key={m.id}
+                          className="flex items-center justify-between gap-2 text-[14.5px]"
+                        >
+                          <span>
+                            {label}
+                            {isOwner ? " · owner" : ""}
+                            {isMe && !isOwner ? " · you" : ""}
+                          </span>
+                          {iAmOwner && !isMe && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (
+                                  !confirm(
+                                    `Remove ${label} from this trip? They will lose access immediately.`,
+                                  )
+                                ) {
+                                  return;
+                                }
+                                try {
+                                  await onRemoveMember(m.user_id);
+                                } catch (e) {
+                                  alert(e instanceof Error ? e.message : "Could not remove");
+                                }
+                              }}
+                              className="text-[13px] font-semibold text-destructive underline"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {me.id && me.id !== trip.owner_id && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("Leave this trip? You will lose access to the itinerary.")) {
+                          return;
+                        }
+                        try {
+                          await onLeave();
+                          setSettingsOpen(false);
+                        } catch (e) {
+                          alert(e instanceof Error ? e.message : "Could not leave");
+                        }
+                      }}
+                      className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
+                    >
+                      Leave trip
+                    </button>
+                  )}
+                  {me.id === trip.owner_id &&
+                    members.some((m) => m.user_id !== me.id) === false && (
+                      <p className="mt-2 text-[12px] text-muted-foreground">
+                        You&apos;re the only person here. Delete the trip from settings if you want
+                        it gone.
+                      </p>
+                    )}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={() => setSheetSection(sheetSection === "packing" ? null : "packing")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+          >
+            Attach a packing list
+          </button>
+          {sheetSection === "packing" && (
+            <div className="rounded-xl bg-elevated p-3">
+              {templates.packs.length === 0 ? (
+                <p className="text-[13px] text-muted-foreground">
+                  No saved lists yet — create one under Profile → Create packing lists.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[12px] text-muted-foreground">
+                    You get a copy — ticking things off only affects this trip.
+                  </p>
+                  <select
+                    value={packTemplateId}
+                    onChange={(e) => {
+                      setPackTemplateId(e.target.value);
+                      setPackMsg("");
                     }}
-                    className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                    className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
                   >
-                    Save changes
+                    <option value="">Choose a list…</option>
+                    {templates.packs.map((pk) => (
+                      <option key={pk.id} value={pk.id}>
+                        {pk.emoji} {pk.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    disabled={!packTemplateId}
+                    onClick={async () => {
+                      if (!packTemplateId) return;
+                      await templates.attachToTrip(packTemplateId, trip.id);
+                      setPackTemplateId("");
+                      setPackMsg("List attached — open the trip to tick items off.");
+                    }}
+                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                  >
+                    Attach a copy to this trip
+                  </button>
+                  {packMsg && <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>}
+                </>
+              )}
+            </div>
+          )}
+
+          <button
+            onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+          >
+            Offline directions
+            {dir.saved && (
+              <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                {savedAgoLabel(dir.saved.savedAt)}
+                {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
+              </span>
+            )}
+          </button>
+          {sheetSection === "offline" && (
+            <div className="rounded-xl bg-elevated p-3">
+              <p className="text-[12px] text-muted-foreground">
+                Download the walk or drive between stops so the steps work with no service. Adding
+                directions to the timeline saves the summary — not the offline map.
+              </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                {cities.stops.length >= 2
+                  ? `Covers your ${cities.stops.length} cities, in order.`
+                  : "Covers the timeline stops that have a place on the map."}{" "}
+                You can also keep the legs from “Directions between stops” on the trip itself.
+              </p>
+              <button
+                disabled={dir.busy || routeStops.length < 2}
+                onClick={() => void dir.download(routeStops, directionArea)}
+                className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
+              </button>
+              {routeStops.length < 2 && (
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  Add at least two cities to this trip first (or two timeline entries with places).
+                </p>
+              )}
+              {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  Your stops have changed since this was saved — refresh to bring it up to date.
+                </p>
+              )}
+              {dir.error && <p className="mt-2 text-[12px] text-destructive">{dir.error}</p>}
+              {dir.saved && (
+                <div className="mt-3 space-y-2">
+                  {dir.saved.legs.map((l, i) => (
+                    <details key={i} className="rounded-xl bg-elevated px-3 py-2">
+                      <summary className="cursor-pointer text-[14.5px] font-medium">
+                        {l.from} → {l.to}
+                        <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                          {l.distance > 0
+                            ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                            : unroutedLegCopy(l)}
+                        </span>
+                      </summary>
+                      <ol className="mt-2 space-y-1">
+                        {l.steps.map((s, k) => (
+                          <li key={k} className="text-[13px] text-muted-foreground">
+                            {s.instruction}
+                            {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
+                          </li>
+                        ))}
+                      </ol>
+                      <a
+                        href={l.mapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-block text-[13px] font-semibold text-primary"
+                      >
+                        Open in maps (needs service)
+                      </a>
+                    </details>
+                  ))}
+                  {dir.saved.unresolved.length > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      Couldn't find on the map: {dir.saved.unresolved.join(", ")}
+                    </p>
+                  )}
+                  {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
+                    <p className="text-[12px] text-muted-foreground">
+                      Later stretches open in maps — Béa stops looking after a long list.
+                    </p>
+                  )}
+                  <button
+                    onClick={dir.clear}
+                    className="text-[12px] text-muted-foreground underline"
+                  >
+                    Delete saved directions
                   </button>
                 </div>
               )}
-
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
-              >
-                Delete trip
-              </button>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {confirmDelete && (
-        <div
-          role="dialog"
-          aria-label="Delete trip confirmation"
-          onClick={() => setConfirmDelete(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setConfirmDelete(false);
-          }}
-          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-t-3xl bg-card p-5 text-center sm:rounded-2xl"
+          <button
+            onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
           >
-            <p className="font-display text-[19px] leading-snug">Delete this trip?</p>
-            <p className="mt-2 text-[14.5px] text-muted-foreground">
-              This permanently removes the trip, its timeline, stops, budget and invites. This can't
-              be undone.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setSettingsOpen(false);
-                  void onDelete();
+            Budget Options
+          </button>
+          {sheetSection === "budget" && (
+            <div className="space-y-2 rounded-xl bg-elevated p-3">
+              <label className="flex items-center gap-2 px-1 text-[14.5px]">
+                <input
+                  type="checkbox"
+                  checked={trip.budget_enabled}
+                  onChange={(e) => void onUpdate({ budget_enabled: e.target.checked })}
+                  className="size-5"
+                />
+                Track a budget for this trip
+              </label>
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              const next = sheetSection === "edit" ? null : "edit";
+              setSheetSection(next);
+              if (next === "edit") {
+                setTripForm({
+                  title: trip.title,
+                  city: formatTripLocation(trip.city, trip.country),
+                  country: trip.country ?? "",
+                  start_date: trip.start_date ?? "",
+                  end_date: trip.end_date ?? "",
+                  dates_status: trip.dates_status,
+                  status: trip.status,
+                });
+              }
+            }}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+          >
+            Trip Options
+          </button>
+          {sheetSection === "edit" && (
+            <div className="space-y-2 rounded-xl bg-elevated p-3">
+              <input
+                value={tripForm.title}
+                onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
+                placeholder="Trip name"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+              />
+              <PlaceSearchInput
+                value={tripForm.city}
+                onChange={(v) => setTripForm({ ...tripForm, city: v })}
+                onPick={(p) => {
+                  const loc = locationFromParsedPlace(p);
+                  setTripForm({
+                    ...tripForm,
+                    city: loc.city,
+                    country: loc.country || tripForm.country,
+                  });
                 }}
-                className="flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
+                placeholder="Starting city — search it"
+              />
+              <DateRangeField
+                start={tripForm.start_date}
+                end={tripForm.end_date}
+                onChange={(start_date, end_date) =>
+                  setTripForm({ ...tripForm, start_date, end_date })
+                }
+                datesStatus={tripForm.dates_status}
+                onDatesStatusChange={(dates_status) => setTripForm({ ...tripForm, dates_status })}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
+              />
+              {tripForm.start_date &&
+                tripForm.end_date &&
+                tripForm.end_date < tripForm.start_date && (
+                  <p className="px-1 text-[13px] font-medium text-destructive">
+                    End date can't be earlier than the start date.
+                  </p>
+                )}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  ["upcoming", "Upcoming"],
+                  ["active", "In progress"],
+                  ["past", "Past"],
+                ].map(([v, label]) => (
+                  <button
+                    key={v}
+                    onClick={() => setTripForm({ ...tripForm, status: v as string })}
+                    className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                      tripForm.status === v
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <button
+                disabled={
+                  !tripForm.title.trim() ||
+                  !!(
+                    tripForm.start_date &&
+                    tripForm.end_date &&
+                    tripForm.end_date < tripForm.start_date
+                  )
+                }
+                onClick={async () => {
+                  await onUpdate({
+                    title: tripForm.title.trim(),
+                    city: tripForm.city,
+                    country: tripForm.country,
+                    start_date: tripForm.start_date,
+                    end_date: tripForm.end_date,
+                    dates_status: tripForm.dates_status,
+                    status: tripForm.status,
+                  } as Partial<TripRow>);
+                }}
+                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
               >
-                Delete
+                Save changes
               </button>
             </div>
+          )}
+
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
+          >
+            Delete trip
+          </button>
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Delete this trip?"
+        width="sm"
+        showClose={false}
+        above
+      >
+        <div className="text-center">
+          <p className="text-[14.5px] text-muted-foreground">
+            This permanently removes the trip, its timeline, stops, budget and invites. This can't
+            be undone.
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                setConfirmDelete(false);
+                setSettingsOpen(false);
+                void onDelete();
+              }}
+              className="flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
+            >
+              Delete
+            </button>
           </div>
         </div>
-      )}
+      </Sheet>
     </article>
   );
 }

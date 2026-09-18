@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Image as ImageIcon } from "lucide-react";
+import { Sheet } from "@/components/Sheet";
 import { usePacking } from "@/hooks/usePacking";
 import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
@@ -503,17 +503,6 @@ export function PackingLists({
   const p = usePacking(tripId ?? null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open]);
-
   return (
     <>
       <button
@@ -529,40 +518,14 @@ export function PackingLists({
         </span>
       </button>
 
-      {open &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
-            onClick={() => setOpen(false)}
-          >
-            <div
-              role="dialog"
-              aria-label={label ?? "Packing lists"}
-              onClick={(e) => e.stopPropagation()}
-              className="rise flex max-h-[88vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-card sm:rounded-2xl"
-            >
-              <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <div>
-                  <p className="label-caps text-foreground">{label ?? "Packing lists"}</p>
-                  <p className="text-[12px] text-muted-foreground">
-                    {hint ?? "Tick things off as you pack."}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  aria-label="Close packing lists"
-                  className="rounded-full border border-border px-3 py-1 text-[13px]"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3">
-                <PackingBody tripId={tripId} />
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
+      <Sheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title={label ?? "Packing lists"}
+        hint={hint ?? "Tick things off as you pack."}
+      >
+        <PackingBody tripId={tripId} />
+      </Sheet>
     </>
   );
 }

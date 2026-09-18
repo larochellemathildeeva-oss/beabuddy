@@ -1,3 +1,4 @@
+import { Sheet } from "@/components/Sheet";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Columns2, Image as ImageIcon, ListOrdered, Sparkles, X } from "lucide-react";
@@ -85,93 +86,66 @@ export function ItineraryImport({
     if (open) setTab(defaultTab);
   }, [open, defaultTab]);
 
-  if (!open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Let Béa plan this trip"
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
+    <Sheet
+      open={open}
+      onClose={onClose}
+      title="Let Béa plan this trip"
+      hint="Built around your travel preferences and tagged recs"
+      icon={<img src={logo} alt="" className="size-10 object-contain" />}
     >
-      <section
-        onClick={(event) => event.stopPropagation()}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-card p-4 sm:rounded-2xl"
-      >
-        <div className="mb-3 flex items-center gap-3">
-          <img src={logo} alt="" className="size-10 object-contain" />
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-[19px] leading-tight">Let Béa plan this trip</p>
-            <p className="text-[12px] text-muted-foreground">
-              Built around your travel preferences and tagged recs
-            </p>
-          </div>
-          <button
-            aria-label="Close trip planner"
-            onClick={onClose}
-            className="grid size-8 place-items-center rounded-full border border-border"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => setTab("import")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-              tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-            }`}
-          >
-            <Camera className="size-3.5" /> Build
-          </button>
-          <button
-            data-guide="bea-optimize"
-            onClick={() => setTab("optimize")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-              tab === "optimize"
-                ? "border-primary bg-card"
-                : "border-border/60 text-muted-foreground"
-            }`}
-          >
-            <ListOrdered className="size-3.5" /> Optimize
-          </button>
-          <button
-            onClick={() => setTab("compare")}
-            className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-              tab === "compare"
-                ? "border-primary bg-card"
-                : "border-border/60 text-muted-foreground"
-            }`}
-          >
-            <Columns2 className="size-3.5" /> Compare
-          </button>
-        </div>
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          onClick={() => setTab("import")}
+          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+            tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
+          }`}
+        >
+          <Camera className="size-3.5" /> Build
+        </button>
+        <button
+          data-guide="bea-optimize"
+          onClick={() => setTab("optimize")}
+          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+            tab === "optimize" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
+          }`}
+        >
+          <ListOrdered className="size-3.5" /> Optimize
+        </button>
+        <button
+          onClick={() => setTab("compare")}
+          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+            tab === "compare" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
+          }`}
+        >
+          <Columns2 className="size-3.5" /> Compare
+        </button>
+      </div>
 
-        {tab === "import" && (
-          <ImportPanel
-            existingItems={existingItems}
-            tripCity={tripCity}
-            startDate={startDate}
-            endDate={endDate}
-            onAddItems={onAddItems}
-            {...(onRemoveItems ? { onRemoveItems } : {})}
-            onAddCosts={onAddCosts}
-            onApplyDates={onApplyDates}
-          />
-        )}
-        {tab === "optimize" && (
-          <OptimizePanel
-            tripCity={tripCity}
-            startDate={startDate}
-            endDate={endDate}
-            items={existingItems}
-            cities={cities}
-            onApplySchedule={onApplySchedule}
-          />
-        )}
-        {tab === "compare" && <ComparePanel />}
-      </section>
-    </div>
+      {tab === "import" && (
+        <ImportPanel
+          existingItems={existingItems}
+          tripCity={tripCity}
+          startDate={startDate}
+          endDate={endDate}
+          onAddItems={onAddItems}
+          {...(onRemoveItems ? { onRemoveItems } : {})}
+          onAddCosts={onAddCosts}
+          onApplyDates={onApplyDates}
+        />
+      )}
+      {tab === "optimize" && (
+        <OptimizePanel
+          tripCity={tripCity}
+          startDate={startDate}
+          endDate={endDate}
+          items={existingItems}
+          cities={cities}
+          onApplySchedule={onApplySchedule}
+        />
+      )}
+      {tab === "compare" && <ComparePanel />}
+    </Sheet>
   );
 }
 
