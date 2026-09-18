@@ -12,6 +12,7 @@ import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { TripPrep } from "@/components/TripPrep";
+import { TripToday } from "@/components/TripToday";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -263,6 +264,8 @@ export function TripDetail({
             ))}
           </div>
         </div>
+
+        <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
 
         <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
 
