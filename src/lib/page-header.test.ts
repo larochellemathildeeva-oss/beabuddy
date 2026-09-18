@@ -34,7 +34,6 @@ describe("tabIdForPath", () => {
     assert.equal(tabIdForPath("/world"), "world");
     assert.equal(tabIdForPath("/trips"), "trips");
     assert.equal(tabIdForPath("/recommendations"), "recs");
-    assert.equal(tabIdForPath("/opportunities"), "near");
     assert.equal(tabIdForPath("/profile"), "you");
   });
 
@@ -43,7 +42,9 @@ describe("tabIdForPath", () => {
   });
 
   it("returns null where no tab owns the route", () => {
-    for (const p of ["/help", "/preferences", "/story", "/privacy"]) {
+    // /opportunities is among them now: Near folded into Recs as a filter, and
+    // the route only exists to redirect into it.
+    for (const p of ["/help", "/preferences", "/story", "/privacy", "/opportunities"]) {
       assert.equal(tabIdForPath(p), null, p);
     }
   });

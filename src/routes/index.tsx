@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import { HomeTripCard } from "@/components/HomeTripCard";
 import { ContentCard } from "@/components/ContentCard";
+import { NearNudge } from "@/components/NearNudge";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -169,6 +170,8 @@ function SignedInHome() {
       title={firstName ? `Hello, ${firstName}.` : "Welcome to Béa."}
     >
       <div className="space-y-6">
+        <NearNudge pins={vault.pins} />
+
         {layout.trip && <HomeTripCard />}
 
         {layout.shortcuts && (

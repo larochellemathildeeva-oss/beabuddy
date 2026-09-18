@@ -165,6 +165,11 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='reco-search']",
       },
       {
+        title: "Near me",
+        body: "The same saved places, sorted by how close you are right now, with directions one tap away. Béa only looks when you say so, and you pick how long.",
+        selector: "[data-guide='near-filter']",
+      },
+      {
         title: "Filter by city",
         body: "These chips are cities from your saved recs — not pins. Tap one to see every restaurant, hotel or spot there.",
         selector: "[data-guide='reco-places']",
@@ -198,31 +203,6 @@ const guides: Record<string, Guide> = {
         title: "Your vault",
         body: "Everything saved, newest first, with who recommended it, the note you left, and the travel tags Béa guessed. Tap Remove to let one go.",
         selector: "[data-guide='reco-list']",
-      },
-    ],
-  },
-  "/opportunities": {
-    name: "Near me",
-    steps: [
-      {
-        title: "Your location, your rules",
-        body: "Béa only looks when you say so, and you pick how long — just once, an hour, today, or until you switch it off.",
-        selector: "[data-guide='location-card']",
-      },
-      {
-        title: "How close counts as near",
-        body: "Set the distance that earns a nudge, and how often you want to hear from Béa.",
-        selector: "[data-guide='alert-settings']",
-      },
-      {
-        title: "What's around you",
-        body: "Everything you've saved, sorted by how far away it is right now, with directions one tap away. Tick a few recs, then Plan a day trip.",
-        selector: "[data-guide='near-list']",
-      },
-      {
-        title: "Plan a day trip",
-        body: "Tick two or more nearby recs, pick today's pace, lean into the tags you care about, and Arrange with Béa. Review the draft, then save it as a trip. Nothing is booked.",
-        selector: "[data-guide='day-trip']",
       },
     ],
   },

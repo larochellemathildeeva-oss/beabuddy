@@ -89,6 +89,21 @@ describe("FAQ covers what the app ships", () => {
   }
 });
 
+describe("FAQ does not describe a UI that no longer exists", () => {
+  // Both of these were true once. The demo-city buttons were removed from Near,
+  // and Near itself became a filter on the vault — and the FAQ went on
+  // describing both for a release, which is the exact failure this file exists
+  // to catch.
+  it("does not offer demo cities", () => {
+    assert.equal(/demo cit(y|ies)/i.test(PROSE), false);
+  });
+
+  it("describes Near as a filter, not a tab", () => {
+    assert.equal(/\bthe near tab\b(?!\s+(go|went))/i.test(PROSE), false);
+    assert.ok(mentions("near me"), "the filter should be named the way the button is");
+  });
+});
+
 describe("FAQ does not contradict the brand", () => {
   it("never calls Béa an AI travel planner", () => {
     assert.equal(/ai (travel )?(planner|trip generator)/.test(PROSE), false);

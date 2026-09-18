@@ -160,6 +160,7 @@ export function Tour({
   // Depend on route string, not `step` object identity (tourSteps is stable,
   // but never risk navigating every render).
   const stepTo = step?.to;
+  const stepSearch = step?.search;
   const stepNeedsAuth = step?.needsAuth;
   const stepSelector = step?.selector;
   const stepAwaitClick = step?.awaitClick;
@@ -167,7 +168,7 @@ export function Tour({
   useEffect(() => {
     if (!open || loading || !mode || !stepTo) return;
     if (stepNeedsAuth && !user) return;
-    navigate({ to: stepTo });
+    navigate({ to: stepTo, ...(stepSearch ? { search: stepSearch } : {}) });
   }, [open, i, mode, user, loading, navigate, stepTo, stepNeedsAuth]);
 
   const measure = useCallback(() => {

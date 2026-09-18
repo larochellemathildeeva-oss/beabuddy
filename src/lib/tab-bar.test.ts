@@ -2,12 +2,12 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { activeTabIndex, indicatorOffset, pathMatchesTab } from "./tab-bar.ts";
 
+// Five tabs since Near became a filter on the vault.
 const TABS = [
   { to: "/" },
   { to: "/world" },
   { to: "/trips" },
   { to: "/recommendations" },
-  { to: "/opportunities" },
   { to: "/profile" },
 ] as const;
 
@@ -41,7 +41,7 @@ describe("activeTabIndex", () => {
 
   it("returns -1 for a route no tab owns", () => {
     // This is the whole point: these must not light up Home.
-    for (const path of ["/preferences", "/help", "/story", "/expenses", "/how-it-works"]) {
+    for (const path of ["/preferences", "/help", "/story", "/opportunities", "/how-it-works"]) {
       assert.equal(activeTabIndex(path, TABS), -1, path);
     }
   });

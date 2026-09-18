@@ -21,14 +21,13 @@ export function nextCompressed(scrollTop: number, compressed: boolean): boolean 
  * fixed, so every tab has identical contrast against the page. That is the
  * payoff for the palette being in oklch rather than hex.
  */
-export type TabId = "home" | "world" | "trips" | "recs" | "near" | "you";
+export type TabId = "home" | "world" | "trips" | "recs" | "you";
 
 export function tabIdForPath(pathname: string): TabId | null {
   if (pathname === "/") return "home";
   if (pathname === "/world" || pathname.startsWith("/world/")) return "world";
   if (pathname === "/trips" || pathname.startsWith("/trips/")) return "trips";
   if (pathname === "/recommendations" || pathname.startsWith("/recommendations/")) return "recs";
-  if (pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "near";
   if (pathname === "/profile" || pathname.startsWith("/profile/")) return "you";
   return null;
 }

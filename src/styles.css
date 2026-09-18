@@ -330,16 +330,13 @@
   --tab-hue: 39;
 }
 [data-tab="world"] {
-  --tab-hue: 47;
+  --tab-hue: 49;
 }
 [data-tab="trips"] {
-  --tab-hue: 55;
+  --tab-hue: 59;
 }
 [data-tab="recs"] {
-  --tab-hue: 63;
-}
-[data-tab="near"] {
-  --tab-hue: 71;
+  --tab-hue: 69;
 }
 [data-tab="you"] {
   --tab-hue: 79;

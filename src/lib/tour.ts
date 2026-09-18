@@ -4,6 +4,8 @@ export type TourStep = {
   title: string;
   body: string;
   to?: string;
+  /** Search params for `to`. Near is a filter on the vault, not a route. */
+  search?: Record<string, string>;
   /** Route only makes sense once signed in. Applied automatically for gated paths. */
   needsAuth?: boolean;
   /** CSS selector for the spotlight cutout (PageGuide `data-guide` targets). */
@@ -87,8 +89,9 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Opportunity mode",
-    body: "You're near something Future You wanted. Share your location and Near ranks your own saves by distance and why they matter right now.",
-    to: "/opportunities",
+    body: "You're near something Future You wanted. Share your location and the vault ranks your own saves by distance and why they matter right now.",
+    to: "/recommendations",
+    search: { near: "1" },
     selector: "[data-guide='location-card']",
   },
   {
@@ -198,20 +201,23 @@ export const DEEP_STEPS: TourStep[] = [
   // —— Pillar 4: Opportunity Engine ——
   {
     title: "Pillar 4 — Opportunities",
-    body: "You saved a restaurant, a museum, a hike months ago. Near says you're 900m from something Future You wanted.",
-    to: "/opportunities",
+    body: "You saved a restaurant, a museum, a hike months ago. Near me says you're 900m from something Future You wanted.",
+    to: "/recommendations",
+    search: { near: "1" },
     selector: "[data-guide='near-list']",
   },
   {
-    title: "Near — your saves, ranked",
-    body: "Share location or demo a city. Distance and preference score bring forgotten intentions back as experiences. Snooze when it's not the moment.",
-    to: "/opportunities",
+    title: "Near me — your saves, ranked",
+    body: "Share your location and the same vault re-sorts by how close you are. Distance and preference bring forgotten intentions back as experiences. Snooze when it's not the moment.",
+    to: "/recommendations",
+    search: { near: "1" },
     selector: "[data-guide='location-card']",
   },
   {
     title: "Day trip from your vault",
     body: "Tick nearby saves, pick today's pace, Arrange with Béa, then save as a day-trip — still starting from places you already kept.",
-    to: "/opportunities",
+    to: "/recommendations",
+    search: { near: "1" },
     selector: "[data-guide='day-trip']",
   },
 

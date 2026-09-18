@@ -8,7 +8,7 @@ import { nextCompressed, tabIdForPath } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Compass, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
+import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -16,12 +16,14 @@ import { PageGuide } from "./PageGuide";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 // Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
 
+// Five, not six: Near folded into Recs as a filter, because it was never a
+// different set of places — it was the vault sorted by how close you are.
+// /opportunities redirects into that filter, so old links still work.
 const tabs = [
   { to: "/", label: "Home", icon: Home },
   { to: "/world", label: "World", icon: Globe2 },
   { to: "/trips", label: "Trips", icon: MapPinned },
   { to: "/recommendations", label: "Recs", icon: Bookmark },
-  { to: "/opportunities", label: "Near", icon: Compass },
   { to: "/profile", label: "You", icon: User },
 ] as const;
 
@@ -236,7 +238,7 @@ export function AppShell({
                 exactly the row of links — anchoring it to the padded <nav>
                 instead would leave the pill hanging below them on a phone with
                 a home-indicator inset. */}
-            <div className="relative grid grid-cols-6">
+            <div className="relative grid grid-cols-5">
               {/* One pill that travels, rather than a class jumping between six.
                   The tabs are equal columns, so the whole geometry is index ×
                   100% of the indicator's own width — nothing to measure and
@@ -246,7 +248,7 @@ export function AppShell({
                   reader announces, so this is hidden from the tree entirely. */}
               <span
                 aria-hidden
-                className={`pointer-events-none absolute inset-0 w-1/6 rounded-2xl tab-tint transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
+                className={`pointer-events-none absolute inset-0 w-1/5 rounded-2xl tab-tint transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
                   tabIndex === -1 ? "opacity-0" : "opacity-100"
                 }`}
                 style={{ transform: indicatorOffset(tabIndex) }}
