@@ -66,9 +66,25 @@ export function NearbyPlaces({
       cur.includes(id) ? cur.filter((x) => x !== id) : cur.length >= 12 ? cur : [...cur, id],
     );
 
+  /**
+   * The location card earns its space only while it has something to ask or
+   * report. Once you have said yes and Béa knows where you are, it is a panel
+   * printing your own coordinates back at you above the places you came to
+   * see — so on Home it gets out of the way, and Refresh, Stop sharing and the
+   * radius come back with Show all.
+   *
+   * It stays for an error, because that is the one case with something to do.
+   */
+  const settled = consent && state === "ok" && !!here;
+  const showLocationCard = !collapsed || !settled;
+
   return (
     <div className="space-y-4">
-      <div data-guide="location-card" className="card-soft p-4">
+      <div
+        data-guide="location-card"
+        className="card-soft p-4"
+        {...(showLocationCard ? {} : { hidden: true })}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="label-caps">Your location</p>

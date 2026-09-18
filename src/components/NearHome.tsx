@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { Pin } from "@/data/atlas";
 import { NearbyPlaces } from "@/components/NearbyPlaces";
 import { useNearMe } from "@/hooks/useNearMe";
-import { beaLine } from "@/lib/bea-voice";
 import { formatMetres, pinsWithin } from "@/lib/near";
 
 /**
@@ -65,8 +64,7 @@ export function NearHome({ pins }: { pins: Pin[] }) {
 
       {!near.consent && (
         <p className="mb-3 text-[14.5px] text-muted-foreground">
-          {beaLine("near.nearby").body ||
-            "Share your location and Béa will surface what you've already saved nearby."}
+          Share where you are and Béa will show which of your saved places are within reach.
         </p>
       )}
 
