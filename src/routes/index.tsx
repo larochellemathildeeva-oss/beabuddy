@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { formatTripLocation } from "@/lib/place-label";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
@@ -239,7 +240,7 @@ function SignedInHome() {
                 </div>
                 <h2 className="mt-1 text-[22px] leading-tight">{topReco.name}</h2>
                 <p className="mt-0.5 text-[14.5px] text-muted-foreground">
-                  {[topReco.city, topReco.country].filter(Boolean).join(", ")}
+                  {formatTripLocation(topReco.city, topReco.country)}
                   {topReco.recommended_by ? ` · saved by ${topReco.recommended_by}` : ""}
                 </p>
                 {topReco.notes && (

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { formatTripLocation } from "@/lib/place-label";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
@@ -293,8 +294,7 @@ function WorldPage() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] font-medium">{pin.name}</span>
                         <span className="block truncate text-[12px] text-muted-foreground">
-                          {[pin.city, pin.country].filter(Boolean).join(", ") ||
-                            "Somewhere on the map"}
+                          {formatTripLocation(pin.city, pin.country) || "Somewhere on the map"}
                         </span>
                       </span>
                       <span className="shrink-0 text-[11.5px] uppercase tracking-wider text-muted-foreground">
@@ -320,8 +320,7 @@ function WorldPage() {
                 </div>
                 <h2 className="mt-1 text-[23px] leading-tight">{selected.name}</h2>
                 <p className="text-[13px] text-muted-foreground">
-                  {[selected.city, selected.country].filter(Boolean).join(", ") ||
-                    "Somewhere on the map"}
+                  {formatTripLocation(selected.city, selected.country) || "Somewhere on the map"}
                 </p>
               </div>
               <button

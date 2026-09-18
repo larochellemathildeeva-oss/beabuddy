@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -381,8 +382,7 @@ function ProfilePage() {
                 <li key={trip.id} className="px-3 py-2.5">
                   <p className="text-[14.5px] font-medium">{trip.title}</p>
                   <p className="text-[12.5px] text-muted-foreground">
-                    {[trip.city, trip.country].filter(Boolean).join(", ") ||
-                      "Directions saved here"}
+                    {formatTripLocation(trip.city, trip.country) || "Directions saved here"}
                   </p>
                 </li>
               ))}

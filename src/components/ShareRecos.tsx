@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatTripLocation } from "@/lib/place-label";
 import { Check, Copy, Inbox, Share2 } from "lucide-react";
 import { claimSharedList, readSharedList, useRecoShares } from "@/hooks/useRecoShares";
 import { findDuplicate } from "@/lib/captured-place";
@@ -179,14 +180,9 @@ export function ShareRecos({
   const live = s.shares.filter((share) => !share.revoked_at);
 
   return (
-    <section data-guide="reco-share" className="surface border border-border/50 p-3.5">
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="font-display text-[16.5px] leading-tight">Share places</p>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            Send a few of your saved places to someone, or open a list they sent you.
-          </p>
-        </div>
+    <section data-guide="reco-share">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="label-caps">Share places</p>
         <div className="flex shrink-0 flex-wrap items-center gap-1.5">
           <button
             type="button"
@@ -252,7 +248,7 @@ export function ShareRecos({
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14.5px] font-medium">{row.name}</span>
                         <span className="block truncate text-[12px] text-muted-foreground">
-                          {[row.city, row.country].filter(Boolean).join(", ") || "No city saved"}
+                          {formatTripLocation(row.city, row.country) || "No city saved"}
                         </span>
                       </span>
                     </label>
@@ -395,7 +391,7 @@ export function ShareRecos({
                             {item.name}
                           </span>
                           <span className="block truncate text-[12px] text-muted-foreground">
-                            {[item.city, item.country].filter(Boolean).join(", ") || item.category}
+                            {formatTripLocation(item.city, item.country) || item.category}
                             {already ? " · already saved" : ""}
                           </span>
                           {item.notes && (

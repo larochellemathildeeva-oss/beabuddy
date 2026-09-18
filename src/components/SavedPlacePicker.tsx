@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { formatTripLocation } from "@/lib/place-label";
 import { Bookmark } from "lucide-react";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { capturedFromReco, findDuplicate, type CapturedPlace } from "@/lib/captured-place";
@@ -133,7 +134,7 @@ export function SavedPlacePicker({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14.5px] font-medium">{row.name}</span>
                       <span className="block truncate text-[12px] text-muted-foreground">
-                        {[row.city, row.country].filter(Boolean).join(", ") ||
+                        {formatTripLocation(row.city, row.country) ||
                           pinLabel[row.type] ||
                           "Saved place"}
                         {row.lat == null ? " · no map pin" : ""}

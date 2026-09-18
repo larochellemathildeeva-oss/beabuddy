@@ -34,7 +34,7 @@ import {
   type ParsedPlace,
 } from "@/lib/places.functions";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
-import { placeSuggestionLines } from "@/lib/place-label";
+import { placeSuggestionLines, formatTripLocation } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
 import {
@@ -467,11 +467,7 @@ function RecommendationsPage() {
             pasted link gets read. The five equal-weight buttons that used to
             live here are folded into "Other ways" below, because four of them
             are rare and the fifth was this. */}
-        <section data-guide="reco-add" className="surface border border-border/50 p-3.5">
-          <p className="font-display text-[16.5px] leading-tight">Save a place</p>
-          <p className="mb-2.5 mt-0.5 text-[12.5px] text-muted-foreground">
-            Type a name, or paste a link from Maps, Instagram, a blog — anywhere.
-          </p>
+        <section data-guide="reco-add">
           <PlaceSearchInput
             value={addText}
             onChange={setAddText}
@@ -996,7 +992,7 @@ function RecommendationsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-display text-[18px] leading-tight">{v.name}</p>
                   <p className="text-[13px] text-muted-foreground">
-                    {[v.city, v.country].filter(Boolean).join(", ")}
+                    {formatTripLocation(v.city, v.country)}
                     {v.by ? ` · by ${v.by}` : ""}
                     {v.source ? ` · ${v.source}` : ""}
                   </p>
