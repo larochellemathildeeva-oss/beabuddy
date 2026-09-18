@@ -56,6 +56,13 @@ export function useNearMe() {
   const [state, setState] = useState<LocState>("idle");
   const [error, setError] = useState("");
   const [radius, setRadius] = useState<number>(DEFAULT_RADIUS);
+  /**
+   * Places you have waved away this session. It lives here rather than in the
+   * list, because Home decides what to say about "near you" from the same
+   * numbers the list renders — and when only the list knew about dismissals,
+   * the two disagreed and Home kept a heading over an empty list.
+   */
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const [consent, setConsent] = useState(false);
   /** Consent is read after mount, so SSR and the first client render agree. */
   const [consentReady, setConsentReady] = useState(false);
@@ -107,6 +114,10 @@ export function useNearMe() {
     [locate],
   );
 
+  const dismiss = useCallback((id: string) => {
+    setDismissed((cur) => (cur.includes(id) ? cur : [...cur, id]));
+  }, []);
+
   const stop = useCallback(() => {
     try {
       localStorage.removeItem(CONSENT_KEY);
@@ -117,7 +128,21 @@ export function useNearMe() {
     setHere(null);
     setState("idle");
     setError("");
+    setDismissed([]);
   }, []);
 
-  return { here, state, error, radius, setRadius, consent, consentReady, allow, stop, locate };
+  return {
+    here,
+    state,
+    error,
+    radius,
+    setRadius,
+    consent,
+    consentReady,
+    dismissed,
+    dismiss,
+    allow,
+    stop,
+    locate,
+  };
 }

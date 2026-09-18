@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { Pin } from "@/data/atlas";
 import { NearbyPlaces } from "@/components/NearbyPlaces";
 import { useNearMe } from "@/hooks/useNearMe";
-import { formatMetres, pinsWithin } from "@/lib/near";
+import { formatMetres } from "@/lib/near";
+import { nearHomeView } from "@/lib/near-home";
 
 /**
  * What's saved around you, on the screen you actually open.
@@ -21,24 +22,47 @@ export function NearHome({ pins }: { pins: Pin[] }) {
   const near = useNearMe();
   const [expanded, setExpanded] = useState(false);
 
-  // Nothing to be near. No point offering location to someone with an empty
-  // vault — there is nothing for Béa to find.
-  if (pins.length === 0) return null;
+  const view = nearHomeView({
+    consent: near.consent,
+    located: near.state === "ok",
+    here: near.here,
+    pins,
+    radius: near.radius,
+    dismissed: near.dismissed,
+  });
+
+  // Nothing to be near. No point offering location to someone whose saved
+  // places have no position — there is nothing for Béa to measure against.
+  if (view.kind === "hidden") return null;
   if (!near.consentReady) return null;
 
-  const anythingNear = near.here ? pinsWithin(near.here, pins, near.radius).length > 0 : false;
-
-  const quiet = near.consent && near.state === "ok" && !anythingNear;
-
-  if (quiet && !expanded) {
+  /**
+   * Béa looked and found nothing within reach.
+   *
+   * This used to be one faint line, which is how sharing your location came to
+   * look broken: a travel vault is mostly places abroad and the radius starts
+   * at 5 km, so at home this is the ordinary answer rather than the rare one,
+   * and the whole panel collapsing into grey 13.5px text reads as the tap
+   * having done nothing. It now says plainly that she looked, how far she
+   * looked, and what the nearest saved place actually is — an answer, rather
+   * than the absence of one.
+   */
+  if (view.kind === "none-near" && !expanded) {
     return (
-      <section data-guide="home-near" className="flex items-baseline justify-between gap-2">
-        <p className="text-[13.5px] text-muted-foreground">
-          Nothing saved within {formatMetres(near.radius)} of you.
+      <section data-guide="home-near" className="rise surface p-3.5">
+        <p className="label-caps text-foreground">Around you right now</p>
+        <p className="mt-1 text-[14.5px] text-muted-foreground">
+          Nothing you've saved is within {formatMetres(near.radius)}.
         </p>
+        {view.nearest && (
+          <p className="mt-1.5 text-[14.5px]">
+            Nearest is <span className="font-semibold">{view.nearest.pin.name}</span>, about{" "}
+            {formatMetres(view.nearest.metres)} away.
+          </p>
+        )}
         <button
           onClick={() => setExpanded(true)}
-          className="shrink-0 text-[12.5px] font-semibold underline underline-offset-2"
+          className="mt-2.5 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
         >
           Look further
         </button>

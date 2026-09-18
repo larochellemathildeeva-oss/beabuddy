@@ -33,12 +33,11 @@ export function NearbyPlaces({
   onExpand?: (() => void) | undefined;
 }) {
   const scorePrefs = useScorePrefs();
-  const [dismissed, setDismissed] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [duration, setDuration] = useState<(typeof SHARE_DURATIONS)[number]["id"]>("once");
 
-  const { here, state, error, radius, setRadius, consent, consentReady } = near;
+  const { here, state, error, radius, setRadius, consent, consentReady, dismissed } = near;
   const HOME_LIMIT = 3;
 
   // Distance decides membership; how much the place matters right now decides
@@ -264,7 +263,7 @@ export function NearbyPlaces({
                 Go now
               </a>
               <button
-                onClick={() => setDismissed((s) => [...s, p.id])}
+                onClick={() => near.dismiss(p.id)}
                 className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
               >
                 Snooze
