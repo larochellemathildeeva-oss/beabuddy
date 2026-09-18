@@ -234,6 +234,14 @@
     background: var(--risk-soft);
     color: var(--risk);
   }
+  .shipped {
+    background: var(--done-soft);
+    color: var(--done);
+  }
+  .held {
+    background: var(--sunk);
+    color: var(--quiet);
+  }
 
   .card {
     background: var(--card);
@@ -393,6 +401,7 @@
               <th>Feature</th>
               <th>Role in the loop</th>
               <th>Read</th>
+              <th>Outcome</th>
             </tr>
           </thead>
           <tbody>
@@ -400,84 +409,123 @@
               <td>Recs vault</td>
               <td>The <em>save</em>. Nothing works without it.</td>
               <td><span class="pill keep">Core</span></td>
+              <td><span class="pill keep">Core</span></td>
             </tr>
             <tr>
               <td>Near</td>
               <td>The <em>surface</em>. "Past You left a breadcrumb" is the moment that justifies the app.</td>
               <td><span class="pill keep">Core</span></td>
+              <td><span class="pill shipped">On Home, 8.8.1</span></td>
             </tr>
             <tr>
               <td>Trips</td>
               <td>The <em>plan</em>. Where saved things become an itinerary.</td>
+              <td><span class="pill keep">Core</span></td>
               <td><span class="pill keep">Core</span></td>
             </tr>
             <tr>
               <td>World / globe</td>
               <td>The <em>remember</em>, and the only thing no competitor has.</td>
               <td><span class="pill keep">Core</span></td>
+              <td><span class="pill keep">Core</span></td>
             </tr>
             <tr>
               <td>Trip stops &amp; timeline</td>
               <td>Trips is not a feature without them.</td>
+              <td><span class="pill keep">Core</span></td>
               <td><span class="pill keep">Core</span></td>
             </tr>
             <tr>
               <td>Preferences</td>
               <td>Feeds the planner. Invisible but load-bearing.</td>
               <td><span class="pill keep">Core</span></td>
+              <td><span class="pill keep">Core</span></td>
             </tr>
             <tr>
               <td>City memories</td>
               <td>Overlaps the globe and the story page. Three views of one idea.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill shipped">Off Home, 8.9.0</span></td>
             </tr>
             <tr>
               <td>Travel story</td>
               <td>A playback of what the globe already shows.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill shipped">Off Home, 8.9.0</span></td>
             </tr>
             <tr>
               <td>Photo import</td>
               <td>A pipeline, not a destination. Belongs inside memories.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill shipped">Off Home, 8.9.0</span></td>
             </tr>
             <tr>
               <td>Calendar</td>
               <td>Re-presents trip dates you can already see on the trip.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill held">Kept — see below</span></td>
             </tr>
             <tr>
               <td>Packing lists</td>
               <td>Real utility, but a to-do list with a hat on. Merge with trip to-dos.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill shipped">Merged, 8.11.0</span></td>
             </tr>
             <tr>
               <td>Trip budget</td>
               <td>Optional per trip already. Keep, but stop it being a section everyone sees.</td>
               <td><span class="pill merge">Merge</span></td>
+              <td><span class="pill held">Kept — see below</span></td>
             </tr>
             <tr>
               <td>Business expenses</td>
               <td>Receipts and billable flags. This is a different product wearing Béa's clothes.</td>
               <td><span class="pill cut">Cut</span></td>
+              <td><span class="pill held">Kept — see below</span></td>
             </tr>
             <tr>
               <td>Compare drafts</td>
               <td>Two itineraries side by side. Sophisticated, and for a user who does not exist yet.</td>
               <td><span class="pill cut">Cut</span></td>
+              <td><span class="pill cut">Not yet</span></td>
             </tr>
             <tr>
               <td>Heatmap</td>
               <td>A third visualisation of the same pins.</td>
               <td><span class="pill cut">Cut</span></td>
+              <td><span class="pill shipped">Gone, 8.9.0</span></td>
             </tr>
             <tr>
               <td>Day trips from Near</td>
               <td>A feature inside a feature inside a tab.</td>
               <td><span class="pill cut">Cut</span></td>
+              <td><span class="pill cut">Not yet</span></td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div class="note">
+        <strong>Three reads did not survive contact with the code.</strong> The owner reversed them
+        once the detail was on the table, and they are recorded here rather than quietly dropped.
+        <ul>
+          <li>
+            <strong>Calendar stays.</strong> The read was that it re-presents dates you can already
+            see on the trip. That holds inside one trip, but the route queries
+            <code>itinerary_items</code> across every trip you have — seeing all of them on one grid
+            is a job nothing else does. The trip page took the single-day question instead (8.11.0);
+            the month view kept the one only it can answer.
+          </li>
+          <li>
+            <strong>Trip budget stays, and was already demoted.</strong> The read asked it to stop
+            being a section everyone sees. It was already gated on <code>budget_enabled</code>, so
+            there was nothing left to do.
+          </li>
+          <li>
+            <strong>Business expenses stays.</strong> Archiving it would also have stranded Budget,
+            which reads the same <code>expenses</code> table and links into the route. Called off.
+          </li>
+        </ul>
       </div>
 
       <h3 style="margin-top: 14px">Cut does not mean delete</h3>
@@ -485,26 +533,40 @@
         <div class="stack-tight">
           <p>
             <strong>Demote.</strong> Keep the data and the code; remove the route, the tab entry and
-            the guide steps. The heatmap becomes a toggle on the globe rather than a section. Nobody
-            loses anything; the app gets a screen shorter.
+            the guide steps. Nobody loses anything; the app gets a screen shorter. The heatmap was
+            the first of these and went further than a demotion — it came out entirely in 8.9.0,
+            along with the <code>cityRows</code> aggregation it was the only consumer of, because a
+            third view of the same pins had no toggle worth keeping it behind.
           </p>
           <p>
             <strong>Merge.</strong> Memories, Story and Photos are three routes over one dataset —
             your photographs, by place, over time. That is one screen with three views, not three
-            screens. Same for Packing and To-dos: both are "things to tick off before you go."
+            screens. In 8.9.0 they stopped occupying Home, which is the half of the merge that
+            mattered; the three routes still exist, reachable from You. Packing and To-dos went the
+            whole way in 8.11.0: both are "things to tick off before you go", so they are one sheet
+            — <em>Before you go</em> — with two views behind one icon instead of two sheets behind
+            two.
           </p>
           <p>
-            <strong>Archive.</strong> Expenses is ~480 lines and a database table serving a use case
-            the mission does not mention. Branch it, remove it from the build, keep the migration.
-            If someone asks, it comes back in a day.
+            <strong>Archive.</strong> Branch it, remove it from the build, keep the migration. If
+            someone asks, it comes back in a day. Expenses was the candidate — ~480 lines serving a
+            use case the mission does not mention — but the archive was called off once it turned
+            out Budget reads the same table. Nothing has been archived under this plan so far; the
+            technique stands for whatever comes next.
           </p>
         </div>
       </div>
 
       <p class="label" style="margin-top: 8px">Net effect</p>
       <p style="color: var(--ink-2); max-width: 62ch">
-        21 routes → roughly 12. Six tabs stay six. The app stops being a suite and starts being a
-        product. Every hour not spent maintaining the other nine is an hour spent finishing these.
+        The original target was 21 routes → roughly 12. With Calendar and Expenses kept, and the
+        Memories/Story/Photos trio demoted off Home rather than collapsed, the count stands at 22
+        route files today — two of which are layouts, so 20 pages against the 21 the plan counted. The screens that went are the
+        heatmap and a tab's worth of Near; the screens that stayed, stayed for reasons the table
+        above records. Six tabs stay six. The honest reading is that this part delivered less
+        route-count than it promised and more cohesion than it measured: Home is four blocks about
+        where you are or where you are going, and the trip page answers "what is on today" and
+        "what is left to do" without sending you anywhere.
       </p>
     </div>
   </section>
@@ -517,6 +579,13 @@
         nothing, because the design carries the meaning. Heavy explanation is a symptom rather than
         a feature: the copy is there because a screen did not communicate on its own.
       </p>
+      <p style="max-width: 62ch; color: var(--ink-2)">
+        <strong>Re-measured at 8.11.0: 79 steps and 2,045 words</strong> — 51 page-guide steps
+        across thirteen screens plus 28 in the quick tour, counting the words in step bodies, which
+        is the same method the table below uses. None of that reduction was the copy cut, which has
+        not started; it is what fell out when the features went. The per-screen numbers below are
+        the current ones.
+      </p>
       <div class="card">
         <p class="label">The rule</p>
         <p style="margin-top: 8px; font-size: 17px">
@@ -524,7 +593,7 @@
         </p>
         <p style="margin-top: 10px; color: var(--ink-2)">
           Every step you delete by making the screen clearer is worth more than the step. Every step
-          you keep is a screen admitting it failed. Read all 86 that way and most of them argue for
+          you keep is a screen admitting it failed. Read all 79 that way and most of them argue for
           a change to the interface instead.
         </p>
       </div>
@@ -543,14 +612,14 @@
             <tr>
               <td>Recommendation vault</td>
               <td class="n">8</td>
-              <td class="n">245</td>
+              <td class="n">247</td>
               <td>The 1,062-line route. The biggest screen needs the most explaining — that is the finding.</td>
             </tr>
             <tr>
               <td>Inside a trip</td>
-              <td class="n">7</td>
-              <td class="n">258</td>
-              <td>Four icon buttons with no labels. The guide is the labels.</td>
+              <td class="n">6</td>
+              <td class="n">236</td>
+              <td>Three icon buttons with no labels. The guide is the labels. Was four and seven steps before packing and to-dos became one sheet in 8.11.0.</td>
             </tr>
             <tr>
               <td>You / profile</td>
@@ -560,20 +629,20 @@
             </tr>
             <tr>
               <td>World</td>
-              <td class="n">6</td>
-              <td class="n">209</td>
-              <td>Globe + stats + heatmap + filters. Three features explaining themselves at once.</td>
+              <td class="n">5</td>
+              <td class="n">188</td>
+              <td>Globe + stats + filters. Two features explaining themselves at once — it was three until the heatmap went in 8.9.0.</td>
             </tr>
             <tr>
               <td>Home</td>
-              <td class="n">6</td>
-              <td class="n">117</td>
-              <td>Six steps for a landing screen means it is not a landing screen.</td>
+              <td class="n">5</td>
+              <td class="n">118</td>
+              <td>Five steps for a landing screen means it is still not a landing screen.</td>
             </tr>
             <tr>
               <td>Preferences</td>
               <td class="n">6</td>
-              <td class="n">80</td>
+              <td class="n">81</td>
               <td>Short steps — these are genuine labels, and should become labels.</td>
             </tr>
           </tbody>
@@ -586,7 +655,8 @@
           <p>
             <strong>Becomes a label.</strong> Most of them. "The checklist icon opens the trip's
             errands" is a <code>title</code> attribute that should be visible text under the icon.
-            Label the four trip icons and seven steps evaporate.
+            Label the three trip icons and six steps evaporate — one icon and one step fewer than
+            when this was written, because the fourth icon went when packing and to-dos merged.
           </p>
           <p>
             <strong>Becomes an empty state.</strong> "Add every city — and any stopover along the
@@ -734,6 +804,7 @@
               <th>Work</th>
               <th>Whose</th>
               <th>Reversible</th>
+              <th>State</th>
             </tr>
           </thead>
           <tbody>
@@ -742,46 +813,59 @@
               <td>Free wins — badge, icon labels</td>
               <td>Mine</td>
               <td>Trivially</td>
+              <td><span class="pill cut">Not yet</span></td>
             </tr>
             <tr>
               <td>2</td>
               <td>Migration waves 1–3, then the lint rule</td>
               <td>Mine</td>
               <td>Yes, per wave</td>
+              <td><span class="pill cut">Next</span></td>
             </tr>
             <tr>
               <td>3</td>
               <td>Trip map</td>
               <td>Mine</td>
               <td>Additive</td>
+              <td><span class="pill held">Blocked — provider</span></td>
             </tr>
             <tr>
               <td>4</td>
               <td>Decide the cut list</td>
               <td><strong>Yours</strong></td>
               <td>—</td>
+              <td><span class="pill shipped">Decided</span></td>
             </tr>
             <tr>
               <td>5</td>
               <td>Demote / merge / archive</td>
               <td>Mine, once decided</td>
               <td>Yes — branches, not deletions</td>
+              <td><span class="pill shipped">Done, 8.9.0–8.11.0</span></td>
             </tr>
             <tr>
               <td>6</td>
               <td>Copy cut, guided by what survives</td>
               <td>Mine</td>
               <td>Yes</td>
+              <td><span class="pill cut">Not yet</span></td>
             </tr>
             <tr>
               <td>7</td>
               <td>Migration wave 4</td>
               <td>Mine</td>
               <td>Yes</td>
+              <td><span class="pill cut">Not yet</span></td>
             </tr>
           </tbody>
         </table>
       </div>
+      <p style="color: var(--ink-2); max-width: 62ch">
+        Rows 4 and 5 are done: the cut list was decided feature by feature rather than in one
+        sitting, and shipped across 8.9.0 to 8.11.0 with three reads reversed along the way. That
+        unblocks rows 6 and 7, which were waiting on knowing what survives. Row 3 is still waiting
+        on a map provider, which is the owner's call and not a sequencing problem.
+      </p>
       <p style="color: var(--ink-2); max-width: 62ch">
         Parts 2 and 3 are sequenced <em>after</em> the cut decision on purpose, for the same reason
         wave 4 is last: polishing and de-narrating a screen you are about to remove is the most
@@ -812,8 +896,9 @@
 
   <footer>
     Companion to the engineering audit, the design audit, the motion proposal and the build spec.
-    Counts measured against v8.7.2 on 18 September 2026. Part 1's classification is a proposal to
-    argue with — the cut list is the owner's call, and the rest of the plan adapts to whatever it
-    turns out to be.
+    Counts first measured against v8.7.2 on 18 September 2026. Part 1's classification was a
+    proposal to argue with; it has since been argued with, and the Outcome column records what the
+    owner decided rather than what was proposed. Updated against v8.11.0. Where the two disagree,
+    the git history is the record — every change names its reason in the commit message.
   </footer>
 </div>
