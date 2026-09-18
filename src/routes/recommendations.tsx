@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
+import { hostOf, linkFailureMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -99,14 +100,6 @@ type Draft = {
   pin_type?: PinType;
   travel_tags?: string[];
 };
-
-/**
- * A share link that our server cannot follow (Maps serves nothing to a bot)
- * comes back empty. The expanded URL carries the name and the coordinates in
- * the path, so it reads perfectly — which is worth telling people.
- */
-const SHORT_LINK_HINT =
-  "That link didn't give up any details. Open it once in your browser, then paste the long address-bar link instead — or just type the name below.";
 
 function draftWithTags(place: Draft): Draft {
   return { ...place, travel_tags: suggestTravelTags(place) };
@@ -227,7 +220,9 @@ function RecommendationsPage() {
     setBusy("link");
     const extracted = extractPastedPlaceLink(link);
     if (!extracted) {
-      setError("Paste a Maps, Yelp, or place link — share text with a link in it is fine.");
+      setError(
+        "That doesn't look like a link. Paste the whole thing — share text with a link in it is fine.",
+      );
       setBusy(null);
       return;
     }
@@ -238,7 +233,7 @@ function RecommendationsPage() {
           : { url: extracted.url },
       });
       showDraft({ ...place, category: prettyPlaceCategory(place) });
-      if (place.partial) setError(SHORT_LINK_HINT);
+      if (place.partial) setError(linkFailureMessage(place.partialReason, hostOf(place.url)));
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
       showDraft({ name: extracted.nameHint ?? "", url: extracted.url });
@@ -260,7 +255,7 @@ function RecommendationsPage() {
             : { url: pasted.url },
         });
         showDraft({ ...place, category: prettyPlaceCategory(place) });
-        if (place.partial) setError(SHORT_LINK_HINT);
+        if (place.partial) setError(linkFailureMessage(place.partialReason, hostOf(place.url)));
       } catch {
         setError("Couldn't read that link. Try Paste a link, or type the place name.");
       } finally {

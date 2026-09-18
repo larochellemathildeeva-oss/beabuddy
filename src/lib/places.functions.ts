@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractPastedPlaceLink } from "@/lib/place-paste";
-import { fetchPlaceHtml, UnsupportedPlaceUrlError } from "@/lib/place-url";
+import { fetchPlaceHtml, UnsupportedPlaceUrlError, type FetchFailure } from "@/lib/place-url";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
 import {
@@ -31,7 +31,23 @@ export type ParsedPlace = {
    * say so rather than presenting an empty draft as a successful read.
    */
   partial?: boolean;
+  /**
+   * Why it gave up nothing, when `partial` is set. The interface needs this to
+   * say something true: telling someone to paste a longer link is useless when
+   * the page was never reached, and telling them the site shared nothing is
+   * wrong when the request itself failed.
+   */
+  partialReason?: PartialReason;
 };
+
+/**
+ * `unreachable`  the request did not complete — network, TLS, timeout, or a
+ *                server with no outbound access at all.
+ * `refused`      the page answered, but not with a page: 403, 404, a login
+ *                wall, a redirect chain that ran out.
+ * `no-details`   the page was read fine and simply carries no place in it.
+ */
+export type PartialReason = "unreachable" | "refused" | "no-details";
 
 function decodeEntities(s: string) {
   return s
@@ -176,13 +192,17 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     let html = "";
     let finalUrl = target.toString();
+    let failure: FetchFailure | undefined;
     try {
       const fetched = await fetchPlaceHtml(data.url);
       html = fetched.html;
       finalUrl = fetched.finalUrl;
+      failure = fetched.failure;
     } catch (error) {
       if (error instanceof UnsupportedPlaceUrlError) throw error;
-      /* fall through to URL-only parsing */
+      // Nothing below needs the page, so carry on with URL-only parsing — but
+      // remember that the read failed, so the message can say which it was.
+      failure = "unreachable";
     }
 
     // Google puts the name and often the street address in one path segment.
@@ -237,6 +257,12 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     // Nothing but the URL came back: no name of its own, nowhere on the map.
     const gotNothing = name === "Saved place" && !coords && !address;
+    const partialReason: PartialReason =
+      failure === "unreachable" || failure === "bad-url"
+        ? "unreachable"
+        : failure === "http-error" || failure === "blocked-host"
+          ? "refused"
+          : "no-details";
 
     return {
       name,
@@ -246,7 +272,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       ...(coords ? { lat: coords.lat, lon: coords.lon } : {}),
       source: target.hostname.replace(/^www\./, ""),
       url: data.url,
-      ...(gotNothing ? { partial: true } : {}),
+      ...(gotNothing ? { partial: true, partialReason } : {}),
     };
   });
 

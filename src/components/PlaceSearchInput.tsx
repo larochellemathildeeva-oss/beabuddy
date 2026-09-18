@@ -1,4 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
+import { hostOf, linkFailureMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
 import { Link2, Plus, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
@@ -59,9 +60,7 @@ export function PlaceSearchInput({
         onPick(place);
         setHits([]);
         if (place.partial) {
-          setErr(
-            "That link didn't give up any details. Open it in your browser and paste the long link, or type the name.",
-          );
+          setErr(linkFailureMessage(place.partialReason, hostOf(place.url)));
         }
         return;
       }

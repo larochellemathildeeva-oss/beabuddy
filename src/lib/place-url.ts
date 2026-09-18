@@ -1,12 +1,40 @@
-const PLACE_UA = "Mozilla/5.0 (compatible; BeaBot/1.0)";
+const PLACE_UA = "Mozilla/5.0 (compatible; BeaBot/1.0; +https://bea.travel)";
 const MAX_HTML_BYTES = 300_000;
-const MAX_REDIRECTS = 3;
-const FETCH_MS = 5_000;
+/**
+ * A shared Maps link can chain: maps.app.goo.gl -> consent -> google.com/maps.
+ * Three hops ran out part way down that chain and returned an empty page,
+ * which the caller could not tell apart from a page with nothing in it.
+ */
+const MAX_REDIRECTS = 5;
+/** Five seconds was tight for a cold server reaching a slow site. */
+const FETCH_MS = 8_000;
 
-/** Hosts we will actually GET. Short-link hosts are here so we can follow them hop by hop. */
-function isPlaceHost(hostname: string): boolean {
+/**
+ * Why a fetch produced no HTML.
+ *
+ * The caller used to get `html: ""` for every one of these — a host we refuse,
+ * a network failure, a 403, and a page that genuinely says nothing were all
+ * the same empty string. That is why every failure ended up showing the same
+ * "paste the long link" advice, including the cases where pasting the long
+ * link cannot possibly help.
+ */
+export type FetchFailure = "blocked-host" | "unreachable" | "http-error" | "bad-url";
+
+export type FetchedHtml = {
+  html: string;
+  finalUrl: string;
+  failure?: FetchFailure;
+};
+
+/**
+ * Map sites whose URLs carry structured place data in the path or query.
+ *
+ * This is no longer a fetch gate — see `fetchPlaceHtml` — it only marks the
+ * hosts whose links are worth parsing as maps rather than as ordinary pages.
+ */
+export function isMapHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/\.$/, "");
-  if (
+  return (
     host === "goo.gl" ||
     host === "maps.app.goo.gl" ||
     host === "google.com" ||
@@ -19,10 +47,7 @@ function isPlaceHost(hostname: string): boolean {
     host.endsWith(".yelp.com") ||
     host === "tripadvisor.com" ||
     host.endsWith(".tripadvisor.com")
-  ) {
-    return true;
-  }
-  return false;
+  );
 }
 
 function ipv4Octets(host: string): number[] | null {
@@ -89,9 +114,9 @@ export function isPublicHttpsUrl(url: URL): boolean {
   return true;
 }
 
-/** Full hop check: public https, and on the place allowlist. */
-export function isFetchablePlaceUrl(url: URL): boolean {
-  return isPublicHttpsUrl(url) && isPlaceHost(url.hostname);
+/** True for a link from a map site, whose URL is worth parsing structurally. */
+export function isMapPlaceUrl(url: URL): boolean {
+  return isPublicHttpsUrl(url) && isMapHost(url.hostname);
 }
 
 function parseHref(href: string, base?: URL): URL | null {
@@ -142,58 +167,88 @@ async function readCappedText(res: Response): Promise<string> {
 async function fetchHtmlWithPolicy(
   href: string,
   canFollow: (url: URL) => boolean,
-): Promise<{ html: string; finalUrl: string }> {
+): Promise<FetchedHtml> {
   const start = parseHref(href);
-  if (!start) return { html: "", finalUrl: href };
+  if (!start) return { html: "", finalUrl: href, failure: "bad-url" };
   if (!isPublicHttpsUrl(start)) {
     throw new UnsupportedPlaceUrlError();
   }
   if (!canFollow(start)) {
-    return { html: "", finalUrl: start.toString() };
+    return { html: "", finalUrl: start.toString(), failure: "blocked-host" };
   }
 
   let current = start;
   for (let hops = 0; hops <= MAX_REDIRECTS; hops++) {
-    const res = await fetch(current.toString(), {
-      redirect: "manual",
-      headers: { "user-agent": PLACE_UA },
-      signal: AbortSignal.timeout(FETCH_MS),
-    });
+    let res: Response;
+    try {
+      res = await fetch(current.toString(), {
+        redirect: "manual",
+        headers: {
+          "user-agent": PLACE_UA,
+          // Some servers answer 406, or hand back JSON, without these. They
+          // were simply missing, which is a plain bug rather than a policy.
+          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "accept-language": "en;q=0.9,*;q=0.5",
+        },
+        signal: AbortSignal.timeout(FETCH_MS),
+      });
+    } catch {
+      // DNS failure, TLS failure, timeout, or no egress from this server at
+      // all. Worth telling apart from a page that answered and said nothing.
+      return { html: "", finalUrl: current.toString(), failure: "unreachable" };
+    }
 
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
       await res.body?.cancel();
       if (!location || hops === MAX_REDIRECTS) {
-        return { html: "", finalUrl: current.toString() };
+        return { html: "", finalUrl: current.toString(), failure: "http-error" };
       }
       const next = parseHref(location, current);
-      if (!next || !canFollow(next)) {
-        return { html: "", finalUrl: current.toString() };
+      if (!next) {
+        return { html: "", finalUrl: current.toString(), failure: "http-error" };
       }
+      if (!canFollow(next)) {
+        return { html: "", finalUrl: current.toString(), failure: "blocked-host" };
+      }
+      // The redirect target is where the link really points, so report it even
+      // when the hop after it fails — a short link resolves to a Maps URL whose
+      // path still carries the place name.
       current = next;
       continue;
     }
 
     if (!res.ok) {
       await res.body?.cancel();
-      return { html: "", finalUrl: current.toString() };
+      return { html: "", finalUrl: current.toString(), failure: "http-error" };
     }
     const html = await readCappedText(res);
     return { html, finalUrl: current.toString() };
   }
 
-  return { html: "", finalUrl: current.toString() };
+  return { html: "", finalUrl: current.toString(), failure: "http-error" };
 }
 
 /**
  * GET a pasted place link without `redirect: "follow"`.
- * Each Location is run through the same allowlist + IP rules before the next hop is requested.
+ * Each Location is re-checked against the same rules before the next hop.
+ *
+ * This used to additionally require the host to be one of six map sites. The
+ * paste box accepts anything that looks like a link and the copy beside it
+ * promises "Maps, Instagram, a blog — anywhere", so every other host was
+ * accepted by the interface and then silently dropped here: no request, no
+ * error, an empty string, and advice to paste a longer link that could never
+ * help. Article imports already fetch arbitrary public https hosts through
+ * `fetchPublicHtml` under exactly these guards, so this is the same accepted
+ * exposure rather than a new one — the SSRF defence is the https requirement,
+ * the private-IP and blocked-host rules, and the per-hop re-check, none of
+ * which the host list was carrying.
  */
-export async function fetchPlaceHtml(href: string): Promise<{ html: string; finalUrl: string }> {
-  return fetchHtmlWithPolicy(href, isFetchablePlaceUrl);
+export async function fetchPlaceHtml(href: string): Promise<FetchedHtml> {
+  return fetchHtmlWithPolicy(href, isPublicHttpsUrl);
 }
 
-/** GET a public https page (articles, listicles) with the same SSRF guards, no host allowlist. */
-export async function fetchPublicHtml(href: string): Promise<{ html: string; finalUrl: string }> {
+/** GET a public https page (articles, listicles) with the same SSRF guards. */
+export async function fetchPublicHtml(href: string): Promise<FetchedHtml> {
   return fetchHtmlWithPolicy(href, isPublicHttpsUrl);
 }
