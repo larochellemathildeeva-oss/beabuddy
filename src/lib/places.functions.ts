@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError, type FetchFailure } from "@/lib/place-url";
+import { geocodeIsTrustworthy, queryIsLocatable } from "@/lib/geocode-trust";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
 import {
@@ -226,34 +227,43 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     const description = meta(html, "og:description") ?? "";
     const addressMatch = description.match(/([\dA-Za-zÀ-ÿ.,'’\- ]+\d[\dA-Za-zÀ-ÿ.,'’\- ]*)/);
 
-    // No coordinates in the link (blocked pages, a bare short link that would
-    // not resolve): search the web. The address from the path makes this far
-    // more accurate than the name alone — "Bar Raval" is ambiguous, "Bar
-    // Raval, 505 College St" is not.
-    if (!coords) {
-      const named = name !== "Saved place" ? name : "";
-      const query =
-        [placeName || named, fromPath.address].filter(Boolean).join(", ") ||
-        data.nameHint ||
-        appleName ||
-        "";
-      const hit = query.length > 2 ? (await nominatim(query, 1))[0] : undefined;
-      if (hit) {
-        const found = hitToPlace(hit);
-        return {
-          ...found,
-          name: placeName || named || found.name,
-          ...(fromPath.address ? { address: fromPath.address } : {}),
-          source: target.hostname.replace(/^www\./, ""),
-          url: data.url,
-        };
-      }
-    }
-
     // The path address is the place's own; the og:description one is a guess
     // pulled out of prose, so it only fills a gap.
     const address =
       fromPath.address ?? (addressMatch?.[1] ? addressMatch[1].trim().slice(0, 160) : undefined);
+
+    // No coordinates in the link (a blocked page, a short link that would not
+    // resolve): the name and address can be looked up instead — but only when
+    // the query actually says *where*.
+    //
+    // This used to search on whatever it had and keep the first worldwide
+    // result. A link to a Harvey's in Montreal carries the name and nothing
+    // else, the top global hit for "Harvey's" is in Slovakia, and that was
+    // saved with a city, a country and coordinates, looking exactly like a
+    // place Béa knew. An empty map is obviously empty; "Slovakia" looks like
+    // an answer, which makes it the worse failure by far.
+    if (!coords) {
+      const named = name !== "Saved place" ? name : "";
+      const searchName = placeName || named || data.nameHint || appleName || "";
+      const locatable = queryIsLocatable({ name: searchName, address });
+      const query = [searchName, address].filter(Boolean).join(", ");
+      const hit = locatable && query.length > 2 ? (await nominatim(query, 1))[0] : undefined;
+      const found = hit ? hitToPlace(hit) : undefined;
+      // And the answer has to look like the question: Nominatim always returns
+      // its best effort, never nothing, so an unmatched query still comes back
+      // with a place attached.
+      if (found && geocodeIsTrustworthy({ name: searchName, address, hitName: found.name })) {
+        return {
+          ...found,
+          name: searchName || found.name,
+          ...(address ? { address } : {}),
+          source: target.hostname.replace(/^www\./, ""),
+          url: data.url,
+        };
+      }
+      // Otherwise fall through: keep the name and the link, leave the map
+      // empty. Every add form already offers a map search to finish the job.
+    }
 
     // Nothing but the URL came back: no name of its own, nowhere on the map.
     const gotNothing = name === "Saved place" && !coords && !address;
