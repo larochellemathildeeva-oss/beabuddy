@@ -125,12 +125,12 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can Béa turn nearby saves into a day trip?",
-        a: "Yes. In Recs, tap Near me, tick a few saved places, pick today's pace, Arrange with Béa, then save as a day trip. Still starting from what you already kept.",
+        a: "Yes. On Home, open the places near you, tick a few, pick today's pace, Arrange with Béa, then save as a day trip. Still starting from what you already kept.",
       },
     ],
   },
   {
-    title: "Near me",
+    title: "Near you",
     items: [
       {
         q: "Why is Béa showing me this place?",
@@ -142,11 +142,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where did the Near tab go?",
-        a: "It is a filter now, not a tab. Open Recs and tap Near me: the same saved places re-sort by how close you are, with directions one tap away.\n\nIt is the same list either way — Near was never a different set of places.",
+        a: "It lives on Home now. The places you saved nearby appear there as soon as you share your location, sorted by how close you are.\n\nIt is the same list your vault holds — Near was never a different set of places, just a different order.",
       },
       {
-        q: "Can I use Near me without sharing my location?",
-        a: "Not for the distances — Béa needs to know where you are to measure how far away something is. Everything else in Recs works without location, and Béa only looks when you say so, for as long as you choose.",
+        q: "Can I use Near you without sharing my location?",
+        a: "Not for the distances — Béa needs to know where you are to measure how far away something is. Everything else works without location, and Béa only looks when you say so, for as long as you choose.",
       },
     ],
   },

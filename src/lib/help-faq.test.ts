@@ -98,9 +98,10 @@ describe("FAQ does not describe a UI that no longer exists", () => {
     assert.equal(/demo cit(y|ies)/i.test(PROSE), false);
   });
 
-  it("describes Near as a filter, not a tab", () => {
-    assert.equal(/\bthe near tab\b(?!\s+(go|went))/i.test(PROSE), false);
-    assert.ok(mentions("near me"), "the filter should be named the way the button is");
+  it("sends people where Near actually is", () => {
+    assert.equal(/\bthe near tab\b(?!\s+(go|went))/i.test(PROSE), false, "there is no Near tab");
+    assert.equal(/in recs,? tap near/i.test(PROSE), false, "Near is not a filter in Recs");
+    assert.ok(mentions("on home"), "the FAQ should say where it is");
   });
 });
 

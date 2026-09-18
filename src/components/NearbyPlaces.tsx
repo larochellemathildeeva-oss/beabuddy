@@ -16,7 +16,22 @@ import { SHARE_DURATIONS, type useNearMe } from "@/hooks/useNearMe";
  * its own. What it adds over the plain list is distance, a reason each place
  * matters right now, and the ability to string a few of them into a day trip.
  */
-export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typeof useNearMe> }) {
+export function NearbyPlaces({
+  pins,
+  near,
+  collapsed = false,
+  onExpand,
+}: {
+  pins: Pin[];
+  near: ReturnType<typeof useNearMe>;
+  /**
+   * Home shows the few places worth acting on and hides the working tools. A
+   * radius picker and a day-trip builder above your next trip would make Home
+   * a Near screen with other things underneath it.
+   */
+  collapsed?: boolean;
+  onExpand?: (() => void) | undefined;
+}) {
   const scorePrefs = useScorePrefs();
   const [dismissed, setDismissed] = useState<string[]>([]);
   const [picking, setPicking] = useState(false);
@@ -24,6 +39,7 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
   const [duration, setDuration] = useState<(typeof SHARE_DURATIONS)[number]["id"]>("once");
 
   const { here, state, error, radius, setRadius, consent, consentReady } = near;
+  const HOME_LIMIT = 3;
 
   // Distance decides membership; how much the place matters right now decides
   // the order within it.
@@ -36,6 +52,9 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
         scoreOpportunity(a.pin, scorePrefs, { here }).score,
     );
   }, [here, pins, radius, dismissed, scorePrefs]);
+
+  const shown = collapsed ? nearby.slice(0, HOME_LIMIT) : nearby;
+  const hiddenCount = nearby.length - shown.length;
 
   const selected = useMemo(
     () => nearby.filter((row) => selectedIds.includes(row.pin.id)).map((row) => row.pin),
@@ -125,7 +144,7 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
         {/* "Alert frequency" used to sit here offering Always / Once a day /
             Weekly. Béa sends no alerts, so it promised something that does not
             exist; the radius is the one control that changes what you see. */}
-        <div data-guide="near-radius">
+        <div data-guide="near-radius" {...(collapsed ? { hidden: true } : {})}>
           <p className="label-caps mt-4">How far to look</p>
           <div className="mt-2 flex gap-2">
             {NEAR_RADII.map((r) => (
@@ -146,7 +165,7 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
       </div>
 
       <section data-guide="near-list" className="space-y-3">
-        {here && nearby.length >= 2 && (
+        {!collapsed && here && nearby.length >= 2 && (
           <div className="flex items-center justify-between gap-2">
             <p className="text-[14.5px] text-muted-foreground">
               {picking
@@ -184,7 +203,7 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
           </p>
         )}
 
-        {nearby.map(({ pin: p, metres }) => (
+        {shown.map(({ pin: p, metres }) => (
           <article key={p.id} className="rise card-soft p-4">
             {metres < 800 && (
               <p className="mb-2 text-[13px] text-muted-foreground">
@@ -237,6 +256,17 @@ export function NearbyPlaces({ pins, near }: { pins: Pin[]; near: ReturnType<typ
             </div>
           </article>
         ))}
+
+        {collapsed && here && nearby.length > 0 && onExpand && (
+          <button
+            onClick={onExpand}
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-[14px] font-semibold"
+          >
+            {hiddenCount > 0
+              ? `Show all ${nearby.length} nearby`
+              : "Change the distance, or plan a day trip"}
+          </button>
+        )}
 
         {!here && state !== "locating" && (
           <p className="py-10 text-center text-[14.5px] text-muted-foreground">

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
 import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
@@ -48,18 +48,9 @@ import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-p
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
-import { nearFromSearch, nudgePin } from "@/lib/near";
-import { useNearMe } from "@/hooks/useNearMe";
-import { NearbyPlaces } from "@/components/NearbyPlaces";
 
 export const Route = createFileRoute("/recommendations")({
   staticData: { plane: "tab" },
-  // Filter state lives in the URL, not in component state. Near used to be its
-  // own tab; ?near=1 is where /opportunities now lands, and a link someone
-  // shares or bookmarks has to arrive showing the same thing they saw.
-  validateSearch: (search: Record<string, unknown>) => ({
-    ...(nearFromSearch(search["near"]) ? { near: "1" as const } : {}),
-  }),
   head: () => ({
     meta: [
       { title: "Recommendation vault — Béa" },
@@ -115,13 +106,6 @@ function draftWithTags(place: Draft): Draft {
 }
 
 function RecommendationsPage() {
-  const { near: nearParam } = Route.useSearch();
-  const navigate = useNavigate({ from: "/recommendations" });
-  const nearMe = useNearMe();
-  const showingNear = nearParam === "1";
-  const setShowingNear = (on: boolean) =>
-    void navigate({ search: on ? { near: "1" } : {}, replace: true });
-
   const [query, setQuery] = useState("");
   const [placeFilter, setPlaceFilter] = useState("All places");
   const [category, setCategory] = useState("All");
@@ -942,102 +926,68 @@ function RecommendationsPage() {
           onKept={vault.addMany}
         />
 
-        {/* Near is a place filter — "where I am" beside "Lisbon" — but it sits
-            outside the "is this vault big enough for filters" gate below. A
-            city filter needs a few cities to be worth showing; proximity is
-            worth offering the moment there are two saved places, because it is
-            the one filter that changes on its own while you stand still. */}
-        {views.length > 0 && (
-          <div className="flex items-center gap-2">
-            <button
-              data-guide="near-filter"
-              onClick={() => setShowingNear(!showingNear)}
-              aria-pressed={showingNear}
-              className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                showingNear
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card"
-              }`}
-            >
-              Near me
-            </button>
-            {showingNear && (
-              <span className="truncate text-[13px] text-muted-foreground">
-                Sorted by how close you are
-              </span>
+        {(searchWorthShowing({ total: views.length }) ||
+          anyFilterWorthShowing({
+            total: views.length,
+            places: places.length - 1,
+            kinds: categories.length - 1,
+          })) && (
+          <div className="space-y-2">
+            {searchWorthShowing({ total: views.length }) && (
+              <input
+                data-guide="reco-search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search places, cities, people — typos are fine"
+                className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+            )}
+            {placeFilterWorthShowing({
+              total: views.length,
+              places: places.length - 1,
+              kinds: categories.length - 1,
+            }) && (
+              <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
+                {places.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setPlaceFilter(c)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+                      placeFilter === c
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            {kindFilterWorthShowing({
+              total: views.length,
+              places: places.length - 1,
+              kinds: categories.length - 1,
+            }) && (
+              <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
+                {categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCategory(c)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+                      category === c
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         )}
 
-        {!showingNear &&
-          (searchWorthShowing({ total: views.length }) ||
-            anyFilterWorthShowing({
-              total: views.length,
-              places: places.length - 1,
-              kinds: categories.length - 1,
-            })) && (
-            <div className="space-y-2">
-              {searchWorthShowing({ total: views.length }) && (
-                <input
-                  data-guide="reco-search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search places, cities, people — typos are fine"
-                  className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
-                />
-              )}
-              {placeFilterWorthShowing({
-                total: views.length,
-                places: places.length - 1,
-                kinds: categories.length - 1,
-              }) && (
-                <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
-                  {places.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setPlaceFilter(c)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                        placeFilter === c
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {kindFilterWorthShowing({
-                total: views.length,
-                places: places.length - 1,
-                kinds: categories.length - 1,
-              }) && (
-                <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
-                  {categories.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setCategory(c)}
-                      className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                        category === c
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-        {showingNear && <NearbyPlaces pins={vault.pins} near={nearMe} />}
-
-        <section
-          data-guide="reco-list"
-          className="space-y-3"
-          {...(showingNear ? { hidden: true } : {})}
-        >
+        <section data-guide="reco-list" className="space-y-3">
           {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
           {filtered.map((v) => (
             <article key={v.id} className="card-soft p-3.5">

@@ -89,10 +89,9 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Opportunity mode",
-    body: "You're near something Future You wanted. Share your location and the vault ranks your own saves by distance and why they matter right now.",
-    to: "/recommendations",
-    search: { near: "1" },
-    selector: "[data-guide='location-card']",
+    body: "You're near something Future You wanted. Share your location and Home ranks your own saves by distance and why they matter right now.",
+    to: "/",
+    selector: "[data-guide='home-near']",
   },
   {
     title: "Your travel story",
@@ -201,24 +200,21 @@ export const DEEP_STEPS: TourStep[] = [
   // —— Pillar 4: Opportunity Engine ——
   {
     title: "Pillar 4 — Opportunities",
-    body: "You saved a restaurant, a museum, a hike months ago. Near me says you're 900m from something Future You wanted.",
-    to: "/recommendations",
-    search: { near: "1" },
-    selector: "[data-guide='near-list']",
+    body: "You saved a restaurant, a museum, a hike months ago. Home says you're 900m from something Future You wanted.",
+    to: "/",
+    selector: "[data-guide='home-near']",
   },
   {
-    title: "Near me — your saves, ranked",
-    body: "Share your location and the same vault re-sorts by how close you are. Distance and preference bring forgotten intentions back as experiences. Snooze when it's not the moment.",
-    to: "/recommendations",
-    search: { near: "1" },
-    selector: "[data-guide='location-card']",
+    title: "Near you — your saves, ranked",
+    body: "Share your location and Home surfaces what you saved nearby. Distance and preference bring forgotten intentions back as experiences. Snooze when it's not the moment.",
+    to: "/",
+    selector: "[data-guide='home-near']",
   },
   {
     title: "Day trip from your vault",
     body: "Tick nearby saves, pick today's pace, Arrange with Béa, then save as a day-trip — still starting from places you already kept.",
-    to: "/recommendations",
-    search: { near: "1" },
-    selector: "[data-guide='day-trip']",
+    to: "/",
+    selector: "[data-guide='home-near']",
   },
 
   // —— Pillar 5: Planning Without a Blank Page ——

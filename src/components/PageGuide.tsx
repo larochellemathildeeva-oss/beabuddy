@@ -25,6 +25,11 @@ const guides: Record<string, Guide> = {
     name: "Home",
     steps: [
       {
+        title: "What's around you",
+        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you say so, and you pick for how long — tap Show all to change the distance or build a day trip.",
+        selector: "[data-guide='home-near']",
+      },
+      {
         title: "Your trip right now",
         body: "The trip you're on, or the next one coming, sits here with its dates and the first few things on the plan. Tap it to open the whole folder.",
         selector: "[data-guide='home-trip']",
@@ -163,11 +168,6 @@ const guides: Record<string, Guide> = {
         title: "Find anything you've saved",
         body: "Search by the place, the city, or the person who told you about it. A typo or a missing accent still finds a match.",
         selector: "[data-guide='reco-search']",
-      },
-      {
-        title: "Near me",
-        body: "The same saved places, sorted by how close you are right now, with directions one tap away. Béa only looks when you say so, and you pick how long.",
-        selector: "[data-guide='near-filter']",
       },
       {
         title: "Filter by city",
