@@ -11,10 +11,12 @@ test("quick tour is a story walk around the block", () => {
     QUICK_STEPS.some((s) => s.selector),
     "quick walk spotlights real controls",
   );
-  // Two taps, not three: the Opportunity-mode step used to wait for a click on
-  // a demo-city button, and those were removed from Near. A step that waits for
-  // a control that no longer exists leaves Next disabled with nothing to tap.
-  assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 2);
+  // One tap now. Two steps have lost theirs, each because the control they
+  // waited on was removed: the Opportunity-mode step waited on a demo-city
+  // button, and the closing story step waited on a Home shortcut that went
+  // when Story and Memories were set aside. A step that waits for a control
+  // that is not there leaves Next disabled with nothing to tap.
+  assert.equal(QUICK_STEPS.filter((s) => s.awaitClick).length, 1);
   const taps = QUICK_STEPS.filter((s) => s.awaitClick);
   for (const s of taps) {
     assert.ok(s.actionHint, `${s.title} needs an actionHint`);

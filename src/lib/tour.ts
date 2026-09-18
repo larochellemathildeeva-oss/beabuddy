@@ -95,11 +95,9 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Your travel story",
-    body: "Every trip becomes history — Travel story playback and City memories. Remember → choose → plan → opportunity → story. Deep Dive from You covers the six pillars.",
-    to: "/",
-    selector: "[data-guide='home-story']",
-    awaitClick: true,
-    actionHint: "Tap Travel story, then Next",
+    body: "Every trip becomes history — Travel story playback and City memories, both under You. Remember → choose → plan → opportunity → story. Deep Dive from You covers the six pillars.",
+    to: "/story",
+    selector: "[data-guide='story-play']",
   },
 ];
 
@@ -248,7 +246,7 @@ export const DEEP_STEPS: TourStep[] = [
     title: "Pillar 6 — One system",
     body: "Map → recommendations → decisions → trips → photos → memories → the next opportunity. Most apps solve one problem; Béa connects them.",
     to: "/",
-    selector: "[data-guide='home-shortcuts']",
+    selector: "[data-guide='home-near']",
   },
   {
     title: "Ask Béa anytime",

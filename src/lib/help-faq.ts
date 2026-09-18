@@ -72,7 +72,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
     items: [
       {
         q: "What is the globe for?",
-        a: "The globe is your travel life in one place. It helps you see where you've been, where you want to go, places you're saving for later, and recommendations waiting for future trips.\n\nPin colours: visited, next time, wishlist, and recommendation. Chips above the globe hide whole groups when the map gets busy. You can also add cities or countries by hand, turn on the heatmap, and choose which travel statistics to show.",
+        a: "The globe is your travel life in one place. It helps you see where you've been, where you want to go, places you're saving for later, and recommendations waiting for future trips.\n\nPin colours: visited, next time, wishlist, and recommendation. Chips above the globe hide whole groups when the map gets busy. You can also add cities or countries by hand, and choose which travel statistics to show.",
       },
       {
         q: "Why does Béa track memories by city?",

@@ -1,29 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
-export type HomeSectionKey =
-  | "trip"
-  | "shortcuts"
-  
-  | "waiting"
-  | "recent"
-  | "future";
+export type HomeSectionKey = "trip" | "waiting" | "future";
 
 export type HomeLayout = Record<HomeSectionKey, boolean>;
 
 export const HOME_SECTIONS: { key: HomeSectionKey; label: string; hint: string }[] = [
   { key: "trip", label: "Current trip", hint: "The trip card at the top of Home." },
-  { key: "shortcuts", label: "Story & memories", hint: "Travel story and City memories shortcuts." },
   { key: "waiting", label: "Waiting for you", hint: "Your most recent saved recommendation." },
-  { key: "recent", label: "Recent memories", hint: "Cities from your latest photos." },
   { key: "future", label: "Future me note", hint: "The newest note you left for yourself." },
 ];
 
 export const DEFAULT_HOME_LAYOUT: HomeLayout = {
   trip: true,
-  shortcuts: true,
   waiting: true,
-  recent: true,
   future: true,
 };
 

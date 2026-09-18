@@ -124,21 +124,6 @@ function SignedInHome() {
 
   const firstName = (displayName || user?.email?.split("@")[0] || "").split(" ")[0] ?? "";
 
-  const recentCities = useMemo(() => {
-    const map = new Map<string, { city: string; photos: number; last: string | null }>();
-    for (const r of photo.rows) {
-      if (!r.city) continue;
-      const key = r.city.toLowerCase();
-      const g = map.get(key) ?? { city: r.city, photos: 0, last: null };
-      g.photos += 1;
-      if (r.taken_at && (!g.last || r.taken_at > g.last)) g.last = r.taken_at;
-      map.set(key, g);
-    }
-    return Array.from(map.values())
-      .sort((a, b) => (b.last ?? "").localeCompare(a.last ?? ""))
-      .slice(0, 4);
-  }, [photo.rows]);
-
   const topReco = useMemo(() => {
     const ranked = rankOpportunities(vault.comparePins, scorePrefs);
     const winner = ranked[0]?.pin;
@@ -175,36 +160,6 @@ function SignedInHome() {
 
         {layout.trip && <HomeTripCard />}
 
-        {layout.shortcuts && (
-          <div data-guide="home-shortcuts" className="grid grid-cols-2 gap-3">
-            <ContentCard
-              to="/story"
-              guide="home-story"
-              className="rise"
-              eyebrow={
-                <>
-                  <span className="size-1.5 rounded-full bg-visited" />
-                  <span className="label-caps">Playback</span>
-                </>
-              }
-              title="Travel story"
-              meta={["Play your journey city by city."]}
-            />
-            <ContentCard
-              to="/memories"
-              className="rise"
-              eyebrow={
-                <>
-                  <span className="size-1.5 rounded-full bg-reco" />
-                  <span className="label-caps">Every place</span>
-                </>
-              }
-              title="City memories"
-              meta={["Photos, notes and saved spots by city."]}
-            />
-          </div>
-        )}
-
         {showSamplePrompt && (
           <section data-guide="home-empty" className="rise card-soft p-4">
             <p className="font-display text-[20px] leading-snug">{beaLine("empty.home").title}</p>
@@ -219,10 +174,10 @@ function SignedInHome() {
                 {seeding ? "Loading sample…" : "Load sample travel data"}
               </button>
               <Link
-                to="/photos"
+                to="/recommendations"
                 className="flex-1 rounded-xl border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
               >
-                Import photos
+                Save a place
               </Link>
             </div>
             {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
@@ -253,30 +208,6 @@ function SignedInHome() {
                   See what's near you
                 </Link>
               </div>
-            </div>
-          </section>
-        )}
-
-        {layout.recent && recentCities.length > 0 && (
-          <section data-guide="home-recent" className="rise">
-            <SectionHead title="Recent memories" aside={`${photo.stats.cities} cities`} />
-            <div className="grid grid-cols-2 gap-3">
-              {recentCities.map((c) => (
-                <ContentCard
-                  key={c.city}
-                  to="/memories"
-                  title={c.city}
-                  meta={[
-                    `${c.photos} photo${c.photos === 1 ? "" : "s"}`,
-                    c.last
-                      ? new Date(c.last).toLocaleDateString(undefined, {
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : null,
-                  ]}
-                />
-              ))}
             </div>
           </section>
         )}

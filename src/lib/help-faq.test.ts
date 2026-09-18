@@ -77,7 +77,6 @@ describe("FAQ covers what the app ships", () => {
     ["future me notes", ["future me"]],
     ["playback", ["playback"]],
     ["travel tags", ["travel tags"]],
-    ["the heatmap", ["heatmap"]],
     ["day trips from Near", ["day trip"]],
     ["deleting your account", ["delete"]],
   ];

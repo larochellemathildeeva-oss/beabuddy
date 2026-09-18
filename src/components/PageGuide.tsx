@@ -35,19 +35,9 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='home-trip']",
       },
       {
-        title: "Travel story and memories",
-        body: "Playback walks your journey city by city. City memories gathers photos, notes and saved spots. Hide either shortcut — or any other Home block — from You → Customize home.",
-        selector: "[data-guide='home-shortcuts']",
-      },
-      {
         title: "Waiting for you",
         body: "A saved recommendation Béa is holding onto. Tap through to see what's near you.",
         selector: "[data-guide='home-waiting']",
-      },
-      {
-        title: "Recent memories",
-        body: "Cities from your latest photos. Tap one to open that city's memory page.",
-        selector: "[data-guide='home-recent']",
       },
       {
         title: "Future Me",
@@ -83,11 +73,6 @@ const guides: Record<string, Guide> = {
         title: "Travel statistics",
         body: "Open this to see your counters — countries, cities, trips and pins. Choose which ones to show, and turn countries into a share of the world (1 of 195, as a percent). Want a number Béa does not count yet? Ask her on You → Feedback — she is here to make you happy.",
         selector: "[data-guide='travel-stats']",
-      },
-      {
-        title: "Heatmap",
-        body: "Switch this on to see where you've spent the most time, as a warm cloud instead of dots. Toggle between days and photos.",
-        selector: "[data-guide='heatmap']",
       },
       {
         title: "Add a city by hand",

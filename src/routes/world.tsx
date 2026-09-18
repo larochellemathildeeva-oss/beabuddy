@@ -51,8 +51,6 @@ const filters: { type: PinType; label: string }[] = [
 function WorldPage() {
   const [active, setActive] = useState<PinType[]>(["visited", "nexttime", "wishlist", "reco"]);
   const [selected, setSelected] = useState<Pin | null>(null);
-  const [heatmap, setHeatmap] = useState(false);
-  const [heatOpen, setHeatOpen] = useState(true);
   const [statsOpen, setStatsOpen] = useState(true);
   const [statsEdit, setStatsEdit] = useState(false);
   /** The caveat about what the numbers count — asked for, not always on. */
@@ -141,21 +139,6 @@ function WorldPage() {
         p.country.toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q)),
   );
-
-  const cityRows = useMemo(() => {
-    const map = new Map<string, { city: string; photos: number; days: Set<string> }>();
-    for (const r of photo.rows) {
-      if (!r.city) continue;
-      const key = r.city.toLowerCase();
-      const g = map.get(key) ?? { city: r.city, photos: 0, days: new Set<string>() };
-      g.photos += 1;
-      if (r.taken_at) g.days.add(r.taken_at.slice(0, 10));
-      map.set(key, g);
-    }
-    return Array.from(map.values())
-      .map((g) => ({ city: g.city, photos: g.photos, days: g.days.size }))
-      .sort((a, b) => b.photos - a.photos);
-  }, [photo.rows]);
 
   const toggle = (t: PinType) =>
     setActive((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
@@ -501,56 +484,6 @@ function WorldPage() {
               )}
             </div>
           )}
-        </section>
-
-        <section data-guide="heatmap">
-          <div className="mb-3 flex items-baseline justify-between">
-            <button
-              onClick={() => setHeatOpen((v) => !v)}
-              className="flex items-center gap-1.5 label-caps text-foreground"
-              aria-expanded={heatOpen}
-              aria-controls="heatmap-body"
-            >
-              <span
-                className={`transition-transform duration-(--t-shift) ease-(--ease-standard) ${heatOpen ? "rotate-90" : ""}`}
-              >
-                ▸
-              </span>
-              Heatmap
-            </button>
-            {heatOpen && (
-              <button onClick={() => setHeatmap((v) => !v)} className="text-[12px] text-primary">
-                {heatmap ? "By photos" : "By days"}
-              </button>
-            )}
-          </div>
-          {heatOpen &&
-            (cityRows.length === 0 ? (
-              <p className="text-[13px] text-muted-foreground">
-                Import photos and each city you've been will appear here.
-              </p>
-            ) : (
-              <div id="heatmap-body" className="card-soft divide-y divide-border">
-                {cityRows.map((c) => {
-                  const value = heatmap ? c.days : c.photos;
-                  const max = Math.max(...cityRows.map((x) => (heatmap ? x.days : x.photos)), 1);
-                  return (
-                    <div key={c.city} className="flex items-center gap-3 p-3">
-                      <span className="w-24 shrink-0 font-display text-[16.5px]">{c.city}</span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all duration-(--t-move) ease-(--ease-standard)"
-                          style={{ width: `${Math.max(8, (value / max) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="w-16 text-right text-[12px] text-muted-foreground">
-                        {heatmap ? `${c.days} days` : `${c.photos} photos`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
         </section>
 
         <AddVisitedCity onSaved={() => void vault.reload()} />
