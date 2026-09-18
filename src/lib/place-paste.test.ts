@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
+import { describe, test } from "node:test";
 import {
   cleanPastedHttpsUrl,
   extractPastedPlaceLink,
@@ -70,4 +70,52 @@ test("extractPastedPlaceLink accepts scheme-less Yelp and g.page shares", () => 
 test("extractPastedPlaceLink still refuses a plain place name", () => {
   assert.equal(extractPastedPlaceLink("Bar Raval, Toronto"), null);
   assert.equal(extractPastedPlaceLink("joesdiner.com"), null);
+});
+
+describe("share text keeps the address, not just the name", () => {
+  // The Harvey's report: Google Maps on a phone shares name, address, link.
+  // Only the name used to survive, so the server geocoded "Harvey's" against
+  // the whole planet and saved a Harvey's in Slovakia.
+  const GOOGLE_SHARE = [
+    "Harvey's",
+    "1216 Rue Sainte-Catherine O, Montréal, QC H3G 1P1, Canada",
+    "https://maps.app.goo.gl/AbCdEf123",
+  ].join("\n");
+
+  test("takes the name and the address off a Maps share", () => {
+    const out = extractPastedPlaceLink(GOOGLE_SHARE);
+    assert.equal(out?.nameHint, "Harvey's");
+    assert.match(out?.addressHint ?? "", /Sainte-Catherine/);
+    assert.match(out?.addressHint ?? "", /Montréal/);
+  });
+
+  test("skips a rating line between the name and the address", () => {
+    const out = extractPastedPlaceLink(
+      [
+        "Harvey's",
+        "★★★★☆",
+        "1216 Rue Sainte-Catherine O, Montréal",
+        "https://maps.app.goo.gl/x",
+      ].join("\n"),
+    );
+    assert.equal(out?.nameHint, "Harvey's");
+    assert.match(out?.addressHint ?? "", /Sainte-Catherine/);
+  });
+
+  test("does not invent an address when the share is just a link", () => {
+    const out = extractPastedPlaceLink("https://maps.app.goo.gl/AbCdEf123");
+    assert.equal(out?.addressHint, undefined);
+  });
+
+  test("does not treat a second name-ish line as an address", () => {
+    const out = extractPastedPlaceLink(
+      ["Harvey's", "Burger place", "https://maps.app.goo.gl/x"].join("\n"),
+    );
+    assert.equal(out?.nameHint, "Harvey's");
+    assert.equal(out?.addressHint, undefined);
+  });
+
+  test("still finds the link itself", () => {
+    assert.equal(extractPastedPlaceLink(GOOGLE_SHARE)?.url, "https://maps.app.goo.gl/AbCdEf123");
+  });
 });

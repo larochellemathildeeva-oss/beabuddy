@@ -39,6 +39,13 @@ export type ParsedPlace = {
    * wrong when the request itself failed.
    */
   partialReason?: PartialReason;
+  /**
+   * The name is good but Béa could not put it on the map — no coordinates in
+   * the link, and nothing locating enough to look up safely. The caller should
+   * say so: an empty map with no explanation is what let a wrong location go
+   * unnoticed in the first place.
+   */
+  unlocated?: boolean;
 };
 
 /**
@@ -93,9 +100,14 @@ function nameFromAppleMapsUrl(url: string): string | undefined {
 const ParsePlaceLinkInput = z.object({
   url: z.string().min(1).max(4000),
   nameHint: z.string().min(1).max(120).optional(),
+  addressHint: z.string().min(1).max(200).optional(),
 });
 
-function normalizePlaceLinkInput(data: unknown): { url: string; nameHint?: string } {
+function normalizePlaceLinkInput(data: unknown): {
+  url: string;
+  nameHint?: string;
+  addressHint?: string;
+} {
   const raw = ParsePlaceLinkInput.parse(data);
   const extracted = extractPastedPlaceLink(raw.url);
   if (!extracted) {
@@ -108,7 +120,14 @@ function normalizePlaceLinkInput(data: unknown): { url: string; nameHint?: strin
     ]);
   }
   const hint = raw.nameHint?.trim() || extracted.nameHint;
-  return hint ? { url: extracted.url, nameHint: hint } : { url: extracted.url };
+  // The address the share sheet printed above the link is the strongest
+  // locating signal Béa gets for a short link, and it costs nothing.
+  const addressHint = raw.addressHint?.trim() || extracted.addressHint;
+  return {
+    url: extracted.url,
+    ...(hint ? { nameHint: hint } : {}),
+    ...(addressHint ? { addressHint } : {}),
+  };
 }
 
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
@@ -227,10 +246,13 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     const description = meta(html, "og:description") ?? "";
     const addressMatch = description.match(/([\dA-Za-zÀ-ÿ.,'’\- ]+\d[\dA-Za-zÀ-ÿ.,'’\- ]*)/);
 
-    // The path address is the place's own; the og:description one is a guess
-    // pulled out of prose, so it only fills a gap.
+    // The path address is the place's own, and the share sheet's is the same
+    // thing typed out by the app that shared it; the og:description one is a
+    // guess pulled out of prose, so it only fills a gap.
     const address =
-      fromPath.address ?? (addressMatch?.[1] ? addressMatch[1].trim().slice(0, 160) : undefined);
+      fromPath.address ??
+      data.addressHint ??
+      (addressMatch?.[1] ? addressMatch[1].trim().slice(0, 160) : undefined);
 
     // No coordinates in the link (a blocked page, a short link that would not
     // resolve): the name and address can be looked up instead — but only when
@@ -267,6 +289,10 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     // Nothing but the URL came back: no name of its own, nowhere on the map.
     const gotNothing = name === "Saved place" && !coords && !address;
+    // A name with nowhere to put it. Not a failed read — the name is right and
+    // worth keeping — but the map is empty and saying nothing about that is
+    // how the old "Slovakia" result slipped through unannounced.
+    const unlocated = !gotNothing && !coords;
     const partialReason: PartialReason =
       failure === "unreachable" || failure === "bad-url"
         ? "unreachable"
@@ -283,6 +309,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       source: target.hostname.replace(/^www\./, ""),
       url: data.url,
       ...(gotNothing ? { partial: true, partialReason } : {}),
+      ...(unlocated ? { unlocated: true } : {}),
     };
   });
 

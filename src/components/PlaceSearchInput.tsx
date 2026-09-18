@@ -1,5 +1,5 @@
 import { useServerFn } from "@tanstack/react-start";
-import { hostOf, linkFailureMessage } from "@/lib/link-failure";
+import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
 import { Link2, Plus, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
@@ -52,15 +52,19 @@ export function PlaceSearchInput({
       const pasted = extractPastedPlaceLink(q);
       if (pasted) {
         const place = await parseLink({
-          data: pasted.nameHint
-            ? { url: pasted.url, nameHint: pasted.nameHint }
-            : { url: pasted.url },
+          data: {
+            url: pasted.url,
+            ...(pasted.nameHint ? { nameHint: pasted.nameHint } : {}),
+            ...(pasted.addressHint ? { addressHint: pasted.addressHint } : {}),
+          },
         });
         settled.current = place.name;
         onPick(place);
         setHits([]);
         if (place.partial) {
           setErr(linkFailureMessage(place.partialReason, hostOf(place.url)));
+        } else if (place.unlocated) {
+          setErr(unlocatedMessage(place.name));
         }
         return;
       }

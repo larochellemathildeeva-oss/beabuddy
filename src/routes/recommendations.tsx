@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
-import { hostOf, linkFailureMessage } from "@/lib/link-failure";
+import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -228,12 +228,15 @@ function RecommendationsPage() {
     }
     try {
       const place = await parseLink({
-        data: extracted.nameHint
-          ? { url: extracted.url, nameHint: extracted.nameHint }
-          : { url: extracted.url },
+        data: {
+          url: extracted.url,
+          ...(extracted.nameHint ? { nameHint: extracted.nameHint } : {}),
+          ...(extracted.addressHint ? { addressHint: extracted.addressHint } : {}),
+        },
       });
       showDraft({ ...place, category: prettyPlaceCategory(place) });
       if (place.partial) setError(linkFailureMessage(place.partialReason, hostOf(place.url)));
+      else if (place.unlocated) setError(unlocatedMessage(place.name));
     } catch {
       setError("Couldn't read that link. You can still fill the details in yourself.");
       showDraft({ name: extracted.nameHint ?? "", url: extracted.url });
@@ -250,12 +253,15 @@ function RecommendationsPage() {
       setResults(null);
       try {
         const place = await parseLink({
-          data: pasted.nameHint
-            ? { url: pasted.url, nameHint: pasted.nameHint }
-            : { url: pasted.url },
+          data: {
+            url: pasted.url,
+            ...(pasted.nameHint ? { nameHint: pasted.nameHint } : {}),
+            ...(pasted.addressHint ? { addressHint: pasted.addressHint } : {}),
+          },
         });
         showDraft({ ...place, category: prettyPlaceCategory(place) });
         if (place.partial) setError(linkFailureMessage(place.partialReason, hostOf(place.url)));
+        else if (place.unlocated) setError(unlocatedMessage(place.name));
       } catch {
         setError("Couldn't read that link. Try Paste a link, or type the place name.");
       } finally {

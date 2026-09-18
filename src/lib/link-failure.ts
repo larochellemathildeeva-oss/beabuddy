@@ -25,6 +25,19 @@ export function linkFailureMessage(reason: PartialReason | undefined, host?: str
   }
 }
 
+/**
+ * Said when the name came through but the map did not.
+ *
+ * Deliberately not an error: the read worked and the name is right. It exists
+ * because an empty map with no explanation is how a wrong location went
+ * unnoticed — silence reads as "this is fine" either way, so it has to say
+ * which way it is.
+ */
+export function unlocatedMessage(name?: string): string {
+  const what = name?.trim() ? `"${name.trim()}"` : "that one";
+  return `Saved ${what}, but Béa couldn't tell which one — add the city, or search the map below to pin it.`;
+}
+
 /** "www.instagram.com" → "Instagram". Falls back to something neutral. */
 export function siteName(host?: string): string {
   const bare = (host ?? "")

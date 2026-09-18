@@ -48,7 +48,34 @@ export function cleanPastedHttpsUrl(raw: string): string | null {
   }
 }
 
-function nameHintFromShare(text: string, urlRaw: string): string | undefined {
+/** A line that says where something is, rather than what it is. */
+function looksLikeAddressLine(line: string): boolean {
+  if (line.length < 4 || line.length > 200) return false;
+  if (/^https?:\/\//i.test(line)) return false;
+  if (/^[★☆⭐·.\s\d/]+$/.test(line)) return false;
+  // A street address carries a number, or at least a comma-separated locality.
+  return /\d/.test(line) || line.includes(",");
+}
+
+/**
+ * The name and the address a share sheet put above the link.
+ *
+ * Google Maps on a phone shares three lines — the name, the full address, then
+ * the short link:
+ *
+ *   Harvey's
+ *   1216 Rue Sainte-Catherine O, Montréal, QC H3G 1P1, Canada
+ *   https://maps.app.goo.gl/…
+ *
+ * Only the first line used to be kept. The address was sitting right there in
+ * the paste and was thrown away, which left the server with a bare name to
+ * look up — and "Harvey's" on its own matches a Harvey's in Slovakia as
+ * readily as the one on Sainte-Catherine.
+ */
+function hintsFromShare(
+  text: string,
+  urlRaw: string,
+): { name?: string; address?: string } | undefined {
   // An http link is upgraded to https, so the cleaned URL may not appear
   // verbatim in the paste; without this guard indexOf(-1) sliced off the
   // last character of the whole paste and called it the name.
@@ -60,13 +87,28 @@ function nameHintFromShare(text: string, urlRaw: string): string | undefined {
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
+
   const first = before[0];
-  if (!first) return undefined;
-  // Skip rating-only / emoji-only lines
-  if (/^[★☆⭐·.\s\d/]+$/.test(first)) return undefined;
-  if (first.length < 2 || first.length > 80) return undefined;
-  if (/^https?:\/\//i.test(first)) return undefined;
-  return first;
+  let name: string | undefined;
+  if (
+    first &&
+    !/^[★☆⭐·.\s\d/]+$/.test(first) &&
+    first.length >= 2 &&
+    first.length <= 80 &&
+    !/^https?:\/\//i.test(first)
+  ) {
+    name = first;
+  }
+
+  // The address is the next line that reads like one. Scanning rather than
+  // taking line two skips the rating line some apps put in between.
+  const address = before.slice(name ? 1 : 0).find(looksLikeAddressLine);
+
+  if (!name && !address) return undefined;
+  return {
+    ...(name ? { name } : {}),
+    ...(address ? { address: address.slice(0, 200) } : {}),
+  };
 }
 
 /**
@@ -74,7 +116,9 @@ function nameHintFromShare(text: string, urlRaw: string): string | undefined {
  * Accepts a bare https link, share-sheet text with a link inside, or a
  * scheme-less maps.apple.com / maps.app.goo.gl path.
  */
-export function extractPastedPlaceLink(text: string): { url: string; nameHint?: string } | null {
+export function extractPastedPlaceLink(
+  text: string,
+): { url: string; nameHint?: string; addressHint?: string } | null {
   const trimmed = text.trim();
   if (!trimmed || trimmed.length > 4000) return null;
 
@@ -94,8 +138,12 @@ export function extractPastedPlaceLink(text: string): { url: string; nameHint?: 
     }
     // Match the raw substring we used, for name-hint slicing
     const rawMatch = found.find((r) => cleanPastedHttpsUrl(r) === best) ?? best;
-    const nameHint = nameHintFromShare(trimmed, rawMatch);
-    return nameHint ? { url: best, nameHint } : { url: best };
+    const hints = hintsFromShare(trimmed, rawMatch);
+    return {
+      url: best,
+      ...(hints?.name ? { nameHint: hints.name } : {}),
+      ...(hints?.address ? { addressHint: hints.address } : {}),
+    };
   }
 
   // Scheme-less share: "maps.app.goo.gl/AbCd", "yelp.com/biz/…", "g.page/…".
