@@ -1,4 +1,5 @@
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import { TripMap } from "@/components/TripMap";
 import {
   countdownLabel,
   fallbackTint,
@@ -30,6 +31,8 @@ export function TripBanner({
   tentative,
   photo,
   companions,
+  stops = [],
+  note,
   viewTransitionName,
 }: {
   title: string;
@@ -41,6 +44,13 @@ export function TripBanner({
   tentative?: boolean;
   photo: TripPhotoRow | null;
   companions?: string;
+  /**
+   * The trip's stops, for the map that stands in for a photograph. Passing
+   * none simply falls back to the monogram, as before.
+   */
+  stops?: { title: string; lat?: number | null | undefined; lon?: number | null | undefined }[];
+  /** Béa's line about this trip, when she has one worth saying. */
+  note?: string | null;
   /**
    * Names this banner for a cross-document-free view transition. The card in
    * the list and the page it opens pass the same name, and the browser tweens
@@ -65,6 +75,10 @@ export function TripBanner({
   const whenLine = [tripDateLine(startDate, endDate), companions].filter(Boolean).join(" · ");
 
   const pill = now ? "Underway" : soon ? soon : tentative ? "Tentative" : "";
+  // Only worth drawing a map when there is something on it.
+  const hasPlacedStop = stops.some(
+    (stop) => typeof stop.lat === "number" && typeof stop.lon === "number",
+  );
 
   if (!url) {
     return (
@@ -75,17 +89,39 @@ export function TripBanner({
           ...(viewTransitionName ? { viewTransitionName } : {}),
         }}
       >
-        <span
-          aria-hidden
-          className="absolute right-3 top-1 font-display text-[92px] leading-none text-foreground/10"
-        >
-          {tripMonogram(title, city)}
-        </span>
+        {/**
+         * A photograph if there is one, the trip's own shape if not, and only
+         * then a letter.
+         *
+         * The monogram was the largest thing on the card and said the least —
+         * one character of the title, in the most valuable space there is. A
+         * map of the actual stops says where you are going, costs no request
+         * and no provider, and is drawn from the same bundled topology the
+         * globe uses. It stays faint: this is a backdrop, not the subject.
+         */}
+        {hasPlacedStop ? (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute right-2 top-1/2 w-[44%] -translate-y-1/2 opacity-30"
+          >
+            <TripMap stops={stops} compact />
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className="absolute right-3 top-1 font-display text-[92px] leading-none text-foreground/10"
+          >
+            {tripMonogram(title, city)}
+          </span>
+        )}
         <div className="absolute inset-x-0 bottom-0 flex items-end gap-2 p-3.5">
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-[21px] leading-tight">{title}</p>
             <p className="truncate text-[12.5px] text-foreground/70">{placeLine}</p>
             <p className="truncate text-[12.5px] text-foreground/60">{whenLine}</p>
+            {note ? (
+              <p className="mt-1 line-clamp-2 text-[12.5px] text-foreground/75">{note}</p>
+            ) : null}
           </div>
           {pill ? (
             <span className="shrink-0 rounded-full border border-foreground/25 bg-card/70 px-2.5 py-1 text-[11.5px] font-semibold">
@@ -120,6 +156,7 @@ export function TripBanner({
           <p className="truncate font-display text-[21px] leading-tight text-white">{title}</p>
           <p className="truncate text-[12.5px] text-white/80">{placeLine}</p>
           <p className="truncate text-[12.5px] text-white/70">{whenLine}</p>
+          {note ? <p className="mt-1 line-clamp-2 text-[12.5px] text-white/80">{note}</p> : null}
         </div>
         {pill ? (
           <span className="shrink-0 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-foreground">

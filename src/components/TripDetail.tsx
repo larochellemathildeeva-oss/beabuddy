@@ -40,6 +40,8 @@ import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
+import { toLocalISODate } from "@/lib/trip-dates";
+import { beaTripNote } from "@/lib/trip-note";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -206,6 +208,20 @@ export function TripDetail({
         tentative={trip.dates_status === "tentative"}
         photo={banner}
         companions={companionsLine}
+        stops={cities.stops.map((stop) => ({
+          title: stop.place_name || stop.city,
+          ...(stop.lat != null ? { lat: stop.lat } : {}),
+          ...(stop.lon != null ? { lon: stop.lon } : {}),
+        }))}
+        note={beaTripNote(
+          {
+            startDate: trip.start_date,
+            endDate: trip.end_date,
+            stopCount: cities.stops.length,
+            plannedCount: board.items.length,
+          },
+          toLocalISODate(new Date()),
+        )}
         // The same name as the card in the list, so the browser tweens the one
         // photograph between them instead of cutting.
         viewTransitionName={`trip-photo-${trip.id}`}

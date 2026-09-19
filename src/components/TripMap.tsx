@@ -25,22 +25,34 @@ const world = feature(topo, topo.objects["countries"]!) as unknown as FeatureCol
   { name?: string }
 >;
 
-function Pin({ x, y, label }: { x: number; y: number; label: string }) {
+function Pin({
+  x,
+  y,
+  label,
+  showLabel = true,
+}: {
+  x: number;
+  y: number;
+  label: string;
+  showLabel?: boolean;
+}) {
   return (
     <g transform={`translate(${x.toFixed(1)},${y.toFixed(1)})`}>
       <circle r="12" className="fill-primary" opacity="0.16" />
       <circle r="5.5" className="fill-primary stroke-card" strokeWidth="2" />
-      <text
-        y="-18"
-        textAnchor="middle"
-        fontSize="13.5"
-        fontWeight="600"
-        className="fill-foreground stroke-elevated"
-        paintOrder="stroke"
-        strokeWidth="4"
-      >
-        {label}
-      </text>
+      {showLabel && (
+        <text
+          y="-18"
+          textAnchor="middle"
+          fontSize="13.5"
+          fontWeight="600"
+          className="fill-foreground stroke-elevated"
+          paintOrder="stroke"
+          strokeWidth="4"
+        >
+          {label}
+        </text>
+      )}
     </g>
   );
 }
@@ -67,7 +79,7 @@ function Route({ points }: { points: [number, number][] }) {
  * topology the globe draws, so this costs no request and works with no
  * connection — which a tile map could not.
  */
-function Geographic({ stops }: { stops: MapStop[] }) {
+function Geographic({ stops, showLabels = true }: { stops: MapStop[]; showLabels?: boolean }) {
   const clip = useId();
   const { land, points } = useMemo(() => {
     const only = stops[0]!;
@@ -104,7 +116,13 @@ function Geographic({ stops }: { stops: MapStop[] }) {
         ))}
         <Route points={points} />
         {stops.map((s, i) => (
-          <Pin key={`${s.title}-${i}`} x={points[i]![0]} y={points[i]![1]} label={s.title} />
+          <Pin
+            key={`${s.title}-${i}`}
+            x={points[i]![0]}
+            y={points[i]![1]}
+            label={s.title}
+            showLabel={showLabels}
+          />
         ))}
       </g>
     </>
@@ -117,7 +135,7 @@ function Geographic({ stops }: { stops: MapStop[] }) {
  * actually known: where the stops sit relative to each other, and how far
  * apart they really are.
  */
-function Schematic({ stops }: { stops: MapStop[] }) {
+function Schematic({ stops, showLabels = true }: { stops: MapStop[]; showLabels?: boolean }) {
   const { points, legs } = useMemo(() => {
     const lons = stops.map((s) => s.lon);
     const lats = stops.map((s) => s.lat);
@@ -174,23 +192,30 @@ function Schematic({ stops }: { stops: MapStop[] }) {
       </g>
       <Route points={points} />
       {stops.map((s, i) => (
-        <Pin key={`${s.title}-${i}`} x={points[i]![0]} y={points[i]![1]} label={s.title} />
+        <Pin
+          key={`${s.title}-${i}`}
+          x={points[i]![0]}
+          y={points[i]![1]}
+          label={s.title}
+          showLabel={showLabels}
+        />
       ))}
-      {legs.map((leg) => (
-        <text
-          key={`${leg.x}-${leg.y}`}
-          x={leg.x.toFixed(1)}
-          y={leg.y.toFixed(1)}
-          textAnchor="middle"
-          fontSize="11.5"
-          fontWeight="600"
-          className="fill-muted-foreground stroke-elevated"
-          paintOrder="stroke"
-          strokeWidth="4"
-        >
-          {leg.label}
-        </text>
-      ))}
+      {showLabels &&
+        legs.map((leg) => (
+          <text
+            key={`${leg.x}-${leg.y}`}
+            x={leg.x.toFixed(1)}
+            y={leg.y.toFixed(1)}
+            textAnchor="middle"
+            fontSize="11.5"
+            fontWeight="600"
+            className="fill-muted-foreground stroke-elevated"
+            paintOrder="stroke"
+            strokeWidth="4"
+          >
+            {leg.label}
+          </text>
+        ))}
     </>
   );
 }
@@ -206,14 +231,22 @@ function Schematic({ stops }: { stops: MapStop[] }) {
 export function TripMap({
   stops,
   area,
+  compact = false,
 }: {
   stops: { title: string; lat?: number | null | undefined; lon?: number | null | undefined }[];
   /** Shown when nothing can be placed, to name what is missing. */
   area?: string | null;
+  /**
+   * The bare drawing, for use as a backdrop on a trip card: no panel, no
+   * caption, no pin labels, and nothing at all when the trip cannot be
+   * placed. A card has no room to explain itself and should not try.
+   */
+  compact?: boolean;
 }) {
   const plan = useMemo(() => tripMapPlan(stops), [stops]);
 
   if (plan.kind === "none") {
+    if (compact) return null;
     // Only worth saying once there is an itinerary to place.
     if (plan.reason === "no-stops") return null;
     return (
@@ -229,6 +262,18 @@ export function TripMap({
 
   const single = plan.kind === "single";
   const drawn: MapStop[] = single ? [plan.stop] : plan.stops;
+
+  if (compact) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full" aria-hidden>
+        {plan.kind === "geographic" || single ? (
+          <Geographic stops={drawn} showLabels={false} />
+        ) : (
+          <Schematic stops={drawn} showLabels={false} />
+        )}
+      </svg>
+    );
+  }
 
   return (
     <div className="mb-3 overflow-hidden rounded-xl bg-elevated">

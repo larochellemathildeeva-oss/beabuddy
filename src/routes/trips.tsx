@@ -13,11 +13,12 @@ import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
+import { beaTripNote } from "@/lib/trip-note";
 import { usePacking } from "@/hooks/usePacking";
 import { locationFromParsedPlace } from "@/lib/place-label";
 import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
-import type { DatesStatus } from "@/lib/trip-dates";
+import { toLocalISODate, type DatesStatus } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -356,6 +357,20 @@ function TripListCard({
         tentative={trip.dates_status === "tentative"}
         photo={banner}
         companions={companionsLine}
+        stops={cities.stops.map((stop) => ({
+          title: stop.place_name || stop.city,
+          ...(stop.lat != null ? { lat: stop.lat } : {}),
+          ...(stop.lon != null ? { lon: stop.lon } : {}),
+        }))}
+        note={beaTripNote(
+          {
+            startDate: trip.start_date,
+            endDate: trip.end_date,
+            stopCount: cities.stops.length,
+            plannedCount: null,
+          },
+          toLocalISODate(new Date()),
+        )}
         viewTransitionName={`trip-photo-${trip.id}`}
       />
       <div className="flex items-center gap-2 p-3 text-[12.5px] text-muted-foreground">
