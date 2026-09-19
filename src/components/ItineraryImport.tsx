@@ -32,6 +32,7 @@ import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
+import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
 import {
   hasRelativeDays,
   lastDayDate,
@@ -120,7 +121,7 @@ export function ItineraryImport({
             tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
           }`}
         >
-          <Camera className="size-3.5" /> Build
+          <Camera className="size-3.5" /> Plan
         </button>
         <button
           data-guide="bea-optimize"
@@ -301,6 +302,15 @@ function ImportPanel({
    * Where the numbered days are anchored: the trip's own start date, then the
    * date the source gave, then the one the user just supplied.
    */
+  /**
+   * What the text in the box actually looks like.
+   *
+   * Checked continuously rather than on submit, because the point is to catch
+   * the mistake before the button is pressed, not to explain it afterwards.
+   */
+  const pastedShape = readPlanShape(text);
+  const wrongMode = mode === "build" && pastedShape.existing;
+
   const planStart = startDate || plan?.start_date || dayOneDate || "";
   const needsDayOne = Boolean(items && hasRelativeDays(items) && !startDate && !plan?.start_date);
   const relativeDays = items ? relativeDayCount(items) : 0;
@@ -513,12 +523,28 @@ function ImportPanel({
         whether a table or room is actually free. You reserve and confirm those yourself.
       </p>
 
-      <div className="grid grid-cols-2 gap-2">
+      {/**
+       * Two different jobs, asked as a question rather than a toggle.
+       *
+       * This was a pair of small buttons under three paragraphs, with "Build a
+       * new trip" already chosen. Pasting a finished itinerary into the box
+       * underneath therefore asked Béa to invent one — which she did, times and
+       * all, because that is what build mode instructs. The choice comes first
+       * now, and each card says what it is for, so the difference is visible
+       * before the text box is.
+       */}
+      <div className="grid gap-2 sm:grid-cols-2">
         <button
           onClick={() => setMode("build")}
-          className={`rounded-xl border px-3 py-2 text-[13px] font-semibold ${mode === "build" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+          aria-pressed={mode === "build"}
+          className={`rounded-xl border p-3 text-left ${
+            mode === "build" ? "border-primary bg-primary-soft" : "border-border"
+          }`}
         >
-          Build a new trip
+          <span className="block text-[14px] font-semibold">Build me a trip</span>
+          <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+            Tell Béa what you like and she'll draft the days.
+          </span>
         </button>
         <button
           onClick={() => {
@@ -527,9 +553,16 @@ function ImportPanel({
             // should never come back with invented prices.
             setIncludeCosts(false);
           }}
-          className={`rounded-xl border px-3 py-2 text-[13px] font-semibold ${mode === "import" ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
+          aria-pressed={mode === "import"}
+          className={`rounded-xl border p-3 text-left ${
+            mode === "import" ? "border-primary bg-primary-soft" : "border-border"
+          }`}
         >
-          Import a plan
+          <span className="block text-[14px] font-semibold">I already have a plan</span>
+          <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+            Paste an itinerary, a guide or a blog post — or photograph it. Béa keeps your times and
+            finds the places.
+          </span>
         </button>
       </div>
 
@@ -664,6 +697,24 @@ function ImportPanel({
         }
         className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
       />
+      {wrongMode && (
+        <div className="rise rounded-xl border border-primary/40 bg-elevated p-2.5">
+          <p className="text-[13px]">{pastedPlanNote(pastedShape)}</p>
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+            Béa is set to build a new one, so she'd rewrite it — including the times.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setMode("import");
+              setIncludeCosts(false);
+            }}
+            className="mt-2 min-h-11 w-full rounded-xl bg-primary px-3 py-2 text-[14px] font-semibold text-primary-foreground"
+          >
+            Read my plan instead
+          </button>
+        </div>
+      )}
       <button
         onClick={() => void read()}
         disabled={busy || (mode === "import" && !images.length && text.trim().length < 10)}
