@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section, SectionAction } from "@/components/Section";
+import { Sheet } from "@/components/Sheet";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
@@ -198,7 +199,6 @@ export function TripStops({
               no button for it here — not even on an empty trip, where this one
               last survived. It was the same action twice within a thumb's reach
               of itself. Cancel is not a duplicate, so it stays. */}
-          {adding && !editingId && <SectionAction onClick={openForNew}>Cancel</SectionAction>}
           <SectionAction onClick={() => setPickingSaved((v) => !v)}>
             {pickingSaved ? "Close" : "From saved"}
           </SectionAction>
@@ -329,19 +329,26 @@ export function TripStops({
         </ol>
       )}
 
-      {adding && !editingId && (
-        <div className="mt-3">
-          <StopDraftForm
-            draft={draft}
-            setDraft={setDraft}
-            error={error}
-            busy={busy}
-            submitLabel="Add stop"
-            onSubmit={save}
-            onCancel={close}
-          />
-        </div>
-      )}
+      {/**
+       * Adding opens over the page rather than inside this section.
+       *
+       * The pin icon sits in the trip's action row at the top of the screen
+       * and this section is most of a screen below it, so opening the form
+       * here meant tapping the button and watching nothing happen — the form
+       * was real, just out of sight. Editing an existing stop stays inline,
+       * because there the form appears directly under the row you tapped.
+       */}
+      <Sheet open={adding && !editingId} onClose={close} title="Add a stop" width="sm">
+        <StopDraftForm
+          draft={draft}
+          setDraft={setDraft}
+          error={error}
+          busy={busy}
+          submitLabel="Add stop"
+          onSubmit={save}
+          onCancel={close}
+        />
+      </Sheet>
     </Section>
   );
 }
