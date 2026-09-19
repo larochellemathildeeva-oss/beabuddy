@@ -437,7 +437,22 @@ export function TripDetail({
                 </ol>
               )}
 
-              {addingTimeline && (
+              {/**
+               * Adding opens over the page, not under the list.
+               *
+               * This form used to render after every entry on the timeline, so
+               * on a trip with a day's worth of stops the Add button scrolled
+               * a form into existence somewhere below the fold. Over the page
+               * it arrives where you are looking, with the fields in reach.
+               */}
+              <Sheet
+                open={addingTimeline}
+                onClose={() => {
+                  setAddingTimeline(false);
+                  setAddDay("");
+                }}
+                title="Add to the timeline"
+              >
                 <TimelineEntryForm
                   tripStart={trip.start_date}
                   tripEnd={trip.end_date}
@@ -456,7 +471,7 @@ export function TripDetail({
                     setAddDay("");
                   }}
                 />
-              )}
+              </Sheet>
             </div>
           )}
         </Section>

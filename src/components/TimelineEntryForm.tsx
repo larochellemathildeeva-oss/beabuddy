@@ -13,6 +13,7 @@ import {
 } from "@/lib/timeline-entry";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
+import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
 import { capturedFromParsedPlace, toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
 
@@ -83,7 +84,12 @@ export function TimelineEntryForm({
   onUpdateEntry?:
     | ((
         id: string,
-        patch: { day_date?: string | null; time_label?: string | null },
+        patch: {
+          day_date?: string | null;
+          time_label?: string | null;
+          lat?: number | null;
+          lon?: number | null;
+        },
       ) => Promise<void>)
     | undefined;
   onDone: () => void;
@@ -191,6 +197,9 @@ export function TimelineEntryForm({
   const save = async () => {
     const name = title.trim();
     if (!name) return;
+    // Read before the form clears itself below.
+    const hadPoint = place.lat != null && place.lon != null;
+    const hint = detail.trim();
     setBusy(true);
     setError("");
     try {
@@ -213,6 +222,31 @@ export function TimelineEntryForm({
       setScheduling(null);
       setAdded((n) => n + 1);
       if (typeof id === "string" && onUpdateEntry) setJustAdded({ id, title: name });
+
+      /**
+       * Put a typed entry on the map, after it is already on the timeline.
+       *
+       * Picking a place from search fills the point itself. Typing a name does
+       * not, so those entries were invisible on the trip map and had to be
+       * looked up again by the directions every time. The lookup is anchored
+       * to the trip's area — never a bare name, for the reason written up in
+       * geocode-plan.ts — and runs after the save rather than before it: a
+       * second of waiting to watch your own entry appear is worse than it
+       * appearing at once and quietly gaining a pin. Nothing found means the
+       * entry stays as it was.
+       */
+      if (typeof id === "string" && onUpdateEntry && !hadPoint && near?.trim()) {
+        void geocodePlanStops({
+          data: { stops: [{ title: name, detail: hint || null }], area: near },
+        })
+          .then((found) => {
+            const hit = found.placed[0];
+            if (hit) void onUpdateEntry(id, { lat: hit.lat, lon: hit.lon });
+          })
+          .catch(() => {
+            /* Unplaced is the old behaviour, not a failure worth reporting. */
+          });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that entry");
     } finally {
