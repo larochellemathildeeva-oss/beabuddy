@@ -52,7 +52,10 @@ export function derivePhotoPins(rows: PhotoRow[]): Pin[] {
   }
   return Array.from(groups.entries()).map(([key, g]) => {
     const first = g.rows[0]!;
-    const dates = g.rows.map((r) => r.taken_at).filter(Boolean).sort() as string[];
+    const dates = g.rows
+      .map((r) => r.taken_at)
+      .filter(Boolean)
+      .sort() as string[];
     return {
       id: `photo-${key}`,
       type: "visited" as const,
@@ -72,11 +75,13 @@ export function usePhotoMemories() {
   const [loading, setLoading] = useState(true);
 
   const reload = async () => {
-    const { data } = await supabase
+    // A failed read is not an empty library. Blanking here would also empty
+    // the globe and the city pages, which are built from these rows.
+    const { data, error } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, caption, taken_at, lat, lon")
       .order("taken_at", { ascending: false });
-    setRows((data ?? []) as PhotoRow[]);
+    if (!error) setRows((data ?? []) as PhotoRow[]);
     setLoading(false);
   };
 

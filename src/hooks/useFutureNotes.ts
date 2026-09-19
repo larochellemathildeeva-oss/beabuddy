@@ -24,11 +24,13 @@ export function useFutureNotes() {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    // A failed read is not an empty list — keep the notes already on screen
+    // rather than showing none and implying they are gone.
+    const { data, error } = await supabase
       .from("future_notes")
       .select("id, city, country, note, created_at")
       .order("created_at", { ascending: false });
-    setRows((data ?? []) as FutureNote[]);
+    if (!error) setRows((data ?? []) as FutureNote[]);
     setLoading(false);
   }, []);
 

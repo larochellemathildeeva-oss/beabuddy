@@ -41,12 +41,21 @@ export function useExpenses() {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    // A failed read is not an empty list. Destructuring `data` alone and
+    // writing `data ?? []` turns any hiccup into what looks like deleted
+    // receipts — the same bug that made a trip's timeline appear erased.
+    const { data, error } = await supabase
       .from("expenses")
       .select(
         "id, trip_id, merchant, category, amount, currency, spent_on, billable, notes, city, country, storage_path",
       )
       .order("spent_on", { ascending: false });
+    // Stop here on a failed read: carrying on would rebuild the signed
+    // receipt URLs from an empty list and blank those too.
+    if (error) {
+      setLoading(false);
+      return;
+    }
     const list = ((data ?? []) as unknown as ExpenseRow[]).map((r) => ({
       ...r,
       amount: Number(r.amount),
@@ -78,11 +87,9 @@ export function useExpenses() {
       if (input.file) {
         const ext = input.file.name.split(".").pop() ?? "jpg";
         storage_path = `${id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage
-          .from("receipts")
-          .upload(storage_path, input.file, {
-            contentType: input.file.type || "image/jpeg",
-          });
+        const { error } = await supabase.storage.from("receipts").upload(storage_path, input.file, {
+          contentType: input.file.type || "image/jpeg",
+        });
         if (error) throw error;
       }
 
@@ -157,4 +164,3 @@ export function toCsv(
   });
   return [head.map(esc).join(","), ...lines].join("\n");
 }
-
