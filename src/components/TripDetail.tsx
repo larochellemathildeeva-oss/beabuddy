@@ -136,7 +136,17 @@ export function TripDetail({
     });
 
   const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
-  const legFor = (index: number) => (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+  /**
+   * Legs just worked out, before anyone has chosen to keep them.
+   *
+   * The timeline used to show directions only once they had been saved to the
+   * phone, so pressing Refresh appeared to do nothing until you also pressed
+   * Keep. Fresh legs win over saved ones because they describe the stops as
+   * they are right now.
+   */
+  const [liveLegs, setLiveLegs] = useState<RouteLeg[] | null>(null);
+  const legFor = (index: number) =>
+    liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
@@ -474,28 +484,32 @@ export function TripDetail({
               </Sheet>
             </div>
           )}
+
+          {/* Directions live with the stops they join rather than in a section
+              of their own: this is the control strip, and each leg draws under
+              the entry it leaves from. */}
+          <ItineraryDirections
+            stops={directionStops}
+            existingTitles={board.items.map((i) => i.title)}
+            onAddToTimeline={board.upsertItems}
+            onKeepOffline={dir.keep}
+            onLegs={setLiveLegs}
+            onPlaced={(placed) => {
+              // The router already found these. Keep them, so the map can draw
+              // the trip and the next Refresh does not pay for the same lookups.
+              for (const stop of placed) {
+                void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+              }
+            }}
+            {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+            {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+            {...(directionArea ? { area: directionArea } : {})}
+          />
         </Section>
 
-        {/* The same stop list the directions below are built from, so the map
-            and the route can never describe different journeys. */}
+        {/* The same stop list the directions are built from, so the map and
+            the route can never describe different journeys. */}
         <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
-
-        <ItineraryDirections
-          stops={directionStops}
-          existingTitles={board.items.map((i) => i.title)}
-          onAddToTimeline={board.upsertItems}
-          onKeepOffline={dir.keep}
-          onPlaced={(placed) => {
-            // The router already found these. Keep them, so the map can draw
-            // the trip and the next Refresh does not pay for the same lookups.
-            for (const stop of placed) {
-              void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
-            }
-          }}
-          {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
-          {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
-          {...(directionArea ? { area: directionArea } : {})}
-        />
       </div>
 
       <ItineraryImport

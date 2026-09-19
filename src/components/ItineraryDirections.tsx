@@ -29,6 +29,7 @@ export function ItineraryDirections({
   onAddToTimeline,
   onKeepOffline,
   onPlaced,
+  onLegs,
   savedSignature,
   savedAt,
 }: {
@@ -46,6 +47,13 @@ export function ItineraryDirections({
    * every stop, so this hands back what it learned instead of discarding it.
    */
   onPlaced?: ((placed: { id: string; lat: number; lon: number }[]) => void) | undefined;
+  /**
+   * Hand the legs to the timeline, which draws each one between the two stops
+   * it connects. This component no longer lists them itself: the same legs in
+   * two places meant scrolling past a wall of "A → B" to reach the stops those
+   * legs were about.
+   */
+  onLegs?: ((legs: RouteLeg[]) => void) | undefined;
   savedSignature?: string | undefined;
   savedAt?: string | undefined;
 }) {
@@ -53,7 +61,6 @@ export function ItineraryDirections({
   const [legs, setLegs] = useState<RouteLeg[] | null>(null);
   const [unresolved, setUnresolved] = useState<string[]>([]);
   const [deferred, setDeferred] = useState<string[]>([]);
-  const [openLeg, setOpenLeg] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
@@ -93,6 +100,7 @@ export function ItineraryDirections({
       setDeferred(result.deferred ?? []);
       setAdded(false);
       setKept(false);
+      onLegs?.(result.legs);
       const placed = placedFromLegs(result.legs, stops);
       if (placed.length > 0) onPlaced?.(placed);
     } catch (e) {
@@ -119,7 +127,7 @@ export function ItineraryDirections({
               <RouteIcon className="size-3.5" /> Directions between stops
             </p>
             <p className="text-[12.5px] text-muted-foreground">
-              How to get from each timeline stop to the next, with walking or driving time.
+              Each walk or drive appears on the timeline, under the stop it leaves from.
             </p>
           </div>
           <button
@@ -139,50 +147,6 @@ export function ItineraryDirections({
           <p className="mt-2 text-[13px] text-muted-foreground">
             Béa couldn't place these stops on the map yet — add an address to them and try again.
           </p>
-        )}
-
-        {legs && legs.length > 0 && (
-          <ul className="mt-3 space-y-2">
-            {legs.map((leg, i) => (
-              <li key={`${leg.from}-${leg.to}-${i}`} className="rounded-xl bg-elevated p-2.5">
-                <button
-                  onClick={() => setOpenLeg(openLeg === i ? null : i)}
-                  className="w-full text-left"
-                >
-                  <p className="text-[14px] font-medium">
-                    {leg.from} → {leg.to}
-                  </p>
-                  <p className="text-[12.5px] text-muted-foreground">
-                    {leg.distance > 0
-                      ? `${leg.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
-                      : unroutedLegCopy(leg)}
-                  </p>
-                </button>
-                {openLeg === i && (
-                  <>
-                    {leg.steps.length > 0 && (
-                      <ol className="mt-2 space-y-1 border-l border-border pl-3">
-                        {leg.steps.map((step, s) => (
-                          <li key={s} className="text-[12.5px] text-muted-foreground">
-                            {step.instruction}
-                            {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
-                          </li>
-                        ))}
-                      </ol>
-                    )}
-                    <a
-                      href={leg.mapUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-[12.5px] font-semibold text-primary underline"
-                    >
-                      Open in maps
-                    </a>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
         )}
 
         {unresolved.length > 0 && (
