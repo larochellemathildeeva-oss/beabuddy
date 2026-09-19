@@ -20,7 +20,7 @@ import { TripBanner } from "@/components/TripBanner";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
-import { timeForRail } from "@/lib/timeline-kind";
+import { timeForRail, timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
@@ -236,8 +236,9 @@ export function TripDetail({
           source: `Trip: ${trip.title}`,
         },
         {
-          category:
-            item.kind === "meal" ? "Restaurant" : item.kind === "lodging" ? "Stay" : "Place",
+          // By glyph, so a row stored as "dinner" or "hotel" files itself
+          // correctly rather than landing in the catch-all.
+          category: vaultCategory(timelineGlyph(item)),
           ...(item.detail ? { notes: item.detail } : {}),
         },
       ),
@@ -439,8 +440,13 @@ export function TripDetail({
           tripId={trip.id}
           uid={me.id}
           international={cities.countries.length > 1 || Boolean(trip.country)}
-          hasLodging={board.items.some((item) => item.kind === "lodging")}
-          hasFlights={board.items.some((item) => item.kind === "transport")}
+          hasLodging={
+            // Asked by glyph, not by raw kind. A flight stores as "flight" and
+            // a hotel as "hotel", so comparing strings here is how both of
+            // these quietly answered no for every imported trip.
+            board.items.some((item) => timelineGlyph(item) === "lodging")
+          }
+          hasFlights={board.items.some((item) => timelineGlyph(item) === "transport")}
           tripStart={trip.start_date}
           openSignal={prepSignal}
         />

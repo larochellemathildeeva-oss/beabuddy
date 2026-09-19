@@ -101,3 +101,90 @@ export function timeForRail(timeLabel: string | null | undefined): string {
   // "Morning", "After lunch" — real information, just not a clock time.
   return text.length <= 9 ? text : text.slice(0, 8).trimEnd() + "…";
 }
+
+/**
+ * The kinds a timeline entry is actually stored as.
+ *
+ * There used to be two vocabularies that never met. The add form wrote
+ * lowercase `activity | meal | transport | lodging | note`; the importer could
+ * only emit `Flight | Hotel | Reservation | Transport | Plan` and coerced
+ * everything else to "Plan". So an imported day of breakfasts, markets and
+ * walks stored as twenty identical "Plan" rows: the glyph table knew none of
+ * them, every restaurant saved to the vault as a generic "Place", and the
+ * prep checks compared lowercase against capitalised and silently never
+ * matched.
+ *
+ * One list, and it is this one. `flight`, `hotel` and `reservation` stay
+ * because the optimiser refuses to move a booking and reads the kind to know
+ * it is one — they are bookings first and types second.
+ */
+export const TIMELINE_KINDS = [
+  "flight",
+  "hotel",
+  "reservation",
+  "transport",
+  "lodging",
+  "meal",
+  "sight",
+  "walk",
+  "activity",
+  "note",
+] as const;
+
+export type TimelineKind = (typeof TIMELINE_KINDS)[number];
+
+/** Words a model or an older row might use for each stored kind. */
+const SYNONYMS: Record<string, TimelineKind> = {
+  plan: "activity",
+  food: "meal",
+  restaurant: "meal",
+  breakfast: "meal",
+  brunch: "meal",
+  lunch: "meal",
+  dinner: "meal",
+  drinks: "meal",
+  coffee: "meal",
+  cafe: "meal",
+  stay: "lodging",
+  accommodation: "lodging",
+  hostel: "lodging",
+  airbnb: "lodging",
+  train: "transport",
+  bus: "transport",
+  ferry: "transport",
+  drive: "transport",
+  taxi: "transport",
+  transfer: "transport",
+  museum: "sight",
+  landmark: "sight",
+  attraction: "sight",
+  viewpoint: "sight",
+  market: "sight",
+  hike: "walk",
+  stroll: "walk",
+  reminder: "note",
+  booking: "reservation",
+};
+
+/**
+ * Whatever came in, as one of the stored kinds.
+ *
+ * Unknown becomes "activity" rather than being dropped: a row with an odd kind
+ * is still a thing you are doing that day.
+ */
+export function normaliseKind(raw: string | null | undefined): TimelineKind {
+  const text = (raw ?? "").trim().toLowerCase();
+  if (!text) return "activity";
+  if ((TIMELINE_KINDS as readonly string[]).includes(text)) return text as TimelineKind;
+  return SYNONYMS[text] ?? "activity";
+}
+
+/** Where a timeline entry belongs once it is kept in the vault. */
+export function vaultCategory(glyph: TimelineGlyph): string {
+  const byGlyph: Partial<Record<TimelineGlyph, string>> = {
+    meal: "Restaurant",
+    lodging: "Stay",
+    sight: "Sight",
+  };
+  return byGlyph[glyph] ?? "Place";
+}

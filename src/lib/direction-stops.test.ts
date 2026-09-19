@@ -117,3 +117,38 @@ test("reuseKeyForStop treats the same street with a city suffix as one pin", () 
     reuseKeyForStop({ title: "Check out", address: "1038 Canada Place" }),
   );
 });
+
+/**
+ * A venue's own name beats a sentence about it.
+ *
+ * An imported plan puts prose in `detail` ("Breakfast in Old Montréal"), and
+ * that used to be searched before the title. The geocoder takes limit=1 and
+ * stops at the first hit, so Olive et Gourmando landed on the Old Montréal
+ * neighbourhood centroid — a confident pin in the wrong place, which is the
+ * failure the area anchor exists to prevent.
+ */
+test("placeQueryCandidates searches the venue name before a prose detail", () => {
+  assert.deepEqual(placeQueryCandidates("Olive et Gourmando", "Breakfast in Old Montréal"), [
+    "Olive et Gourmando",
+    "Breakfast in Old Montréal",
+  ]);
+  assert.equal(placeQueryCandidates("St-Viateur Bagel", "Mile End")[0], "St-Viateur Bagel");
+  assert.equal(placeQueryCandidates("Marché Jean-Talon", "Little Italy")[0], "Marché Jean-Talon");
+});
+
+test("placeQueryCandidates still puts a real address first", () => {
+  assert.deepEqual(placeQueryCandidates("Olive et Gourmando", "351 Rue Saint-Paul O"), [
+    "351 Rue Saint-Paul O",
+  ]);
+  assert.equal(
+    placeQueryCandidates("Mile End stroll", "Saint-Viateur Street")[0],
+    "Saint-Viateur Street",
+  );
+});
+
+test("placeQueryCandidates keeps the prose as a fallback when the name finds nothing", () => {
+  assert.ok(
+    placeQueryCandidates("Dinner in Little Italy / Mile End", "Italian, Lebanese or Québécois")
+      .length >= 2,
+  );
+});
