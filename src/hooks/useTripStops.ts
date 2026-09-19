@@ -44,12 +44,15 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       setLoading(false);
       return;
     }
-    const { data } = await supabase
+    // Same rule as the timeline: a failed read is not an empty trip, and
+    // blanking the stops would take the map, the directions and the day
+    // grouping with it.
+    const { data, error } = await supabase
       .from("trip_stops")
       .select(COLS)
       .eq("trip_id", tripId)
       .order("position", { ascending: true });
-    setStops((data ?? []) as StopRow[]);
+    if (!error) setStops((data ?? []) as StopRow[]);
     setLoading(false);
   }, [tripId]);
 

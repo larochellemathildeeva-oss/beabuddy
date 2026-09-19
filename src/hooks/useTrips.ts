@@ -393,9 +393,23 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   const tripIdRef = useRef(tripId);
   tripIdRef.current = tripId;
 
+  /**
+   * Refresh the trip's rows.
+   *
+   * A failed read is not an empty trip. This used to destructure `data` alone
+   * and write `data ?? []`, so any hiccup — a dropped connection, an expired
+   * token mid-request — replaced a full timeline with nothing, silently. That
+   * is what "my directions got erased after leaving and coming back" was: the
+   * rows were still in the database, and this had blanked the view.
+   *
+   * Every path here reloads through this one function, including the realtime
+   * subscription that fires right after a batch of legs is added, so the
+   * window for it was wide. Keeping what we already have is always better
+   * than showing an empty trip we cannot vouch for.
+   */
   const load = useCallback(async () => {
     if (!tripId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("itinerary_items")
       .select(
         "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at",
@@ -403,12 +417,14 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       .eq("trip_id", tripId)
       .order("day_date", { ascending: true })
       .order("position", { ascending: true });
+    if (error) return;
     setItems((data ?? []) as ItineraryRow[]);
-    const { data: inv } = await supabase
+    const { data: inv, error: invError } = await supabase
       .from("trip_invites")
       .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false });
+    if (invError) return;
     setInvites(inv ?? []);
   }, [tripId]);
 
