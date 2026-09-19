@@ -1,10 +1,11 @@
 import { strict as assert } from "node:assert";
-import { test } from "node:test";
+import { describe, it, test } from "node:test";
 import type { RouteLeg } from "./directions.functions.ts";
 import {
   directionDetail,
   directionTitle,
   legsToTimelineItems,
+  placedFromLegs,
   stripEmbeddedMapsUrl,
   syncDetailDraft,
 } from "./timeline-directions.ts";
@@ -91,8 +92,89 @@ test("directionDetail only says the spot is unknown when it is", () => {
     directionDetail({ ...walk, distance: 0, duration: 0, unknownSpot: true }),
     "Exact spot unknown — open in maps",
   );
-  assert.equal(
-    directionDetail({ ...walk, distance: 0, duration: 0 }),
-    "Open in maps",
-  );
+  assert.equal(directionDetail({ ...walk, distance: 0, duration: 0 }), "Open in maps");
+});
+
+describe("placedFromLegs", () => {
+  const leg = (fromLat: number, fromLon: number, toLat: number, toLon: number) => ({
+    fromLat,
+    fromLon,
+    toLat,
+    toLon,
+  });
+
+  it("gives a stop the position the router worked out for it", () => {
+    const placed = placedFromLegs(
+      [leg(45.5, -73.6, 34.09, -118.41)],
+      [
+        { id: "a", title: "Montreal" },
+        { id: "b", title: "Hotel Bel-Air" },
+      ],
+    );
+    assert.deepEqual(placed, [
+      { id: "a", lat: 45.5, lon: -73.6 },
+      { id: "b", lat: 34.09, lon: -118.41 },
+    ]);
+  });
+
+  it("never overwrites a position the stop already had", () => {
+    // A point the user picked beats a geocoder's guess, always.
+    const placed = placedFromLegs(
+      [leg(1, 1, 2, 2)],
+      [
+        { id: "a", title: "Picked by hand", lat: 10, lon: 10 },
+        { id: "b", title: "Unplaced" },
+      ],
+    );
+    assert.deepEqual(placed, [{ id: "b", lat: 2, lon: 2 }]);
+  });
+
+  it("reports a stop once even when two legs touch it", () => {
+    const placed = placedFromLegs(
+      [leg(1, 1, 2, 2), leg(2, 2, 3, 3)],
+      [
+        { id: "a", title: "A" },
+        { id: "b", title: "B" },
+        { id: "c", title: "C" },
+      ],
+    );
+    assert.deepEqual(
+      placed.map((p) => p.id),
+      ["a", "b", "c"],
+    );
+  });
+
+  it("skips stops with no timeline row behind them", () => {
+    // City stops come from trip_stops and have no itinerary id to write to.
+    assert.deepEqual(
+      placedFromLegs([leg(1, 1, 2, 2)], [{ title: "City" }, { title: "City 2" }]),
+      [],
+    );
+  });
+
+  it("skips a leg the router could not place", () => {
+    assert.deepEqual(
+      placedFromLegs(
+        [{}],
+        [
+          { id: "a", title: "A" },
+          { id: "b", title: "B" },
+        ],
+      ),
+      [],
+    );
+  });
+
+  it("half a coordinate is not a position", () => {
+    assert.deepEqual(
+      placedFromLegs(
+        [{ fromLat: 45.5 }],
+        [
+          { id: "a", title: "A" },
+          { id: "b", title: "B" },
+        ],
+      ),
+      [],
+    );
+  });
 });

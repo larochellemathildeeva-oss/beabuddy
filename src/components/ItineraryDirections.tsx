@@ -5,6 +5,7 @@ import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import {
   legsToTimelineItems,
+  placedFromLegs,
   unroutedLegCopy,
   type DirectionStop,
 } from "@/lib/timeline-directions";
@@ -27,6 +28,7 @@ export function ItineraryDirections({
   existingTitles = [],
   onAddToTimeline,
   onKeepOffline,
+  onPlaced,
   savedSignature,
   savedAt,
 }: {
@@ -39,6 +41,11 @@ export function ItineraryDirections({
     result: { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] },
     stops: DirectionStop[],
   ) => boolean;
+  /**
+   * Keep the coordinates the router resolved. Working out a route geocodes
+   * every stop, so this hands back what it learned instead of discarding it.
+   */
+  onPlaced?: ((placed: { id: string; lat: number; lon: number }[]) => void) | undefined;
   savedSignature?: string | undefined;
   savedAt?: string | undefined;
 }) {
@@ -86,6 +93,8 @@ export function ItineraryDirections({
       setDeferred(result.deferred ?? []);
       setAdded(false);
       setKept(false);
+      const placed = placedFromLegs(result.legs, stops);
+      if (placed.length > 0) onPlaced?.(placed);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't work out the directions.");
     } finally {

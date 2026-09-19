@@ -485,6 +485,13 @@ export function TripDetail({
           existingTitles={board.items.map((i) => i.title)}
           onAddToTimeline={board.upsertItems}
           onKeepOffline={dir.keep}
+          onPlaced={(placed) => {
+            // The router already found these. Keep them, so the map can draw
+            // the trip and the next Refresh does not pay for the same lookups.
+            for (const stop of placed) {
+              void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+            }
+          }}
           {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
           {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
           {...(directionArea ? { area: directionArea } : {})}

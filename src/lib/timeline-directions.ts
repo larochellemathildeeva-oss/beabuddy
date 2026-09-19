@@ -29,8 +29,7 @@ export function directionTitle(leg: Pick<RouteLeg, "mode" | "to">): string {
 }
 
 /** Google Maps / goo.gl maps links older builds appended to Transport detail. */
-const EMBEDDED_MAPS_URL_SOURCE =
-  String.raw`https?:\/\/(?:(?:www\.)?google\.[^/\s]+\/maps\S*|maps\.google\.\S*|maps\.app\.goo\.gl\S*|goo\.gl\/maps\S*)`;
+const EMBEDDED_MAPS_URL_SOURCE = String.raw`https?:\/\/(?:(?:www\.)?google\.[^/\s]+\/maps\S*|maps\.google\.\S*|maps\.app\.goo\.gl\S*|goo\.gl\/maps\S*)`;
 
 /**
  * Drop raw maps URLs that older builds saved into Transport detail text.
@@ -76,7 +75,9 @@ export function directionDetail(
   return "Open in maps";
 }
 
-export function unroutedLegCopy(leg: Pick<RouteLeg, "capped" | "unknownSpot" | "sameSpot">): string {
+export function unroutedLegCopy(
+  leg: Pick<RouteLeg, "capped" | "unknownSpot" | "sameSpot">,
+): string {
   if (leg.sameSpot) return "Same place — no walk";
   if (leg.capped) return "Turn-by-turn paused here — open in maps for this stretch";
   if (leg.unknownSpot) return "Exact spot unknown — open in maps to search it";
@@ -108,4 +109,40 @@ export function legsToTimelineItems(
     if (lon != null) item.lon = lon;
     return [item];
   });
+}
+
+export type PlacedTimelineStop = { id: string; lat: number; lon: number };
+
+/**
+ * Coordinates the router worked out for stops that had none.
+ *
+ * Building directions geocodes every stop — that is how it knows a drive is
+ * 27.5 km — and then the app threw the answers away. The trip map sat above
+ * the directions saying none of these stops has a location yet, while the
+ * directions underneath it plainly knew where all of them were, and every
+ * Refresh paid for the same lookups again at a second apiece.
+ *
+ * Leg `i` runs from stop `i` to stop `i + 1`, so each leg carries both ends.
+ * Only stops that arrived without a position are returned: a coordinate the
+ * user picked themselves is never overwritten by a geocoder's guess.
+ */
+export function placedFromLegs(
+  legs: readonly Pick<RouteLeg, "fromLat" | "fromLon" | "toLat" | "toLon">[],
+  stops: readonly DirectionStop[],
+): PlacedTimelineStop[] {
+  const found = new Map<string, PlacedTimelineStop>();
+
+  const offer = (stop: DirectionStop | undefined, lat?: number, lon?: number) => {
+    if (!stop?.id || typeof lat !== "number" || typeof lon !== "number") return;
+    if (stop.lat != null && stop.lon != null) return;
+    if (found.has(stop.id)) return;
+    found.set(stop.id, { id: stop.id, lat, lon });
+  };
+
+  legs.forEach((leg, i) => {
+    offer(stops[i], leg.fromLat, leg.fromLon);
+    offer(stops[i + 1], leg.toLat, leg.toLon);
+  });
+
+  return [...found.values()];
 }

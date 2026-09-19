@@ -1,4 +1,12 @@
 export type DirectionStop = {
+  /**
+   * The timeline row this came from, when it came from one.
+   *
+   * Carried so the coordinates the router resolves can be written back onto
+   * the row that needed them. City stops have no timeline id and simply do
+   * not set it.
+   */
+  id?: string;
   title: string;
   day_date?: string | null;
   time_label?: string | null;
@@ -17,6 +25,7 @@ type CityStop = {
 };
 
 type TimelineItem = {
+  id?: string;
   title: string;
   kind?: string | null;
   day_date?: string | null;
@@ -28,7 +37,10 @@ type TimelineItem = {
 };
 
 /** Walk/Drive rows Béa already saved from Get directions — skip them on the next lookup. */
-export function isSavedDirectionItem(item: { kind?: string | null; title?: string | null }): boolean {
+export function isSavedDirectionItem(item: {
+  kind?: string | null;
+  title?: string | null;
+}): boolean {
   return /^(walk|drive) to /i.test((item.title ?? "").trim());
 }
 
@@ -98,7 +110,10 @@ function titlePlaceCandidates(title: string): string[] {
 export function placeQueryCandidates(title: string, hint?: string | null): string[] {
   const out: string[] = [];
   const push = (value?: string | null) => {
-    const text = (value ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").replace(/\s+/g, " ").trim();
+    const text = (value ?? "")
+      .replace(/^[-,&\s]+|[-,&\s]+$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (text.length > 2 && !out.includes(text)) out.push(text);
   };
   const h = hint?.trim() ?? "";
@@ -110,7 +125,10 @@ export function placeQueryCandidates(title: string, hint?: string | null): strin
   return looksLikeStreetAddress(out[0] ?? "") ? out.slice(0, 1) : out.slice(0, 4);
 }
 
-export function reuseKeyForStop(stop: { title: string; address?: string | null | undefined }): string {
+export function reuseKeyForStop(stop: {
+  title: string;
+  address?: string | null | undefined;
+}): string {
   const address = stop.address?.trim();
   if (!address) return stop.title.trim().toLowerCase();
   const street = looksLikeStreetAddress(address) ? address.split(",")[0]!.trim() : address;
@@ -131,7 +149,9 @@ export function placeHintFromDetail(detail?: string | null): string | null {
   if (looksLikeStreetAddress(first)) return first;
   const street = streetNameFromText(first);
   if (street) return street;
-  if (/^(browse|explore|suggest|book|reserve|enjoy|visit|walk|stroll|head|take|grab)\b/i.test(first)) {
+  if (
+    /^(browse|explore|suggest|book|reserve|enjoy|visit|walk|stroll|head|take|grab)\b/i.test(first)
+  ) {
     return null;
   }
   if (/\b(including|flagships)\b/i.test(first)) return null;
@@ -139,7 +159,10 @@ export function placeHintFromDetail(detail?: string | null): string | null {
   return null;
 }
 
-export function addressForStop(item: { address?: string | null; detail?: string | null }): string | null {
+export function addressForStop(item: {
+  address?: string | null;
+  detail?: string | null;
+}): string | null {
   const stored = item.address?.trim();
   if (stored) return stored;
   return placeHintFromDetail(item.detail);
@@ -163,7 +186,11 @@ function mapsPoint(
   area: string,
 ): string {
   if (hasCoords(point)) return `${point.lat},${point.lon}`;
-  const region = area.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").replace(/\s+,/g, ",").trim();
+  const region = area
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+,/g, ",")
+    .trim();
   const query = region ? `${name}, ${region}` : name;
   return encodeURIComponent(query);
 }
@@ -180,6 +207,7 @@ export function mapsDirUrl(
 export function asDirectionStop(item: TimelineItem): DirectionStop {
   const address = addressForStop(item);
   const stop: DirectionStop = { title: item.title.trim() };
+  if (item.id) stop.id = item.id;
   if (item.day_date) stop.day_date = item.day_date;
   if (item.time_label) stop.time_label = item.time_label;
   if (address) stop.address = address;
@@ -190,7 +218,9 @@ export function asDirectionStop(item: TimelineItem): DirectionStop {
 
 /** Timeline activities only — ignore Walk/Drive rows we already added. */
 export function timelineStopsForDirections(items: TimelineItem[]): DirectionStop[] {
-  return items.filter((item) => item.title.trim() && !isSavedDirectionItem(item)).map(asDirectionStop);
+  return items
+    .filter((item) => item.title.trim() && !isSavedDirectionItem(item))
+    .map(asDirectionStop);
 }
 
 /** Cities when the trip has a route; otherwise the timeline. */
