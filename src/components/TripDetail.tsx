@@ -49,7 +49,7 @@ import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
-import { stopLookupTitle, stopsToPlace } from "@/lib/stop-placing";
+import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
@@ -104,7 +104,19 @@ export function TripDetail({
   const dir = useOfflineDirections(activeId);
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
-  const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
+  /**
+   * One area, used by everything that looks a place up.
+   *
+   * Falls back to the trip's own stops when the city field is empty, because a
+   * trip called "Hiroshima day trip" with a stop in Hiroshima knows perfectly
+   * well where it is. What it never falls back to is the trip's title.
+   */
+  const lookupArea = tripLookupArea({
+    city: trip.city,
+    country: trip.country,
+    stops: cities.stops,
+  });
+  const directionArea = lookupArea || undefined;
 
   /**
    * Put the trip's stops on the map, once, in the background.
@@ -156,6 +168,53 @@ export function TripDetail({
     // it would re-run this on every reload it causes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cities.stops, trip.city, trip.country]);
+
+  /**
+   * Put the trip's timeline on the map, once, in the background.
+   *
+   * The effect above places the trip's cities. That was never the thing being
+   * asked for: what belongs on a map is the museum, the restaurant and the
+   * ferry — the rows of the day — and nothing ever went back for those. An
+   * entry only got a point if it happened to be picked from search, so a whole
+   * imported day landed blank and stayed blank, and the only repair was adding
+   * every place by hand.
+   *
+   * Same rules as the stops: area-anchored, capped per visit, each row tried
+   * once. The address is written too when the lookup returns one, so the row
+   * can say where it is and not only sit on a map.
+   */
+  const triedPlacingRows = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!lookupArea) return;
+    const pending = rowsToPlace(board.items, triedPlacingRows.current);
+    if (pending.length === 0) return;
+    for (const row of pending) triedPlacingRows.current.add(row.id);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await geocodePlanStops({
+          data: {
+            stops: pending.map((row) => ({ title: row.title, detail: row.address ?? null })),
+            area: lookupArea,
+          },
+        });
+        if (cancelled) return;
+        for (const hit of found.placed) {
+          const row = pending[hit.index];
+          if (row) await board.updateItem(row.id, { lat: hit.lat, lon: hit.lon });
+        }
+      } catch {
+        // An unplaced row is where this started. It is not worth a toast.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // board.items is the trigger; updateItem reloads it, so including it here
+    // would place the same rows for ever.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.items, lookupArea]);
   // Saved directions are only the right legs for these rows when they were
   // built from this exact stop list. They used to be indexed in blindly, so a
   // city-to-city download showed up underneath timeline entries.
