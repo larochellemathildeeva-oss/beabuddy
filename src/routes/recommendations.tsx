@@ -20,6 +20,8 @@ import {
 } from "@/lib/reco-ui";
 import { useAuth } from "@/hooks/useAuth";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
+import { Section } from "@/components/Section";
+import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
   PLACE_TRAVEL_TAGS,
@@ -214,6 +216,8 @@ function RecommendationsPage() {
         if (!pinA || !pinB) return 0;
         return scoreOpportunity(pinB, scorePrefs).score - scoreOpportunity(pinA, scorePrefs).score;
       });
+
+  const groups = groupRecosByType(filtered);
 
   const handleLink = async () => {
     setError(null);
@@ -985,58 +989,73 @@ function RecommendationsPage() {
 
         <section data-guide="reco-list" className="space-y-3">
           {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-          {filtered.map((v) => (
-            <article key={v.id} className="card-soft p-3.5">
-              <div className="flex items-start gap-3">
-                <span className={`mt-1.5 size-2 shrink-0 rounded-full ${pinColorClass[v.type]}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="font-display text-[18px] leading-tight">{v.name}</p>
-                  <p className="text-[13px] text-muted-foreground">
-                    {formatTripLocation(v.city, v.country)}
-                    {v.by ? ` · by ${v.by}` : ""}
-                    {v.source ? ` · ${v.source}` : ""}
-                  </p>
-                  {v.notes && <p className="mt-1.5 text-[14.5px] leading-snug">{v.notes}</p>}
-                  {v.tags.length > 0 && (
-                    <p className="mt-1.5 text-[12px] text-muted-foreground">{v.tags.join(" · ")}</p>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
-                    {v.category}
-                  </span>
-                  <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
-                  {v.removable && (
-                    <button
-                      onClick={() => {
-                        // Keep enough to re-create it before the row is gone.
-                        const row = vault.rows.find((r) => r.id === v.id);
-                        void removeWithUndo({
-                          label: v.name,
-                          remove: () => vault.remove(v.id),
-                          restore: async () => {
-                            if (!row) throw new Error("gone");
-                            await vault.add({
-                              ...toNewReco(capturedFromReco(row), {
-                                ...(row.category ? { category: row.category } : {}),
-                                ...(row.recommended_by
-                                  ? { recommended_by: row.recommended_by }
-                                  : {}),
-                              }),
-                              ...(row.pin_type ? { pin_type: row.pin_type as PinType } : {}),
-                              ...(row.travel_tags ? { travel_tags: row.travel_tags } : {}),
-                            });
-                          },
-                        });
-                      }}
-                      className="mt-1.5 text-[11.5px] text-muted-foreground underline"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
+          {groups.map((group) => (
+            <Section
+              key={group.type}
+              title={pinLabel[group.type]}
+              hint={groupCountLabel(group.rows.length)}
+              defaultOpen
+            >
+              <div className="space-y-3">
+                {group.rows.map((v) => (
+                  <article key={v.id} className="card-soft p-3.5">
+                    <div className="flex items-start gap-3">
+                      <span
+                        className={`mt-1.5 size-2 shrink-0 rounded-full ${pinColorClass[v.type]}`}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display text-[18px] leading-tight">{v.name}</p>
+                        <p className="text-[13px] text-muted-foreground">
+                          {formatTripLocation(v.city, v.country)}
+                          {v.by ? ` · by ${v.by}` : ""}
+                          {v.source ? ` · ${v.source}` : ""}
+                        </p>
+                        {v.notes && <p className="mt-1.5 text-[14.5px] leading-snug">{v.notes}</p>}
+                        {v.tags.length > 0 && (
+                          <p className="mt-1.5 text-[12px] text-muted-foreground">
+                            {v.tags.join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
+                          {v.category}
+                        </span>
+                        <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
+                        {v.removable && (
+                          <button
+                            onClick={() => {
+                              // Keep enough to re-create it before the row is gone.
+                              const row = vault.rows.find((r) => r.id === v.id);
+                              void removeWithUndo({
+                                label: v.name,
+                                remove: () => vault.remove(v.id),
+                                restore: async () => {
+                                  if (!row) throw new Error("gone");
+                                  await vault.add({
+                                    ...toNewReco(capturedFromReco(row), {
+                                      ...(row.category ? { category: row.category } : {}),
+                                      ...(row.recommended_by
+                                        ? { recommended_by: row.recommended_by }
+                                        : {}),
+                                    }),
+                                    ...(row.pin_type ? { pin_type: row.pin_type as PinType } : {}),
+                                    ...(row.travel_tags ? { travel_tags: row.travel_tags } : {}),
+                                  });
+                                },
+                              });
+                            }}
+                            className="mt-1.5 text-[11.5px] text-muted-foreground underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
               </div>
-            </article>
+            </Section>
           ))}
           {views.length === 0 && (
             <div className="py-8 text-center">

@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatTripLocation } from "@/lib/place-label";
 import { useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
+import { Section } from "@/components/Section";
 import { ComparePins } from "@/components/ComparePins";
 import { AddVisitedCity } from "@/components/AddVisitedCity";
 import { Switch } from "@/components/ui/switch";
@@ -52,6 +54,7 @@ function WorldPage() {
   const [active, setActive] = useState<PinType[]>(["visited", "nexttime", "wishlist", "reco"]);
   const [selected, setSelected] = useState<Pin | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
   const [statsEdit, setStatsEdit] = useState(false);
   /** The caveat about what the numbers count — asked for, not always on. */
   const [statsNote, setStatsNote] = useState(false);
@@ -220,7 +223,20 @@ function WorldPage() {
           </div>
         )}
 
-        <div data-guide="globe">
+        <div data-guide="globe" className="relative">
+          {/* The only way to add a place on this tab. It sits on the globe
+              because that is what you are adding to, and because a full-width
+              panel at the foot of the page was a section nobody scrolled to. */}
+          <button
+            type="button"
+            data-guide="add-city"
+            onClick={() => setAddOpen(true)}
+            aria-label="Add a city or country to your globe"
+            title="Add a city or country"
+            className="absolute right-2 top-2 z-10 grid size-10 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-md"
+          >
+            <Plus className="size-5" aria-hidden />
+          </button>
           <Globe
             pins={visible}
             selectedId={selected?.id}
@@ -251,10 +267,11 @@ function WorldPage() {
         </div>
 
         {visible.length > 0 && (
-          <section aria-label="Your pins">
-            <p className="mb-1.5 text-[12px] text-muted-foreground">
-              Or pick one from the list — the globe spins to it. Handy when a pin is round the back.
-            </p>
+          <Section
+            title="Your pins"
+            hint={`${visible.length} showing — pick one and the globe spins to it, handy when a pin is round the back`}
+            defaultOpen
+          >
             <ul className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border p-1.5">
               {visible.map((pin) => {
                 const active = selected?.id === pin.id;
@@ -288,7 +305,7 @@ function WorldPage() {
                 );
               })}
             </ul>
-          </section>
+          </Section>
         )}
 
         {selected ? (
@@ -486,7 +503,11 @@ function WorldPage() {
           )}
         </section>
 
-        <AddVisitedCity onSaved={() => void vault.reload()} />
+        <AddVisitedCity
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          onSaved={() => void vault.reload()}
+        />
 
         <ComparePins
           pins={[
