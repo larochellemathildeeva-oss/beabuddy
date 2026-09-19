@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -42,6 +42,8 @@ import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
+import { stopLookupTitle, stopsToPlace } from "@/lib/stop-placing";
+import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -96,6 +98,57 @@ export function TripDetail({
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
   const directionArea = formatTripLocation(trip.city, trip.country) || undefined;
+
+  /**
+   * Put the trip's stops on the map, once, in the background.
+   *
+   * A stop picked from search arrives with a point; one typed by hand or built
+   * by the planner does not — so the map had nothing to draw and the trip card
+   * fell back to a large letter. Filling the gap in the data rather than in the
+   * view means every surface improves at once: the map, the card, Near, and
+   * anything that measures a distance.
+   *
+   * Area-anchored, never a bare name. Capped per visit, and each stop is tried
+   * at most once here, because the list reloads after every placement and an
+   * unfindable stop would otherwise be asked for on every reload.
+   */
+  const triedPlacing = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const area = formatTripLocation(trip.city, trip.country);
+    if (!area) return;
+    const pending = stopsToPlace(cities.stops, triedPlacing.current);
+    if (pending.length === 0) return;
+    for (const stop of pending) triedPlacing.current.add(stop.id);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await geocodePlanStops({
+          data: {
+            stops: pending.map((stop) => ({
+              title: stopLookupTitle(stop),
+              detail: stop.address ?? null,
+            })),
+            area,
+          },
+        });
+        if (cancelled) return;
+        for (const hit of found.placed) {
+          const stop = pending[hit.index];
+          if (stop) await cities.updateStop(stop.id, { lat: hit.lat, lon: hit.lon });
+        }
+      } catch {
+        // A stop without a point is the state this started in, not a failure
+        // worth telling anyone about.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // cities.stops is the trigger; updateStop is stable enough and including
+    // it would re-run this on every reload it causes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cities.stops, trip.city, trip.country]);
   // Saved directions are only the right legs for these rows when they were
   // built from this exact stop list. They used to be indexed in blindly, so a
   // city-to-city download showed up underneath timeline entries.
