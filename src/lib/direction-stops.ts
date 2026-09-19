@@ -106,6 +106,18 @@ function titlePlaceCandidates(title: string): string[] {
 /**
  * Queries to try, best first: a real street or venue, then a cleaned title.
  * "Alberni Street Luxury Shopping" becomes "Alberni Street" before the long phrase.
+ *
+ * Order matters more than it looks. The geocoder asks for one result and takes
+ * the first query that returns anything, so whatever sits at the front of this
+ * list is what the stop becomes. A prose detail used to sit there: an imported
+ * plan writes "Breakfast in Old Montréal" under "Olive et Gourmando", and the
+ * restaurant was pinned to the neighbourhood centroid — not blank, which you
+ * would notice and fix, but confidently wrong, which you would not.
+ *
+ * So only something genuinely more precise than the name outranks the name: a
+ * street address, or a street pulled out of the text. Prose stays, but last,
+ * where it can still rescue "Dinner in Little Italy" without hijacking a
+ * venue that has a name of its own.
  */
 export function placeQueryCandidates(title: string, hint?: string | null): string[] {
   const out: string[] = [];
@@ -119,9 +131,9 @@ export function placeQueryCandidates(title: string, hint?: string | null): strin
   const h = hint?.trim() ?? "";
   if (looksLikeStreetAddress(h)) push(h);
   push(streetNameFromText(h));
-  if (h && !looksLikeStreetAddress(h) && h.split(/\s+/).length <= 10) push(h);
   push(streetNameFromText(title));
   for (const name of titlePlaceCandidates(title)) push(name);
+  if (h && !looksLikeStreetAddress(h) && h.split(/\s+/).length <= 10) push(h);
   return looksLikeStreetAddress(out[0] ?? "") ? out.slice(0, 1) : out.slice(0, 4);
 }
 

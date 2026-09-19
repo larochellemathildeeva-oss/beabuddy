@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { glyphLabel, timeForRail, timelineGlyph } from "./timeline-kind.ts";
+import {
+  TIMELINE_KINDS,
+  glyphLabel,
+  normaliseKind,
+  timeForRail,
+  timelineGlyph,
+  vaultCategory,
+} from "./timeline-kind.ts";
 
 describe("timelineGlyph", () => {
   it("maps the plain kinds", () => {
@@ -80,5 +87,55 @@ describe("timeForRail", () => {
   it("returns nothing for nothing", () => {
     assert.equal(timeForRail(null), "");
     assert.equal(timeForRail("   "), "");
+  });
+});
+
+describe("normaliseKind", () => {
+  it("passes the stored kinds through untouched", () => {
+    for (const kind of TIMELINE_KINDS) assert.equal(normaliseKind(kind), kind);
+  });
+
+  it("folds the importer's old vocabulary onto the app's", () => {
+    assert.equal(normaliseKind("Plan"), "activity");
+    assert.equal(normaliseKind("Flight"), "flight");
+    assert.equal(normaliseKind("Hotel"), "hotel");
+    assert.equal(normaliseKind("Transport"), "transport");
+    assert.equal(normaliseKind("Reservation"), "reservation");
+  });
+
+  it("understands the words a plan actually uses", () => {
+    assert.equal(normaliseKind("Breakfast"), "meal");
+    assert.equal(normaliseKind("dinner"), "meal");
+    assert.equal(normaliseKind("Museum"), "sight");
+    assert.equal(normaliseKind("hike"), "walk");
+    assert.equal(normaliseKind("Airbnb"), "lodging");
+  });
+
+  it("falls back to activity, never to nothing", () => {
+    assert.equal(normaliseKind(""), "activity");
+    assert.equal(normaliseKind(null), "activity");
+    assert.equal(normaliseKind("interpretive dance"), "activity");
+  });
+
+  // The whole point of one vocabulary: a stored kind the glyph table has
+  // never heard of is how twenty rows ended up wearing the same icon.
+  it("gives every stored kind a glyph of its own", () => {
+    for (const kind of TIMELINE_KINDS) {
+      if (kind === "activity" || kind === "reservation") continue;
+      assert.notEqual(
+        timelineGlyph({ kind, title: "Somewhere" }),
+        "activity",
+        `${kind} fell through to the generic glyph`,
+      );
+    }
+  });
+});
+
+describe("vaultCategory", () => {
+  it("files a kept stop by what it is", () => {
+    assert.equal(vaultCategory(timelineGlyph({ kind: "dinner" })), "Restaurant");
+    assert.equal(vaultCategory(timelineGlyph({ kind: "hotel" })), "Stay");
+    assert.equal(vaultCategory(timelineGlyph({ kind: "museum" })), "Sight");
+    assert.equal(vaultCategory(timelineGlyph({ kind: "activity" })), "Place");
   });
 });

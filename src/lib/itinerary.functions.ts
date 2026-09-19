@@ -10,8 +10,17 @@ import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-m
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
+import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 
-const KINDS = ["Flight", "Hotel", "Reservation", "Transport", "Plan"] as const;
+/**
+ * One vocabulary, shared with the rest of the app.
+ *
+ * This list used to be five capitalised words of its own invention, and every
+ * imported row that was not a flight or a hotel became "Plan" — a kind nothing
+ * downstream recognised. TIMELINE_KINDS is what the glyphs, the vault
+ * categories and the prep checks already read.
+ */
+const KINDS = TIMELINE_KINDS;
 
 const ParseInput = z
   .object({
@@ -92,6 +101,7 @@ const instructions = (
         ? "Extract this travel itinerary into a complete trip with dates, estimated costs and an ordered day-by-day timeline."
         : "Extract this travel itinerary into a complete trip with dates and an ordered day-by-day timeline.",
     `kind must be exactly one of: ${KINDS.join(", ")}.`,
+    "Pick the kind by what the entry is: meal for anything eaten or drunk, sight for a museum, landmark, market or viewpoint, walk for a stroll or hike, transport for getting between places, lodging for where you sleep, note for a reminder, activity for anything else. Use flight, hotel or reservation only for something actually booked.",
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
@@ -180,7 +190,7 @@ async function runParse(
     ...out,
     items: out.items.slice(0, 60).map((i) => ({
       ...i,
-      kind: (KINDS as readonly string[]).includes(i.kind) ? i.kind : "Plan",
+      kind: normaliseKind(i.kind),
       source: i.source === "vault" ? "vault" : data.mode === "build" ? "new" : null,
     })),
   };
@@ -417,7 +427,7 @@ export const reviseItinerary = createServerFn({ method: "POST" })
         });
         const replacements = result.output.items.slice(0, chosen.length).map((item) => ({
           ...item,
-          kind: (KINDS as readonly string[]).includes(item.kind) ? item.kind : "Plan",
+          kind: normaliseKind(item.kind),
           source: item.source === "vault" ? ("vault" as const) : ("new" as const),
         }));
         const merged = mergeAlternativeItems(data.items, replacements, data.selectedIndexes);
@@ -899,7 +909,10 @@ export const planDayTrip = createServerFn({ method: "POST" })
           messages: [{ role: "user", content: prompt }],
         }),
       );
-      const allowed = new Set(["Plan", "Reservation", "Transport"]);
+      // A day built around vault places is either one of those places or the
+      // travel between them; anything else the model names is still a real
+      // thing to do, so it keeps its own kind rather than being flattened.
+      const movement = new Set(["transport", "flight", "walk"]);
       const parsed: ParsedItinerary = {
         ...result.output,
         start_date: data.date,
@@ -908,8 +921,8 @@ export const planDayTrip = createServerFn({ method: "POST" })
         items: result.output.items.slice(0, 20).map((item) => ({
           ...item,
           day_date: data.date,
-          kind: allowed.has(item.kind) ? item.kind : "Plan",
-          source: item.kind === "Transport" ? "new" : "vault",
+          kind: normaliseKind(item.kind),
+          source: movement.has(normaliseKind(item.kind)) ? "new" : "vault",
         })),
       };
       return applyCostPolicy(parsed, false);
