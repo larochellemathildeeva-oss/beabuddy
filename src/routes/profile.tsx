@@ -330,21 +330,21 @@ function ProfilePage() {
 
         <Section
           defaultOpen={false}
-          title="Offline options"
+          title="What is kept on this phone"
           hint={
             offlineTrips.length
               ? `${offlineTrips.length} trip${offlineTrips.length === 1 ? "" : "s"} with directions on this phone`
-              : "Only trip directions can be kept on this phone"
+              : "Only trip directions are kept on this phone"
           }
           guide="offline-options"
         >
           <p className="text-[13px] text-muted-foreground">
-            Béa cannot pack maps, photos, recommendations, itineraries or the vault onto this phone
-            yet. Those still need a connection.
+            Béa needs a connection to open, so she is not a no-signal app yet. Maps, photos,
+            recommendations, itineraries and the vault all load fresh each time.
           </p>
           <p className="mt-2 text-[13px] text-muted-foreground">
-            What does work: open a trip → settings → Offline directions. That keeps the walk or
-            drive steps on this phone.
+            What is kept locally: open a trip → settings → Saved directions. That stores the walk or
+            drive steps here, so they cost nothing to open again once you have them.
           </p>
           {offlineTrips.length > 0 ? (
             <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
@@ -359,7 +359,7 @@ function ProfilePage() {
             </ul>
           ) : (
             <p className="mt-3 text-[13px] text-muted-foreground">
-              None yet. Open a trip and download Offline directions there.
+              None yet. Open a trip and download Saved directions there.
             </p>
           )}
           <Link

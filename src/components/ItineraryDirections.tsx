@@ -98,8 +98,8 @@ export function ItineraryDirections({
   const offlineNote = !savedAt
     ? null
     : stale
-      ? `${savedAgoLabel(savedAt)} for offline — but your stops have changed since. Get directions again and keep them to update.`
-      : `${savedAgoLabel(savedAt)} for offline. These steps work with no service.`;
+      ? `${savedAgoLabel(savedAt)} on this phone — but your stops have changed since. Get directions again and keep them to update.`
+      : `${savedAgoLabel(savedAt)} on this phone, so they cost nothing to open again. Béa still needs a connection to start up.`;
 
   return (
     <>
@@ -195,8 +195,8 @@ export function ItineraryDirections({
             <div>
               <p className="label-caps text-foreground">Add these legs</p>
               <p className="text-[12px] text-muted-foreground">
-                “Add to timeline” saves each walk or drive as a stop. “Keep for offline” stores
-                these exact steps on this phone, so you don't have to work them out twice.
+                “Add to timeline” saves each walk or drive as a stop. “Keep on this phone” stores
+                these exact steps here, so you don't have to work them out twice.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-1.5">
@@ -220,7 +220,7 @@ export function ItineraryDirections({
                   }}
                   className="rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
                 >
-                  {kept ? "Kept for offline" : "Keep for offline"}
+                  {kept ? "Kept on this phone" : "Keep on this phone"}
                 </button>
               )}
             </div>

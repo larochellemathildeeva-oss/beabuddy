@@ -709,7 +709,7 @@ export function TripDetail({
             onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
             className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
           >
-            Offline directions
+            Saved directions
             {dir.saved && (
               <span className="ml-2 text-[12px] font-normal text-muted-foreground">
                 {savedAgoLabel(dir.saved.savedAt)}
@@ -720,8 +720,9 @@ export function TripDetail({
           {sheetSection === "offline" && (
             <div className="rounded-xl bg-elevated p-3">
               <p className="text-[12px] text-muted-foreground">
-                Download the walk or drive between stops so the steps work with no service. Adding
-                directions to the timeline saves the summary — not the offline map.
+                Download the walk or drive between stops and Béa keeps the steps on this phone, so
+                you never work them out twice. Béa still needs a connection to open, so this is not
+                a no-signal map yet. Adding directions to the timeline saves the summary only.
               </p>
               <p className="mt-1 text-[12px] text-muted-foreground">
                 {cities.stops.length >= 2

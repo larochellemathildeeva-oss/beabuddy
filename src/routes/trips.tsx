@@ -291,7 +291,7 @@ function TripsPage() {
           <div className="card-soft p-4">
             <p className="font-display text-[19px] leading-snug">Sign in to start a trip.</p>
             <p className="mt-1 text-[14px] text-muted-foreground">
-              Trips, itineraries, invited friends and offline directions all save to your account.
+              Trips, itineraries, invited friends and saved directions all save to your account.
             </p>
             <Link
               to="/auth"

@@ -126,7 +126,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "The shared timeline",
-        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn stays offline only if you download it in trip settings.",
+        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn is kept on this phone only if you download it in trip settings.",
         selector: "[data-guide='trip-timeline']",
       },
       {
@@ -225,8 +225,8 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='packing-lists']",
       },
       {
-        title: "Offline options",
-        body: "Béa cannot pack maps or the vault onto this phone yet. What does work: trip settings → Offline directions. This list shows which trips already have those steps saved here.",
+        title: "What is kept on this phone",
+        body: "Béa needs a connection to open, so nothing here is a no-signal app yet. What is kept locally: trip settings → Saved directions puts the walk or drive steps on this phone so you do not fetch them twice. This list shows which trips already have them.",
         selector: "[data-guide='offline-options']",
       },
       {

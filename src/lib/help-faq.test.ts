@@ -71,7 +71,10 @@ describe("FAQ covers what the app ships", () => {
     ["comparing two itineraries", ["compare takes two", "compare two plans"]],
     ["help me choose", ["help me choose"]],
     ["the story page", ["how béa works"]],
-    ["offline directions", ["offline directions"]],
+    // Renamed from "offline directions": the steps are kept on this phone, but
+    // Béa still needs a connection to open, so the old name promised more than
+    // it delivered. Both spellings pass so the check survives the wording.
+    ["directions kept on this phone", ["saved directions", "offline directions"]],
     ["the document vault", ["document vault"]],
     ["packing lists", ["packing list"]],
     ["future me notes", ["future me"]],

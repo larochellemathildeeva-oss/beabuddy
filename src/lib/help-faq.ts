@@ -113,7 +113,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can friends edit a trip with me?",
-        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In trip settings you can revoke a code, remove someone (if you own the trip), or leave the trip yourself.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Offline directions in trip settings if you want turn-by-turn on this phone.",
+        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In trip settings you can revoke a code, remove someone (if you own the trip), or leave the trip yourself.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Saved directions in trip settings to keep turn-by-turn on this phone.",
       },
       {
         q: "What is Things to do on a trip?",
@@ -252,8 +252,8 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
         a: "We'd like to hear about it. Use You → Feedback.\n\nOne of the categories is literally: It broke and I laughed. We appreciate both bug reports and honesty.",
       },
       {
-        q: "Does Béa work offline?",
-        a: "Not as a full offline app. Maps, photos, recommendations, and the vault still need a connection.\n\nWhat does work: trip Settings → Offline directions keeps walk or drive steps on this phone. You → Offline options lists trips that already have those steps saved here.",
+        q: "Does Béa work without a connection?",
+        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. You → What is kept on this phone lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
       },
     ],
   },
