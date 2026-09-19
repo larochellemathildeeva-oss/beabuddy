@@ -100,11 +100,17 @@ export function SectionAction({
   children,
   guide,
   label,
+  pressed,
+  icon,
 }: {
   onClick: () => void;
   children: ReactNode;
   guide?: string;
   label?: string;
+  /** For an action that turns a mode on and stays on, like editing a list. */
+  pressed?: boolean;
+  /** Square, for an action whose meaning is carried by a glyph. */
+  icon?: boolean;
 }) {
   return (
     <button
@@ -112,7 +118,14 @@ export function SectionAction({
       onClick={onClick}
       {...(guide ? { "data-guide": guide } : {})}
       {...(label ? { "aria-label": label } : {})}
-      className="rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
+      {...(pressed === undefined ? {} : { "aria-pressed": pressed })}
+      className={`rounded-xl border text-[13px] font-semibold ${
+        icon ? "grid size-8 place-items-center" : "px-3 py-1.5"
+      } ${
+        pressed
+          ? "border-primary bg-primary text-primary-foreground"
+          : "border-border bg-card text-foreground"
+      }`}
     >
       {children}
     </button>

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
   ChevronUp,
   ListChecks,
   MapPinPlus,
+  Pencil,
   Plus,
   Settings,
   Sparkles,
@@ -32,12 +34,17 @@ import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
+import type { ParsedPlace } from "@/lib/places.functions";
 import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
-import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
+import {
+  formatTripLocation,
+  locationFromParsedPlace,
+  placePatchForSavedRow,
+} from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
@@ -227,6 +234,15 @@ export function TripDetail({
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [timelineByDay, setTimelineByDay] = useState(true);
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
+  /**
+   * One switch for the whole itinerary, not a link on every row.
+   *
+   * Each entry used to carry its own "Day & order" toggle, which put three
+   * underlined links under every line of the trip — the list read as a page of
+   * controls with the plan somewhere behind it. The controls are the same; they
+   * now all appear at once, from one pencil in the section header.
+   */
+  const [editingTimeline, setEditingTimeline] = useState(false);
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
   const [tripForm, setTripForm] = useState({
@@ -393,6 +409,23 @@ export function TripDetail({
               >
                 {addingTimeline ? "Cancel" : "Add"}
               </SectionAction>
+              {board.items.length > 0 && (
+                <SectionAction
+                  icon
+                  pressed={editingTimeline}
+                  label={editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                  onClick={() => {
+                    setTimelineOpen(true);
+                    setEditingTimeline((v) => !v);
+                  }}
+                >
+                  {editingTimeline ? (
+                    <Check className="size-4" aria-hidden />
+                  ) : (
+                    <Pencil className="size-4" aria-hidden />
+                  )}
+                </SectionAction>
+              )}
               {board.items.length >= 2 && (
                 <SectionAction
                   guide="optimize-trip"
@@ -497,6 +530,8 @@ export function TripDetail({
                                 item={item}
                                 showDay={false}
                                 leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                editing={editingTimeline}
+                                {...(directionArea ? { near: directionArea } : {})}
                                 onEdit={(field) => board.setEditing(field)}
                                 onUpdate={(patch) => void board.updateItem(item.id, patch)}
                                 onRemove={() => void removeTimelineItem(item)}
@@ -522,6 +557,8 @@ export function TripDetail({
                       item={item}
                       showDay
                       leg={legFor(i)}
+                      editing={editingTimeline}
+                      {...(directionArea ? { near: directionArea } : {})}
                       onEdit={(field) => board.setEditing(field)}
                       onUpdate={(patch) => void board.updateItem(item.id, patch)}
                       onRemove={() => void removeTimelineItem(item)}
@@ -1107,6 +1144,8 @@ function TimelineEntry({
   item,
   showDay,
   leg,
+  editing = false,
+  near,
   onEdit,
   onUpdate,
   onRemove,
@@ -1120,9 +1159,18 @@ function TimelineEntry({
   item: ItineraryRow;
   showDay: boolean;
   leg?: RouteLeg | undefined;
+  /** Edit mode for the whole itinerary, held by the page and toggled in its header. */
+  editing?: boolean;
+  /** Where the trip is, so a place search is answered locally. */
+  near?: string | undefined;
   onEdit: (field: string | null) => void;
   onUpdate: (
-    patch: Partial<Pick<ItineraryRow, "title" | "detail" | "time_label" | "kind" | "day_date">>,
+    patch: Partial<
+      Pick<
+        ItineraryRow,
+        "title" | "detail" | "time_label" | "kind" | "day_date" | "address" | "lat" | "lon"
+      >
+    >,
   ) => void;
   onRemove: () => void;
   /** Swap with the entry above or below, within the same day. */
@@ -1135,7 +1183,6 @@ function TimelineEntry({
   onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
 }) {
   const [kept, setKept] = useState(false);
-  const [editing, setEditing] = useState(false);
   const rail = timeForRail(item.time_label);
 
   return (
@@ -1197,6 +1244,11 @@ function TimelineEntry({
          * neighbour on the same day, and hide at the ends of one, because
          * rows sort by day first and a cross-day swap would move nothing you
          * can see.
+         *
+         * These open for the whole list at once, from the pencil in the
+         * section header, rather than per row: reordering a day means
+         * comparing rows, and a mode you turn on once beats opening and
+         * closing each entry in turn.
          */}
         {editing && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
@@ -1244,25 +1296,24 @@ function TimelineEntry({
                 </button>
               </div>
             )}
+            <TimelinePlaceEditor
+              item={item}
+              {...(near ? { near } : {})}
+              onPick={(place) => onUpdate(placePatchForSavedRow(place))}
+            />
           </div>
         )}
 
         <div className="mt-0.5 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            aria-expanded={editing}
-            className="text-[12px] text-muted-foreground underline"
-          >
-            {editing ? "Done" : "Day & order"}
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-[12px] text-muted-foreground underline"
-          >
-            Remove
-          </button>
+          {editing && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-[12px] text-muted-foreground underline"
+            >
+              Remove
+            </button>
+          )}
           {onKeep && item.kind !== "note" && (
             <button
               type="button"
@@ -1284,6 +1335,64 @@ function TimelineEntry({
         </div>
       </div>
     </li>
+  );
+}
+
+/**
+ * Move a saved entry to a different place.
+ *
+ * "Order" and "where" are the two things that change about a plan after it is
+ * written down, and only order had a control. The search is the same one the
+ * add form uses, so a pick brings the address and the point with it — which is
+ * also what puts the entry on the trip's map.
+ */
+function TimelinePlaceEditor({
+  item,
+  near,
+  onPick,
+}: {
+  item: ItineraryRow;
+  near?: string | undefined;
+  onPick: (place: ParsedPlace) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  if (!open)
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setQuery(item.title);
+          setOpen(true);
+        }}
+        className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-[12px] text-muted-foreground"
+      >
+        <MapPinPlus className="size-3.5" aria-hidden />
+        {item.address ? "Change place" : "Set place"}
+      </button>
+    );
+
+  return (
+    <div className="w-full space-y-1.5">
+      <PlaceSearchInput
+        value={query}
+        onChange={setQuery}
+        onPick={(place) => {
+          onPick(place);
+          setOpen(false);
+        }}
+        placeholder={`Where is ${item.title}?`}
+        {...(near ? { near } : {})}
+      />
+      <button
+        type="button"
+        onClick={() => setOpen(false)}
+        className="text-[12px] text-muted-foreground underline"
+      >
+        Cancel
+      </button>
+    </div>
   );
 }
 

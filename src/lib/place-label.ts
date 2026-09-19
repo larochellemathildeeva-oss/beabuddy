@@ -312,3 +312,28 @@ export function placeSuggestionLines(place: { name: string; address?: string }):
   }
   return { title: place.name };
 }
+
+/**
+ * The patch that moves a saved row to a picked place.
+ *
+ * Editing an itinerary entry's place is not the same as creating one: the
+ * title is the user's own words ("dinner with Marie") and a geocoder pick
+ * should not overwrite it. Only where the entry is — the address and the
+ * point — changes, and a pick without coordinates still writes the address,
+ * because a written address is better than none while the map waits.
+ */
+export function placePatchForSavedRow(place: {
+  name: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  lat?: number;
+  lon?: number;
+}): { address: string; lat: number | null; lon: number | null } {
+  const line = place.address || [place.city, place.country].filter(Boolean).join(", ");
+  return {
+    address: line || place.name,
+    lat: place.lat ?? null,
+    lon: place.lon ?? null,
+  };
+}

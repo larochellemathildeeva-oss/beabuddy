@@ -5,6 +5,7 @@ import {
   formatTripLocation,
   locationFromParsedPlace,
   placeFromNominatim,
+  placePatchForSavedRow,
   placeSuggestionLines,
   refineNominatimHits,
   type NominatimHitLike,
@@ -191,4 +192,28 @@ test("refineNominatimHits keeps a country when the query is that country", () =>
 test("formatTripLocation does not repeat a country already in the city line", () => {
   assert.equal(formatTripLocation("Montreal, Quebec, Canada", "Canada"), "Montreal, Quebec, Canada");
   assert.equal(formatTripLocation("Montreal", "Canada"), "Montreal, Canada");
+});
+
+test("placePatchForSavedRow moves the place without touching the title", () => {
+  const patch = placePatchForSavedRow({
+    name: "Gjelina",
+    address: "1429 Abbot Kinney Blvd, Venice",
+    lat: 33.99,
+    lon: -118.46,
+  });
+  assert.deepEqual(patch, { address: "1429 Abbot Kinney Blvd, Venice", lat: 33.99, lon: -118.46 });
+});
+
+test("placePatchForSavedRow falls back to city and country, then to the name", () => {
+  assert.equal(
+    placePatchForSavedRow({ name: "Somewhere", city: "Venice", country: "United States" }).address,
+    "Venice, United States",
+  );
+  assert.equal(placePatchForSavedRow({ name: "Somewhere" }).address, "Somewhere");
+});
+
+test("placePatchForSavedRow clears a stale point when the pick has none", () => {
+  const patch = placePatchForSavedRow({ name: "A place", address: "A street" });
+  assert.equal(patch.lat, null);
+  assert.equal(patch.lon, null);
 });
