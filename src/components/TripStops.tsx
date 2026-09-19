@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { Section, SectionAction } from "@/components/Section";
+import { Section } from "@/components/Section";
 import { Sheet } from "@/components/Sheet";
 import { useTripStops, type StopRow } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
@@ -94,6 +94,7 @@ export function TripStops({
 
   const close = () => {
     setAdding(false);
+    setPickingSaved(false);
     setEditingId("");
     setDraft(EMPTY);
     setError("");
@@ -136,6 +137,7 @@ export function TripStops({
     setError("");
     try {
       await s.addStop(toNewStop(place));
+      close();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't add that one");
     }
@@ -193,33 +195,7 @@ export function TripStops({
               s.countries.length > 1 ? ` · ${s.countries.length} countries` : ""
             }`
       }
-      actions={
-        <>
-          {/* Adding a stop is the pin icon in the trip's action row, so there is
-              no button for it here — not even on an empty trip, where this one
-              last survived. It was the same action twice within a thumb's reach
-              of itself. Cancel is not a duplicate, so it stays. */}
-          <SectionAction onClick={() => setPickingSaved((v) => !v)}>
-            {pickingSaved ? "Close" : "From saved"}
-          </SectionAction>
-        </>
-      }
     >
-      {pickingSaved && (
-        <div className="mb-3">
-          <SavedPlacePicker
-            alreadyHere={s.stops.map((stop) => ({
-              name: stop.place_name || stop.city,
-              city: stop.city,
-              ...(stop.lat != null ? { lat: stop.lat } : {}),
-              ...(stop.lon != null ? { lon: stop.lon } : {}),
-            }))}
-            onPick={addSaved}
-            onClose={() => setPickingSaved(false)}
-          />
-        </div>
-      )}
-
       {s.countries.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {s.countries.map((c) => (
@@ -339,6 +315,35 @@ export function TripStops({
        * because there the form appears directly under the row you tapped.
        */}
       <Sheet open={adding && !editingId} onClose={close} title="Add a stop" width="sm">
+        {/* A place you already saved is the fastest way to add a stop, so it
+            sits inside this form as a shortcut rather than behind its own
+            button and banner somewhere else on the page. */}
+        <button
+          type="button"
+          onClick={() => setPickingSaved((v) => !v)}
+          aria-expanded={pickingSaved}
+          className={`mb-3 rounded-full border px-3 py-1.5 text-[13px] font-semibold ${
+            pickingSaved ? "border-primary bg-primary/10" : "border-border"
+          }`}
+        >
+          {pickingSaved ? "Type it instead" : "Add one you saved"}
+        </button>
+
+        {pickingSaved && (
+          <div className="mb-3">
+            <SavedPlacePicker
+              alreadyHere={s.stops.map((stop) => ({
+                name: stop.place_name || stop.city,
+                city: stop.city,
+                ...(stop.lat != null ? { lat: stop.lat } : {}),
+                ...(stop.lon != null ? { lon: stop.lon } : {}),
+              }))}
+              onPick={addSaved}
+              onClose={() => setPickingSaved(false)}
+            />
+          </div>
+        )}
+
         <StopDraftForm
           draft={draft}
           setDraft={setDraft}
