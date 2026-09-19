@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { PLACE_ON_OPEN_LIMIT, stopLookupTitle, stopsToPlace } from "./stop-placing.ts";
+import {
+  PLACE_ON_OPEN_LIMIT,
+  rowsToPlace,
+  stopLookupTitle,
+  stopsToPlace,
+  tripLookupArea,
+} from "./stop-placing.ts";
 
 const stop = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -47,4 +53,49 @@ test("the cap counts only stops that actually need placing", () => {
     stopsToPlace(mixed, new Set()).map((s) => s.id),
     ["open0", "open1", "open2"],
   );
+});
+
+test("rowsToPlace takes unplaced, titled timeline rows it has not tried", () => {
+  const rows = [
+    { id: "a", title: "Peace Memorial Museum" },
+    { id: "b", title: "Okonomimura", lat: 34.39, lon: 132.46 },
+    { id: "c", title: "   " },
+    { id: "d", title: "Miyajima ferry" },
+  ];
+  assert.deepEqual(
+    rowsToPlace(rows, new Set(["d"])).map((r) => r.id),
+    ["a"],
+  );
+});
+
+test("rowsToPlace treats half a coordinate as unplaced", () => {
+  assert.equal(rowsToPlace([{ id: "a", title: "Shukkei-en", lat: 34.4 }], new Set()).length, 1);
+});
+
+test("rowsToPlace caps one visit", () => {
+  const rows = Array.from({ length: PLACE_ON_OPEN_LIMIT + 5 }, (_, i) => ({
+    id: String(i),
+    title: `Stop ${i}`,
+  }));
+  assert.equal(rowsToPlace(rows, new Set()).length, PLACE_ON_OPEN_LIMIT);
+});
+
+test("tripLookupArea prefers the trip's own city and country", () => {
+  assert.equal(tripLookupArea({ city: "Hiroshima", country: "Japan" }), "Hiroshima, Japan");
+});
+
+test("tripLookupArea does not repeat a country already in the city line", () => {
+  assert.equal(tripLookupArea({ city: "Hiroshima, Japan", country: "Japan" }), "Hiroshima, Japan");
+});
+
+test("tripLookupArea falls back to a real stop, never to a trip title", () => {
+  assert.equal(
+    tripLookupArea({ city: null, country: null, stops: [{ city: "Hiroshima", country: "Japan" }] }),
+    "Hiroshima, Japan",
+  );
+});
+
+test("tripLookupArea returns nothing when there is no real place to anchor to", () => {
+  assert.equal(tripLookupArea({ city: "", country: "", stops: [] }), "");
+  assert.equal(tripLookupArea({}), "");
 });

@@ -319,8 +319,16 @@ function ImportPanel({
        * exactly as before. A missing pin you can add by hand beats a
        * confident one in the wrong country.
        */
-      const area = tripCity?.trim() || plan?.trip_title?.trim() || "";
+      const area = tripCity?.trim() || "";
       let located = chosen;
+      if (!area && chosen.length > 0) {
+        // Saying nothing was the real failure here. A day saved with no
+        // points looks identical to one that worked, so the first anyone
+        // knew of it was an empty map and an evening of re-entry.
+        toast.message("Béa saved these, but couldn't put them on the map", {
+          description: "Set the trip's city and she'll place them next time you open it.",
+        });
+      }
       if (area && chosen.length > 0) {
         setPlacing({ done: 0, total: chosen.length });
         setSaveStatus("");
@@ -337,6 +345,12 @@ function ImportPanel({
             return hit ? { ...item, lat: hit.lat, lon: hit.lon } : item;
           });
           setPlacing({ done: result.placed.length, total: chosen.length });
+          if (result.placed.length < chosen.length) {
+            const missed = chosen.length - result.placed.length;
+            toast.message(`Béa placed ${result.placed.length} of ${chosen.length} on the map`, {
+              description: `She couldn't find ${missed}. Open the itinerary's edit mode to set ${missed === 1 ? "it" : "them"} by hand.`,
+            });
+          }
         } catch {
           // Keep the stops. Positions are a bonus, not a precondition.
         } finally {
