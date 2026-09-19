@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { neighbourInDay, nextPosition } from "@/lib/timeline-order";
 import {
   datesStatusOrDefault,
   isMissingDatesStatusColumn,
@@ -517,7 +518,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           address: item.address || null,
           lat: item.lat ?? null,
           lon: item.lon ?? null,
-          position: items.length,
+          position: nextPosition(items),
           created_by: authorId,
           updated_by: authorId,
         })
@@ -563,7 +564,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
             address: item.address || null,
             lat: item.lat ?? null,
             lon: item.lon ?? null,
-            position: items.length + index,
+            position: nextPosition(items) + index,
             created_by: authorId,
             updated_by: authorId,
           })),
@@ -642,7 +643,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
             address: item.address || null,
             lat: item.lat ?? null,
             lon: item.lon ?? null,
-            position: items.length + index,
+            position: nextPosition(items) + index,
             created_by: authorId,
             updated_by: authorId,
           })),
@@ -672,6 +673,39 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       await load();
     },
     [me.id, load],
+  );
+
+  /**
+   * Move a saved entry up or down within its day.
+   *
+   * A straight swap of positions, the same way trip_stops does it. Crossing a
+   * day boundary is deliberately not possible here: rows sort by day first, so
+   * the swap would not move anything you can see. Changing the day is its own
+   * control.
+   */
+  const moveItem = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const tripId2 = tripIdRef.current;
+      if (!tripId2) throw new Error("Open a trip first");
+      const current = items.find((item) => item.id === id);
+      const swapWith = neighbourInDay(items, id, direction);
+      if (!current || !swapWith) return;
+      const authorId = await liveUserId(me.id);
+      await Promise.all([
+        supabase
+          .from("itinerary_items")
+          .update({ position: swapWith.position, updated_by: authorId })
+          .eq("id", current.id)
+          .eq("trip_id", tripId2),
+        supabase
+          .from("itinerary_items")
+          .update({ position: current.position, updated_by: authorId })
+          .eq("id", swapWith.id)
+          .eq("trip_id", tripId2),
+      ]);
+      await load();
+    },
+    [items, me.id, load],
   );
 
   const applySchedule = useCallback(
@@ -728,6 +762,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     upsertItems,
     applySchedule,
     updateItem,
+    moveItem,
     removeItem,
     setEditing,
     reload: load,

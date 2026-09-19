@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, ListChecks, MapPinPlus, Plus, Settings, Sparkles, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  ListChecks,
+  MapPinPlus,
+  Plus,
+  Settings,
+  Sparkles,
+  X,
+} from "lucide-react";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
@@ -30,6 +39,7 @@ import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation, locationFromParsedPlace } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
+import { canMove } from "@/lib/timeline-order";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -421,6 +431,11 @@ export function TripDetail({
                                 onEdit={(field) => board.setEditing(field)}
                                 onUpdate={(patch) => void board.updateItem(item.id, patch)}
                                 onRemove={() => void removeTimelineItem(item)}
+                                onMove={(direction) => void board.moveItem(item.id, direction)}
+                                canMoveUp={canMove(board.items, item.id, -1)}
+                                canMoveDown={canMove(board.items, item.id, 1)}
+                                tripStart={trip.start_date}
+                                tripEnd={trip.end_date}
                                 onKeep={keepItemAsReco}
                               />
                             ))}
@@ -441,6 +456,11 @@ export function TripDetail({
                       onEdit={(field) => board.setEditing(field)}
                       onUpdate={(patch) => void board.updateItem(item.id, patch)}
                       onRemove={() => void removeTimelineItem(item)}
+                      onMove={(direction) => void board.moveItem(item.id, direction)}
+                      canMoveUp={canMove(board.items, item.id, -1)}
+                      canMoveDown={canMove(board.items, item.id, 1)}
+                      tripStart={trip.start_date}
+                      tripEnd={trip.end_date}
                       onKeep={keepItemAsReco}
                     />
                   ))}
@@ -1021,6 +1041,11 @@ function TimelineEntry({
   onEdit,
   onUpdate,
   onRemove,
+  onMove,
+  canMoveUp = false,
+  canMoveDown = false,
+  tripStart,
+  tripEnd,
   onKeep,
 }: {
   item: ItineraryRow;
@@ -1031,10 +1056,17 @@ function TimelineEntry({
     patch: Partial<Pick<ItineraryRow, "title" | "detail" | "time_label" | "kind" | "day_date">>,
   ) => void;
   onRemove: () => void;
+  /** Swap with the entry above or below, within the same day. */
+  onMove?: ((direction: -1 | 1) => void) | undefined;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  tripStart?: string | null | undefined;
+  tripEnd?: string | null | undefined;
   /** Save this stop to the vault, so a good find outlives the trip. */
   onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
 }) {
   const [kept, setKept] = useState(false);
+  const [editing, setEditing] = useState(false);
   const rail = timeForRail(item.time_label);
 
   return (
@@ -1084,7 +1116,77 @@ function TimelineEntry({
           </p>
         )}
         <StopDirections leg={leg} />
+
+        {/**
+         * Changing an entry after it is saved.
+         *
+         * A plan moves: dinner slides to the next night, the museum swaps with
+         * lunch. Until now a saved entry could only have its title and detail
+         * edited — the day was printed as plain text and the order was
+         * whatever it was added in. The day and time write through the same
+         * updateItem the form uses; the arrows swap position with the
+         * neighbour on the same day, and hide at the ends of one, because
+         * rows sort by day first and a cross-day swap would move nothing you
+         * can see.
+         */}
+        {editing && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
+            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              Day
+              <input
+                type="date"
+                value={item.day_date ?? ""}
+                aria-label={`Day for ${item.title}`}
+                {...(tripStart ? { min: tripStart } : {})}
+                {...(tripEnd ? { max: tripEnd } : {})}
+                onChange={(e) => onUpdate({ day_date: e.target.value || null })}
+                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              Time
+              <input
+                type="time"
+                value={rail}
+                aria-label={`Time for ${item.title}`}
+                onChange={(e) => onUpdate({ time_label: e.target.value || null })}
+                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+              />
+            </label>
+            {onMove && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={!canMoveUp}
+                  onClick={() => onMove(-1)}
+                  aria-label={`Move ${item.title} earlier`}
+                  className="grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
+                >
+                  <ChevronUp className="size-3.5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  disabled={!canMoveDown}
+                  onClick={() => onMove(1)}
+                  aria-label={`Move ${item.title} later`}
+                  className="grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
+                >
+                  <ChevronDown className="size-3.5" aria-hidden />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mt-0.5 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setEditing((v) => !v)}
+            aria-expanded={editing}
+            className="text-[12px] text-muted-foreground underline"
+          >
+            {editing ? "Done" : "Day & order"}
+          </button>
           <button
             type="button"
             onClick={onRemove}
