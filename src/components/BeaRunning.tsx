@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import logo from "@/assets/bea-logo.png";
+import { BeaDog } from "@/components/BeaDog";
 import { beaMomentPool } from "@/lib/bea-voice";
 
 /** Long enough to read, short enough that a long wait still changes. */
@@ -44,8 +44,8 @@ export function BeaRunning({
   return (
     <div className="rounded-xl bg-elevated p-3" role="status" aria-live="polite" aria-busy="true">
       <div className="flex items-center gap-3">
-        <span className="relative grid size-12 shrink-0 place-items-end justify-items-center">
-          <img src={logo} alt="" className="bea-run size-10 rounded-full object-contain" />
+        <span className="relative grid h-12 w-14 shrink-0 place-items-end justify-items-center">
+          <BeaDog className="w-14" />
           <span className="bea-track absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
