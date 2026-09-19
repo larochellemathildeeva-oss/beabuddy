@@ -569,3 +569,56 @@
 @utility pin-pop {
   animation: pin-pop var(--t-arrive) var(--ease-confirm) both;
 }
+
+/**
+ * Béa, running on the spot.
+ *
+ * The one wait in the app long enough to read a sentence twice: geocoding a
+ * planned trip is a queue of one-a-second lookups, so it can run half a
+ * minute. A spinner would say "something is happening"; this says who is
+ * doing it and why it is taking a while, which is the difference between
+ * waiting and wondering whether it has hung.
+ *
+ * A short hop with a slight tilt, and the ground sliding under her so the
+ * running reads as running rather than bouncing in place.
+ */
+@keyframes bea-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(4deg);
+  }
+}
+
+@keyframes bea-ground {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -10px;
+  }
+}
+
+@utility bea-run {
+  animation: bea-hop 0.42s var(--ease-standard) infinite;
+}
+
+@utility bea-track {
+  background-image: radial-gradient(
+    circle at 2px 50%,
+    color-mix(in oklch, var(--color-muted-foreground) 60%, transparent) 1.25px,
+    transparent 1.35px
+  );
+  background-size: 10px 100%;
+  background-repeat: repeat-x;
+  animation: bea-ground 0.42s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bea-run,
+  .bea-track {
+    animation: none;
+  }
+}

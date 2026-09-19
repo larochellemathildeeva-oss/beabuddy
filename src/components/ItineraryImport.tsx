@@ -1,4 +1,5 @@
 import { Sheet } from "@/components/Sheet";
+import { BeaRunning } from "@/components/BeaRunning";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Columns2, Image as ImageIcon, ListOrdered, Sparkles, X } from "lucide-react";
@@ -22,6 +23,8 @@ import { useUndo } from "@/hooks/useUndo";
 import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
+import { estimatedSeconds } from "@/lib/geocode-plan";
+import { geocodePlanStops, PLAN_LOOKUP_GAP_MS } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -36,6 +39,8 @@ type NewItineraryItem = {
   title: string;
   detail?: string;
   address?: string;
+  lat?: number;
+  lon?: number;
 };
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
@@ -204,6 +209,8 @@ function ImportPanel({
   const [picked, setPicked] = useState<number[]>([]);
   const [saved, setSaved] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
+  /** Set while Béa is out placing the stops; null the rest of the time. */
+  const [placing, setPlacing] = useState<{ done: number; total: number } | null>(null);
   const [mode, setMode] = useState<"build" | "import">("build");
   const [pace, setPace] = useState<"relaxed" | "balanced" | "full">("balanced");
   const [budgetLevel, setBudgetLevel] = useState<"value" | "comfortable" | "premium">(
@@ -299,8 +306,46 @@ function ImportPanel({
           },
         ];
       });
-      setSaveStatus(`Saving ${chosen.length} timeline stops…`);
-      const insertedIds = await onAddItems(chosen);
+      /**
+       * Give each stop a position before it is saved.
+       *
+       * The planner returns titles and no coordinates, so until now every
+       * stop Béa added landed unplaced: missing from the trip map, invisible
+       * to Near, and looked up again on every request for directions. The
+       * lookups are one a second by Nominatim's policy, so this is the slow
+       * part — hence something to watch while it runs.
+       *
+       * Failure here is not failure: a stop that cannot be placed is saved
+       * exactly as before. A missing pin you can add by hand beats a
+       * confident one in the wrong country.
+       */
+      const area = tripCity?.trim() || plan?.trip_title?.trim() || "";
+      let located = chosen;
+      if (area && chosen.length > 0) {
+        setPlacing({ done: 0, total: chosen.length });
+        setSaveStatus("");
+        try {
+          const result = await geocodePlanStops({
+            data: {
+              stops: chosen.map((item) => ({ title: item.title, detail: item.detail ?? null })),
+              area,
+            },
+          });
+          const byIndex = new Map(result.placed.map((hit) => [hit.index, hit]));
+          located = chosen.map((item, index) => {
+            const hit = byIndex.get(index);
+            return hit ? { ...item, lat: hit.lat, lon: hit.lon } : item;
+          });
+          setPlacing({ done: result.placed.length, total: chosen.length });
+        } catch {
+          // Keep the stops. Positions are a bonus, not a precondition.
+        } finally {
+          setPlacing(null);
+        }
+      }
+
+      setSaveStatus(`Saving ${located.length} timeline stops…`);
+      const insertedIds = await onAddItems(located);
       if (includeCosts && onAddCosts && plan?.costs.length) {
         setSaveStatus("Saving the budget…");
         await onAddCosts(plan.costs);
@@ -610,9 +655,20 @@ function ImportPanel({
                 className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy
-                  ? saveStatus || "Saving your trip…"
+                  ? saveStatus || (placing ? "Placing your stops…" : "Saving your trip…")
                   : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
               </button>
+              {/* The long wait gets a face. Everything else here is quick
+                  enough that a button label carries it. */}
+              {placing && (
+                <div className="mt-2">
+                  <BeaRunning
+                    done={placing.done}
+                    total={placing.total}
+                    estimate={estimatedSeconds(placing.total, PLAN_LOOKUP_GAP_MS)}
+                  />
+                </div>
+              )}
             </div>
           )}
           {items.length === 0 && (

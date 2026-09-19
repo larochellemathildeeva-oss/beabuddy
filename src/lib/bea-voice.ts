@@ -10,13 +10,7 @@
  * Rotate sparsely — high-personality moments only.
  */
 
-export type BeaMode =
-  | "companion"
-  | "archivist"
-  | "scout"
-  | "planner"
-  | "honest"
-  | "curator";
+export type BeaMode = "companion" | "archivist" | "scout" | "planner" | "honest" | "curator";
 
 export type BeaLine = {
   title: string;
@@ -62,6 +56,7 @@ export type BeaMoment =
   | "plan.working"
   | "plan.ready"
   | "plan.complete"
+  | "plan.locating"
   | "choose.working"
   | "choose.ready";
 
@@ -201,6 +196,33 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
       title: "Saved to the trip.",
       body: "This should be easier on your future self.",
       mode: "planner",
+    },
+  ],
+  "plan.locating": [
+    {
+      title: "Béa is running as fast as she can.",
+      body: "Please be patient with her short legs.",
+      mode: "companion",
+    },
+    {
+      title: "Off to find every one of these.",
+      body: "One at a time — the map people are strict about queueing.",
+      mode: "honest",
+    },
+    {
+      title: "Short legs, long list.",
+      body: "She is pinning each stop properly rather than guessing.",
+      mode: "honest",
+    },
+    {
+      title: "Nose down, tail up.",
+      body: "Béa would rather be slow than put your lunch in the wrong country.",
+      mode: "companion",
+    },
+    {
+      title: "Still going.",
+      body: "A dachshund's pace, but every pin will be in the right place.",
+      mode: "companion",
     },
   ],
   "choose.working": [

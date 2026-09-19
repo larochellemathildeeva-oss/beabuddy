@@ -21,6 +21,7 @@ const MOMENTS: BeaMoment[] = [
   "plan.working",
   "plan.ready",
   "plan.complete",
+  "plan.locating",
   "choose.working",
   "choose.ready",
 ];
