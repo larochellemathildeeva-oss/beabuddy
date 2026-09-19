@@ -32,6 +32,21 @@ export function BeaRunning({
   const pool = beaMomentPool("plan.locating");
   const [index, setIndex] = useState(0);
 
+  /**
+   * Start somewhere random, then walk the pool in order.
+   *
+   * Random every tick would repeat lines back to back, which reads as a glitch
+   * rather than variety. A random entry point and a steady walk means two
+   * waits rarely open the same way, and a long one never repeats until it has
+   * shown you everything.
+   *
+   * Seeded after mount rather than in the initial state so the server and the
+   * first client render cannot disagree about which line it is.
+   */
+  useEffect(() => {
+    setIndex(Math.floor(Math.random() * pool.length));
+  }, [pool.length]);
+
   useEffect(() => {
     if (pool.length < 2) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % pool.length), LINE_MS);

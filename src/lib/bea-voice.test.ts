@@ -64,3 +64,30 @@ test("recs.saved includes the Future You signature somewhere in the pool", () =>
     .join(" ");
   assert.match(blob, /Future You has excellent taste/);
 });
+
+test("the waiting pool is deep enough to be worth discovering", () => {
+  // The point of randomising the start is that you meet a new one
+  // occasionally. A pool of three would just feel like a short loop.
+  const pool = beaMomentPool("plan.locating");
+  assert.ok(pool.length >= 10, `only ${pool.length} lines`);
+});
+
+test("every waiting line is a two-parter, because the card has two slots", () => {
+  for (const line of beaMomentPool("plan.locating")) {
+    assert.ok(line.body && line.body.trim().length > 0, `${line.title} has no body`);
+  }
+});
+
+test("waiting lines are all distinct, so a long wait never repeats early", () => {
+  const titles = beaMomentPool("plan.locating").map((l) => l.title);
+  assert.equal(new Set(titles).size, titles.length);
+});
+
+test("the short-legs line survives in the waiting pool", () => {
+  // The one that gives the wait a reason you can picture.
+  const pool = beaMomentPool("plan.locating");
+  assert.ok(
+    pool.some((l) => /little legs/i.test(`${l.title} ${l.body ?? ""}`)),
+    "the little-legs line is gone",
+  );
+});

@@ -198,30 +198,79 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
       mode: "planner",
     },
   ],
+  /**
+   * The wait while Béa places a planned trip on the map.
+   *
+   * Long enough to read a sentence twice, so the pool is deep and starts at a
+   * random line: the point is that you meet a new one occasionally rather than
+   * the same apology every time. The short-legs joke does real work — it gives
+   * the wait a reason you can picture, which a spinner cannot.
+   *
+   * Several of these are literally true here. She is checking side streets and
+   * asking the locals, one lookup a second, because that is what placing a
+   * stop actually is.
+   */
   "plan.locating": [
     {
-      title: "Béa is running as fast as she can.",
-      body: "Please be patient with her short legs.",
+      title: "Please be patient.",
+      body: "Béa is running as fast as she can. She has little legs.",
+      mode: "companion",
+    },
+    { title: "Tiny legs.", body: "Big thoughts.", mode: "companion" },
+    {
+      title: "Béa is taking the scenic route to an answer.",
+      body: "She will get there. She always does.",
+      mode: "companion",
+    },
+    { title: "Béa is thinking.", body: "This is her cardio.", mode: "honest" },
+    {
+      title: "Béa is scouting ahead for you…",
+      body: "One street at a time.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is carrying a lot of recommendations right now.",
+      body: "All of them, in fact.",
       mode: "companion",
     },
     {
-      title: "Off to find every one of these.",
-      body: "One at a time — the map people are strict about queueing.",
+      title: "Béa is connecting the dots.",
+      body: "There are a lot of dots.",
       mode: "honest",
     },
     {
-      title: "Short legs, long list.",
-      body: "She is pinning each stop properly rather than guessing.",
-      mode: "honest",
+      title: "Béa is checking one more side street…",
+      body: "This one looks promising.",
+      mode: "scout",
     },
     {
-      title: "Nose down, tail up.",
-      body: "Béa would rather be slow than put your lunch in the wrong country.",
+      title: "Béa is asking the locals.",
+      body: "They are being very thorough.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is unfolding a very large map.",
+      body: "It never folds back the same way.",
       mode: "companion",
     },
     {
-      title: "Still going.",
-      body: "A dachshund's pace, but every pin will be in the right place.",
+      title: "Béa is hustling.",
+      body: "Her legs disagree.",
+      mode: "honest",
+    },
+    {
+      title: "Béa has entered turbo mode.",
+      body: "It is still not very turbo.",
+      mode: "honest",
+    },
+    {
+      title: "Béa got distracted by a cute café.",
+      body: "She is back now.",
+      mode: "companion",
+    },
+    {
+      title: "Béa is doing her best ✨",
+      body: "Pinning every stop properly rather than guessing.",
       mode: "companion",
     },
   ],
