@@ -12,6 +12,7 @@ import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
+import { TripMap } from "@/components/TripMap";
 import { TripPrep } from "@/components/TripPrep";
 import { TripToday } from "@/components/TripToday";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
@@ -459,6 +460,10 @@ export function TripDetail({
             </div>
           )}
         </Section>
+
+        {/* The same stop list the directions below are built from, so the map
+            and the route can never describe different journeys. */}
+        <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
 
         <ItineraryDirections
           stops={directionStops}
