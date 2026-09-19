@@ -573,69 +573,25 @@
 /**
  * Béa, running on the spot.
  *
- * The one wait in the app long enough to read a sentence twice: placing a
+ * The one wait in the app long enough to read a sentence twice: geocoding a
  * planned trip is a queue of one-a-second lookups, so it can run half a
- * minute. A spinner would say "something is happening"; a small dog visibly
- * working says who is doing it and why it takes a while, which is the
- * difference between waiting and wondering whether it has hung.
+ * minute. A spinner would say "something is happening"; this says who is
+ * doing it and why it is taking a while, which is the difference between
+ * waiting and wondering whether it has hung.
  *
- * She is drawn rather than photographed so she costs no asset, takes the
- * theme's colours, and can actually move her legs — the logo could only bob.
- * Diagonal pairs alternate, which is a trot: the gait a short-legged dog
- * actually uses, and the one that reads as running at this size.
+ * A short hop with a slight tilt, and the ground sliding under her so the
+ * running reads as running rather than bouncing in place.
  */
-@keyframes bea-leg-fore {
+@keyframes bea-hop {
   0%,
   100% {
-    transform: rotate(-30deg);
+    transform: translateY(0) rotate(-4deg);
   }
   50% {
-    transform: rotate(26deg);
+    transform: translateY(-7px) rotate(4deg);
   }
 }
 
-@keyframes bea-leg-aft {
-  0%,
-  100% {
-    transform: rotate(26deg);
-  }
-  50% {
-    transform: rotate(-30deg);
-  }
-}
-
-/* A hand's width of bounce. More and she looks like she is jumping. */
-@keyframes bea-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-1.4px);
-  }
-}
-
-@keyframes bea-ear-flap {
-  0%,
-  100% {
-    transform: rotate(-4deg);
-  }
-  50% {
-    transform: rotate(5deg);
-  }
-}
-
-@keyframes bea-tail-wag {
-  0%,
-  100% {
-    transform: rotate(-12deg);
-  }
-  50% {
-    transform: rotate(14deg);
-  }
-}
-
-/* The ground sliding under her, so the running reads as travel. */
 @keyframes bea-ground {
   from {
     background-position-x: 0;
@@ -643,6 +599,10 @@
   to {
     background-position-x: -10px;
   }
+}
+
+@utility bea-run {
+  animation: bea-hop 0.42s var(--ease-standard) infinite;
 }
 
 @utility bea-track {
@@ -656,124 +616,9 @@
   animation: bea-ground 0.42s linear infinite;
 }
 
-/**
- * Every moving part pivots about its own joint rather than the viewBox
- * corner, which is what `fill-box` buys — without it a rotated leg swings
- * off the drawing entirely.
- */
-.bea-dog [class^="bea-part-"] {
-  transform-box: fill-box;
-}
-
-.bea-part-leg-fore-near,
-.bea-part-leg-aft-far {
-  transform-origin: 50% 8%;
-  animation: bea-leg-fore 0.36s var(--ease-standard) infinite;
-}
-
-.bea-part-leg-fore-far,
-.bea-part-leg-aft-near {
-  transform-origin: 50% 8%;
-  animation: bea-leg-aft 0.36s var(--ease-standard) infinite;
-}
-
-.bea-part-body {
-  transform-origin: 50% 100%;
-  animation: bea-bob 0.36s var(--ease-standard) infinite;
-}
-
-.bea-part-ear {
-  transform-origin: 50% 100%;
-  animation: bea-ear-flap 0.36s var(--ease-standard) infinite;
-}
-
-.bea-part-tail {
-  transform-origin: 100% 50%;
-  animation: bea-tail-wag 0.36s var(--ease-standard) infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .bea-track,
-  .bea-dog [class^="bea-part-"] {
+  .bea-run,
+  .bea-track {
     animation: none;
   }
-}
-
-/**
- * Béa's colouring, taken from the app icon.
- *
- * The icon is a sticker: a cream coat under a bold black outline, pink inside
- * the bat ears, a yellow bandana. The outline is the thing that makes it read
- * as her rather than as a dog-shaped silhouette, so it is on every shape.
- *
- * Only the coat shifts for dark mode, and only a little: a cream that bright
- * on a near-black card glares, but drop it far and she stops being the dog on
- * the icon.
- */
-:root {
-  --bea-coat: oklch(0.965 0.012 88);
-  --bea-coat-far: oklch(0.885 0.018 84);
-  --bea-ink: oklch(0.21 0.015 60);
-  --bea-ear-inner: oklch(0.79 0.075 28);
-  --bea-tongue: oklch(0.71 0.13 18);
-  --bea-nose: oklch(0.26 0.02 55);
-  --bea-scarf: oklch(0.85 0.135 95);
-  --bea-scarf-leaf: oklch(0.62 0.12 145);
-}
-
-:root:not([data-theme="light"]) {
-  @media (prefers-color-scheme: dark) {
-    --bea-coat: oklch(0.9 0.014 86);
-    --bea-coat-far: oklch(0.8 0.02 84);
-  }
-}
-
-:root[data-theme="dark"] {
-  --bea-coat: oklch(0.9 0.014 86);
-  --bea-coat-far: oklch(0.8 0.02 84);
-}
-
-/* The sticker outline: one stroke on everything, joined round. */
-.bea-dog {
-  stroke: var(--bea-ink);
-  stroke-width: 1.35;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.bea-dog .bea-coat,
-.bea-dog .bea-coat-near > * {
-  fill: var(--bea-coat);
-}
-.bea-dog .bea-coat-far,
-.bea-dog .bea-coat-far > * {
-  fill: var(--bea-coat-far);
-}
-.bea-dog .bea-ear-inner {
-  fill: var(--bea-ear-inner);
-  stroke-width: 0.9;
-}
-.bea-dog .bea-tongue {
-  fill: var(--bea-tongue);
-  stroke-width: 1.05;
-}
-.bea-dog .bea-nose {
-  fill: var(--bea-nose);
-  stroke-width: 0.9;
-}
-.bea-dog .bea-eye {
-  fill: var(--bea-ink);
-  stroke: none;
-}
-.bea-dog .bea-eye-light {
-  fill: var(--bea-coat);
-  stroke: none;
-}
-.bea-dog .bea-scarf {
-  fill: var(--bea-scarf);
-  stroke-width: 1.05;
-}
-.bea-dog .bea-scarf-leaf {
-  fill: var(--bea-scarf-leaf);
-  stroke: none;
 }
