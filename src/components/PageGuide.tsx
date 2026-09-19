@@ -121,7 +121,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a stop quickly",
-        body: "The pin icon adds a city or stopover without scrolling to the section. From saved pulls one out of your recommendation vault instead, keeping its address and map pin.",
+        body: "The pin icon is how you add a city or stopover — it is the only button for it, so the section below stays a list rather than a form. From saved pulls one out of your recommendation vault instead, keeping its address and map pin.",
         selector: "[data-guide='add-stop']",
       },
       {

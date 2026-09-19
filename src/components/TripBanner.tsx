@@ -77,7 +77,7 @@ export function TripBanner({
       >
         <span
           aria-hidden
-          className="absolute -right-2 top-1 font-display text-[92px] leading-none text-foreground/10"
+          className="absolute right-3 top-1 font-display text-[92px] leading-none text-foreground/10"
         >
           {tripMonogram(title, city)}
         </span>

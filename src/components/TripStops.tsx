@@ -109,8 +109,8 @@ export function TripStops({
     setAdding(true);
   };
 
-  // The action row's pin button opens the same form as the section's own
-  // button, rather than a second way of adding a stop.
+  // The action row's pin button is the only way in now, and it opens this
+  // form rather than a second one of its own.
   useEffect(() => {
     if (!openSignal) return;
     setDraft(EMPTY);
@@ -187,22 +187,18 @@ export function TripStops({
       title="Where you're going"
       hint={
         s.stops.length === 0
-          ? "Add every city — and any stopover along the way."
+          ? "Add every city — and any stopover. The pin icon above adds one."
           : `${s.stops.length} stop${s.stops.length === 1 ? "" : "s"}${
               s.countries.length > 1 ? ` · ${s.countries.length} countries` : ""
             }`
       }
       actions={
         <>
-          {/* Adding a stop lives in the trip's action row now — two full-width
-              buttons under the heading cost more vertical space than the
-              section's actual contents on a phone. The inline one stays only
-              while there is nothing here yet, where it is the thing to do. */}
-          {(s.stops.length === 0 || (adding && !editingId)) && (
-            <SectionAction onClick={openForNew}>
-              {adding && !editingId ? "Cancel" : "Add a stop"}
-            </SectionAction>
-          )}
+          {/* Adding a stop is the pin icon in the trip's action row, so there is
+              no button for it here — not even on an empty trip, where this one
+              last survived. It was the same action twice within a thumb's reach
+              of itself. Cancel is not a duplicate, so it stays. */}
+          {adding && !editingId && <SectionAction onClick={openForNew}>Cancel</SectionAction>}
           <SectionAction onClick={() => setPickingSaved((v) => !v)}>
             {pickingSaved ? "Close" : "From saved"}
           </SectionAction>
