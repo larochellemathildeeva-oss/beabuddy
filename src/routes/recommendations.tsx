@@ -168,6 +168,14 @@ function RecommendationsPage() {
   const parseLink = useServerFn(parsePlaceLink);
   const lookup = useServerFn(lookupCoords);
   const search = useServerFn(searchPlaces);
+  /**
+   * Where to look from, when Béa already knows.
+   *
+   * Never asked for on arrival — a search box should not open a permission
+   * prompt. It is filled by "I'm here now", or by the Near me button under a
+   * search that came back empty, and then every later search benefits.
+   */
+  const [searchAt, setSearchAt] = useState<{ lat: number; lon: number } | null>(null);
 
   const saved: (RecoRowDB | Pin)[] = vault.signedIn ? vault.rows : [];
 
@@ -273,17 +281,66 @@ function RecommendationsPage() {
       }
       return;
     }
+    await runSearch(searchAt);
+  };
+
+  /**
+   * The search itself, given somewhere to look from.
+   *
+   * `at` is passed rather than read from state so the "search near me" retry
+   * can use the position it has just been handed, instead of racing a state
+   * update that has not landed yet.
+   */
+  const runSearch = async (at: { lat: number; lon: number } | null) => {
+    setError(null);
     setBusy("search");
     setResults(null);
     try {
-      const found = await search({ data: { query: term.trim() } });
+      const found = await search({ data: { query: term.trim(), ...(at ? { at } : {}) } });
       setResults(found);
-      if (found.length === 0) setError("Nothing found by that name. Try adding the city.");
+      if (found.length === 0) {
+        // Searching a chain with no idea where you are is how "subway" comes
+        // back empty while someone is standing outside one. Say which of the
+        // two happened rather than implying the place does not exist.
+        setError(
+          at
+            ? "Nothing found by that name near you. Try adding the city."
+            : "Nothing found by that name. Béa looked at the whole world — add the city, or search near you.",
+        );
+      }
     } catch {
       setError("Couldn't search just now. Try again in a moment.");
     } finally {
       setBusy(null);
     }
+  };
+
+  /**
+   * Re-run the search that just failed, from where the person is standing.
+   *
+   * Location is asked for here rather than on arrival, at the one moment it
+   * is obviously worth something: the search came back empty and the reason
+   * may simply be that Béa was looking at the whole planet.
+   */
+  const searchNearMe = () => {
+    if (!navigator.geolocation) {
+      setError("Your device won't share its location.");
+      return;
+    }
+    setBusy("here");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const at = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setSearchAt(at);
+        setBusy(null);
+        void runSearch(at);
+      },
+      () => {
+        setBusy(null);
+        setError("Couldn't get your location just now. Adding the city works too.");
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 },
+    );
   };
 
   const handleHere = () => {
@@ -296,6 +353,7 @@ function RecommendationsPage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords;
+        setSearchAt({ lat: latitude, lon: longitude });
         const place = await lookup({ data: { lat: latitude, lon: longitude } });
         showDraft({
           name: "",
@@ -577,6 +635,19 @@ function RecommendationsPage() {
           )}
 
           {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+          {/* One tap from "nothing found" to "found it": the search that just
+              failed is re-run from where you are, rather than making you
+              retype it with a city on the end. */}
+          {error && !searchAt && results?.length === 0 && (
+            <button
+              type="button"
+              onClick={() => searchNearMe()}
+              disabled={busy !== null}
+              className="mt-2 min-h-11 w-full rounded-xl border border-primary px-4 py-2 text-[14px] font-semibold text-primary disabled:opacity-50"
+            >
+              {busy === "here" ? "Finding you…" : "Search near me instead"}
+            </button>
+          )}
 
           {/* Saved first, filled in after. Who told you about it and which pin
               it is are the two things worth asking, and neither is worth

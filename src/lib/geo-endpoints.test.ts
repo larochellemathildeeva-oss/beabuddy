@@ -8,6 +8,7 @@ import {
   routeProfile,
   routeUrl,
   searchUrl,
+  viewboxAround,
 } from "./geo-endpoints.ts";
 
 test("the public endpoint is unchanged and carries no key", () => {
@@ -107,4 +108,35 @@ test("nextDelayMs stops waiting once the minute has rolled over", () => {
   const now = 200_000;
   const old = Array.from({ length: 60 }, (_, i) => now - 90_000 + i * 100);
   assert.equal(nextDelayMs(p, old, now), 0, "all of those are older than a minute");
+});
+
+test("viewboxAround makes a box that actually contains the point", () => {
+  const [x1, y1, x2, y2] = viewboxAround(45.5, -73.55, 12).split(",").map(Number);
+  assert.ok(x1! < -73.55 && x2! > -73.55, "longitude should straddle the point");
+  assert.ok(y1! > 45.5 && y2! < 45.5, "latitude should straddle the point");
+});
+
+test("viewboxAround widens with latitude, because degrees of longitude shrink", () => {
+  const width = (box: string) => {
+    const [x1, , x2] = box.split(",").map(Number);
+    return x2! - x1!;
+  };
+  // Same 12km, much further north: the box must be wider in degrees.
+  assert.ok(width(viewboxAround(64.1, -21.9)) > width(viewboxAround(1.35, 103.8)) * 2);
+});
+
+test("viewboxAround survives the poles and the date line", () => {
+  assert.ok(
+    viewboxAround(89.9, 179.9)
+      .split(",")
+      .every((n) => Number.isFinite(Number(n))),
+  );
+  const [, y1, , y2] = viewboxAround(89.9, 0).split(",").map(Number);
+  assert.ok(y1! <= 90 && y2! <= 90, "latitude must stay on the planet");
+});
+
+test("a search carries the viewbox when one is given, and not otherwise", () => {
+  const box = viewboxAround(45.5, -73.55);
+  assert.ok(searchUrl(PUBLIC_PROVIDER, { query: "subway", viewbox: box }).includes("viewbox="));
+  assert.ok(!searchUrl(PUBLIC_PROVIDER, { query: "subway" }).includes("viewbox="));
 });

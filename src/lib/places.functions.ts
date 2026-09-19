@@ -13,7 +13,8 @@ import {
   splitPlacePathName,
 } from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
-import { searchUrl } from "@/lib/geo-endpoints";
+import { searchUrl, viewboxAround } from "@/lib/geo-endpoints";
+import { mapsPlaceUrl } from "@/lib/direction-stops";
 
 export type ParsedPlace = {
   name: string;
@@ -157,7 +158,7 @@ async function reverse(lat: number, lon: number) {
 
 type NominatimHit = NominatimHitLike;
 
-async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
+async function nominatim(q: string, limit: number, viewbox?: string): Promise<NominatimHit[]> {
   // Server-only: the token must not be compiled into the client bundle.
   const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
@@ -169,6 +170,7 @@ async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
         addressDetails: true,
         nameDetails: true,
         language: "en",
+        ...(viewbox ? { viewbox } : {}),
       }),
       {
         headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
@@ -187,20 +189,38 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
   return {
     ...found,
     source: "Web search",
-    url: `https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lon}`,
+    // Saved on the recommendation and tapped months later, so it wants to
+    // open the phone's maps app rather than the OpenStreetMap website. The
+    // data still comes from OSM; this is only where the link goes.
+    url: mapsPlaceUrl(found.name, { lat: found.lat, lon: found.lon }),
   };
 }
 
 /** Search the web for a place by name, so anything can be saved without a link. */
 export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({ query: z.string().min(2).max(200) }).parse(data))
+  .inputValidator((data) =>
+    z
+      .object({
+        query: z.string().min(2).max(200),
+        /**
+         * Where the person is, so a search for a chain finds the branch they
+         * mean. "Subway" is thousands of identical places and an unanchored
+         * lookup answers with one on another continent, or with nothing
+         * recognisable — which reads as "there isn't one" while they are
+         * standing outside it.
+         */
+        at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+      })
+      .parse(data),
+  )
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const local = localPlaceHits(data.query);
     if (local.length) return local;
+    const viewbox = data.at ? viewboxAround(data.at.lat, data.at.lon) : undefined;
     let hits: NominatimHit[] = [];
     for (const query of fuzzyQueryVariants(data.query)) {
-      hits = await nominatim(query, 10);
+      hits = await nominatim(query, 10, viewbox);
       if (hits.length) break;
     }
     const refined = refineNominatimHits(hits, data.query);

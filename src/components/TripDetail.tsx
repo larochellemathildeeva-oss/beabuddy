@@ -40,7 +40,11 @@ import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
-import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
+import {
+  mapsPlaceUrl,
+  stopsForDirections,
+  timelineStopsForDirections,
+} from "@/lib/direction-stops";
 import {
   formatTripLocation,
   locationFromParsedPlace,
@@ -1354,7 +1358,7 @@ function TimelineEntry({
             📍 {item.address}
             {item.lat != null && item.lon != null && (
               <a
-                href={`https://www.openstreetmap.org/?mlat=${item.lat}&mlon=${item.lon}#map=17/${item.lat}/${item.lon}`}
+                href={mapsPlaceUrl(item.title, item)}
                 target="_blank"
                 rel="noreferrer"
                 className="ml-2 font-semibold text-primary underline"

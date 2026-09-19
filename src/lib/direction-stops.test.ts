@@ -6,6 +6,7 @@ import {
   isSavedDirectionItem,
   looksLikeStreetAddress,
   mapsDirUrl,
+  mapsPlaceUrl,
   placeHintFromDetail,
   placeQueryCandidates,
   reuseKeyForStop,
@@ -169,4 +170,18 @@ test("placeQueryCandidates keeps the prose as a fallback when the name finds not
     placeQueryCandidates("Dinner in Little Italy / Mile End", "Italian, Lebanese or Québécois")
       .length >= 2,
   );
+});
+
+test("a place link opens the phone's maps app, not a website", () => {
+  // openstreetmap.org is a web page on a phone: no directions button, no
+  // handover to the app already holding your route.
+  const url = mapsPlaceUrl("Peace Memorial Museum", { lat: 34.3955, lon: 132.4536 });
+  assert.ok(url.startsWith("https://www.google.com/maps/search/?api=1&query="));
+  assert.ok(url.includes("34.3955%2C132.4536"));
+  assert.ok(!url.includes("openstreetmap"));
+});
+
+test("a place link falls back to the name when there is no pin", () => {
+  const url = mapsPlaceUrl("Crew Collective & Café", { lat: null, lon: null });
+  assert.equal(new URL(url).searchParams.get("query"), "Crew Collective & Café");
 });

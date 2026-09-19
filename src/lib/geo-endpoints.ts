@@ -72,6 +72,14 @@ export type SearchOptions = {
   nameDetails?: boolean;
   /** "*" asks for the local name — 清水寺 rather than a translation of it. */
   language?: string;
+  /**
+   * A box to prefer results inside, as "x1,y1,x2,y2".
+   *
+   * Preferred, not required: the box boosts what falls inside it without
+   * hiding what falls just outside, which is the right behaviour for
+   * "the Subway on my corner" and also for the one a street past the edge.
+   */
+  viewbox?: string;
 };
 
 /**
@@ -89,6 +97,7 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
   if (options.addressDetails) params.set("addressdetails", "1");
   if (options.nameDetails) params.set("namedetails", "1");
   if (options.language) params.set("accept-language", options.language);
+  if (options.viewbox) params.set("viewbox", options.viewbox);
   if (provider.token) params.set("key", provider.token);
   return `${provider.searchBase}/search?${params.toString()}`;
 }
@@ -165,4 +174,33 @@ export function nextDelayMs(provider: GeoProvider, recent: readonly number[], no
   // The minute is full: wait for the oldest request in it to age out.
   const oldest = inWindow[inWindow.length - provider.perMinute] ?? windowStart;
   return Math.max(burstWait, oldest + 60_000 - now);
+}
+
+/**
+ * A box around a point, for biasing a search towards where someone is.
+ *
+ * Searching for a chain by name — "subway", "pret", "starbucks" — is the case
+ * that breaks without this. There are thousands, the geocoder has no idea
+ * which one is meant, and an unanchored search answers with one in another
+ * country or with nothing recognisable at all. A person searching for Subway
+ * means the one they can walk to.
+ *
+ * Degrees of longitude shrink towards the poles, so the east-west span is
+ * widened by latitude. Without that, a box in Reykjavík is half the intended
+ * width and one in Singapore is right.
+ */
+export function viewboxAround(lat: number, lon: number, km = 12): string {
+  const latSpan = km / 111;
+  const cosLat = Math.cos((lat * Math.PI) / 180);
+  const lonSpan = km / (111 * Math.max(cosLat, 0.01));
+  const clampLat = (v: number) => Math.max(-90, Math.min(90, v));
+  const wrapLon = (v: number) => ((((v + 180) % 360) + 360) % 360) - 180;
+  return [
+    wrapLon(lon - lonSpan),
+    clampLat(lat + latSpan),
+    wrapLon(lon + lonSpan),
+    clampLat(lat - latSpan),
+  ]
+    .map((n) => n.toFixed(5))
+    .join(",");
 }

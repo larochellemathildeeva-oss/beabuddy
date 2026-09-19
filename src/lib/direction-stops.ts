@@ -218,6 +218,27 @@ export function mapsDirUrl(
   return `https://www.google.com/maps/dir/?api=1&origin=${mapsPoint(from.title, from, area)}&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
 }
 
+/**
+ * A link that opens the place in whatever maps app the phone has.
+ *
+ * The "Map" link beside a timeline entry pointed at openstreetmap.org, which
+ * on a phone is a website: no "directions" button, no transit, no handover to
+ * the app already holding your route. Directions have used this universal
+ * maps URL all along — a place link had simply never been brought along with
+ * them, so one tap landed somewhere useful and its neighbour did not.
+ *
+ * The name rides along so the pin has a label rather than a bare coordinate.
+ */
+export function mapsPlaceUrl(
+  name: string,
+  point: { lat?: number | null; lon?: number | null } | null | undefined,
+): string {
+  // Coordinates when there are any, because they are unambiguous; the name
+  // only when there is nothing better, where it is a search rather than a pin.
+  const query = hasCoords(point) ? `${point.lat},${point.lon}` : name.trim();
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 export function asDirectionStop(item: TimelineItem): DirectionStop {
   const address = addressForStop(item);
   const stop: DirectionStop = { title: item.title.trim() };
