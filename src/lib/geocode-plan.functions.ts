@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { planStopQueries, QUERIES_PER_STOP } from "@/lib/geocode-plan";
+import { searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
 
 const UA = "BeaBot/1.0 (travel app)";
 
@@ -28,12 +29,15 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
+async function geocode(
+  provider: GeoProvider,
+  query: string,
+): Promise<{ lat: number; lon: number } | null> {
   // accept-language=* asks for the name in the local language rather than an
   // English translation. It does not change what matches — OSM indexes local
   // names either way — but it means a place found as 清水寺 comes back as
   // 清水寺, which is what a reader standing in front of it needs.
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=*&q=${encodeURIComponent(query)}`;
+  const url = searchUrl(provider, { query, limit: 1, language: "*" });
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
@@ -74,6 +78,12 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const placed: PlacedStop[] = [];
     if (!area) return { placed, lookedUp: 0, area: "" };
 
+    // Which service answers, and how fast it lets us ask. Imported here
+    // rather than at the top of the file: this module ships to the client
+    // bundle, and the token must not go with it.
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const provider = geoProvider();
+
     const cache = new Map<string, { lat: number; lon: number } | null>();
     const deadline = Date.now() + WALL_MS;
     let budget = LOOKUP_BUDGET;
@@ -98,11 +108,11 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         if (budget <= 0 || Date.now() > deadline) break;
         // The gap goes before every request but the first, so a one-stop plan
         // does not sit still for a second before it starts.
-        if (!first) await wait(PLAN_LOOKUP_GAP_MS);
+        if (!first) await wait(provider.gapMs);
         first = false;
         budget -= 1;
         lookedUp += 1;
-        const hit = await geocode(query);
+        const hit = await geocode(provider, query);
         cache.set(key, hit);
         if (hit) {
           placed.push({ index, ...hit });

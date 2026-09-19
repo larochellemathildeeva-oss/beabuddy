@@ -6,6 +6,7 @@ import worldTopo from "world-atlas/countries-110m.json";
 import { formatMetres } from "@/lib/near";
 import { haversine } from "@/lib/geo";
 import { tripMapPlan, type MapStop } from "@/lib/trip-map";
+import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 const W = 720;
 const H = 420;
@@ -298,6 +299,11 @@ export function TripMap({
           These stops are close together, so this shows how they sit relative to each other rather
           than a street map.
         </p>
+      )}
+      {/* The credit ODbL asks for, next to the data it applies to. The pins
+          are geocoded from OpenStreetMap however they got here. */}
+      {!compact && (
+        <p className="px-3 pb-2 text-[11.5px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
       )}
     </div>
   );

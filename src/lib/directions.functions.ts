@@ -8,6 +8,7 @@ import {
   reuseKeyForStop,
 } from "@/lib/direction-stops";
 import { haversine } from "@/lib/geo";
+import { routeUrl, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
 
 export type RouteStep = { instruction: string; distance: number };
 
@@ -54,8 +55,11 @@ const LOOKUP_BUDGET = 30;
 const LEG_BUDGET = 60;
 const WALL_MS = 80_000;
 
-async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+async function geocode(
+  provider: GeoProvider,
+  query: string,
+): Promise<{ lat: number; lon: number } | null> {
+  const url = searchUrl(provider, { query, limit: 1 });
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
@@ -81,12 +85,13 @@ function stepText(s: { maneuver?: { type?: string; modifier?: string }; name?: s
 }
 
 async function leg(
+  provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
   mode: "walking" | "driving",
 ) {
   const profile = mode === "walking" ? "foot" : "driving";
-  const url = `https://router.project-osrm.org/route/v1/${profile}/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false&steps=true`;
+  const url = routeUrl(provider, profile, a, b);
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA },
@@ -184,14 +189,18 @@ export const buildRoutes = createServerFn({ method: "POST" })
     let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
     const deadline = Date.now() + WALL_MS;
+    // Server-only: this file ships to the client bundle, the token must not.
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const provider = geoProvider();
     const lookup = async (query: string) => {
       const cacheKey = query.toLowerCase();
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
       lookupsLeft -= 1;
-      const found = await geocode(query);
+      const found = await geocode(provider, query);
       queryCache.set(cacheKey, found);
-      if (lookupsLeft > 0) await new Promise((r) => setTimeout(r, 1100)); // Nominatim rate limit
+      // The provider's own pace, rather than a number written in here.
+      if (lookupsLeft > 0) await new Promise((r) => setTimeout(r, provider.gapMs));
       return found;
     };
     for (const stop of data.stops) {
@@ -277,7 +286,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       legsLeft -= 1;
-      const r = await leg(a, b, mode);
+      const r = await leg(provider, a, b, mode);
       if (!r) {
         legs.push(mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }));
         continue;

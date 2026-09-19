@@ -13,6 +13,7 @@ import {
   splitPlacePathName,
 } from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
+import { searchUrl } from "@/lib/geo-endpoints";
 
 export type ParsedPlace = {
   name: string;
@@ -157,9 +158,18 @@ async function reverse(lat: number, lon: number) {
 type NominatimHit = NominatimHitLike;
 
 async function nominatim(q: string, limit: number): Promise<NominatimHit[]> {
+  // Server-only: the token must not be compiled into the client bundle.
+  const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=jsonv2&addressdetails=1&namedetails=1&accept-language=en&limit=${limit}`,
+      searchUrl(geoProvider(), {
+        query: q,
+        limit,
+        format: "jsonv2",
+        addressDetails: true,
+        nameDetails: true,
+        language: "en",
+      }),
       {
         headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
         signal: AbortSignal.timeout(5_000),

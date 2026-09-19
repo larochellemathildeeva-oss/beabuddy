@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 export const Route = createFileRoute("/privacy")({
   staticData: { plane: "detail" },
@@ -161,9 +162,11 @@ function PrivacyPage() {
         <Section title="Other services Béa uses">
           <p>
             To turn a saved link or an address into a point on the map, Béa sends just that text or
-            those coordinates to public map services (OpenStreetMap's geocoder, OSRM for directions,
-            BigDataCloud for city lookup). Your identity is not sent with those requests.
+            those coordinates to a map service (OpenStreetMap's own geocoder, or a hosted
+            OpenStreetMap service where one is configured; OSRM for directions; BigDataCloud for
+            city lookup). Your identity is not sent with those requests.
           </p>
+          <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
         </Section>
 
         <Section title="Your control">

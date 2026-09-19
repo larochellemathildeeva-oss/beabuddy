@@ -10,6 +10,7 @@ import {
 } from "@/lib/compare-facts";
 import { AI_CALL } from "@/lib/ai-errors";
 import { isLatLon, type LatLon } from "@/lib/geo";
+import { searchUrl } from "@/lib/geo-endpoints";
 
 const PlaceInput = z.object({
   name: z.string().min(1),
@@ -59,17 +60,15 @@ async function geocodeHome(city: string | null): Promise<LatLon | null> {
   if (!query) return null;
   const key = query.toLowerCase();
   if (homeCache.has(key)) return homeCache.get(key) ?? null;
+  const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=jsonv2&limit=1`,
-      {
-        headers: {
-          "user-agent": "BeaTravelApp/1.0 (travel memory vault)",
-          accept: "application/json",
-        },
-        signal: AbortSignal.timeout(5_000),
+    const res = await fetch(searchUrl(geoProvider(), { query, limit: 1, format: "jsonv2" }), {
+      headers: {
+        "user-agent": "BeaTravelApp/1.0 (travel memory vault)",
+        accept: "application/json",
       },
-    );
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!res.ok) {
       homeCache.set(key, null);
       return null;

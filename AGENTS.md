@@ -38,6 +38,27 @@ Storage buckets and auth settings are configured in the Supabase dashboard and
 are not fully represented in this repo. Do not assume the repo describes the
 live configuration; check before relying on it.
 
+## Geocoding and routing
+
+Place lookups and directions go through `src/lib/geo-endpoints.ts` (pure URL
+building, tested) with the provider chosen in `geo-provider.server.ts`. With no
+`LOCATIONIQ_TOKEN` set it uses OpenStreetMap's public Nominatim and the OSRM
+demo router — keyless, one request a second, and not really intended for
+systematic geocoding. Setting the token switches to LocationIQ, which speaks
+the same request and response shapes, at two requests a second.
+
+The token is read only in `*.server.ts` and imported lazily inside handlers,
+because `*.functions.ts` ships to the client bundle. Never prefix it `VITE_`.
+After changing anything here, check the token did not follow the code into the
+browser:
+
+```
+npm run build && grep -rl "LOCATIONIQ_TOKEN" .output/public/   # must print nothing
+```
+
+OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
+its data is shown — currently the trip map and the privacy page.
+
 ## Notes
 
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
