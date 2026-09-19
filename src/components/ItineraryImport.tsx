@@ -612,14 +612,18 @@ function ImportPanel({
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
-          ? beaLine("plan.working").title
+          ? "Working…"
           : mode === "build"
             ? "Build my trip"
             : images.length > 1
               ? `Read these ${images.length} pictures`
               : "Read this itinerary"}
       </button>
-      {busy && <p className="text-[13px] text-muted-foreground">{beaLine("plan.working").body}</p>}
+      {busy && (
+        <div className="mt-2">
+          <BeaRunning moment="plan.working" />
+        </div>
+      )}
       {mode === "import" && !images.length && text.trim().length < 10 && (
         <p className="text-[12px] text-muted-foreground">
           Add one or more pictures above, or paste the plan first.

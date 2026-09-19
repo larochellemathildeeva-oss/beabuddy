@@ -57,6 +57,7 @@ export type BeaMoment =
   | "plan.ready"
   | "plan.complete"
   | "plan.locating"
+  | "photos.working"
   | "choose.working"
   | "choose.ready";
 
@@ -83,12 +84,12 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
     { title: "Psst…", body: BEA_SIGNATURE.near, mode: "scout" },
     {
       title: "You're standing surprisingly close to a good idea.",
-      body: "I've done my part. The rest involves walking.",
+      body: "Béa has done her part. The rest involves walking.",
       mode: "scout",
     },
     {
       title: "Remember this?",
-      body: "You made me save it.",
+      body: "You told Béa to keep this one.",
       mode: "scout",
     },
     {
@@ -159,13 +160,28 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
   ],
   "plan.working": [
     {
-      title: "One moment…",
-      body: "I'm turning your saved ideas into actual plans.",
+      title: "Béa is mapping out an adventure…",
+      body: "Built from the ideas you already saved.",
       mode: "planner",
     },
     {
-      title: "Working…",
+      title: "Béa is plotting a route…",
+      body: "She is turning your saved ideas into actual plans.",
+      mode: "planner",
+    },
+    {
+      title: "Béa is choosing the scenic path…",
+      body: "The short way is rarely the good way.",
+      mode: "planner",
+    },
+    {
+      title: "Béa is organizing the journey…",
       body: "Assembling a trip from what you already care about.",
+      mode: "planner",
+    },
+    {
+      title: "Béa is looking for the best fit…",
+      body: "Your pace, your budget, your kind of day.",
       mode: "planner",
     },
   ],
@@ -176,13 +192,13 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
       mode: "planner",
     },
     {
-      title: "I've drafted a plan.",
+      title: "Béa has drafted a plan.",
       body: "Feel free to take full credit.",
       mode: "planner",
     },
     {
       title: "Done.",
-      body: "I have connected the dots. You can take the credit.",
+      body: "Béa connected the dots. You can take the credit.",
       mode: "planner",
     },
   ],
@@ -273,27 +289,93 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
       body: "Pinning every stop properly rather than guessing.",
       mode: "companion",
     },
+    {
+      title: "Béa is sniffing out hidden gems…",
+      body: "The good ones are never on the main road.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is following the scent…",
+      body: "This one smells like a find.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is looking around one more corner…",
+      body: "There is always one more corner.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is on the trail of something good…",
+      body: "Nose down, tail up.",
+      mode: "scout",
+    },
+    {
+      title: "Béa is checking every lead.",
+      body: "Thorough is slower. Thorough is also correct.",
+      mode: "honest",
+    },
+  ],
+  /**
+   * Reading locations out of photographs. The dog vocabulary does the work
+   * here without being twee: she is genuinely retracing where you have been.
+   */
+  "photos.working": [
+    {
+      title: "Béa is revisiting old adventures…",
+      body: "Reading where each photo was taken, nothing else.",
+      mode: "archivist",
+    },
+    {
+      title: "Béa is putting memories on the map.",
+      body: "One pin per place you have already been.",
+      mode: "archivist",
+    },
+    {
+      title: "Béa is finding where you have been.",
+      body: "She recognises more of these than you would think.",
+      mode: "archivist",
+    },
+    {
+      title: "Béa is looking through your travel memories…",
+      body: "Only the locations. The photographs stay yours.",
+      mode: "archivist",
+    },
   ],
   "choose.working": [
     {
-      title: "Time for a completely unbiased ranking.",
-      body: "Extremely biased toward your preferences, actually.",
+      title: "Béa has opinions.",
+      body: "Give Béa a moment.",
       mode: "honest",
     },
     {
-      title: "Consulting your vault…",
+      title: "Béa is weighing the options…",
+      body: "Extremely biased toward your preferences, as requested.",
+      mode: "honest",
+    },
+    {
+      title: "Béa is deciding between good and better.",
       body: BEA_SIGNATURE.choose,
+      mode: "honest",
+    },
+    {
+      title: "Béa is comparing paths…",
+      body: "Consulting your vault, not the internet.",
+      mode: "honest",
+    },
+    {
+      title: "Béa is thinking this through.",
+      body: "So you do not have to.",
       mode: "honest",
     },
   ],
   "choose.ready": [
     {
       title: "After consulting your saved places…",
-      body: "My official recommendation is ready.",
+      body: "Her official recommendation is ready.",
       mode: "honest",
     },
     {
-      title: "I have an opinion.",
+      title: "Béa has an opinion.",
       body: "Confidence: grounded in what you already saved.",
       mode: "honest",
     },

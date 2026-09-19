@@ -3,6 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { comparePlaces, type ComparisonResult } from "@/lib/compare.functions";
 import { pinColorClass, pinLabel, type Pin } from "@/data/atlas";
 import { formatMetres } from "@/lib/geo";
+import { BeaRunning } from "@/components/BeaRunning";
 import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 
 const MAX = 5;
@@ -145,14 +146,12 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             className="w-full rounded-xl bg-primary px-4 py-2.5 text-[14.5px] font-medium text-primary-foreground disabled:opacity-50"
           >
             {busy
-              ? beaLine("choose.working").title
+              ? "Thinking…"
               : picked.length < 2
                 ? "Pick at least two places"
                 : `Compare ${picked.length} places`}
           </button>
-          {busy && (
-            <p className="text-[13px] text-muted-foreground">{beaLine("choose.working").body}</p>
-          )}
+          {busy && <BeaRunning moment="choose.working" />}
 
           {error && <p className="text-[13px] text-destructive">{error}</p>}
 

@@ -616,9 +616,65 @@
   animation: bea-ground 0.42s linear infinite;
 }
 
+/**
+ * Two small flourishes, and the two that the photograph allows.
+ *
+ * She is a head-on portrait, so paws and a flapping bandana are not available
+ * without redrawing her — and the redraw was worse than the photo. What does
+ * work is everything around her: a puff of dust off her back feet, and a map
+ * pin that lands beside her every few seconds, as though she keeps finding
+ * things while she runs.
+ */
+@keyframes bea-dust {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.35);
+  }
+  25% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-9px, -3px) scale(1.1);
+  }
+}
+
+/* Mostly absent: it is a punctuation mark, not a second animation. */
+@keyframes bea-pin {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.6);
+  }
+  72%,
+  88% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.9);
+  }
+}
+
+@utility bea-dust {
+  background-color: color-mix(in oklch, var(--color-muted-foreground) 40%, transparent);
+  animation: bea-dust 0.84s var(--ease-standard) infinite;
+}
+
+@utility bea-pin {
+  animation: bea-pin 4.6s var(--ease-standard) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bea-run,
-  .bea-track {
+  .bea-track,
+  .bea-dust,
+  .bea-pin {
     animation: none;
+  }
+  /* With no motion the pin would sit there permanently, so it goes. */
+  .bea-pin {
+    display: none;
   }
 }

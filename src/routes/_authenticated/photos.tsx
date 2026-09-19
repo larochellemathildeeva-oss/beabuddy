@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { BeaRunning } from "@/components/BeaRunning";
 import { supabase } from "@/integrations/supabase/client";
 import { readExif } from "@/lib/exif";
 import { reverseGeocode } from "@/lib/geocode";
@@ -304,6 +305,8 @@ function PhotosPage() {
                 ? `${pending.length} photo${pending.length > 1 ? "s" : ""} selected. They'll be saved privately to your Béa account.`
                 : `${pending.length} photo${pending.length > 1 ? "s" : ""} selected. Only the place each one was taken is kept — no picture is uploaded.`}
             </p>
+
+            {busy && <BeaRunning moment="photos.working" />}
 
             <div className="flex gap-2">
               <button

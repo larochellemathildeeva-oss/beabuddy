@@ -22,6 +22,7 @@ const MOMENTS: BeaMoment[] = [
   "plan.ready",
   "plan.complete",
   "plan.locating",
+  "photos.working",
   "choose.working",
   "choose.ready",
 ];
@@ -90,4 +91,30 @@ test("the short-legs line survives in the waiting pool", () => {
     pool.some((l) => /little legs/i.test(`${l.title} ${l.body ?? ""}`)),
     "the little-legs line is gone",
   );
+});
+
+test("Béa never says I — she is a dog, and the app speaks about her", () => {
+  // She is a small French bulldog in a bandana, not a narrator with a
+  // notebook. Third person is the house voice; first person made her sound
+  // like two different characters on adjacent screens.
+  const offenders: string[] = [];
+  for (const moment of MOMENTS) {
+    for (const line of beaMomentPool(moment)) {
+      const text = `${line.title} ${line.body ?? ""}`;
+      if (/\b(I|I'm|I've|my|me)\b/.test(text)) offenders.push(`${moment}: ${text}`);
+    }
+  }
+  assert.deepEqual(offenders, [], `first person crept back in:\n${offenders.join("\n")}`);
+});
+
+test("every wait pool is deep enough not to loop visibly", () => {
+  // The pools people sit and watch. Two lines reads as a stutter.
+  for (const moment of [
+    "plan.working",
+    "plan.locating",
+    "choose.working",
+    "photos.working",
+  ] as const) {
+    assert.ok(beaMomentPool(moment).length >= 4, `${moment} has too few lines`);
+  }
 });

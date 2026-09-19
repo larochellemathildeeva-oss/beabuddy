@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 import logo from "@/assets/bea-logo.png";
-import { beaMomentPool } from "@/lib/bea-voice";
+import { beaMomentPool, type BeaMoment } from "@/lib/bea-voice";
 
 /** Long enough to read, short enough that a long wait still changes. */
 const LINE_MS = 4_200;
@@ -18,10 +19,13 @@ const LINE_MS = 4_200;
  * and the progress count is real rather than a fake creeping bar.
  */
 export function BeaRunning({
+  moment = "plan.locating",
   done,
   total,
   estimate,
 }: {
+  /** Which wait this is — she says different things depending. */
+  moment?: BeaMoment;
   /** Stops placed so far. */
   done?: number;
   /** Stops to place in all. */
@@ -29,7 +33,7 @@ export function BeaRunning({
   /** Rough seconds remaining, shown once and not counted down. */
   estimate?: number;
 }) {
-  const pool = beaMomentPool("plan.locating");
+  const pool = beaMomentPool(moment);
   const [index, setIndex] = useState(0);
 
   /**
@@ -45,7 +49,7 @@ export function BeaRunning({
    */
   useEffect(() => {
     setIndex(Math.floor(Math.random() * pool.length));
-  }, [pool.length]);
+  }, [pool.length, moment]);
 
   useEffect(() => {
     if (pool.length < 2) return;
@@ -61,6 +65,18 @@ export function BeaRunning({
       <div className="flex items-center gap-3">
         <span className="relative grid size-12 shrink-0 place-items-end justify-items-center">
           <img src={logo} alt="" className="bea-run size-10 rounded-full object-contain" />
+          {/* A pin lands beside her now and then: she keeps finding things. */}
+          <MapPin className="bea-pin absolute -right-0.5 top-0 size-3.5 text-primary" aria-hidden />
+          {/* Dust off her back feet, one mote trailing the other. */}
+          <span
+            className="bea-dust absolute bottom-[3px] left-1.5 size-1 rounded-full"
+            aria-hidden
+          />
+          <span
+            className="bea-dust absolute bottom-[5px] left-3 size-[3px] rounded-full"
+            style={{ animationDelay: "0.21s" }}
+            aria-hidden
+          />
           <span className="bea-track absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
