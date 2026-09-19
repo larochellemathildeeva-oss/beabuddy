@@ -23,13 +23,31 @@ const Input = z.object({
   area: z.string().max(200).nullish(),
 });
 
-export type PlacedStop = { index: number; lat: number; lon: number };
+/**
+ * A placed stop, with the evidence needed to say how sure Béa is.
+ *
+ * `lat`/`lon` used to be the whole of it, so every match arrived looking
+ * equally certain. The geocoder was already telling us what it found and what
+ * kind of thing it is; we were discarding both on the way through.
+ */
+export type PlacedStop = {
+  index: number;
+  lat: number;
+  lon: number;
+  /** The geocoder's full name for it: "Olive et Gourmando, Rue Saint-Paul…". */
+  label?: string;
+  /** OSM class, e.g. amenity, shop, place. */
+  category?: string;
+  /** OSM type, e.g. cafe, museum, suburb. */
+  kind?: string;
+};
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-type GeoResult = { lat: number; lon: number } | null | "throttled";
+type GeoHit = { lat: number; lon: number; label?: string; category?: string; kind?: string };
+type GeoResult = GeoHit | null | "throttled";
 
 async function geocode(provider: GeoProvider, query: string): Promise<GeoResult> {
   // accept-language=* asks for the name in the local language rather than an
@@ -44,13 +62,25 @@ async function geocode(provider: GeoProvider, query: string): Promise<GeoResult>
     });
     const verdict = classifyGeoStatus(res.status);
     if (verdict !== "ok") return verdict === "retry" ? "throttled" : null;
-    const json = (await res.json()) as { lat: string; lon: string }[];
+    const json = (await res.json()) as {
+      lat: string;
+      lon: string;
+      display_name?: string;
+      class?: string;
+      type?: string;
+    }[];
     const first = json[0];
     if (!first) return null;
     const lat = Number(first.lat);
     const lon = Number(first.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-    return { lat, lon };
+    return {
+      lat,
+      lon,
+      ...(first.display_name ? { label: first.display_name } : {}),
+      ...(first.class ? { category: first.class } : {}),
+      ...(first.type ? { kind: first.type } : {}),
+    };
   } catch {
     return null;
   }
@@ -84,7 +114,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
 
-    const cache = new Map<string, { lat: number; lon: number } | null>();
+    const cache = new Map<string, GeoHit | null>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
     let throttled = false;

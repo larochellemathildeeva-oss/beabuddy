@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   CalendarDays,
   Camera,
+  MapPin,
   Columns2,
   Image as ImageIcon,
   ListOrdered,
@@ -33,6 +34,8 @@ import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
+import { scoreMatch, tallyConfidence, type Confidence } from "@/lib/match-confidence";
+import { dayShapeLine } from "@/lib/day-shape";
 import {
   hasRelativeDays,
   lastDayDate,
@@ -244,6 +247,21 @@ function ImportPanel({
    * chosen twenty times on the timeline afterwards.
    */
   const [dayOneDate, setDayOneDate] = useState("");
+  /**
+   * Where each parsed row landed, worked out before saving rather than during.
+   *
+   * Placing used to happen inside the save, so the first anyone saw of a
+   * wrong pin was on the trip afterwards — and a match Béa was unsure about
+   * looked exactly like one she was certain of. Doing it at review time is
+   * what lets the list say which ones to look at, while there is still a
+   * cheap moment to fix them.
+   */
+  const [placements, setPlacements] = useState<
+    Record<
+      number,
+      { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
+    >
+  >({});
 
   const read = async () => {
     setBusy(true);
@@ -273,14 +291,64 @@ function ImportPanel({
       setPicked(freshIndexes(out.items));
       setAltReason("");
       setRebuildReason("");
+      setPlacements({});
       if (out.items.length > 0) {
         const ready = beaLine("plan.ready");
         toast.success(ready.title, { description: ready.body });
+        void placeParsed(out.items);
       }
     } catch (e) {
       setError(aiFailure(e).message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  /**
+   * Find every parsed row on the map, before anything is saved.
+   *
+   * The same lookups the save used to do, moved earlier so their result can
+   * be shown and argued with. Failure stays survivable: a row that cannot be
+   * placed is saved exactly as before, without a point.
+   */
+  const placeParsed = async (parsed: ParsedItineraryItem[]) => {
+    const area = tripCity?.trim() || "";
+    if (!area || parsed.length === 0) return;
+    setPlacing({ done: 0, total: parsed.length });
+    try {
+      const result = await geocodePlanStops({
+        data: {
+          stops: parsed.map((item) => ({ title: item.title, detail: item.detail ?? null })),
+          area,
+        },
+      });
+      const found: Record<
+        number,
+        { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
+      > = {};
+      for (const hit of result.placed) {
+        const row = parsed[hit.index];
+        if (!row) continue;
+        const { confidence, reason } = scoreMatch({
+          title: row.title,
+          label: hit.label ?? null,
+          category: hit.category ?? null,
+          kind: hit.kind ?? null,
+        });
+        found[hit.index] = {
+          lat: hit.lat,
+          lon: hit.lon,
+          ...(hit.label ? { label: hit.label } : {}),
+          confidence,
+          reason,
+        };
+      }
+      setPlacements(found);
+      setPlacing({ done: result.placed.length, total: parsed.length });
+    } catch {
+      // No pins is where this started; it is not a reason to lose the plan.
+    } finally {
+      setPlacing(null);
     }
   };
 
@@ -314,6 +382,9 @@ function ImportPanel({
   const planStart = startDate || plan?.start_date || dayOneDate || "";
   const needsDayOne = Boolean(items && hasRelativeDays(items) && !startDate && !plan?.start_date);
   const relativeDays = items ? relativeDayCount(items) : 0;
+  /** "6 meals · 5 sights · 3 walks", using the kinds the parse returned. */
+  const foundShape = items ? dayShapeLine(items) : "";
+  const placedTally = tallyConfidence(Object.values(placements).map((p) => p.confidence));
 
   const addChosen = async () => {
     if (!items) return;
@@ -327,8 +398,12 @@ function ImportPanel({
         const it = dated[i];
         if (!it) return [];
         const address = placeHintFromDetail(it.detail);
+        // Already found, at review time, and already shown to the person
+        // saving it. No second round of lookups on the way out.
+        const found = placements[i];
         return [
           {
+            ...(found ? { lat: found.lat, lon: found.lon } : {}),
             ...(it.day_date ? { day_date: it.day_date } : {}),
             ...(it.time_label ? { time_label: it.time_label } : {}),
             kind: it.kind,
@@ -350,60 +425,19 @@ function ImportPanel({
         ];
       });
       /**
-       * Give each stop a position before it is saved.
+       * The stops already carry their points.
        *
-       * The planner returns titles and no coordinates, so until now every
-       * stop Béa added landed unplaced: missing from the trip map, invisible
-       * to Near, and looked up again on every request for directions. The
-       * lookups are one a second by Nominatim's policy, so this is the slow
-       * part — hence something to watch while it runs.
-       *
-       * Failure here is not failure: a stop that cannot be placed is saved
-       * exactly as before. A missing pin you can add by hand beats a
-       * confident one in the wrong country.
+       * This used to be where the geocoding happened — after the person had
+       * committed, so a wrong pin was something you discovered on the trip
+       * page afterwards. It now runs at review time instead, which is both
+       * earlier and cheaper: the save is a save again.
        */
-      const area = tripCity?.trim() || "";
-      let located = chosen;
-      if (!area && chosen.length > 0) {
-        // Saying nothing was the real failure here. A day saved with no
-        // points looks identical to one that worked, so the first anyone
-        // knew of it was an empty map and an evening of re-entry.
-        toast.message("Béa saved these, but couldn't put them on the map", {
-          description: "Set the trip's city and she'll place them next time you open it.",
+      const located = chosen;
+      const unplaced = picked.filter((i) => !placements[i]).length;
+      if (unplaced > 0 && Object.keys(placements).length > 0) {
+        toast.message(`${unplaced} of these are not on the map`, {
+          description: "They are saved either way — open the trip to give them a place.",
         });
-      }
-      if (area && chosen.length > 0) {
-        setPlacing({ done: 0, total: chosen.length });
-        setSaveStatus("");
-        try {
-          const result = await geocodePlanStops({
-            data: {
-              stops: chosen.map((item) => ({ title: item.title, detail: item.detail ?? null })),
-              area,
-            },
-          });
-          const byIndex = new Map(result.placed.map((hit) => [hit.index, hit]));
-          located = chosen.map((item, index) => {
-            const hit = byIndex.get(index);
-            return hit ? { ...item, lat: hit.lat, lon: hit.lon } : item;
-          });
-          setPlacing({ done: result.placed.length, total: chosen.length });
-          if (result.throttled) {
-            toast.message("Béa ran out of lookups for the minute", {
-              description:
-                "These are saved. She'll place the rest of them next time you open the trip.",
-            });
-          } else if (result.placed.length < chosen.length) {
-            const missed = chosen.length - result.placed.length;
-            toast.message(`Béa placed ${result.placed.length} of ${chosen.length} on the map`, {
-              description: `She couldn't find ${missed}. Open the itinerary's edit mode to set ${missed === 1 ? "it" : "them"} by hand.`,
-            });
-          }
-        } catch {
-          // Keep the stops. Positions are a bonus, not a precondition.
-        } finally {
-          setPlacing(null);
-        }
       }
 
       setSaveStatus(`Saving ${located.length} timeline stops…`);
@@ -780,6 +814,27 @@ function ImportPanel({
                   </p>
                 </div>
               )}
+              {/**
+               * What Béa found, said out loud.
+               *
+               * The list already knew all of this and showed none of it. The
+               * counts are only meaningful because an entry's kind survives
+               * an import now — before, every row was "Plan" and this would
+               * have read "18 things" in a more expensive way.
+               */}
+              <p className="mb-1.5 text-[13px] font-semibold">
+                Béa found {items.length} {items.length === 1 ? "place" : "places"}
+                {foundShape ? ` · ${foundShape}` : ""}
+                {relativeDays > 0 ? ` · ${relativeDays} day${relativeDays === 1 ? "" : "s"}` : ""}
+              </p>
+              {placedTally.high + placedTally.needsLook > 0 && (
+                <p className="mb-2 text-[12.5px] text-muted-foreground">
+                  <span className="font-semibold text-foreground">{placedTally.high} mapped</span>
+                  {placedTally.needsLook > 0
+                    ? ` · ${placedTally.needsLook} worth a look`
+                    : " · all of them look right"}
+                </p>
+              )}
               <p className="mb-2 text-[12px] text-muted-foreground">
                 {picked.length} of {items.length} stops selected.
                 {duplicateIndexes.size > 0 &&
@@ -851,6 +906,15 @@ function ImportPanel({
                     Est. {it.estimated_cost} {it.currency ?? plan?.currency ?? currency}
                   </span>
                 )}
+                {/**
+                 * Where Béa put it, and how sure she is.
+                 *
+                 * Silent on a confident match, because a row that is simply
+                 * right does not need a badge — and a page of green ticks is
+                 * the same wall of noise as a page of warnings. The ones that
+                 * speak up are the ones worth a second of your attention.
+                 */}
+                <PlacementNote found={placements[i]} />
               </span>
             </label>
           ))}
@@ -903,6 +967,48 @@ function ImportPanel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * One line under a parsed row saying where Béa landed it.
+ *
+ * Three states, and only two of them talk. A confident match shows a quiet
+ * pin and the name she matched, so it can be checked at a glance without
+ * asking anything. Anything less says what is wrong with it in words.
+ */
+function PlacementNote({
+  found,
+}: {
+  found?:
+    | { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
+    | undefined;
+}) {
+  if (!found) return null;
+  const shortLabel = (found.label ?? "").split(",").slice(0, 2).join(",").trim();
+
+  if (found.confidence === "high") {
+    return (
+      <span className="mt-0.5 block text-[12px] text-muted-foreground">
+        <MapPin className="mr-1 inline size-3 text-primary" aria-hidden />
+        {shortLabel || "On the map"}
+      </span>
+    );
+  }
+  return (
+    <span
+      className={`mt-1 block rounded-lg px-2 py-1 text-[12px] ${
+        found.confidence === "low"
+          ? "bg-destructive/10 text-destructive"
+          : "bg-primary-soft text-foreground"
+      }`}
+    >
+      <span className="font-semibold">
+        {found.confidence === "low" ? "Check this one" : "Béa's best guess"}
+      </span>
+      {shortLabel ? ` — ${shortLabel}` : ""}
+      <span className="block text-muted-foreground">{found.reason}</span>
+    </span>
   );
 }
 
