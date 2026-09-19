@@ -120,7 +120,7 @@ export function SectionAction({
       {...(label ? { "aria-label": label } : {})}
       {...(pressed === undefined ? {} : { "aria-pressed": pressed })}
       className={`rounded-xl border text-[13px] font-semibold ${
-        icon ? "grid size-8 place-items-center" : "px-3 py-1.5"
+        icon ? "tap-44 grid size-8 place-items-center" : "px-3 py-1.5"
       } ${
         pressed
           ? "border-primary bg-primary text-primary-foreground"

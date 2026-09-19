@@ -21,7 +21,7 @@ const Card = ({
   style?: React.CSSProperties;
 }) => (
   <div
-    className={`rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-[11px] shadow-sm ${className}`}
+    className={`rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-[11.5px] shadow-sm ${className}`}
     style={style}
   >
     {children}
@@ -65,7 +65,7 @@ function Capture() {
         <Card key={place.name} className="flex items-center gap-2">
           <MapPin className="size-3 shrink-0 text-primary" aria-hidden />
           <span className="min-w-0 flex-1 truncate font-medium">{place.name}</span>
-          <span className="shrink-0 text-[10px] text-muted-foreground">{place.where}</span>
+          <span className="shrink-0 text-[10.5px] text-muted-foreground">{place.where}</span>
           <span
             aria-hidden
             className={`size-3 shrink-0 rounded-[4px] border ${
@@ -91,7 +91,7 @@ function Vault() {
         {kinds.map((kind) => (
           <span
             key={kind.label}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px]"
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11.5px]"
           >
             <span className={`size-1.5 rounded-full ${kind.tone}`} aria-hidden />
             {kind.label}
@@ -105,7 +105,7 @@ function Vault() {
         ].map((row) => (
           <Card key={row.name} className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
-            <span className="shrink-0 text-[10px] text-muted-foreground">{row.by}</span>
+            <span className="shrink-0 text-[10.5px] text-muted-foreground">{row.by}</span>
           </Card>
         ))}
       </div>
@@ -147,7 +147,7 @@ function Nearby() {
           </span>
           <div className="min-w-0">
             <p className="text-[12.5px] font-semibold">You saved a place two streets away</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               Bar Raval · saved 11 months ago · by Sarah
             </p>
           </div>

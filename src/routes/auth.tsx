@@ -228,7 +228,7 @@ function AuthPage() {
             )}
             {mode === "signup" && (
               <div className="space-y-2.5 rounded-xl border border-border bg-card/60 p-3.5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-[14px] leading-relaxed">
+                <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
                   <input
                     type="checkbox"
                     checked={agreeTerms}
@@ -247,7 +247,7 @@ function AuthPage() {
                     .
                   </span>
                 </label>
-                <label className="flex cursor-pointer items-start gap-2.5 text-[14px] leading-relaxed">
+                <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
                   <input
                     type="checkbox"
                     checked={agreeDisclaimer}

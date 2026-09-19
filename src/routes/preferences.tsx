@@ -105,7 +105,7 @@ function Chip({
         active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
       }`}
     >
-      <span className="block text-[14px] font-medium">{label}</span>
+      <span className="block text-[14.5px] font-medium">{label}</span>
       {hint && (
         <span
           className={`block text-[12px] ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}

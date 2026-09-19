@@ -678,3 +678,29 @@
     display: none;
   }
 }
+
+/**
+ * A finger is about 44px wide; several of Béa's controls are 28.
+ *
+ * The icon buttons on the trip page — add to this day, move this entry, close
+ * this sheet — are drawn small on purpose: they sit beside text and a large
+ * box would shout. Growing them would cost the layout. So the hit area grows
+ * instead, centred on the control and invisible, which is the part your thumb
+ * actually aims at. The glyph stays exactly where it was.
+ *
+ * Apply to the control itself, not its wrapper, or the pseudo-element lands
+ * in the wrong place.
+ */
+@utility tap-44 {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}

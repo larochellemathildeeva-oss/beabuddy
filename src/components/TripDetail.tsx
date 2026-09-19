@@ -23,6 +23,7 @@ import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail, timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { TripMap } from "@/components/TripMap";
 import { TripPrep } from "@/components/TripPrep";
 import { TripToday } from "@/components/TripToday";
@@ -290,6 +291,9 @@ export function TripDetail({
   const [stopSignal, setStopSignal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  /** The member about to lose access, or null. Named, so the sheet can say who. */
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; label: string } | null>(null);
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [timelineByDay, setTimelineByDay] = useState(true);
@@ -559,7 +563,7 @@ export function TripDetail({
                             className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
                           >
                             <span className="min-w-0">
-                              <span className="block font-display text-[16px] leading-tight">
+                              <span className="block font-display text-[16.5px] leading-tight">
                                 {group.label}
                               </span>
                               <span className="block text-[12px] text-muted-foreground">
@@ -581,7 +585,7 @@ export function TripDetail({
                                 setAddDay(group.key);
                                 setAddingTimeline(true);
                               }}
-                              className="grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
+                              className="tap-44 grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
                             >
                               <Plus className="size-3.5" aria-hidden />
                             </button>
@@ -833,20 +837,7 @@ export function TripDetail({
                           {iAmOwner && !isMe && (
                             <button
                               type="button"
-                              onClick={async () => {
-                                if (
-                                  !confirm(
-                                    `Remove ${label} from this trip? They will lose access immediately.`,
-                                  )
-                                ) {
-                                  return;
-                                }
-                                try {
-                                  await onRemoveMember(m.user_id);
-                                } catch (e) {
-                                  alert(e instanceof Error ? e.message : "Could not remove");
-                                }
-                              }}
+                              onClick={() => setConfirmRemove({ id: m.user_id, label })}
                               className="text-[13px] font-semibold text-destructive underline"
                             >
                               Remove
@@ -859,17 +850,7 @@ export function TripDetail({
                   {me.id && me.id !== trip.owner_id && (
                     <button
                       type="button"
-                      onClick={async () => {
-                        if (!confirm("Leave this trip? You will lose access to the itinerary.")) {
-                          return;
-                        }
-                        try {
-                          await onLeave();
-                          setSettingsOpen(false);
-                        } catch (e) {
-                          alert(e instanceof Error ? e.message : "Could not leave");
-                        }
-                      }}
+                      onClick={() => setConfirmLeave(true)}
                       className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
                     >
                       Leave trip
@@ -1164,39 +1145,50 @@ export function TripDetail({
         </div>
       </Sheet>
 
-      <Sheet
+      <ConfirmSheet
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         title="Delete this trip?"
-        width="sm"
-        showClose={false}
-        above
-      >
-        <div className="text-center">
-          <p className="text-[14.5px] text-muted-foreground">
-            This permanently removes the trip, its timeline, stops, budget and invites. This can't
-            be undone.
-          </p>
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={() => setConfirmDelete(false)}
-              className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                setConfirmDelete(false);
-                setSettingsOpen(false);
-                void onDelete();
-              }}
-              className="flex-1 rounded-xl bg-destructive px-3 py-2 text-[14.5px] font-semibold text-destructive-foreground"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </Sheet>
+        body="This permanently removes the trip, its timeline, stops, budget and invites. This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          setConfirmDelete(false);
+          setSettingsOpen(false);
+          void onDelete();
+        }}
+      />
+
+      <ConfirmSheet
+        open={confirmLeave}
+        onClose={() => setConfirmLeave(false)}
+        title="Leave this trip?"
+        body="You will lose access to the itinerary, the stops and the budget. Someone still on the trip would have to invite you back."
+        confirmLabel="Leave"
+        onConfirm={() => {
+          setConfirmLeave(false);
+          void onLeave().then(
+            () => setSettingsOpen(false),
+            (e: unknown) =>
+              toast.error(e instanceof Error ? e.message : "Couldn't leave that trip."),
+          );
+        }}
+      />
+
+      <ConfirmSheet
+        open={confirmRemove !== null}
+        onClose={() => setConfirmRemove(null)}
+        title={`Remove ${confirmRemove?.label ?? "this person"}?`}
+        body="They lose access to this trip immediately, including the itinerary and anything they added to it."
+        confirmLabel="Remove"
+        onConfirm={() => {
+          const target = confirmRemove;
+          setConfirmRemove(null);
+          if (!target) return;
+          void onRemoveMember(target.id).catch((e: unknown) =>
+            toast.error(e instanceof Error ? e.message : "Couldn't remove them."),
+          );
+        }}
+      />
     </article>
   );
 }
@@ -1254,7 +1246,7 @@ function TimelineEntry({
     <li className="relative flex min-w-0 gap-3">
       {/* Time reads down the page as a column, so a day can be scanned rather
           than read. The kind moves into the glyph beside it. */}
-      <p className="w-[52px] shrink-0 pt-0.5 text-[13.5px] font-semibold tabular-nums text-foreground">
+      <p className="w-[52px] shrink-0 pt-0.5 text-[13px] font-semibold tabular-nums text-foreground">
         {rail}
       </p>
       <TimelineGlyphMark item={item} />
@@ -1346,7 +1338,7 @@ function TimelineEntry({
                   disabled={!canMoveUp}
                   onClick={() => onMove(-1)}
                   aria-label={`Move ${item.title} earlier`}
-                  className="grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
+                  className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
                 >
                   <ChevronUp className="size-3.5" aria-hidden />
                 </button>
@@ -1355,7 +1347,7 @@ function TimelineEntry({
                   disabled={!canMoveDown}
                   onClick={() => onMove(1)}
                   aria-label={`Move ${item.title} later`}
-                  className="grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
+                  className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
                 >
                   <ChevronDown className="size-3.5" aria-hidden />
                 </button>

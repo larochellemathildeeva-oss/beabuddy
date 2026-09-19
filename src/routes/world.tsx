@@ -375,7 +375,7 @@ function WorldPage() {
                   onClick={() => setStatsNote((v) => !v)}
                   aria-expanded={statsNote}
                   aria-controls="travel-stats-note"
-                  className="grid size-5 place-items-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground"
+                  className="tap-44 grid size-5 place-items-center rounded-full border border-border text-[11.5px] font-semibold text-muted-foreground"
                   aria-label="What these numbers count"
                   title="What these numbers count"
                 >
@@ -536,7 +536,7 @@ function Stat({
       <p className={`font-display text-[22px] leading-none ${accent ? "text-primary" : ""}`}>
         {value}
       </p>
-      <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[11.5px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
       {hint && <p className="mt-0.5 text-[11.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );

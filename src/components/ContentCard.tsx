@@ -54,7 +54,7 @@ export function ContentCard({
           {eyebrow && <div className="mb-1.5 flex items-center gap-1.5">{eyebrow}</div>}
           <h3 className="font-display text-[19px] leading-tight">{title}</h3>
           {lines.map((line) => (
-            <p key={line} className="mt-0.5 text-[13.5px] text-muted-foreground">
+            <p key={line} className="mt-0.5 text-[13px] text-muted-foreground">
               {line}
             </p>
           ))}

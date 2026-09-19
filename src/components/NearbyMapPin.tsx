@@ -355,7 +355,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
                   setDraft({ name: p.name, lat: p.lat, lon: p.lon, category: p.category });
                   setSaved("");
                 }}
-                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[11px] font-medium text-background"
+                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[11.5px] font-medium text-background"
                 style={{ left: x - 8, top: y - 8, maxWidth: 120 }}
               >
                 <span className="block truncate">{p.name}</span>
@@ -449,7 +449,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
               className="flex w-full items-center justify-between gap-3 p-3 text-left"
             >
               <span>
-                <span className="block font-display text-[15.5px]">{p.name}</span>
+                <span className="block font-display text-[15px]">{p.name}</span>
                 <span className="block text-[12px] text-muted-foreground">{p.category}</span>
               </span>
               <span className="shrink-0 text-[12px] text-muted-foreground">

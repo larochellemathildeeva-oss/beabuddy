@@ -297,7 +297,7 @@ export function Tour({
                 onClick={() => setWatching(true)}
                 className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
               >
-                <span className="flex items-center gap-2 text-[15.5px] font-semibold">
+                <span className="flex items-center gap-2 text-[15px] font-semibold">
                   <PlayCircle className="size-4 text-primary" aria-hidden />
                   Watch how Béa works
                 </span>
@@ -313,7 +313,7 @@ export function Tour({
                 }}
                 className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
               >
-                <span className="flex items-center gap-2 text-[15.5px] font-semibold">
+                <span className="flex items-center gap-2 text-[15px] font-semibold">
                   <BookOpen className="size-4 text-primary" aria-hidden />
                   See how Béa works
                 </span>
@@ -326,7 +326,7 @@ export function Tour({
               onClick={() => pick("quick")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
             >
-              <span className="block text-[15.5px] font-semibold">
+              <span className="block text-[15px] font-semibold">
                 A quick walk around the block
               </span>
               <span className="mt-0.5 block text-[13px] text-muted-foreground">
@@ -337,7 +337,7 @@ export function Tour({
               onClick={() => pick("deep")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
             >
-              <span className="block text-[15.5px] font-semibold">Deep Dive</span>
+              <span className="block text-[15px] font-semibold">Deep Dive</span>
               <span className="mt-0.5 block text-[13px] text-muted-foreground">
                 Six pillars competitors miss. Bring a coffee.
               </span>

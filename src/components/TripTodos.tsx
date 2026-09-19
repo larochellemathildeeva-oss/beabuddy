@@ -215,7 +215,7 @@ export function TripTodosBody({
       )}
 
       {t.todos.length === 0 && !t.loading && (
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-[14.5px] text-muted-foreground">
           Nothing here yet. The passport, the transfer, the thing you always remember at the
           airport.
         </p>
@@ -281,7 +281,7 @@ export function TripTodosBody({
             type="button"
             disabled={busy || todosFromPaste(paste).length === 0}
             onClick={() => void addPasted()}
-            className="btn-primary px-4 py-2 text-[14px] disabled:opacity-40 disabled:shadow-none"
+            className="btn-primary px-4 py-2 text-[14.5px] disabled:opacity-40 disabled:shadow-none"
           >
             Add {todosFromPaste(paste).length || ""} to-dos
           </button>

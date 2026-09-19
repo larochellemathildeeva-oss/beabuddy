@@ -521,7 +521,7 @@ function RecommendationsPage() {
                     setError(null);
                     if (m === "here") handleHere();
                   }}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-[14px] transition-colors ${
+                  className={`rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
                     mode === m ? "border-primary bg-elevated" : "border-border bg-card"
                   }`}
                 >
@@ -537,7 +537,7 @@ function RecommendationsPage() {
                   setLocResults(null);
                   setError(null);
                 }}
-                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14px] transition-colors ${
+                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
                   mode === "list" ? "border-primary bg-elevated" : "border-border bg-card"
                 }`}
               >

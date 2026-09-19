@@ -271,7 +271,7 @@ export function AppShell({
                       className="size-[19px] transition-[stroke-width] duration-(--t-shift) ease-(--ease-standard)"
                       strokeWidth={active ? 2.3 : 1.7}
                     />
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em]">
+                    <span className="text-[11.5px] font-semibold uppercase tracking-[0.06em]">
                       {label}
                     </span>
                   </Link>

@@ -133,7 +133,7 @@ export function ItineraryDirections({
           <button
             onClick={() => void load()}
             disabled={busy}
-            className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy ? "Working…" : legs ? "Refresh" : "Get directions"}
           </button>

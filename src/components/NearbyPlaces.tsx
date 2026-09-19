@@ -252,7 +252,7 @@ export function NearbyPlaces({
                 {formatMetres(metres)}
               </span>
             </div>
-            {p.notes && <p className="mt-3 font-display text-[15.5px] leading-snug">“{p.notes}”</p>}
+            {p.notes && <p className="mt-3 font-display text-[15px] leading-snug">“{p.notes}”</p>}
             <div className="mt-3 flex gap-2">
               <a
                 href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
@@ -275,7 +275,7 @@ export function NearbyPlaces({
         {collapsed && here && nearby.length > 0 && onExpand && (
           <button
             onClick={onExpand}
-            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-[14px] font-semibold"
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-[14.5px] font-semibold"
           >
             {hiddenCount > 0
               ? `Show all ${nearby.length} nearby`

@@ -125,7 +125,7 @@ function ProfilePage() {
             <p className="font-display text-[19px] leading-snug">
               Sign in to keep all of this forever.
             </p>
-            <p className="mt-1 text-[14px] text-muted-foreground">
+            <p className="mt-1 text-[14.5px] text-muted-foreground">
               With an account your pins, trips, recommendations and photo memories are saved to you
               and follow you to any device.
             </p>

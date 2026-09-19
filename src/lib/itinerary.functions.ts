@@ -45,6 +45,12 @@ const ParseInput = z
 
 const ItemSchema = z.object({
   day_date: z.string().nullable(), // YYYY-MM-DD
+  /**
+   * Which numbered day this belongs to, when the source counts days instead
+   * of naming dates — which is nearly every pasted itinerary. Resolved into a
+   * real day_date once the trip's start date is known.
+   */
+  day_number: z.number().nullable(),
   time_label: z.string().nullable(), // 09:00
   kind: z.string(),
   title: z.string(),
@@ -105,6 +111,7 @@ const instructions = (
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
+    "day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — \"Day 1\", \"Day 2\", \"first morning\", a second day's heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.",
     tripCity ? `The trip is around ${tripCity}.` : "",
     startDate ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2'.` : "",
     endDate ? `The trip ends on ${endDate}.` : "",

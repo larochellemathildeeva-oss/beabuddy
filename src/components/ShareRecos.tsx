@@ -221,7 +221,7 @@ export function ShareRecos({
       {mode === "picking" && (
         <div className="mt-3 space-y-3">
           {rows.length === 0 ? (
-            <p className="text-[14px] text-muted-foreground">
+            <p className="text-[14.5px] text-muted-foreground">
               Nothing saved yet. Save a few places first and you'll be able to send them on.
             </p>
           ) : (
@@ -305,7 +305,7 @@ export function ShareRecos({
             Send them this code. It works for 30 days, and you can stop it any time.
           </p>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg bg-elevated px-3 py-2 font-mono text-[16px] tracking-widest">
+            <code className="min-w-0 flex-1 truncate rounded-lg bg-elevated px-3 py-2 font-mono text-[16.5px] tracking-widest">
               {sentCode}
             </code>
             <button
@@ -360,7 +360,7 @@ export function ShareRecos({
           {incoming && (
             <div className="space-y-2">
               <div>
-                <p className="font-display text-[15.5px]">{incoming.title}</p>
+                <p className="font-display text-[15px]">{incoming.title}</p>
                 <p className="text-[12.5px] text-muted-foreground">
                   {incoming.sharedByName ? `From ${incoming.sharedByName} · ` : ""}
                   {incoming.items.length} place{incoming.items.length === 1 ? "" : "s"}
@@ -428,7 +428,7 @@ export function ShareRecos({
           {live.slice(0, 5).map((share) => (
             <li key={share.id} className="flex items-center gap-2 py-2.5">
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-medium">
+                <span className="block truncate text-[14.5px] font-medium">
                   {share.title || "Shared places"}
                 </span>
                 <span className="block text-[12px] text-muted-foreground">

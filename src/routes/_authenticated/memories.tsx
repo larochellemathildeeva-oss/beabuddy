@@ -262,7 +262,7 @@ function MemoriesPage() {
                           key={n.id}
                           className="rounded-xl border border-border bg-card px-3 py-2"
                         >
-                          <p className="font-display text-[15.5px] leading-snug">“{n.note}”</p>
+                          <p className="font-display text-[15px] leading-snug">“{n.note}”</p>
                           <div className="mt-1 flex items-center justify-between">
                             <span className="text-[12px] text-muted-foreground">
                               {prettyDate(n.created_at)}

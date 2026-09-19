@@ -2,7 +2,15 @@ import { Sheet } from "@/components/Sheet";
 import { BeaRunning } from "@/components/BeaRunning";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Columns2, Image as ImageIcon, ListOrdered, Sparkles, X } from "lucide-react";
+import {
+  CalendarDays,
+  Camera,
+  Columns2,
+  Image as ImageIcon,
+  ListOrdered,
+  Sparkles,
+  X,
+} from "lucide-react";
 import {
   compareItineraries,
   optimizeItinerary,
@@ -24,6 +32,12 @@ import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
+import {
+  hasRelativeDays,
+  lastDayDate,
+  relativeDayCount,
+  resolveDayDates,
+} from "@/lib/relative-days";
 import { geocodePlanStops, PLAN_LOOKUP_GAP_MS } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
@@ -221,6 +235,14 @@ function ImportPanel({
   const [altReason, setAltReason] = useState("");
   const [rebuildReason, setRebuildReason] = useState("");
   const [plan, setPlan] = useState<Awaited<ReturnType<typeof run>> | null>(null);
+  /**
+   * The date a "Day 1 / Day 2" plan begins.
+   *
+   * Only asked for when nothing else knows: the trip has no start date and
+   * the source named none. One field, answered once, instead of a date
+   * chosen twenty times on the timeline afterwards.
+   */
+  const [dayOneDate, setDayOneDate] = useState("");
 
   const read = async () => {
     setBusy(true);
@@ -275,13 +297,24 @@ function ImportPanel({
       .filter((index) => index >= 0),
   );
 
+  /**
+   * Where the numbered days are anchored: the trip's own start date, then the
+   * date the source gave, then the one the user just supplied.
+   */
+  const planStart = startDate || plan?.start_date || dayOneDate || "";
+  const needsDayOne = Boolean(items && hasRelativeDays(items) && !startDate && !plan?.start_date);
+  const relativeDays = items ? relativeDayCount(items) : 0;
+
   const addChosen = async () => {
     if (!items) return;
     setBusy(true);
     setError(null);
     try {
+      // Day 1 becomes a real date here, so everything downstream — the day
+      // groups, Today, the calendar — sees an ordinary dated plan.
+      const dated = planStart ? resolveDayDates(items, planStart) : items;
       const chosen = picked.flatMap((i) => {
-        const it = items[i];
+        const it = dated[i];
         if (!it) return [];
         const address = placeHintFromDetail(it.detail);
         return [
@@ -367,6 +400,12 @@ function ImportPanel({
       if (onApplyDates && plan?.start_date && plan.end_date) {
         setSaveStatus("Updating the trip dates…");
         await onApplyDates({ start_date: plan.start_date, end_date: plan.end_date });
+      } else if (onApplyDates && dayOneDate && !startDate) {
+        // The user just told Béa when day one is, so the trip should know it
+        // too — otherwise the timeline has dates the trip itself does not.
+        const last = lastDayDate(dated) ?? dayOneDate;
+        setSaveStatus("Updating the trip dates…");
+        await onApplyDates({ start_date: dayOneDate, end_date: last });
       }
       setItems(null);
       setText("");
@@ -592,7 +631,7 @@ function ImportPanel({
                 <button
                   aria-label={`Remove picture ${i + 1}`}
                   onClick={() => setImages((cur) => cur.filter((_, x) => x !== i))}
-                  className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-border bg-card"
+                  className="tap-44 absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-border bg-card"
                 >
                   <X className="size-3" />
                 </button>
@@ -661,6 +700,30 @@ function ImportPanel({
           )}
           {items.length > 0 && (
             <div className="sticky top-0 z-10 -mx-1 rounded-xl border border-border bg-card p-2 shadow-sm">
+              {needsDayOne && (
+                <div className="mb-2 rounded-xl border border-primary/40 bg-elevated p-2.5">
+                  <p className="text-[13px]">
+                    <CalendarDays className="mr-1 inline size-3.5 text-primary" aria-hidden />
+                    This plan is written as {relativeDays === 1 ? "a day" : `${relativeDays} days`},
+                    not dates.
+                  </p>
+                  <label className="mt-1.5 flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground">
+                    Day 1 is
+                    <input
+                      type="date"
+                      value={dayOneDate}
+                      aria-label="The date day one of this plan falls on"
+                      onChange={(e) => setDayOneDate(e.target.value)}
+                      className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+                    />
+                  </label>
+                  <p className="mt-1.5 text-[12px] text-muted-foreground">
+                    {dayOneDate
+                      ? "Béa will spread the days out from there."
+                      : "Without it the whole plan lands on one undated pile."}
+                  </p>
+                </div>
+              )}
               <p className="mb-2 text-[12px] text-muted-foreground">
                 {picked.length} of {items.length} stops selected.
                 {duplicateIndexes.size > 0 &&
