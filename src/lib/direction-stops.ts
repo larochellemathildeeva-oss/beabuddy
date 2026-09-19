@@ -1,3 +1,5 @@
+import { minimumNameLength, startsLikeAName, wordCount } from "./script.ts";
+
 export type DirectionStop = {
   /**
    * The timeline row this came from, when it came from one.
@@ -81,7 +83,7 @@ function titlePlaceCandidates(title: string): string[] {
   const out: string[] = [];
   const push = (v: string | undefined) => {
     const t = (v ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").trim();
-    if (t.length > 2 && !out.includes(t)) out.push(t);
+    if (t.length >= minimumNameLength(t) - 1 && !out.includes(t)) out.push(t);
   };
   const stripTail = (v: string) =>
     v
@@ -126,7 +128,7 @@ export function placeQueryCandidates(title: string, hint?: string | null): strin
       .replace(/^[-,&\s]+|[-,&\s]+$/g, "")
       .replace(/\s+/g, " ")
       .trim();
-    if (text.length > 2 && !out.includes(text)) out.push(text);
+    if (text.length >= minimumNameLength(text) - 1 && !out.includes(text)) out.push(text);
   };
   const h = hint?.trim() ?? "";
   if (looksLikeStreetAddress(h)) push(h);
@@ -157,7 +159,7 @@ export function placeHintFromDetail(detail?: string | null): string | null {
     .split(/[;·|]|\bsuggest\b/i)[0]!
     .replace(/\s+/g, " ")
     .trim();
-  if (first.length < 4 || first.length > 180) return null;
+  if (first.length < minimumNameLength(first) || first.length > 180) return null;
   if (looksLikeStreetAddress(first)) return first;
   const street = streetNameFromText(first);
   if (street) return street;
@@ -167,7 +169,7 @@ export function placeHintFromDetail(detail?: string | null): string | null {
     return null;
   }
   if (/\b(including|flagships)\b/i.test(first)) return null;
-  if (/^[A-Z0-9À-ÖØ-öø-ÿ]/.test(first) && first.split(/\s+/).length <= 12) return first;
+  if (startsLikeAName(first) && wordCount(first) <= 12) return first;
   return null;
 }
 

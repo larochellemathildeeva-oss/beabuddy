@@ -29,7 +29,11 @@ function wait(ms: number) {
 }
 
 async function geocode(query: string): Promise<{ lat: number; lon: number } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+  // accept-language=* asks for the name in the local language rather than an
+  // English translation. It does not change what matches — OSM indexes local
+  // names either way — but it means a place found as 清水寺 comes back as
+  // 清水寺, which is what a reader standing in front of it needs.
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=*&q=${encodeURIComponent(query)}`;
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
