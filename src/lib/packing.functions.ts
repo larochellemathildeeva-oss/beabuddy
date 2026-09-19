@@ -8,10 +8,7 @@ import { SECTION_MAX_LEN } from "@/lib/packing-sections";
 
 const ParsePackingInput = z
   .object({
-    imageDataUrls: z
-      .array(z.string().startsWith("data:image/").max(3_000_000))
-      .max(4)
-      .nullable(),
+    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(4).nullable(),
     text: z.string().max(20_000).nullable(),
   })
   .refine((v) => Boolean(v.imageDataUrls?.length || v.text?.trim()), {
@@ -76,9 +73,7 @@ export const parsePackingList = createServerFn({ method: "POST" })
                 ? [
                     {
                       type: "text" as const,
-                      text: data.text?.trim()
-                        ? `${prompt}\n\nExtra notes:\n${data.text}`
-                        : prompt,
+                      text: data.text?.trim() ? `${prompt}\n\nExtra notes:\n${data.text}` : prompt,
                     },
                     ...filePartsFromDataUrls(data.imageDataUrls),
                   ]

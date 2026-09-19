@@ -24,11 +24,7 @@ describe("applyCostPolicy", () => {
 
 describe("mergeAlternativeItems", () => {
   it("replaces only the ticked indexes", () => {
-    const next = mergeAlternativeItems(
-      ["museum", "lunch", "walk"],
-      ["cinema", "cafe"],
-      [0, 2],
-    );
+    const next = mergeAlternativeItems(["museum", "lunch", "walk"], ["cinema", "cafe"], [0, 2]);
     assert.deepEqual(next, ["cinema", "lunch", "cafe"]);
   });
 

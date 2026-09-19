@@ -3,7 +3,11 @@
 /** Signed-in users with no pointer/keyboard/scroll activity for this long are signed out. */
 export const IDLE_LOGOUT_MS = 45 * 60 * 1000;
 
-export function idleDeadline(lastActivityAt: number, now = Date.now(), idleMs = IDLE_LOGOUT_MS): number {
+export function idleDeadline(
+  lastActivityAt: number,
+  now = Date.now(),
+  idleMs = IDLE_LOGOUT_MS,
+): number {
   return lastActivityAt + idleMs;
 }
 

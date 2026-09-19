@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { matchesDestination, tagVaultItems, vaultPrompt, type VaultReco } from "./vault-for-build.ts";
+import {
+  matchesDestination,
+  tagVaultItems,
+  vaultPrompt,
+  type VaultReco,
+} from "./vault-for-build.ts";
 
 const rom: VaultReco = {
   name: "Royal Ontario Museum",

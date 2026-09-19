@@ -12,11 +12,10 @@ const env = {
 const nodeServer = ".output/server/index.mjs";
 const child = existsSync(nodeServer)
   ? spawn(process.execPath, [nodeServer], { stdio: "inherit", env })
-  : spawn(
-      "npx",
-      ["vite", "preview", "--host", "0.0.0.0", "--port", port, "--strictPort"],
-      { stdio: "inherit", env },
-    );
+  : spawn("npx", ["vite", "preview", "--host", "0.0.0.0", "--port", port, "--strictPort"], {
+      stdio: "inherit",
+      env,
+    });
 
 child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);

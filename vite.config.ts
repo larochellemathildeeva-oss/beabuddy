@@ -17,9 +17,11 @@ import { readFileSync } from "node:fs";
  */
 
 const appVersion =
-  (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
-    version?: string;
-  }).version ?? "1.0.0";
+  (
+    JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
+      version?: string;
+    }
+  ).version ?? "1.0.0";
 
 export default defineConfig({
   tanstackStart: {

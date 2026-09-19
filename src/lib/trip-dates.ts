@@ -17,7 +17,10 @@ export function isMissingDatesStatusColumn(
   error: { message?: string; code?: string } | null | undefined,
 ): boolean {
   const text = `${error?.message ?? ""} ${error?.code ?? ""}`.toLowerCase();
-  return text.includes("dates_status") && (text.includes("does not exist") || text.includes("schema cache"));
+  return (
+    text.includes("dates_status") &&
+    (text.includes("does not exist") || text.includes("schema cache"))
+  );
 }
 
 /** Parse a YYYY-MM-DD value as a local calendar day (not UTC midnight). */

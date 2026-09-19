@@ -50,7 +50,10 @@ test("fuzzyRank filters non-matches and keeps stable order on ties", () => {
 });
 
 test("fuzzyRank returns everything for an empty query and tolerates null fields", () => {
-  const rows = [{ name: "A", note: null }, { name: "B", note: undefined }];
+  const rows = [
+    { name: "A", note: null },
+    { name: "B", note: undefined },
+  ];
   assert.equal(fuzzyRank(rows, "   ", (r) => [r.name, r.note]).length, 2);
   assert.equal(fuzzyRank(rows, "a", (r) => [r.name, r.note]).length, 1);
 });

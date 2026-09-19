@@ -29,8 +29,5 @@ test("tripCompanionsLine names friends and never says Traveller", () => {
     ),
     "With Sam",
   );
-  assert.equal(
-    tripCompanionsLine([{ user_id: "pal", display_name: null }], "me"),
-    "With a friend",
-  );
+  assert.equal(tripCompanionsLine([{ user_id: "pal", display_name: null }], "me"), "With a friend");
 });

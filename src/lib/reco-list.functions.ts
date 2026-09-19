@@ -10,10 +10,7 @@ import { RECO_LIST_MAX } from "@/lib/reco-list";
 
 const ParseRecoListInput = z
   .object({
-    imageDataUrls: z
-      .array(z.string().startsWith("data:image/").max(3_000_000))
-      .max(4)
-      .nullable(),
+    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(4).nullable(),
     text: z.string().max(20_000).nullable(),
     pageUrl: z.string().url().max(2_000).nullish(),
   })

@@ -2,21 +2,22 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 export type StatKey =
-  | "countries"
-  | "cities"
-  | "trips"
-  | "flights"
-  | "hotels"
-  | "restaurants"
-  | "travelDays"
-  | "pins";
+  "countries" | "cities" | "trips" | "flights" | "hotels" | "restaurants" | "travelDays" | "pins";
 
 export type StatsLayout = Record<StatKey, boolean> & { countryShare: boolean };
 
 export const STAT_OPTIONS: { key: StatKey; label: string; hint: string }[] = [
-  { key: "countries", label: "Countries", hint: "Distinct countries from photos and visited pins." },
+  {
+    key: "countries",
+    label: "Countries",
+    hint: "Distinct countries from photos and visited pins.",
+  },
   { key: "cities", label: "Cities", hint: "Places you have actually been." },
-  { key: "trips", label: "Trips completed", hint: "Past trips, or ones whose end date has gone by." },
+  {
+    key: "trips",
+    label: "Trips completed",
+    hint: "Past trips, or ones whose end date has gone by.",
+  },
   { key: "flights", label: "Flights", hint: "Flight stops on your trip timelines." },
   { key: "hotels", label: "Hotels", hint: "Hotel and lodging stops." },
   { key: "restaurants", label: "Restaurants", hint: "Reservations and restaurant stops." },

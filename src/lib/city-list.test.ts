@@ -10,7 +10,10 @@ import {
 } from "./city-list.ts";
 
 test("parseCityListText keeps one city per line, including City, Country", () => {
-  assert.deepEqual(parseCityListText("Paris, France\nRome, Italy\n"), ["Paris, France", "Rome, Italy"]);
+  assert.deepEqual(parseCityListText("Paris, France\nRome, Italy\n"), [
+    "Paris, France",
+    "Rome, Italy",
+  ]);
 });
 
 test("parseCityListText splits a single comma-separated notes line", () => {

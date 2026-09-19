@@ -24,10 +24,7 @@ const KINDS = TIMELINE_KINDS;
 
 const ParseInput = z
   .object({
-    imageDataUrls: z
-      .array(z.string().startsWith("data:image/").max(3_000_000))
-      .max(6)
-      .nullable(),
+    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(6).nullable(),
     text: z.string().max(20_000).nullable(),
     tripCity: z.string().max(120).nullable(),
     startDate: z.string().max(20).nullable(),
@@ -111,7 +108,7 @@ const instructions = (
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
-    "day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — \"Day 1\", \"Day 2\", \"first morning\", a second day's heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.",
+    'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
     startDate ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2'.` : "",
     endDate ? `The trip ends on ${endDate}.` : "",
@@ -214,9 +211,8 @@ async function loadBuildExtra(
   tripCity: string | null,
   mode: "import" | "build",
 ) {
-  const { getTravelPreferences, preferencePrompt } = await import(
-    "@/lib/travel-preferences.server"
-  );
+  const { getTravelPreferences, preferencePrompt } =
+    await import("@/lib/travel-preferences.server");
   const preferences = await getTravelPreferences(context);
   let extra = preferencePrompt(preferences);
   const { tagVaultItems, vaultPrompt } = await import("@/lib/vault-for-build");
@@ -528,7 +524,8 @@ export const compareItineraries = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ItineraryComparison> => {
-    const { getTravelPreferences, preferencePrompt } = await import("@/lib/travel-preferences.server");
+    const { getTravelPreferences, preferencePrompt } =
+      await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     const homeCurrency = preferences.homeCurrency || "CAD";
 
@@ -576,8 +573,8 @@ export const compareItineraries = createServerFn({ method: "POST" })
       "itemLabels: one entry per parsed stop, in the same order, with the same title. setting is indoor, outdoor or mixed. durationHours is how long that stop takes.",
       "Do not output walking kilometres, transit minutes or longest-leg times — the app computes those only when it has coordinates.",
       "costLines: itemise each plan's estimated spend by category (Accommodation, Transport, Meals, Activities, Shopping, Other). Do not double-count and do not give a total — the app adds them up.",
-      "days: one entry per day the plans cover. If the plans have different lengths, still emit one row per day and write \"nothing planned\" for the shorter plan — never pad it with invented activities.",
-      "divergence is the most important field: say what actually differs that day and what the traveller trades for it. \"Both are food-focused\" is useless; \"A stays central while B loses 90 minutes crossing the bridge each way\" is the point.",
+      'days: one entry per day the plans cover. If the plans have different lengths, still emit one row per day and write "nothing planned" for the shorter plan — never pad it with invented activities.',
+      'divergence is the most important field: say what actually differs that day and what the traveller trades for it. "Both are food-focused" is useless; "A stays central while B loses 90 minutes crossing the bridge each way" is the point.',
       "For each plan also fill: pace (how busy the days are), highlights (the standout moments), cost (what drives the spend), bestFor (the traveller it suits), watchOut (the real weakness).",
       "pick: the label of the plan you would choose. why: two plain sentences. Commit to an answer — a comparison with no recommendation is a table, not advice.",
       "mix: the single best thing to borrow from the plan you did not pick, and when to do it.",
@@ -736,9 +733,8 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => OptimizeInput.parse(input))
   .handler(async ({ data, context }): Promise<OptimizeItinerary> => {
-    const { getTravelPreferences, preferencePrompt } = await import(
-      "@/lib/travel-preferences.server"
-    );
+    const { getTravelPreferences, preferencePrompt } =
+      await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     // Normalize at the server boundary — do not trust the client strip alone.
     const items = data.items.map((item) => ({
@@ -876,9 +872,8 @@ export const planDayTrip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DayTripInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
-    const { getTravelPreferences, preferencePrompt } = await import(
-      "@/lib/travel-preferences.server"
-    );
+    const { getTravelPreferences, preferencePrompt } =
+      await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     const city =
       data.places.map((place) => place.city?.trim()).find(Boolean) ?? data.places[0]?.name ?? "";

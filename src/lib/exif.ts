@@ -23,10 +23,7 @@ export async function readExif(file: File): Promise<ExifInfo> {
       const size = view.getUint16(offset + 2);
       if (marker === 0xe1) {
         const app1 = offset + 4;
-        if (
-          view.getUint32(app1) === 0x45786966 &&
-          view.getUint16(app1 + 4) === 0x0000
-        ) {
+        if (view.getUint32(app1) === 0x45786966 && view.getUint16(app1 + 4) === 0x0000) {
           tiffStart = app1 + 6;
         }
         break;

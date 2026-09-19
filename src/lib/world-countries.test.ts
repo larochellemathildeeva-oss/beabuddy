@@ -1,15 +1,14 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { WORLD_COUNTRY_COUNT } from "./travel-stats.ts";
-import {
-  matchWorldCountry,
-  placeFromWorldCountry,
-  WORLD_COUNTRIES,
-} from "./world-countries.ts";
+import { matchWorldCountry, placeFromWorldCountry, WORLD_COUNTRIES } from "./world-countries.ts";
 
 test("WORLD_COUNTRIES covers the 195 used for the world-share counter", () => {
   const names = new Set(WORLD_COUNTRIES.map((row) => row.name));
-  assert.ok(names.size >= WORLD_COUNTRY_COUNT, `expected at least ${WORLD_COUNTRY_COUNT} countries`);
+  assert.ok(
+    names.size >= WORLD_COUNTRY_COUNT,
+    `expected at least ${WORLD_COUNTRY_COUNT} countries`,
+  );
 });
 
 test("matchWorldCountry accepts official names and common aliases", () => {

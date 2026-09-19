@@ -60,7 +60,11 @@ describe("scoreOpportunity", () => {
       lat: 49.28,
       lon: -123.12,
     });
-    const ranked = rankOpportunities([important, close], { tags: [], preferredCountries: [], priorities: "somewhere nearby" }, { here, now });
+    const ranked = rankOpportunities(
+      [important, close],
+      { tags: [], preferredCountries: [], priorities: "somewhere nearby" },
+      { here, now },
+    );
     assert.equal(ranked[0]!.pin.id, "close");
   });
 
@@ -69,7 +73,10 @@ describe("scoreOpportunity", () => {
       tags: [],
       preferredCountries: [],
     });
-    const b = scoreOpportunity(pin({ id: "b", name: "New reco" }), { tags: [], preferredCountries: [] });
+    const b = scoreOpportunity(pin({ id: "b", name: "New reco" }), {
+      tags: [],
+      preferredCountries: [],
+    });
     assert.ok(b.score > a.score);
   });
 
@@ -103,7 +110,10 @@ describe("scoreOpportunity", () => {
 
   it("matches stored travel tags even when the name is opaque", () => {
     const prefs = { tags: ["Museums"], preferredCountries: [] };
-    const tagged = scoreOpportunity(pin({ id: "rom", name: "ROM", travelTags: ["Museums"] }), prefs);
+    const tagged = scoreOpportunity(
+      pin({ id: "rom", name: "ROM", travelTags: ["Museums"] }),
+      prefs,
+    );
     const untagged = scoreOpportunity(pin({ id: "rom2", name: "ROM" }), prefs);
     assert.ok(tagged.reasons.some((r) => r.startsWith("Matches")));
     assert.ok(!untagged.reasons.some((r) => r.startsWith("Matches")));

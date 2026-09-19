@@ -77,7 +77,11 @@ export function groupPackItems<T extends { section?: string | null; position: nu
   return groups;
 }
 
-export function isMissingSectionColumn(error: { message?: string; code?: string } | null | undefined): boolean {
+export function isMissingSectionColumn(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
   const text = `${error?.message ?? ""} ${error?.code ?? ""}`.toLowerCase();
-  return text.includes("section") && (text.includes("does not exist") || text.includes("schema cache"));
+  return (
+    text.includes("section") && (text.includes("does not exist") || text.includes("schema cache"))
+  );
 }

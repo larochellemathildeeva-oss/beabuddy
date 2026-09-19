@@ -96,15 +96,15 @@ export function vaultPrompt(
 
 export function tagVaultItems<
   T extends { title: string; source?: "vault" | "new" | null | undefined },
->(
-  items: T[],
-  recos: VaultReco[],
-): T[] {
+>(items: T[], recos: VaultReco[]): T[] {
   const names = recos.map((row) => row.name.trim().toLowerCase()).filter((name) => name.length > 2);
   if (!names.length) return items;
   return items.map((item) => {
     const title = item.title.trim().toLowerCase();
     const hit = names.some((name) => title.includes(name) || name.includes(title));
-    return { ...item, source: hit ? "vault" : item.source === "vault" ? "new" : item.source ?? "new" };
+    return {
+      ...item,
+      source: hit ? "vault" : item.source === "vault" ? "new" : (item.source ?? "new"),
+    };
   });
 }

@@ -43,7 +43,10 @@ test("guideTargetLooksVisible rejects near-zero opacity", () => {
 
 test("guideTargetLooksVisible accepts a real painted box", () => {
   assert.equal(
-    guideTargetLooksVisible({ width: 100, height: 40 }, { display: "block", visibility: "visible" }),
+    guideTargetLooksVisible(
+      { width: 100, height: 40 },
+      { display: "block", visibility: "visible" },
+    ),
     true,
   );
   assert.equal(

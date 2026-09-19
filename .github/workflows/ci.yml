@@ -32,12 +32,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # Non-blocking for now: the tree carries ~1,360 pre-existing Prettier
-      # findings. Run `npm run format` once, commit it, then delete this line
-      # so lint blocks like the other two steps.
+      # Blocking, as of the pass that cleared the backlog. Most of it was one
+      # generated file (supabase/types.ts, 896 findings), now ignored; the
+      # remaining 196 were auto-fixable formatting in hand-written code.
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Test
         run: npm test

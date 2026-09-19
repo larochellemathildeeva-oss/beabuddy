@@ -39,7 +39,10 @@ describe("haversine", () => {
   });
 
   it("puts ROM about 6 km from High Park", () => {
-    const m = haversine({ lat: rom.lat!, lon: rom.lon! }, { lat: highPark.lat!, lon: highPark.lon! });
+    const m = haversine(
+      { lat: rom.lat!, lon: rom.lon! },
+      { lat: highPark.lat!, lon: highPark.lon! },
+    );
     assert.ok(m > 5_000 && m < 8_000, `got ${m}`);
   });
 });

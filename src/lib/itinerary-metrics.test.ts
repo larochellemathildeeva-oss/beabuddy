@@ -10,11 +10,7 @@ describe("computeItineraryMetrics", () => {
         { day_date: "2026-09-12", title: "Lunch", estimated_cost: 20 },
         { day_date: "2026-09-13", title: "High Park", estimated_cost: 0 },
       ],
-      [
-        { amount: 30 },
-        { amount: 20 },
-        { amount: 0 },
-      ],
+      [{ amount: 30 }, { amount: 20 }, { amount: 0 }],
       [
         { title: "ROM", setting: "indoor", durationHours: 3 },
         { title: "Lunch", setting: "indoor", durationHours: 1 },
@@ -34,7 +30,13 @@ describe("computeItineraryMetrics", () => {
     const withCoords = computeItineraryMetrics(
       [
         { day_date: "2026-09-12", title: "ROM", estimated_cost: null, lat: 43.6677, lon: -79.3948 },
-        { day_date: "2026-09-12", title: "High Park", estimated_cost: null, lat: 43.6465, lon: -79.4637 },
+        {
+          day_date: "2026-09-12",
+          title: "High Park",
+          estimated_cost: null,
+          lat: 43.6465,
+          lon: -79.4637,
+        },
       ],
       [],
       [
@@ -42,7 +44,11 @@ describe("computeItineraryMetrics", () => {
         { title: "High Park", setting: "outdoor", durationHours: 2 },
       ],
     );
-    assert.ok(withCoords.walkingKmPerDay != null && withCoords.walkingKmPerDay > 5 && withCoords.walkingKmPerDay < 8);
+    assert.ok(
+      withCoords.walkingKmPerDay != null &&
+        withCoords.walkingKmPerDay > 5 &&
+        withCoords.walkingKmPerDay < 8,
+    );
     assert.equal(withCoords.transitMinutesPerDay, null);
 
     const missing = computeItineraryMetrics(

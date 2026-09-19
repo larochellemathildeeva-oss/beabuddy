@@ -124,7 +124,8 @@ export function useRates() {
   );
 
   const canConvert = useCallback(
-    (currency: string) => currency.toUpperCase() === home || !!table?.rates?.[currency.toUpperCase()],
+    (currency: string) =>
+      currency.toUpperCase() === home || !!table?.rates?.[currency.toUpperCase()],
     [home, table],
   );
 

@@ -1,7 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { hasCoords, mapsDirUrl, placeQueryCandidates, reuseKeyForStop } from "@/lib/direction-stops";
+import {
+  hasCoords,
+  mapsDirUrl,
+  placeQueryCandidates,
+  reuseKeyForStop,
+} from "@/lib/direction-stops";
 import { haversine } from "@/lib/geo";
 
 export type RouteStep = { instruction: string; distance: number };
@@ -36,7 +41,11 @@ type Stop = {
 const UA = "BeaBot/1.0 (travel app)";
 
 function cleanArea(area: string): string {
-  return area.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").replace(/\s+,/g, ",").trim();
+  return area
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s+,/g, ",")
+    .trim();
 }
 
 // Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
@@ -62,10 +71,7 @@ async function geocode(query: string): Promise<{ lat: number; lon: number } | nu
   }
 }
 
-function stepText(s: {
-  maneuver?: { type?: string; modifier?: string };
-  name?: string;
-}): string {
+function stepText(s: { maneuver?: { type?: string; modifier?: string }; name?: string }): string {
   const type = s.maneuver?.type ?? "continue";
   const mod = s.maneuver?.modifier ? ` ${s.maneuver.modifier}` : "";
   const name = s.name ? ` onto ${s.name}` : "";
@@ -82,13 +88,22 @@ async function leg(
   const profile = mode === "walking" ? "foot" : "driving";
   const url = `https://router.project-osrm.org/route/v1/${profile}/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false&steps=true`;
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8_000) });
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(8_000),
+    });
     if (!res.ok) return null;
     const json = (await res.json()) as {
       routes?: {
         distance: number;
         duration: number;
-        legs: { steps: { distance: number; name?: string; maneuver?: { type?: string; modifier?: string } }[] }[];
+        legs: {
+          steps: {
+            distance: number;
+            name?: string;
+            maneuver?: { type?: string; modifier?: string };
+          }[];
+        }[];
       }[];
     };
     const route = json.routes?.[0];
@@ -224,7 +239,9 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (!a || !b) {
         const missing = !a ? fromName : toName;
         if (deferred.includes(missing)) {
-          legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a ?? null, to: b ?? null }));
+          legs.push(
+            mapsOnlyLeg(fromName, toName, area, { capped: true, from: a ?? null, to: b ?? null }),
+          );
         } else {
           if (!unresolved.includes(missing)) unresolved.push(missing);
           legs.push(mapsOnlyLeg(fromName, toName, area, { from: a ?? null, to: b ?? null }));

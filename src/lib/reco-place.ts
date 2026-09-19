@@ -38,7 +38,13 @@ export function isCountryLevelPlace(place: RecoPlaceFields): boolean {
   const name = foldAccents(place.name);
   const country = foldAccents(place.country ?? "");
   const city = foldAccents(place.city ?? "");
-  return Boolean(name && country && name === country && (!city || city === country) && GENERIC_CATEGORIES.has(category));
+  return Boolean(
+    name &&
+    country &&
+    name === country &&
+    (!city || city === country) &&
+    GENERIC_CATEGORIES.has(category),
+  );
 }
 
 /** True when the saved row *is* a city/town, not a restaurant, hotel, etc. */

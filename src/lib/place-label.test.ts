@@ -70,7 +70,8 @@ const cafeDeFlore: NominatimHitLike = {
   lat: "48.854",
   lon: "2.332",
   name: "Café de Flore",
-  display_name: "Café de Flore, 172, Boulevard Saint-Germain, Saint-Germain-des-Prés, Paris, France",
+  display_name:
+    "Café de Flore, 172, Boulevard Saint-Germain, Saint-Germain-des-Prés, Paris, France",
   type: "cafe",
   addresstype: "amenity",
   importance: 0.4,
@@ -141,7 +142,10 @@ test("refineNominatimHits prefers the city and drops admin + France for Montreal
 });
 
 test("refineNominatimHits keeps the French village when the query asks for France", () => {
-  const refined = refineNominatimHits([montrealCanada, montrealFrance, montrealAdmin], "Montreal France");
+  const refined = refineNominatimHits(
+    [montrealCanada, montrealFrance, montrealAdmin],
+    "Montreal France",
+  );
   assert.ok(refined.some((hit) => hit.address?.["country"] === "France"));
   assert.equal(formatPlaceLine(refined[0]!), "Montréal, Occitania, France");
 });
@@ -190,7 +194,10 @@ test("refineNominatimHits keeps a country when the query is that country", () =>
 });
 
 test("formatTripLocation does not repeat a country already in the city line", () => {
-  assert.equal(formatTripLocation("Montreal, Quebec, Canada", "Canada"), "Montreal, Quebec, Canada");
+  assert.equal(
+    formatTripLocation("Montreal, Quebec, Canada", "Canada"),
+    "Montreal, Quebec, Canada",
+  );
   assert.equal(formatTripLocation("Montreal", "Canada"), "Montreal, Canada");
 });
 

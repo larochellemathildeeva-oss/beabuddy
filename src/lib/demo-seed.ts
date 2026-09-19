@@ -63,16 +63,96 @@ type SeedTrip = {
  */
 export const DEMO_RECOS: readonly SeedReco[] = [
   // Visited cities (globe + travel stats)
-  { name: "Lisbon", city: "Lisbon", country: "Portugal", lat: 38.7223, lon: -9.1393, pin_type: "visited", category: "City" },
-  { name: "Porto", city: "Porto", country: "Portugal", lat: 41.1579, lon: -8.6291, pin_type: "visited", category: "City" },
-  { name: "Paris", city: "Paris", country: "France", lat: 48.8566, lon: 2.3522, pin_type: "visited", category: "City" },
-  { name: "Lyon", city: "Lyon", country: "France", lat: 45.764, lon: 4.8357, pin_type: "visited", category: "City" },
-  { name: "Tokyo", city: "Tokyo", country: "Japan", lat: 35.6762, lon: 139.6503, pin_type: "visited", category: "City" },
-  { name: "Kyoto", city: "Kyoto", country: "Japan", lat: 35.0116, lon: 135.7681, pin_type: "visited", category: "City" },
-  { name: "Toronto", city: "Toronto", country: "Canada", lat: 43.6532, lon: -79.3832, pin_type: "visited", category: "City" },
-  { name: "Montreal", city: "Montreal", country: "Canada", lat: 45.5017, lon: -73.5673, pin_type: "visited", category: "City" },
-  { name: "Barcelona", city: "Barcelona", country: "Spain", lat: 41.3874, lon: 2.1686, pin_type: "visited", category: "City" },
-  { name: "New York", city: "New York", country: "United States", lat: 40.7128, lon: -74.006, pin_type: "visited", category: "City" },
+  {
+    name: "Lisbon",
+    city: "Lisbon",
+    country: "Portugal",
+    lat: 38.7223,
+    lon: -9.1393,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Porto",
+    city: "Porto",
+    country: "Portugal",
+    lat: 41.1579,
+    lon: -8.6291,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Paris",
+    city: "Paris",
+    country: "France",
+    lat: 48.8566,
+    lon: 2.3522,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Lyon",
+    city: "Lyon",
+    country: "France",
+    lat: 45.764,
+    lon: 4.8357,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Tokyo",
+    city: "Tokyo",
+    country: "Japan",
+    lat: 35.6762,
+    lon: 139.6503,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Kyoto",
+    city: "Kyoto",
+    country: "Japan",
+    lat: 35.0116,
+    lon: 135.7681,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Toronto",
+    city: "Toronto",
+    country: "Canada",
+    lat: 43.6532,
+    lon: -79.3832,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Montreal",
+    city: "Montreal",
+    country: "Canada",
+    lat: 45.5017,
+    lon: -73.5673,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "Barcelona",
+    city: "Barcelona",
+    country: "Spain",
+    lat: 41.3874,
+    lon: 2.1686,
+    pin_type: "visited",
+    category: "City",
+  },
+  {
+    name: "New York",
+    city: "New York",
+    country: "United States",
+    lat: 40.7128,
+    lon: -74.006,
+    pin_type: "visited",
+    category: "City",
+  },
 
   // Lisbon — dense for Opportunities demos
   {
@@ -584,7 +664,11 @@ export async function loadDemoSeed(): Promise<DemoSeedResult> {
           .select("id")
           .single();
         if (retry.error || !retry.data) {
-          return { ok: false, reason: "error", message: retry.error?.message ?? "Trip insert failed" };
+          return {
+            ok: false,
+            reason: "error",
+            message: retry.error?.message ?? "Trip insert failed",
+          };
         }
         tripId = retry.data.id;
       } else {

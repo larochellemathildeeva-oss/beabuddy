@@ -107,9 +107,7 @@ export async function withModelFallback<T>(
   return runModelChain(ids, (id, index) => run(modelForId(id)), {
     onStepDown: (fromIndex, error) => {
       const reason = isRateLimited(error) ? "rate-limited" : "overloaded";
-      console.error(
-        `[ai] ${ids[fromIndex]} ${reason}, stepping down to ${ids[fromIndex + 1]}`,
-      );
+      console.error(`[ai] ${ids[fromIndex]} ${reason}, stepping down to ${ids[fromIndex + 1]}`);
     },
   });
 }

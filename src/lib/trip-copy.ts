@@ -20,7 +20,9 @@ export function tripCompanionsLine(
 ): string {
   const others = members.filter((m) => m.user_id !== myId);
   if (others.length === 0) return "Flying Solo";
-  const names = others.map((m) => m.display_name?.trim()).filter((name): name is string => Boolean(name));
+  const names = others
+    .map((m) => m.display_name?.trim())
+    .filter((name): name is string => Boolean(name));
   if (names.length === 0) {
     return others.length === 1 ? "With a friend" : `With ${others.length} friends`;
   }

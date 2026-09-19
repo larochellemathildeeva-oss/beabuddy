@@ -326,9 +326,7 @@ export function Tour({
               onClick={() => pick("quick")}
               className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
             >
-              <span className="block text-[15px] font-semibold">
-                A quick walk around the block
-              </span>
+              <span className="block text-[15px] font-semibold">A quick walk around the block</span>
               <span className="mt-0.5 block text-[13px] text-muted-foreground">
                 Béa points at the real screens, one at a time. About a minute.
               </span>

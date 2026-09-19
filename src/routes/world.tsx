@@ -536,7 +536,9 @@ function Stat({
       <p className={`font-display text-[22px] leading-none ${accent ? "text-primary" : ""}`}>
         {value}
       </p>
-      <p className="mt-1 text-[11.5px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[11.5px] uppercase tracking-[0.16em] text-muted-foreground">
+        {label}
+      </p>
       {hint && <p className="mt-0.5 text-[11.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );

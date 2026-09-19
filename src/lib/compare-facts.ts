@@ -70,7 +70,8 @@ export function buildCompareFacts(
       recommendedBy: place.recommendedBy,
       source: place.source,
       alreadyBeen: place.alreadyBeen,
-      metresFromHome: home.coords && isLatLon(place) ? Math.round(haversine(home.coords, place)) : null,
+      metresFromHome:
+        home.coords && isLatLon(place) ? Math.round(haversine(home.coords, place)) : null,
     })),
   };
 }
@@ -103,11 +104,15 @@ export function factsPrompt(facts: CompareFacts): string {
   }
 
   if (facts.homeCity && !facts.homeGeocoded) {
-    lines.push(`Home city is ${facts.homeCity}, but it could not be located — omit distance from home.`);
+    lines.push(
+      `Home city is ${facts.homeCity}, but it could not be located — omit distance from home.`,
+    );
   }
 
   if (!facts.pairs.length) {
-    lines.push("No coordinates were available, so distances between places are unknown — omit them.");
+    lines.push(
+      "No coordinates were available, so distances between places are unknown — omit them.",
+    );
   }
 
   return lines.join("\n");

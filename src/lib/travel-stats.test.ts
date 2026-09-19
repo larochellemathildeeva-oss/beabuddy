@@ -41,7 +41,13 @@ describe("deriveTravelStats", () => {
   });
 
   it("only counts pins you have actually been to", () => {
-    const wishlist = pin({ id: "w", name: "Kyoto", city: "Kyoto", country: "Japan", type: "wishlist" });
+    const wishlist = pin({
+      id: "w",
+      name: "Kyoto",
+      city: "Kyoto",
+      country: "Japan",
+      type: "wishlist",
+    });
     const been = pin({ id: "b", name: "Osaka", city: "Osaka", country: "Japan", type: "visited" });
     assert.equal(deriveTravelStats([], [wishlist]).cities, 0);
     assert.equal(deriveTravelStats([], [wishlist, been]).cities, 1);
@@ -57,7 +63,9 @@ describe("deriveTravelStats", () => {
       { city: "Lisbon", country: "Portugal", taken_at: "2026-04-02" },
       { city: "Lisbon", country: "Portugal", taken_at: "2026-04-03" },
     ];
-    const stats = deriveTravelStats(photos, [pin({ id: "a", name: "Tokyo", city: "Tokyo", country: "Japan" })]);
+    const stats = deriveTravelStats(photos, [
+      pin({ id: "a", name: "Tokyo", city: "Tokyo", country: "Japan" }),
+    ]);
     assert.equal(stats.photos, 2);
     assert.equal(stats.days, 2);
     assert.equal(stats.cities, 2);

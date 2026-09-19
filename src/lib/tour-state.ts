@@ -61,10 +61,7 @@ export function saveTourProgress(storage: TourStorage, progress: TourProgress): 
  * The walk is opt-in from You → Replay. Auto-opening it felt like a demo
  * starting without being asked.
  */
-export function shouldAutoOpenTour(
-  _storage: TourStorage,
-  context: { signedIn: boolean },
-): boolean {
+export function shouldAutoOpenTour(_storage: TourStorage, context: { signedIn: boolean }): boolean {
   if (!context.signedIn) return false;
   return false;
 }

@@ -91,7 +91,8 @@ export const comparePlaces = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ComparisonResult> => {
     const { withModelFallback, judgmentCall } = await import("@/lib/ai.server");
-    const { getTravelPreferences, preferencePrompt } = await import("@/lib/travel-preferences.server");
+    const { getTravelPreferences, preferencePrompt } =
+      await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
     const homeCoords = await geocodeHome(preferences.homeCity);
     const facts = buildCompareFacts(

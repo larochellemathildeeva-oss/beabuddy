@@ -19,7 +19,10 @@ test("htmlToPlainText caps length", () => {
 });
 
 test("loneHttpsUrl accepts a single https link", () => {
-  assert.equal(loneHttpsUrl("  https://www.timeout.com/lisbon/things-to-do  "), "https://www.timeout.com/lisbon/things-to-do");
+  assert.equal(
+    loneHttpsUrl("  https://www.timeout.com/lisbon/things-to-do  "),
+    "https://www.timeout.com/lisbon/things-to-do",
+  );
   assert.equal(loneHttpsUrl("https://x.com\nand another line"), null);
   assert.equal(loneHttpsUrl("Bar Raval"), null);
   assert.equal(loneHttpsUrl("http://example.com"), null);

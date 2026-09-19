@@ -42,7 +42,11 @@ export const getRates = createServerFn({ method: "GET" })
       { signal: AbortSignal.timeout(5_000) },
     );
     if (!res.ok) throw new Error("Could not reach the exchange rate service");
-    const json = (await res.json()) as { base: string; date: string; rates: Record<string, number> };
+    const json = (await res.json()) as {
+      base: string;
+      date: string;
+      rates: Record<string, number>;
+    };
     return {
       base: json.base ?? data.base,
       date: json.date ?? new Date().toISOString().slice(0, 10),

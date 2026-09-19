@@ -31,7 +31,10 @@ const HINTS: Array<{ tag: string; re: RegExp }> = [
   { tag: "Wildlife", re: /\b(wildlife|safari|zoo|aquarium|birding)\b/i },
   { tag: "Wellness & spa", re: /\b(spa|wellness|onsen|hammam|thermal)\b/i },
   { tag: "Photography", re: /\b(viewpoint|lookout|photogenic|skyline view)\b/i },
-  { tag: "Local experiences", re: /\b(local experience|neighbourhood gem|neighborhood gem|artisan workshop)\b/i },
+  {
+    tag: "Local experiences",
+    re: /\b(local experience|neighbourhood gem|neighborhood gem|artisan workshop)\b/i,
+  },
   { tag: "Gluten free", re: /\bgluten[-\s]?free\b/i },
   { tag: "Halal", re: /\bhalal\b/i },
   { tag: "Kosher", re: /\bkosher\b/i },
@@ -63,9 +66,14 @@ const CATEGORY_TO_TAG: Record<string, string> = {
   spa: "Wellness & spa",
 };
 
-export function isMissingTravelTagsColumn(error: { message?: string; code?: string } | null | undefined): boolean {
+export function isMissingTravelTagsColumn(
+  error: { message?: string; code?: string } | null | undefined,
+): boolean {
   const msg = (error?.message ?? "").toLowerCase();
-  return msg.includes("travel_tags") && (/does not exist|schema cache|could not find/i.test(msg) || error?.code === "PGRST204");
+  return (
+    msg.includes("travel_tags") &&
+    (/does not exist|schema cache|could not find/i.test(msg) || error?.code === "PGRST204")
+  );
 }
 
 export function normalizeTravelTags(tags: string[] | null | undefined): string[] {

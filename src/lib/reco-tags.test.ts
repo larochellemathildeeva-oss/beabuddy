@@ -1,12 +1,19 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { isMissingTravelTagsColumn, normalizeTravelTags, suggestTravelTags, tagsForSave } from "./reco-tags.ts";
+import {
+  isMissingTravelTagsColumn,
+  normalizeTravelTags,
+  suggestTravelTags,
+  tagsForSave,
+} from "./reco-tags.ts";
 
 test("suggestTravelTags maps a museum and a café", () => {
   assert.deepEqual(suggestTravelTags({ name: "Royal Ontario Museum", category: "Museum" }), [
     "Museums",
   ]);
-  assert.ok(suggestTravelTags({ name: "Café de Flore", category: "Cafe" }).includes("Coffee shops"));
+  assert.ok(
+    suggestTravelTags({ name: "Café de Flore", category: "Cafe" }).includes("Coffee shops"),
+  );
 });
 
 test("suggestTravelTags picks food tags from the category", () => {
@@ -33,12 +40,16 @@ test("tagsForSave keeps a user's pick over a fresh guess", () => {
 });
 
 test("normalizeTravelTags keeps only known place tags", () => {
-  assert.deepEqual(normalizeTravelTags(["Museums", "Slow mornings", "museums", "bogus"]), ["Museums"]);
+  assert.deepEqual(normalizeTravelTags(["Museums", "Slow mornings", "museums", "bogus"]), [
+    "Museums",
+  ]);
 });
 
 test("isMissingTravelTagsColumn recognises PostgREST wording", () => {
   assert.equal(
-    isMissingTravelTagsColumn({ message: "Could not find the 'travel_tags' column of 'recommendations'" }),
+    isMissingTravelTagsColumn({
+      message: "Could not find the 'travel_tags' column of 'recommendations'",
+    }),
     true,
   );
   assert.equal(isMissingTravelTagsColumn({ message: "permission denied" }), false);

@@ -38,7 +38,10 @@ export function dayTripCity(places: { city?: string | null }[]): string {
   return best;
 }
 
-export function matchDayTripPlace<T extends { name: string }>(title: string, places: T[]): T | undefined {
+export function matchDayTripPlace<T extends { name: string }>(
+  title: string,
+  places: T[],
+): T | undefined {
   const needle = foldAccents(title);
   if (!needle) return undefined;
   return (

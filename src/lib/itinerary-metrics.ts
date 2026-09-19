@@ -79,7 +79,13 @@ export function computeItineraryMetrics(
 
 export function formatPlanForCompare(
   label: string,
-  items: { day_date: string | null; time_label: string | null; kind: string; title: string; detail: string | null }[],
+  items: {
+    day_date: string | null;
+    time_label: string | null;
+    kind: string;
+    title: string;
+    detail: string | null;
+  }[],
 ): string {
   if (!items.length) return `${label}: (no stops parsed)`;
   return [

@@ -23,7 +23,10 @@ const INDOOR = /\b(museum|gallery|indoor|rain|shop|mall|cafe|café)\b/i;
 const FOOD = /\b(food|restaurant|eat|lunch|dinner|breakfast|market|cafe|café)\b/i;
 
 function haystack(pin: Pin): string {
-  return [pin.name, pin.city, pin.country, pin.category, pin.notes].filter(Boolean).join(" ").toLowerCase();
+  return [pin.name, pin.city, pin.country, pin.category, pin.notes]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
 
 function priorityBoosts(priorities: string | null | undefined) {
@@ -38,7 +41,11 @@ function priorityBoosts(priorities: string | null | undefined) {
 }
 
 /** Higher is better. Pure function — safe to unit test. */
-export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext = {}): OpportunityScore {
+export function scoreOpportunity(
+  pin: Pin,
+  prefs: ScorePrefs,
+  ctx: ScoreContext = {},
+): OpportunityScore {
   const now = ctx.now ?? new Date();
   const boosts = priorityBoosts(prefs.priorities);
   const text = haystack(pin);
@@ -82,7 +89,10 @@ export function scoreOpportunity(pin: Pin, prefs: ScorePrefs, ctx: ScoreContext 
     reasons.push(`Matches ${tagHits[0]}`);
   }
 
-  if (pin.country && prefs.preferredCountries.some((c) => c.toLowerCase() === pin.country.toLowerCase())) {
+  if (
+    pin.country &&
+    prefs.preferredCountries.some((c) => c.toLowerCase() === pin.country.toLowerCase())
+  ) {
     score += 10;
     reasons.push(`You love ${pin.country}`);
   }

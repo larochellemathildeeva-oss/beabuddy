@@ -99,7 +99,16 @@ export const preferenceGroups: { title: string; hint: string; tags: string[] }[]
   {
     title: "Where you stay",
     hint: "The kind of place you book.",
-    tags: ["Boutique hotels", "Hostels", "Apartments", "Family stays", "Camping", "Resorts", "Central", "Quiet streets"],
+    tags: [
+      "Boutique hotels",
+      "Hostels",
+      "Apartments",
+      "Family stays",
+      "Camping",
+      "Resorts",
+      "Central",
+      "Quiet streets",
+    ],
   },
   {
     title: "Budget",
@@ -114,7 +123,14 @@ export const preferenceGroups: { title: string; hint: string; tags: string[] }[]
   {
     title: "Getting around",
     hint: "How you like to move.",
-    tags: ["Walk everywhere", "Public transport", "Rent a car", "Cycling", "Trains over planes", "Step-free access"],
+    tags: [
+      "Walk everywhere",
+      "Public transport",
+      "Rent a car",
+      "Cycling",
+      "Trains over planes",
+      "Step-free access",
+    ],
   },
   {
     title: "Climate",
@@ -122,7 +138,6 @@ export const preferenceGroups: { title: string; hint: string; tags: string[] }[]
     tags: ["Hot & sunny", "Mild", "Cold & snowy", "Avoid humidity", "Shoulder season"],
   },
 ];
-
 
 export const pinLabel: Record<PinType, string> = {
   visited: "Visited",

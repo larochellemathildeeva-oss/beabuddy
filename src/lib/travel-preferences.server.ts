@@ -30,9 +30,7 @@ const empty: TravelPreferences = {
   homeCity: null,
 };
 
-export async function getTravelPreferences(
-  context: PreferenceContext,
-): Promise<TravelPreferences> {
+export async function getTravelPreferences(context: PreferenceContext): Promise<TravelPreferences> {
   const { data } = await context.supabase
     .from("profiles")
     .select(

@@ -66,7 +66,7 @@ test("asDraftItems accepts starter strings or structured rows", () => {
 test("isMissingSectionColumn recognises PostgREST wording", () => {
   assert.equal(
     isMissingSectionColumn({
-      message: 'Could not find the \'section\' column of \'packing_items\' in the schema cache',
+      message: "Could not find the 'section' column of 'packing_items' in the schema cache",
     }),
     true,
   );

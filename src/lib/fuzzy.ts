@@ -11,12 +11,7 @@
 
 /** "Café Cõrrer" -> "cafe correr". Strips diacritics, lowercases, collapses space. */
 export function foldAccents(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 /**

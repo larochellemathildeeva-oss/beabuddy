@@ -12,7 +12,9 @@ import {
   shouldAutoOpenTour,
 } from "./tour-state.ts";
 
-function fakeStorage(seed: Record<string, string> = {}): TourStorage & { map: Map<string, string> } {
+function fakeStorage(
+  seed: Record<string, string> = {},
+): TourStorage & { map: Map<string, string> } {
   const map = new Map(Object.entries(seed));
   return {
     map,
@@ -65,7 +67,14 @@ describe("tour storage lifecycle", () => {
   });
 
   it("ignores corrupt or hand-edited progress rather than throwing", () => {
-    for (const raw of ["not json", "{}", '{"mode":"sideways","step":2}', '{"mode":"quick"}', '{"mode":"quick","step":-1}', '{"mode":"quick","step":1.5}']) {
+    for (const raw of [
+      "not json",
+      "{}",
+      '{"mode":"sideways","step":2}',
+      '{"mode":"quick"}',
+      '{"mode":"quick","step":-1}',
+      '{"mode":"quick","step":1.5}',
+    ]) {
       assert.equal(readTourProgress(fakeStorage({ [TOUR_PROGRESS_KEY]: raw })), null, raw);
     }
   });

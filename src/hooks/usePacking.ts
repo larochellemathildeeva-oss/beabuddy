@@ -221,10 +221,13 @@ export function usePacking(tripId?: string | null) {
     await supabase.from("packing_items").update({ packed }).eq("id", id);
   }, []);
 
-  const updateItem = useCallback(async (id: string, patch: Partial<Pick<PackItemRow, "label" | "quantity">>) => {
-    setItems((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-    await supabase.from("packing_items").update(patch).eq("id", id);
-  }, []);
+  const updateItem = useCallback(
+    async (id: string, patch: Partial<Pick<PackItemRow, "label" | "quantity">>) => {
+      setItems((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+      await supabase.from("packing_items").update(patch).eq("id", id);
+    },
+    [],
+  );
 
   const removeItem = useCallback(async (id: string) => {
     setItems((s) => s.filter((x) => x.id !== id));

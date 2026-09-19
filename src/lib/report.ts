@@ -53,7 +53,10 @@ export async function fileReport(input: ReportInput): Promise<boolean> {
       detail: clip(input.detail ? redact(input.detail) : null, LIMITS.detail),
       path: clip(typeof window === "undefined" ? null : window.location.pathname, LIMITS.path),
       app_version: APP_VERSION,
-      user_agent: clip(typeof navigator === "undefined" ? null : navigator.userAgent, LIMITS.userAgent),
+      user_agent: clip(
+        typeof navigator === "undefined" ? null : navigator.userAgent,
+        LIMITS.userAgent,
+      ),
     });
     return !error;
   } catch {

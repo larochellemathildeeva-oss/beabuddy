@@ -6,7 +6,18 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", ".output", ".vinxi"] },
+  /**
+   * Generated output is not ours to format.
+   *
+   * `src/integrations/supabase/types.ts` is written by the Supabase CLI and
+   * carried 896 of the tree's 1,088 lint errors — all of them Prettier
+   * complaining about a file no human edits. That one number is why lint ran
+   * with continue-on-error in CI and therefore gated nothing. Ignoring it
+   * lets lint block like typecheck and test do.
+   */
+  {
+    ignores: ["dist", ".output", ".vinxi", "src/integrations/supabase/types.ts"],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

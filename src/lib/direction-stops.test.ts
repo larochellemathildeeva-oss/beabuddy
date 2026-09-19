@@ -19,9 +19,14 @@ test("placeHintFromDetail keeps a street or venue and drops prose", () => {
     placeHintFromDetail("1038 Canada Place, Vancouver; suggest booking a harbor-view luxury room."),
     "1038 Canada Place, Vancouver",
   );
-  assert.equal(placeHintFromDetail("Fairmont Pacific Rim; suggest reserving an evening table"), "Fairmont Pacific Rim");
   assert.equal(
-    placeHintFromDetail("Browse luxury flagships including Prada, Gucci, and Tiffany & Co. along Vancouver"),
+    placeHintFromDetail("Fairmont Pacific Rim; suggest reserving an evening table"),
+    "Fairmont Pacific Rim",
+  );
+  assert.equal(
+    placeHintFromDetail(
+      "Browse luxury flagships including Prada, Gucci, and Tiffany & Co. along Vancouver",
+    ),
     null,
   );
   assert.equal(placeHintFromDetail(""), null);
@@ -34,7 +39,10 @@ test("looksLikeStreetAddress requires a leading street number", () => {
 
 test("addressForStop prefers the address column, then the detail hint", () => {
   assert.equal(addressForStop({ address: "  9 Main St  ", detail: "ignored" }), "9 Main St");
-  assert.equal(addressForStop({ address: null, detail: "217 Carrall St; suggest booking" }), "217 Carrall St");
+  assert.equal(
+    addressForStop({ address: null, detail: "217 Carrall St; suggest booking" }),
+    "217 Carrall St",
+  );
 });
 
 test("timelineStopsForDirections skips Walk/Drive rows already on the timeline", () => {
@@ -103,11 +111,21 @@ test("placeQueryCandidates prefers a street or venue over a long activity title"
     "Alberni Street",
     "Alberni Street Luxury Shopping",
   ]);
-  assert.deepEqual(placeQueryCandidates("Lunch at Nightingale", "1017 W Hastings St"), ["1017 W Hastings St"]);
-  assert.equal(placeQueryCandidates("Check in at Fairmont Pacific Rim", "1038 Canada Place, Vancouver")[0], "1038 Canada Place, Vancouver");
-  assert.equal(placeQueryCandidates("South Granville Boutiques & Art Galleries", "Granville St")[0], "Granville St");
+  assert.deepEqual(placeQueryCandidates("Lunch at Nightingale", "1017 W Hastings St"), [
+    "1017 W Hastings St",
+  ]);
+  assert.equal(
+    placeQueryCandidates("Check in at Fairmont Pacific Rim", "1038 Canada Place, Vancouver")[0],
+    "1038 Canada Place, Vancouver",
+  );
+  assert.equal(
+    placeQueryCandidates("South Granville Boutiques & Art Galleries", "Granville St")[0],
+    "Granville St",
+  );
   assert.ok(
-    placeQueryCandidates("South Granville Boutiques & Art Galleries", null).includes("South Granville"),
+    placeQueryCandidates("South Granville Boutiques & Art Galleries", null).includes(
+      "South Granville",
+    ),
   );
 });
 

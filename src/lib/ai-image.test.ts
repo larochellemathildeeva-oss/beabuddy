@@ -1,10 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import {
-  filePartFromDataUrl,
-  flattenGeminiPromptFiles,
-  unwrapGeminiFileData,
-} from "./ai-image.ts";
+import { filePartFromDataUrl, flattenGeminiPromptFiles, unwrapGeminiFileData } from "./ai-image.ts";
 
 test("filePartFromDataUrl strips the data-URL wrapper", () => {
   const part = filePartFromDataUrl("data:image/jpeg;base64,abc123");

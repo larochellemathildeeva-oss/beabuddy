@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DEMO_NOTES, DEMO_PLACES, DEMO_RECOS, DEMO_SOURCE, DEMO_TRIPS, demoGlobePins, isDemoTrip } from "./demo-seed.ts";
+import {
+  DEMO_NOTES,
+  DEMO_PLACES,
+  DEMO_RECOS,
+  DEMO_SOURCE,
+  DEMO_TRIPS,
+  demoGlobePins,
+  isDemoTrip,
+} from "./demo-seed.ts";
 
 describe("demo seed", () => {
   it("covers enough cities, pin types and a dense Lisbon cluster", () => {

@@ -36,7 +36,10 @@ export function parseCityListText(raw: string): string[] {
   const parts =
     lines.length === 1
       ? (() => {
-          const csv = lines[0]!.split(/\s*,\s*/).map((bit) => bit.trim()).filter(Boolean);
+          const csv = lines[0]!
+            .split(/\s*,\s*/)
+            .map((bit) => bit.trim())
+            .filter(Boolean);
           return csv.length >= 3 ? csv : lines;
         })()
       : lines;
@@ -103,14 +106,20 @@ function isCountryHit(hit: ParsedPlace): boolean {
   return foldAccents(hit.category ?? "") === "country";
 }
 
-export function draftsToCities(drafts: CityListDraft[], pinType: PinType, source: string): NewReco[] {
+export function draftsToCities(
+  drafts: CityListDraft[],
+  pinType: PinType,
+  source: string,
+): NewReco[] {
   return drafts
     .filter((draft) => !draft.skip)
     .flatMap((draft) => {
       const hit = draft.chosen != null ? draft.hits[draft.chosen] : undefined;
       if (hit?.lat == null || hit.lon == null) return [];
       const country = isCountryHit(hit);
-      const label = (country ? hit.country || hit.name : hit.city || hit.name || draft.originalName).trim();
+      const label = (
+        country ? hit.country || hit.name : hit.city || hit.name || draft.originalName
+      ).trim();
       const reco: NewReco = {
         name: label,
         city: label,
