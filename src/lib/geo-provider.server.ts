@@ -14,9 +14,30 @@ import { PUBLIC_PROVIDER, locationIqProvider, type GeoProvider } from "./geo-end
  * configuring this, which is what makes the switch safe to make and safe to
  * undo.
  */
+let announced = false;
+
 export function geoProvider(): GeoProvider {
   const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
-  return token ? locationIqProvider(token) : PUBLIC_PROVIDER;
+  const provider = token ? locationIqProvider(token) : PUBLIC_PROVIDER;
+
+  /**
+   * Say once, in the server log, which service is answering.
+   *
+   * Setting the token is a deploy-time change with no visible effect beyond
+   * "things feel quicker", which is not something anyone should have to judge
+   * by feel. One line at first use answers it. The token itself is never
+   * logged — only its length, which is enough to tell a real token from an
+   * empty string or a stray pair of quotes.
+   */
+  if (!announced) {
+    announced = true;
+    console.info(
+      token
+        ? `[geo] LocationIQ (token ${token.length} chars, ${provider.gapMs}ms between lookups)`
+        : "[geo] OpenStreetMap public endpoints — no LOCATIONIQ_TOKEN set, 1.1s between lookups",
+    );
+  }
+  return provider;
 }
 
 /** Whether a paid provider is configured, for the pace a batch can keep. */
