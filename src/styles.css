@@ -700,48 +700,80 @@
 }
 
 /**
- * Béa's colouring.
+ * Béa's colouring, taken from the app icon.
  *
- * A fawn coat with a darker mask, which is the common Frenchie and the one the
- * logo wears. Defined as tokens so the dark theme can drop the coat's
- * lightness — the light-mode fawn glows against a near-black card.
+ * The icon is a sticker: a cream coat under a bold black outline, pink inside
+ * the bat ears, a yellow bandana. The outline is the thing that makes it read
+ * as her rather than as a dog-shaped silhouette, so it is on every shape.
+ *
+ * Only the coat shifts for dark mode, and only a little: a cream that bright
+ * on a near-black card glares, but drop it far and she stops being the dog on
+ * the icon.
  */
 :root {
-  --bea-coat: oklch(0.86 0.045 72);
-  --bea-coat-far: oklch(0.78 0.04 70);
-  --bea-muzzle: oklch(0.42 0.03 60);
-  --bea-nose: oklch(0.28 0.025 55);
+  --bea-coat: oklch(0.965 0.012 88);
+  --bea-coat-far: oklch(0.885 0.018 84);
+  --bea-ink: oklch(0.21 0.015 60);
+  --bea-ear-inner: oklch(0.79 0.075 28);
+  --bea-tongue: oklch(0.71 0.13 18);
+  --bea-nose: oklch(0.26 0.02 55);
+  --bea-scarf: oklch(0.85 0.135 95);
+  --bea-scarf-leaf: oklch(0.62 0.12 145);
 }
 
 :root:not([data-theme="light"]) {
   @media (prefers-color-scheme: dark) {
-    --bea-coat: oklch(0.72 0.05 72);
-    --bea-coat-far: oklch(0.6 0.045 70);
-    --bea-muzzle: oklch(0.32 0.028 58);
-    --bea-nose: oklch(0.2 0.02 55);
+    --bea-coat: oklch(0.9 0.014 86);
+    --bea-coat-far: oklch(0.8 0.02 84);
   }
 }
 
 :root[data-theme="dark"] {
-  --bea-coat: oklch(0.72 0.05 72);
-  --bea-coat-far: oklch(0.6 0.045 70);
-  --bea-muzzle: oklch(0.32 0.028 58);
-  --bea-nose: oklch(0.2 0.02 55);
+  --bea-coat: oklch(0.9 0.014 86);
+  --bea-coat-far: oklch(0.8 0.02 84);
+}
+
+/* The sticker outline: one stroke on everything, joined round. */
+.bea-dog {
+  stroke: var(--bea-ink);
+  stroke-width: 1.35;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 .bea-dog .bea-coat,
 .bea-dog .bea-coat-near > * {
   fill: var(--bea-coat);
 }
+.bea-dog .bea-coat-far,
 .bea-dog .bea-coat-far > * {
   fill: var(--bea-coat-far);
 }
-.bea-dog .bea-muzzle {
-  fill: var(--bea-muzzle);
+.bea-dog .bea-ear-inner {
+  fill: var(--bea-ear-inner);
+  stroke-width: 0.9;
+}
+.bea-dog .bea-tongue {
+  fill: var(--bea-tongue);
+  stroke-width: 1.05;
 }
 .bea-dog .bea-nose {
   fill: var(--bea-nose);
+  stroke-width: 0.9;
+}
+.bea-dog .bea-eye {
+  fill: var(--bea-ink);
+  stroke: none;
+}
+.bea-dog .bea-eye-light {
+  fill: var(--bea-coat);
+  stroke: none;
 }
 .bea-dog .bea-scarf {
-  fill: var(--color-primary);
+  fill: var(--bea-scarf);
+  stroke-width: 1.05;
+}
+.bea-dog .bea-scarf-leaf {
+  fill: var(--bea-scarf-leaf);
+  stroke: none;
 }

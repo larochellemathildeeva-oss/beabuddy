@@ -1,63 +1,76 @@
 /**
- * Béa in profile, mid-trot.
+ * Béa in profile, mid-trot — the app icon, side on and moving.
  *
- * A French bulldog reads from three things and very little else: the tall
- * upright bat ears, the flat pushed-in face, and a body that is compact and
- * deep-chested on legs far too short for it. The first draft of this got all
- * three wrong and came out a dachshund — a long low sausage with a bump for an
- * ear — so the proportions here are deliberate: the body is barely twice as
- * long as it is deep, the head is nearly as tall as the body, and the ear is a
- * third of the whole animal and wider at its base than its tip.
+ * The icon is a sticker: a cream French bulldog under a bold black outline,
+ * pink inside the bat ears — which are as
+ * wide at the base as they are tall, the tell that separates them from a
+ * rabbit's, tongue out, yellow bandana. This is that dog
+ * turned sideways and given legs, so the loading state is recognisably her
+ * rather than a generic dog shape.
  *
- * Drawn rather than photographed: it costs no asset, takes the theme's colours
- * in both schemes, and the parts move independently, which a picture could
- * not. Diagonal pairs alternate — a trot, which is the gait a short-legged dog
- * actually uses and the one that reads as running at this size.
+ * Draw order is doing real work here. The ears come before the head so the
+ * head covers their bases — a bat ear rises from behind the skull, and drawing
+ * it last left an outline slicing across her forehead. The far side is drawn
+ * first and a shade darker so four legs read as depth rather than a tangle.
+ *
+ * Drawn rather than photographed: no asset, colours that follow the theme, and
+ * parts that move independently, which a picture of her could not do. Diagonal
+ * pairs alternate — a trot, the gait a short-legged dog actually uses, and the
+ * one that reads as running at this size.
  */
 export function BeaDog({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 64 44"
-      className={`bea-dog aspect-[64/44] h-auto ${className}`}
+      viewBox="0 0 66 44"
+      className={`bea-dog aspect-[66/44] h-auto ${className}`}
       role="img"
       aria-label="Béa, a French bulldog, running"
     >
-      {/* Far side first, a shade darker, so four legs read as depth rather
-          than a tangle. */}
       <g className="bea-coat-far">
-        <rect className="bea-part-leg-aft-far" x="21" y="26" width="5.5" height="12" rx="2.75" />
-        <rect className="bea-part-leg-fore-far" x="38" y="26" width="5.5" height="12" rx="2.75" />
-        {/* The second ear, behind the head. */}
-        <path d="M43.5 14.5 46 5.2q1.5-2.6 3 0l2.5 9.3z" />
+        <rect className="bea-part-leg-aft-far" x="21" y="27" width="5.5" height="12" rx="2.75" />
+        <rect className="bea-part-leg-fore-far" x="38" y="27" width="5.5" height="12" rx="2.75" />
       </g>
 
       <g className="bea-part-body">
-        {/* A stub, not a tail. */}
-        <rect className="bea-part-tail bea-coat" x="13" y="18" width="7" height="6" rx="3" />
+        {/* Both ears first, so the head hides where they join it. */}
+        <path className="bea-coat-far" d="M41.3 17.5C41.3 6.2 43.2 3 45.8 3S50.3 6.2 50.3 17.5z" />
+        <g className="bea-part-ear">
+          <path className="bea-coat" d="M47 17.5C47 3.4 49.4 0 52.4 0S57.8 3.4 57.8 17.5z" />
+          <path className="bea-ear-inner" d="M49.8 16C49.8 5.6 51.2 3.2 52.4 3.2S55 5.6 55 16z" />
+        </g>
 
-        {/* Compact and deep: barely twice as long as it is deep. */}
-        <rect x="16" y="14" width="30" height="17" rx="8" className="bea-coat" />
+        {/* A stub, not a tail. */}
+        <rect className="bea-part-tail bea-coat" x="13" y="19" width="7" height="6" rx="3" />
+
+        {/* Compact and deep-chested: barely twice as long as it is deep. */}
+        <rect x="16" y="15" width="30" height="17" rx="8" className="bea-coat" />
 
         {/* Head nearly as tall as the body, and square with it. */}
-        <rect x="39" y="8" width="21" height="20" rx="7" className="bea-coat" />
+        <rect x="39" y="11" width="21" height="18" rx="7" className="bea-coat" />
 
-        {/* The bat ear — wide at the base, upright, rounded at the tip. */}
-        <path className="bea-part-ear bea-coat" d="M49 15 52 3.4q1.8-3 3.6 0L58.6 15z" />
+        {/* Flat pushed-in face: a shelf on the front, not a snout. */}
+        <rect x="53.5" y="17" width="10" height="9.5" rx="4.5" className="bea-coat" />
+        <circle cx="61" cy="20.6" r="1.9" className="bea-nose" />
 
-        {/* Flat face: the muzzle is a shallow shelf, not a snout. */}
-        <rect x="55" y="17" width="8" height="8" rx="3.6" className="bea-muzzle" />
-        <circle cx="61.4" cy="19.6" r="1.9" className="bea-nose" />
-        <circle cx="48.5" cy="15.5" r="1.7" className="bea-nose" />
+        {/* Tongue out, as she is drawn on the icon. */}
+        <path
+          className="bea-tongue"
+          d="M57.8 26.4q2.8-1 4.9.4c0 2.7-1 4.4-2.5 4.4s-2.4-1.8-2.4-4.8z"
+        />
 
-        {/* The bandana, tucked under the jaw where a collar sits — the first
-            attempt floated it out on her flank. */}
-        <path className="bea-scarf" d="M45.5 26q4 2.2 8 0l-4 6.4z" />
+        {/* One eye in profile, with the sticker's highlight. */}
+        <circle cx="50.2" cy="19" r="2.4" className="bea-eye" />
+        <circle cx="51.1" cy="18.1" r="0.8" className="bea-eye-light" />
+
+        {/* The yellow bandana, knotted at the throat and clear of the legs. */}
+        <path className="bea-scarf" d="M47.5 28q4.3 2.5 8.6 0L51.8 35z" />
+        <circle cx="50.2" cy="30.6" r="0.9" className="bea-scarf-leaf" />
+        <circle cx="53" cy="29.8" r="0.75" className="bea-scarf-leaf" />
       </g>
 
-      {/* Near side last, in front of the body. */}
       <g className="bea-coat-near">
-        <rect className="bea-part-leg-aft-near" x="24" y="26" width="6" height="12" rx="3" />
-        <rect className="bea-part-leg-fore-near" x="41" y="26" width="6" height="12" rx="3" />
+        <rect className="bea-part-leg-aft-near" x="24" y="27" width="6" height="12" rx="3" />
+        <rect className="bea-part-leg-fore-near" x="41" y="27" width="6" height="12" rx="3" />
       </g>
     </svg>
   );
