@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -50,6 +50,7 @@ import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
+import { dayShapeLine, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
@@ -307,6 +308,25 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
+  /**
+   * The clock, for the line that says where you are in today.
+   *
+   * Ticks every minute rather than every render: a plan you are standing in
+   * the middle of is a different document from one you are reading at home,
+   * and the only thing that turns one into the other is the time.
+   */
+  const [minutesNow, setMinutesNow] = useState(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const now = new Date();
+      setMinutesNow(now.getHours() * 60 + now.getMinutes());
+    }, 60_000);
+    return () => clearInterval(tick);
+  }, []);
+  const todayKey = toLocalISODate(new Date());
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
   const [tripForm, setTripForm] = useState({
@@ -545,6 +565,10 @@ export function TripDetail({
                 <div className="space-y-3">
                   {timelineGroups.map((group) => {
                     const dayOpen = !collapsedDays[group.key];
+                    const isToday = group.key === todayKey;
+                    const divider = isToday ? nowDivider(group.items, minutesNow) : null;
+                    const coming = isToday ? nextUp(group.items, minutesNow) : null;
+                    const untilNext = minutesUntilLabel(coming, minutesNow);
                     return (
                       <div
                         key={group.key || "undated"}
@@ -563,12 +587,22 @@ export function TripDetail({
                             className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
                           >
                             <span className="min-w-0">
-                              <span className="block font-display text-[16.5px] leading-tight">
+                              <span className="block font-display text-[20px] leading-tight">
                                 {group.label}
                               </span>
-                              <span className="block text-[12px] text-muted-foreground">
-                                {group.items.length} {group.items.length === 1 ? "thing" : "things"}
+                              <span className="block text-[12.5px] text-muted-foreground">
+                                {/* What the day is made of, not just how big it
+                                    is: eighteen museums and eighteen meals are
+                                    not the same Tuesday. */}
+                                {dayShapeLine(group.items) ||
+                                  `${group.items.length} ${group.items.length === 1 ? "thing" : "things"}`}
                               </span>
+                              {coming && (
+                                <span className="mt-0.5 block text-[12.5px] font-semibold text-primary">
+                                  Next: {coming.title}
+                                  {untilNext ? ` · ${untilNext}` : ""}
+                                </span>
+                              )}
                             </span>
                             <ChevronDown
                               className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
@@ -593,25 +627,28 @@ export function TripDetail({
                         </div>
                         {dayOpen && (
                           <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
-                            {group.items.map((item) => (
-                              <TimelineEntry
-                                key={item.id}
-                                item={item}
-                                showDay={false}
-                                leg={legFor(itemIndexById.get(item.id) ?? -1)}
-                                editing={editingTimeline}
-                                {...(directionArea ? { near: directionArea } : {})}
-                                onEdit={(field) => board.setEditing(field)}
-                                onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                                onRemove={() => void removeTimelineItem(item)}
-                                onMove={(direction) => void board.moveItem(item.id, direction)}
-                                canMoveUp={canMove(board.items, item.id, -1)}
-                                canMoveDown={canMove(board.items, item.id, 1)}
-                                tripStart={trip.start_date}
-                                tripEnd={trip.end_date}
-                                onKeep={keepItemAsReco}
-                              />
+                            {group.items.map((item, dayIndex) => (
+                              <Fragment key={item.id}>
+                                {divider === dayIndex && <NowLine />}
+                                <TimelineEntry
+                                  item={item}
+                                  showDay={false}
+                                  leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                  editing={editingTimeline}
+                                  {...(directionArea ? { near: directionArea } : {})}
+                                  onEdit={(field) => board.setEditing(field)}
+                                  onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                  onRemove={() => void removeTimelineItem(item)}
+                                  onMove={(direction) => void board.moveItem(item.id, direction)}
+                                  canMoveUp={canMove(board.items, item.id, -1)}
+                                  canMoveDown={canMove(board.items, item.id, 1)}
+                                  tripStart={trip.start_date}
+                                  tripEnd={trip.end_date}
+                                  onKeep={keepItemAsReco}
+                                />
+                              </Fragment>
                             ))}
+                            {divider === group.items.length && <NowLine done />}
                           </ol>
                         )}
                       </div>
@@ -1190,6 +1227,30 @@ export function TripDetail({
         }}
       />
     </article>
+  );
+}
+
+/**
+ * The line that says you are here.
+ *
+ * Borrowed from the shape everyone already reads without being taught: the
+ * package-tracking rule, the boarding-pass rule. Above it is behind you,
+ * below it is what is left. It needs no column on the table and no ticking
+ * things off — only the clock and the times already written down — so it is
+ * right on a day nobody has touched since it was imported.
+ *
+ * Drawn only on today, and only on a day that names at least one time. A rule
+ * through an untimed list would be claiming an order the plan never had.
+ */
+function NowLine({ done = false }: { done?: boolean }) {
+  return (
+    <li aria-hidden className="relative -my-0.5 flex items-center gap-2 py-1">
+      <span className="h-px flex-1 bg-primary/40" />
+      <span className="text-[11.5px] font-semibold uppercase tracking-wider text-primary">
+        {done ? "That was today" : "Now"}
+      </span>
+      <span className="h-px flex-1 bg-primary/40" />
+    </li>
   );
 }
 
