@@ -114,3 +114,55 @@ export function routeUrl(
  * owed before this file existed, too, and nobody had written it down.
  */
 export const OSM_ATTRIBUTION = "Places and routes © OpenStreetMap contributors";
+
+/**
+ * OSRM's profile names are not the same on both services.
+ *
+ * The public demo router calls walking "foot". LocationIQ's fork calls it
+ * "walking" and rejects "foot" outright, so the seam would have swapped the
+ * base URL and then asked for a profile that does not exist — every walking
+ * leg failing the moment a token was set, and failing quietly, because a
+ * route that does not come back is already handled as "no route".
+ */
+export function routeProfile(provider: GeoProvider, mode: "walking" | "driving"): string {
+  if (mode === "driving") return "driving";
+  return provider.name === "locationiq" ? "walking" : "foot";
+}
+
+/**
+ * What a response status means for a batch that is still running.
+ *
+ * `!res.ok → null` treated every failure as "no such place". A rate limit
+ * therefore looked exactly like a venue that does not exist: the stop was
+ * marked unfindable, remembered as tried, and never looked up again. The
+ * difference matters most precisely when a provider is pushing back.
+ */
+export function classifyGeoStatus(status: number): "ok" | "retry" | "miss" {
+  if (status >= 200 && status < 300) return "ok";
+  if (status === 429 || status === 408 || status >= 500) return "retry";
+  return "miss";
+}
+
+/**
+ * How long to wait before the next request, honouring both limits at once.
+ *
+ * A provider that allows two a second and sixty a minute is not a provider
+ * that allows 120 a minute. The burst rate empties the minute's allowance in
+ * thirty seconds, so a long import needs to know about the slower ceiling or
+ * it walks into a wall of 429s halfway through.
+ *
+ * `recent` holds the timestamps of requests already made, newest last.
+ */
+export function nextDelayMs(provider: GeoProvider, recent: readonly number[], now: number): number {
+  const last = recent[recent.length - 1];
+  const sinceLast = last === undefined ? Infinity : now - last;
+  const burstWait = sinceLast >= provider.gapMs ? 0 : provider.gapMs - sinceLast;
+
+  const windowStart = now - 60_000;
+  const inWindow = recent.filter((at) => at > windowStart);
+  if (inWindow.length < provider.perMinute) return burstWait;
+
+  // The minute is full: wait for the oldest request in it to age out.
+  const oldest = inWindow[inWindow.length - provider.perMinute] ?? windowStart;
+  return Math.max(burstWait, oldest + 60_000 - now);
+}

@@ -378,7 +378,12 @@ function ImportPanel({
             return hit ? { ...item, lat: hit.lat, lon: hit.lon } : item;
           });
           setPlacing({ done: result.placed.length, total: chosen.length });
-          if (result.placed.length < chosen.length) {
+          if (result.throttled) {
+            toast.message("Béa ran out of lookups for the minute", {
+              description:
+                "These are saved. She'll place the rest of them next time you open the trip.",
+            });
+          } else if (result.placed.length < chosen.length) {
             const missed = chosen.length - result.placed.length;
             toast.message(`Béa placed ${result.placed.length} of ${chosen.length} on the map`, {
               description: `She couldn't find ${missed}. Open the itinerary's edit mode to set ${missed === 1 ? "it" : "them"} by hand.`,

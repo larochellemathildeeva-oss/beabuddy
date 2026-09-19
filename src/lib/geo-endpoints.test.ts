@@ -1,6 +1,14 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { PUBLIC_PROVIDER, locationIqProvider, routeUrl, searchUrl } from "./geo-endpoints.ts";
+import {
+  PUBLIC_PROVIDER,
+  classifyGeoStatus,
+  locationIqProvider,
+  nextDelayMs,
+  routeProfile,
+  routeUrl,
+  searchUrl,
+} from "./geo-endpoints.ts";
 
 test("the public endpoint is unchanged and carries no key", () => {
   const url = searchUrl(PUBLIC_PROVIDER, { query: "Olive et Gourmando", language: "*" });
@@ -55,4 +63,48 @@ test("the paid provider is allowed to go faster, within the same minute cap", ()
   assert.equal(locationIqProvider("t").gapMs, 500);
   // Two a second, but sixty a minute — the minute is what binds on a long plan.
   assert.equal(locationIqProvider("t").perMinute, 60);
+});
+
+test("walking is 'foot' on the demo router and 'walking' on LocationIQ", () => {
+  // Swapping the base URL and keeping "foot" would 400 every walking leg,
+  // silently, because a route that does not come back already means "no route".
+  assert.equal(routeProfile(PUBLIC_PROVIDER, "walking"), "foot");
+  assert.equal(routeProfile(locationIqProvider("t"), "walking"), "walking");
+  assert.equal(routeProfile(PUBLIC_PROVIDER, "driving"), "driving");
+  assert.equal(routeProfile(locationIqProvider("t"), "driving"), "driving");
+});
+
+test("a rate limit is not the same answer as 'no such place'", () => {
+  assert.equal(classifyGeoStatus(200), "ok");
+  assert.equal(classifyGeoStatus(429), "retry");
+  assert.equal(classifyGeoStatus(503), "retry");
+  assert.equal(classifyGeoStatus(408), "retry");
+  assert.equal(classifyGeoStatus(404), "miss");
+  assert.equal(classifyGeoStatus(400), "miss");
+});
+
+test("nextDelayMs keeps the burst rate between requests", () => {
+  const p = locationIqProvider("t");
+  assert.equal(nextDelayMs(p, [], 10_000), 0, "nothing sent yet");
+  assert.equal(nextDelayMs(p, [10_000], 10_000), 500, "just sent one");
+  assert.equal(nextDelayMs(p, [10_000], 10_300), 200, "part way through the gap");
+  assert.equal(nextDelayMs(p, [10_000], 10_600), 0, "gap already elapsed");
+});
+
+test("nextDelayMs waits out the minute cap, which the burst rate would blow through", () => {
+  const p = locationIqProvider("t");
+  // Sixty requests sent over the last thirty seconds: allowed at 2/s, but the
+  // minute's allowance is spent, so the next one waits for the oldest to age out.
+  const now = 100_000;
+  const recent = Array.from({ length: 60 }, (_, i) => now - 30_000 + i * 500);
+  const wait = nextDelayMs(p, recent, now);
+  assert.ok(wait > 25_000, `expected a long wait, got ${wait}`);
+  assert.ok(wait <= 30_500, `expected under half a minute, got ${wait}`);
+});
+
+test("nextDelayMs stops waiting once the minute has rolled over", () => {
+  const p = locationIqProvider("t");
+  const now = 200_000;
+  const old = Array.from({ length: 60 }, (_, i) => now - 90_000 + i * 100);
+  assert.equal(nextDelayMs(p, old, now), 0, "all of those are older than a minute");
 });

@@ -8,7 +8,14 @@ import {
   reuseKeyForStop,
 } from "@/lib/direction-stops";
 import { haversine } from "@/lib/geo";
-import { routeUrl, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
+import {
+  classifyGeoStatus,
+  nextDelayMs,
+  routeProfile,
+  routeUrl,
+  searchUrl,
+  type GeoProvider,
+} from "@/lib/geo-endpoints";
 
 export type RouteStep = { instruction: string; distance: number };
 
@@ -65,7 +72,9 @@ async function geocode(
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
-    if (!res.ok) return null;
+    // A throttled lookup is not a missing place: caching it as one would
+    // blank a real stop for the rest of this request.
+    if (classifyGeoStatus(res.status) !== "ok") return null;
     const json = (await res.json()) as { lat: string; lon: string }[];
     const first = json[0];
     if (!first) return null;
@@ -90,8 +99,9 @@ async function leg(
   b: { lat: number; lon: number },
   mode: "walking" | "driving",
 ) {
-  const profile = mode === "walking" ? "foot" : "driving";
-  const url = routeUrl(provider, profile, a, b);
+  // "foot" on the demo router, "walking" on LocationIQ — the same mode under
+  // two names, and the wrong one 400s every walking leg without saying so.
+  const url = routeUrl(provider, routeProfile(provider, mode), a, b);
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA },
@@ -192,15 +202,23 @@ export const buildRoutes = createServerFn({ method: "POST" })
     // Server-only: this file ships to the client bundle, the token must not.
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
+    /** Timestamps of requests made, so both the burst and minute caps hold. */
+    const sent: number[] = [];
     const lookup = async (query: string) => {
       const cacheKey = query.toLowerCase();
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
+      // The provider's own pace, honouring the minute cap as well as the gap,
+      // rather than a number written in here.
+      const delay = nextDelayMs(provider, sent, Date.now());
+      if (delay > 0) {
+        if (Date.now() + delay > deadline) return null;
+        await new Promise((r) => setTimeout(r, delay));
+      }
       lookupsLeft -= 1;
+      sent.push(Date.now());
       const found = await geocode(provider, query);
       queryCache.set(cacheKey, found);
-      // The provider's own pace, rather than a number written in here.
-      if (lookupsLeft > 0) await new Promise((r) => setTimeout(r, provider.gapMs));
       return found;
     };
     for (const stop of data.stops) {

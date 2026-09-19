@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { planStopQueries, QUERIES_PER_STOP } from "@/lib/geocode-plan";
-import { searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
+import { classifyGeoStatus, nextDelayMs, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
 
 const UA = "BeaBot/1.0 (travel app)";
 
@@ -29,10 +29,9 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function geocode(
-  provider: GeoProvider,
-  query: string,
-): Promise<{ lat: number; lon: number } | null> {
+type GeoResult = { lat: number; lon: number } | null | "throttled";
+
+async function geocode(provider: GeoProvider, query: string): Promise<GeoResult> {
   // accept-language=* asks for the name in the local language rather than an
   // English translation. It does not change what matches — OSM indexes local
   // names either way — but it means a place found as 清水寺 comes back as
@@ -43,7 +42,8 @@ async function geocode(
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
-    if (!res.ok) return null;
+    const verdict = classifyGeoStatus(res.status);
+    if (verdict !== "ok") return verdict === "retry" ? "throttled" : null;
     const json = (await res.json()) as { lat: string; lon: string }[];
     const first = json[0];
     if (!first) return null;
@@ -85,6 +85,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const provider = geoProvider();
 
     const cache = new Map<string, { lat: number; lon: number } | null>();
+    /** Timestamps of requests made, so both the burst and minute caps hold. */
+    const sent: number[] = [];
+    let throttled = false;
     const deadline = Date.now() + WALL_MS;
     let budget = LOOKUP_BUDGET;
     let lookedUp = 0;
@@ -107,19 +110,36 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         }
         if (budget <= 0 || Date.now() > deadline) break;
         // The gap goes before every request but the first, so a one-stop plan
-        // does not sit still for a second before it starts.
-        if (!first) await wait(provider.gapMs);
+        // does not sit still for a second before it starts. The delay honours
+        // the minute cap too: two a second empties sixty a minute in thirty
+        // seconds, and the rest of the batch would meet a wall of 429s.
+        if (!first) {
+          const delay = nextDelayMs(provider, sent, Date.now());
+          if (Date.now() + delay > deadline) break;
+          if (delay > 0) await wait(delay);
+        }
         first = false;
         budget -= 1;
         lookedUp += 1;
-        const hit = await geocode(provider, query);
+        sent.push(Date.now());
+        const found = await geocode(provider, query);
+        if (found === "throttled") {
+          // Asking harder will not help, and recording these as misses would
+          // mark real places unfindable for the rest of the session.
+          throttled = true;
+          break;
+        }
+        const hit = found;
         cache.set(key, hit);
         if (hit) {
           placed.push({ index, ...hit });
           break;
         }
       }
+      // The inner break only leaves this stop's queries. Without this the
+      // batch would carry on to the next stop and collect another 429.
+      if (throttled) break;
     }
 
-    return { placed, lookedUp, area };
+    return { placed, lookedUp, area, throttled };
   });

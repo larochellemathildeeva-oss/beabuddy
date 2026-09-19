@@ -158,6 +158,15 @@ export function TripDetail({
           const stop = pending[hit.index];
           if (stop) await cities.updateStop(stop.id, { lat: hit.lat, lon: hit.lon });
         }
+        if (found.throttled) {
+          // The provider pushed back rather than answering. These stops were
+          // never really tried, so forget that they were: marking them keeps
+          // real places blank for the rest of the session.
+          const placedIds = new Set(found.placed.map((hit) => pending[hit.index]?.id));
+          for (const stop of pending) {
+            if (!placedIds.has(stop.id)) triedPlacing.current.delete(stop.id);
+          }
+        }
       } catch {
         // A stop without a point is the state this started in, not a failure
         // worth telling anyone about.
@@ -205,6 +214,12 @@ export function TripDetail({
         for (const hit of found.placed) {
           const row = pending[hit.index];
           if (row) await board.updateItem(row.id, { lat: hit.lat, lon: hit.lon });
+        }
+        if (found.throttled) {
+          const placedIds = new Set(found.placed.map((hit) => pending[hit.index]?.id));
+          for (const row of pending) {
+            if (!placedIds.has(row.id)) triedPlacingRows.current.delete(row.id);
+          }
         }
       } catch {
         // An unplaced row is where this started. It is not worth a toast.
