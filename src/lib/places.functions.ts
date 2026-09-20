@@ -13,7 +13,7 @@ import {
   splitPlacePathName,
 } from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
-import { reverseUrl, searchUrl, viewboxAround } from "@/lib/geo-endpoints";
+import { reverseUrl, searchUrl, viewboxAround, classifyGeoStatus } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 
 export type ParsedPlace = {
@@ -175,30 +175,42 @@ async function reverse(lat: number, lon: number) {
 
 type NominatimHit = NominatimHitLike;
 
-async function nominatim(q: string, limit: number, viewbox?: string): Promise<NominatimHit[]> {
+/**
+ * A geocoder hiccup is not "no such place".
+ *
+ * Returning [] on every non-200 made a rate limit, an outage and a real miss
+ * look identical — Recs said nothing matched while Nominatim was refusing the
+ * request. Throw on anything that should be retried so the search box can say
+ * the map was unreachable; only a clean empty answer means the name is gone.
+ */
+async function nominatim(
+  q: string,
+  limit: number,
+  area?: { viewbox: string; bounded: boolean },
+): Promise<NominatimHit[]> {
   // Server-only: the token must not be compiled into the client bundle.
   const { geoProvider } = await import("@/lib/geo-provider.server");
-  try {
-    const res = await fetch(
-      searchUrl(geoProvider(), {
-        query: q,
-        limit,
-        format: "jsonv2",
-        addressDetails: true,
-        nameDetails: true,
-        language: "en",
-        ...(viewbox ? { viewbox } : {}),
-      }),
-      {
-        headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
-        signal: AbortSignal.timeout(5_000),
-      },
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as NominatimHit[];
-  } catch {
-    return [];
+  const res = await fetch(
+    searchUrl(geoProvider(), {
+      query: q,
+      limit,
+      format: "jsonv2",
+      addressDetails: true,
+      nameDetails: true,
+      language: "en",
+      ...(area ? { viewbox: area.viewbox, bounded: area.bounded } : {}),
+    }),
+    {
+      headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
+      signal: AbortSignal.timeout(5_000),
+    },
+  );
+  const verdict = classifyGeoStatus(res.status);
+  if (verdict === "retry") {
+    throw new Error(`Geocoder temporarily unavailable (${res.status})`);
   }
+  if (verdict !== "ok") return [];
+  return (await res.json()) as NominatimHit[];
 }
 
 function hitToPlace(h: NominatimHit): ParsedPlace {
@@ -234,10 +246,14 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const local = localPlaceHits(data.query);
     if (local.length) return local;
-    const viewbox = data.at ? viewboxAround(data.at.lat, data.at.lon) : undefined;
+    // A soft viewbox does nothing for chains — Nominatim still returns the
+    // worldwide list. Bounded to the box is what finds the shop nearby.
+    const area = data.at
+      ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
+      : undefined;
     let hits: NominatimHit[] = [];
     for (const query of fuzzyQueryVariants(data.query)) {
-      hits = await nominatim(query, 10, viewbox);
+      hits = await nominatim(query, 10, area);
       if (hits.length) break;
     }
     const refined = refineNominatimHits(hits, data.query);
@@ -316,8 +332,16 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       const searchName = placeName || named || data.nameHint || appleName || "";
       const locatable = queryIsLocatable({ name: searchName, address });
       const query = [searchName, address].filter(Boolean).join(", ");
-      const hit = locatable && query.length > 2 ? (await nominatim(query, 1))[0] : undefined;
-      const found = hit ? hitToPlace(hit) : undefined;
+      let found: ParsedPlace | undefined;
+      if (locatable && query.length > 2) {
+        try {
+          const hit = (await nominatim(query, 1))[0];
+          found = hit ? hitToPlace(hit) : undefined;
+        } catch {
+          // A geocoder outage here must not fail the whole paste — keep the
+          // name and leave the map empty, same as a miss.
+        }
+      }
       // And the answer has to look like the question: Nominatim always returns
       // its best effort, never nothing, so an unmatched query still comes back
       // with a place attached.

@@ -73,13 +73,24 @@ export type SearchOptions = {
   /** "*" asks for the local name — 清水寺 rather than a translation of it. */
   language?: string;
   /**
-   * A box to prefer results inside, as "x1,y1,x2,y2".
+   * A box around the search, as "x1,y1,x2,y2".
    *
-   * Preferred, not required: the box boosts what falls inside it without
-   * hiding what falls just outside, which is the right behaviour for
-   * "the Subway on my corner" and also for the one a street past the edge.
+   * On its own this is almost worthless for chains. Nominatim (and LocationIQ
+   * speaking the same dialect) will still answer with a Subway on another
+   * continent, because "prefer" is a soft hint that identical shop names
+   * ignore. Pair it with `bounded: true` when the person asked to look near
+   * them — that is the only form that actually finds the one they can walk to.
    */
   viewbox?: string;
+  /**
+   * Restrict results to the viewbox.
+   *
+   * Without this, a search for "subway" or "harveys" near you returns the
+   * same worldwide list it would have without a box at all — and Recs looks
+   * empty of anything useful, or empty entirely when nothing worldwide
+   * matches the typed spelling.
+   */
+  bounded?: boolean;
 };
 
 /**
@@ -98,6 +109,7 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
   if (options.nameDetails) params.set("namedetails", "1");
   if (options.language) params.set("accept-language", options.language);
   if (options.viewbox) params.set("viewbox", options.viewbox);
+  if (options.bounded && options.viewbox) params.set("bounded", "1");
   if (provider.token) params.set("key", provider.token);
   return `${provider.searchBase}/search?${params.toString()}`;
 }
@@ -198,7 +210,7 @@ export function nextDelayMs(provider: GeoProvider, recent: readonly number[], no
 }
 
 /**
- * A box around a point, for biasing a search towards where someone is.
+ * A box around a point, for a nearby search.
  *
  * Searching for a chain by name — "subway", "pret", "starbucks" — is the case
  * that breaks without this. There are thousands, the geocoder has no idea
@@ -206,11 +218,16 @@ export function nextDelayMs(provider: GeoProvider, recent: readonly number[], no
  * country or with nothing recognisable at all. A person searching for Subway
  * means the one they can walk to.
  *
+ * The default radius is wide enough that a shop a short drive past the
+ * densest part of town still falls inside when the search is bounded — the
+ * earlier 12 km box cut off too much of a city once `bounded=1` was required
+ * for the box to do anything at all.
+ *
  * Degrees of longitude shrink towards the poles, so the east-west span is
  * widened by latitude. Without that, a box in Reykjavík is half the intended
  * width and one in Singapore is right.
  */
-export function viewboxAround(lat: number, lon: number, km = 12): string {
+export function viewboxAround(lat: number, lon: number, km = 25): string {
   const latSpan = km / 111;
   const cosLat = Math.cos((lat * Math.PI) / 180);
   const lonSpan = km / (111 * Math.max(cosLat, 0.01));
