@@ -1,6 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { dayShapeLine, minutesOfDay, minutesUntilLabel, nextUp, nowDivider } from "./day-shape.ts";
+import {
+  dayShapeLine,
+  dayTightnessNote,
+  minutesOfDay,
+  minutesUntilLabel,
+  nextUp,
+  nowDivider,
+} from "./day-shape.ts";
 
 const at = (time: string | null, kind = "activity", title = "Something") => ({
   kind,
@@ -72,4 +79,67 @@ test("minutesUntilLabel is useful, or silent", () => {
   assert.equal(minutesUntilLabel(at("23:00"), 8 * 60), null, "too far off to matter");
   assert.equal(minutesUntilLabel(at("Morning"), 8 * 60), null);
   assert.equal(minutesUntilLabel(null, 8 * 60), null);
+});
+
+/**
+ * Roughly 2.1 km apart — a half-hour walk at the pace the note assumes, which
+ * is the point: near enough to plan, far enough that twenty minutes is wrong.
+ */
+const KYOTO = { lat: 35.0116, lon: 135.7681 };
+const ACROSS_TOWN = { lat: 35.0116, lon: 135.7911 };
+
+const placed = (
+  time: string | null,
+  title: string,
+  where: { lat: number; lon: number } | null = KYOTO,
+) => ({ kind: "activity", title, time_label: time, ...(where ?? {}) });
+
+test("dayTightnessNote names the two stops and both numbers", () => {
+  const day = [placed("09:00", "Breakfast"), placed("09:20", "Kiyomizu-dera", ACROSS_TOWN)];
+  assert.equal(
+    dayTightnessNote(day),
+    "20 min between Breakfast and Kiyomizu-dera, and the walk alone is about 30.",
+  );
+});
+
+test("dayTightnessNote stays quiet when the day has room", () => {
+  const day = [placed("09:00", "Breakfast"), placed("11:00", "Kiyomizu-dera", ACROSS_TOWN)];
+  assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote stays quiet about a walk it cannot measure", () => {
+  // No coordinates on the second stop: the gap might be fine. Guessing here is
+  // how you get a confident warning about somebody's holiday that is wrong.
+  const day = [placed("09:00", "Breakfast"), placed("09:20", "Somewhere", null)];
+  assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote needs two clock times, not two labels", () => {
+  const day = [placed("Morning", "Breakfast"), placed("09:20", "Kiyomizu-dera", ACROSS_TOWN)];
+  assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote ignores a rounding-sized squeeze", () => {
+  // The walk beats the gap, but only just — not worth interrupting anyone for.
+  const day = [
+    placed("09:00", "Breakfast"),
+    placed("09:25", "Nearby", { lat: 35.0116, lon: 135.7881 }),
+  ];
+  assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote speaks once, about the tightest pair", () => {
+  const day = [
+    placed("09:00", "Breakfast"),
+    placed("09:20", "Kiyomizu-dera", ACROSS_TOWN),
+    placed("09:25", "Gion", KYOTO),
+  ];
+  const note = dayTightnessNote(day);
+  assert.ok(note?.includes("Kiyomizu-dera and Gion"), `tightest pair, got: ${note}`);
+  assert.equal(note?.split(".").filter(Boolean).length, 1, "one sentence, not a list");
+});
+
+test("dayTightnessNote ignores an overnight or out-of-order pair", () => {
+  const day = [placed("22:00", "Dinner"), placed("08:00", "Breakfast", ACROSS_TOWN)];
+  assert.equal(dayTightnessNote(day), null);
 });

@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { mappableStops, spanMetres, tripMapPlan, SCHEMATIC_BELOW_METRES } from "./trip-map.ts";
+import {
+  legLabels,
+  mappableStops,
+  spanMetres,
+  tripMapPlan,
+  SCHEMATIC_BELOW_METRES,
+} from "./trip-map.ts";
 
 const lisbon = { title: "Lisbon", lat: 38.7223, lon: -9.1393 };
 const madrid = { title: "Madrid", lat: 40.4168, lon: -3.7038 };
@@ -82,4 +88,47 @@ test("unplaced stops keep their order among the placed ones", () => {
 
 test("the threshold is exported so the component and the copy agree", () => {
   assert.equal(SCHEMATIC_BELOW_METRES, 25_000);
+});
+
+test("legLabels writes each gap between the two pins it belongs to", () => {
+  const stops = [
+    { title: "A", lat: 35.0116, lon: 135.768 },
+    { title: "B", lat: 35.0116, lon: 135.791 },
+  ];
+  const labels = legLabels(stops, [
+    [100, 100],
+    [300, 100],
+  ]);
+  assert.equal(labels.length, 1);
+  assert.equal(labels[0]?.x, 200, "midway between them");
+  assert.equal(labels[0]?.y, 93, "clear of the line");
+  assert.ok(labels[0]?.label.endsWith("km"), `a real distance, got: ${labels[0]?.label}`);
+});
+
+test("legLabels stays quiet where the label would cover its own pins", () => {
+  const stops = [
+    { title: "A", lat: 35.0116, lon: 135.768 },
+    { title: "B", lat: 35.0117, lon: 135.7681 },
+  ];
+  assert.deepEqual(
+    legLabels(stops, [
+      [100, 100],
+      [110, 104],
+    ]),
+    [],
+  );
+});
+
+test("legLabels writes one fewer label than there are stops", () => {
+  const stops = [
+    { title: "A", lat: 35.0, lon: 135.0 },
+    { title: "B", lat: 35.5, lon: 135.5 },
+    { title: "C", lat: 36.0, lon: 136.0 },
+  ];
+  const labels = legLabels(stops, [
+    [0, 0],
+    [200, 0],
+    [400, 0],
+  ]);
+  assert.equal(labels.length, 2);
 });

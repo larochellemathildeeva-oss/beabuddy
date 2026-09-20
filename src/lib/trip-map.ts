@@ -17,6 +17,7 @@
  */
 
 import { haversine } from "./geo.ts";
+import { formatMetres } from "./near.ts";
 
 export type MapStop = { title: string; lat: number; lon: number };
 
@@ -87,4 +88,57 @@ export function tripMapPlan(stops: readonly Placeable[]): TripMapPlan {
   return span < SCHEMATIC_BELOW_METRES
     ? { kind: "schematic", stops: mappable, spanMetres: span }
     : { kind: "geographic", stops: mappable, spanMetres: span };
+}
+
+export type LegLabel = {
+  /** How far it is, written the way the rest of the app writes distances. */
+  label: string;
+  x: number;
+  y: number;
+};
+
+/**
+ * Short enough on screen that a label would sit on top of its own two pins.
+ * The distance is still true, it just has nowhere to go, and a map that
+ * overlaps its own text is harder to read than one that says less.
+ */
+const LABEL_NEEDS_PIXELS = 44;
+
+/**
+ * How far apart the stops are, placed on the drawing between them.
+ *
+ * The schematic view has drawn these all along and the geographic one never
+ * did, which left the two halves of the same map answering different
+ * questions: inside a city you were told the walk was 300 m, and across a
+ * country — where the number is arguably more useful, because it is the
+ * difference between a taxi and a night train — you were told nothing.
+ *
+ * Takes the projected points rather than projecting anything itself, because
+ * the two views project differently and neither should have to explain how to
+ * a shared helper.
+ */
+export function legLabels(
+  stops: readonly MapStop[],
+  points: readonly (readonly [number, number])[],
+): LegLabel[] {
+  const out: LegLabel[] = [];
+  for (let i = 0; i + 1 < stops.length && i + 1 < points.length; i += 1) {
+    const from = points[i]!;
+    const to = points[i + 1]!;
+    const dx = to[0] - from[0];
+    const dy = to[1] - from[1];
+    if (Math.sqrt(dx * dx + dy * dy) < LABEL_NEEDS_PIXELS) continue;
+
+    const metres = haversine(stops[i]!, stops[i + 1]!);
+    const label = formatMetres(metres);
+    if (!label) continue;
+
+    out.push({
+      label,
+      x: (from[0] + to[0]) / 2,
+      // Clear of the line itself, the way a caption sits above a rule.
+      y: (from[1] + to[1]) / 2 - 7,
+    });
+  }
+  return out;
 }
