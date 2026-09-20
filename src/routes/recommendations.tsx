@@ -260,7 +260,7 @@ function RecommendationsPage() {
    *
    * Location is not requested on arrival — a search field should not open a
    * permission prompt — only when the answer would change: the world search
-   * came back empty, or it came back with the same chain on four continents.
+   * came back empty, or its nonempty results span at least two countries.
    * PlaceSearchInput re-runs itself once the position lands.
    */
   const locateForSearch = () => {
