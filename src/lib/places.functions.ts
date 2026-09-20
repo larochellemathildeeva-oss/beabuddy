@@ -302,12 +302,29 @@ async function nominatimVariants(
   for (const variant of fuzzyQueryVariants(query)) {
     const batch = await nominatim(variant, 10, area, pace);
     if (!batch.length) continue;
-    if (!area) return batch;
+    // Prefer a venue over whatever else came back, bounded or not. Returning
+    // the first non-empty worldwide batch outright — as this used to do —
+    // trusted Nominatim's raw ranking for a query like "subway", which is
+    // also a transit system and an ordinary word, and a country or a metro
+    // station can rank ahead of the sandwich shop that was actually meant.
     const venues = batch.filter(isVenueHit);
     if (venues.length) return venues;
     if (!fallback.length) fallback = batch;
   }
-  return fallback;
+  // A bounded search that never turned up a venue is not a real answer, even
+  // when Nominatim handed back something: a chain with no branch in this box
+  // still gets a "best effort" reply, and that reply is the city or region
+  // itself — "Montreal, Quebec" for "subway" — because that is the largest
+  // thing inside the viewbox, not because it is what was asked for. Handing
+  // that up would end the search right here: `hits` reads as non-empty, so
+  // the worldwide retry in searchPlaces never runs, and the city stands in
+  // for a shop it is not.
+  //
+  // Worldwide has nowhere further to fall back to, so once every variant has
+  // been tried, a non-venue hit is kept as a last resort — it can still be
+  // the actual answer to a search for a landmark or a neighbourhood by name,
+  // which is not a venue either.
+  return area ? [] : fallback;
 }
 
 /** Search the web for a place by name, so anything can be saved without a link. */
