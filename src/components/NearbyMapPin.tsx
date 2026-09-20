@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations } from "@/hooks/useRecommendations";
+import { tilePath } from "@/lib/tile-proxy";
 
 const TILE = 256;
 const ZOOM = 15;
@@ -165,7 +166,9 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
         const wrapped = ((tx % 2 ** ZOOM) + 2 ** ZOOM) % 2 ** ZOOM;
         out.push({
           key: `${tx}-${ty}`,
-          url: `https://tile.openstreetmap.org/${ZOOM}/${wrapped}/${ty}.png`,
+          // Through Béa, not straight to a tile server: the provider's key
+          // would be public in a URL the browser fetches.
+          url: tilePath({ z: ZOOM, x: wrapped, y: ty }),
           left: (tx - cx) * TILE + width / 2,
           top: (ty - cy) * TILE + height / 2,
         });
