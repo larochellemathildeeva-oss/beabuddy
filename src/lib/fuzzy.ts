@@ -132,15 +132,18 @@ export function fuzzyQueryVariants(query: string): string[] {
   const out = [q];
   const squeezed = q.replace(/(.)\1+/g, "$1");
   if (squeezed !== q && squeezed.length >= 2) out.push(squeezed);
-  // OSM stores many chains with a possessive: "Harvey's", not "harveys".
-  // The bare plural matches a Virginia hamlet worldwide and nothing at all
-  // inside a nearby box — which is how Recs looked empty for a shop that
-  // exists on the next block. This must come *before* the truncated form
-  // below: "harveys" → "harvey" finds streets and parks named Harvey and
-  // would stop the search before "harvey's" ever ran.
+  // OSM stores many chains with a possessive: "Harvey's", not "harveys" or
+  // "harvey". The bare forms match streets and parks, or nothing inside a
+  // nearby box — which is how Recs looked empty for a shop on the next
+  // block. Possessive forms must come *before* the truncated typo below:
+  // "harveys" → "harvey" finds Rue Harvey and would stop the search.
   if (!q.includes("'")) {
-    const possessive = q.replace(/\b([a-z]{3,})s\b/g, "$1's");
-    if (possessive !== q) out.push(possessive);
+    const fromPlural = q.replace(/\b([a-z]{3,})s\b/g, "$1's");
+    if (fromPlural !== q) out.push(fromPlural);
+    // Single token "harvey" → "harvey's" (the plural path above does not fire).
+    if (!/\s/.test(q) && q.length >= 4 && !q.endsWith("s")) {
+      out.push(`${q}'s`);
+    }
   }
   if (q.length >= 5) out.push(q.slice(0, -1));
   return [...new Set(out)];

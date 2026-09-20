@@ -71,3 +71,15 @@ test("fuzzyQueryVariants tries the possessive OSM stores for chains", () => {
   );
   assert.ok(!fuzzyQueryVariants("harvey's").includes("harvey's's"));
 });
+
+test("fuzzyQueryVariants adds 's for a bare chain name too", () => {
+  // "harvey" does not end in s, so the plural→possessive rewrite never fires;
+  // without this, nearby search stops on Rue Harvey and never asks for Harvey's.
+  const variants = fuzzyQueryVariants("harvey");
+  assert.equal(variants[0], "harvey");
+  assert.ok(variants.includes("harvey's"), `expected harvey's in ${variants.join(",")}`);
+  assert.ok(
+    variants.indexOf("harvey's") < variants.indexOf("harve"),
+    `possessive must precede truncation: ${variants.join(",")}`,
+  );
+});
