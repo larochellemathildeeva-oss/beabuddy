@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link2, Plus, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
+import { hitsSpanCountries } from "@/lib/place-search-near";
 import { parsePlaceLink, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
 import { PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
 
@@ -213,16 +214,25 @@ export function PlaceSearchInput({
         </button>
       </div>
       {err && <p className="text-[12px] text-muted-foreground">{err}</p>}
-      {/* Offered only when it would actually change the answer: an empty
-          result, nothing to anchor to, and a parent that can supply one. */}
-      {err && onLocate && !at && !near && hits.length === 0 && (
-        <button
-          type="button"
-          onClick={onLocate}
-          className="min-h-11 w-full rounded-xl border border-primary px-3 py-2 text-[13px] font-semibold text-primary"
-        >
-          Search near me
-        </button>
+      {/* Offered whenever a position would change the answer: empty world
+          search, or a chain that came back from four continents while Béa
+          still does not know where you are. Gating on empty alone hid the
+          button for "subway" — the list was full of the wrong shops. */}
+      {onLocate && !at && !near && (hits.length === 0 ? Boolean(err) : hitsSpanCountries(hits)) && (
+        <div className="space-y-1.5">
+          {hits.length > 0 && (
+            <p className="text-[12px] text-muted-foreground">
+              These are around the world. Search near you for the one on your street.
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={onLocate}
+            className="min-h-11 w-full rounded-xl border border-primary px-3 py-2 text-[13px] font-semibold text-primary"
+          >
+            Search near me
+          </button>
+        </div>
       )}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">
