@@ -142,6 +142,29 @@ test("a search carries the viewbox when one is given, and not otherwise", () => 
   assert.ok(!searchUrl(PUBLIC_PROVIDER, { query: "subway" }).includes("viewbox="));
 });
 
+test("a nearby search must bound the viewbox, or chains stay worldwide", () => {
+  // viewbox alone does not change Nominatim's answer for "subway". bounded=1
+  // is what finds the shop around the corner instead of one in Mexico.
+  const box = viewboxAround(45.5, -73.55);
+  const nearby = searchUrl(PUBLIC_PROVIDER, {
+    query: "subway",
+    viewbox: box,
+    bounded: true,
+  });
+  assert.ok(nearby.includes("viewbox="));
+  assert.equal(new URL(nearby).searchParams.get("bounded"), "1");
+  // Never bound without a box — the parameter would be meaningless.
+  const naked = searchUrl(PUBLIC_PROVIDER, { query: "subway", bounded: true });
+  assert.equal(new URL(naked).searchParams.get("bounded"), null);
+});
+
+test("viewboxAround defaults wide enough that a city-edge shop still fits", () => {
+  // 25 km ≈ 0.225° of latitude. The old 12 km default left too much of a
+  // city outside once searches were actually restricted to the box.
+  const [, y1, , y2] = viewboxAround(45.5, -73.55).split(",").map(Number);
+  assert.ok(y1! - y2! > 0.4, `expected ~0.45° of latitude, got ${y1! - y2!}`);
+});
+
 test("reverse geocoding goes to the same provider as everything else", () => {
   const pub = reverseUrl(PUBLIC_PROVIDER, 45.5, -73.55);
   assert.ok(pub.startsWith("https://nominatim.openstreetmap.org/reverse?"));

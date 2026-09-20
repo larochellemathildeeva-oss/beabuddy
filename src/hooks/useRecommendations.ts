@@ -177,9 +177,11 @@ export function useRecommendations() {
       return;
     }
     try {
+      // A failed read is not an empty vault — keep what is already on screen
+      // rather than showing none and implying every rec is gone.
       setRows(await selectRecos());
     } catch {
-      setRows([]);
+      /* keep rows */
     }
     setLoading(false);
   }, []);

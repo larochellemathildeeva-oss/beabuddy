@@ -117,6 +117,7 @@ export function PlaceSearchInput({
     const q = value.trim();
     if (q.length < TYPE_AHEAD_MIN) {
       setHits([]);
+      setErr("");
       return;
     }
     if (q === settled.current) return;
@@ -127,7 +128,20 @@ export function PlaceSearchInput({
         const res = await search({
           data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
         });
-        if (!cancelled) setHits(res);
+        if (cancelled) return;
+        setHits(res);
+        // Type-ahead used to go quiet on an empty answer, so a search that
+        // needed "near me" looked like the box was broken — no list, no
+        // message, no button. Say so the same way the Search tap does.
+        if (res.length === 0) {
+          setErr(
+            at || near
+              ? "No match on the map — you can still type it in."
+              : "No match — Béa searched the whole world. Try adding the city, or look near you.",
+          );
+        } else {
+          setErr("");
+        }
       } catch {
         /* a quiet type-ahead failure should not shout; the button still reports */
       }

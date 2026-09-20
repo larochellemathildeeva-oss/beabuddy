@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { foldAccents, fuzzyRank, fuzzyScore, levenshtein } from "./fuzzy.ts";
+import { foldAccents, fuzzyQueryVariants, fuzzyRank, fuzzyScore, levenshtein } from "./fuzzy.ts";
 
 test("foldAccents strips diacritics and normalises spacing", () => {
   assert.equal(foldAccents("Café  Cõrrer"), "cafe correr");
@@ -56,4 +56,18 @@ test("fuzzyRank returns everything for an empty query and tolerates null fields"
   ];
   assert.equal(fuzzyRank(rows, "   ", (r) => [r.name, r.note]).length, 2);
   assert.equal(fuzzyRank(rows, "a", (r) => [r.name, r.note]).length, 1);
+});
+
+test("fuzzyQueryVariants tries the possessive OSM stores for chains", () => {
+  const variants = fuzzyQueryVariants("harveys");
+  assert.ok(variants.includes("harveys"));
+  assert.ok(variants.includes("harvey's"), `expected harvey's in ${variants.join(",")}`);
+  // Typed form first; possessive before the truncated typo form, or
+  // "harvey" (streets, parks) would win and the chain would never be tried.
+  assert.equal(variants[0], "harveys");
+  assert.ok(
+    variants.indexOf("harvey's") < variants.indexOf("harvey"),
+    `possessive must precede truncation: ${variants.join(",")}`,
+  );
+  assert.ok(!fuzzyQueryVariants("harvey's").includes("harvey's's"));
 });
