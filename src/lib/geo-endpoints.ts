@@ -97,13 +97,18 @@ export type SearchOptions = {
  * A geocoding URL for whichever provider is configured.
  *
  * LocationIQ takes `key`; Nominatim takes none and is identified by its
- * User-Agent instead. Everything else is the same query string, which is the
- * point.
+ * User-Agent instead. Everything else is the same query string — almost.
+ * LocationIQ's documented formats are `json` and `xml` only. `jsonv2` is a
+ * Nominatim extension; send it to LocationIQ and the answer is HTTP 400
+ * "Invalid Request", which Recs treated as "no such place" for every search
+ * the moment `LOCATIONIQ_TOKEN` was set. Coerce here so callers can keep
+ * asking for jsonv2 on Nominatim without breaking the paid provider.
  */
 export function searchUrl(provider: GeoProvider, options: SearchOptions): string {
   const params = new URLSearchParams();
   params.set("q", options.query);
-  params.set("format", options.format ?? "json");
+  const format = provider.name === "locationiq" ? "json" : (options.format ?? "json");
+  params.set("format", format);
   params.set("limit", String(options.limit ?? 1));
   if (options.addressDetails) params.set("addressdetails", "1");
   if (options.nameDetails) params.set("namedetails", "1");
@@ -125,8 +130,10 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
  * with everything else.
  */
 export function reverseUrl(provider: GeoProvider, lat: number, lon: number): string {
+  // Same jsonv2 trap as searchUrl — LocationIQ 400s it.
+  const format = provider.name === "locationiq" ? "json" : "jsonv2";
   const params = new URLSearchParams({
-    format: "jsonv2",
+    format,
     lat: String(lat),
     lon: String(lon),
     "accept-language": "en",

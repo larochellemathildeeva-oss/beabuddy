@@ -9,7 +9,10 @@ export type NominatimHitLike = {
   display_name?: string;
   type?: string;
   addresstype?: string;
+  /** Nominatim jsonv2. LocationIQ's `json` uses `class` instead. */
   category?: string;
+  /** LocationIQ / Nominatim `json` — same idea as `category`. */
+  class?: string;
   importance?: number;
   address?: Record<string, string>;
 };
@@ -59,6 +62,11 @@ const COLLISION_IMPORTANCE_GAP = 0.12;
 
 function kindOf(hit: NominatimHitLike): string {
   return hit.addresstype || hit.type || "";
+}
+
+/** LocationIQ speaks `class`; Nominatim jsonv2 speaks `category`. Same field. */
+export function hitCategory(hit: Pick<NominatimHitLike, "category" | "class">): string {
+  return (hit.category || hit.class || "").toLowerCase();
 }
 
 function isJunkLabel(value: string | undefined): boolean {
@@ -281,8 +289,8 @@ export function placeFromNominatim(hit: NominatimHitLike): {
  * (amenity). Treating the street as "enough" meant the restaurant was never
  * tried under its real possessive spelling.
  */
-export function isVenueHit(hit: Pick<NominatimHitLike, "category" | "type">): boolean {
-  const category = (hit.category ?? "").toLowerCase();
+export function isVenueHit(hit: Pick<NominatimHitLike, "category" | "class" | "type">): boolean {
+  const category = hitCategory(hit);
   return (
     category === "amenity" ||
     category === "shop" ||

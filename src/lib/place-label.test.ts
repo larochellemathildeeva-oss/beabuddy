@@ -233,4 +233,7 @@ test("isVenueHit prefers shops over streets that share the name", () => {
   assert.equal(isVenueHit({ category: "highway", type: "unclassified" }), false);
   assert.equal(isVenueHit({ category: "leisure", type: "park" }), false);
   assert.equal(isVenueHit({ category: "leisure", type: "sports_centre" }), true);
+  // LocationIQ's json dialect names the same field `class`.
+  assert.equal(isVenueHit({ class: "amenity", type: "fast_food" }), true);
+  assert.equal(isVenueHit({ class: "highway", type: "residential" }), false);
 });

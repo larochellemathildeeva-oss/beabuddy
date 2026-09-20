@@ -195,27 +195,37 @@ async function nominatim(
 ): Promise<NominatimHit[]> {
   // Server-only: the token must not be compiled into the client bundle.
   const { geoProvider } = await import("@/lib/geo-provider.server");
-  const res = await fetch(
-    searchUrl(geoProvider(), {
-      query: q,
-      limit,
-      format: "jsonv2",
-      addressDetails: true,
-      nameDetails: true,
-      language: "en",
-      ...(area ? { viewbox: area.viewbox, bounded: area.bounded } : {}),
-    }),
-    {
+  const { PUBLIC_PROVIDER } = await import("@/lib/geo-endpoints");
+  const provider = geoProvider();
+  const options = {
+    query: q,
+    limit,
+    format: "jsonv2" as const,
+    addressDetails: true,
+    nameDetails: true,
+    language: "en",
+    ...(area ? { viewbox: area.viewbox, bounded: area.bounded } : {}),
+  };
+
+  let res = await fetch(searchUrl(provider, options), {
+    headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
+    signal: AbortSignal.timeout(5_000),
+  });
+  // A bad or rejected LocationIQ request must not look like "no such place".
+  // Fall back to the public endpoint once so Recs keeps answering.
+  if (!res.ok && provider.name === "locationiq") {
+    res = await fetch(searchUrl(PUBLIC_PROVIDER, options), {
       headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
       signal: AbortSignal.timeout(5_000),
-    },
-  );
+    });
+  }
   const verdict = classifyGeoStatus(res.status);
-  if (verdict === "retry") {
+  if (verdict === "retry" || res.status === 401 || res.status === 403) {
     throw new Error(`Geocoder temporarily unavailable (${res.status})`);
   }
   if (verdict !== "ok") return [];
-  return (await res.json()) as NominatimHit[];
+  const json = (await res.json()) as NominatimHit[];
+  return Array.isArray(json) ? json : [];
 }
 
 function hitToPlace(h: NominatimHit): ParsedPlace {

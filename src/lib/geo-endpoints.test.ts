@@ -158,6 +158,28 @@ test("a nearby search must bound the viewbox, or chains stay worldwide", () => {
   assert.equal(new URL(naked).searchParams.get("bounded"), null);
 });
 
+test("LocationIQ never receives jsonv2 — it 400s and Recs looks empty", () => {
+  // Nominatim accepts jsonv2. LocationIQ's documented formats are json/xml
+  // only; jsonv2 is "Invalid Request", which we used to treat as no match.
+  const paid = searchUrl(locationIqProvider("tok_abc"), {
+    query: "Harvey's",
+    format: "jsonv2",
+    addressDetails: true,
+  });
+  assert.equal(new URL(paid).searchParams.get("format"), "json");
+  assert.ok(!paid.includes("jsonv2"));
+
+  const pub = searchUrl(PUBLIC_PROVIDER, { query: "Harvey's", format: "jsonv2" });
+  assert.equal(new URL(pub).searchParams.get("format"), "jsonv2");
+});
+
+test("reverse geocoding also drops jsonv2 on LocationIQ", () => {
+  const paid = reverseUrl(locationIqProvider("tok_abc"), 45.5, -73.55);
+  assert.equal(new URL(paid).searchParams.get("format"), "json");
+  const pub = reverseUrl(PUBLIC_PROVIDER, 45.5, -73.55);
+  assert.equal(new URL(pub).searchParams.get("format"), "jsonv2");
+});
+
 test("viewboxAround defaults wide enough that a city-edge shop still fits", () => {
   // 25 km ≈ 0.225° of latitude. The old 12 km default left too much of a
   // city outside once searches were actually restricted to the box.
