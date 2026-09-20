@@ -1,6 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { isMapHost, isMapPlaceUrl, isPublicHttpsUrl } from "./place-url.ts";
+import {
+  isMapHost,
+  isMapPlaceUrl,
+  isPublicHttpsUrl,
+  resolvesToPublicAddress,
+} from "./place-url.ts";
 
 /**
  * The bug these guard against: the paste box accepted any link that looked
@@ -38,6 +43,63 @@ describe("what the fetch layer will request", () => {
     ]) {
       assert.equal(isPublicHttpsUrl(url(u)), false, u);
     }
+  });
+});
+
+describe("addresses the spelling check used to let through", () => {
+  /**
+   * `new URL()` canonicalizes an IPv6 host to its shortest hex form, so the
+   * old dotted-quad match on `::ffff:` could never fire: `[::ffff:127.0.0.1]`
+   * reached the guard as `::ffff:7f00:1` and was judged public. `[::]` had no
+   * case at all and routes to localhost.
+   */
+  it("refuses loopback and link-local written as IPv6", () => {
+    for (const u of [
+      "https://[::ffff:127.0.0.1]/",
+      "https://[::ffff:7f00:1]/",
+      "https://[::ffff:169.254.169.254]/",
+      "https://[::ffff:a9fe:a9fe]/",
+      "https://[64:ff9b::127.0.0.1]/",
+      "https://[::1]/",
+      "https://[::]/",
+      "https://[0::1]/",
+      "https://[fe80::1]/",
+      "https://[fd00::1]/",
+    ]) {
+      assert.equal(isPublicHttpsUrl(url(u)), false, u);
+    }
+  });
+
+  it("still allows an ordinary public IPv6 host", () => {
+    assert.equal(isPublicHttpsUrl(url("https://[2001:4860:4860::8888]/")), true);
+  });
+
+  it("keeps refusing the encodings it already caught", () => {
+    // The URL parser normalizes all of these to 127.0.0.1 before we see them.
+    for (const u of ["https://2130706433/", "https://0x7f000001/", "https://127.1/"]) {
+      assert.equal(isPublicHttpsUrl(url(u)), false, u);
+    }
+  });
+});
+
+describe("where a name actually points", () => {
+  /**
+   * The spelling check cannot see this: a public name is free to carry an A
+   * record in private space, and wildcard-DNS services exist to provide one.
+   */
+  it("refuses an address literal that resolves nowhere public", async () => {
+    assert.equal(await resolvesToPublicAddress("127.0.0.1"), false);
+    assert.equal(await resolvesToPublicAddress("[::ffff:7f00:1]"), false);
+    assert.equal(await resolvesToPublicAddress("169.254.169.254"), false);
+    assert.equal(await resolvesToPublicAddress("10.1.2.3"), false);
+  });
+
+  it("allows a public address literal", async () => {
+    assert.equal(await resolvesToPublicAddress("8.8.8.8"), true);
+  });
+
+  it("refuses a name that will not resolve at all", async () => {
+    assert.equal(await resolvesToPublicAddress("no-such-host.invalid"), false);
   });
 });
 
