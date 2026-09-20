@@ -34,12 +34,19 @@ test("search options map onto the parameters the place parser needs", () => {
     format: "jsonv2",
     addressDetails: true,
     nameDetails: true,
+    extraTags: true,
     language: "en",
   });
   assert.ok(url.includes("format=jsonv2"));
   assert.ok(url.includes("limit=10"));
   assert.ok(url.includes("addressdetails=1"));
   assert.ok(url.includes("namedetails=1"));
+  assert.ok(url.includes("extratags=1"));
+});
+
+test("extratags is omitted unless asked for", () => {
+  const url = searchUrl(PUBLIC_PROVIDER, { query: "subway" });
+  assert.ok(!url.includes("extratags"));
 });
 
 test("a query with an ampersand or a slash cannot break the URL", () => {

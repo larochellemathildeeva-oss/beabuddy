@@ -107,6 +107,24 @@ const springfieldMo: NominatimHitLike = {
   address: { city: "Springfield", state: "Missouri", country: "United States" },
 };
 
+/**
+ * A branch OSM maps with no name of its own — only a brand tag — which is
+ * how a real Subway in Montreal read as a search that found nothing but
+ * "Montreal, Quebec, Canada": the point's own `name` is empty, so every
+ * fallback before `extratags.brand` was added ran straight to the city.
+ */
+const unnamedSubwayInMontreal: NominatimHitLike = {
+  lat: "45.51",
+  lon: "-73.57",
+  name: "",
+  type: "fast_food",
+  addresstype: "amenity",
+  category: "amenity",
+  importance: 0.3,
+  address: { city: "Montreal", state: "Quebec", country: "Canada" },
+  extratags: { brand: "Subway", cuisine: "sandwich" },
+};
+
 test("formatPlaceLine uses city, admin and country only", () => {
   assert.equal(formatPlaceLine(montrealCanada), "Montreal, Quebec, Canada");
   assert.equal(formatPlaceLine(montrealFrance), "Montréal, Occitania, France");
@@ -134,6 +152,24 @@ test("placeSuggestionLines keeps a landmark title and a short place subtitle", (
   const lines = placeSuggestionLines(place);
   assert.equal(lines.title, "Café de Flore");
   assert.equal(lines.subtitle, "Paris, Île-de-France, France");
+});
+
+test("placeFromNominatim recovers a chain's name from extratags.brand when OSM left the point unnamed", () => {
+  const place = placeFromNominatim(unnamedSubwayInMontreal);
+  assert.equal(place.name, "Subway");
+  assert.equal(place.city, "Montreal");
+  assert.equal(place.address, "Montreal, Quebec, Canada");
+});
+
+test("placeSuggestionLines shows the brand, not the bare city, for an unnamed branch", () => {
+  const place = placeFromNominatim(unnamedSubwayInMontreal);
+  const lines = placeSuggestionLines(place);
+  assert.equal(lines.title, "Subway");
+  assert.equal(lines.subtitle, "Montreal, Quebec, Canada");
+});
+
+test("isVenueHit still recognises the unnamed branch as a venue", () => {
+  assert.equal(isVenueHit(unnamedSubwayInMontreal), true);
 });
 
 test("refineNominatimHits prefers the city and drops admin + France for Montreal", () => {

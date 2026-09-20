@@ -15,6 +15,8 @@ export type NominatimHitLike = {
   class?: string;
   importance?: number;
   address?: Record<string, string>;
+  /** OSM's free-form tags. Only `brand` is read; present when `extratags=1`. */
+  extratags?: Record<string, string>;
 };
 
 const LOCALITY_KEYS = [
@@ -266,7 +268,12 @@ export function placeFromNominatim(hit: NominatimHitLike): {
   const line = formatPlaceLine(hit);
   const local = localityName(address);
   const kind = kindOf(hit);
-  const rawName = cleanName(hit.name) || local || line || "Saved place";
+  // A branch mapped with no name of its own — common for a franchise point
+  // that carries only `brand=Subway` — must not fall straight to the city:
+  // that is how a real, in-stock Subway read as a search that found nothing
+  // but "Montreal." The brand is the name this point actually has.
+  const ownName = cleanName(hit.name) || cleanName(hit.extratags?.["brand"]);
+  const rawName = ownName || local || line || "Saved place";
   const name = isLocalityHit(hit) ? local || rawName : rawName || local || "Saved place";
   const city = local ?? (isLocalityHit(hit) ? name : undefined);
   const country = addressField(address, "country");
