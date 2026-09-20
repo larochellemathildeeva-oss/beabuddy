@@ -70,6 +70,16 @@ export type SearchOptions = {
   format?: "json" | "jsonv2";
   addressDetails?: boolean;
   nameDetails?: boolean;
+  /**
+   * OSM's free-form tags, `brand` among them.
+   *
+   * Many chain locations are mapped with no `name` of their own — only
+   * `brand=Subway` on an otherwise anonymous point — because the branch has
+   * no name beyond the chain's. Without this, that node's own name is empty
+   * and the place parser falls back all the way to the city it is in, so a
+   * real, in-stock Subway reads as a search that found nothing but "Montreal."
+   */
+  extraTags?: boolean;
   /** "*" asks for the local name — 清水寺 rather than a translation of it. */
   language?: string;
   /**
@@ -112,6 +122,7 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
   params.set("limit", String(options.limit ?? 1));
   if (options.addressDetails) params.set("addressdetails", "1");
   if (options.nameDetails) params.set("namedetails", "1");
+  if (options.extraTags) params.set("extratags", "1");
   if (options.language) params.set("accept-language", options.language);
   if (options.viewbox) params.set("viewbox", options.viewbox);
   if (options.bounded && options.viewbox) params.set("bounded", "1");
