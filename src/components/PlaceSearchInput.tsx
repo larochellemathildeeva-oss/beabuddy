@@ -16,6 +16,19 @@ export function PlaceSearchInput({
   onPick,
   placeholder = "Search or type a place",
   near,
+  /**
+   * Where the person is, when it is known.
+   *
+   * A search for a chain — "harveys", "subway", "pret" — names thousands of
+   * identical shops, and without this the lookup covers the planet and
+   * answers with none of them. The one they mean is the one they can walk to.
+   */
+  at,
+  /**
+   * Called when an empty result offers to search nearby. The parent asks for
+   * the position and passes it back as `at`, which re-runs the search.
+   */
+  onLocate,
   /** Off for fields where a lookup on every pause would be noise. */
   typeAhead = true,
   quickAdd,
@@ -25,6 +38,8 @@ export function PlaceSearchInput({
   onPick: (p: ParsedPlace) => void;
   placeholder?: string;
   near?: string;
+  at?: { lat: number; lon: number } | null | undefined;
+  onLocate?: (() => void) | undefined;
   typeAhead?: boolean;
   /**
    * A second action on each suggestion: take this one straight away, rather
@@ -68,9 +83,20 @@ export function PlaceSearchInput({
         }
         return;
       }
-      const res = await search({ data: { query: near ? `${q}, ${near}` : q } });
+      const res = await search({
+        data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+      });
       setHits(res);
-      if (res.length === 0) setErr("No match on the map — you can still type it in.");
+      if (res.length === 0) {
+        // Say which of the two happened. "No match" while Béa was looking at
+        // the whole world reads as "this place does not exist", and the fix
+        // is one tap away rather than a rephrasing.
+        setErr(
+          at || near
+            ? "No match on the map — you can still type it in."
+            : "No match — Béa searched the whole world. Try adding the city, or look near you.",
+        );
+      }
     } catch {
       setErr(
         looksLikePastedPlaceLink(q)
@@ -98,7 +124,9 @@ export function PlaceSearchInput({
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const res = await search({ data: { query: near ? `${q}, ${near}` : q } });
+        const res = await search({
+          data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+        });
         if (!cancelled) setHits(res);
       } catch {
         /* a quiet type-ahead failure should not shout; the button still reports */
@@ -108,7 +136,21 @@ export function PlaceSearchInput({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [value, near, typeAhead, search]);
+  }, [value, near, at, typeAhead, search]);
+
+  /**
+   * A position arriving is an answer to the search that just failed, so run
+   * it again rather than making the person press the button a second time.
+   */
+  const locatedOnce = useRef(false);
+  useEffect(() => {
+    if (!at || locatedOnce.current) return;
+    locatedOnce.current = true;
+    if (value.trim().length >= TYPE_AHEAD_MIN) void run();
+    // `run` reads current state each call; adding it here would re-run on
+    // every keystroke instead of only when the position lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [at]);
 
   const linkPaste = looksLikePastedPlaceLink(value);
 
@@ -157,6 +199,17 @@ export function PlaceSearchInput({
         </button>
       </div>
       {err && <p className="text-[12px] text-muted-foreground">{err}</p>}
+      {/* Offered only when it would actually change the answer: an empty
+          result, nothing to anchor to, and a parent that can supply one. */}
+      {err && onLocate && !at && !near && hits.length === 0 && (
+        <button
+          type="button"
+          onClick={onLocate}
+          className="min-h-11 w-full rounded-xl border border-primary px-3 py-2 text-[13px] font-semibold text-primary"
+        >
+          Search near me
+        </button>
+      )}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">
           {hits.slice(0, 5).map((h, i) => {
