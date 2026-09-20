@@ -233,6 +233,9 @@ async function nominatim(
     format: "jsonv2" as const,
     addressDetails: true,
     nameDetails: true,
+    // Recovers a chain's name for a branch OSM maps with no name of its own
+    // — see extraTags in geo-endpoints.ts.
+    extraTags: true,
     language: "en",
     ...(area ? { viewbox: area.viewbox, bounded: area.bounded } : {}),
   };
