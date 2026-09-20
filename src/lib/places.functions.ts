@@ -18,7 +18,14 @@ import {
   splitPlacePathName,
 } from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
-import { reverseUrl, searchUrl, viewboxAround, classifyGeoStatus } from "@/lib/geo-endpoints";
+import {
+  reverseUrl,
+  searchUrl,
+  viewboxAround,
+  classifyGeoStatus,
+  nextDelayMs,
+  type GeoProvider,
+} from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 
 export type ParsedPlace = {
@@ -181,6 +188,27 @@ async function reverse(lat: number, lon: number) {
 type NominatimHit = NominatimHitLike;
 
 /**
+ * How long the caller of `nominatim()` must wait before its next call.
+ *
+ * One search tries several spelling variants (`fuzzyQueryVariants`), and a
+ * nearby miss retries worldwide — up to a handful of requests for one search
+ * box. Nothing paced them against each other, unlike the batch lookups in
+ * `directions.functions.ts` and `geocode-plan.functions.ts`, so a search that
+ * needed more than one variant could burst past the provider's one-a-second
+ * (or two-a-second, on LocationIQ) policy and throw partway through — before
+ * the worldwide fallback below ever ran. Shared across both the nearby and
+ * worldwide passes of one search, the same way a batch import shares it
+ * across stops.
+ */
+type Pace = { provider: GeoProvider; sent: number[] };
+
+async function wait(pace: Pace) {
+  const delay = nextDelayMs(pace.provider, pace.sent, Date.now());
+  if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+  pace.sent.push(Date.now());
+}
+
+/**
  * A geocoder hiccup is not "no such place".
  *
  * Returning [] on every non-200 made a rate limit, an outage and a real miss
@@ -192,11 +220,13 @@ async function nominatim(
   q: string,
   limit: number,
   area?: { viewbox: string; bounded: boolean },
+  pace?: Pace,
 ): Promise<NominatimHit[]> {
   // Server-only: the token must not be compiled into the client bundle.
   const { geoProvider } = await import("@/lib/geo-provider.server");
   const { PUBLIC_PROVIDER } = await import("@/lib/geo-endpoints");
   const provider = geoProvider();
+  if (pace) await wait(pace);
   const options = {
     query: q,
     limit,
@@ -265,11 +295,12 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
  */
 async function nominatimVariants(
   query: string,
-  area?: { viewbox: string; bounded: boolean },
+  area: { viewbox: string; bounded: boolean } | undefined,
+  pace: Pace,
 ): Promise<NominatimHit[]> {
   let fallback: NominatimHit[] = [];
   for (const variant of fuzzyQueryVariants(query)) {
-    const batch = await nominatim(variant, 10, area);
+    const batch = await nominatim(variant, 10, area, pace);
     if (!batch.length) continue;
     if (!area) return batch;
     const venues = batch.filter(isVenueHit);
@@ -300,6 +331,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const local = localPlaceHits(data.query);
     if (local.length) return local;
+    // Server-only: the token must not be compiled into the client bundle.
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    // Shared across every variant tried below, nearby and worldwide alike, so
+    // a search that needs several attempts paces them instead of bursting
+    // past the provider's own rate limit.
+    const pace: Pace = { provider: geoProvider(), sent: [] };
     // Nearby first, and actually bounded — a soft viewbox is ignored for
     // chains. If the box is empty (Eiffel Tower while standing in Montreal,
     // or a chain that is not in this city), fall back to the world so
@@ -307,9 +344,19 @@ export const searchPlaces = createServerFn({ method: "POST" })
     const area = data.at
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
       : undefined;
-    let hits = await nominatimVariants(data.query, area);
-    if (!hits.length && area) {
-      hits = await nominatimVariants(data.query, undefined);
+    let hits: NominatimHit[] = [];
+    if (area) {
+      try {
+        hits = await nominatimVariants(data.query, area, pace);
+      } catch {
+        // A rate limit or outage on the *bounded* attempt must not skip the
+        // worldwide fallback below — only a worldwide failure should reach
+        // the caller as "couldn't reach the map."
+        hits = [];
+      }
+    }
+    if (!hits.length) {
+      hits = await nominatimVariants(data.query, undefined, pace);
     }
     const refined = refineNominatimHits(hits, data.query);
     const places = (refined.length ? refined : hits).map(hitToPlace);
