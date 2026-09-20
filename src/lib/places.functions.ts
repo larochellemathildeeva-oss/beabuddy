@@ -5,7 +5,12 @@ import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError, type FetchFailure } from "@/lib/place-url";
 import { geocodeIsTrustworthy, queryIsLocatable } from "@/lib/geocode-trust";
 import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
-import { placeFromNominatim, refineNominatimHits, type NominatimHitLike } from "@/lib/place-label";
+import {
+  placeFromNominatim,
+  refineNominatimHits,
+  isVenueHit,
+  type NominatimHitLike,
+} from "@/lib/place-label";
 import {
   cleanPageTitle,
   placePathSegment,
@@ -225,6 +230,30 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
   };
 }
 
+/**
+ * Run the typed name and its typo / possessive forms against the geocoder.
+ *
+ * When looking nearby, keep going after a street or park hit so a later
+ * possessive variant can still find the shop — "harvey" hits Rue Harvey
+ * (highway) before Harvey's (amenity). Around the world, the first non-empty
+ * answer is enough; unique landmarks should not wait on extras.
+ */
+async function nominatimVariants(
+  query: string,
+  area?: { viewbox: string; bounded: boolean },
+): Promise<NominatimHit[]> {
+  let fallback: NominatimHit[] = [];
+  for (const variant of fuzzyQueryVariants(query)) {
+    const batch = await nominatim(variant, 10, area);
+    if (!batch.length) continue;
+    if (!area) return batch;
+    const venues = batch.filter(isVenueHit);
+    if (venues.length) return venues;
+    if (!fallback.length) fallback = batch;
+  }
+  return fallback;
+}
+
 /** Search the web for a place by name, so anything can be saved without a link. */
 export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -246,15 +275,16 @@ export const searchPlaces = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const local = localPlaceHits(data.query);
     if (local.length) return local;
-    // A soft viewbox does nothing for chains — Nominatim still returns the
-    // worldwide list. Bounded to the box is what finds the shop nearby.
+    // Nearby first, and actually bounded — a soft viewbox is ignored for
+    // chains. If the box is empty (Eiffel Tower while standing in Montreal,
+    // or a chain that is not in this city), fall back to the world so
+    // turning location on does not make every other search go blank.
     const area = data.at
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
       : undefined;
-    let hits: NominatimHit[] = [];
-    for (const query of fuzzyQueryVariants(data.query)) {
-      hits = await nominatim(query, 10, area);
-      if (hits.length) break;
+    let hits = await nominatimVariants(data.query, area);
+    if (!hits.length && area) {
+      hits = await nominatimVariants(data.query, undefined);
     }
     const refined = refineNominatimHits(hits, data.query);
     const places = (refined.length ? refined : hits).map(hitToPlace);

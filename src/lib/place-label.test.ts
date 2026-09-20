@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   formatPlaceLine,
   formatTripLocation,
+  isVenueHit,
   locationFromParsedPlace,
   placeFromNominatim,
   placePatchForSavedRow,
@@ -223,4 +224,13 @@ test("placePatchForSavedRow clears a stale point when the pick has none", () => 
   const patch = placePatchForSavedRow({ name: "A place", address: "A street" });
   assert.equal(patch.lat, null);
   assert.equal(patch.lon, null);
+});
+
+test("isVenueHit prefers shops over streets that share the name", () => {
+  assert.equal(isVenueHit({ category: "amenity", type: "fast_food" }), true);
+  assert.equal(isVenueHit({ category: "shop", type: "supermarket" }), true);
+  assert.equal(isVenueHit({ category: "tourism", type: "museum" }), true);
+  assert.equal(isVenueHit({ category: "highway", type: "unclassified" }), false);
+  assert.equal(isVenueHit({ category: "leisure", type: "park" }), false);
+  assert.equal(isVenueHit({ category: "leisure", type: "sports_centre" }), true);
 });

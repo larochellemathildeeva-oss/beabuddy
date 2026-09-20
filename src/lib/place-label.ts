@@ -274,6 +274,26 @@ export function placeFromNominatim(hit: NominatimHitLike): {
   };
 }
 
+/**
+ * A shop / cafe / museum beats a street that happens to share the name.
+ *
+ * "harvey" near Montreal hits Rue Harvey (highway) before Harvey's
+ * (amenity). Treating the street as "enough" meant the restaurant was never
+ * tried under its real possessive spelling.
+ */
+export function isVenueHit(hit: Pick<NominatimHitLike, "category" | "type">): boolean {
+  const category = (hit.category ?? "").toLowerCase();
+  return (
+    category === "amenity" ||
+    category === "shop" ||
+    category === "tourism" ||
+    category === "craft" ||
+    category === "office" ||
+    category === "healthcare" ||
+    (category === "leisure" && hit.type !== "park")
+  );
+}
+
 /** City field value + hidden country after a geocoder pick. */
 export function locationFromParsedPlace(place: {
   name: string;
