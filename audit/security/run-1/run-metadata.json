@@ -1,0 +1,36 @@
+{
+  "run_id": "beabuddy-run-1",
+  "repo": "larochellemathildeeva-oss/beabuddy",
+  "target": "/home/user/beabuddy",
+  "source_ref": {
+    "commit": "56cb8faff351cd1f23e82c3557c89d3b1d31cb63",
+    "dirty": false
+  },
+  "profile": "standard",
+  "scope_paths": [
+    "src",
+    "supabase",
+    "scripts",
+    "package.json",
+    "vite.config.ts"
+  ],
+  "budget": null,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "companions": [
+    "WEB-PROTOCOL-AND-AUTH.md",
+    "DATA-ISOLATION-AND-LIFECYCLE.md",
+    "CLIENT-SIDE.md",
+    "AI-AND-LLM.md",
+    "CLOUD-AND-DEPLOYMENT.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "prior_runs": [],
+  "run_status": "complete",
+  "findings_summary": {
+    "confirmed": 2,
+    "needs_validation": 1,
+    "rejected": 0,
+    "deferred_units": 2,
+    "total_units": 13
+  }
+}

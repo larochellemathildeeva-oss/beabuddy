@@ -1,0 +1,265 @@
+[
+  {
+    "verdict": "confirmed",
+    "fingerprint": "rls/trip_invites/update-policy-trip_id-pivot",
+    "title": "Any authenticated user can join an arbitrary trip by re-pointing their own invite row at it",
+    "description": "The RLS UPDATE policy on public.trip_invites accepts a row edit whenever the editor is the invite's creator, without re-checking membership of the NEW trip_id. Because authenticated holds a table-wide UPDATE grant and trip_id is not protected by any trigger, rule or column grant, a user can create an invite for a trip they legitimately belong to, UPDATE that row to point at any other trip's UUID, and then redeem their own code. accept_trip_invite() is SECURITY DEFINER and keys only on the code, so it inserts the caller into trip_members for the victim trip with role 'editor'. This re-opens the self-join hole that migration 20260905223000_lock_trip_member_insert.sql was written to close: revoking the direct INSERT grant on trip_members does not help, because the definer function performs the insert.",
+    "root_cause": "The WITH CHECK clause of \"Members revoke invites\" is a disjunction whose first branch, invited_by = auth.uid(), is unaffected by a change to trip_id, so the membership branch is never evaluated for the new value. The policy authorizes the editor rather than constraining the edit.",
+    "intended_behavior": "An invite row must stay bound to a trip the editor is a member of. The INSERT policy already enforces this with is_trip_member(trip_id, auth.uid()); the UPDATE path must enforce the same invariant on the post-update row, and trip_id should not be reassignable at all.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql",
+        "line": 39,
+        "scope": "GRANT on public.trip_invites",
+        "description": "Table-wide GRANT UPDATE to authenticated makes every column, trip_id included, writable through PostgREST."
+      },
+      {
+        "kind": "propagation",
+        "file": "supabase/migrations/20260907010000_harden_trip_invites.sql",
+        "line": 40,
+        "scope": "policy \"Members revoke invites\" WITH CHECK",
+        "description": "WITH CHECK is satisfied by invited_by = auth.uid() alone, so the new trip_id is never tested for membership."
+      },
+      {
+        "kind": "sink",
+        "file": "supabase/migrations/20260907010000_harden_trip_invites.sql",
+        "line": 94,
+        "scope": "accept_trip_invite()",
+        "description": "SECURITY DEFINER insert into trip_members using the row's trip_id, with no check of who created the invite."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "supabase/migrations/20260907010000_harden_trip_invites.sql",
+        "line": 40,
+        "description": "WITH CHECK ( invited_by = auth.uid() OR EXISTS (SELECT 1 FROM trip_members ...) ) - the first disjunct holds after a trip_id change."
+      },
+      {
+        "file": "supabase/migrations/20260907010000_harden_trip_invites.sql",
+        "line": 76,
+        "description": "accept_trip_invite selects the row WHERE code = upper(trim(_code)), validating only revoked_at, expires_at and use_count."
+      },
+      {
+        "file": "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql",
+        "line": 131,
+        "description": "The INSERT policy does require is_trip_member(trip_id, auth.uid()), showing the intended invariant that UPDATE omits."
+      },
+      {
+        "file": "supabase/migrations/20260905223000_lock_trip_member_insert.sql",
+        "line": 1,
+        "description": "Comment 'F-01: stop any signed-in user from self-joining a trip they know the UUID of' - the control this finding bypasses."
+      },
+      {
+        "file": "src/hooks/useTrips.ts",
+        "line": 273,
+        "description": "The client already issues .from(\"trip_invites\").update({...}) through PostgREST, so an arbitrary column payload needs no special tooling."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any signed-in user with at least one trip of their own, which any account can create."
+      },
+      {
+        "kind": "data_state",
+        "description": "The attacker must know the victim trip's UUID. Trip UUIDs are random v4 and are not enumerable through RLS, so this is the limiting precondition. A former member who was removed from a trip retains its UUID, which makes removal unenforceable."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A signed-in user who knows a trip UUID they are not a member of - most realistically someone who was previously removed from that trip.",
+      "payloads": [
+        "PATCH /rest/v1/trip_invites?id=eq.<own-invite-id>  body: {\"trip_id\": \"<victim-trip-uuid>\"}",
+        "POST /rest/v1/rpc/accept_trip_invite  body: {\"_code\": \"<own-invite-code>\"}"
+      ],
+      "instructions": [
+        "Sign in as an ordinary user and create a trip you own, so you are a legitimate member of it.",
+        "Create an invite for that trip through the normal share flow; the row is stored with invited_by = your user id.",
+        "Issue a PostgREST PATCH against that invite row setting trip_id to the victim trip's UUID. The UPDATE policy admits it because invited_by still equals your user id.",
+        "Call the accept_trip_invite RPC with your own unchanged invite code.",
+        "Read the victim trip: its itinerary_items, trip_stops, trip_budget_items and trip_todos are now visible and writable, since each of those policies authorizes via is_trip_member."
+      ],
+      "observed_result": "Not executed against any database. The result above is derived from the policy and function source; see the needs-validation note for the one-command local confirmation."
+    },
+    "remediation": {
+      "strategy": "Constrain the edit rather than the editor. Require membership of the post-update trip in WITH CHECK, and stop trip_id being reassignable at all. The narrowest effective change is to make the WITH CHECK a conjunction that always tests the new trip_id, and to add a trigger that rejects any UPDATE changing trip_id. Restricting the grant to the columns a revoke actually needs (GRANT UPDATE (revoked_at, expires_at, max_uses) ) is a worthwhile second layer. Add a regression test that a member of trip A cannot repoint an invite at trip B.",
+      "code_changes": [
+        {
+          "file_name": "supabase/migrations/<new>_fix_invite_update_scope.sql",
+          "fixed_code": "DROP POLICY IF EXISTS \"Members revoke invites\" ON public.trip_invites;\nCREATE POLICY \"Members revoke invites\"\n  ON public.trip_invites\n  FOR UPDATE\n  TO authenticated\n  USING (\n    public.is_trip_member(trip_id, auth.uid())\n    OR invited_by = auth.uid()\n  )\n  -- The new row must always belong to a trip the caller is in.\n  WITH CHECK (\n    public.is_trip_member(trip_id, auth.uid())\n  );\n\n-- trip_id is not something an update ever needs to change.\nCREATE OR REPLACE FUNCTION public.trip_invites_freeze_trip()\nRETURNS trigger\nLANGUAGE plpgsql\nAS $$\nBEGIN\n  IF NEW.trip_id IS DISTINCT FROM OLD.trip_id THEN\n    RAISE EXCEPTION 'trip_id cannot be changed';\n  END IF;\n  RETURN NEW;\nEND;\n$$;\n\nDROP TRIGGER IF EXISTS trip_invites_freeze_trip ON public.trip_invites;\nCREATE TRIGGER trip_invites_freeze_trip\n  BEFORE UPDATE ON public.trip_invites\n  FOR EACH ROW EXECUTE FUNCTION public.trip_invites_freeze_trip();\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "The edit itself needs only an ordinary authenticated PostgREST call and no timing or race. What bounds it is knowledge of the victim trip UUID, which is not enumerable - but a removed member already holds one, and that is a normal occurrence in a shared-trip app."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "The attacker gains the editor role on a trip they have no claim to, with read and write access to its itinerary, stops, budget items and todos, and joins its gated presence channel. Removal from a trip becomes unenforceable."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Every step is decided by source read directly: the table-wide grant, the disjunctive WITH CHECK, the absence of any trigger or column grant on trip_invites across all migrations, and the definer function keying only on code. An independent reviewer re-derived the same path and found no blocking constraint."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "ssrf/place-url/hostname-string-guard-bypass",
+    "title": "SSRF guard on pasted links can be bypassed with IPv6-mapped literals and with DNS names that resolve to private addresses",
+    "description": "parsePlaceLink and parseRecoList let an authenticated user hand the server an arbitrary https URL to fetch. The only defence is isPublicHttpsUrl, which inspects the hostname as a string. Two gaps: (1) the IPv4-mapped IPv6 branch matches on dotted-quad form, but the WHATWG URL parser canonicalizes [::ffff:127.0.0.1] to [::ffff:7f00:1], so that branch is unreachable and the loopback literal is admitted - as are [::ffff:a9fe:a9fe] (169.254.169.254) and the unspecified address [::]; (2) nothing ever resolves the hostname, so any public DNS name pointing at a loopback or RFC1918 address passes, as does a rebind between check and connect. The redirect re-check at each hop uses the same string-only predicate, so an attacker-controlled public host can simply 302 to one of these. The build targets a Node host, so loopback and link-local really are reachable from the server process.",
+    "root_cause": "The blocklist reasons about hostname spelling rather than about the address actually connected to, and one of its patterns is written against a form the URL parser never emits.",
+    "intended_behavior": "A fetch initiated from a user-supplied link must not reach loopback, link-local or private address space. That requires deciding on the resolved address at connect time, not on the hostname string.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "src/lib/places.functions.ts",
+        "line": 325,
+        "scope": "parsePlaceLink server function",
+        "description": "Authenticated server function taking a user-supplied url string up to 4000 characters."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/lib/place-paste.ts",
+        "line": 126,
+        "scope": "extractPastedPlaceLink",
+        "description": "isLikelyPlaceHost only ranks candidates; best defaults to cleaned[0], so any https host is passed through unfiltered."
+      },
+      {
+        "kind": "propagation",
+        "file": "src/lib/place-url.ts",
+        "line": 89,
+        "scope": "isBlockedHost",
+        "description": "Mapped-IPv4 regex requires dotted-quad, which new URL() never produces for an IPv6 literal, so the branch never fires."
+      },
+      {
+        "kind": "sink",
+        "file": "src/lib/place-url.ts",
+        "line": 184,
+        "scope": "fetchHtmlWithPolicy",
+        "description": "fetch() to the admitted URL from the Node server process."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "src/lib/place-url.ts",
+        "line": 92,
+        "description": "/^::ffff:(\\d{1,3}(?:\\.\\d{1,3}){3})$/i - dotted-quad only; Node 22 parses https://[::ffff:127.0.0.1]/ to hostname [::ffff:7f00:1], which cannot match."
+      },
+      {
+        "file": "src/lib/place-url.ts",
+        "line": 88,
+        "description": "The IPv6 branch has no case for the unspecified address ::, so https://[::]/ is admitted."
+      },
+      {
+        "file": "src/lib/place-url.ts",
+        "line": 110,
+        "description": "isPublicHttpsUrl consults only url.protocol, url.username/password and the hostname string; no address resolution anywhere in the module."
+      },
+      {
+        "file": "src/lib/place-url.ts",
+        "line": 211,
+        "description": "The per-hop redirect re-check calls the same string-only canFollow, so a public host may redirect to a blocked-in-intent address."
+      },
+      {
+        "file": "src/lib/place-paste.ts",
+        "line": 131,
+        "description": "isLikelyPlaceHost is used to pick best among candidates, never to reject one."
+      },
+      {
+        "file": "vite.config.ts",
+        "line": 34,
+        "description": "nitro preset node-server, with the comment 'Canner is a Node host, not Cloudflare' - so the runtime has a real loopback and link-local network."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Any signed-in user; both entry points carry requireSupabaseAuth."
+      },
+      {
+        "kind": "network_routing",
+        "description": "The mapped-IPv6 literals require the deploy host to have an IPv6 stack that routes ::ffff:x to the IPv4 loopback. The DNS-name vector has no such dependency."
+      },
+      {
+        "kind": "system_configuration",
+        "description": "Reaching something useful requires a service listening on loopback or the private network of the deploy host. Because the scheme is forced to https, plain-HTTP targets - including the usual cloud metadata endpoint - are not directly reachable."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A signed-in user pasting a crafted link into the place or recommendation import field.",
+      "payloads": [
+        "https://[::ffff:7f00:1]:8443/",
+        "https://[::]:8443/",
+        "https://<a-public-name-resolving-to-127.0.0.1>/"
+      ],
+      "instructions": [
+        "Sign in and open the flow that accepts a pasted place link.",
+        "Paste one of the payload URLs. extractPastedPlaceLink returns it unchanged because no host filter rejects it.",
+        "isPublicHttpsUrl admits it: the scheme is https, there are no credentials, and the hostname string matches none of the blocklist branches.",
+        "The server issues a GET to that address with a 300 KB cap and an 8 second timeout.",
+        "Read the result: parsePlaceLink returns og:title, twitter:title and the page <title> to the caller, and parseRecoList passes the fetched page text to the model, so the response is partially reflected rather than blind."
+      ],
+      "observed_result": "The guard's verdict was reproduced locally and offline against Node 22's URL parser: [::ffff:127.0.0.1], [::], [::ffff:a9fe:a9fe] and names such as 127.0.0.1.nip.io are all judged public, while the dotted-quad and integer forms of 127.0.0.1 are correctly blocked. Whether a connection then completes was not established here, because the audit container has no IPv6 stack."
+    },
+    "remediation": {
+      "strategy": "Stop deciding on the hostname string. Resolve the host, reject any answer in loopback, link-local, unique-local, unspecified, CGNAT or RFC1918 space including IPv4-mapped forms, and pin the connection to the vetted address so the name cannot rebind between check and connect - in Node, by passing a custom lookup to the agent rather than re-resolving. Apply the same check on every redirect hop, which the current code already structures correctly. As an immediate partial fix, normalize an IPv6 hostname before matching and add the unspecified address, but treat that as a stopgap: the DNS vector is the one that string matching cannot close. An egress allowlist or a dedicated fetch proxy is the durable control.",
+      "code_changes": [
+        {
+          "file_name": "src/lib/place-url.ts",
+          "fixed_code": "import { isIP } from \"node:net\";\nimport { lookup as dnsLookup } from \"node:dns/promises\";\n\n// Decide on the address, never on the spelling.\nfunction isBlockedAddress(ip: string): boolean {\n  const v4 = ip.startsWith(\"::ffff:\") ? ip.slice(7) : ip;\n  const octets = ipv4Octets(v4);\n  if (octets) return isBlockedIpv4(octets);\n  const h = ip.toLowerCase();\n  if (h === \"::\" || h === \"::1\") return true;\n  if (h.startsWith(\"fe80:\") || h.startsWith(\"fc\") || h.startsWith(\"fd\")) return true;\n  return false;\n}\n\n/** Resolve, vet every answer, and return the address to connect to. */\nexport async function resolvePublicAddress(hostname: string): Promise<string | null> {\n  const bare = hostname.replace(/^\\[|\\]$/g, \"\");\n  if (isIP(bare)) return isBlockedAddress(bare) ? null : bare;\n  const answers = await dnsLookup(bare, { all: true, verbatim: true });\n  if (!answers.length) return null;\n  if (answers.some((a) => isBlockedAddress(a.address))) return null;\n  // Pin to the vetted address so the name cannot rebind before connect.\n  return answers[0]!.address;\n}\n"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Trivial to attempt for any signed-in user and needs no race, but landing on something that matters depends on an https service listening on the host's loopback or private network, which source does not show."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "A GET to an internal https endpoint with part of the response reflected back through og:title and the model prompt. The https-only constraint keeps the common plain-HTTP metadata endpoints out of reach, which bounds this well short of credential theft on the evidence available."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "The parser canonicalization was reproduced offline against the exact guard logic, and the absence of any host allowlist or address resolution on the path was confirmed by reading extractPastedPlaceLink and place-url.ts in full, independently twice. Only the downstream blast radius is uncertain, and that is recorded as a needs-validation item rather than claimed."
+    }
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "ssrf/place-url/internal-reachability-on-deploy-host",
+    "title": "What the SSRF bypass can actually reach on the Canner deploy host is not determinable from source",
+    "description": "The guard bypass above is established from source, but its blast radius depends on facts that live in the deployment rather than the repository: whether the host has an IPv6 stack that routes ::ffff:7f00:1 to the IPv4 loopback, and whether any https service - an admin endpoint, a sidecar, a metrics or metadata service behind TLS - listens on loopback or the private network reachable from the app process. The audit container has no IPv6 stack, so the connection half of the check could not be run here.",
+    "claimed_root_cause": "Same root cause as ssrf/place-url/hostname-string-guard-bypass: the fetch guard decides on the hostname string rather than the resolved address.",
+    "trace": [
+      {
+        "kind": "sink",
+        "file": "src/lib/place-url.ts",
+        "line": 184,
+        "scope": "fetchHtmlWithPolicy",
+        "description": "The outbound fetch whose reachable targets depend on the deploy host's network, which source does not describe."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "vite.config.ts",
+        "line": 34,
+        "description": "nitro preset node-server establishes that this is a Node process with a real network stack, but says nothing about what listens beside it."
+      }
+    ],
+    "blockers": [
+      "The audit container returned EAFNOSUPPORT for every IPv6 connection, so whether ::ffff:7f00:1 and :: route to the IPv4 loopback on the deploy host could not be observed.",
+      "The set of services listening on the deploy host's loopback and private network is not present in the repository.",
+      "Whether the hosting platform exposes an https metadata or control endpoint reachable from the app process is a provider fact, not a source fact."
+    ],
+    "validation_plan": {
+      "local": "On a machine with IPv6 enabled, start a throwaway TLS listener on 127.0.0.1, then call the exported isPublicHttpsUrl with https://[::ffff:7f00:1]:<port>/ and issue the same fetch the module makes. Confirming that the guard returns true and the connection lands on the local listener closes the routing question without touching any deployed system.",
+      "deployment": "From inside the running Canner instance, and with the owner's agreement, enumerate listening sockets (ss -ltnp) and note any bound to loopback or a private interface that speak TLS. This is an owner-side observation on their own host - it does not require sending the app a crafted link, and no third-party or shared infrastructure should be probed."
+    }
+  }
+]

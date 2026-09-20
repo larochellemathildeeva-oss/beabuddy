@@ -1,0 +1,778 @@
+[
+  {
+    "coverage_id": "repository%23tracked%20files::.gitignore%23env%20exclusion::repository%20root::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+    "canonical_refs": {
+      "surface": "repository#tracked files",
+      "boundary": ".gitignore#env exclusion",
+      "subsystem": "repository root",
+      "attack_class": "ATTACK-CLASSES.md#Cryptography and secrets"
+    },
+    "surface": "Repository contents and build configuration",
+    "boundary": "gitignore and environment handling",
+    "subsystem": "repository root",
+    "attack_class": "Cryptography and secrets",
+    "starting_paths": [
+      ".gitignore",
+      "package.json",
+      "vite.config.ts",
+      ".env.example"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Cryptography and secrets",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "No local IPC surface."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-secrets",
+    "reviewed_paths": [
+      ".env.example",
+      ".gitignore",
+      "src/integrations/supabase"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-secrets",
+        "reviewed_paths": [
+          ".gitignore",
+          ".env.example"
+        ],
+        "invariant": "No live credential is committed to the repository.",
+        "method": "source",
+        "result": "Held. .env and .env.* are ignored with only .env.example exempted, git ls-files confirms .env.example is the sole tracked env file, and its values are empty strings.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-secrets",
+        "reviewed_paths": [
+          "src/integrations/supabase"
+        ],
+        "invariant": "Secrets are not compiled into the client bundle.",
+        "method": "source",
+        "result": "Held. Only VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY, both intended to be public, are read via import.meta.env; the service-role key and LOCATIONIQ_TOKEN are read from process.env in server-only modules.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Flib%23createServerFn%20endpoints::src%2Fintegrations%2Fsupabase%2Fauth-middleware.ts%23requireSupabaseAuth::src%2Fintegrations%2Fsupabase::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "src/lib#createServerFn endpoints",
+      "boundary": "src/integrations/supabase/auth-middleware.ts#requireSupabaseAuth",
+      "subsystem": "src/integrations/supabase",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "All createServerFn RPC endpoints",
+    "boundary": "requireSupabaseAuth JWT middleware",
+    "subsystem": "src/integrations/supabase",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "src/integrations/supabase",
+      "src/lib"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#JWT verification and claim binding",
+      "WEB-PROTOCOL-AND-AUTH.md#Ordinary CSRF",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#SAML signed-object and assertion binding",
+        "reason": "No SAML or federated assertion handling in this target."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-authn",
+    "reviewed_paths": [
+      "src/integrations/supabase/auth-middleware.ts",
+      "src/lib",
+      "src/start.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-authn",
+        "reviewed_paths": [
+          "src/lib"
+        ],
+        "invariant": "Every server function is behind authentication.",
+        "method": "source",
+        "result": "Held. All 17 createServerFn definitions across the 10 .functions.ts files carry .middleware([requireSupabaseAuth]); none omits it.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-authn",
+        "reviewed_paths": [
+          "src/integrations/supabase/auth-middleware.ts"
+        ],
+        "invariant": "The bearer token is cryptographically verified, not merely parsed.",
+        "method": "source",
+        "result": "Held. The middleware calls supabase.auth.getClaims(token) and rejects on error, on absent claims and on absent sub; the segment count check is only a cheap pre-filter.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-authn",
+        "reviewed_paths": [
+          "src/start.ts"
+        ],
+        "invariant": "Server functions are protected from cross-site invocation.",
+        "method": "source",
+        "result": "Held. createCsrfMiddleware is re-registered explicitly with a filter on handlerType serverFn, with a comment explaining that defining start.ts opts out of the automatic install.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Flib%2Faccount.functions.ts%23deleteMyAccount::src%2Fintegrations%2Fsupabase%2Fclient.server.ts%23supabaseAdmin::src%2Flib::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "src/lib/account.functions.ts#deleteMyAccount",
+      "boundary": "src/integrations/supabase/client.server.ts#supabaseAdmin",
+      "subsystem": "src/lib",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "eraseMyData and deleteMyAccount",
+    "boundary": "service-role client scoped to the verified JWT subject",
+    "subsystem": "src/lib",
+    "attack_class": "Business logic",
+    "starting_paths": [
+      "src/lib/account.functions.ts",
+      "src/integrations/supabase/client.server.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Soft-delete and tombstone bypass",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "No broker or custom wire protocol in this target."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-admin",
+    "reviewed_paths": [
+      "src/integrations/supabase/client.server.ts",
+      "src/lib/account.functions.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-admin",
+        "reviewed_paths": [
+          "src/lib/account.functions.ts"
+        ],
+        "invariant": "No user-supplied identifier reaches an RLS-bypassing query.",
+        "method": "source",
+        "result": "Held. Every admin call filters on context.userId taken from the verified token; the only validated input is a literal confirmation string.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-admin",
+        "reviewed_paths": [
+          "src/integrations/supabase/client.server.ts"
+        ],
+        "invariant": "The service-role key cannot reach the browser bundle.",
+        "method": "source",
+        "result": "Held. It is read from process.env inside a .server.ts module behind a lazy proxy, and both call sites use a dynamic import inside the handler rather than a top-level import.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Flib%2Fitinerary.functions.ts%23parseItinerary::src%2Flib%2Fai.server.ts%23prompt%20assembly::src%2Flib::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "src/lib/itinerary.functions.ts#parseItinerary",
+      "boundary": "src/lib/ai.server.ts#prompt assembly",
+      "subsystem": "src/lib",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "AI itinerary, packing, receipt and comparison endpoints",
+    "boundary": "ai.server.ts prompt assembly",
+    "subsystem": "src/lib",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "src/lib/ai.server.ts",
+      "src/lib/itinerary.functions.ts",
+      "src/lib/receipt.functions.ts",
+      "src/lib/reco-list.functions.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "AI-AND-LLM.md#Core discipline",
+      "AI-AND-LLM.md#Universal moves",
+      "AI-AND-LLM.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native code."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "deferred",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Not assigned in this run. Model-output handling and the path by which fetched page text reaches a prompt through parseRecoList are unexamined; the SSRF finding establishes that attacker-influenced page text does reach a prompt, so this is the highest-priority unit for a follow-up run."
+    ]
+  },
+  {
+    "coverage_id": "src%2Flib%2Fplaces.functions.ts%23parsePlaceLink::src%2Flib%2Fplace-url.ts%23isPublicHttpsUrl::src%2Flib::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "src/lib/places.functions.ts#parsePlaceLink",
+      "boundary": "src/lib/place-url.ts#isPublicHttpsUrl",
+      "subsystem": "src/lib",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "parsePlaceLink and parseRecoList server functions",
+    "boundary": "isPublicHttpsUrl host guard",
+    "subsystem": "src/lib",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "src/lib/place-url.ts",
+      "src/lib/place-paste.ts",
+      "src/lib/places.functions.ts",
+      "src/lib/reco-list.functions.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+      "CLOUD-AND-DEPLOYMENT.md#Universal moves",
+      "CLOUD-AND-DEPLOYMENT.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "DESKTOP-MOBILE-AND-LOCAL-IPC.md#Core discipline",
+        "reason": "No desktop, mobile or local IPC surface in this target."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-ssrf",
+    "reviewed_paths": [
+      "src/lib/place-paste.ts",
+      "src/lib/place-url.ts",
+      "src/lib/places.functions.ts",
+      "src/lib/reco-list.functions.ts",
+      "vite.config.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-ssrf",
+        "reviewed_paths": [
+          "src/lib/place-url.ts"
+        ],
+        "invariant": "No loopback, link-local or private address is admitted by isPublicHttpsUrl.",
+        "method": "local",
+        "result": "Refuted. 22 host forms were evaluated offline against a verbatim transcription of the guard: the IPv4-mapped IPv6 literal, the unspecified address and names resolving to private space are all judged public.",
+        "artifact": "agents/hunter-ssrf/artifacts/ssrf-guard-verdicts.txt"
+      },
+      {
+        "agent_id": "hunter-ssrf",
+        "reviewed_paths": [
+          "src/lib/place-paste.ts"
+        ],
+        "invariant": "The paste path restricts the URL to an allowlist of map hosts before the fetch.",
+        "method": "source",
+        "result": "Refuted. isLikelyPlaceHost only ranks candidates; best defaults to the first cleaned URL, so any https host passes.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-ssrf",
+        "reviewed_paths": [
+          "vite.config.ts"
+        ],
+        "invariant": "The runtime is a sandboxed edge worker with no loopback.",
+        "method": "source",
+        "result": "Refuted. The nitro preset is node-server and the file states the host is Canner, a Node host, so loopback and link-local are real.",
+        "artifact": null
+      },
+      {
+        "agent_id": "verifier-a0565fcc",
+        "reviewed_paths": [
+          "src/lib/places.functions.ts",
+          "src/lib/reco-list.functions.ts"
+        ],
+        "invariant": "The fetch is reachable without authentication, or the response is never reflected.",
+        "method": "source",
+        "result": "Both refuted independently: each entry point carries requireSupabaseAuth, and the response is partially reflected through og:title and through the model prompt in parseRecoList.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "ssrf/place-url/hostname-string-guard-bypass",
+      "ssrf/place-url/internal-reachability-on-deploy-host"
+    ],
+    "unresolved": [
+      "Whether an https service actually listens on the deploy host's loopback or private network is not a source fact."
+    ]
+  },
+  {
+    "coverage_id": "src%2Flib%2FvaultCrypto.ts%23vault%20encryption::src%2Flib%2FvaultCrypto.ts%23key%20derivation::src%2Flib::ATTACK-CLASSES.md%23Cryptography%20and%20secrets",
+    "canonical_refs": {
+      "surface": "src/lib/vaultCrypto.ts#vault encryption",
+      "boundary": "src/lib/vaultCrypto.ts#key derivation",
+      "subsystem": "src/lib",
+      "attack_class": "ATTACK-CLASSES.md#Cryptography and secrets"
+    },
+    "surface": "Vault document encryption",
+    "boundary": "vaultCrypto key derivation and storage",
+    "subsystem": "src/lib",
+    "attack_class": "Cryptography and secrets",
+    "starting_paths": [
+      "src/lib/vaultCrypto.ts",
+      "src/lib/vault-for-build.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Cryptography and secrets",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+        "reason": "Client-side cryptography; no deployment control is involved."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "deferred",
+    "agent_id": null,
+    "reviewed_paths": [],
+    "local_checks": [],
+    "result_fingerprints": [],
+    "unresolved": [
+      "Not assigned in this run. Key derivation parameters, IV reuse and where the vault key is held are unexamined."
+    ]
+  },
+  {
+    "coverage_id": "src%2Froutes%23rendered%20components::src%2Froutes%2F__root.tsx%23THEME_BOOT_SCRIPT::src::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "src/routes#rendered components",
+      "boundary": "src/routes/__root.tsx#THEME_BOOT_SCRIPT",
+      "subsystem": "src",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "React render paths",
+    "boundary": "JSX escaping",
+    "subsystem": "src",
+    "attack_class": "Injection",
+    "starting_paths": [
+      "src/routes",
+      "src/components"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "PROTOCOLS-RPC-AND-MESSAGING.md#Core discipline",
+        "reason": "No custom wire protocol."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-client",
+    "reviewed_paths": [
+      "src/components",
+      "src/routes"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-client",
+        "reviewed_paths": [
+          "src/routes",
+          "src/components"
+        ],
+        "invariant": "No user-controlled value reaches an HTML sink.",
+        "method": "source",
+        "result": "Held. A single dangerouslySetInnerHTML exists in the tree and its argument is a module-level constant with no interpolation. No innerHTML assignment, eval or new Function appears anywhere under src.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "src%2Fserver.ts%23serveTile::src%2Flib%2Ftile-proxy.ts%23parseTilePath::src::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "src/server.ts#serveTile",
+      "boundary": "src/lib/tile-proxy.ts#parseTilePath",
+      "subsystem": "src",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "/api/tile/:z/:x/:y.png",
+    "boundary": "parseTilePath range check",
+    "subsystem": "src",
+    "attack_class": "Resource and file handling",
+    "starting_paths": [
+      "src/server.ts",
+      "src/lib/tile-proxy.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+      "CLOUD-AND-DEPLOYMENT.md#Universal moves",
+      "CLOUD-AND-DEPLOYMENT.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model call on the tile path."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-ssrf",
+    "reviewed_paths": [
+      "src/lib/tile-proxy.ts",
+      "src/server.ts"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-ssrf",
+        "reviewed_paths": [
+          "src/lib/tile-proxy.ts",
+          "src/server.ts"
+        ],
+        "invariant": "No user input reaches the host or path of the upstream tile fetch.",
+        "method": "source",
+        "result": "Held. The path is matched by an anchored digits-only regex, coerced through Number, and range-checked against 2^z; the upstream origin is a fixed literal and the token is URL-encoded. This is the one unauthenticated outbound fetch and it is not user-steerable.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "supabase%2Fmigrations%23storage.objects::supabase%2Fmigrations%2F20260905011402_ed9a9e50-42ef-4026-ad31-d56059560b33.sql%23Users%20read%20their%20own%20receipts::supabase%2Fmigrations::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "supabase/migrations#storage.objects",
+      "boundary": "supabase/migrations/20260905011402_ed9a9e50-42ef-4026-ad31-d56059560b33.sql#Users read their own receipts",
+      "subsystem": "supabase/migrations",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "photo-memories and receipts storage buckets",
+    "boundary": "storage.foldername(name)[1] equals auth.uid()",
+    "subsystem": "supabase/migrations",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "supabase/migrations"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Blob and signed-reference overreach",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "Storage policies carry no build or release step."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-storage",
+    "reviewed_paths": [
+      "supabase/migrations"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-storage",
+        "reviewed_paths": [
+          "supabase/migrations"
+        ],
+        "invariant": "A user can only read and write objects under their own user-id prefix.",
+        "method": "source",
+        "result": "Held. All verbs on both buckets bind the first path segment to auth.uid(). The UPDATE policies give only USING, which Postgres also applies as WITH CHECK, so an object cannot be renamed into another user's prefix.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "supabase%2Fmigrations%23trip-scoped%20tables::supabase%2Fmigrations%2F20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql%23is_trip_member::supabase%2Fmigrations::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "supabase/migrations#trip-scoped tables",
+      "boundary": "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql#is_trip_member",
+      "subsystem": "supabase/migrations",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "trips, trip_members, itinerary_items, trip_stops, trip_budget_items, trip_todos",
+    "boundary": "is_trip_member RLS predicate",
+    "subsystem": "supabase/migrations",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "supabase/migrations"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Policy and query disagreement",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "AI-AND-LLM.md#Core discipline",
+        "reason": "No model output participates in these policies."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-rls",
+    "reviewed_paths": [
+      "supabase/migrations",
+      "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-rls",
+        "reviewed_paths": [
+          "supabase/migrations"
+        ],
+        "invariant": "Every trip-scoped table denies non-members by default.",
+        "method": "source",
+        "result": "Held for the read and membership paths. RLS is enabled on all 23 tables, no policy uses USING (true), and each trip-scoped policy authorizes through is_trip_member on both USING and WITH CHECK. The one exception is the trip_invites UPDATE policy, tracked as its own unit.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-rls",
+        "reviewed_paths": [
+          "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql"
+        ],
+        "invariant": "SECURITY DEFINER functions cannot be hijacked through search_path.",
+        "method": "source",
+        "result": "Held. All seven definer functions across the migration set declare SET search_path = public, and each revokes EXECUTE from PUBLIC and anon.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "supabase%2Fmigrations%2F20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql%23public.trip_invites::supabase%2Fmigrations%2F20260907010000_harden_trip_invites.sql%23Members%20revoke%20invites::supabase%2Fmigrations::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "supabase/migrations/20260904235145_7956542c-41b8-41d7-b723-0695d42ea0b4.sql#public.trip_invites",
+      "boundary": "supabase/migrations/20260907010000_harden_trip_invites.sql#Members revoke invites",
+      "subsystem": "supabase/migrations",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "trip_invites table via PostgREST",
+    "boundary": "RLS policy \"Members revoke invites\"",
+    "subsystem": "supabase/migrations",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "supabase/migrations"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Stale authorization and derived copy use",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native or unmanaged code in this target."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "hunter-rls",
+    "reviewed_paths": [
+      "src/hooks/useTrips.ts",
+      "supabase/migrations"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-rls",
+        "reviewed_paths": [
+          "supabase/migrations"
+        ],
+        "invariant": "An invite row may only ever name a trip the editor belongs to.",
+        "method": "source",
+        "result": "Refuted. WITH CHECK is a disjunction whose invited_by branch survives a trip_id change, and no trigger, rule or column grant on trip_invites constrains trip_id.",
+        "artifact": null
+      },
+      {
+        "agent_id": "hunter-rls",
+        "reviewed_paths": [
+          "src/hooks/useTrips.ts"
+        ],
+        "invariant": "The client cannot send an arbitrary column payload to trip_invites.",
+        "method": "source",
+        "result": "Refuted. useTrips.ts already updates trip_invites through PostgREST, so the pivot needs no special tooling.",
+        "artifact": null
+      },
+      {
+        "agent_id": "verifier-a0565fcc",
+        "reviewed_paths": [
+          "supabase/migrations"
+        ],
+        "invariant": "Some later migration or constraint blocks the pivot.",
+        "method": "source",
+        "result": "Refuted independently: grep across all migrations found no trigger, rule, CHECK or column-level grant on trip_invites, and no later policy replacement.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "rls/trip_invites/update-policy-trip_id-pivot"
+    ],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "supabase%2Fmigrations%2F20260906120000_gate_trip_presence_topics.sql%23realtime.messages::supabase%2Fmigrations%2F20260906120000_gate_trip_presence_topics.sql%23realtime_topic_trip_id::supabase%2Fmigrations::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+    "canonical_refs": {
+      "surface": "supabase/migrations/20260906120000_gate_trip_presence_topics.sql#realtime.messages",
+      "boundary": "supabase/migrations/20260906120000_gate_trip_presence_topics.sql#realtime_topic_trip_id",
+      "subsystem": "supabase/migrations",
+      "attack_class": "ATTACK-CLASSES.md#Feature abuse and data leakage"
+    },
+    "surface": "trip-presence realtime topics",
+    "boundary": "realtime.messages RLS via realtime_topic_trip_id",
+    "subsystem": "supabase/migrations",
+    "attack_class": "Feature abuse and data leakage",
+    "starting_paths": [
+      "supabase/migrations/20260906120000_gate_trip_presence_topics.sql"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Search, cache, and index ACL drift",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "MEMORY-SAFETY-AND-BINARY.md#Core discipline",
+        "reason": "No native code."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-realtime",
+    "reviewed_paths": [
+      "supabase/migrations/20260906120000_gate_trip_presence_topics.sql"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-realtime",
+        "reviewed_paths": [
+          "supabase/migrations/20260906120000_gate_trip_presence_topics.sql"
+        ],
+        "invariant": "Only trip members can subscribe to or write a trip's presence topic.",
+        "method": "source",
+        "result": "Held as written. The topic regex is fully anchored to the UUID shape and yields NULL otherwise, so is_trip_member(NULL, uid) denies by default. Note this control is reached through membership, so the trip_invites pivot finding also grants presence access.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "supabase%2Fmigrations%2F20260917120000_reco_shares.sql%23public.reco_shares::supabase%2Fmigrations%2F20260917120000_reco_shares.sql%23Owners%20manage%20their%20reco%20shares::supabase%2Fmigrations::ATTACK-CLASSES.md%23Access%20control",
+    "canonical_refs": {
+      "surface": "supabase/migrations/20260917120000_reco_shares.sql#public.reco_shares",
+      "boundary": "supabase/migrations/20260917120000_reco_shares.sql#Owners manage their reco shares",
+      "subsystem": "supabase/migrations",
+      "attack_class": "ATTACK-CLASSES.md#Access control"
+    },
+    "surface": "reco_shares and reco_share_items",
+    "boundary": "owner_id equals auth.uid() RLS",
+    "subsystem": "supabase/migrations",
+    "attack_class": "Access control",
+    "starting_paths": [
+      "supabase/migrations/20260917120000_reco_shares.sql"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+        "reason": "No build or release step here."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "hunter-rls",
+    "reviewed_paths": [
+      "supabase/migrations/20260917120000_reco_shares.sql"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "hunter-rls",
+        "reviewed_paths": [
+          "supabase/migrations/20260917120000_reco_shares.sql"
+        ],
+        "invariant": "The share_id pivot equivalent to the trip_invites finding is not possible here.",
+        "method": "source",
+        "result": "Held. Both policies constrain the row itself through owner_id on USING and WITH CHECK, so a re-pointed share_id must still resolve to a share the caller owns.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  }
+]
