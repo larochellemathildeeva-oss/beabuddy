@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   cleanPageTitle,
+  googleQueryPlaceText,
   isPlaceUrl,
   placeCoordsFromUrl,
   placePathSegment,
@@ -73,6 +74,34 @@ test("a viewport in what you actually pasted is used as a fallback", () => {
 test("coordinates in the pasted link win over the resolved one", () => {
   const pasted = "https://maps.apple.com/?ll=10.5,20.5";
   assert.deepEqual(resolvePlaceCoords(pasted, RESOLVED, true), { lat: 10.5, lon: 20.5 });
+});
+
+/**
+ * A real link pasted from the app: no `/place/` segment at all, and every
+ * other extraction step returns nothing, which is how a real, findable
+ * restaurant saved as bare "Saved place" with no name, address or pin.
+ */
+const Q_PARAM_SHARE =
+  "https://maps.google.com?q=Vin%20Mon%20Lapin,%20150%20Rue%20Saint-Zotique%20E,%20Montreal,%20Quebec%20H2S%201K8&ftid=0x4cc9196da59b9c11:0xb54ca374bd37d150&entry=gps&shh=CAE&g_st=ic";
+
+test("googleQueryPlaceText reads the q= share format placePathSegment cannot see", () => {
+  assert.equal(placePathSegment(Q_PARAM_SHARE), "");
+  assert.equal(
+    googleQueryPlaceText(Q_PARAM_SHARE),
+    "Vin Mon Lapin, 150 Rue Saint-Zotique E, Montreal, Quebec H2S 1K8",
+  );
+  assert.deepEqual(splitPlacePathName(googleQueryPlaceText(Q_PARAM_SHARE)), {
+    name: "Vin Mon Lapin",
+    address: "150 Rue Saint-Zotique E, Montreal, Quebec H2S 1K8",
+  });
+});
+
+test("googleQueryPlaceText ignores a bare coordinate q=, a different case placeCoordsFromUrl already covers", () => {
+  assert.equal(googleQueryPlaceText("https://maps.google.com/?q=45.5031,-73.5698"), "");
+});
+
+test("googleQueryPlaceText only reads Google hosts", () => {
+  assert.equal(googleQueryPlaceText("https://www.yelp.com/biz/x?q=Some+Place"), "");
 });
 
 test("placePathSegment decodes the name out of the path", () => {
