@@ -53,13 +53,24 @@ export type ComparisonResult = z.infer<typeof CompareSchema> & {
   reasoningText: string | null;
 };
 
-const homeCache = new Map<string, LatLon | null>();
+/**
+ * A found home city, kept for the life of the process — home cities repeat
+ * across users and across a session's own comparisons, and they do not move.
+ *
+ * Only a successful lookup goes in here. Caching a miss the same way would
+ * mean one timeout or one rate limit permanently blanked home-distance for
+ * every person with that home city, for as long as this process runs — the
+ * exact mistake `nominatim()` and `geocodePlanStops` were already written to
+ * avoid, just not carried over to this file.
+ */
+const homeCache = new Map<string, LatLon>();
 
 async function geocodeHome(city: string | null): Promise<LatLon | null> {
   const query = city?.trim();
   if (!query) return null;
   const key = query.toLowerCase();
-  if (homeCache.has(key)) return homeCache.get(key) ?? null;
+  const cached = homeCache.get(key);
+  if (cached) return cached;
   const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
     const res = await fetch(searchUrl(geoProvider(), { query, limit: 1, format: "jsonv2" }), {
@@ -69,18 +80,14 @@ async function geocodeHome(city: string | null): Promise<LatLon | null> {
       },
       signal: AbortSignal.timeout(5_000),
     });
-    if (!res.ok) {
-      homeCache.set(key, null);
-      return null;
-    }
+    if (!res.ok) return null;
     const json = (await res.json()) as { lat: string; lon: string }[];
     const first = json[0];
     const coords = first ? { lat: Number(first.lat), lon: Number(first.lon) } : null;
-    const ok = coords && isLatLon(coords) ? coords : null;
-    homeCache.set(key, ok);
-    return ok;
+    if (!coords || !isLatLon(coords)) return null;
+    homeCache.set(key, coords);
+    return coords;
   } catch {
-    homeCache.set(key, null);
     return null;
   }
 }
