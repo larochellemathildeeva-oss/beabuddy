@@ -207,17 +207,32 @@ async function nominatim(
     ...(area ? { viewbox: area.viewbox, bounded: area.bounded } : {}),
   };
 
-  let res = await fetch(searchUrl(provider, options), {
-    headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
-    signal: AbortSignal.timeout(5_000),
-  });
-  // A bad or rejected LocationIQ request must not look like "no such place".
-  // Fall back to the public endpoint once so Recs keeps answering.
-  if (!res.ok && provider.name === "locationiq") {
-    res = await fetch(searchUrl(PUBLIC_PROVIDER, options), {
-      headers: { "user-agent": UA, accept: "application/json", "accept-language": "en" },
+  const headers = {
+    "user-agent": UA,
+    accept: "application/json",
+    "accept-language": "en",
+  } as const;
+
+  async function fetchProvider(which: typeof provider) {
+    return fetch(searchUrl(which, options), {
+      headers,
       signal: AbortSignal.timeout(5_000),
     });
+  }
+
+  let res: Response;
+  try {
+    res = await fetchProvider(provider);
+  } catch (error) {
+    // A thrown fetch (timeout, DNS, TLS) never reaches the !res.ok branch
+    // below. LocationIQ is the one we can replace; Nominatim failures stay
+    // failures so the box can say the map was unreachable.
+    if (provider.name !== "locationiq") throw error;
+    res = await fetchProvider(PUBLIC_PROVIDER);
+  }
+  // HTTP errors from LocationIQ (400 jsonv2, bad key, …) — same idea.
+  if (!res.ok && provider.name === "locationiq") {
+    res = await fetchProvider(PUBLIC_PROVIDER);
   }
   const verdict = classifyGeoStatus(res.status);
   if (verdict === "retry" || res.status === 401 || res.status === 403) {
