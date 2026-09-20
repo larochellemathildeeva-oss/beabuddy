@@ -259,9 +259,9 @@ function RecommendationsPage() {
    * Ask for the person's position, so the search box can look around them.
    *
    * Location is not requested on arrival — a search field should not open a
-   * permission prompt — only here, at the one moment it obviously helps: a
-   * search came back empty and the reason may be that Béa was looking at the
-   * whole world. PlaceSearchInput re-runs itself once the position lands.
+   * permission prompt — only when the answer would change: the world search
+   * came back empty, or it came back with the same chain on four continents.
+   * PlaceSearchInput re-runs itself once the position lands.
    */
   const locateForSearch = () => {
     if (!navigator.geolocation) {
