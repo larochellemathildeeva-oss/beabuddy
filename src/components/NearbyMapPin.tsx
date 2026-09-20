@@ -59,6 +59,14 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
   const [error, setError] = useState("");
   const [places, setPlaces] = useState<Place[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(false);
+  /**
+   * Set only when the request itself failed — a timeout, a network error, or
+   * a non-OK response from every mirror tried. An empty `places` array on its
+   * own already means "nothing nearby"; this is what lets the UI tell that
+   * apart from "couldn't ask."
+   */
+  const [placesError, setPlacesError] = useState(false);
+  const [placesRetryKey, setPlacesRetryKey] = useState(0);
   const [draft, setDraft] = useState<{
     name: string;
     lat: number;
@@ -118,17 +126,30 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
     let cancelled = false;
     const run = async () => {
       setLoadingPlaces(true);
+      setPlacesError(false);
       const q = `[out:json][timeout:20];(node(around:800,${center.lat},${center.lon})["name"]["amenity"~"restaurant|cafe|bar|museum|pub|ice_cream|marketplace"];node(around:800,${center.lat},${center.lon})["name"]["tourism"];node(around:800,${center.lat},${center.lon})["name"]["shop"~"bakery|books|clothes"];);out body 60;`;
-      try {
-        const res = await fetch("https://overpass-api.de/api/interpreter", {
+
+      // The public instance is one server shared by everyone who embeds it,
+      // and it is well known for going slow or unreachable under load — with
+      // nothing here to say so, that looked identical to "nothing is open
+      // near you," in the middle of a dense downtown. A single silent
+      // `catch { setPlaces([]) }` could not tell a real empty answer from a
+      // request that never got one, so it never did. Overpass's own [timeout]
+      // only bounds how long their server spends on the query; it says
+      // nothing about how long the network gets to take, which is what the
+      // abort signal below is for. A second, independently run mirror is
+      // worth one retry before this counts as failed.
+      async function ask(base: string): Promise<Place[]> {
+        const res = await fetch(base, {
           method: "POST",
           body: q,
+          signal: AbortSignal.timeout(12_000),
         });
+        if (!res.ok) throw new Error(`Overpass ${res.status}`);
         const json = (await res.json()) as {
           elements?: { id: number; lat: number; lon: number; tags?: Record<string, string> }[];
         };
-        if (cancelled) return;
-        const list: Place[] = (json.elements ?? [])
+        return (json.elements ?? [])
           .filter((e) => e.tags?.["name"])
           .map((e) => ({
             id: String(e.id),
@@ -137,9 +158,23 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
             lon: e.lon,
             category: e.tags!["amenity"] ?? e.tags!["tourism"] ?? e.tags!["shop"] ?? "place",
           }));
+      }
+
+      try {
+        let list: Place[];
+        try {
+          list = await ask("https://overpass-api.de/api/interpreter");
+        } catch (primary) {
+          if (cancelled) throw primary;
+          list = await ask("https://overpass.kumi.systems/api/interpreter");
+        }
+        if (cancelled) return;
         setPlaces(list);
       } catch {
-        if (!cancelled) setPlaces([]);
+        if (!cancelled) {
+          setPlaces([]);
+          setPlacesError(true);
+        }
       } finally {
         if (!cancelled) setLoadingPlaces(false);
       }
@@ -149,7 +184,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [open, center?.lat, center?.lon]);
+  }, [open, center?.lat, center?.lon, placesRetryKey]);
 
   const tiles = useMemo(() => {
     if (!center) return [];
@@ -381,13 +416,24 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
       {center && (
         <div className="flex items-center justify-between text-[12px] text-muted-foreground">
           <span>
-            {loadingPlaces ? "Looking around you…" : `${places.length} places around here`}
+            {loadingPlaces
+              ? "Looking around you…"
+              : placesError
+                ? "Couldn't reach the map just now."
+                : `${places.length} places around here`}
           </span>
-          {here && (
-            <button onClick={() => setCenter(here)} className="text-primary">
-              Back to me
-            </button>
-          )}
+          <span className="flex items-center gap-3">
+            {placesError && !loadingPlaces && (
+              <button onClick={() => setPlacesRetryKey((k) => k + 1)} className="text-primary">
+                Try again
+              </button>
+            )}
+            {here && (
+              <button onClick={() => setCenter(here)} className="text-primary">
+                Back to me
+              </button>
+            )}
+          </span>
         </div>
       )}
 
