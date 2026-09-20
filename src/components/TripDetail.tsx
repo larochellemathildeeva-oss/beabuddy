@@ -54,7 +54,14 @@ import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
-import { dayShapeLine, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
+import {
+  dayShapeLine,
+  dayTightnessNote,
+  minutesUntilLabel,
+  nextUp,
+  nowDivider,
+} from "@/lib/day-shape";
+import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
@@ -588,6 +595,11 @@ export function TripDetail({
                     const divider = isToday ? nowDivider(group.items, minutesNow) : null;
                     const coming = isToday ? nextUp(group.items, minutesNow) : null;
                     const untilNext = minutesUntilLabel(coming, minutesNow);
+                    // Both read the day as written: one says where the clock
+                    // and the distances disagree, the other says which stops
+                    // are close enough that their order stops mattering.
+                    const tight = dayTightnessNote(group.items);
+                    const runLabels = runLabelsByIndex(walkableRuns(group.items));
                     return (
                       <div
                         key={group.key || "undated"}
@@ -622,6 +634,14 @@ export function TripDetail({
                                   {untilNext ? ` · ${untilNext}` : ""}
                                 </span>
                               )}
+                              {/* Two numbers the plan already carries, put
+                                  next to each other. Never a verdict on the
+                                  day — the reader draws that themselves. */}
+                              {tight && (
+                                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                                  {tight}
+                                </span>
+                              )}
                             </span>
                             <ChevronDown
                               className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
@@ -649,6 +669,16 @@ export function TripDetail({
                             {group.items.map((item, dayIndex) => (
                               <Fragment key={item.id}>
                                 {divider === dayIndex && <NowLine />}
+                                {/* A run of stops close enough together to be
+                                    one decision rather than several. A label,
+                                    not a container: the rows underneath are
+                                    unchanged, and still reorder one at a
+                                    time. */}
+                                {runLabels.has(dayIndex) && (
+                                  <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
+                                    {runLabels.get(dayIndex)}
+                                  </li>
+                                )}
                                 <TimelineEntry
                                   item={item}
                                   showDay={false}

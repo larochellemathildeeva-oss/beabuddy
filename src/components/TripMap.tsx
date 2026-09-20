@@ -3,9 +3,7 @@ import { geoMercator, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
-import { formatMetres } from "@/lib/near";
-import { haversine } from "@/lib/geo";
-import { tripMapPlan, type MapStop } from "@/lib/trip-map";
+import { legLabels, tripMapPlan, type LegLabel, type MapStop } from "@/lib/trip-map";
 import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 const W = 720;
@@ -75,6 +73,29 @@ function Route({ points }: { points: [number, number][] }) {
   );
 }
 
+/** How far apart the stops are, written between them. */
+function Legs({ legs }: { legs: LegLabel[] }) {
+  return (
+    <>
+      {legs.map((leg) => (
+        <text
+          key={`${leg.x}-${leg.y}`}
+          x={leg.x.toFixed(1)}
+          y={leg.y.toFixed(1)}
+          textAnchor="middle"
+          fontSize="11.5"
+          fontWeight="600"
+          className="fill-muted-foreground stroke-elevated"
+          paintOrder="stroke"
+          strokeWidth="4"
+        >
+          {leg.label}
+        </text>
+      ))}
+    </>
+  );
+}
+
 /**
  * Country outlines fitted to the stops. The basemap is the same bundled
  * topology the globe draws, so this costs no request and works with no
@@ -82,7 +103,7 @@ function Route({ points }: { points: [number, number][] }) {
  */
 function Geographic({ stops, showLabels = true }: { stops: MapStop[]; showLabels?: boolean }) {
   const clip = useId();
-  const { land, points } = useMemo(() => {
+  const { land, points, legs } = useMemo(() => {
     const only = stops[0]!;
     const projection =
       stops.length === 1
@@ -98,9 +119,11 @@ function Geographic({ stops, showLabels = true }: { stops: MapStop[]; showLabels
             { type: "MultiPoint", coordinates: stops.map((s) => [s.lon, s.lat]) },
           );
     const path = geoPath(projection);
+    const points = stops.map((s) => projection([s.lon, s.lat]) as [number, number]);
     return {
       land: world.features.map((f, i) => ({ id: i, d: path(f) ?? "" })).filter((f) => f.d),
-      points: stops.map((s) => projection([s.lon, s.lat]) as [number, number]),
+      points,
+      legs: legLabels(stops, points),
     };
   }, [stops]);
 
@@ -125,6 +148,7 @@ function Geographic({ stops, showLabels = true }: { stops: MapStop[]; showLabels
             showLabel={showLabels}
           />
         ))}
+        {showLabels && <Legs legs={legs} />}
       </g>
     </>
   );
@@ -157,14 +181,7 @@ function Schematic({ stops, showLabels = true }: { stops: MapStop[]; showLabels?
           number,
         ],
     );
-    return {
-      points: pts,
-      legs: stops.slice(1).map((to, i) => ({
-        label: formatMetres(haversine(stops[i]!, to)),
-        x: (pts[i]![0] + pts[i + 1]![0]) / 2,
-        y: (pts[i]![1] + pts[i + 1]![1]) / 2 - 7,
-      })),
-    };
+    return { points: pts, legs: legLabels(stops, pts) };
   }, [stops]);
 
   return (
@@ -201,22 +218,7 @@ function Schematic({ stops, showLabels = true }: { stops: MapStop[]; showLabels?
           showLabel={showLabels}
         />
       ))}
-      {showLabels &&
-        legs.map((leg) => (
-          <text
-            key={`${leg.x}-${leg.y}`}
-            x={leg.x.toFixed(1)}
-            y={leg.y.toFixed(1)}
-            textAnchor="middle"
-            fontSize="11.5"
-            fontWeight="600"
-            className="fill-muted-foreground stroke-elevated"
-            paintOrder="stroke"
-            strokeWidth="4"
-          >
-            {leg.label}
-          </text>
-        ))}
+      {showLabels && <Legs legs={legs} />}
     </>
   );
 }
