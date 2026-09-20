@@ -79,6 +79,11 @@ test("prettyPlaceCategory never shows the word amenity", () => {
   assert.equal(prettyPlaceCategory({}), "Place");
 });
 
+test("prettyPlaceCategory shows Subway as a restaurant, not OSM's fast_food", () => {
+  assert.equal(prettyPlaceCategory({ placeType: "fast_food", category: "amenity" }), "Restaurant");
+  assert.equal(prettyPlaceCategory({ placeType: "food_court", category: "amenity" }), "Restaurant");
+});
+
 test("prettyPlaceCategory falls back to the coarse category", () => {
   assert.equal(prettyPlaceCategory({ category: "city" }), "City");
 });
