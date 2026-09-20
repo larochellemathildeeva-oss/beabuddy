@@ -307,7 +307,18 @@ async function nominatimVariants(
     if (venues.length) return venues;
     if (!fallback.length) fallback = batch;
   }
-  return fallback;
+  // A bounded search that never turned up a venue is not a real answer, even
+  // when Nominatim handed back something: a chain with no branch in this box
+  // still gets a "best effort" reply, and that reply is the city or region
+  // itself — "Montreal, Quebec" for "subway" — because that is the largest
+  // thing inside the viewbox, not because it is what was asked for. Handing
+  // that up would end the search right here: `hits` reads as non-empty, so
+  // the worldwide retry in searchPlaces never runs, and the city stands in
+  // for a shop it is not. Only the unbounded pass keeps a non-venue fallback,
+  // where it can be the actual answer — a landmark, a neighbourhood asked for
+  // by name — and it is what put four real Subways on the map in the first
+  // place.
+  return area ? [] : fallback;
 }
 
 /** Search the web for a place by name, so anything can be saved without a link. */
