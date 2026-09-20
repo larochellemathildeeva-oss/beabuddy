@@ -150,6 +150,17 @@ export function isLocalityCategory(category: string | undefined): boolean {
 }
 
 /**
+ * OSM's own subtype word, for the handful where it reads as jargon rather
+ * than as how anyone actually describes the place. "Subway is a restaurant,"
+ * not a "Fast food" — that's OSM's tagging vocabulary leaking into a label a
+ * person reads.
+ */
+const CATEGORY_ALIASES: Record<string, string> = {
+  fast_food: "Restaurant",
+  food_court: "Restaurant",
+};
+
+/**
  * A category worth showing a person. "amenity" is not one; "Cafe" is.
  * Falls back to the coarse category, then to a plain "Place".
  */
@@ -157,6 +168,11 @@ export function prettyPlaceCategory(input: PlaceKindInput): string {
   const pick = [input.placeType, input.category].find(
     (value) => value && value.trim() && value.trim().toLowerCase() !== "amenity",
   );
+  const key = (pick ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (CATEGORY_ALIASES[key]) return CATEGORY_ALIASES[key];
   const raw = (pick ?? "").trim().replace(/_/g, " ");
   if (!raw) return "Place";
   return raw.charAt(0).toUpperCase() + raw.slice(1);
