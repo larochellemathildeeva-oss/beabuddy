@@ -161,10 +161,12 @@ function PrivacyPage() {
 
         <Section title="Other services Béa uses">
           <p>
-            To turn a saved link or an address into a point on the map, Béa sends just that text or
-            those coordinates to a map service (OpenStreetMap's own geocoder, or a hosted
-            OpenStreetMap service where one is configured; OSRM for directions; BigDataCloud for
-            city lookup). Your identity is not sent with those requests.
+            To turn a saved link, an address or a photograph's coordinates into a point on the
+            map, Béa's server sends just that text or those coordinates to one map service —
+            OpenStreetMap's own geocoder and router, or a hosted OpenStreetMap service where one
+            is configured. Your identity is not sent with those requests, and your device does not
+            contact that service directly. The small map under Near loads its picture tiles from
+            OpenStreetMap.
           </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
         </Section>

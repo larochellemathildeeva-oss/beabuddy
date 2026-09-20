@@ -13,7 +13,7 @@ import {
   splitPlacePathName,
 } from "@/lib/place-link";
 import { localPlaceHits } from "@/lib/world-countries";
-import { searchUrl, viewboxAround } from "@/lib/geo-endpoints";
+import { reverseUrl, searchUrl, viewboxAround } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 
 export type ParsedPlace = {
@@ -134,22 +134,39 @@ function normalizePlaceLinkInput(data: unknown): {
 
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
 
+/**
+ * Coordinates to a city and a country, through the same provider as the rest.
+ *
+ * This used to call BigDataCloud — a third company doing a job both of the
+ * other two already do, with its own terms and its own outage. The address
+ * object comes back with the locality under whichever of several keys fits
+ * the country, which is why the fallback chain is long rather than fussy: a
+ * hamlet, a town and a city are all "where you are".
+ */
 async function reverse(lat: number, lon: number) {
+  const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
-      { signal: AbortSignal.timeout(5_000) },
-    );
+    const res = await fetch(reverseUrl(geoProvider(), lat, lon), {
+      headers: { "user-agent": UA, accept: "application/json" },
+      signal: AbortSignal.timeout(5_000),
+    });
     if (!res.ok) return {};
     const d = (await res.json()) as {
-      city?: string;
-      locality?: string;
-      principalSubdivision?: string;
-      countryName?: string;
+      address?: {
+        city?: string;
+        town?: string;
+        village?: string;
+        hamlet?: string;
+        municipality?: string;
+        suburb?: string;
+        state?: string;
+        country?: string;
+      };
     };
+    const a = d.address ?? {};
     return {
-      city: d.city || d.locality || d.principalSubdivision || undefined,
-      country: d.countryName || undefined,
+      city: a.city || a.town || a.village || a.municipality || a.hamlet || a.suburb || a.state,
+      country: a.country,
     };
   } catch {
     return {};

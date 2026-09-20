@@ -1,4 +1,5 @@
 import { foldAccents } from "./fuzzy.ts";
+import { mapsPlaceUrl } from "./direction-stops.ts";
 
 /**
  * UN members plus the two observer states (Holy See, Palestine) — the same
@@ -284,7 +285,8 @@ export function placeFromWorldCountry(country: WorldCountry) {
     lat: country.lat,
     lon: country.lon,
     source: "Country list",
-    url: `https://www.openstreetmap.org/?mlat=${country.lat}&mlon=${country.lon}`,
+    // Same rule as every other place link: open the maps app, not a website.
+    url: mapsPlaceUrl(country.name, { lat: country.lat, lon: country.lon }),
   };
 }
 

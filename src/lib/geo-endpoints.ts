@@ -102,6 +102,27 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
   return `${provider.searchBase}/search?${params.toString()}`;
 }
 
+/**
+ * Coordinates back into a city and a country.
+ *
+ * This was a third company — BigDataCloud — reached directly, in two places,
+ * one of them from the browser. Three services holding pieces of the same job
+ * is three sets of terms, three outages and, for the client-side one, the
+ * person's exact position leaving their phone for a company the app never
+ * names. Both providers here already answer this, so it belongs on the seam
+ * with everything else.
+ */
+export function reverseUrl(provider: GeoProvider, lat: number, lon: number): string {
+  const params = new URLSearchParams({
+    format: "jsonv2",
+    lat: String(lat),
+    lon: String(lon),
+    "accept-language": "en",
+  });
+  if (provider.token) params.set("key", provider.token);
+  return `${provider.searchBase}/reverse?${params.toString()}`;
+}
+
 /** A routing URL. Both providers serve OSRM's shape, so callers parse one thing. */
 export function routeUrl(
   provider: GeoProvider,

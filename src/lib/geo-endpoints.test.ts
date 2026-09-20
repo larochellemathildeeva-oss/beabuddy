@@ -6,6 +6,7 @@ import {
   locationIqProvider,
   nextDelayMs,
   routeProfile,
+  reverseUrl,
   routeUrl,
   searchUrl,
   viewboxAround,
@@ -139,4 +140,17 @@ test("a search carries the viewbox when one is given, and not otherwise", () => 
   const box = viewboxAround(45.5, -73.55);
   assert.ok(searchUrl(PUBLIC_PROVIDER, { query: "subway", viewbox: box }).includes("viewbox="));
   assert.ok(!searchUrl(PUBLIC_PROVIDER, { query: "subway" }).includes("viewbox="));
+});
+
+test("reverse geocoding goes to the same provider as everything else", () => {
+  const pub = reverseUrl(PUBLIC_PROVIDER, 45.5, -73.55);
+  assert.ok(pub.startsWith("https://nominatim.openstreetmap.org/reverse?"));
+  assert.ok(!pub.includes("key="));
+  assert.ok(!pub.includes("bigdatacloud"));
+
+  const paid = reverseUrl(locationIqProvider("tok_abc"), 45.5, -73.55);
+  assert.ok(paid.startsWith("https://us1.locationiq.com/v1/reverse?"));
+  assert.ok(paid.includes("key=tok_abc"));
+  assert.equal(new URL(paid).searchParams.get("lat"), "45.5");
+  assert.equal(new URL(paid).searchParams.get("lon"), "-73.55");
 });
