@@ -107,6 +107,31 @@ export function placePathSegment(url: string): string {
   }
 }
 
+/**
+ * The `?q=` text on an older-style Google Maps link that carries no
+ * `/place/` segment at all — `maps.google.com/?q=Name,+Address&ftid=…`, one
+ * of the shapes Google's own share sheet still generates. `q=` on this shape
+ * is "Name, Address" in the same one-field blob `/place/` puts in its path,
+ * so it goes through the same split. A bare "q=lat,lon" is a different,
+ * already-handled case (`placeCoordsFromUrl`'s query-param check) — this
+ * only reads `q` when it is not that.
+ */
+export function googleQueryPlaceText(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "";
+  }
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, "");
+  if (host !== "google.com" && !host.endsWith(".google.com")) return "";
+  const q = parsed.searchParams.get("q");
+  if (!q) return "";
+  const trimmed = q.trim();
+  if (new RegExp(String.raw`^${NUM}\s*,\s*${NUM}$`).test(trimmed)) return "";
+  return trimmed;
+}
+
 /** Does this look like a street address rather than more of the name? */
 function looksLikeAddress(parts: string[]): boolean {
   if (parts.length === 0) return false;

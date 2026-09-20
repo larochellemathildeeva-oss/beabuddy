@@ -13,6 +13,7 @@ import {
 } from "@/lib/place-label";
 import {
   cleanPageTitle,
+  googleQueryPlaceText,
   placePathSegment,
   resolvePlaceCoords,
   splitPlacePathName,
@@ -410,8 +411,15 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
       failure = "unreachable";
     }
 
-    // Google puts the name and often the street address in one path segment.
-    const fromPath = splitPlacePathName(placePathSegment(data.url) || placePathSegment(finalUrl));
+    // Google puts the name and often the street address in one path segment
+    // on a /place/ URL — or, on the older ?q=Name,+Address&ftid=… share
+    // shape, which has no /place/ segment at all, in the q= param instead.
+    const fromPath = splitPlacePathName(
+      placePathSegment(data.url) ||
+        placePathSegment(finalUrl) ||
+        googleQueryPlaceText(data.url) ||
+        googleQueryPlaceText(finalUrl),
+    );
     const placeName = fromPath.name;
     const coords = resolvePlaceCoords(data.url, finalUrl, Boolean(placeName));
     const place = coords ? await reverse(coords.lat, coords.lon) : {};
