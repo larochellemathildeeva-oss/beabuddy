@@ -17,6 +17,15 @@ export type NominatimHitLike = {
   address?: Record<string, string>;
   /** OSM's free-form tags. Only `brand` is read; present when `extratags=1`. */
   extratags?: Record<string, string>;
+  /**
+   * Present when `namedetails=1`. On Nominatim this duplicates `name`; on
+   * LocationIQ it is where the name actually lives — LocationIQ's `json`
+   * format never sets the top-level `name` field at all, only this one.
+   * A production search for "subway" that traced correctly against a
+   * Nominatim sample and still showed the bare city on LocationIQ was this:
+   * `hit.name` was reliably empty there, and nothing read `namedetails`.
+   */
+  namedetails?: Record<string, string>;
 };
 
 const LOCALITY_KEYS = [
@@ -109,6 +118,24 @@ function cleanName(name: string | undefined): string {
     .trim();
 }
 
+/**
+ * The name a hit actually has, checked in the order worth trusting.
+ *
+ * `name` is Nominatim's own field. LocationIQ's `json` format never sets it
+ * — the same name instead lives in `namedetails.name`, requested via
+ * `namedetails=1` since before this existed and never read until now.
+ * `namedetails.brand`, then `extratags.brand`, are what is left for a point
+ * OSM never named at all, only tagged with which chain it belongs to.
+ */
+function hitOwnName(hit: NominatimHitLike): string {
+  return (
+    cleanName(hit.name) ||
+    cleanName(hit.namedetails?.["name"]) ||
+    cleanName(hit.namedetails?.["brand"]) ||
+    cleanName(hit.extratags?.["brand"])
+  );
+}
+
 function uniqueParts(parts: (string | undefined)[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -136,7 +163,7 @@ export function isLocalityHit(hit: NominatimHitLike): boolean {
   if (LOCALITY_TYPES.has(kind)) return true;
   if (LOCALITY_TYPES.has(hit.type ?? "")) return true;
   const local = localityName(hit.address);
-  const name = cleanName(hit.name);
+  const name = hitOwnName(hit);
   return Boolean(
     local && name && foldAccents(local) === foldAccents(name) && !isAdminJunkName(hit),
   );
@@ -268,12 +295,10 @@ export function placeFromNominatim(hit: NominatimHitLike): {
   const line = formatPlaceLine(hit);
   const local = localityName(address);
   const kind = kindOf(hit);
-  // A branch mapped with no name of its own — common for a franchise point
-  // that carries only `brand=Subway` — must not fall straight to the city:
+  // A branch with no name of its own must not fall straight to the city —
   // that is how a real, in-stock Subway read as a search that found nothing
-  // but "Montreal." The brand is the name this point actually has.
-  const ownName = cleanName(hit.name) || cleanName(hit.extratags?.["brand"]);
-  const rawName = ownName || local || line || "Saved place";
+  // but "Montreal."
+  const rawName = hitOwnName(hit) || local || line || "Saved place";
   const name = isLocalityHit(hit) ? local || rawName : rawName || local || "Saved place";
   const city = local ?? (isLocalityHit(hit) ? name : undefined);
   const country = addressField(address, "country");

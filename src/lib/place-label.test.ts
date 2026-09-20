@@ -125,6 +125,35 @@ const unnamedSubwayInMontreal: NominatimHitLike = {
   extratags: { brand: "Subway", cuisine: "sandwich" },
 };
 
+/**
+ * The actual shape a real, fully-tagged Subway comes back as from LocationIQ
+ * — captured live from production, not invented. LocationIQ's `json` format
+ * never sets the top-level `name` field at all (unlike Nominatim, which
+ * does); the same name sits in `namedetails.name` instead, a field that was
+ * requested via `namedetails=1` from the start and never read until this
+ * fix. `extratags.brand` reads `brand:wikidata` here, not `brand` — an
+ * unrelated Wikidata id, not a name — which is why that fallback alone,
+ * shipped as the very first attempt at this bug, changed nothing in
+ * production: it was checking a field this real data does not have either.
+ */
+const locationIqSubwayNoTopLevelName: NominatimHitLike = {
+  lat: "-46.1232962",
+  lon: "169.9567421",
+  type: "fast_food",
+  class: "amenity",
+  importance: 0.5312348556343703,
+  display_name: "Subway, Union Street, Milton, Clutha District, Otago, 9220, New Zealand",
+  address: {
+    road: "Union Street",
+    town: "Milton",
+    county: "Clutha District",
+    state: "Otago",
+    country: "New Zealand",
+  },
+  extratags: { cuisine: "sandwich", takeaway: "yes", "brand:wikidata": "Q244457" },
+  namedetails: { name: "Subway", brand: "Subway" },
+};
+
 test("formatPlaceLine uses city, admin and country only", () => {
   assert.equal(formatPlaceLine(montrealCanada), "Montreal, Quebec, Canada");
   assert.equal(formatPlaceLine(montrealFrance), "Montréal, Occitania, France");
@@ -170,6 +199,24 @@ test("placeSuggestionLines shows the brand, not the bare city, for an unnamed br
 
 test("isVenueHit still recognises the unnamed branch as a venue", () => {
   assert.equal(isVenueHit(unnamedSubwayInMontreal), true);
+});
+
+test("placeFromNominatim reads the name from namedetails when LocationIQ leaves the top level empty", () => {
+  const place = placeFromNominatim(locationIqSubwayNoTopLevelName);
+  assert.equal(place.name, "Subway");
+  assert.equal(place.city, "Milton");
+  assert.equal(place.address, "Milton, Otago, New Zealand");
+});
+
+test("placeSuggestionLines shows Subway, not Milton, for the LocationIQ shape", () => {
+  const place = placeFromNominatim(locationIqSubwayNoTopLevelName);
+  const lines = placeSuggestionLines(place);
+  assert.equal(lines.title, "Subway");
+  assert.equal(lines.subtitle, "Milton, Otago, New Zealand");
+});
+
+test("isVenueHit reads class the LocationIQ way and still finds the venue", () => {
+  assert.equal(isVenueHit(locationIqSubwayNoTopLevelName), true);
 });
 
 test("refineNominatimHits prefers the city and drops admin + France for Montreal", () => {
