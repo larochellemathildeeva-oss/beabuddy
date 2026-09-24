@@ -38,8 +38,8 @@ implied, and nothing is migrated or removed while it grows.
 That wiring is the only throwaway work if the old screen is retired.
 
 **Four perspectives: Now · Map · Day · Trip.** All four are built. **Trip**
-has stops, to-dos, packing and budget; people and invites, offline
-directions and trip settings are still on the old page (see step 4). **Trip** is
+has stops, to-dos, packing, people and budget; offline directions and trip
+settings are still on the old page (see step 4). **Trip** is
 where stops, prep, packing, to-dos, documents, budget and invites will live —
 it is a *peer* of the day views on purpose, because the prototype had none of
 them and a day-centric screen that dropped them loses more than it wins.
@@ -149,6 +149,7 @@ not copies, so an edit on either page is the same edit:
 | Stops and cities | `TripStops` |
 | To do | `TripTodosBody` (was only inside `TripPrep`'s sheet) |
 | Packing | `PackingBody` (same) |
+| People and invites | `TripPeople` — extracted from `TripDetail`'s settings sheet, with its leave / remove confirmations; both pages now render it |
 | Budget | `TripBudget`, when `budget_enabled`; otherwise a line saying where to turn it on |
 
 Each hook instance opens its own realtime channel (`…:${channelId}`), so the
@@ -159,7 +160,6 @@ page computes.
 **Still on the old page**, all written inline in `TripDetail`'s settings sheet
 rather than as components, so each needs extracting before it can move:
 
-- people and invite codes (`sheetSection === "invite"`)
 - offline directions (`"offline"`) — Now no longer depends on it
 - trip name, dates and delete / leave (`"edit"`)
 - attaching a packing template (`"packing"`) and the budget toggle (`"budget"`)

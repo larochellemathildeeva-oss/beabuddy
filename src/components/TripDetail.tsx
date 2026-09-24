@@ -15,6 +15,7 @@ import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
+import { TripPeople } from "@/components/TripPeople";
 import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
@@ -326,11 +327,8 @@ export function TripDetail({
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
   const [stopSignal, setStopSignal] = useState(0);
-  const [inviteCode, setInviteCode] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [confirmLeave, setConfirmLeave] = useState(false);
   /** The member about to lose access, or null. Named, so the sheet can say who. */
-  const [confirmRemove, setConfirmRemove] = useState<{ id: string; label: string } | null>(null);
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
   const [timelineByDay, setTimelineByDay] = useState(true);
@@ -877,111 +875,18 @@ export function TripDetail({
           </button>
           {sheetSection === "invite" && (
             <div className="rounded-xl bg-elevated p-3">
-              <p className="text-[12px] text-muted-foreground">
-                Codes expire in 7 days and work once. Creating a new code revokes the previous open
-                one.
-              </p>
-              <button
-                onClick={async () => {
-                  const code = await onInvite();
-                  setInviteCode(code);
-                  await board.reload();
-                }}
-                className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
-              >
-                Create an invite code
-              </button>
-              {(() => {
-                const active = inviteCode
-                  ? { code: inviteCode, expires_at: null as string | null }
-                  : board.invites.find(
-                      (inv) =>
-                        !inv.revoked_at &&
-                        inv.use_count < inv.max_uses &&
-                        (!inv.expires_at || Date.parse(inv.expires_at) > Date.now()),
-                    );
-                if (!active) return null;
-                return (
-                  <div className="mt-2 space-y-2 text-center">
-                    <p className="text-[14.5px] text-muted-foreground">
-                      Share this code:{" "}
-                      <span className="font-semibold tracking-widest text-foreground">
-                        {active.code}
-                      </span>
-                    </p>
-                    {active.expires_at && (
-                      <p className="text-[12px] text-muted-foreground">
-                        Expires {new Date(active.expires_at).toLocaleDateString()}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        await onRevokeInvite(active.code);
-                        setInviteCode("");
-                        await board.reload();
-                      }}
-                      className="text-[13px] font-semibold text-destructive underline"
-                    >
-                      Revoke this code
-                    </button>
-                  </div>
-                );
-              })()}
-
-              {members.length > 0 && (
-                <div className="mt-3 border-t border-border pt-3">
-                  <p className="text-[12px] font-semibold text-muted-foreground">
-                    People on this trip
-                  </p>
-                  <ul className="mt-2 space-y-2">
-                    {members.map((m) => {
-                      const isMe = m.user_id === me.id;
-                      const isOwner = m.user_id === trip.owner_id;
-                      const iAmOwner = me.id === trip.owner_id;
-                      const label =
-                        m.display_name?.trim() || (isMe ? "You" : isOwner ? "Owner" : "Traveler");
-                      return (
-                        <li
-                          key={m.id}
-                          className="flex items-center justify-between gap-2 text-[14.5px]"
-                        >
-                          <span>
-                            {label}
-                            {isOwner ? " · owner" : ""}
-                            {isMe && !isOwner ? " · you" : ""}
-                          </span>
-                          {iAmOwner && !isMe && (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmRemove({ id: m.user_id, label })}
-                              className="text-[13px] font-semibold text-destructive underline"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {me.id && me.id !== trip.owner_id && (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmLeave(true)}
-                      className="mt-3 w-full rounded-xl border border-destructive/40 px-4 py-2 text-[14.5px] font-semibold text-destructive"
-                    >
-                      Leave trip
-                    </button>
-                  )}
-                  {me.id === trip.owner_id &&
-                    members.some((m) => m.user_id !== me.id) === false && (
-                      <p className="mt-2 text-[12px] text-muted-foreground">
-                        You&apos;re the only person here. Delete the trip from settings if you want
-                        it gone.
-                      </p>
-                    )}
-                </div>
-              )}
+              <TripPeople
+                trip={trip}
+                meId={me.id}
+                members={members}
+                invites={board.invites}
+                onInvite={onInvite}
+                onRevokeInvite={onRevokeInvite}
+                onRemoveMember={onRemoveMember}
+                onLeave={onLeave}
+                onChanged={board.reload}
+                onLeft={() => setSettingsOpen(false)}
+              />
             </div>
           )}
 
@@ -1272,38 +1177,6 @@ export function TripDetail({
           setConfirmDelete(false);
           setSettingsOpen(false);
           void onDelete();
-        }}
-      />
-
-      <ConfirmSheet
-        open={confirmLeave}
-        onClose={() => setConfirmLeave(false)}
-        title="Leave this trip?"
-        body="You will lose access to the itinerary, the stops and the budget. Someone still on the trip would have to invite you back."
-        confirmLabel="Leave"
-        onConfirm={() => {
-          setConfirmLeave(false);
-          void onLeave().then(
-            () => setSettingsOpen(false),
-            (e: unknown) =>
-              toast.error(e instanceof Error ? e.message : "Couldn't leave that trip."),
-          );
-        }}
-      />
-
-      <ConfirmSheet
-        open={confirmRemove !== null}
-        onClose={() => setConfirmRemove(null)}
-        title={`Remove ${confirmRemove?.label ?? "this person"}?`}
-        body="They lose access to this trip immediately, including the itinerary and anything they added to it."
-        confirmLabel="Remove"
-        onConfirm={() => {
-          const target = confirmRemove;
-          setConfirmRemove(null);
-          if (!target) return;
-          void onRemoveMember(target.id).catch((e: unknown) =>
-            toast.error(e instanceof Error ? e.message : "Couldn't remove them."),
-          );
         }}
       />
     </article>

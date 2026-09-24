@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -8,6 +8,7 @@ import { NowPanel } from "@/components/day/NowPanel";
 import { StopCard } from "@/components/day/StopCard";
 import { Section } from "@/components/Section";
 import { TripBudget } from "@/components/TripBudget";
+import { TripPeople } from "@/components/TripPeople";
 import { TripStops } from "@/components/TripStops";
 import { TripTodosBody } from "@/components/TripTodos";
 import { PackingBody } from "@/components/PackingLists";
@@ -17,7 +18,7 @@ import { timelineGlyph } from "@/lib/timeline-kind";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
 import { useOfflineDirections } from "@/hooks/useOfflineDirections";
-import { useTripBoard, useTrips, type ItineraryRow } from "@/hooks/useTrips";
+import { useTripBoard, useTrips, type ItineraryRow, type MemberRow } from "@/hooks/useTrips";
 import { companionStops } from "@/lib/companion";
 import { timelineStopsForDirections } from "@/lib/direction-stops";
 import { savedMatchesStops } from "@/lib/offline-directions";
@@ -69,6 +70,7 @@ export const Route = createFileRoute("/trips_/$tripId_/day")({
 });
 
 function TripDayPage() {
+  const navigate = useNavigate();
   const { tripId } = Route.useParams();
   const { user } = useAuth();
   const t = useTrips();
@@ -108,15 +110,41 @@ function TripDayPage() {
     );
   }
 
-  return <TripDay trip={trip} me={{ id: t.uid, name: myName }} />;
+  return (
+    <TripDay
+      trip={trip}
+      me={{ id: t.uid, name: myName }}
+      people={{
+        members: t.members.filter((m) => m.trip_id === trip.id),
+        onInvite: () => t.inviteToTrip(trip.id),
+        onRevokeInvite: (code) => t.revokeTripInvite(trip.id, code),
+        onRemoveMember: (userId) => t.removeTripMember(trip.id, userId),
+        // Leaving takes the trip away, so there is no page left to stay on.
+        onLeave: async () => {
+          await t.leaveTrip(trip.id);
+          await navigate({ to: "/trips" });
+        },
+      }}
+    />
+  );
 }
+
+type TripPeopleActions = {
+  members: MemberRow[];
+  onInvite: () => Promise<string>;
+  onRevokeInvite: (code: string) => Promise<void>;
+  onRemoveMember: (userId: string) => Promise<void>;
+  onLeave: () => Promise<void>;
+};
 
 function TripDay({
   trip,
   me,
+  people,
 }: {
   trip: NonNullable<ReturnType<typeof useTrips>["trips"][number]>;
   me: { id: string | null; name: string };
+  people: TripPeopleActions;
 }) {
   const board = useTripBoard(trip.id, me);
   const todayKey = toLocalISODate(new Date());
@@ -190,7 +218,14 @@ function TripDay({
         <p className="text-[12.5px] text-muted-foreground">{active.hint}</p>
 
         {perspective === "trip" ? (
-          <TripWide trip={trip} uid={me.id} items={board.items} />
+          <TripWide
+            trip={trip}
+            uid={me.id}
+            items={board.items}
+            people={people}
+            invites={board.invites}
+            reloadBoard={board.reload}
+          />
         ) : (
           <>
             {board.items.length > 0 && offerDays && (
@@ -369,10 +404,16 @@ function TripWide({
   trip,
   uid,
   items,
+  people,
+  invites,
+  reloadBoard,
 }: {
   trip: NonNullable<ReturnType<typeof useTrips>["trips"][number]>;
   uid: string | null;
   items: ItineraryRow[];
+  people: TripPeopleActions;
+  invites: ReturnType<typeof useTripBoard>["invites"];
+  reloadBoard: () => Promise<void>;
 }) {
   const cities = useTripStops(trip.id, uid);
   // The same readings the full page gives the to-do list, so its
@@ -404,6 +445,20 @@ function TripWide({
         <PackingBody tripId={trip.id} />
       </Section>
 
+      <Section title="People" hint="Who is on this trip, and invite codes." defaultOpen={false}>
+        <TripPeople
+          trip={trip}
+          meId={uid}
+          members={people.members}
+          invites={invites}
+          onInvite={people.onInvite}
+          onRevokeInvite={people.onRevokeInvite}
+          onRemoveMember={people.onRemoveMember}
+          onLeave={people.onLeave}
+          onChanged={reloadBoard}
+        />
+      </Section>
+
       {trip.budget_enabled ? (
         <TripBudget tripId={trip.id} />
       ) : (
@@ -415,9 +470,9 @@ function TripWide({
       <div className="card-soft space-y-2 p-4">
         <p className="font-display text-[17px] leading-snug">Still on the full trip page</p>
         <p className="text-[13.5px] text-muted-foreground">
-          The people you're travelling with and invite codes, directions saved for offline use, and
-          the trip's name, dates and settings. They come across next — nothing is being dropped on
-          the way.
+          Directions saved for offline use, attaching a packing template, the budget switch, and the
+          trip's name, dates and delete. They come across next — nothing is being dropped on the
+          way.
         </p>
         <Link
           to="/trips/$tripId"
