@@ -3,6 +3,9 @@ import { test } from "node:test";
 import {
   arrivalWrites,
   clockMinutes,
+  isDone,
+  midpointTime,
+  toggleDoneWrite,
   companionState,
   companionStops,
   leaveBy,
@@ -221,4 +224,31 @@ test("parts of the day come from clock times only", () => {
   assert.equal(partOfDay("17:00"), "evening");
   assert.equal(partOfDay("Lunch"), null);
   assert.equal(partOfDay(null), null);
+});
+
+test("marking done records arrival and departure, and undo restores", () => {
+  const now = new Date(T("12:00"));
+  const fresh = toggleDoneWrite(stop("a"), now);
+  assert.deepEqual(fresh.patch, { arrived_at: T("12:00"), left_at: T("12:00") });
+  assert.deepEqual(fresh.undo, { arrived_at: null, left_at: null });
+
+  const there = toggleDoneWrite(stop("a", { arrived_at: T("11:00") }), now);
+  assert.deepEqual(
+    there.patch,
+    { arrived_at: T("11:00"), left_at: T("12:00") },
+    "keeps the arrival",
+  );
+
+  const done = toggleDoneWrite(stop("a", { arrived_at: T("11:00"), left_at: T("11:30") }), now);
+  assert.deepEqual(done.patch, { arrived_at: null, left_at: null }, "done again means not done");
+  assert.deepEqual(done.undo, { arrived_at: T("11:00"), left_at: T("11:30") });
+  assert.equal(isDone(stop("a", { arrived_at: T("11:00"), left_at: T("11:30") })), true);
+});
+
+test("halfway time needs two clock times, rounded to five minutes", () => {
+  assert.equal(midpointTime("09:00", "11:00"), "10:00");
+  assert.equal(midpointTime("09:00", "09:50"), "09:25");
+  assert.equal(midpointTime("Lunch", "15:00"), "");
+  assert.equal(midpointTime("15:00", "09:00"), "", "out of order");
+  assert.equal(midpointTime(null, "09:00"), "");
 });

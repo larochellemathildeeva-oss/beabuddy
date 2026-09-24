@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { neighbourInDay, nextPosition } from "@/lib/timeline-order";
+import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
 import {
   datesStatusOrDefault,
   isMissingDatesStatusColumn,
@@ -537,6 +537,64 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [tripId, me.id, items.length, load],
   );
 
+  /**
+   * Add a row straight after another, for "+ Add stop between".
+   *
+   * Rows after the anchor move down one place first, then the new row takes
+   * the gap. Positions have no uniqueness rule, so a reader who reloads
+   * mid-way sees at worst two rows sharing a place for a moment, never a
+   * failure.
+   */
+  const insertItemAfter = useCallback(
+    async (
+      afterId: string,
+      item: {
+        day_date?: string;
+        time_label?: string;
+        kind: string;
+        title: string;
+        detail?: string;
+        address?: string;
+        lat?: number;
+        lon?: number;
+      },
+    ) => {
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
+      const authorId = await liveUserId(me.id);
+      const { position, shifts } = insertAfter(items, afterId);
+      for (const shift of shifts) {
+        const { error } = await supabase
+          .from("itinerary_items")
+          .update({ position: shift.position, updated_by: authorId })
+          .eq("id", shift.id);
+        if (error) throw error;
+      }
+      const { data, error } = await supabase
+        .from("itinerary_items")
+        .insert({
+          trip_id: id,
+          day_date: item.day_date || null,
+          time_label: item.time_label || null,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail || null,
+          address: item.address || null,
+          lat: item.lat ?? null,
+          lon: item.lon ?? null,
+          position,
+          created_by: authorId,
+          updated_by: authorId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await load();
+      return data?.id as string | undefined;
+    },
+    [items, me.id, load],
+  );
+
   const addItems = useCallback(
     async (
       additions: Array<{
@@ -805,6 +863,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     applySchedule,
     updateItem,
     setProgress,
+    insertItemAfter,
     moveItem,
     removeItem,
     setEditing,

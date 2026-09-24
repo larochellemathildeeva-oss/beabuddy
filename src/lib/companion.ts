@@ -332,3 +332,44 @@ export function partOfDay(timeLabel: string | null | undefined): PartOfDay | nul
   if (minutes < 17 * 60) return "afternoon";
   return "evening";
 }
+
+/** Arrived and left: the stop is behind you. */
+export function isDone(stop: Pick<CompanionStop, "arrived_at" | "left_at">): boolean {
+  return Boolean(stop.arrived_at && stop.left_at);
+}
+
+/**
+ * The write for marking a stop done from the day list, or undoing that.
+ *
+ * Done means arrived and left, the same record "I'm here" and "Leaving"
+ * make, so a swipe on the Day tab and taps on Now tell one story. An
+ * arrival already recorded is kept. `undo` puts back exactly what was there.
+ */
+export function toggleDoneWrite(
+  stop: CompanionStop,
+  now: Date,
+): {
+  id: string;
+  patch: { arrived_at: string | null; left_at: string | null };
+  undo: { arrived_at: string | null; left_at: string | null };
+} {
+  const undo = { arrived_at: stop.arrived_at ?? null, left_at: stop.left_at ?? null };
+  if (isDone(stop)) return { id: stop.id, patch: { arrived_at: null, left_at: null }, undo };
+  const arrived = stop.arrived_at ?? now.toISOString();
+  return { id: stop.id, patch: { arrived_at: arrived, left_at: notBefore(now, arrived) }, undo };
+}
+
+/**
+ * A time halfway between two stops, for a stop added between them. Empty
+ * unless both have a clock time: halfway between "Lunch" and 15:00 is not a
+ * time anyone wrote down.
+ */
+export function midpointTime(
+  before: string | null | undefined,
+  after: string | null | undefined,
+): string {
+  const a = clockMinutes(before);
+  const b = clockMinutes(after);
+  if (a == null || b == null || b <= a) return "";
+  return formatClock(Math.round((a + b) / 2 / 5) * 5);
+}

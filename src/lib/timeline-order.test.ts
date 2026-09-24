@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { canMove, neighbourInDay, nextPosition } from "./timeline-order.ts";
+import { canMove, insertAfter, neighbourInDay, nextPosition } from "./timeline-order.ts";
 
 const row = (id: string, day_date: string | null, position: number) => ({ id, day_date, position });
 
@@ -54,4 +54,21 @@ test("nextPosition is one past the highest, not the row count", () => {
   assert.equal(nextPosition([{ position: 0 }, { position: 1 }, { position: 2 }]), 3);
   assert.equal(nextPosition([{ position: 7 }]), 8);
   assert.equal(nextPosition([]), 0);
+});
+
+test("inserting after a row makes room behind it", () => {
+  const rows = [row("a", "d", 0), row("b", "d", 1), row("c", "d", 2)];
+  assert.deepEqual(insertAfter(rows, "a"), {
+    position: 1,
+    shifts: [
+      { id: "b", position: 2 },
+      { id: "c", position: 3 },
+    ],
+  });
+  assert.deepEqual(insertAfter(rows, "c"), { position: 3, shifts: [] }, "after the last row");
+  assert.deepEqual(
+    insertAfter(rows, "zz"),
+    { position: 3, shifts: [] },
+    "unknown anchor goes last",
+  );
 });

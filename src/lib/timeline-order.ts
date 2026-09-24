@@ -50,3 +50,22 @@ export function canMove<T extends OrderedItem>(
 export function nextPosition(items: readonly { position: number }[]): number {
   return items.reduce((max, item) => Math.max(max, item.position + 1), 0);
 }
+
+/**
+ * Room for a new row straight after `afterId`.
+ *
+ * Positions are one integer sequence across the trip, so making a gap means
+ * moving every row after the anchor down by one. Returns those moves and the
+ * position the new row takes; with an unknown anchor, the row goes last.
+ */
+export function insertAfter<T extends { id: string; position: number }>(
+  items: readonly T[],
+  afterId: string,
+): { position: number; shifts: { id: string; position: number }[] } {
+  const anchor = items.find((item) => item.id === afterId);
+  if (!anchor) return { position: nextPosition(items), shifts: [] };
+  const shifts = items
+    .filter((item) => item.position > anchor.position)
+    .map((item) => ({ id: item.id, position: item.position + 1 }));
+  return { position: anchor.position + 1, shifts };
+}
