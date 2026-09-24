@@ -11,11 +11,11 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
+import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
@@ -24,7 +24,6 @@ import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail, timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
-import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { TripMap } from "@/components/TripMap";
 import { TripPrep } from "@/components/TripPrep";
 import { TripToday } from "@/components/TripToday";
@@ -46,11 +45,7 @@ import {
   stopsForDirections,
   timelineStopsForDirections,
 } from "@/lib/direction-stops";
-import {
-  formatTripLocation,
-  locationFromParsedPlace,
-  placePatchForSavedRow,
-} from "@/lib/place-label";
+import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { DaySelector } from "@/components/DaySelector";
 import {
@@ -327,7 +322,6 @@ export function TripDetail({
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
   const [stopSignal, setStopSignal] = useState(0);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   /** The member about to lose access, or null. Named, so the sheet can say who. */
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -363,15 +357,6 @@ export function TripDetail({
   const todayKey = toLocalISODate(new Date());
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
-  const [tripForm, setTripForm] = useState({
-    title: trip.title,
-    city: formatTripLocation(trip.city, trip.country),
-    country: trip.country ?? "",
-    start_date: trip.start_date ?? "",
-    end_date: trip.end_date ?? "",
-    dates_status: trip.dates_status,
-    status: trip.status,
-  });
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(board.items);
   /**
@@ -1042,143 +1027,30 @@ export function TripDetail({
           </button>
           {sheetSection === "budget" && (
             <div className="space-y-2 rounded-xl bg-elevated p-3">
-              <label className="flex items-center gap-2 px-1 text-[14.5px]">
-                <input
-                  type="checkbox"
-                  checked={trip.budget_enabled}
-                  onChange={(e) => void onUpdate({ budget_enabled: e.target.checked })}
-                  className="size-5"
-                />
-                Track a budget for this trip
-              </label>
+              <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
             </div>
           )}
 
           <button
-            onClick={() => {
-              const next = sheetSection === "edit" ? null : "edit";
-              setSheetSection(next);
-              if (next === "edit") {
-                setTripForm({
-                  title: trip.title,
-                  city: formatTripLocation(trip.city, trip.country),
-                  country: trip.country ?? "",
-                  start_date: trip.start_date ?? "",
-                  end_date: trip.end_date ?? "",
-                  dates_status: trip.dates_status,
-                  status: trip.status,
-                });
-              }
-            }}
+            onClick={() => setSheetSection(sheetSection === "edit" ? null : "edit")}
             className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
           >
             Trip Options
           </button>
           {sheetSection === "edit" && (
-            <div className="space-y-2 rounded-xl bg-elevated p-3">
-              <input
-                value={tripForm.title}
-                onChange={(e) => setTripForm({ ...tripForm, title: e.target.value })}
-                placeholder="Trip name"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-              />
-              <PlaceSearchInput
-                value={tripForm.city}
-                onChange={(v) => setTripForm({ ...tripForm, city: v })}
-                onPick={(p) => {
-                  const loc = locationFromParsedPlace(p);
-                  setTripForm({
-                    ...tripForm,
-                    city: loc.city,
-                    country: loc.country || tripForm.country,
-                  });
-                }}
-                placeholder="Starting city — search it"
-              />
-              <DateRangeField
-                start={tripForm.start_date}
-                end={tripForm.end_date}
-                onChange={(start_date, end_date) =>
-                  setTripForm({ ...tripForm, start_date, end_date })
-                }
-                datesStatus={tripForm.dates_status}
-                onDatesStatusChange={(dates_status) => setTripForm({ ...tripForm, dates_status })}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
-              />
-              {tripForm.start_date &&
-                tripForm.end_date &&
-                tripForm.end_date < tripForm.start_date && (
-                  <p className="px-1 text-[13px] font-medium text-destructive">
-                    End date can't be earlier than the start date.
-                  </p>
-                )}
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  ["upcoming", "Upcoming"],
-                  ["active", "In progress"],
-                  ["past", "Past"],
-                ].map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setTripForm({ ...tripForm, status: v as string })}
-                    className={`rounded-full border px-3 py-1.5 text-[13px] ${
-                      tripForm.status === v
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <button
-                disabled={
-                  !tripForm.title.trim() ||
-                  !!(
-                    tripForm.start_date &&
-                    tripForm.end_date &&
-                    tripForm.end_date < tripForm.start_date
-                  )
-                }
-                onClick={async () => {
-                  await onUpdate({
-                    title: tripForm.title.trim(),
-                    city: tripForm.city,
-                    country: tripForm.country,
-                    start_date: tripForm.start_date,
-                    end_date: tripForm.end_date,
-                    dates_status: tripForm.dates_status,
-                    status: tripForm.status,
-                  } as Partial<TripRow>);
-                }}
-                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                Save changes
-              </button>
+            <div className="rounded-xl bg-elevated p-3">
+              <TripDetailsForm trip={trip} onUpdate={onUpdate} />
             </div>
           )}
 
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
-          >
-            Delete trip
-          </button>
+          {/* Only the owner can delete (the "Owner deletes trips" policy). For
+              anyone else the delete matched no rows, said nothing, and sent
+              them to the trip list as if it had worked; they leave instead. */}
+          {me.id === trip.owner_id && (
+            <TripDeleteButton onDelete={onDelete} onConfirmed={() => setSettingsOpen(false)} />
+          )}
         </div>
       </Sheet>
-
-      <ConfirmSheet
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Delete this trip?"
-        body="This permanently removes the trip, its timeline, stops, budget and invites. This can't be undone."
-        confirmLabel="Delete"
-        onConfirm={() => {
-          setConfirmDelete(false);
-          setSettingsOpen(false);
-          void onDelete();
-        }}
-      />
     </article>
   );
 }

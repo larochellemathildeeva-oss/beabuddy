@@ -10,6 +10,7 @@ import { Section } from "@/components/Section";
 import { TripBudget } from "@/components/TripBudget";
 import { TripPeople } from "@/components/TripPeople";
 import { TripStops } from "@/components/TripStops";
+import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import { TripTodosBody } from "@/components/TripTodos";
 import { PackingBody } from "@/components/PackingLists";
 import { useTripStops } from "@/hooks/useTripStops";
@@ -18,7 +19,13 @@ import { timelineGlyph } from "@/lib/timeline-kind";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
 import { useOfflineDirections } from "@/hooks/useOfflineDirections";
-import { useTripBoard, useTrips, type ItineraryRow, type MemberRow } from "@/hooks/useTrips";
+import {
+  useTripBoard,
+  useTrips,
+  type ItineraryRow,
+  type MemberRow,
+  type TripRow,
+} from "@/hooks/useTrips";
 import { companionStops } from "@/lib/companion";
 import { timelineStopsForDirections } from "@/lib/direction-stops";
 import { savedMatchesStops } from "@/lib/offline-directions";
@@ -124,6 +131,12 @@ function TripDayPage() {
           await t.leaveTrip(trip.id);
           await navigate({ to: "/trips" });
         },
+        onUpdate: (patch) => t.updateTrip(trip.id, patch),
+        // As with leaving: once it is gone there is no page to stay on.
+        onDelete: async () => {
+          await t.deleteTrip(trip.id);
+          await navigate({ to: "/trips" });
+        },
       }}
     />
   );
@@ -135,6 +148,8 @@ type TripPeopleActions = {
   onRevokeInvite: (code: string) => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
   onLeave: () => Promise<void>;
+  onUpdate: (patch: Partial<TripRow>) => Promise<void>;
+  onDelete: () => Promise<void>;
 };
 
 function TripDay({
@@ -463,16 +478,24 @@ function TripWide({
         <TripBudget tripId={trip.id} />
       ) : (
         <p className="mb-3 px-1 text-[13px] text-muted-foreground">
-          The budget is off for this trip. Turn it on in trip settings on the full trip page.
+          The budget is off for this trip. Turn it on under Trip details below.
         </p>
       )}
+
+      <Section title="Trip details" hint="Name, dates, status and the budget." defaultOpen={false}>
+        <div className="space-y-3">
+          <TripDetailsForm trip={trip} onUpdate={people.onUpdate} />
+          <TripBudgetSwitch trip={trip} onUpdate={people.onUpdate} />
+          {/* Only the owner can delete; everyone else leaves, under People. */}
+          {uid === trip.owner_id && <TripDeleteButton onDelete={people.onDelete} />}
+        </div>
+      </Section>
 
       <div className="card-soft space-y-2 p-4">
         <p className="font-display text-[17px] leading-snug">Still on the full trip page</p>
         <p className="text-[13.5px] text-muted-foreground">
-          Directions saved for offline use, attaching a packing template, the budget switch, and the
-          trip's name, dates and delete. They come across next — nothing is being dropped on the
-          way.
+          Directions saved for offline use, and attaching a saved packing list. Now works out its
+          own directions, so nothing on this screen depends on them.
         </p>
         <Link
           to="/trips/$tripId"
