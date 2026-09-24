@@ -4,6 +4,7 @@ import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { timeForRail } from "@/lib/timeline-kind";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { placed as hasPosition } from "@/lib/trip-map";
+import { stayLabel } from "@/lib/planned-stay";
 import type { ItineraryRow } from "@/hooks/useTrips";
 
 /**
@@ -71,9 +72,14 @@ export function StopCard({
         <span className="block break-words text-[15.5px] font-semibold leading-snug">
           {item.title}
         </span>
-        {item.address?.trim() && (
+        {(item.address?.trim() || item.planned_stay_minutes) && (
           <span className="mt-0.5 block break-words text-[12.5px] leading-snug text-muted-foreground">
-            {item.address}
+            {[
+              item.address?.trim(),
+              item.planned_stay_minutes ? `~${stayLabel(item.planned_stay_minutes)} stay` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </span>
         )}
         {!placed && (

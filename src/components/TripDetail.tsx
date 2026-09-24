@@ -2,26 +2,22 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
-  ChevronUp,
   ListChecks,
   MapPinPlus,
   Pencil,
   Plus,
   Settings,
   Sparkles,
-  X,
 } from "lucide-react";
-import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
-import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
-import { timeForRail, timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
+import { timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
@@ -35,17 +31,12 @@ import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
-import type { ParsedPlace } from "@/lib/places.functions";
 import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
-import {
-  mapsPlaceUrl,
-  stopsForDirections,
-  timelineStopsForDirections,
-} from "@/lib/direction-stops";
-import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
+import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
+import { formatTripLocation } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { DaySelector } from "@/components/DaySelector";
 import {
@@ -69,19 +60,21 @@ import {
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
-import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
+import { unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
-import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 import { DayMapView } from "@/components/day/DayMapView";
 import { DayRibbon } from "@/components/day/DayRibbon";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { NowPanel } from "@/components/day/NowPanel";
 import { PackingBody } from "@/components/PackingLists";
 import { TripTodosBody } from "@/components/TripTodos";
-import { companionStops } from "@/lib/companion";
+import { companionStops, isDone, midpointTime, toggleDoneWrite } from "@/lib/companion";
+import { CustomizeTrip } from "@/components/day/CustomizeTrip";
+import { AddBetween, TimelineEntry, TransitConnector } from "@/components/day/TimelineCard";
+import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
 import {
   defaultPerspective,
   TRIP_PERSPECTIVES,
@@ -394,6 +387,31 @@ export function TripDetail({
     defaultPerspective(tripIsUnderway(trip, todayKey)),
   );
   const activePerspective = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
+  const view = useTripViewPrefs();
+
+  /**
+   * "+ Add stop between": where the next added stop goes. The form stays
+   * open after a save, so each further stop lands after the one before it
+   * rather than all of them after the first anchor.
+   */
+  const [addBetween, setAddBetween] = useState<{ afterId: string; time: string } | null>(null);
+  const insertAnchor = useRef<string | null>(null);
+
+  /** Done and not done from the Day tab, with an undo that restores exactly. */
+  const toggleDone = (item: ItineraryRow) => {
+    const write = toggleDoneWrite(item, new Date());
+    const wasDone = isDone(item);
+    void board.setProgress([{ id: write.id, patch: write.patch }]).then(
+      () =>
+        toast(wasDone ? `${item.title}: not done` : `${item.title}: done`, {
+          action: {
+            label: "Undo",
+            onClick: () => void board.setProgress([{ id: write.id, patch: write.undo }]),
+          },
+        }),
+      (e: unknown) => toast.error(e instanceof Error ? e.message : "That didn't save."),
+    );
+  };
   // Now follows one day: the one picked, or today when every day is showing.
   const companionDay =
     chosenDay === ALL_DAYS
@@ -531,7 +549,7 @@ export function TripDetail({
         <nav
           role="tablist"
           aria-label="How to look at this trip"
-          className="no-scrollbar -mx-1 mb-1.5 flex gap-1.5 overflow-x-auto px-1"
+          className="no-scrollbar -mx-1 mb-1.5 flex items-center gap-1.5 overflow-x-auto px-1"
         >
           {TRIP_PERSPECTIVES.map((p) => {
             const on = p.id === perspective;
@@ -552,6 +570,8 @@ export function TripDetail({
               </button>
             );
           })}
+          <span className="ml-auto" />
+          <CustomizeTrip prefs={view.prefs} onToggle={view.toggle} />
         </nav>
         <p className="mb-3 text-[12.5px] text-muted-foreground">{activePerspective.hint}</p>
 
@@ -572,8 +592,8 @@ export function TripDetail({
             <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
             {nowStops.length > 0 ? (
               <>
-                <JourneyTracker stops={nowStops} />
-                <DayRibbon stops={nowStops} />
+                {view.prefs.journey && <JourneyTracker stops={nowStops} />}
+                {view.prefs.ribbon && <DayRibbon stops={nowStops} />}
                 <NowPanel
                   key={companionDay?.key ?? ""}
                   dayStops={nowStops}
@@ -811,7 +831,8 @@ export function TripDetail({
                                   <TimelineEntry
                                     item={item}
                                     showDay={false}
-                                    leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                    number={dayIndex + 1}
+                                    onToggleDone={() => toggleDone(item)}
                                     editing={editingTimeline}
                                     {...(directionArea ? { near: directionArea } : {})}
                                     onEdit={(field) => board.setEditing(field)}
@@ -824,6 +845,29 @@ export function TripDetail({
                                     tripEnd={trip.end_date}
                                     onKeep={keepItemAsReco}
                                   />
+                                  {view.prefs.walkTimes && (
+                                    <TransitConnector
+                                      leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                    />
+                                  )}
+                                  {!editingTimeline &&
+                                    group.key &&
+                                    dayIndex < group.items.length - 1 && (
+                                      <AddBetween
+                                        onAdd={() => {
+                                          insertAnchor.current = null;
+                                          setAddBetween({
+                                            afterId: item.id,
+                                            time: midpointTime(
+                                              item.time_label,
+                                              group.items[dayIndex + 1]!.time_label,
+                                            ),
+                                          });
+                                          setAddDay(group.key);
+                                          setAddingTimeline(true);
+                                        }}
+                                      />
+                                    )}
                                 </Fragment>
                               ))}
                               {divider === group.items.length && <NowLine done />}
@@ -836,23 +880,26 @@ export function TripDetail({
                 ) : (
                   <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
                     {board.items.map((item, i) => (
-                      <TimelineEntry
-                        key={item.id}
-                        item={item}
-                        showDay
-                        leg={legFor(i)}
-                        editing={editingTimeline}
-                        {...(directionArea ? { near: directionArea } : {})}
-                        onEdit={(field) => board.setEditing(field)}
-                        onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                        onRemove={() => void removeTimelineItem(item)}
-                        onMove={(direction) => void board.moveItem(item.id, direction)}
-                        canMoveUp={canMove(board.items, item.id, -1)}
-                        canMoveDown={canMove(board.items, item.id, 1)}
-                        tripStart={trip.start_date}
-                        tripEnd={trip.end_date}
-                        onKeep={keepItemAsReco}
-                      />
+                      <Fragment key={item.id}>
+                        <TimelineEntry
+                          item={item}
+                          showDay
+                          number={i + 1}
+                          onToggleDone={() => toggleDone(item)}
+                          editing={editingTimeline}
+                          {...(directionArea ? { near: directionArea } : {})}
+                          onEdit={(field) => board.setEditing(field)}
+                          onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                          onRemove={() => void removeTimelineItem(item)}
+                          onMove={(direction) => void board.moveItem(item.id, direction)}
+                          canMoveUp={canMove(board.items, item.id, -1)}
+                          canMoveDown={canMove(board.items, item.id, 1)}
+                          tripStart={trip.start_date}
+                          tripEnd={trip.end_date}
+                          onKeep={keepItemAsReco}
+                        />
+                        {view.prefs.walkTimes && <TransitConnector leg={legFor(i)} />}
+                      </Fragment>
                     ))}
                   </ol>
                 )}
@@ -870,13 +917,15 @@ export function TripDetail({
                   onClose={() => {
                     setAddingTimeline(false);
                     setAddDay("");
+                    setAddBetween(null);
                   }}
-                  title="Add to the timeline"
+                  title={addBetween ? "Add a stop between" : "Add to the timeline"}
                 >
                   <TimelineEntryForm
                     tripStart={trip.start_date}
                     tripEnd={trip.end_date}
                     {...(addDay ? { openDay: addDay } : {})}
+                    {...(addBetween?.time ? { openTime: addBetween.time } : {})}
                     {...(directionArea ? { near: directionArea } : {})}
                     existing={board.items.map((item) => ({
                       title: item.title,
@@ -884,11 +933,23 @@ export function TripDetail({
                       lat: item.lat,
                       lon: item.lon,
                     }))}
-                    onAdd={board.addItem}
+                    onAdd={
+                      addBetween
+                        ? async (entry) => {
+                            const id = await board.insertItemAfter(
+                              insertAnchor.current ?? addBetween.afterId,
+                              entry,
+                            );
+                            if (id) insertAnchor.current = id;
+                            return id;
+                          }
+                        : board.addItem
+                    }
                     onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
                     onDone={() => {
                       setAddingTimeline(false);
                       setAddDay("");
+                      setAddBetween(null);
                     }}
                   />
                 </Sheet>
@@ -1256,382 +1317,5 @@ function NowLine({ done = false }: { done?: boolean }) {
       </span>
       <span className="h-px flex-1 bg-primary/40" />
     </li>
-  );
-}
-
-/**
- * One editable timeline row. Shared by the flat list and the by-day groups so
- * direction legs stay keyed to the same item id either way.
- */
-function TimelineEntry({
-  item,
-  showDay,
-  leg,
-  editing = false,
-  near,
-  onEdit,
-  onUpdate,
-  onRemove,
-  onMove,
-  canMoveUp = false,
-  canMoveDown = false,
-  tripStart,
-  tripEnd,
-  onKeep,
-}: {
-  item: ItineraryRow;
-  showDay: boolean;
-  leg?: RouteLeg | undefined;
-  /** Edit mode for the whole itinerary, held by the page and toggled in its header. */
-  editing?: boolean;
-  /** Where the trip is, so a place search is answered locally. */
-  near?: string | undefined;
-  onEdit: (field: string | null) => void;
-  onUpdate: (
-    patch: Partial<
-      Pick<
-        ItineraryRow,
-        | "title"
-        | "detail"
-        | "time_label"
-        | "kind"
-        | "day_date"
-        | "address"
-        | "lat"
-        | "lon"
-        | "planned_stay_minutes"
-      >
-    >,
-  ) => void;
-  onRemove: () => void;
-  /** Swap with the entry above or below, within the same day. */
-  onMove?: ((direction: -1 | 1) => void) | undefined;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
-  tripStart?: string | null | undefined;
-  tripEnd?: string | null | undefined;
-  /** Save this stop to the vault, so a good find outlives the trip. */
-  onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
-}) {
-  const [kept, setKept] = useState(false);
-  const rail = timeForRail(item.time_label);
-
-  return (
-    <li className="relative flex min-w-0 gap-3">
-      {/* Time reads down the page as a column, so a day can be scanned rather
-          than read. The kind moves into the glyph beside it. */}
-      <p className="w-[52px] shrink-0 pt-0.5 text-[13px] font-semibold tabular-nums text-foreground">
-        {rail}
-      </p>
-      <TimelineGlyphMark item={item} />
-      <div className="min-w-0 flex-1">
-        {showDay && item.day_date ? (
-          <p className="text-[12px] text-muted-foreground">{item.day_date}</p>
-        ) : null}
-        <input
-          defaultValue={item.title}
-          onFocus={() => onEdit(item.title)}
-          onBlur={(e) => {
-            onEdit(null);
-            if (e.target.value.trim() && e.target.value !== item.title)
-              onUpdate({ title: e.target.value.trim() });
-          }}
-          className="w-full min-w-0 truncate bg-transparent text-[15px] font-medium outline-none"
-        />
-        <TimelineDetailInput
-          detail={item.detail}
-          onFocus={() => onEdit(item.title)}
-          onCommit={(next) => {
-            onEdit(null);
-            const prev = stripEmbeddedMapsUrl(item.detail);
-            if (next !== prev) onUpdate({ detail: next || null });
-          }}
-        />
-        {item.address && (
-          <p className="break-words text-[12px] text-muted-foreground">
-            📍 {item.address}
-            {item.lat != null && item.lon != null && (
-              <a
-                href={mapsPlaceUrl(item.title, item)}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-2 font-semibold text-primary underline"
-              >
-                Map
-              </a>
-            )}
-          </p>
-        )}
-        <StopDirections leg={leg} />
-
-        {/**
-         * Changing an entry after it is saved.
-         *
-         * A plan moves: dinner slides to the next night, the museum swaps with
-         * lunch. Until now a saved entry could only have its title and detail
-         * edited — the day was printed as plain text and the order was
-         * whatever it was added in. The day and time write through the same
-         * updateItem the form uses; the arrows swap position with the
-         * neighbour on the same day, and hide at the ends of one, because
-         * rows sort by day first and a cross-day swap would move nothing you
-         * can see.
-         *
-         * These open for the whole list at once, from the pencil in the
-         * section header, rather than per row: reordering a day means
-         * comparing rows, and a mode you turn on once beats opening and
-         * closing each entry in turn.
-         */}
-        {editing && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
-            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              Day
-              <input
-                type="date"
-                value={item.day_date ?? ""}
-                aria-label={`Day for ${item.title}`}
-                {...(tripStart ? { min: tripStart } : {})}
-                {...(tripEnd ? { max: tripEnd } : {})}
-                onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-              />
-            </label>
-            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              Time
-              <input
-                type="time"
-                value={rail}
-                aria-label={`Time for ${item.title}`}
-                onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-              />
-            </label>
-            {/* How long the plan allows here. Now counts it down once you
-                tap "I'm here"; left empty, Now only says how long it has been. */}
-            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-              Stay
-              <select
-                value={item.planned_stay_minutes ?? ""}
-                aria-label={`How long to stay at ${item.title}`}
-                onChange={(e) =>
-                  onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })
-                }
-                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-              >
-                <option value="">—</option>
-                {stayChoices(item.planned_stay_minutes).map((minutes) => (
-                  <option key={minutes} value={minutes}>
-                    {stayLabel(minutes)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {onMove && (
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={!canMoveUp}
-                  onClick={() => onMove(-1)}
-                  aria-label={`Move ${item.title} earlier`}
-                  className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
-                >
-                  <ChevronUp className="size-3.5" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  disabled={!canMoveDown}
-                  onClick={() => onMove(1)}
-                  aria-label={`Move ${item.title} later`}
-                  className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
-                >
-                  <ChevronDown className="size-3.5" aria-hidden />
-                </button>
-              </div>
-            )}
-            <TimelinePlaceEditor
-              item={item}
-              {...(near ? { near } : {})}
-              onPick={(place) => onUpdate(placePatchForSavedRow(place))}
-            />
-          </div>
-        )}
-
-        <div className="mt-0.5 flex items-center gap-3">
-          {editing && (
-            <button
-              type="button"
-              onClick={onRemove}
-              className="text-[12px] text-muted-foreground underline"
-            >
-              Remove
-            </button>
-          )}
-          {onKeep && item.kind !== "note" && (
-            <button
-              type="button"
-              disabled={kept}
-              onClick={() => {
-                void onKeep(item).then(
-                  () => setKept(true),
-                  (e: unknown) =>
-                    toast.error(
-                      e instanceof Error ? e.message : "Couldn't save that to your places.",
-                    ),
-                );
-              }}
-              className="text-[12px] text-muted-foreground underline disabled:no-underline disabled:opacity-60"
-            >
-              {kept ? "Saved to your places" : "Save to my places"}
-            </button>
-          )}
-        </div>
-      </div>
-    </li>
-  );
-}
-
-/**
- * Move a saved entry to a different place.
- *
- * "Order" and "where" are the two things that change about a plan after it is
- * written down, and only order had a control. The search is the same one the
- * add form uses, so a pick brings the address and the point with it — which is
- * also what puts the entry on the trip's map.
- */
-function TimelinePlaceEditor({
-  item,
-  near,
-  onPick,
-}: {
-  item: ItineraryRow;
-  near?: string | undefined;
-  onPick: (place: ParsedPlace) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  if (!open)
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setQuery(item.title);
-          setOpen(true);
-        }}
-        className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-[12px] text-muted-foreground"
-      >
-        <MapPinPlus className="size-3.5" aria-hidden />
-        {item.address ? "Change place" : "Set place"}
-      </button>
-    );
-
-  return (
-    <div className="w-full space-y-1.5">
-      <PlaceSearchInput
-        value={query}
-        onChange={setQuery}
-        onPick={(place) => {
-          onPick(place);
-          setOpen(false);
-        }}
-        placeholder={`Where is ${item.title}?`}
-        {...(near ? { near } : {})}
-      />
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="text-[12px] text-muted-foreground underline"
-      >
-        Cancel
-      </button>
-    </div>
-  );
-}
-
-/** Keeps the detail draft while focused so a realtime row refresh cannot wipe it. */
-function TimelineDetailInput({
-  detail,
-  onFocus,
-  onCommit,
-}: {
-  detail: string | null;
-  onFocus: () => void;
-  onCommit: (next: string) => void;
-}) {
-  const remote = stripEmbeddedMapsUrl(detail);
-  const [focused, setFocused] = useState(false);
-  const [draft, setDraft] = useState(remote);
-
-  useEffect(() => {
-    setDraft((current) => syncDetailDraft(focused, current, detail));
-  }, [detail, focused]);
-
-  return (
-    <input
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      placeholder="Add a detail"
-      onFocus={() => {
-        setFocused(true);
-        onFocus();
-      }}
-      onBlur={() => {
-        setFocused(false);
-        const next = stripEmbeddedMapsUrl(draft);
-        setDraft(next);
-        onCommit(next);
-      }}
-      className="w-full min-w-0 truncate bg-transparent text-[13px] text-muted-foreground outline-none"
-    />
-  );
-}
-
-/**
- * Saved walking/driving directions for the leg that starts at this stop.
- * Collapsed to a single quiet line so the timeline stays readable — the steps
- * are only worth screen space at the moment someone is about to walk them.
- */
-function StopDirections({ leg }: { leg?: RouteLeg | undefined }) {
-  const [open, setOpen] = useState(false);
-  if (!leg) return null;
-
-  const measured = leg.distance > 0;
-  const summary = measured
-    ? `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to} · ${prettyDistance(leg.distance)} · ${prettyDuration(leg.duration)}`
-    : `Directions to ${leg.to}`;
-
-  return (
-    <div className="mt-1">
-      <button
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-        className="min-w-0 text-left text-[12px] font-medium text-primary underline underline-offset-2 [overflow-wrap:anywhere]"
-      >
-        {open ? "Hide directions" : summary}
-      </button>
-      {open && (
-        <div className="mt-1.5 rounded-lg border border-border bg-elevated p-2">
-          {leg.steps.length > 0 ? (
-            <ol className="space-y-1">
-              {leg.steps.map((step, s) => (
-                <li key={s} className="text-[12px] text-muted-foreground">
-                  {step.instruction}
-                  {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <p className="text-[12px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
-          )}
-          <a
-            href={leg.mapUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-1.5 inline-block text-[12px] font-semibold text-primary underline"
-          >
-            Open in maps
-          </a>
-        </div>
-      )}
-    </div>
   );
 }

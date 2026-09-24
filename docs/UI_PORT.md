@@ -61,13 +61,30 @@ a *peer* of the day views on purpose: the prototype had no place for
 stops, prep, packing, budget or people, and dropping them would lose more
 than the redesign gains.
 
+## Day tab restyle, swipe, add-between, Customize (2026-09-24)
+
+- **Cards.** `TimelineEntry` (now in `day/TimelineCard.tsx`) is a card: time
+  and `#n` on the left; name, note, and address · stay · Map. Name and note
+  still edit in place (tap them); edit mode is unchanged; Remove and "Save to
+  my places" are kept. Directions moved out of the card into
+  `TransitConnector` between cards; the steps still open from it.
+- **Swipe** (`day/SwipeRow.tsx`, thresholds in `lib/swipe.ts`): right marks
+  done / not done, left docks Save and Delete, a long pull left deletes. Off
+  in edit mode. Each has a button on the card too. Done = `arrived_at` and
+  `left_at` set (`toggleDoneWrite`), so it matches Now and the tracker, with
+  an undo toast that restores exactly. Delete keeps its existing undo.
+- **Add stop between** (by-day view only): opens the add sheet with the day
+  and a halfway time; `insertItemAfter` shifts later rows down one position
+  and inserts after the anchor. Further stops added from the same open sheet
+  chain after the previous one.
+- **Customize** (`day/CustomizeTrip.tsx`, `useTripViewPrefs`): live journey,
+  ribbon and walk times, on by default, saved per device.
+- Stay length shows on the Day cards and the Map tab's cards.
+
 ## Still to build from the prototype
 
-Not started, in the order proposed to the owner (confirm before building):
-Day-tab restyle with transit cards between stops, "+ Add stop between",
-swipe to complete / delete with undo, Customize (three toggles), saved
-places drawer, the A/B/C plan comparison. See the spec table on the
-progress page for the full list.
+Not started (confirm before building): the saved places drawer, the A/B/C
+plan comparison, an optimise before-and-after with undo, photos on cards.
 
 ## Next, in order
 
