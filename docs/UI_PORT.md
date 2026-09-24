@@ -79,8 +79,9 @@ them and a day-centric screen that dropped them loses more than it wins.
   Run it locally to look at it.
 - CI gates every push: typecheck, lint, test, build. Bump the version per the
   table in `AGENTS.md`.
-- The prototype zip is **not** in this repo and does not survive a session.
-  Re-upload it if a detail is needed; the essentials are captured above.
+- The prototype source is in `docs/prototype/` (AI Studio export, lockfile
+  dropped). It is reference only: outside `tsconfig`, ignored by lint and
+  prettier, never imported. Leaflet map: `components/InteractiveMap.tsx`.
 
 ## Related docs
 
