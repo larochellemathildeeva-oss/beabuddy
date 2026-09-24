@@ -38,7 +38,7 @@ export const TRIP_PERSPECTIVES = [
   {
     id: "trip",
     label: "Trip",
-    hint: "Stops, prep, packing, documents and budget.",
+    hint: "Stops, to-dos, packing and budget.",
   },
 ] as const;
 

@@ -6,6 +6,14 @@ import { DaySelector } from "@/components/DaySelector";
 import { DayMap } from "@/components/day/DayMap";
 import { NowPanel } from "@/components/day/NowPanel";
 import { StopCard } from "@/components/day/StopCard";
+import { Section } from "@/components/Section";
+import { TripBudget } from "@/components/TripBudget";
+import { TripStops } from "@/components/TripStops";
+import { TripTodosBody } from "@/components/TripTodos";
+import { PackingBody } from "@/components/PackingLists";
+import { useTripStops } from "@/hooks/useTripStops";
+import { timelineGlyph } from "@/lib/timeline-kind";
+
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
 import { useOfflineDirections } from "@/hooks/useOfflineDirections";
@@ -182,7 +190,7 @@ function TripDay({
         <p className="text-[12.5px] text-muted-foreground">{active.hint}</p>
 
         {perspective === "trip" ? (
-          <TripWide />
+          <TripWide trip={trip} uid={me.id} items={board.items} />
         ) : (
           <>
             {board.items.length > 0 && offerDays && (
@@ -349,20 +357,76 @@ function PickADay() {
  * Everything that belongs to the trip rather than to a day.
  *
  * Deliberately a peer of the day views. The prototype this layout comes from
- * had none of it — no budget, no packing, no documents, no invitations — and
- * a day-centric screen that quietly dropped them would lose more than it
- * gained. For now this points at the page that has them; the components move
- * here as each is brought across.
+ * had none of it — no budget, no packing, no to-dos, no invitations — and a
+ * day-centric screen that quietly dropped them would lose more than it
+ * gained.
+ *
+ * These are the same components the full trip page renders, reading the same
+ * tables, not copies: an edit here is an edit there. What has not come across
+ * yet is named at the bottom with a way to reach it, rather than left out.
  */
-function TripWide() {
+function TripWide({
+  trip,
+  uid,
+  items,
+}: {
+  trip: NonNullable<ReturnType<typeof useTrips>["trips"][number]>;
+  uid: string | null;
+  items: ItineraryRow[];
+}) {
+  const cities = useTripStops(trip.id, uid);
+  // The same readings the full page gives the to-do list, so its
+  // suggestions (passport, insurance, check-in) come out the same here.
+  const international = cities.countries.length > 1 || Boolean(trip.country);
+  const hasLodging = items.some((item) => timelineGlyph(item) === "lodging");
+  const hasFlights = items.some((item) => timelineGlyph(item) === "transport");
+
   return (
-    <div className="card-soft space-y-2 p-4">
-      <p className="font-display text-[19px] leading-snug">Trip-wide, still on the old page.</p>
-      <p className="text-[14px] text-muted-foreground">
-        Stops and cities, before-you-go checks, packing, to-dos, documents, the budget and the
-        people you're travelling with all live on the full trip page. They move here one at a time —
-        nothing is being dropped on the way.
-      </p>
+    <div>
+      <TripStops tripId={trip.id} uid={uid} />
+
+      <Section
+        title="To do"
+        hint="Before you go, and anything that comes up on the way."
+        defaultOpen
+      >
+        <TripTodosBody
+          tripId={trip.id}
+          uid={uid}
+          international={international}
+          hasLodging={hasLodging}
+          hasFlights={hasFlights}
+          tripStart={trip.start_date}
+        />
+      </Section>
+
+      <Section title="Packing" defaultOpen={false}>
+        <PackingBody tripId={trip.id} />
+      </Section>
+
+      {trip.budget_enabled ? (
+        <TripBudget tripId={trip.id} />
+      ) : (
+        <p className="mb-3 px-1 text-[13px] text-muted-foreground">
+          The budget is off for this trip. Turn it on in trip settings on the full trip page.
+        </p>
+      )}
+
+      <div className="card-soft space-y-2 p-4">
+        <p className="font-display text-[17px] leading-snug">Still on the full trip page</p>
+        <p className="text-[13.5px] text-muted-foreground">
+          The people you're travelling with and invite codes, directions saved for offline use, and
+          the trip's name, dates and settings. They come across next — nothing is being dropped on
+          the way.
+        </p>
+        <Link
+          to="/trips/$tripId"
+          params={{ tripId: trip.id }}
+          className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-[14px] font-semibold"
+        >
+          Open the full trip page
+        </Link>
+      </div>
     </div>
   );
 }

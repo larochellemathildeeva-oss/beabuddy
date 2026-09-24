@@ -37,8 +37,9 @@ implied, and nothing is migrated or removed while it grows.
 `DaySelector` is also wired into the old `TripDetail` (commit `8fb4800`).
 That wiring is the only throwaway work if the old screen is retired.
 
-**Four perspectives: Now · Map · Day · Trip.** **Now**, **Map** and **Day** are
-built; **Trip** is still a pointer to the old page. **Trip** is
+**Four perspectives: Now · Map · Day · Trip.** All four are built. **Trip**
+has stops, to-dos, packing and budget; people and invites, offline
+directions and trip settings are still on the old page (see step 4). **Trip** is
 where stops, prep, packing, to-dos, documents, budget and invites will live —
 it is a *peer* of the day views on purpose, because the prototype had none of
 them and a day-centric screen that dropped them loses more than it wins.
@@ -49,7 +50,8 @@ them and a day-centric screen that dropped them loses more than it wins.
 2. ~~**Migration.**~~ Done and **applied to the live project** (2026-09-24) —
    see "Stop progress (step 2)" below.
 3. ~~**Now (companion).**~~ Done — see "Now (step 3)" below.
-4. **Trip tab** — move bucket D across, one component at a time.
+4. **Trip tab** — first pass done; see "Trip (step 4)" below for what is
+   still to move.
 
 ## Day map (step 1)
 
@@ -135,6 +137,36 @@ What step 3 has to respect:
   refuses, and keep an odd value already on a row.
 - Walk / Drive rows from saved directions are the journey, not stops, and are
   left out — the same filter the directions use, so leg indexes line up.
+
+## Trip (step 4)
+
+"Bucket D" was the trip-wide material: everything that belongs to the trip
+rather than to a day. The first pass renders the **existing components**,
+not copies, so an edit on either page is the same edit:
+
+| On the Trip tab | Component |
+| --- | --- |
+| Stops and cities | `TripStops` |
+| To do | `TripTodosBody` (was only inside `TripPrep`'s sheet) |
+| Packing | `PackingBody` (same) |
+| Budget | `TripBudget`, when `budget_enabled`; otherwise a line saying where to turn it on |
+
+Each hook instance opens its own realtime channel (`…:${channelId}`), so the
+two pages rendering the same component do not collide. The to-do suggestions
+get the same `international` / `hasLodging` / `hasFlights` readings the old
+page computes.
+
+**Still on the old page**, all written inline in `TripDetail`'s settings sheet
+rather than as components, so each needs extracting before it can move:
+
+- people and invite codes (`sheetSection === "invite"`)
+- offline directions (`"offline"`) — Now no longer depends on it
+- trip name, dates and delete / leave (`"edit"`)
+- attaching a packing template (`"packing"`) and the budget toggle (`"budget"`)
+
+The Trip tab names these and links to the old page. "Documents" was dropped
+from the Trip hint: vault documents belong to the account, not a trip, and
+there is no trip-level documents section to move.
 
 ## Settled — don't relitigate
 
