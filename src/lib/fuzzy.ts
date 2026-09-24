@@ -11,7 +11,16 @@
 
 /** "Café Cõrrer" -> "cafe correr". Strips diacritics, lowercases, collapses space. */
 export function foldAccents(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+  // Recomposed afterwards: NFD also splits Japanese kana with voicing marks
+  // (ド → ト + ゙) and every Korean syllable into letters, and the map service
+  // does not match those back. Only Latin accents are meant to go.
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 /**

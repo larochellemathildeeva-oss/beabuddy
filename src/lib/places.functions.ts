@@ -1,3 +1,4 @@
+import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -346,10 +347,19 @@ export const searchPlaces = createServerFn({ method: "POST" })
          * standing outside it.
          */
         at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+        /**
+         * The trip's city and country, sent apart from the name so that when
+         * the name is several names ("Peace Park / Atomic Bomb Dome", "Shrine
+         * (厳島神社)") each part can be asked for in the same place.
+         */
+        near: z.string().max(200).nullish(),
       })
       .parse(data),
   )
-  .handler(async ({ data }): Promise<ParsedPlace[]> => {
+  .handler(async ({ data: input }): Promise<ParsedPlace[]> => {
+    const name = input.query;
+    const within = (q: string) => (input.near ? `${q}, ${input.near}` : q);
+    const data = { ...input, query: within(name) };
     const local = localPlaceHits(data.query);
     if (local.length) return local;
     // Server-only: the token must not be compiled into the client bundle.
@@ -379,11 +389,29 @@ export const searchPlaces = createServerFn({ method: "POST" })
     if (!hits.length) {
       hits = await nominatimVariants(data.query, undefined, pace);
     }
-    const refined = refineNominatimHits(hits, data.query);
+    // Still nothing: the name may be a list, or carry its local-script name in
+    // brackets. One plain request per part, in the same place, first answer
+    // wins. A failure here returns what there is rather than an error: the
+    // full name was already asked for successfully.
+    let asked = data.query;
+    if (!hits.length) {
+      for (const part of placeQueryParts(name, 3)) {
+        try {
+          hits = await nominatim(within(part), 10, undefined, pace);
+        } catch {
+          break;
+        }
+        if (hits.length) {
+          asked = within(part);
+          break;
+        }
+      }
+    }
+    const refined = refineNominatimHits(hits, asked);
     const places = (refined.length ? refined : hits).map(hitToPlace);
     return fuzzyRank(
       places,
-      data.query,
+      asked,
       (place) => [place.name, place.address, place.city, place.country],
       0,
     );

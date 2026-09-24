@@ -1,3 +1,4 @@
+import { placeQueryParts } from "./place-query.ts";
 import { minimumNameLength, startsLikeAName, wordCount } from "./script.ts";
 
 export type DirectionStop = {
@@ -135,6 +136,8 @@ export function placeQueryCandidates(title: string, hint?: string | null): strin
   push(streetNameFromText(h));
   push(streetNameFromText(title));
   for (const name of titlePlaceCandidates(title)) push(name);
+  // "Peace Park / Atomic Bomb Dome", "Shrine (厳島神社)": each name on its own.
+  for (const name of placeQueryParts(title)) push(name);
   if (h && !looksLikeStreetAddress(h) && h.split(/\s+/).length <= 10) push(h);
   return looksLikeStreetAddress(out[0] ?? "") ? out.slice(0, 1) : out.slice(0, 4);
 }

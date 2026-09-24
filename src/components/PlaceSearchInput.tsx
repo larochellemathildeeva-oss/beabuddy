@@ -85,7 +85,7 @@ export function PlaceSearchInput({
         return;
       }
       const res = await search({
-        data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+        data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
       });
       setHits(res);
       if (res.length === 0) {
@@ -127,7 +127,7 @@ export function PlaceSearchInput({
     const timer = setTimeout(async () => {
       try {
         const res = await search({
-          data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+          data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
         });
         if (cancelled) return;
         setHits(res);

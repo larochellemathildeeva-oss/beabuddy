@@ -83,3 +83,10 @@ test("fuzzyQueryVariants adds 's for a bare chain name too", () => {
     `possessive must precede truncation: ${variants.join(",")}`,
   );
 });
+
+test("folding keeps kana and Hangul whole, so the map can match them", () => {
+  assert.equal(foldAccents("原爆ドーム"), "原爆ドーム");
+  assert.equal(foldAccents("서울 강남구"), "서울 강남구");
+  assert.equal(foldAccents("Ōsaka Café"), "osaka cafe");
+  assert.equal(fuzzyQueryVariants("原爆ドーム")[0], "原爆ドーム");
+});
