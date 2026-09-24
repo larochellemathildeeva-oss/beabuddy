@@ -85,9 +85,24 @@ In order; each is independent and one commit:
    selected and framed.
 2. **Offline directions pill** beside the day strip (opens the existing
    offline directions in settings; no new behaviour).
-3. **Stay length and "Booked"**: stay already shows; "Booked" only if
-   decision D3 says to add a column.
+3. **Swipe hints** on the first card of each day only (D8 default).
 4. **Remember choices** per trip on this device: last tab and day.
+5. **Bookings (D3).** A migration, applied by hand like the others, adding
+   to `itinerary_items`: `booked boolean not null default false`,
+   `booking_ref text` and `booking_details text`. The migration includes
+   grants per `AGENTS.md`; RLS is already per trip. In the app:
+   - a "Booked" badge on Timeline cards, the ribbon and the Map card, in the
+     prototype's teal with a check;
+   - tapping the badge, or "Booking" in the card's actions, opens a small
+     sheet with the booked switch, the reference and the details, editable
+     in place;
+   - editable from edit mode too.
+   Confirm at the start of this item whether one booking per stop is enough.
+   A separate bookings table is only needed for several bookings per stop.
+   **Test:** the migration re-run twice on scratch Postgres; the checker
+   toggles booked, saves a reference, reopens it and sees it.
+6. **Tab names (D7).** Companion · Map Split · Timeline · Trip, with the
+   hints reworded to match. Update `trip-perspective.ts` and its test.
 
 **Test:** checker extended with one assertion per feature, then green.
 
@@ -99,11 +114,10 @@ In order; each is independent and one commit:
 2. **Optimize with before and after:** wraps the existing optimizer. Shows
    the old and new order, the minutes saved, and an Undo that restores the
    exact previous order.
-3. **Compare plans A / B / C** (only if decision D1 is yes): needs a design
-   first. Sketch in Figma or as a screenshot mock, approve, then build.
+*(Compare plans A / B / C was dropped by decision D1.)*
 
 **Test:** checker assertions for each: the drawer opens, adding writes the
-right day and position, optimize's undo restores positions exactly.
+right day and position, and optimize's undo restores positions exactly.
 
 ## Phase 4 — finish and tidy (small)
 
@@ -111,18 +125,18 @@ right day and position, optimize's undo restores positions exactly.
 - Update `docs/UI_PORT.md` and the progress page to the final state.
 - Final checker run on every sample, and full screenshots for the owner.
 
-## Decisions needed from the owner (ask once, before phase 2)
+## Owner decisions (answered 2026-09-24)
 
-| # | Question | Default if not answered |
+| # | Question | Answer |
 | --- | --- | --- |
-| D1 | Build Plan A / B / C comparison? It is new, and the largest item left. | No, park it |
-| D2 | "Béa's daily guidance" card: the prototype's text is hard-coded. Build a real one (needs an AI call per day), or leave it out? | Leave it out |
-| D3 | Cost and "Booked" on stops need new database columns (a migration you run by hand). Add them? | No |
-| D4 | Photos on stop cards: no photo source exists for stops. Leave out? | Leave out |
-| D5 | Group stops by neighbourhood: Béa has no neighbourhood data; it already groups stops within walking distance. Is that enough? | Yes, keep the walking groups |
-| D6 | The old whole-trip map under the Map tab's list: keep, restyle or remove? | Keep, restyle to match |
-| D7 | Tab names: Béa's Now / Map / Day / Trip, or the prototype's Companion / Map Split / Timeline (+ Trip)? | Keep Now / Map / Day / Trip |
-| D8 | Swipe hints under every card, or only on the first card of each day? | First card only |
+| D1 | Plan A / B / C comparison | **No.** Removed from phase 3. |
+| D2 | "Béa's daily guidance" card | **Leave out for now.** |
+| D3 | Cost and "Booked" on stops | **Add bookings.** Users mark a stop as booked, and a quick tap on the stop shows its booking info. Cost was not asked for and is not built. See phase 2, item 5. |
+| D4 | Photos on stop cards | Not answered. Default: leave out. |
+| D5 | Group stops by neighbourhood | Not answered. Default: keep Béa's walking-distance groups. |
+| D6 | Old whole-trip map under the Map tab | Not answered. Default: keep, restyle to match. |
+| D7 | Tab names | **Use the prototype's:** Companion · Map Split · Timeline, plus Trip (which the prototype does not have). Code ids stay `companion` / `map` / `timeline` / `trip`; only labels and hints change. Phase 2, item 6. |
+| D8 | Swipe hints under every card | Not answered. Default: first card of each day only. |
 
 ## Not in scope
 
