@@ -48,6 +48,7 @@ import {
 import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
+import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
 
@@ -495,6 +496,15 @@ function RecommendationsPage() {
               showDraft({ ...place, category: prettyPlaceCategory(place) });
             }}
             placeholder={addPlaceholder(views.length > 0)}
+            onSaveTyped={(text) => {
+              setAddText("");
+              const typed = draftFromTyped(text);
+              showDraft({
+                ...typed,
+                source: "Typed in",
+                url: recMapsUrl(typed),
+              });
+            }}
             quickAdd={{
               label: "Save",
               busyLabel: "Saving…",
@@ -1028,6 +1038,22 @@ function RecommendationsPage() {
                             {v.tags.join(" · ")}
                           </p>
                         )}
+                        {(() => {
+                          // The phone's maps app, on this place: its pin when
+                          // it has one, otherwise a search for its name.
+                          const row = vault.rows.find((r) => r.id === v.id);
+                          if (!row) return null;
+                          return (
+                            <a
+                              href={recMapsUrl(row)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-1.5 inline-block text-[12.5px] font-semibold text-primary underline"
+                            >
+                              Open in Maps ↗
+                            </a>
+                          );
+                        })()}
                       </div>
                       <div className="shrink-0 text-right">
                         <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">

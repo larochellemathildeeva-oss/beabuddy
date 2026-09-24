@@ -38,3 +38,4 @@ dist-ssr
 
 # Preview checker output
 scripts/preview/out
+scripts/places-bench/out

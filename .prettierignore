@@ -8,3 +8,4 @@ bun.lock
 routeTree.gen.ts
 docs/prototype
 scripts/preview
+scripts/places-bench/out

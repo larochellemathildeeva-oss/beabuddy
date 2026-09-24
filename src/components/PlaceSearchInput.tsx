@@ -19,6 +19,7 @@ export function PlaceSearchInput({
   near,
   center,
   areas = false,
+  onSaveTyped,
   /**
    * Where the person is, when it is known.
    *
@@ -45,6 +46,11 @@ export function PlaceSearchInput({
   center?: { lat: number; lon: number } | null | undefined;
   /** Choosing a destination: countries and towns first, never shops or restaurants. */
   areas?: boolean;
+  /**
+   * Keep what was typed when the search cannot find it. Offered under every
+   * answer, so a place the map does not know is never a dead end.
+   */
+  onSaveTyped?: ((text: string) => void) | undefined;
   at?: { lat: number; lon: number } | null | undefined;
   onLocate?: (() => void) | undefined;
   typeAhead?: boolean;
@@ -305,6 +311,23 @@ export function PlaceSearchInput({
           })}
         </ul>
       )}
+      {onSaveTyped &&
+        value.trim().length >= 2 &&
+        !looksLikePastedPlaceLink(value.trim()) &&
+        !busy &&
+        (hits.length > 0 || Boolean(err)) && (
+          <button
+            type="button"
+            onClick={() => onSaveTyped(value.trim())}
+            className="min-h-10 w-full rounded-xl border border-dashed border-border px-3 py-2 text-left text-[13px] text-muted-foreground"
+          >
+            {hits.length > 0 ? "Not in the list? " : ""}
+            <span className="font-semibold text-foreground">Save “{value.trim()}” as typed</span>
+            <span className="block text-[12px]">
+              It opens in Maps by name; add the spot later if you like.
+            </span>
+          </button>
+        )}
     </div>
   );
 }
