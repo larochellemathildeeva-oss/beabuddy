@@ -51,6 +51,8 @@ await build({
     "@tanstack/react-start/server": join(src, "fake-start.ts"),
     "@tanstack/react-router": join(src, "fake-router.tsx"),
     "@/lib/directions.functions": join(src, "fake-directions.ts"),
+    "@/lib/itinerary.functions": join(src, "fake-itinerary.ts"),
+    "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
   },
@@ -367,6 +369,63 @@ await flow("timeline: paws between stops open directions to the next one", async
   const front = page.getByRole("button", { name: /Peace Park.*tap to edit$/ });
   const text = await front.innerText();
   if (!text.includes("Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)")) throw new Error(`name cut off: ${text}`);
+});
+
+await flow("import: places, times and stays reach the timeline; doubtful pins are held back", async (page) => {
+  await page.getByRole("button", { name: /Plan with Béa/ }).click();
+  await page.getByRole("button", { name: /I already have a plan/ }).click();
+  await page.getByPlaceholder(/Paste an itinerary here/).fill("Day 1: breakfast at the station 8-8:45, shrine at 10 for 90 min, lunch at Kakiya, evening stroll");
+  await page.getByRole("button", { name: "Read this itinerary" }).click();
+  await page.waitForTimeout(800);
+  // The trip page runs its own lookup for unplaced stops; this is the import's.
+  const geo = await page.evaluate(() =>
+    (window.__geoCalls ?? []).find((c) => c.stops?.[0]?.title === "Breakfast at the station"),
+  );
+  if (!geo) throw new Error("the plan was never placed");
+  const shrine = geo.stops[1];
+  if (shrine.city !== "Miyajima" || !/厳島神社/.test(shrine.place)) throw new Error(`shrine sent as ${JSON.stringify(shrine)}`);
+  if (geo.stops[2].address !== "539 Miyajimacho") throw new Error("the address was not sent to the lookup");
+  for (const text of ["45 min stay", "1 h 30 min stay", "Check this one — not pinned"]) {
+    if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`review does not show "${text}"`);
+  }
+  // Remove the station pin: confident, but the person says no.
+  await page.getByRole("button", { name: "Not this one" }).first().click();
+  if ((await page.getByText("Pin removed", { exact: false }).count()) !== 1) throw new Error("removing a pin did not show");
+  // The row is still ticked: the pin button must not toggle the row.
+  const before = (await writes(page)).length;
+  await page.getByRole("button", { name: /^Save 4 stops/ }).click();
+  await page.waitForTimeout(800);
+  const insert = (await writes(page)).slice(before).find((x) => x.table === "itinerary_items" && x.op === "insert");
+  if (!insert) throw new Error("nothing was saved (was a row unticked by the pin button?)");
+  const rows = insert.payload;
+  const by = (t) => rows.find((r) => r.title === t);
+  const breakfast = by("Breakfast at the station");
+  const shrineRow = by("Itsukushima Shrine");
+  const lunch = by("Oyster lunch");
+  if (!breakfast || !shrineRow || !lunch || !by("Evening stroll")) throw new Error(`saved ${rows.map((r) => r.title).join(", ")}`);
+  if (breakfast.lat != null) throw new Error("a removed pin was saved");
+  if (breakfast.planned_stay_minutes !== 45) throw new Error(`breakfast stay ${breakfast.planned_stay_minutes}`);
+  if (breakfast.time_label !== "08:00") throw new Error(`breakfast time ${breakfast.time_label}`);
+  if (shrineRow.lat !== 34.2959 || shrineRow.planned_stay_minutes !== 90) throw new Error("the shrine lost its pin or its stay");
+  if (lunch.lat != null) throw new Error("a doubtful pin was saved without being kept");
+  if (lunch.address !== "539 Miyajimacho") throw new Error(`lunch address ${lunch.address}`);
+  if (!breakfast.day_date) throw new Error("day 1 did not become a date");
+});
+
+await flow("import: after alternatives, pins are looked up again, not carried by position", async (page) => {
+  await page.getByRole("button", { name: /Plan with Béa/ }).click();
+  await page.getByRole("button", { name: /I already have a plan/ }).click();
+  await page.getByPlaceholder(/Paste an itinerary here/).fill("Day 1: breakfast, shrine, lunch, stroll");
+  await page.getByRole("button", { name: "Read this itinerary" }).click();
+  await page.waitForTimeout(800);
+  await page.getByPlaceholder(/Rainy-day activities/).fill("cheaper lunch please");
+  await page.getByRole("button", { name: /find alternatives/ }).click();
+  await page.waitForTimeout(800);
+  const again = await page.evaluate(() =>
+    (window.__geoCalls ?? []).some((c) => c.stops?.[2]?.title === "Okonomiyaki lunch"),
+  );
+  if (!again) throw new Error("the revised plan was not placed again");
+  if ((await page.getByText("Okonomiyaki lunch").count()) === 0) throw new Error("the revision did not show");
 });
 
 await flow("banner stays pinned while the page scrolls", async (page) => {

@@ -62,6 +62,10 @@ test("the directions and import lookups try each name as well", async () => {
   ]);
   assert.deepEqual(
     planStopQueries({ title: "Peace Park / Atomic Bomb Dome / Cenotaph" }, "Hiroshima, Japan"),
-    ["Peace Park / Atomic Bomb Dome / Cenotaph, Hiroshima, Japan", "Peace Park, Hiroshima, Japan"],
+    [
+      "Peace Park / Atomic Bomb Dome / Cenotaph, Hiroshima, Japan",
+      "Peace Park, Hiroshima, Japan",
+      "Atomic Bomb Dome, Hiroshima, Japan",
+    ],
   );
 });
