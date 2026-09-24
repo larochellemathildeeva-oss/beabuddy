@@ -68,10 +68,22 @@ for (const c of CASES) {
     const target = c.want ?? c.at;
     const top = answers.slice(0, 3);
     const hit = top.find((p) => p.lat != null && km(target, p) <= c.km);
+    const fold = (v) =>
+      v
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const branch =
+      !hit && c.branches
+        ? top.find(
+            (p) => p.lat != null && km(target, p) <= 10 && fold(p.name).includes(fold(c.query)),
+          )
+        : undefined;
     runs.push({
       query: c.query,
       mode,
-      found: Boolean(hit),
+      found: Boolean(hit || branch),
+      branch: Boolean(branch),
       first: answers[0] ? `${answers[0].name}${answers[0].city ? `, ${answers[0].city}` : ""}` : "",
       off: answers[0]?.lat != null ? `${km(target, answers[0]).toFixed(1)} km` : "",
       error,
@@ -88,7 +100,7 @@ const lines = [
   "| --- | --- | --- | --- | --- |",
   ...runs.map(
     (r) =>
-      `| ${r.query} | ${r.mode} | ${r.found ? "✅" : "❌"} | ${r.error ? `error: ${r.error}` : r.first || "(nothing)"} | ${r.off} |`,
+      `| ${r.query} | ${r.mode} | ${r.branch ? "✅ other branch" : r.found ? "✅" : "❌"} | ${r.error ? `error: ${r.error}` : r.first || "(nothing)"} | ${r.off} |`,
   ),
   "",
   ...["recs-here", "recs", "destination"].map((m) => {

@@ -1,6 +1,8 @@
 // Real places, where they are, and how far off still counts as found.
 // `mode`: "recs-here" = Recs with location on (at = the city centre),
 // "recs" = Recs with no location, "destination" = a trip's destination field.
+// `branches`: the name has several real locations; another one with the same
+// name within 10 km is reported as found (other branch), not as a miss.
 const MTL = { lat: 45.5017, lon: -73.5673 };
 const TYO = { lat: 35.6812, lon: 139.7671 };
 const HIJ = { lat: 34.3963, lon: 132.4596 };
@@ -9,9 +11,21 @@ const MIY = { lat: 34.2975, lon: 132.3219 };
 export const CASES = [
   { query: "Olive et Gourmando", at: MTL, want: { lat: 45.5016, lon: -73.555 }, km: 1.5 },
   { query: "Schwartz's", at: MTL, want: { lat: 45.5165, lon: -73.5779 }, km: 1.5 },
-  { query: "St-Viateur Bagel", at: MTL, want: { lat: 45.5227, lon: -73.6026 }, km: 1.5 },
+  {
+    query: "St-Viateur Bagel",
+    at: MTL,
+    want: { lat: 45.5227, lon: -73.6026 },
+    km: 1.5,
+    branches: true,
+  },
   { query: "Fairmount Bagel", at: MTL, want: { lat: 45.5227, lon: -73.5981 }, km: 1.5 },
-  { query: "Café Olimpico", at: MTL, want: { lat: 45.523, lon: -73.6024 }, km: 1.5 },
+  {
+    query: "Café Olimpico",
+    at: MTL,
+    want: { lat: 45.523, lon: -73.6024 },
+    km: 1.5,
+    branches: true,
+  },
   { query: "BeaverTails", at: MTL, want: { lat: 45.5065, lon: -73.552 }, km: 2 },
   { query: "subway", at: MTL, near: true, km: 2.5 },
   { query: "coffee", at: MTL, near: true, km: 2.5 },
