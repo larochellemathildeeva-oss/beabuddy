@@ -93,13 +93,33 @@ export function NowPanel({
       </p>
 
       {phase === "at" && current && (
-        <section className="card-soft space-y-3 p-4" aria-labelledby="now-here">
-          <p className="label-caps text-muted-foreground">You're at</p>
-          <h2 id="now-here" className="font-display text-[24px] leading-tight">
+        // The prototype's dark "Current stop" card.
+        <section
+          className="space-y-3 rounded-2xl border border-foreground/80 bg-gradient-to-br from-foreground via-foreground/95 to-foreground p-4 text-background shadow-md"
+          aria-labelledby="now-here"
+        >
+          <div className="flex items-center gap-2">
+            <span className="relative flex size-2" aria-hidden>
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
+              <span className="relative inline-flex size-2 rounded-full bg-primary" />
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[oklch(0.78_0.1_45)]">
+              Current stop
+            </span>
+            {timeForRail(current.time_label) && (
+              <span className="rounded bg-background/10 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-background/85">
+                {timeForRail(current.time_label)}
+              </span>
+            )}
+          </div>
+          <h2 id="now-here" className="font-display text-[26px] leading-tight">
             {current.title}
           </h2>
-          <StayLine stop={current} now={now} />
-          <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          {current.address?.trim() && (
+            <p className="-mt-1.5 text-[13px] text-background/65">{current.address}</p>
+          )}
+          <StayLine stop={current} now={now} tone="dark" />
+          <label className="flex items-center gap-2 text-[13px] text-background/70">
             Plan to stay
             <select
               value={current.planned_stay_minutes ?? ""}
@@ -108,7 +128,7 @@ export function NowPanel({
                 const minutes = parseStayChoice(e.target.value);
                 void act(() => onPlanStay(current.id, minutes));
               }}
-              className="min-h-11 rounded-xl border border-border bg-card px-3 text-[13.5px] text-foreground"
+              className="min-h-11 rounded-xl border border-background/20 bg-background/10 px-3 text-[13.5px] text-background"
             >
               <option value="">Not set</option>
               {stayChoices(current.planned_stay_minutes).map((minutes) => (
@@ -131,7 +151,7 @@ export function NowPanel({
               type="button"
               disabled={busy}
               onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
-              className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-[13.5px] font-semibold text-muted-foreground disabled:opacity-60"
+              className="inline-flex min-h-11 items-center rounded-xl border border-background/25 px-4 text-[13.5px] font-semibold text-background/80 disabled:opacity-60"
             >
               Not here yet
             </button>
@@ -283,10 +303,24 @@ function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: str
   );
 }
 
-function StayLine({ stop, now }: { stop: ItineraryRow; now: Date | null }) {
+function StayLine({
+  stop,
+  now,
+  tone = "light",
+}: {
+  stop: ItineraryRow;
+  now: Date | null;
+  tone?: "light" | "dark";
+}) {
   // Nothing on the server render: the time there depends on this clock.
   const line = now ? stayLine(stop, now) : null;
-  return line ? <p className="text-[13.5px] text-muted-foreground">{line}</p> : null;
+  return line ? (
+    <p
+      className={`text-[13.5px] ${tone === "dark" ? "text-background/75" : "text-muted-foreground"}`}
+    >
+      {line}
+    </p>
+  ) : null;
 }
 
 /**

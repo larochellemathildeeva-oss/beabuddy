@@ -1,5 +1,5 @@
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import type { DayMapPin } from "@/lib/day-map";
 import { legLabels } from "@/lib/trip-map";
@@ -49,12 +49,18 @@ export function DayMap({
   selectedId,
   onSelect,
   label,
+  heightClass = "h-72",
+  children,
 }: {
   pins: DayMapPin[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   /** What the map shows, for a screen reader: it has no other text. */
   label: string;
+  /** How tall the map is; the Map tab's layouts change it. */
+  heightClass?: string;
+  /** Laid over the map, above Leaflet's panes (the floating stop card). */
+  children?: ReactNode;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const leaflet = useRef<typeof Leaflet | null>(null);
@@ -125,6 +131,8 @@ export function DayMap({
     const L = leaflet.current;
     const m = map.current;
     if (!ready || !L || !m || pins.length === 0) return;
+    // A layout change resizes the box; measure it before fitting to it.
+    m.invalidateSize();
     const animate = !prefersReducedMotion();
     if (pins.length === 1) {
       m.setView([pins[0]!.lat, pins[0]!.lon], SINGLE_STOP_ZOOM, { animate });
@@ -135,7 +143,7 @@ export function DayMap({
         animate,
       });
     }
-  }, [ready, shape]); // eslint-disable-line react-hooks/exhaustive-deps -- `shape` stands for `pins`
+  }, [ready, shape, heightClass]); // eslint-disable-line react-hooks/exhaustive-deps -- `shape` stands for `pins`
 
   // Pins, route and distances.
   useEffect(() => {
@@ -262,9 +270,10 @@ export function DayMap({
     <div
       role="region"
       aria-label={label}
-      className="relative isolate h-72 overflow-hidden rounded-2xl border border-border/70 bg-elevated"
+      className={`relative isolate overflow-hidden rounded-2xl border border-border/70 bg-elevated ${heightClass}`}
     >
       <div ref={container} className="absolute inset-0" />
+      {children}
     </div>
   );
 }

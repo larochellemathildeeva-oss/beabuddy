@@ -77,32 +77,34 @@ function DayTab({
       role="tab"
       aria-selected={selected}
       onClick={onSelect}
-      className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-xl border px-3 py-1.5 text-left transition-colors ${
+      // The prototype's day card: charcoal when chosen, white otherwise.
+      className={`flex min-h-11 shrink-0 items-center gap-3 rounded-2xl border px-3.5 py-2 text-left shadow-sm transition-all ${
         selected
-          ? "border-primary bg-primary text-primary-foreground"
+          ? "scale-[1.01] border-foreground bg-foreground text-background"
           : "border-border bg-card text-foreground"
       }`}
     >
       <span className="min-w-0">
         <span
-          className={`block text-[10px] font-semibold uppercase tracking-wider ${
-            selected ? "text-primary-foreground/75" : "text-muted-foreground"
+          className={`block text-[10px] font-bold uppercase tracking-wider ${
+            selected ? "text-[oklch(0.78_0.1_45)]" : "text-muted-foreground"
           }`}
         >
           {ordinal}
           {/* Spoken as part of the tab, so a screen reader reaching today
               hears it without needing the colour. */}
-          {isToday && <span className="ml-1 font-bold">· Today</span>}
+          {isToday && <span className="ml-1">· Today</span>}
         </span>
-        <span className="block whitespace-nowrap text-[13px] font-semibold">{label}</span>
+        <span className="block whitespace-nowrap text-[13px] font-semibold tracking-tight">
+          {label}
+        </span>
       </span>
       <span
-        className={`shrink-0 rounded-lg px-1.5 py-0.5 text-[10.5px] font-semibold ${
-          selected ? "bg-primary-foreground/15" : "bg-elevated text-muted-foreground"
+        className={`shrink-0 rounded-lg px-2 py-0.5 text-[10.5px] font-semibold ${
+          selected ? "bg-background/15 text-background/85" : "bg-elevated text-muted-foreground"
         }`}
       >
-        {count}
-        <span className="sr-only"> {count === 1 ? "stop" : "stops"}</span>
+        {count} {count === 1 ? "stop" : "stops"}
       </span>
     </button>
   );

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { ItineraryRow } from "@/hooks/useTrips";
-import { partOfDay, stopStatuses, type PartOfDay, type StopStatus } from "@/lib/companion";
+import { partOfDay, stopStatuses, type PartOfDay } from "@/lib/companion";
 import { timeForRail } from "@/lib/timeline-kind";
+import { stayLabel } from "@/lib/planned-stay";
+import { Compass } from "lucide-react";
 
 type Filter = "all" | PartOfDay;
 
@@ -12,13 +14,6 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "evening", label: "Evening" },
 ];
 
-const BADGE: Partial<Record<StopStatus, { text: string; className: string }>> = {
-  here: { text: "Current", className: "bg-primary text-primary-foreground" },
-  next: { text: "Next", className: "bg-nexttime/15 text-nexttime" },
-  done: { text: "Done", className: "bg-elevated text-muted-foreground" },
-  skipped: { text: "Skipped", className: "bg-elevated text-muted-foreground" },
-};
-
 /**
  * The day as a strip of cards you swipe along, from the prototype's
  * itinerary ribbon.
@@ -28,7 +23,14 @@ const BADGE: Partial<Record<StopStatus, { text: string; className: string }>> = 
  * day would be a guess. Part-of-day filters with nothing in them are not
  * offered.
  */
-export function DayRibbon({ stops }: { stops: ItineraryRow[] }) {
+export function DayRibbon({
+  stops,
+  dayLabel,
+}: {
+  stops: ItineraryRow[];
+  /** "Day 1", for the card's heading. */
+  dayLabel?: string | undefined;
+}) {
   const [filter, setFilter] = useState<Filter>("all");
   const strip = useRef<HTMLOListElement>(null);
   const statuses = stopStatuses(stops);
@@ -53,75 +55,105 @@ export function DayRibbon({ stops }: { stops: ItineraryRow[] }) {
     .filter(({ i }) => filter === "all" || parts[i] === filter);
 
   return (
-    <section aria-label="The day at a glance" className="space-y-2.5">
-      {offered.length > 1 && (
-        <div
-          role="group"
-          aria-label="Part of the day"
-          className="no-scrollbar flex gap-1.5 overflow-x-auto"
-        >
-          {offered.map((f) => {
-            const on = f.id === filter;
-            return (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => setFilter(f.id)}
-                className={`min-h-9 shrink-0 rounded-full border px-3 text-[12.5px] font-semibold ${
-                  on
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border bg-card text-muted-foreground"
-                }`}
-              >
-                {f.label} ({count(f.id)})
-              </button>
-            );
-          })}
+    <section
+      aria-label="The day at a glance"
+      className="rounded-2xl border border-border bg-gradient-to-b from-card via-card to-elevated/60 p-3 shadow-sm"
+    >
+      <div className="mb-2.5 flex flex-col gap-2 px-0.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Compass className="size-4 shrink-0 text-primary" aria-hidden />
+          <span className="truncate text-[12.5px] font-bold uppercase tracking-wider">
+            {dayLabel ? `${dayLabel} itinerary ribbon` : "Itinerary ribbon"}
+          </span>
+          <span className="shrink-0 rounded-md border border-border bg-elevated px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+            {stops.length} {stops.length === 1 ? "stop" : "stops"}
+          </span>
         </div>
-      )}
+        {offered.length > 1 && (
+          <div
+            role="group"
+            aria-label="Part of the day"
+            className="no-scrollbar flex gap-1 overflow-x-auto"
+          >
+            {offered.map((f) => {
+              const on = f.id === filter;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setFilter(f.id)}
+                  className={`min-h-8 shrink-0 rounded-lg px-2.5 text-[12px] font-semibold ${
+                    on
+                      ? "bg-foreground text-background shadow-sm"
+                      : "border border-border bg-elevated text-muted-foreground"
+                  }`}
+                >
+                  {f.label} ({count(f.id)})
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      <ol ref={strip} className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1">
+      <ol ref={strip} className="no-scrollbar flex snap-x gap-2.5 overflow-x-auto py-1">
         {shown.map(({ stop, i }) => {
           const status = statuses[i]!;
-          const badge = BADGE[status];
           const here = status === "here";
+          const next = status === "next";
+          const meta = [
+            stop.address?.trim(),
+            stop.planned_stay_minutes ? `~${stayLabel(stop.planned_stay_minutes)}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ");
           return (
             <li
               key={stop.id}
               data-index={i}
-              className={`w-[200px] shrink-0 snap-start rounded-2xl border p-3 ${
+              className={`w-44 shrink-0 snap-start rounded-2xl border p-3 transition-all ${
                 here
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border/70 bg-card"
+                  ? "scale-[1.02] border-foreground bg-foreground text-background shadow-sm"
+                  : next
+                    ? "border-border bg-elevated"
+                    : "border-border bg-card"
               } ${status === "done" || status === "skipped" ? "opacity-70" : ""}`}
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
                 <span
-                  className={`text-[13px] font-bold tabular-nums ${here ? "text-background/80" : "text-primary"}`}
+                  className={`text-[13px] font-bold tabular-nums ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
                 >
-                  {timeForRail(stop.time_label) || `#${i + 1}`}
+                  {timeForRail(stop.time_label) || "–"}
                 </span>
-                {badge && (
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${badge.className}`}
-                  >
-                    {badge.text}
+                {here ? (
+                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10.5px] font-bold text-primary-foreground">
+                    Current
                   </span>
+                ) : next ? (
+                  <span className="rounded bg-nexttime/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
+                    Next
+                  </span>
+                ) : status === "done" ? (
+                  <span className="text-[10.5px] font-semibold text-nexttime">✓ Done</span>
+                ) : status === "skipped" ? (
+                  <span className="text-[10.5px] font-medium text-muted-foreground">Skipped</span>
+                ) : (
+                  <span className="text-[10.5px] font-medium text-muted-foreground">#{i + 1}</span>
                 )}
               </div>
               <p
-                className={`mt-1.5 line-clamp-2 text-[14.5px] font-semibold leading-snug ${
+                className={`line-clamp-2 min-h-9 break-words text-[14px] font-bold leading-snug ${
                   status === "skipped" ? "line-through" : ""
                 }`}
               >
                 {stop.title}
               </p>
-              {stop.address?.trim() && (
+              {meta && (
                 <p
-                  className={`mt-1 truncate text-[12px] ${here ? "text-background/70" : "text-muted-foreground"}`}
+                  className={`mt-1 truncate text-[11.5px] ${here ? "text-background/70" : "text-muted-foreground"}`}
                 >
-                  {stop.address}
+                  {meta}
                 </p>
               )}
             </li>
