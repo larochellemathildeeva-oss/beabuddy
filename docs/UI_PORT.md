@@ -29,13 +29,15 @@ implied, and nothing is migrated or removed while it grows.
 | `src/components/day/StopCard.tsx` | collapsed stop card; selectable on the Map view |
 | `src/lib/day-map.ts` (+test) | pin numbering, partial-map caption, selection |
 | `src/components/day/DayMap.tsx` | the Leaflet day map |
+| `src/lib/companion.ts` (+test) | Now: progress, up next, leave by, writes |
+| `src/components/day/NowPanel.tsx` | the Now view |
 | `src/routes/trips_.$tripId_.day.tsx` | the screen |
 
 `DaySelector` is also wired into the old `TripDetail` (commit `8fb4800`).
 That wiring is the only throwaway work if the old screen is retired.
 
-**Four perspectives: Now · Map · Day · Trip.** **Day** and **Map** are built.
-Now renders a named "not built yet" card pointing at the old page. **Trip** is
+**Four perspectives: Now · Map · Day · Trip.** **Now**, **Map** and **Day** are
+built; **Trip** is still a pointer to the old page. **Trip** is
 where stops, prep, packing, to-dos, documents, budget and invites will live —
 it is a *peer* of the day views on purpose, because the prototype had none of
 them and a day-centric screen that dropped them loses more than it wins.
@@ -45,11 +47,7 @@ them and a day-centric screen that dropped them loses more than it wins.
 1. ~~**Leaflet day map.**~~ Done — see "Day map" below.
 2. ~~**Migration.**~~ Done and **applied to the live project** (2026-09-24) —
    see "Stop progress (step 2)" below.
-3. **Now (companion).** Current stop / up next / "Leave by". Use **manual
-   progression** (tap on arrival), not clock inference: it needs no
-   `time_label`, survives running late, and captures what actually happened.
-   "Leave by" = next `time_label` − `RouteLeg.duration`; suppress it when the
-   leg is `unknownSpot` or `capped` — never a number over a guess.
+3. ~~**Now (companion).**~~ Done — see "Now (step 3)" below.
 4. **Trip tab** — move bucket D across, one component at a time.
 
 ## Day map (step 1)
@@ -108,6 +106,31 @@ What step 3 has to respect:
   per-person table until that is shown to matter.
 - The types in `src/integrations/supabase/types.ts` were extended by hand to
   match — regenerate them when there is a connection to the project.
+
+## Now (step 3)
+
+- **Manual progression.** "I'm here" sets `arrived_at`; "Leaving" sets
+  `left_at`. Arriving somewhere closes any stop still open. "Not here yet"
+  clears both columns together, and "Still there" clears `left_at`. The pure
+  rules live in `companion.ts`; the writes go through `useTripBoard`'s
+  `setProgress`, which reloads once at the end.
+- **Up next is after the furthest stop reached**, so a skipped stop is
+  behind you rather than offered again.
+- **Leave by** = next stop's clock time minus the saved leg's duration,
+  rounded early. The leg comes only from directions saved on this phone,
+  and only while their signature still matches the timeline's direction
+  stops; a leg exists only between consecutive stops. It is not shown for a
+  capped leg, an unplaced end, a zero duration, a missing leg, or a next stop
+  with no clock time ("Lunch"). The same spot at both ends shows "no need to
+  move". When no directions are saved at all it points at the old page to
+  save them. There is no live routing call from Now.
+- **Which day:** the day picked, or today when "All days" is showing. With
+  neither, it asks for a day.
+- `planned_stay_minutes` is read but **nothing writes it yet**, so "about N
+  min left" appears only on rows that somehow have one. Adding it to the stop
+  editor is the natural next step.
+- Walk / Drive rows from saved directions are the journey, not stops, and are
+  left out — the same filter the directions use, so leg indexes line up.
 
 ## Settled — don't relitigate
 

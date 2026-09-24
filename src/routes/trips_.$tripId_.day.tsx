@@ -4,10 +4,15 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DaySelector } from "@/components/DaySelector";
 import { DayMap } from "@/components/day/DayMap";
+import { NowPanel } from "@/components/day/NowPanel";
 import { StopCard } from "@/components/day/StopCard";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
+import { useOfflineDirections } from "@/hooks/useOfflineDirections";
 import { useTripBoard, useTrips, type ItineraryRow } from "@/hooks/useTrips";
+import { companionStops } from "@/lib/companion";
+import { timelineStopsForDirections } from "@/lib/direction-stops";
+import { savedMatchesStops } from "@/lib/offline-directions";
 import { dayMapCaption, dayMapModel, toggleSelection } from "@/lib/day-map";
 import { dayShapeLine } from "@/lib/day-shape";
 import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
@@ -118,6 +123,19 @@ function TripDay({
   const offerDays = shouldOfferDays(groups);
 
   const where = formatTripLocation(trip.city, trip.country);
+
+  // Saved directions count only while they still describe this timeline;
+  // a leg from an older version of the day would give a wrong "Leave by".
+  const dir = useOfflineDirections(trip.id);
+  const legs = savedMatchesStops(dir.saved?.signature, timelineStopsForDirections(board.items))
+    ? (dir.saved?.legs ?? null)
+    : null;
+
+  // Now follows one day: the one picked, or today when nothing is.
+  const companionDay =
+    chosenDay === ALL_DAYS
+      ? (groups.find((group) => group.key !== "" && group.key === todayKey) ?? null)
+      : (shown[0] ?? null);
   const active = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
 
   return (
@@ -199,8 +217,16 @@ function TripDay({
               // Keyed on the day, so a selection never outlives the stops it
               // pointed at.
               <DayMapView key={chosenDay} groups={shown} area={where} />
+            ) : companionDay ? (
+              <NowPanel
+                key={companionDay.key}
+                dayStops={companionStops(companionDay.items)}
+                tripStops={companionStops(board.items)}
+                legs={legs}
+                onProgress={board.setProgress}
+              />
             ) : (
-              <NotYet tripId={trip.id} />
+              <PickADay />
             )}
           </>
         )}
@@ -301,28 +327,17 @@ function EmptyTimeline({ tripId }: { tripId: string }) {
 }
 
 /**
- * A view that is planned but not built.
- *
- * It says which one and where the working version is, rather than rendering
- * an empty frame. A blank panel reads as broken; a named gap reads as a
- * roadmap, and this route is being built in the open.
+ * Now needs one day to follow, and with every day showing on a day that is
+ * not today there is no right one to guess.
  */
-function NotYet({ tripId }: { tripId: string }) {
-  const copy = {
-    title: "The companion view is next.",
-    body: "Where you are now, what is next, and when to leave for it. It needs a place to record that you arrived somewhere, which the timeline does not store yet.",
-  };
+function PickADay() {
   return (
-    <div className="card-soft space-y-3 p-4">
-      <p className="font-display text-[19px] leading-snug">{copy.title}</p>
-      <p className="text-[14px] text-muted-foreground">{copy.body}</p>
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId }}
-        className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-[14.5px] font-semibold"
-      >
-        Use the full trip page
-      </Link>
+    <div className="card-soft space-y-2 p-4">
+      <p className="font-display text-[19px] leading-snug">Pick a day to follow.</p>
+      <p className="text-[14px] text-muted-foreground">
+        Choose a day above and Now walks through it with you: where you are, what is next, and when
+        to set off. On a travel day it opens on today by itself.
+      </p>
     </div>
   );
 }
