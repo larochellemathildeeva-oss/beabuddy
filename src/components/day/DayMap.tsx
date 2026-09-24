@@ -10,6 +10,8 @@ const SINGLE_STOP_ZOOM = 15;
 /** A fitted day stops here, so two stops across the road do not zoom to 19. */
 const FIT_MAX_ZOOM = 16;
 const FIT_PADDING: [number, number] = [36, 36];
+/** Closer to the border than this and a selected pin is brought into view. Half a pin. */
+const PIN_EDGE_MARGIN = 16;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -242,7 +244,14 @@ export function DayMap({
     const pin = pins.find((p) => p.id === selectedId);
     if (!pin) return;
     const target: [number, number] = [pin.lat, pin.lon];
-    if (!m.getBounds().pad(-0.15).contains(target)) {
+    // Only when the pin is actually at or past the edge. A fitted day puts
+    // its outermost pins FIT_PADDING in from the border, and an earlier
+    // "inner 70%" test counted those as out of view — so choosing the first
+    // or last stop recentred the map and pushed the rest of the day off it.
+    const at = m.latLngToContainerPoint(target);
+    const size = m.getSize();
+    const margin = PIN_EDGE_MARGIN;
+    if (at.x < margin || at.y < margin || at.x > size.x - margin || at.y > size.y - margin) {
       m.panTo(target, { animate: !prefersReducedMotion() });
     }
   }, [ready, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
