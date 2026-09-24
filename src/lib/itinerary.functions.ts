@@ -11,6 +11,7 @@ import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
+import { normalizeClock } from "@/lib/import-stop";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -49,9 +50,21 @@ const ItemSchema = z.object({
    */
   day_number: z.number().nullable(),
   time_label: z.string().nullable(), // 09:00
+  /** When it ends, if the source says. With time_label, the planned stay. */
+  end_time: z.string().nullish(),
+  /** How long it lasts, if the source says ("2h", "45 min"). */
+  duration_minutes: z.number().nullish(),
   kind: z.string(),
   title: z.string(),
   detail: z.string().nullable(),
+  /**
+   * Where it is, pulled out of the prose so it can be looked up. These used
+   * to live inside `detail`, and a pattern match had to find them again —
+   * which is how a stop's address got lost and a namesake got pinned.
+   */
+  place: z.string().nullish(),
+  address: z.string().nullish(),
+  city: z.string().nullish(),
   estimated_cost: z.number().nullable(),
   currency: z.string().nullable(),
   source: z.enum(["vault", "new"]).nullish(),
@@ -108,6 +121,10 @@ const instructions = (
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
+    'end_time: 24h HH:MM when the source gives when it ends ("10:00–12:00"). duration_minutes: when it gives a length ("2h", "45 min"). Otherwise null — never guess either.',
+    'place: the venue or landmark as it would be found on a map, in the source\'s wording, including a local-language name if the source gives one ("Itsukushima Shrine (厳島神社)"). Null for a note or a leg of transport with no single place.',
+    "address: the street address only when the source gives one, exactly as written. Never invent or complete an address.",
+    "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
     startDate ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2'.` : "",
@@ -194,6 +211,9 @@ async function runParse(
     ...out,
     items: out.items.slice(0, 60).map((i) => ({
       ...i,
+      // A time the timeline cannot sort is worse than none.
+      time_label: normalizeClock(i.time_label),
+      end_time: normalizeClock(i.end_time),
       kind: normaliseKind(i.kind),
       source: i.source === "vault" ? "vault" : data.mode === "build" ? "new" : null,
     })),
@@ -430,6 +450,8 @@ export const reviseItinerary = createServerFn({ method: "POST" })
         });
         const replacements = result.output.items.slice(0, chosen.length).map((item) => ({
           ...item,
+          time_label: normalizeClock(item.time_label),
+          end_time: normalizeClock(item.end_time),
           kind: normaliseKind(item.kind),
           source: item.source === "vault" ? ("vault" as const) : ("new" as const),
         }));
@@ -923,6 +945,8 @@ export const planDayTrip = createServerFn({ method: "POST" })
         items: result.output.items.slice(0, 20).map((item) => ({
           ...item,
           day_date: data.date,
+          time_label: normalizeClock(item.time_label),
+          end_time: normalizeClock(item.end_time),
           kind: normaliseKind(item.kind),
           source: movement.has(normaliseKind(item.kind)) ? "new" : "vault",
         })),

@@ -10,6 +10,7 @@ import {
   widenBox,
   type AreaBox,
 } from "@/lib/geocode-plan";
+import { stopArea } from "@/lib/import-stop";
 import { classifyGeoStatus, nextDelayMs, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
 
 const UA = "BeaBot/1.0 (travel app)";
@@ -24,7 +25,19 @@ const WALL_MS = 90_000;
 const StopIn = z.object({
   title: z.string().max(200),
   detail: z.string().nullish(),
+  place: z.string().max(200).nullish(),
+  address: z.string().max(300).nullish(),
+  /** The stop's own town, when the plan names one; looked up instead of the trip's area. */
+  city: z.string().max(120).nullish(),
 });
+
+type StopInput = {
+  title: string;
+  detail?: string | null;
+  place?: string | null;
+  address?: string | null;
+  city?: string | null;
+};
 
 const Input = z.object({
   stops: z.array(StopIn).max(60),
@@ -132,14 +145,14 @@ async function geocode(provider: GeoProvider, query: string, box: AreaBox): Prom
  */
 export const geocodePlanStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (input: { stops: { title: string; detail?: string | null }[]; area?: string | null }) =>
-      Input.parse(input),
-  )
+  .inputValidator((input: { stops: StopInput[]; area?: string | null }) => Input.parse(input))
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const placed: PlacedStop[] = [];
-    if (!area) return { placed, lookedUp: 0, area: "" };
+    // A trip with no area can still be placed stop by stop when the plan
+    // names each stop's town; with neither, nothing is looked up.
+    if (!area && !data.stops.some((stop) => stop.city?.trim()))
+      return { placed, lookedUp: 0, area: "" };
 
     // Which service answers, and how fast it lets us ask. Imported here
     // rather than at the top of the file: this module ships to the client
@@ -156,23 +169,64 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     let lookedUp = 0;
     let first = true;
 
-    // The area first, for its box. No box, no placing: an unbounded lookup
+    /** Waits its turn, then counts the request. False when out of time or budget. */
+    const takeTurn = async (): Promise<boolean> => {
+      if (budget <= 0 || Date.now() > deadline) return false;
+      // The gap goes before every request but the first, so a one-stop plan
+      // does not sit still for a second before it starts. The delay honours
+      // the minute cap too: two a second empties sixty a minute in thirty
+      // seconds, and the rest of the batch would meet a wall of 429s.
+      if (!first) {
+        const delay = nextDelayMs(provider, sent, Date.now());
+        if (Date.now() + delay > deadline) return false;
+        if (delay > 0) await wait(delay);
+      }
+      first = false;
+      budget -= 1;
+      lookedUp += 1;
+      sent.push(Date.now());
+      return true;
+    };
+
+    // Each area once, for its box. No box, no placing: an unbounded lookup
     // is how a Montreal stop landed at a water park near Quebec City.
-    budget -= 1;
-    lookedUp += 1;
-    sent.push(Date.now());
-    first = false;
-    const areaHits = await lookup(provider, area);
-    if (areaHits === "throttled") return { placed, lookedUp, area, throttled: true };
-    const areaBox = areaBoxFrom(areaHits[0]?.boundingbox);
-    if (!areaBox) return { placed, lookedUp, area, throttled: false };
-    const box = widenBox(areaBox);
+    const boxes = new Map<string, AreaBox | null>();
+    const boxFor = async (where: string): Promise<AreaBox | null | "throttled"> => {
+      const key = where.toLowerCase();
+      if (boxes.has(key)) return boxes.get(key) ?? null;
+      if (!(await takeTurn())) return null;
+      const hits = await lookup(provider, where);
+      if (hits === "throttled") return "throttled";
+      const found = areaBoxFrom(hits[0]?.boundingbox);
+      const box = found ? widenBox(found) : null;
+      boxes.set(key, box);
+      return box;
+    };
 
     for (const [index, stop] of data.stops.entries()) {
-      const queries = planStopQueries({ title: stop.title, detail: stop.detail }, area).slice(
-        0,
-        QUERIES_PER_STOP,
-      );
+      // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
+      // then the trip's area if the town cannot be found.
+      const own = stopArea(stop.city, area);
+      let where = own;
+      let box = own ? await boxFor(own) : null;
+      if (box === "throttled") {
+        throttled = true;
+        break;
+      }
+      if (!box && own !== area && area) {
+        where = area;
+        box = await boxFor(area);
+        if (box === "throttled") {
+          throttled = true;
+          break;
+        }
+      }
+      if (!box) continue;
+
+      const queries = planStopQueries(
+        { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
+        where,
+      ).slice(0, QUERIES_PER_STOP);
       for (const query of queries) {
         const key = query.toLowerCase();
         if (cache.has(key)) {
@@ -183,20 +237,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           }
           continue;
         }
-        if (budget <= 0 || Date.now() > deadline) break;
-        // The gap goes before every request but the first, so a one-stop plan
-        // does not sit still for a second before it starts. The delay honours
-        // the minute cap too: two a second empties sixty a minute in thirty
-        // seconds, and the rest of the batch would meet a wall of 429s.
-        if (!first) {
-          const delay = nextDelayMs(provider, sent, Date.now());
-          if (Date.now() + delay > deadline) break;
-          if (delay > 0) await wait(delay);
-        }
-        first = false;
-        budget -= 1;
-        lookedUp += 1;
-        sent.push(Date.now());
+        if (!(await takeTurn())) break;
         const found = await geocode(provider, query, box);
         if (found === "throttled") {
           // Asking harder will not help, and recording these as misses would
@@ -204,10 +245,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           throttled = true;
           break;
         }
-        const hit = found;
-        cache.set(key, hit);
-        if (hit) {
-          placed.push({ index, ...hit });
+        cache.set(key, found);
+        if (found) {
+          placed.push({ index, ...found });
           break;
         }
       }

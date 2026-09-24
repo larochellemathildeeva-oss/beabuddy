@@ -622,6 +622,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         address?: string;
         lat?: number;
         lon?: number;
+        planned_stay_minutes?: number;
       }>,
     ) => {
       const id = tripIdRef.current;
@@ -642,6 +643,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
             address: item.address || null,
             lat: item.lat ?? null,
             lon: item.lon ?? null,
+            planned_stay_minutes: item.planned_stay_minutes ?? null,
             position: nextPosition(items) + index,
             created_by: authorId,
             updated_by: authorId,

@@ -175,6 +175,7 @@ export function TripDetail({
             stops: pending.map((stop) => ({
               title: stopLookupTitle(stop),
               detail: stop.address ?? null,
+              address: stop.address ?? null,
             })),
             area,
           },
@@ -232,7 +233,11 @@ export function TripDetail({
       try {
         const found = await geocodePlanStops({
           data: {
-            stops: pending.map((row) => ({ title: row.title, detail: row.address ?? null })),
+            stops: pending.map((row) => ({
+              title: row.title,
+              detail: row.address ?? null,
+              address: row.address ?? null,
+            })),
             area: lookupArea,
           },
         });

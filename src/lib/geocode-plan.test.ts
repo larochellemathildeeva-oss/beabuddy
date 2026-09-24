@@ -115,3 +115,29 @@ test("a stop far from the rest of the trip is flagged; a road trip is not", asyn
   ];
   assert.equal(strayStopIds(roadTrip).size, 0);
 });
+
+test("the source's address and venue are asked for before the title", async () => {
+  const { planStopQueries } = await import("./geocode-plan.ts");
+  const q = planStopQueries(
+    {
+      title: "Morning treat by the water",
+      place: "Queue de Castor",
+      address: "310 Rue de la Commune E",
+    },
+    "Montreal, Canada",
+  );
+  assert.equal(q[0], "310 Rue de la Commune E, Montreal, Canada");
+  assert.ok(q.includes("Queue de Castor, Montreal, Canada"), q.join(" | "));
+});
+
+test("a venue with its local name in brackets tries both", async () => {
+  const { planStopQueries } = await import("./geocode-plan.ts");
+  const q = planStopQueries(
+    { title: "Shrine visit", place: "Itsukushima Shrine (厳島神社)" },
+    "Miyajima, Japan",
+  );
+  assert.deepEqual(q.slice(0, 2), [
+    "Itsukushima Shrine, Miyajima, Japan",
+    "厳島神社, Miyajima, Japan",
+  ]);
+});

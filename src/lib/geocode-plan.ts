@@ -14,15 +14,23 @@
  * pin in the wrong country.
  */
 
-import { placeHintFromDetail, placeQueryCandidates } from "./direction-stops.ts";
+import {
+  looksLikeStreetAddress,
+  placeHintFromDetail,
+  placeQueryCandidates,
+} from "./direction-stops.ts";
 
 export type PlanStop = {
   title: string;
   detail?: string | null | undefined;
+  /** The venue as named on a map, when the parse pulled one out. */
+  place?: string | null | undefined;
+  /** A street address the source gave, as written. */
+  address?: string | null | undefined;
 };
 
 /** At most this many lookups per stop, so a long plan stays bounded. */
-export const QUERIES_PER_STOP = 2;
+export const QUERIES_PER_STOP = 3;
 
 /**
  * Ordered queries for one stop, most specific first, each anchored to `area`.
@@ -36,7 +44,17 @@ export function planStopQueries(stop: PlanStop, area: string | null | undefined)
   const title = stop.title.trim();
   if (!title) return [];
 
-  const candidates = placeQueryCandidates(title, placeHintFromDetail(stop.detail ?? null));
+  // Most specific first: the address the source gave, then the venue's own
+  // name, then whatever the title and the detail line suggest.
+  const address = stop.address?.trim() || placeHintFromDetail(stop.detail ?? null);
+  const place = stop.place?.trim() || "";
+  // placeQueryCandidates stops at an address when it has one; the venue
+  // is still worth its own try in case the address is not on the map.
+  const candidates = [
+    ...(address && looksLikeStreetAddress(address) ? [address] : []),
+    ...(place ? placeQueryCandidates(place, null) : []),
+    ...placeQueryCandidates(title, address),
+  ];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const candidate of candidates.length > 0 ? candidates : [title]) {

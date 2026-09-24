@@ -43,6 +43,8 @@ import {
   resolveDayDates,
 } from "@/lib/relative-days";
 import { geocodePlanStops, PLAN_LOOKUP_GAP_MS } from "@/lib/geocode-plan.functions";
+import { pinIsSaved, stayMinutesFrom, type PinChoice } from "@/lib/import-stop";
+import { stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -59,6 +61,7 @@ type NewItineraryItem = {
   address?: string;
   lat?: number;
   lon?: number;
+  planned_stay_minutes?: number;
 };
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
@@ -262,6 +265,12 @@ function ImportPanel({
       { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
     >
   >({});
+  /** Pins the person kept or removed at review, by row. */
+  const [pinChoices, setPinChoices] = useState<Record<number, PinChoice>>({});
+  const savedPin = (i: number) => {
+    const found = placements[i];
+    return found && pinIsSaved(found.confidence, pinChoices[i]) ? found : undefined;
+  };
 
   const read = async () => {
     setBusy(true);
@@ -292,6 +301,7 @@ function ImportPanel({
       setAltReason("");
       setRebuildReason("");
       setPlacements({});
+      setPinChoices({});
       if (out.items.length > 0) {
         const ready = beaLine("plan.ready");
         toast.success(ready.title, { description: ready.body });
@@ -313,12 +323,19 @@ function ImportPanel({
    */
   const placeParsed = async (parsed: ParsedItineraryItem[]) => {
     const area = tripCity?.trim() || "";
-    if (!area || parsed.length === 0) return;
+    // A plan that names each stop's town can be placed without a trip city.
+    if ((!area && !parsed.some((item) => item.city?.trim())) || parsed.length === 0) return;
     setPlacing({ done: 0, total: parsed.length });
     try {
       const result = await geocodePlanStops({
         data: {
-          stops: parsed.map((item) => ({ title: item.title, detail: item.detail ?? null })),
+          stops: parsed.map((item) => ({
+            title: item.title,
+            detail: item.detail ?? null,
+            place: item.place ?? null,
+            address: item.address ?? null,
+            city: item.city ?? null,
+          })),
           area,
         },
       });
@@ -397,10 +414,14 @@ function ImportPanel({
       const chosen = picked.flatMap((i) => {
         const it = dated[i];
         if (!it) return [];
-        const address = placeHintFromDetail(it.detail);
+        // The address the source gave, pulled out by the parse; the detail
+        // line's first clause only when it gave none.
+        const address = it.address?.trim() || placeHintFromDetail(it.detail);
+        const stay = stayMinutesFrom(it);
         // Already found, at review time, and already shown to the person
-        // saving it. No second round of lookups on the way out.
-        const found = placements[i];
+        // saving it — and only if it was trusted or kept. No second round of
+        // lookups on the way out.
+        const found = savedPin(i);
         return [
           {
             ...(found ? { lat: found.lat, lon: found.lon } : {}),
@@ -409,6 +430,7 @@ function ImportPanel({
             kind: it.kind,
             title: it.title,
             ...(address ? { address } : {}),
+            ...(stay ? { planned_stay_minutes: stay } : {}),
             ...(it.detail || (includeCosts && it.estimated_cost != null)
               ? {
                   detail: [
@@ -433,7 +455,7 @@ function ImportPanel({
        * earlier and cheaper: the save is a save again.
        */
       const located = chosen;
-      const unplaced = picked.filter((i) => !placements[i]).length;
+      const unplaced = picked.filter((i) => !savedPin(i)).length;
       if (unplaced > 0 && Object.keys(placements).length > 0) {
         toast.message(`${unplaced} of these are not on the map`, {
           description: "They are saved either way — open the trip to give them a place.",
@@ -484,6 +506,11 @@ function ImportPanel({
     setItems(out.items);
     setPlan(out);
     setPicked(freshIndexes(out.items));
+    // Pins are kept by row number, and a revision renumbers the rows: the
+    // old ones would land on whichever stop now sits in that place.
+    setPlacements({});
+    setPinChoices({});
+    if (out.items.length > 0) void placeParsed(out.items);
   };
 
   const findAlternatives = async () => {
@@ -881,8 +908,10 @@ function ImportPanel({
               />
               <span className="min-w-0">
                 <span className="block text-[12px] uppercase tracking-wider text-muted-foreground">
-                  {[it.day_date, it.time_label].filter(Boolean).join(" · ")}
-                  {it.day_date || it.time_label ? " · " : ""}
+                  {[it.day_date ?? (it.day_number ? `Day ${it.day_number}` : null), it.time_label]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  {it.day_date || it.day_number || it.time_label ? " · " : ""}
                   {it.kind}
                 </span>
                 <span className="block text-[14.5px] font-medium">
@@ -901,6 +930,17 @@ function ImportPanel({
                 {it.detail && (
                   <span className="block text-[13px] text-muted-foreground">{it.detail}</span>
                 )}
+                {(it.place || it.address || it.city || stayMinutesFrom(it)) && (
+                  <span className="block text-[12.5px] text-muted-foreground">
+                    {[
+                      it.address || it.place,
+                      it.city,
+                      stayMinutesFrom(it) ? `~${stayLabel(stayMinutesFrom(it)!)} stay` : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                )}
                 {includeCosts && it.estimated_cost != null && (
                   <span className="block text-[13px] text-muted-foreground">
                     Est. {it.estimated_cost} {it.currency ?? plan?.currency ?? currency}
@@ -914,7 +954,11 @@ function ImportPanel({
                  * the same wall of noise as a page of warnings. The ones that
                  * speak up are the ones worth a second of your attention.
                  */}
-                <PlacementNote found={placements[i]} />
+                <PlacementNote
+                  found={placements[i]}
+                  choice={pinChoices[i]}
+                  onChoose={(choice) => setPinChoices((cur) => ({ ...cur, [i]: choice }))}
+                />
               </span>
             </label>
           ))}
@@ -979,19 +1023,57 @@ function ImportPanel({
  */
 function PlacementNote({
   found,
+  choice,
+  onChoose,
 }: {
   found?:
     | { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
     | undefined;
+  choice?: PinChoice | undefined;
+  onChoose: (choice: PinChoice) => void;
 }) {
   if (!found) return null;
   const shortLabel = (found.label ?? "").split(",").slice(0, 2).join(",").trim();
+  const kept = pinIsSaved(found.confidence, choice);
+  // Inside the row's <label>: without this a tap would also tick or untick
+  // the row.
+  const choose = (next: PinChoice) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onChoose(next);
+  };
+  const action = (label: string, next: PinChoice) => (
+    <button
+      type="button"
+      onClick={choose(next)}
+      className="ml-1.5 inline-flex min-h-7 items-center rounded-md border border-border bg-card px-2 text-[11.5px] font-semibold text-foreground"
+    >
+      {label}
+    </button>
+  );
+
+  if (!kept) {
+    return (
+      <span className="mt-1 block rounded-lg bg-elevated px-2 py-1 text-[12px] text-muted-foreground">
+        <span className="font-semibold text-foreground">
+          {found.confidence === "low" ? "Check this one — not pinned" : "Pin removed"}
+        </span>
+        {shortLabel ? ` · Béa found ${shortLabel}` : ""}
+        {found.confidence === "low" && <span className="block">{found.reason}</span>}
+        <span className="mt-0.5 block">
+          Saved without a place; set it later from the stop.
+          {action("Use this pin", "keep")}
+        </span>
+      </span>
+    );
+  }
 
   if (found.confidence === "high") {
     return (
       <span className="mt-0.5 block text-[12px] text-muted-foreground">
         <MapPin className="mr-1 inline size-3 text-primary" aria-hidden />
         {shortLabel || "On the map"}
+        {action("Not this one", "drop")}
       </span>
     );
   }
@@ -1004,10 +1086,11 @@ function PlacementNote({
       }`}
     >
       <span className="font-semibold">
-        {found.confidence === "low" ? "Check this one" : "Béa's best guess"}
+        {found.confidence === "low" ? "Kept, though Béa was unsure" : "Béa's best guess"}
       </span>
       {shortLabel ? ` — ${shortLabel}` : ""}
       <span className="block text-muted-foreground">{found.reason}</span>
+      {action("Not this one", "drop")}
     </span>
   );
 }
