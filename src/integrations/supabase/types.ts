@@ -110,6 +110,9 @@ export type Database = {
         Row: {
           address: string | null
           arrived_at: string | null
+          booked: boolean
+          booking_details: string | null
+          booking_ref: string | null
           created_at: string
           created_by: string | null
           day_date: string | null
@@ -130,6 +133,9 @@ export type Database = {
         Insert: {
           address?: string | null
           arrived_at?: string | null
+          booked?: boolean
+          booking_details?: string | null
+          booking_ref?: string | null
           created_at?: string
           created_by?: string | null
           day_date?: string | null
@@ -150,6 +156,9 @@ export type Database = {
         Update: {
           address?: string | null
           arrived_at?: string | null
+          booked?: boolean
+          booking_details?: string | null
+          booking_ref?: string | null
           created_at?: string
           created_by?: string | null
           day_date?: string | null

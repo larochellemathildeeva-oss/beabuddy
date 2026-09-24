@@ -22,23 +22,23 @@
 export const TRIP_PERSPECTIVES = [
   {
     id: "companion",
-    label: "Now",
-    hint: "Where you are, and what is next.",
+    label: "Companion",
+    hint: "Where you are now, what is next, and when to leave.",
   },
   {
     id: "map",
-    label: "Map",
-    hint: "Today's stops, in relation to each other.",
+    label: "Map Split",
+    hint: "The day on a map, with the stops beside it.",
   },
   {
     id: "timeline",
-    label: "Day",
-    hint: "The day as a list you can read and edit.",
+    label: "Timeline",
+    hint: "The day in order: reorder, retime, add and edit.",
   },
   {
     id: "trip",
     label: "Trip",
-    hint: "Stops, to-dos, packing and budget.",
+    hint: "Stops, to-dos, packing, budget, people and details.",
   },
 ] as const;
 

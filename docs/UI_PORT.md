@@ -211,6 +211,25 @@ had worked.
 from the Trip hint: vault documents belong to the account, not a trip, and
 there is no trip-level documents section to move.
 
+## Plan phases 0–4 (2026-09-24)
+
+See `docs/UI_PORT_PLAN.md`. In short:
+- **Tabs** are Companion · Map Split · Timeline · Trip (owner decision D7).
+  The last tab and day are remembered per trip on the device.
+- **Timeline cards**: ticket (booking), locate on map, done, save and delete
+  in the top row; the swipe hint only on each day's first card.
+- **Bookings** (D3): `booked`, `booking_ref`, `booking_details` on
+  `itinerary_items`, edited in `day/BookingSheet.tsx` and shown as
+  "✓ Booked" on the card, ribbon and map card. The read retries without the
+  columns if the migration has not run (`lib/bookings.ts`).
+- **Saved places drawer** (`day/SavedPlacesSheet.tsx`): the "Saved" pill;
+  "Add" puts a place on the day in view.
+- **Optimize** now offers Undo, restoring every stop's day, time and position.
+- **Offline** pill beside Optimize opens the existing offline directions.
+- A one-day trip follows its only day in Companion (was a dead end).
+- `npm run preview:check` (`scripts/preview/`) renders the real page with a
+  fake Supabase and clicks every control. Run it before every push.
+
 ## Settled — don't relitigate
 
 - **Type and palette stay Béa's** (Manrope, Instrument Serif, existing

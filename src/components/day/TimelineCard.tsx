@@ -6,14 +6,18 @@ import {
   ChevronDown,
   ChevronUp,
   Footprints,
+  MapPin,
   MapPinPlus,
   Plus,
+  Ticket,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { SwipeRow } from "@/components/day/SwipeRow";
+import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
+import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone } from "@/lib/companion";
@@ -52,6 +56,9 @@ export function TimelineEntry({
   tripEnd,
   onKeep,
   onToggleDone,
+  showSwipeHint = false,
+  onLocate,
+  onSaveBooking,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -89,11 +96,19 @@ export function TimelineEntry({
   onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
   /** Mark done (arrived and left), or back to not done. */
   onToggleDone: () => void;
+  /** The swipe hint line; shown on the first card of a day, not all of them. */
+  showSwipeHint?: boolean;
+  /** Show this stop on the Map Split tab. Only offered for a placed stop. */
+  onLocate?: (() => void) | undefined;
+  /** Save the booking switch, reference and details. Rejects on failure. */
+  onSaveBooking?: ((patch: BookingPatch) => Promise<void>) | undefined;
 }) {
   const [kept, setKept] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingDetail, setEditingDetail] = useState(false);
   const [editingTime, setEditingTime] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
   const done = isDone(item);
   const detail = stripEmbeddedMapsUrl(item.detail);
@@ -230,7 +245,7 @@ export function TimelineEntry({
                       onClick={onToggleDone}
                       aria-pressed={done}
                       aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-                      className={`grid size-8 place-items-center rounded-lg ${done ? "bg-nexttime/15 text-nexttime" : "text-muted-foreground"}`}
+                      className={`grid size-7 place-items-center rounded-lg ${done ? "bg-nexttime/15 text-nexttime" : "text-muted-foreground"}`}
                     >
                       <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
                     </button>
@@ -243,7 +258,7 @@ export function TimelineEntry({
                           kept ? "Saved to your places" : `Save ${item.title} to your places`
                         }
                         title={kept ? "Saved to your places" : "Save to my places"}
-                        className={`grid size-8 place-items-center rounded-lg ${kept ? "text-primary" : "text-muted-foreground"}`}
+                        className={`grid size-7 place-items-center rounded-lg ${kept ? "text-primary" : "text-muted-foreground"}`}
                       >
                         <Bookmark
                           className="size-4"
@@ -252,11 +267,33 @@ export function TimelineEntry({
                         />
                       </button>
                     )}
+                    {onSaveBooking && (
+                      <button
+                        type="button"
+                        onClick={() => setBookingOpen(true)}
+                        aria-label={`Booking for ${item.title}`}
+                        title="Booking"
+                        className={`grid size-7 place-items-center rounded-lg ${booked ? "text-nexttime" : "text-muted-foreground"}`}
+                      >
+                        <Ticket className="size-4" aria-hidden />
+                      </button>
+                    )}
+                    {onLocate && item.lat != null && item.lon != null && (
+                      <button
+                        type="button"
+                        onClick={onLocate}
+                        aria-label={`Locate ${item.title} on the map`}
+                        title="Locate on map"
+                        className="grid size-7 place-items-center rounded-lg text-muted-foreground"
+                      >
+                        <MapPin className="size-4" aria-hidden />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={onRemove}
                       aria-label={`Delete ${item.title}`}
-                      className="grid size-8 place-items-center rounded-lg text-muted-foreground"
+                      className="grid size-7 place-items-center rounded-lg text-muted-foreground"
                     >
                       <Trash2 className="size-4" aria-hidden />
                     </button>
@@ -290,6 +327,15 @@ export function TimelineEntry({
                   <span className="mt-0.5 inline-block rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
                     Done
                   </span>
+                )}
+                {booked && (
+                  <button
+                    type="button"
+                    onClick={() => setBookingOpen(true)}
+                    className="ml-1 mt-0.5 inline-flex items-center gap-1 rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime"
+                  >
+                    ✓ Booked{item.booking_ref ? ` · ${item.booking_ref}` : ""}
+                  </button>
                 )}
 
                 {editing || editingDetail ? (
@@ -431,7 +477,7 @@ export function TimelineEntry({
                 </button>
               )}
             </div>
-            {!editing && (
+            {!editing && showSwipeHint && (
               <p className="mt-1 flex justify-between gap-2 text-[10.5px] text-muted-foreground/70">
                 <span>👉 Swipe right to complete</span>
                 <span>Swipe left to save or delete 👈</span>
@@ -440,6 +486,14 @@ export function TimelineEntry({
           </article>
         </SwipeRow>
       </div>
+      {onSaveBooking && bookingOpen && (
+        <BookingSheet
+          item={item}
+          open={bookingOpen}
+          onClose={() => setBookingOpen(false)}
+          onSave={onSaveBooking}
+        />
+      )}
     </li>
   );
 }

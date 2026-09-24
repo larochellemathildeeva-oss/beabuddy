@@ -1,5 +1,13 @@
 # Finishing the trip page UI/UX transition — plan
 
+> **Status, 2026-09-24:** phases 0–4 done in one session (PR after #43).
+> `npm run preview:check`: 182 controls clicked, 0 problems, on five
+> samples and in dark mode, plus end-to-end tests for bookings, saved
+> places and locate-on-map. The bookings migration
+> (`20260925120000_itinerary_bookings.sql`) still has to be applied by
+> hand; until then the app reads without the booking columns and saving a
+> booking shows an error.
+
 Written 2026-09-24. Companion to `docs/UI_PORT.md` (what is built and why).
 The owner approves this plan once; each phase then runs without re-scoping.
 

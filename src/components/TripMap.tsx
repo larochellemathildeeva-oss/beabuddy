@@ -253,7 +253,7 @@ export function TripMap({
     // Only worth saying once there is an itinerary to place.
     if (plan.reason === "no-stops") return null;
     return (
-      <div className="mb-3 rounded-xl bg-elevated p-3">
+      <div className="mb-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
         <p className="label-caps text-foreground">On the map</p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           None of {area ? `your ${area} stops` : "these stops"} has a location yet, so there is
@@ -279,7 +279,7 @@ export function TripMap({
   }
 
   return (
-    <div className="mb-3 overflow-hidden rounded-xl bg-elevated">
+    <div className="mb-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="block h-auto w-full"

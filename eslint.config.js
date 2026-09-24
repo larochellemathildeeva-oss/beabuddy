@@ -23,6 +23,8 @@ export default tseslint.config(
       "src/integrations/supabase/types.ts",
       // Reference copy of the AI Studio prototype, not part of the app.
       "docs/prototype",
+      // The preview checker's stand-ins and output; run by hand, not shipped.
+      "scripts/preview",
     ],
   },
   {
