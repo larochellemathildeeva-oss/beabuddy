@@ -85,7 +85,7 @@ export function PlaceSearchInput({
         return;
       }
       const res = await search({
-        data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+        data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
       });
       setHits(res);
       if (res.length === 0) {
@@ -127,7 +127,7 @@ export function PlaceSearchInput({
     const timer = setTimeout(async () => {
       try {
         const res = await search({
-          data: { query: near ? `${q}, ${near}` : q, ...(at ? { at } : {}) },
+          data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
         });
         if (cancelled) return;
         setHits(res);
@@ -214,15 +214,17 @@ export function PlaceSearchInput({
         </button>
       </div>
       {err && <p className="text-[12px] text-muted-foreground">{err}</p>}
-      {/* Offered whenever a position would change the answer: empty world
-          search, or a chain that came back from four continents while Béa
-          still does not know where you are. Gating on empty alone hid the
-          button for "subway" — the list was full of the wrong shops. */}
-      {onLocate && !at && !near && (hits.length === 0 ? Boolean(err) : hitsSpanCountries(hits)) && (
+      {/* Offered on every answer while Béa does not know where you are. It
+          used to wait for an empty list or one spanning countries, and so
+          hid itself for "subway" when both answers were in Quebec — just not
+          the Quebec you are standing in. */}
+      {onLocate && !at && !near && (hits.length > 0 || Boolean(err)) && (
         <div className="space-y-1.5">
           {hits.length > 0 && (
             <p className="text-[12px] text-muted-foreground">
-              These are around the world. Search near you for the one on your street.
+              {hitsSpanCountries(hits)
+                ? "These are around the world. Search near you for the one on your street."
+                : "Not the one you meant? Search near you."}
             </p>
           )}
           <button
@@ -233,6 +235,9 @@ export function PlaceSearchInput({
             Search near me
           </button>
         </div>
+      )}
+      {at && !near && hits.length > 0 && (
+        <p className="text-[12px] text-muted-foreground">Nearest to you first.</p>
       )}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">

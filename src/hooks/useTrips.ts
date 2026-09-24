@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
+import { isMissingColumn } from "@/lib/bookings";
 import {
   datesStatusOrDefault,
   isMissingDatesStatusColumn,
@@ -155,7 +156,16 @@ export type ItineraryRow = {
   arrived_at: string | null;
   left_at: string | null;
   planned_stay_minutes: number | null;
+  /** Absent until the bookings migration is applied; read as "not booked". */
+  booked?: boolean;
+  booking_ref?: string | null;
+  booking_details?: string | null;
 };
+
+const ITINERARY_COLUMNS =
+  "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at, arrived_at, left_at, planned_stay_minutes";
+const BOOKING_COLUMN_NAMES = ["booked", "booking_ref", "booking_details"];
+const BOOKING_COLUMNS = BOOKING_COLUMN_NAMES.join(", ");
 
 export function useTrips() {
   const [uid, setUid] = useState<string | null>(null);
@@ -414,16 +424,22 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
    */
   const load = useCallback(async () => {
     if (!tripId) return;
-    const { data, error } = await supabase
-      .from("itinerary_items")
-      .select(
-        "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at, arrived_at, left_at, planned_stay_minutes",
-      )
-      .eq("trip_id", tripId)
-      .order("day_date", { ascending: true })
-      .order("position", { ascending: true });
+    const query = (columns: string) =>
+      supabase
+        .from("itinerary_items")
+        .select(columns)
+        .eq("trip_id", tripId)
+        .order("day_date", { ascending: true })
+        .order("position", { ascending: true });
+    let { data, error } = await query(`${ITINERARY_COLUMNS}, ${BOOKING_COLUMNS}`);
+    // The booking columns arrive with a migration applied by hand. Until it
+    // runs, asking for them fails the whole read, and a failed read keeps
+    // an empty trip on screen — so ask again without them.
+    if (error && isMissingColumn(error, BOOKING_COLUMN_NAMES)) {
+      ({ data, error } = await query(ITINERARY_COLUMNS));
+    }
     if (error) return;
-    setItems((data ?? []) as ItineraryRow[]);
+    setItems((data ?? []) as unknown as ItineraryRow[]);
     const { data: inv, error: invError } = await supabase
       .from("trip_invites")
       .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
@@ -732,6 +748,9 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           | "lat"
           | "lon"
           | "planned_stay_minutes"
+          | "booked"
+          | "booking_ref"
+          | "booking_details"
         >
       >,
     ) => {

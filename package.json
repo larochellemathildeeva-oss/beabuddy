@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "12.2.0",
+  "version": "13.0.0",
   "private": true,
   "sideEffects": [
     "src/styles.css"
@@ -14,6 +14,7 @@
     "start": "node scripts/start-production.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "preview:check": "node scripts/preview/check.mjs",
     "format": "prettier --write .",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts",
     "version:fix": "npm version patch --no-git-tag-version",
@@ -97,6 +98,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",
@@ -104,6 +106,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "nitro": "3.0.260603-beta",
+    "playwright-core": "^1.56.1",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",

@@ -69,7 +69,9 @@ function TripPage() {
   const members = t.members.filter((m) => m.trip_id === trip.id);
 
   return (
-    <AppShell eyebrow="Trip" title={trip.title}>
+    // No page title: the trip's own banner is pinned at the top of the page and
+    // carries the name, so a second heading above it only took the space.
+    <AppShell flush>
       <TripDetail
         trip={trip}
         photos={photos}

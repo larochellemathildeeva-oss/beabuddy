@@ -704,3 +704,24 @@
     transform: translate(-50%, -50%);
   }
 }
+
+/* A Timeline card turning over to its edit side. */
+@keyframes card-flip {
+  from {
+    opacity: 0.3;
+    transform: perspective(900px) rotateY(-75deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card-flip {
+  animation: card-flip 220ms var(--ease-standard) both;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-flip {
+    animation: none;
+  }
+}

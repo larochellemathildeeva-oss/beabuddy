@@ -211,6 +211,25 @@ had worked.
 from the Trip hint: vault documents belong to the account, not a trip, and
 there is no trip-level documents section to move.
 
+## Plan phases 0–4 (2026-09-24)
+
+See `docs/UI_PORT_PLAN.md`. In short:
+- **Tabs** are Companion · Map Split · Timeline · Trip (owner decision D7).
+  The last tab and day are remembered per trip on the device.
+- **Timeline cards**: ticket (booking), locate on map, done, save and delete
+  in the top row; the swipe hint only on each day's first card.
+- **Bookings** (D3): `booked`, `booking_ref`, `booking_details` on
+  `itinerary_items`, edited in `day/BookingSheet.tsx` and shown as
+  "✓ Booked" on the card, ribbon and map card. The read retries without the
+  columns if the migration has not run (`lib/bookings.ts`).
+- **Saved places drawer** (`day/SavedPlacesSheet.tsx`): the "Saved" pill;
+  "Add" puts a place on the day in view.
+- **Optimize** now offers Undo, restoring every stop's day, time and position.
+- **Offline** pill beside Optimize opens the existing offline directions.
+- A one-day trip follows its only day in Companion (was a dead end).
+- `npm run preview:check` (`scripts/preview/`) renders the real page with a
+  fake Supabase and clicks every control. Run it before every push.
+
 ## Settled — don't relitigate
 
 - **Type and palette stay Béa's** (Manrope, Instrument Serif, existing
@@ -245,3 +264,29 @@ there is no trip-level documents section to move.
 - `audit/bea-google-maps-briefing.txt` — the provider decision (this branch).
 - The full product/logic/trust audit is on branch
   `claude/bea-codebase-audit-lcvwkb`, not here.
+
+## Owner feedback after phase 4 (2026-09-24)
+
+- **Wider page:** the trip page runs edge to edge on a phone (`AppShell flush`),
+  and is a card again from tablet width up. The shell's page title is dropped
+  there because the banner carries the trip's name.
+- **Pinned, thin banner:** `TripBanner compact` (68 px: title, one line of
+  where and when, countdown) is `sticky top-0` inside the page. Béa's note
+  moved under it and scrolls away. The article uses `overflow-clip`, not
+  `overflow-hidden`, or the banner would not stick.
+- **Companion "Pick a day":** the prompt lists the days as buttons, so it is
+  never a dead end even when the day strip's cards are off screen.
+- Checker: two new flows, "companion: pick a day from the prompt itself" and
+  "banner stays pinned while the page scrolls".
+- **Stop cards turn over:** the Timeline card's front is one line of time,
+  name and where (plus small done and booked marks). Tapping it shows the
+  back: name, note, booking, day, time, stay, place, and named buttons for
+  done, booking, map, save, order and delete; "Done" turns it back. Edit mode
+  in the list header shows every back at once. "Add stop between" is a small
+  + on the line between cards. Checker flow: "stop card: compact front turns
+  over to edit, and back" (front ≤ 76 px; every back action writes).
+- **Paws between stops (replaces "Add stop between" and the walk row):** a
+  small paw on the line between two cards opens directions from one to the
+  next in the phone's maps app, with the walk or drive time beside it once
+  directions are measured. Adding still happens from the day's + or Add.
+  Card fronts wrap long names instead of cutting them off.

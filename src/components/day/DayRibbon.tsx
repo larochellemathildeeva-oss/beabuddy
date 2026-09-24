@@ -3,6 +3,7 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { partOfDay, stopStatuses, type PartOfDay } from "@/lib/companion";
 import { timeForRail } from "@/lib/timeline-kind";
 import { stayLabel } from "@/lib/planned-stay";
+import { isBooked } from "@/lib/bookings";
 import { Compass } from "lucide-react";
 
 type Filter = "all" | PartOfDay;
@@ -103,6 +104,7 @@ export function DayRibbon({
           const here = status === "here";
           const next = status === "next";
           const meta = [
+            isBooked(stop) ? "✓ Booked" : "",
             stop.address?.trim(),
             stop.planned_stay_minutes ? `~${stayLabel(stop.planned_stay_minutes)}` : "",
           ]

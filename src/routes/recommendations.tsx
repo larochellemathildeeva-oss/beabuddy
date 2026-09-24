@@ -263,6 +263,30 @@ function RecommendationsPage() {
    * came back empty, or its nonempty results span at least two countries.
    * PlaceSearchInput re-runs itself once the position lands.
    */
+  // Already allowed on this device: use it without asking, so a chain search
+  // starts near you. Never prompts — only reads a permission already given.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.permissions || !navigator.geolocation)
+      return;
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((status) => {
+        if (cancelled || status.state !== "granted") return;
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (!cancelled) setSearchAt({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+          },
+          () => {},
+          { timeout: 15_000, maximumAge: 300_000 },
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const locateForSearch = () => {
     if (!navigator.geolocation) {
       setError("Your device won't share its location.");

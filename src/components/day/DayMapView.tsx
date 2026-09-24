@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Compass } from "lucide-react";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { stayLabel } from "@/lib/planned-stay";
+import { isBooked } from "@/lib/bookings";
 import { timeForRail } from "@/lib/timeline-kind";
 import { DayMap } from "@/components/day/DayMap";
 import { StopCard } from "@/components/day/StopCard";
@@ -29,15 +30,18 @@ const LAYOUTS: { id: MapLayout; label: string; height: string }[] = [
 export function DayMapView({
   groups,
   area,
+  focusId,
 }: {
   groups: TimelineDayGroup<ItineraryRow>[];
   area: string;
+  /** A stop to open on, from "Locate on map" in the Timeline. */
+  focusId?: string | null | undefined;
 }) {
   // Recomputed each render: `groups` is rebuilt upstream every time, and a
   // day's worth of stops costs nothing to walk.
   const model = dayMapModel(groups.flatMap((group) => group.items));
   const caption = dayMapCaption(model);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
   const [layout, setLayout] = useState<MapLayout>("dual");
   const stopById = new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item]));
   // The floating card shows the chosen stop, or the day's first one.
@@ -69,7 +73,7 @@ export function DayMapView({
           <p className="font-display text-[19px] leading-snug">Nothing to put on the map yet.</p>
           <p className="text-[14px] text-muted-foreground">
             None of {area ? `your ${area} stops` : "these stops"} has a location. Add an address to
-            a stop in the Day tab and it appears here.
+            a stop in the Timeline tab and it appears here.
           </p>
         </div>
       ) : (
@@ -121,6 +125,7 @@ export function DayMapView({
                     key={pin.id}
                     type="button"
                     onClick={() => setSelectedId(pin.id)}
+                    aria-pressed={on}
                     className={`inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium ${
                       on
                         ? "bg-primary font-bold text-primary-foreground shadow-sm"
@@ -188,7 +193,14 @@ export function DayMapView({
                       </button>
                     </div>
                   </div>
-                  <p className="mt-1 truncate text-[14px] font-bold">{focusStop.title}</p>
+                  <p className="mt-1 flex min-w-0 items-center gap-2">
+                    <span className="truncate text-[14px] font-bold">{focusStop.title}</span>
+                    {isBooked(focusStop) && (
+                      <span className="shrink-0 rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
+                        ✓ Booked
+                      </span>
+                    )}
+                  </p>
                   {layout === "peek" && (
                     <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
                       <span className="truncate">{focusStop.address?.trim()}</span>
