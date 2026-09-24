@@ -278,3 +278,10 @@ See `docs/UI_PORT_PLAN.md`. In short:
   never a dead end even when the day strip's cards are off screen.
 - Checker: two new flows, "companion: pick a day from the prompt itself" and
   "banner stays pinned while the page scrolls".
+- **Stop cards turn over:** the Timeline card's front is one line of time,
+  name and where (plus small done and booked marks). Tapping it shows the
+  back: name, note, booking, day, time, stay, place, and named buttons for
+  done, booking, map, save, order and delete; "Done" turns it back. Edit mode
+  in the list header shows every back at once. "Add stop between" is a small
+  + on the line between cards. Checker flow: "stop card: compact front turns
+  over to edit, and back" (front ≤ 76 px; every back action writes).

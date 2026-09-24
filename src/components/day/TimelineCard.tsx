@@ -30,15 +30,15 @@ import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/ti
 import { timeForRail } from "@/lib/timeline-kind";
 
 /**
- * One stop on the Day tab, as a card.
+ * One stop on the Timeline tab, as a card with two sides.
  *
- * The prototype's card shape — time and number down the left, name, note and
- * a mid-dotted line of address, stay and map — over every control the row
- * had before: the name and note still edit in place (tap them), edit mode
- * still opens day, time, stay, order and place for the whole list at once,
- * and Remove and "Save to my places" are where they were. Swiping right
- * marks the stop done, left offers Save and Delete; each also has a button.
- * Shared by the by-day and flat lists so rows stay keyed to the same id.
+ * The front is one line of time, name and where, so a long day reads at a
+ * glance. Tapping it turns the card over: name and note, day, time, stay and
+ * place, the booking, and done, save, map, order and delete, each with its
+ * name. "Done" turns it back. Edit mode in the list header shows every card's
+ * back at once. Swiping the front still marks done (right) or offers save and
+ * delete (left). Shared by the by-day and flat lists so rows stay keyed to the
+ * same id.
  */
 export function TimelineEntry({
   item,
@@ -104,9 +104,7 @@ export function TimelineEntry({
   onSaveBooking?: ((patch: BookingPatch) => Promise<void>) | undefined;
 }) {
   const [kept, setKept] = useState(false);
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [editingDetail, setEditingDetail] = useState(false);
-  const [editingTime, setEditingTime] = useState(false);
+  const [flipped, setFlipped] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
@@ -127,11 +125,9 @@ export function TimelineEntry({
     <input
       defaultValue={item.title}
       aria-label="Name"
-      autoFocus={editingTitle}
       onFocus={() => onEdit(item.title)}
       onBlur={(e) => {
         onEdit(null);
-        setEditingTitle(false);
         if (e.target.value.trim() && e.target.value !== item.title)
           onUpdate({ title: e.target.value.trim() });
       }}
@@ -142,350 +138,291 @@ export function TimelineEntry({
   const detailInput = (
     <TimelineDetailInput
       detail={item.detail}
-      autoFocus={editingDetail}
       onFocus={() => onEdit(item.title)}
       onCommit={(next) => {
         onEdit(null);
-        setEditingDetail(false);
         const prev = stripEmbeddedMapsUrl(item.detail);
         if (next !== prev) onUpdate({ detail: next || null });
       }}
     />
   );
 
-  // Unboxed, mid-dotted: where it is, how long it takes, and a way to it.
-  const meta = [
-    item.address ? `📍 ${item.address}` : "",
-    item.planned_stay_minutes ? `~${stayLabel(item.planned_stay_minutes)} stay` : "",
-  ].filter(Boolean);
+  const placed = item.lat != null && item.lon != null;
+  // The front says where; a stop with no place says so, quietly.
+  const where = item.address || (item.kind === "note" ? detail : "") || "";
+  const back = editing || flipped;
+
+  const flip = (open: boolean) => {
+    setFlipped(open);
+    if (!open) onEdit(null);
+  };
+
+  // The front: time, name and where. Everything else is one tap away, on the
+  // back of the card, so a day of twelve stops reads as twelve lines.
+  const front = (
+    <article
+      className={`overflow-hidden rounded-2xl border bg-card ${
+        done ? "border-nexttime/40" : "border-border/70"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => flip(true)}
+        aria-expanded={false}
+        aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
+        className="flex min-h-14 w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left"
+      >
+        <span
+          className={`w-11 shrink-0 text-[14px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+        >
+          {rail || "–"}
+        </span>
+        <TimelineGlyphMark item={item} />
+        <span className="min-w-0 flex-1">
+          <span
+            className={`block truncate text-[15px] font-semibold leading-snug ${
+              done ? "text-muted-foreground line-through" : ""
+            }`}
+          >
+            {showDay && item.day_date ? (
+              <span className="mr-1.5 text-[12px] font-normal text-muted-foreground">
+                {item.day_date}
+              </span>
+            ) : null}
+            {item.title}
+          </span>
+          <span className="block truncate text-[12.5px] text-muted-foreground">
+            {where || "No place yet"}
+          </span>
+        </span>
+        {booked && (
+          <span
+            title="Booked"
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
+          >
+            <Ticket className="size-3.5" aria-hidden />
+            <span className="sr-only">Booked</span>
+          </span>
+        )}
+        {done && (
+          <span
+            title="Done"
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
+          >
+            <Check className="size-3.5" strokeWidth={3} aria-hidden />
+            <span className="sr-only">Done</span>
+          </span>
+        )}
+      </button>
+    </article>
+  );
+
+  const iconButton =
+    "inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-[12.5px] font-semibold text-muted-foreground disabled:opacity-40";
+
+  // The back: every change to this stop, and its booking, in one place.
+  const backSide = (
+    <article className="card-flip rounded-2xl border border-primary/30 bg-card p-3 shadow-sm">
+      <div className="flex min-w-0 items-center gap-2">
+        {number != null && (
+          <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+            #{number}
+          </span>
+        )}
+        <TimelineGlyphMark item={item} />
+        <span className="label-caps">Edit stop</span>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => flip(false)}
+            aria-label={`Close ${item.title}`}
+            className="ml-auto inline-flex min-h-9 items-center rounded-xl bg-foreground px-3 text-[12.5px] font-bold text-background"
+          >
+            Done
+          </button>
+        )}
+      </div>
+
+      <div className="mt-2 space-y-1.5">
+        <div className="rounded-lg border border-border bg-elevated px-2 py-1.5">{titleInput}</div>
+        {detailInput}
+      </div>
+
+      {booked && (
+        <button
+          type="button"
+          onClick={() => setBookingOpen(true)}
+          className="mt-2 block w-full rounded-lg bg-nexttime/10 px-2.5 py-2 text-left"
+        >
+          <span className="block text-[12.5px] font-bold text-nexttime">
+            ✓ Booked{item.booking_ref ? ` · ${item.booking_ref}` : ""}
+          </span>
+          {item.booking_details ? (
+            <span className="block whitespace-pre-line text-[12.5px] text-foreground/80">
+              {item.booking_details}
+            </span>
+          ) : null}
+        </button>
+      )}
+
+      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
+        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          Day
+          <input
+            type="date"
+            value={item.day_date ?? ""}
+            aria-label={`Day for ${item.title}`}
+            {...(tripStart ? { min: tripStart } : {})}
+            {...(tripEnd ? { max: tripEnd } : {})}
+            onChange={(e) => onUpdate({ day_date: e.target.value || null })}
+            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          Time
+          <input
+            type="time"
+            value={rail}
+            aria-label={`Time for ${item.title}`}
+            onChange={(e) => onUpdate({ time_label: e.target.value || null })}
+            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+          />
+        </label>
+        {/* How long the plan allows here. Companion counts it down once you
+            tap "I'm here"; left empty, it only says how long it has been. */}
+        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+          Stay
+          <select
+            value={item.planned_stay_minutes ?? ""}
+            aria-label={`How long to stay at ${item.title}`}
+            onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
+            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+          >
+            <option value="">—</option>
+            {stayChoices(item.planned_stay_minutes).map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {stayLabel(minutes)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <TimelinePlaceEditor
+          item={item}
+          {...(near ? { near } : {})}
+          onPick={(place) => onUpdate(placePatchForSavedRow(place))}
+        />
+        {placed && (
+          <a
+            href={mapsPlaceUrl(item.title, item)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[12px] font-semibold text-primary underline"
+          >
+            Open in Maps
+          </a>
+        )}
+      </div>
+
+      {/* The same actions the swipe gives, and the rest, with their names. */}
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onToggleDone}
+          aria-pressed={done}
+          aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
+          className={`${iconButton} ${done ? "border-nexttime/40 text-nexttime" : ""}`}
+        >
+          <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
+          {done ? "Done" : "Mark done"}
+        </button>
+        {onSaveBooking && (
+          <button
+            type="button"
+            onClick={() => setBookingOpen(true)}
+            aria-label={`Booking for ${item.title}`}
+            className={`${iconButton} ${booked ? "text-nexttime" : ""}`}
+          >
+            <Ticket className="size-4" aria-hidden />
+            Booking
+          </button>
+        )}
+        {onLocate && placed && (
+          <button
+            type="button"
+            onClick={onLocate}
+            aria-label={`Locate ${item.title} on the map`}
+            className={iconButton}
+          >
+            <MapPin className="size-4" aria-hidden />
+            Map
+          </button>
+        )}
+        {canKeep && (
+          <button
+            type="button"
+            onClick={keep}
+            disabled={kept}
+            aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+            className={`${iconButton} ${kept ? "text-primary" : ""}`}
+          >
+            <Bookmark className="size-4" fill={kept ? "currentColor" : "none"} aria-hidden />
+            {kept ? "Saved" : "Save"}
+          </button>
+        )}
+        {onMove && (
+          <>
+            <button
+              type="button"
+              disabled={!canMoveUp}
+              onClick={() => onMove(-1)}
+              aria-label={`Move ${item.title} earlier`}
+              className={iconButton}
+            >
+              <ChevronUp className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              disabled={!canMoveDown}
+              onClick={() => onMove(1)}
+              aria-label={`Move ${item.title} later`}
+              className={iconButton}
+            >
+              <ChevronDown className="size-4" aria-hidden />
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Delete ${item.title}`}
+          className={`${iconButton} ml-auto text-destructive`}
+        >
+          <Trash2 className="size-4" aria-hidden />
+          Delete
+        </button>
+      </div>
+    </article>
+  );
 
   return (
-    <li className="relative flex min-w-0 list-none items-stretch gap-1.5">
-      {/* The prototype's reorder column, always to hand rather than only in
-          edit mode. Swaps with the neighbour on the same day. */}
-      {onMove && !editing && (
-        <div className="flex shrink-0 flex-col justify-center gap-1 rounded-2xl border border-border bg-card px-0.5 py-1">
-          <button
-            type="button"
-            disabled={!canMoveUp}
-            onClick={() => onMove(-1)}
-            aria-label={`Move ${item.title} earlier`}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground disabled:opacity-25"
-          >
-            <ChevronUp className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            disabled={!canMoveDown}
-            onClick={() => onMove(1)}
-            aria-label={`Move ${item.title} later`}
-            className="grid size-8 place-items-center rounded-lg text-muted-foreground disabled:opacity-25"
-          >
-            <ChevronDown className="size-4" aria-hidden />
-          </button>
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
+    <li className="relative min-w-0 list-none">
+      {back ? (
+        backSide
+      ) : (
         <SwipeRow
           done={done}
-          disabled={editing}
           onToggleDone={onToggleDone}
           onSave={canKeep && !kept ? keep : undefined}
           onDelete={onRemove}
         >
-          <article
-            className={`rounded-2xl border bg-card p-3 ${
-              done ? "border-nexttime/40" : "border-border/70"
-            }`}
-          >
-            <div className="flex min-w-0 flex-col gap-1">
-              {/* One top row: time, number and kind on the left, the
-                  actions on the right, so the name below gets the full
-                  width of the card. */}
-              <div className="flex min-w-0 items-center gap-2">
-                {/* Tap the time to change it, as in the prototype's editor. */}
-                {editingTime ? (
-                  <input
-                    type="time"
-                    autoFocus
-                    defaultValue={rail}
-                    aria-label={`Time for ${item.title}`}
-                    onBlur={(e) => {
-                      setEditingTime(false);
-                      if (e.target.value !== rail) onUpdate({ time_label: e.target.value || null });
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                      if (e.key === "Escape") setEditingTime(false);
-                    }}
-                    className="w-[4.5rem] rounded-md border border-border bg-elevated px-1 text-[13px] font-bold tabular-nums"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setEditingTime(true)}
-                    aria-label={rail ? `${rail} — change the time` : "Set a time"}
-                    className={`rounded-md text-left text-[13.5px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
-                  >
-                    {rail || "–"}
-                  </button>
-                )}
-                {number != null && (
-                  <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-                    #{number}
-                  </span>
-                )}
-                <TimelineGlyphMark item={item} />
-                {/* Done, save and delete, top right, as in the prototype. The
-                    same three the swipe gives. */}
-                {!editing && (
-                  <div className="-my-1 -mr-1 ml-auto flex shrink-0 items-center">
-                    <button
-                      type="button"
-                      onClick={onToggleDone}
-                      aria-pressed={done}
-                      aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-                      className={`grid size-7 place-items-center rounded-lg ${done ? "bg-nexttime/15 text-nexttime" : "text-muted-foreground"}`}
-                    >
-                      <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
-                    </button>
-                    {canKeep && (
-                      <button
-                        type="button"
-                        onClick={keep}
-                        disabled={kept}
-                        aria-label={
-                          kept ? "Saved to your places" : `Save ${item.title} to your places`
-                        }
-                        title={kept ? "Saved to your places" : "Save to my places"}
-                        className={`grid size-7 place-items-center rounded-lg ${kept ? "text-primary" : "text-muted-foreground"}`}
-                      >
-                        <Bookmark
-                          className="size-4"
-                          fill={kept ? "currentColor" : "none"}
-                          aria-hidden
-                        />
-                      </button>
-                    )}
-                    {onSaveBooking && (
-                      <button
-                        type="button"
-                        onClick={() => setBookingOpen(true)}
-                        aria-label={`Booking for ${item.title}`}
-                        title="Booking"
-                        className={`grid size-7 place-items-center rounded-lg ${booked ? "text-nexttime" : "text-muted-foreground"}`}
-                      >
-                        <Ticket className="size-4" aria-hidden />
-                      </button>
-                    )}
-                    {onLocate && item.lat != null && item.lon != null && (
-                      <button
-                        type="button"
-                        onClick={onLocate}
-                        aria-label={`Locate ${item.title} on the map`}
-                        title="Locate on map"
-                        className="grid size-7 place-items-center rounded-lg text-muted-foreground"
-                      >
-                        <MapPin className="size-4" aria-hidden />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={onRemove}
-                      aria-label={`Delete ${item.title}`}
-                      className="grid size-7 place-items-center rounded-lg text-muted-foreground"
-                    >
-                      <Trash2 className="size-4" aria-hidden />
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="min-w-0 flex-1">
-                {showDay && item.day_date ? (
-                  <p className="text-[12px] text-muted-foreground">{item.day_date}</p>
-                ) : null}
-                <div className="flex min-w-0 items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    {editing || editingTitle ? (
-                      titleInput
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setEditingTitle(true)}
-                        aria-label={`${item.title} — edit the name`}
-                        className={`block w-full min-w-0 break-words text-left text-[15.5px] font-semibold leading-snug ${
-                          done ? "text-muted-foreground line-through" : ""
-                        }`}
-                      >
-                        {item.title}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {done && (
-                  <span className="mt-0.5 inline-block rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
-                    Done
-                  </span>
-                )}
-                {booked && (
-                  <button
-                    type="button"
-                    onClick={() => setBookingOpen(true)}
-                    className="ml-1 mt-0.5 inline-flex items-center gap-1 rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime"
-                  >
-                    ✓ Booked{item.booking_ref ? ` · ${item.booking_ref}` : ""}
-                  </button>
-                )}
-
-                {editing || editingDetail ? (
-                  detailInput
-                ) : detail ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditingDetail(true)}
-                    aria-label="Edit the note"
-                    className="mt-0.5 block w-full min-w-0 break-words text-left text-[13px] text-muted-foreground"
-                  >
-                    {detail}
-                  </button>
-                ) : null}
-
-                {(meta.length > 0 || (item.lat != null && item.lon != null)) && (
-                  <p className="mt-1 break-words text-[12.5px] text-muted-foreground">
-                    {meta.join(" · ")}
-                    {item.lat != null && item.lon != null && (
-                      <>
-                        {meta.length > 0 ? " · " : ""}
-                        <a
-                          href={mapsPlaceUrl(item.title, item)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-primary underline"
-                        >
-                          Map
-                        </a>
-                      </>
-                    )}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/**
-             * Changing an entry after it is saved.
-             *
-             * These open for the whole list at once, from the pencil in the
-             * section header, rather than per row: reordering a day means
-             * comparing rows, and a mode you turn on once beats opening and
-             * closing each entry in turn. The arrows swap position with the
-             * neighbour on the same day, and hide at the ends of one, because
-             * rows sort by day first and a cross-day swap would move nothing.
-             */}
-            {editing && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
-                <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                  Day
-                  <input
-                    type="date"
-                    value={item.day_date ?? ""}
-                    aria-label={`Day for ${item.title}`}
-                    {...(tripStart ? { min: tripStart } : {})}
-                    {...(tripEnd ? { max: tripEnd } : {})}
-                    onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-                  />
-                </label>
-                <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                  Time
-                  <input
-                    type="time"
-                    value={rail}
-                    aria-label={`Time for ${item.title}`}
-                    onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-                  />
-                </label>
-                {/* How long the plan allows here. Now counts it down once you
-                  tap "I'm here"; left empty, Now only says how long it has been. */}
-                <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-                  Stay
-                  <select
-                    value={item.planned_stay_minutes ?? ""}
-                    aria-label={`How long to stay at ${item.title}`}
-                    onChange={(e) =>
-                      onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })
-                    }
-                    className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-                  >
-                    <option value="">—</option>
-                    {stayChoices(item.planned_stay_minutes).map((minutes) => (
-                      <option key={minutes} value={minutes}>
-                        {stayLabel(minutes)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {onMove && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={!canMoveUp}
-                      onClick={() => onMove(-1)}
-                      aria-label={`Move ${item.title} earlier`}
-                      className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
-                    >
-                      <ChevronUp className="size-3.5" aria-hidden />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!canMoveDown}
-                      onClick={() => onMove(1)}
-                      aria-label={`Move ${item.title} later`}
-                      className="tap-44 grid size-7 place-items-center rounded-lg border border-border disabled:opacity-30"
-                    >
-                      <ChevronDown className="size-3.5" aria-hidden />
-                    </button>
-                  </div>
-                )}
-                <TimelinePlaceEditor
-                  item={item}
-                  {...(near ? { near } : {})}
-                  onPick={(place) => onUpdate(placePatchForSavedRow(place))}
-                />
-              </div>
-            )}
-
-            {/* The same actions the swipe gives, for a mouse or a keyboard. */}
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              {!editing && !detail && !editingDetail && (
-                <button
-                  type="button"
-                  onClick={() => setEditingDetail(true)}
-                  className="min-h-8 text-[12px] text-muted-foreground underline"
-                >
-                  Add a note
-                </button>
-              )}
-              {editing && (
-                <button
-                  type="button"
-                  onClick={onRemove}
-                  className="min-h-8 text-[12px] text-muted-foreground underline"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-            {!editing && showSwipeHint && (
-              <p className="mt-1 flex justify-between gap-2 text-[10.5px] text-muted-foreground/70">
-                <span>👉 Swipe right to complete</span>
-                <span>Swipe left to save or delete 👈</span>
-              </p>
-            )}
-          </article>
+          {front}
         </SwipeRow>
-      </div>
+      )}
+      {!back && showSwipeHint && (
+        <p className="mt-1 px-1 text-center text-[10.5px] text-muted-foreground/80">
+          Tap a stop to edit · swipe right for done, left to save or delete
+        </p>
+      )}
       {onSaveBooking && bookingOpen && (
         <BookingSheet
           item={item}
@@ -665,19 +602,20 @@ export function TransitConnector({ leg }: { leg?: RouteLeg | undefined }) {
 export function AddBetween({ onAdd }: { onAdd: () => void }) {
   return (
     <li className="list-none">
-      <div className="flex flex-col items-center">
-        <span aria-hidden className="h-2.5 w-0.5 bg-border" />
+      {/* A small + on the line between two cards: there when you want it,
+          not a card's worth of height between every stop. */}
+      <div className="flex items-center gap-2 px-6">
+        <span aria-hidden className="h-px flex-1 bg-border/70" />
         <button
           type="button"
           onClick={onAdd}
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[12.5px] font-semibold shadow-sm"
+          aria-label="Add stop between"
+          title="Add stop between"
+          className="tap-44 grid size-6 place-items-center rounded-full border border-primary/30 bg-card text-primary"
         >
-          <span className="grid size-5 place-items-center rounded-full border border-primary/30 bg-primary/10 text-primary">
-            <Plus className="size-3.5" aria-hidden />
-          </span>
-          Add stop between
+          <Plus className="size-3.5" aria-hidden />
         </button>
-        <span aria-hidden className="h-2.5 w-0.5 bg-border" />
+        <span aria-hidden className="h-px flex-1 bg-border/70" />
       </div>
     </li>
   );

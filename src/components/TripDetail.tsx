@@ -784,7 +784,7 @@ export function TripDetail({
                 {board.items.length} scheduled {board.items.length === 1 ? "stop" : "stops"}
               </span>
               <span className="text-[12px] text-muted-foreground">
-                Tap a time to change it · Add stops between
+                Tap a stop to edit it · Add stops between
               </span>
             </div>
           )}

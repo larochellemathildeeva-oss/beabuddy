@@ -263,6 +263,7 @@ const writes = (page) => page.evaluate(() => window.__writes);
 
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
+  await page.getByRole("button", { name: /tap to edit$/ }).first().click();
   await page.getByRole("button", { name: /^Booking for / }).first().click();
   await page.getByRole("switch").first().click();
   await page.getByPlaceholder("Confirmation or ticket number").fill("MBAM-4471");
@@ -270,7 +271,9 @@ await flow("booking: mark booked with a reference", async (page) => {
   await page.waitForTimeout(400);
   const w = (await writes(page)).find((x) => x.op === "update" && x.payload?.booking_ref === "MBAM-4471");
   if (!w || w.payload.booked !== true) throw new Error("no booked update with the reference was written");
-  if ((await page.getByText(/✓ Booked · MBAM-4471/).count()) === 0) throw new Error("card shows no Booked badge");
+  if ((await page.getByText(/✓ Booked · MBAM-4471/).count()) === 0) throw new Error("card back shows no booking");
+  await page.getByRole("button", { name: /^Close / }).first().click();
+  if ((await page.locator("li").first().getByText("Booked").count()) === 0) throw new Error("card front shows no Booked mark");
 });
 
 await flow("saved places: add one to the chosen day", async (page) => {
@@ -285,7 +288,8 @@ await flow("saved places: add one to the chosen day", async (page) => {
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline");
-  await page.getByRole("button", { name: /^Locate .* on the map$/ }).nth(1).click();
+  await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
+  await page.getByRole("button", { name: /^Locate .* on the map$/ }).first().click();
   await page.waitForTimeout(700);
   const on = await page.getByRole("tab", { name: "Map Split", exact: true }).getAttribute("aria-selected");
   if (on !== "true") throw new Error("Map Split did not open");
@@ -305,6 +309,34 @@ await flow("companion: pick a day from the prompt itself", async (page) => {
   if ((await page.getByText("Pick a day to follow.").count()) > 0) throw new Error("picking a day left the prompt up");
   if ((await page.getByRole("tab", { name: /Day 1/, selected: true }).count()) === 0)
     throw new Error("the day strip does not show the picked day");
+});
+
+await flow("stop card: compact front turns over to edit, and back", async (page) => {
+  await goTab(page, "Timeline");
+  const front = page.getByRole("button", { name: /tap to edit$/ }).first();
+  const box = await front.boundingBox();
+  if (!box || box.height > 76) throw new Error(`card front is ${box?.height}px tall, not compact`);
+  const before = await page.getByRole("button", { name: /tap to edit$/ }).count();
+  await front.click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("textbox", { name: "Name" }).count()) !== 1) throw new Error("the back has no name field");
+  if ((await page.getByRole("button", { name: /tap to edit$/ }).count()) !== before - 1) throw new Error("more than one card turned");
+  await page.getByRole("textbox", { name: "Name" }).fill("Renamed stop");
+  await page.getByRole("button", { name: /^Close / }).click();
+  await page.waitForTimeout(300);
+  const w = (await writes(page)).find((x) => x.op === "update" && x.payload?.title === "Renamed stop");
+  if (!w) throw new Error("renaming on the back did not save");
+  if ((await page.getByRole("button", { name: /tap to edit$/ }).count()) !== before) throw new Error("Done did not turn the card back");
+  // Every action on the back writes something.
+  for (const name of [/^Mark .* done$/, /^Move .* later$/, /^Save .* to your places$/, /^Delete /]) {
+    const n = (await writes(page)).length;
+    await page.getByRole("button", { name: /tap to edit$/ }).first().click();
+    await page.getByRole("button", { name }).first().click();
+    await page.waitForTimeout(400);
+    if ((await writes(page)).length === n) throw new Error(`${name} on the back wrote nothing`);
+    const close = page.getByRole("button", { name: /^Close / });
+    if (await close.count()) await close.first().click();
+  }
 });
 
 await flow("banner stays pinned while the page scrolls", async (page) => {
