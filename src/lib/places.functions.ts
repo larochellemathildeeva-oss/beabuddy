@@ -1,3 +1,4 @@
+import { haversine } from "@/lib/geo";
 import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -409,12 +410,19 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
     const refined = refineNominatimHits(hits, asked);
     const places = (refined.length ? refined : hits).map(hitToPlace);
-    return fuzzyRank(
+    const ranked = fuzzyRank(
       places,
       asked,
       (place) => [place.name, place.address, place.city, place.country],
       0,
     );
+    // Searching near you: the nearest branch is the answer, whatever order the
+    // map service ranked them in. Sort is stable, so equal distances keep it.
+    const at = data.at;
+    if (!at) return ranked;
+    const away = (p: ParsedPlace) =>
+      p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
+    return [...ranked].sort((a, b) => away(a) - away(b));
   });
 
 /** Pull a place out of a pasted link: title, address, category and coordinates. */
