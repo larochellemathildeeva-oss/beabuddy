@@ -25,6 +25,7 @@ export default tseslint.config(
       "docs/prototype",
       // The preview checker's stand-ins and output; run by hand, not shipped.
       "scripts/preview",
+      "scripts/places-bench/out",
     ],
   },
   {

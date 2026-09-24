@@ -206,3 +206,24 @@ test("reverse geocoding goes to the same provider as everything else", () => {
   assert.equal(new URL(paid).searchParams.get("lat"), "45.5");
   assert.equal(new URL(paid).searchParams.get("lon"), "-73.55");
 });
+
+test("autocomplete exists only with a LocationIQ key", async () => {
+  const { autocompleteUrl, DESTINATION_TAGS } = await import("./geo-endpoints.ts");
+  assert.equal(autocompleteUrl(PUBLIC_PROVIDER, { query: "kyo" }), null);
+  const url = new URL(
+    autocompleteUrl(locationIqProvider("tok_abc"), {
+      query: "kyo",
+      tags: DESTINATION_TAGS,
+      viewbox: "1,2,3,4",
+      bounded: true,
+      limit: 50,
+    })!,
+  );
+  assert.equal(url.host, "api.locationiq.com");
+  assert.equal(url.pathname, "/v1/autocomplete");
+  assert.equal(url.searchParams.get("key"), "tok_abc");
+  assert.equal(url.searchParams.get("q"), "kyo");
+  assert.equal(url.searchParams.get("limit"), "20", "capped");
+  assert.equal(url.searchParams.get("bounded"), "1");
+  assert.match(url.searchParams.get("tag")!, /^place:country,.*place:city/);
+});

@@ -41,6 +41,8 @@ import {
   reverseUrl,
   searchUrl,
   viewboxAround,
+  autocompleteUrl,
+  DESTINATION_TAGS,
   classifyGeoStatus,
   nextDelayMs,
   type GeoProvider,
@@ -416,6 +418,62 @@ function poiToPlace(hit: PoiHit): ParsedPlace {
   };
 }
 
+/** LocationIQ autocomplete's answer, as the search's hits look. */
+type AutocompleteHit = {
+  lat: string;
+  lon: string;
+  display_name?: string;
+  display_place?: string;
+  class?: string;
+  type?: string;
+  address?: Record<string, string>;
+};
+
+/**
+ * Autocomplete, read into the same shape as a search hit so ranking, labels
+ * and the venue rules all apply unchanged. Empty when the provider has no
+ * autocomplete (public Nominatim) or the call fails — never an error, because
+ * the full search is still behind it.
+ */
+async function autocompleteHits(
+  query: string,
+  pace: Pace,
+  opts: { areas: boolean; area?: { viewbox: string; bounded: boolean } },
+): Promise<NominatimHit[]> {
+  const url = autocompleteUrl(pace.provider, {
+    query,
+    limit: 10,
+    language: "en",
+    ...(opts.areas ? { tags: DESTINATION_TAGS } : {}),
+    ...(opts.area ? { viewbox: opts.area.viewbox, bounded: opts.area.bounded } : {}),
+  });
+  if (!url) return [];
+  try {
+    await wait(pace);
+    const res = await fetch(url, {
+      headers: { "user-agent": UA, accept: "application/json" },
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return [];
+    const json = (await res.json()) as AutocompleteHit[];
+    if (!Array.isArray(json)) return [];
+    const hits: NominatimHit[] = json.map((raw) => ({
+      lat: raw.lat,
+      lon: raw.lon,
+      ...(raw.address?.["name"] || raw.display_place
+        ? { name: raw.address?.["name"] || raw.display_place }
+        : {}),
+      ...(raw.display_name ? { display_name: raw.display_name } : {}),
+      ...(raw.class ? { class: raw.class } : {}),
+      ...(raw.type ? { type: raw.type } : {}),
+      ...(raw.address ? { address: raw.address } : {}),
+    }));
+    return opts.areas ? hits.filter((hit) => !isVenueHit(hit)) : hits;
+  } catch {
+    return [];
+  }
+}
+
 /** Nearby look-alikes first, then the geocoder's answers, without repeats. */
 function mergeNearbyFirst(nearby: ParsedPlace[], rest: ParsedPlace[]): ParsedPlace[] {
   const out = [...nearby];
@@ -515,7 +573,14 @@ export const searchPlaces = createServerFn({ method: "POST" })
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
       : undefined;
     let hits: NominatimHit[] = [];
-    if (area) {
+    // Search-as-you-type first, where the provider has it (LocationIQ): it
+    // understands a half-typed name and can be held to towns and countries.
+    // Nothing from it, or no such service, and the full search below runs.
+    hits = await autocompleteHits(data.query, pace, {
+      areas: Boolean(input.areas),
+      ...(area ? { area } : {}),
+    });
+    if (!hits.length && area) {
       try {
         hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");
       } catch {

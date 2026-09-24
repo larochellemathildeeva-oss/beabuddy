@@ -131,6 +131,58 @@ export function searchUrl(provider: GeoProvider, options: SearchOptions): string
 }
 
 /**
+ * Search-as-you-type, where the provider offers it.
+ *
+ * LocationIQ's autocomplete matches the start of words ("olive et g" finds
+ * Olive et Gourmando), answers faster than a full search, and can be told to
+ * return only towns and countries. The public Nominatim server has no such
+ * thing and its usage policy forbids building one on it, so there this is
+ * null and the ordinary search carries on alone.
+ *
+ * Same OpenStreetMap data as the search: it changes how well a half-typed
+ * name is understood, not which places exist.
+ */
+export type AutocompleteOptions = {
+  query: string;
+  limit?: number;
+  /** Only these OSM kinds, as "class:type" ("place:city") or "class" ("amenity"). */
+  tags?: readonly string[];
+  viewbox?: string;
+  bounded?: boolean;
+  language?: string;
+};
+
+export function autocompleteUrl(
+  provider: GeoProvider,
+  options: AutocompleteOptions,
+): string | null {
+  if (provider.name !== "locationiq" || !provider.token) return null;
+  const params = new URLSearchParams();
+  params.set("key", provider.token);
+  params.set("q", options.query);
+  params.set("limit", String(Math.min(options.limit ?? 10, 20)));
+  params.set("dedupe", "1");
+  if (options.tags?.length) params.set("tag", options.tags.join(","));
+  if (options.viewbox) params.set("viewbox", options.viewbox);
+  if (options.bounded && options.viewbox) params.set("bounded", "1");
+  if (options.language) params.set("accept-language", options.language);
+  return `https://api.locationiq.com/v1/autocomplete?${params.toString()}`;
+}
+
+/** The kinds a trip destination can be: a country, a region, a town. */
+export const DESTINATION_TAGS = [
+  "place:country",
+  "place:state",
+  "place:region",
+  "place:province",
+  "place:island",
+  "place:city",
+  "place:town",
+  "place:village",
+  "boundary:administrative",
+] as const;
+
+/**
  * Coordinates back into a city and a country.
  *
  * This was a third company — BigDataCloud — reached directly, in two places,
