@@ -394,16 +394,23 @@ export function TripDetail({
   // a return visit opens where you left off. Read after mount, so the server
   // render and the first client render agree.
   const viewKey = `bea-trip-page-${trip.id}`;
+  /** Timeline shows only the stops not yet visited. Undo on the toast brings one back. */
+  const [hideDone, setHideDone] = useState(false);
+  const doneCount = board.items.filter(isDone).length;
+  // Nothing hidden while editing: edit mode is for the whole list.
+  const hidingDone = hideDone && !editingTimeline;
   const restored = useRef(false);
   useEffect(() => {
     try {
       const saved = JSON.parse(window.localStorage.getItem(viewKey) ?? "null") as {
         perspective?: unknown;
         day?: unknown;
+        hideDone?: unknown;
       } | null;
       const p = asPerspective(saved?.perspective);
       if (p) setPerspective(p);
       if (typeof saved?.day === "string") setDayChoice(saved.day);
+      if (saved?.hideDone === true) setHideDone(true);
     } catch {
       /* storage unavailable: start from the defaults */
     }
@@ -412,11 +419,14 @@ export function TripDetail({
   useEffect(() => {
     if (!restored.current) return;
     try {
-      window.localStorage.setItem(viewKey, JSON.stringify({ perspective, day: dayChoice }));
+      window.localStorage.setItem(
+        viewKey,
+        JSON.stringify({ perspective, day: dayChoice, hideDone }),
+      );
     } catch {
       /* storage unavailable: the choice lasts for this visit */
     }
-  }, [viewKey, perspective, dayChoice]);
+  }, [viewKey, perspective, dayChoice, hideDone]);
   const view = useTripViewPrefs();
 
   /**
@@ -448,12 +458,19 @@ export function TripDetail({
     const wasDone = isDone(item);
     void board.setProgress([{ id: write.id, patch: write.patch }]).then(
       () =>
-        toast(wasDone ? `${item.title}: not done` : `${item.title}: done`, {
-          action: {
-            label: "Undo",
-            onClick: () => void board.setProgress([{ id: write.id, patch: write.undo }]),
+        toast(
+          wasDone
+            ? `${item.title}: not done`
+            : hideDone
+              ? `${item.title}: done, and off the Not visited list`
+              : `${item.title}: done`,
+          {
+            action: {
+              label: "Undo",
+              onClick: () => void board.setProgress([{ id: write.id, patch: write.undo }]),
+            },
           },
-        }),
+        ),
       (e: unknown) => toast.error(e instanceof Error ? e.message : "That didn't save."),
     );
   };
@@ -782,8 +799,39 @@ export function TripDetail({
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-sm">
               <span className="text-[13px] font-semibold">
                 {board.items.length} scheduled {board.items.length === 1 ? "stop" : "stops"}
+                {doneCount > 0 ? (
+                  <span className="font-normal text-muted-foreground"> · {doneCount} visited</span>
+                ) : null}
               </span>
-              <span className="text-[12px] text-muted-foreground">
+              {/* Every stop, or only the ones still ahead. A stop swiped done
+                  leaves the second list; Undo on its toast brings it back. */}
+              <div
+                role="group"
+                aria-label="Which stops to show"
+                className="flex rounded-lg border border-border bg-elevated p-0.5"
+              >
+                {(
+                  [
+                    [false, "All"],
+                    [true, `Not visited (${board.items.length - doneCount})`],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={String(value)}
+                    type="button"
+                    aria-pressed={hideDone === value}
+                    onClick={() => setHideDone(value)}
+                    className={`min-h-8 rounded-md px-2.5 text-[12px] font-semibold ${
+                      hideDone === value
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <span className="w-full text-[12px] text-muted-foreground">
                 Tap a stop to edit it · Add stops between
               </span>
             </div>
@@ -951,64 +999,73 @@ export function TripDetail({
                           </div>
                           {dayOpen && (
                             <ol className="relative mx-1.5 mb-2 min-w-0 space-y-2 overflow-x-hidden py-1.5">
-                              {group.items.map((item, dayIndex) => (
-                                <Fragment key={item.id}>
-                                  {divider === dayIndex && <NowLine />}
-                                  {/* A run of stops close enough together to be
+                              {hidingDone && group.items.every(isDone) && (
+                                <li className="list-none px-2 py-2 text-[13px] text-muted-foreground">
+                                  ✓ Every stop on this day is visited.
+                                </li>
+                              )}
+                              {group.items.map((item, dayIndex) =>
+                                hidingDone && isDone(item) ? null : (
+                                  <Fragment key={item.id}>
+                                    {divider === dayIndex && <NowLine />}
+                                    {/* A run of stops close enough together to be
                                       one decision rather than several. A label,
                                       not a container: the rows underneath are
                                       unchanged, and still reorder one at a
                                       time. */}
-                                  {runLabels.has(dayIndex) && (
-                                    <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
-                                      {runLabels.get(dayIndex)}
-                                    </li>
-                                  )}
-                                  <TimelineEntry
-                                    item={item}
-                                    showDay={false}
-                                    number={dayIndex + 1}
-                                    showSwipeHint={dayIndex === 0}
-                                    onLocate={() => locate(item)}
-                                    onSaveBooking={(patch) => board.updateItem(item.id, patch)}
-                                    onToggleDone={() => toggleDone(item)}
-                                    editing={editingTimeline}
-                                    {...(directionArea ? { near: directionArea } : {})}
-                                    onEdit={(field) => board.setEditing(field)}
-                                    onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                                    onRemove={() => void removeTimelineItem(item)}
-                                    onMove={(direction) => void board.moveItem(item.id, direction)}
-                                    canMoveUp={canMove(board.items, item.id, -1)}
-                                    canMoveDown={canMove(board.items, item.id, 1)}
-                                    tripStart={trip.start_date}
-                                    tripEnd={trip.end_date}
-                                    onKeep={keepItemAsReco}
-                                  />
-                                  {view.prefs.walkTimes && (
-                                    <TransitConnector
-                                      leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                    {runLabels.has(dayIndex) && (
+                                      <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
+                                        {runLabels.get(dayIndex)}
+                                      </li>
+                                    )}
+                                    <TimelineEntry
+                                      item={item}
+                                      showDay={false}
+                                      number={dayIndex + 1}
+                                      showSwipeHint={dayIndex === 0}
+                                      onLocate={() => locate(item)}
+                                      onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      onToggleDone={() => toggleDone(item)}
+                                      editing={editingTimeline}
+                                      {...(directionArea ? { near: directionArea } : {})}
+                                      onEdit={(field) => board.setEditing(field)}
+                                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                      onRemove={() => void removeTimelineItem(item)}
+                                      onMove={(direction) =>
+                                        void board.moveItem(item.id, direction)
+                                      }
+                                      canMoveUp={canMove(board.items, item.id, -1)}
+                                      canMoveDown={canMove(board.items, item.id, 1)}
+                                      tripStart={trip.start_date}
+                                      tripEnd={trip.end_date}
+                                      onKeep={keepItemAsReco}
                                     />
-                                  )}
-                                  {!editingTimeline &&
-                                    group.key &&
-                                    dayIndex < group.items.length - 1 && (
-                                      <AddBetween
-                                        onAdd={() => {
-                                          insertAnchor.current = null;
-                                          setAddBetween({
-                                            afterId: item.id,
-                                            time: midpointTime(
-                                              item.time_label,
-                                              group.items[dayIndex + 1]!.time_label,
-                                            ),
-                                          });
-                                          setAddDay(group.key);
-                                          setAddingTimeline(true);
-                                        }}
+                                    {view.prefs.walkTimes && (
+                                      <TransitConnector
+                                        leg={legFor(itemIndexById.get(item.id) ?? -1)}
                                       />
                                     )}
-                                </Fragment>
-                              ))}
+                                    {!editingTimeline &&
+                                      group.key &&
+                                      dayIndex < group.items.length - 1 && (
+                                        <AddBetween
+                                          onAdd={() => {
+                                            insertAnchor.current = null;
+                                            setAddBetween({
+                                              afterId: item.id,
+                                              time: midpointTime(
+                                                item.time_label,
+                                                group.items[dayIndex + 1]!.time_label,
+                                              ),
+                                            });
+                                            setAddDay(group.key);
+                                            setAddingTimeline(true);
+                                          }}
+                                        />
+                                      )}
+                                  </Fragment>
+                                ),
+                              )}
                               {divider === group.items.length && <NowLine done />}
                             </ol>
                           )}
@@ -1018,31 +1075,33 @@ export function TripDetail({
                   </div>
                 ) : (
                   <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
-                    {board.items.map((item, i) => (
-                      <Fragment key={item.id}>
-                        <TimelineEntry
-                          item={item}
-                          showDay
-                          number={i + 1}
-                          showSwipeHint={i === 0}
-                          onLocate={() => locate(item)}
-                          onSaveBooking={(patch) => board.updateItem(item.id, patch)}
-                          onToggleDone={() => toggleDone(item)}
-                          editing={editingTimeline}
-                          {...(directionArea ? { near: directionArea } : {})}
-                          onEdit={(field) => board.setEditing(field)}
-                          onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                          onRemove={() => void removeTimelineItem(item)}
-                          onMove={(direction) => void board.moveItem(item.id, direction)}
-                          canMoveUp={canMove(board.items, item.id, -1)}
-                          canMoveDown={canMove(board.items, item.id, 1)}
-                          tripStart={trip.start_date}
-                          tripEnd={trip.end_date}
-                          onKeep={keepItemAsReco}
-                        />
-                        {view.prefs.walkTimes && <TransitConnector leg={legFor(i)} />}
-                      </Fragment>
-                    ))}
+                    {board.items.map((item, i) =>
+                      hidingDone && isDone(item) ? null : (
+                        <Fragment key={item.id}>
+                          <TimelineEntry
+                            item={item}
+                            showDay
+                            number={i + 1}
+                            showSwipeHint={i === 0}
+                            onLocate={() => locate(item)}
+                            onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                            onToggleDone={() => toggleDone(item)}
+                            editing={editingTimeline}
+                            {...(directionArea ? { near: directionArea } : {})}
+                            onEdit={(field) => board.setEditing(field)}
+                            onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                            onRemove={() => void removeTimelineItem(item)}
+                            onMove={(direction) => void board.moveItem(item.id, direction)}
+                            canMoveUp={canMove(board.items, item.id, -1)}
+                            canMoveDown={canMove(board.items, item.id, 1)}
+                            tripStart={trip.start_date}
+                            tripEnd={trip.end_date}
+                            onKeep={keepItemAsReco}
+                          />
+                          {view.prefs.walkTimes && <TransitConnector leg={legFor(i)} />}
+                        </Fragment>
+                      ),
+                    )}
                   </ol>
                 )}
 

@@ -339,6 +339,23 @@ await flow("stop card: compact front turns over to edit, and back", async (page)
   }
 });
 
+await flow("timeline: Not visited hides done stops, All brings them back", async (page) => {
+  await goTab(page, "Timeline");
+  const cards = () => page.getByRole("button", { name: /tap to edit$/ }).count();
+  const all = await cards();
+  await page.getByRole("button", { name: /^Not visited/ }).click();
+  await page.waitForTimeout(300);
+  const open = await cards();
+  if (open >= all) throw new Error("Not visited hid nothing (the sample has a done stop)");
+  await page.getByRole("button", { name: /tap to edit$/ }).first().click();
+  await page.getByRole("button", { name: /^Mark .* done$/ }).click();
+  await page.waitForTimeout(500);
+  if ((await cards()) !== open - 1) throw new Error("a stop marked done stayed on the Not visited list");
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.waitForTimeout(300);
+  if ((await cards()) !== all) throw new Error("All did not bring every stop back");
+});
+
 await flow("banner stays pinned while the page scrolls", async (page) => {
   await goTab(page, "Timeline");
   const bar = page.locator("article > div.sticky").first();
