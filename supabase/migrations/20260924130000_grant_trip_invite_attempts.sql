@@ -1,0 +1,21 @@
+-- Give the server an explicit grant on the invite rate-limit log.
+--
+-- trip_invite_attempts was created with no grants at all. Clients are meant
+-- to have none: only the SECURITY DEFINER accept_trip_invite reads and writes
+-- it. But erasing data and deleting an account (account.functions.ts) delete
+-- a user's rows from it with the service-role client, and until now that
+-- worked only because Supabase granted every new public table to the API
+-- roles automatically.
+--
+-- From 2026-10-30 Supabase stops doing that, for migrations too — so a
+-- database rebuilt from this folder (a new project, a preview branch, a local
+-- `supabase db reset`) would leave service_role without access, and erase /
+-- delete would fail with "permission denied". This states the grant the live
+-- project already has, the same way reco_share_attempts does.
+--
+-- Deliberately nothing for anon or authenticated: the table stays unreachable
+-- from the browser, as it was designed to be.
+--
+-- Applied by hand; safe to re-run, and a no-op on the live project.
+
+GRANT ALL ON public.trip_invite_attempts TO service_role;

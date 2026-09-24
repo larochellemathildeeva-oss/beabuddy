@@ -1,0 +1,270 @@
+import "leaflet/dist/leaflet.css";
+import { useEffect, useRef, useState } from "react";
+import type * as Leaflet from "leaflet";
+import type { DayMapPin } from "@/lib/day-map";
+import { legLabels } from "@/lib/trip-map";
+import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
+
+/** Close enough to read street names, not so close one stop fills the frame. */
+const SINGLE_STOP_ZOOM = 15;
+/** A fitted day stops here, so two stops across the road do not zoom to 19. */
+const FIT_MAX_ZOOM = 16;
+const FIT_PADDING: [number, number] = [36, 36];
+/** Closer to the border than this and a selected pin is brought into view. Half a pin. */
+const PIN_EDGE_MARGIN = 16;
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+function pinClass(selected: boolean): string {
+  return `grid size-[30px] place-items-center rounded-full border-2 text-[12.5px] font-bold tabular-nums shadow-md transition-transform ${
+    selected
+      ? "scale-110 border-card bg-primary text-primary-foreground"
+      : "border-primary bg-card text-primary"
+  }`;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
+/**
+ * The day's stops on a street map, moving with the list beside it.
+ *
+ * Leaflet reads `window` the moment it is imported, so it is loaded inside an
+ * effect and never on the server; the server renders the empty frame and the
+ * browser fills it. Tiles come through Béa's own `/api/tile` proxy — the same
+ * one the Near map uses — so the provider token stays on the server and the
+ * browser talks to nobody new.
+ *
+ * Pins carry the card's number rather than the title. A title on every pin is
+ * unreadable on a phone once three stops share a street, and the number is
+ * what joins the pin to its card, which has the rest.
+ */
+export function DayMap({
+  pins,
+  selectedId,
+  onSelect,
+  label,
+}: {
+  pins: DayMapPin[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** What the map shows, for a screen reader: it has no other text. */
+  label: string;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  const leaflet = useRef<typeof Leaflet | null>(null);
+  const map = useRef<Leaflet.Map | null>(null);
+  const [ready, setReady] = useState(false);
+
+  // The latest handler, so redrawing pins is not also triggered by a parent
+  // that passes a fresh closure every render.
+  const select = useRef(onSelect);
+  select.current = onSelect;
+
+  useEffect(() => {
+    let cancelled = false;
+    let observer: ResizeObserver | null = null;
+
+    void import("leaflet").then((mod) => {
+      const L = (mod as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet);
+      if (cancelled || !container.current) return;
+
+      const m = L.map(container.current, {
+        zoomControl: true,
+        attributionControl: true,
+        minZoom: TILE_ZOOM_MIN,
+        maxZoom: TILE_ZOOM_MAX,
+        // A map inside a scrolling page should not take the scroll wheel
+        // from it; pinch and the zoom buttons still work.
+        scrollWheelZoom: false,
+      });
+      m.attributionControl.setPrefix(false);
+      L.tileLayer(TILE_URL_TEMPLATE, {
+        minZoom: TILE_ZOOM_MIN,
+        maxZoom: TILE_ZOOM_MAX,
+        attribution:
+          '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
+      }).addTo(m);
+
+      // The frame can change size without the window doing so — a tab
+      // switch, the chips wrapping — and Leaflet only notices the window.
+      observer = new ResizeObserver(() => m.invalidateSize());
+      observer.observe(container.current);
+
+      leaflet.current = L;
+      map.current = m;
+      setReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      map.current?.remove();
+      map.current = null;
+      leaflet.current = null;
+    };
+  }, []);
+
+  // Where the pins are, as a value, so the view is refitted when the day
+  // changes and not when a parent re-renders the same day.
+  const shape = pins.map((p) => `${p.id}@${p.lat},${p.lon}`).join("|");
+  // Everything a pin draws, so a renamed or renumbered stop is redrawn too.
+  const drawn = pins.map((p) => `${p.id}@${p.lat},${p.lon}#${p.number}:${p.title}`).join("|");
+
+  const markers = useRef(new Map<string, Leaflet.Marker>());
+
+  // Frame the whole day when the day changes. Declared before the drawing
+  // below on purpose: effects run in order, and a Leaflet map has no view —
+  // so cannot place the distance labels — until this has run once.
+  useEffect(() => {
+    const L = leaflet.current;
+    const m = map.current;
+    if (!ready || !L || !m || pins.length === 0) return;
+    const animate = !prefersReducedMotion();
+    if (pins.length === 1) {
+      m.setView([pins[0]!.lat, pins[0]!.lon], SINGLE_STOP_ZOOM, { animate });
+    } else {
+      m.fitBounds(L.latLngBounds(pins.map((p) => [p.lat, p.lon] as [number, number])), {
+        padding: FIT_PADDING,
+        maxZoom: FIT_MAX_ZOOM,
+        animate,
+      });
+    }
+  }, [ready, shape]); // eslint-disable-line react-hooks/exhaustive-deps -- `shape` stands for `pins`
+
+  // Pins, route and distances.
+  useEffect(() => {
+    const L = leaflet.current;
+    const m = map.current;
+    if (!ready || !L || !m) return;
+
+    const layer = L.layerGroup().addTo(m);
+    const legs = L.layerGroup().addTo(m);
+    const byId = markers.current;
+
+    if (pins.length > 1) {
+      L.polyline(
+        pins.map((p) => [p.lat, p.lon] as [number, number]),
+        {
+          className: "stroke-primary",
+          weight: 2.5,
+          opacity: 0.85,
+          dashArray: "6 5",
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        },
+      ).addTo(layer);
+    }
+
+    for (const pin of pins) {
+      const marker = L.marker([pin.lat, pin.lon], {
+        icon: L.divIcon({
+          className: "",
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+          // The number is an integer this file made, but escape it anyway:
+          // this string becomes markup.
+          html: `<span class="${pinClass(false)}">${escapeHtml(String(pin.number))}</span>`,
+        }),
+        // Leaflet sets these as properties, not markup, so a title with
+        // angle brackets stays text.
+        title: `${pin.number}. ${pin.title}`,
+        alt: `${pin.number}. ${pin.title}`,
+        keyboard: true,
+        riseOnHover: true,
+      })
+        .on("click", () => select.current(pin.id))
+        // Leaflet gives a pin role="button" and a tab stop, but no key
+        // handling, so Enter and Space would otherwise do nothing.
+        .on("keydown", (e: Leaflet.LeafletKeyboardEvent) => {
+          const key = e.originalEvent.key;
+          if (key !== "Enter" && key !== " ") return;
+          e.originalEvent.preventDefault();
+          select.current(pin.id);
+        })
+        .addTo(layer);
+      byId.set(pin.id, marker);
+    }
+
+    // How far apart each pair is, placed with the same helper the old map
+    // used. It works in screen pixels, which change with every zoom, so the
+    // labels are placed again whenever the zoom settles.
+    const drawLegs = () => {
+      legs.clearLayers();
+      if (pins.length < 2) return;
+      const points = pins.map((p) => {
+        const pt = m.latLngToLayerPoint([p.lat, p.lon]);
+        return [pt.x, pt.y] as const;
+      });
+      for (const leg of legLabels(pins, points)) {
+        L.marker(m.layerPointToLatLng([leg.x, leg.y]), {
+          interactive: false,
+          keyboard: false,
+          icon: L.divIcon({
+            className: "",
+            iconSize: [0, 0],
+            html: `<span class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-card/90 px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground shadow-sm">${escapeHtml(leg.label)}</span>`,
+          }),
+        }).addTo(legs);
+      }
+    };
+    m.on("zoomend", drawLegs);
+    drawLegs();
+
+    return () => {
+      m.off("zoomend", drawLegs);
+      layer.remove();
+      legs.remove();
+      byId.clear();
+    };
+  }, [ready, drawn]); // eslint-disable-line react-hooks/exhaustive-deps -- `drawn` stands for `pins`
+
+  // Mark the chosen pin by restyling it in place. Redrawing it would move
+  // keyboard focus off the pin someone just pressed Enter on.
+  useEffect(() => {
+    if (!ready) return;
+    for (const [id, marker] of markers.current) {
+      const on = id === selectedId;
+      const face = marker.getElement()?.firstElementChild;
+      if (face) face.className = pinClass(on);
+      marker.setZIndexOffset(on ? 1000 : 0);
+    }
+  }, [ready, drawn, selectedId]);
+
+  // Bring the chosen stop into view without losing the zoom the reader chose.
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m || !selectedId) return;
+    const pin = pins.find((p) => p.id === selectedId);
+    if (!pin) return;
+    const target: [number, number] = [pin.lat, pin.lon];
+    // Only when the pin is actually at or past the edge. A fitted day puts
+    // its outermost pins FIT_PADDING in from the border, and an earlier
+    // "inner 70%" test counted those as out of view — so choosing the first
+    // or last stop recentred the map and pushed the rest of the day off it.
+    const at = m.latLngToContainerPoint(target);
+    const size = m.getSize();
+    const margin = PIN_EDGE_MARGIN;
+    if (at.x < margin || at.y < margin || at.x > size.x - margin || at.y > size.y - margin) {
+      m.panTo(target, { animate: !prefersReducedMotion() });
+    }
+  }, [ready, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
+
+  return (
+    // `isolate` keeps Leaflet's pane z-indexes (400 and up) inside this box,
+    // so the map cannot draw over the app header or the bottom navigation.
+    <div
+      role="region"
+      aria-label={label}
+      className="relative isolate h-72 overflow-hidden rounded-2xl border border-border/70 bg-elevated"
+    >
+      <div ref={container} className="absolute inset-0" />
+    </div>
+  );
+}

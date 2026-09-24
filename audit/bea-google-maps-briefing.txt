@@ -1,0 +1,356 @@
+BÉA — GOOGLE MAPS / PLACES DECISION BRIEF
+Prepared for a second opinion. Author: Claude (Opus 5), 2026-09-24.
+Repo: larochellemathildeeva-oss/beabuddy   Baseline: main @ 4cd9bda
+
+────────────────────────────────────────────────────────────────────────
+HOW TO USE THIS
+────────────────────────────────────────────────────────────────────────
+This is a briefing, not a transcript. It states the decision, the verified
+facts about the codebase that constrain it, and the strongest version of
+BOTH positions. I hold the "don't migrate wholesale" position, so treat my
+reasoning as an argument to test rather than a conclusion to ratify.
+
+Two categories of claim, deliberately separated:
+  [VERIFIED]  I read this in the repo this session. Check it yourself; the
+              file is named.
+  [UNVERIFIED] Licensing/pricing claims from my training data. These move
+              faster than my knowledge and I could not fetch them (the
+              sandbox blocks outbound requests to Google domains). These
+              are exactly where a second opinion is most valuable.
+
+
+────────────────────────────────────────────────────────────────────────
+1. WHAT BÉA IS
+────────────────────────────────────────────────────────────────────────
+A travel app whose thesis is a PERMANENT personal vault: places friends
+recommended to you, saved with who said it and why, resurfaced years later
+when you are nearby or planning a trip that includes them.
+
+Stack: TanStack Start + React, Supabase (Postgres + auth + storage),
+deployed by Canner from main.
+
+Core tables: recommendations, trips, trip_stops, itinerary_items,
+photo_memories, future_notes.
+
+Current geo stack [VERIFIED src/lib/geo-endpoints.ts]:
+  - OpenStreetMap Nominatim (geocoding) + OSRM demo router (directions),
+    keyless, 1 req/sec.
+  - Optional LocationIQ via LOCATIONIQ_TOKEN, 2 req/sec.
+  - OSM tiles proxied through src/lib/tile-proxy.ts -> tile.openstreetmap.org
+  - OSM_ATTRIBUTION rendered on the trip map and the privacy page.
+    AGENTS.md states this MUST stay visible wherever OSM data is shown (ODbL).
+
+Design note in geo-endpoints.ts, verbatim [VERIFIED]:
+  "LocationIQ speaks the same dialect — the same /search?format=json
+   request, the same [{lat, lon, display_name, class, type}] answer, and an
+   OSRM-compatible directions endpoint — so switching is a base URL and a
+   token rather than a rewrite."
+  => The provider abstraction is built on WIRE COMPATIBILITY with Nominatim.
+     Google is not wire-compatible. "Swap the provider" does not apply.
+
+
+────────────────────────────────────────────────────────────────────────
+2. THE QUESTION
+────────────────────────────────────────────────────────────────────────
+Should Béa adopt Google Maps Platform (Places / Geocoding / Routes) in
+place of, or alongside, OSM?
+
+Motivating observations from the owner:
+  (a) Google offers a free tier.
+  (b) A Google AI Studio prototype of Béa demonstrates the desired UX,
+      including maps and walking directions.
+
+Sub-questions that came up and should be re-examined:
+  Q1. Could Google be used ONLY for recs / trip planning / directions,
+      leaving the world map and pins on OSM?
+  Q2. Could Béa look a place up with Google, store the result, then display
+      it via LocationIQ/OSM?
+  Q3. Same question for trip itineraries and stops?
+  Q4. Is the AI Studio prototype evidence that this is straightforward?
+
+
+────────────────────────────────────────────────────────────────────────
+3. VERIFIED FACTS ABOUT THE CODEBASE
+────────────────────────────────────────────────────────────────────────
+These constrain the answer. All checked this session.
+
+F1. EVERYTHING BÉA GEOCODES IS STORED PERMANENTLY.
+    - recommendations.lat/lon/address/city/country — the vault; the product
+      premise is "saved 2024, surfaced 2027".
+    - itinerary_items.lat/lon and trip_stops.lat/lon — written by
+      geocodePlanStops (src/lib/geocode-plan.functions.ts).
+    - Trips and itinerary_items are deleted ONLY by explicit user action.
+      No expiry, no archival, no TTL anywhere.
+    [VERIFIED src/hooks/useTrips.ts, src/integrations/supabase/types.ts]
+
+F2. DIRECTIONS ARE ALSO STORED PERMANENTLY, CLIENT-SIDE.
+    useOfflineDirections.keep() writes the full RouteLeg[] — turn-by-turn
+    step text, distances, durations, and both endpoints' coordinates — into
+    localStorage under "bea.directions.<tripId>". No expiry.
+    [VERIFIED src/hooks/useOfflineDirections.ts]
+    => There is almost no "transient" geo data in this app.
+
+F3. GEOCODING IS EAGER AND BATCHED, NOT LAZY.
+    geocodePlanStops allows LOOKUP_BUDGET = 60 lookups per call.
+    TripDetail runs background placement on every trip open (two useEffects).
+    Free tiers are per-project/month, not per-user.
+    [VERIFIED src/lib/geocode-plan.functions.ts, src/components/TripDetail.tsx]
+
+F4. THE APP RENDERS AN OSM BASEMAP AND IS REQUIRED TO ATTRIBUTE IT.
+    [VERIFIED src/lib/tile-proxy.ts, src/components/TripMap.tsx, AGENTS.md]
+
+F5. TWO FIELDS BÉA ALREADY RECEIVES ARE BEING THROWN AWAY.
+    (a) Nominatim is called with extraTags:true, which returns OSM's
+        opening_hours. placeFromNominatim reads exactly one extratag:
+        "brand". opening_hours is discarded, and nothing in src/ references
+        opening hours at all.
+    (b) Nominatim is called with addressDetails:true, which returns
+        house_number and road. formatPlaceLine builds its output from
+        locality + admin + country ONLY — the street is never read.
+        Net effect: a Hiroshima museum's stored "address" is
+        "Hiroshima, Hiroshima Prefecture, Japan".
+    [VERIFIED src/lib/place-label.ts, src/lib/places.functions.ts]
+    => Two capabilities attributed to "we need a better provider" are
+       actually already in the current provider's response.
+
+F6. THE SCHEMA LACKS FIELDS THE DESIRED UX NEEDS, REGARDLESS OF PROVIDER.
+    itinerary_items columns: id, trip_id, day_date, time_label, kind, title,
+    detail, address, lat, lon, position, created_by/at, updated_by/at.
+    No stay duration. No visited/arrived/left. No per-stop cost (cost is
+    currently flattened into the `detail` string as "Est. 200 JPY").
+    [VERIFIED src/integrations/supabase/types.ts]
+    Migrations here are applied BY HAND, not by the deploy [AGENTS.md].
+
+F7. A SUBSTANTIAL AMOUNT OF GEO LOGIC IS HARD-WON.
+    src/lib/ = 104 modules, 82 test files, ~13.4k lines. Examples whose
+    comments document the incident that caused them:
+      - geocode-trust.ts        (a Montréal Harvey's was saved in Slovakia)
+      - match-confidence.ts     (a café pinned to a neighbourhood centroid)
+      - place-label.ts          (refineNominatimHits: admin-blob rejection,
+                                 near-duplicate dedupe, far name-collision
+                                 dropping, "harvey" -> Rue Harvey vs Harvey's,
+                                 franchise name recovery from OSM brand tag)
+      - geo-endpoints.ts        (burst cap AND per-minute cap)
+      - geocode-plan.functions  (a 429 must not be cached as a miss)
+    Plus 29 migrations and a completed security audit in audit/security/run-1/.
+    [VERIFIED by file inspection]
+
+F8. NEW SINCE THIS DISCUSSION STARTED: src/lib/stop-grouping.ts
+    Distance-based clustering of consecutive stops. TOGETHER_WITHIN_METRES
+    = 700, MINIMUM_RUN = 3. Its doc comment explicitly REFUSES to name
+    neighbourhoods: "A name Béa invented for a group of your stops would be
+    wrong often enough to notice, and there is no version of this feature
+    worth that. Distance is a fact she already has."
+    [VERIFIED src/lib/stop-grouping.ts]
+
+
+────────────────────────────────────────────────────────────────────────
+4. THE CASE FOR ADOPTING GOOGLE (steelmanned)
+────────────────────────────────────────────────────────────────────────
+G1. Ambiguous-name resolution is Google's core competency and Nominatim's
+    worst weakness. Béa's single most damaging class of bug is saving the
+    wrong branch of a chain, or a district centroid instead of a venue.
+    Google Places Text Search with location bias is materially better at
+    exactly this. This is not a marginal gain.
+
+G2. Street addresses. formattedAddress / addressComponents contain the
+    street. (Counterpoint in F5b: so does Nominatim, and Béa ignores it.)
+
+G3. Opening hours. A well-maintained first-class field vs OSM's patchy
+    opening_hours tag. Béa's planner currently prompts an LLM to "use
+    realistic opening patterns", i.e. to simulate data it does not have.
+    (Counterpoint in F5a: OSM's version is already in the response.)
+
+G4. Transit routing. The Routes API supports transit. OSRM does not, at
+    all. This is a genuine capability gap with no OSM answer.
+
+G5. Rate limits. Real QPS instead of 1 req/sec. The current 1/sec policy is
+    why placing an 18-stop itinerary takes ~20 seconds and needed a loading
+    animation built specifically to cover the wait.
+
+G6. Data freshness and coverage, particularly outside Europe and for
+    recently-opened venues.
+
+G7. Ecosystem coherence: one vendor for places, routing, tiles and
+    attribution, instead of Nominatim + OSRM + Overpass + tile proxy.
+
+
+────────────────────────────────────────────────────────────────────────
+5. THE CASE AGAINST WHOLESALE MIGRATION (my position)
+────────────────────────────────────────────────────────────────────────
+A1. LICENSING vs THE PRODUCT MODEL. [UNVERIFIED — verify independently]
+    My understanding is that Google Maps Platform terms restrict caching
+    and storing most Places content, with Place IDs as the documented
+    exception that may be retained.
+    If that is accurate, it conflicts directly with F1 and F2: Béa's entire
+    premise is storing coordinates for years. This is not a detail to
+    engineer around — it is a conflict with the core data model.
+    Conversely, ODbL PERMITS indefinite storage, which makes OSM a better
+    licence fit for a vault specifically. That is an underrated argument.
+
+A2. THE NON-GOOGLE-BASEMAP CLAUSE. [UNVERIFIED — verify independently]
+    My understanding is that Google content may not be displayed on a
+    non-Google map. Per F4, Béa renders OSM tiles with required attribution.
+    If accurate, this answers Q1: "keep the map on OSM, use Google for
+    everything else" is the specific combination prohibited. Choosing
+    Google means the basemap moves too.
+
+A3. Q2/Q3 — "LOOK UP WITH GOOGLE, STORE, DISPLAY VIA LOCATIONIQ".
+    The renderer is irrelevant. What the caching restriction targets is
+    STORING the content. Re-drawing it through another provider does not
+    change its provenance. This pattern would work technically and is the
+    archetypal prohibited use; the risk is losing API access, which is a
+    worse outage than the bug being fixed.
+
+A4. THE DISTINCTION THAT DOES WORK, AND IS NOT A LOOPHOLE.
+    An address is a fact about the world. A geocode, a route polyline and
+    turn-by-turn text are a vendor's work product.
+    So: use Google to help the USER decide WHICH place they mean -> you now
+    hold a confirmed name + street address -> geocode THAT against OSM ->
+    store the OSM coordinate. No Google content is retained.
+    This is also better engineering: it keeps one coordinate system, and it
+    forces a human confirmation step that fixes an existing bug where the
+    app auto-selects the top search hit with no review.
+    NOTE: this works for PLACES (a fact exists to re-derive) and NOT for
+    ROUTES (the polyline IS the deliverable; nothing to re-derive).
+    So directions are the WORST fit for this pattern, not the best.
+
+A5. COST SHAPE. Per F3, Béa geocodes eagerly, 60 lookups per plan, on every
+    trip open. A per-month free tier is not per-user. 100 users x 3 trips is
+    not a rounding error.
+
+A6. IT DOES NOT FIX THE ACTUAL BUGS. This is the strongest argument.
+    An audit of this codebase found these as the top issues:
+      - Stale map pins survive an itinerary revision (React state keyed by
+        array index; the revision replaces items at the same indexes).
+        Provider-agnostic.
+      - Three of four geocoding call sites write pins with NO confidence
+        check, although the app already computes one (match-confidence.ts)
+        and uses it on the fourth. Google would return BETTER evidence that
+        the app would ALSO discard.
+      - Article import auto-selects search hit #0 with no location bias and
+        no human review. Google would return a more CONFIDENT wrong answer.
+      - A routing cache keyed by stop title alone collapses "Lunch" on day 1
+        and day 4 to one pin, then writes it back to the timeline.
+      - formatPlaceLine discards the street (F5b) — it would discard
+        Google's street identically.
+    None of these are provider bugs.
+
+A7. A BETTER GEOCODER MAKES FAILURES HARDER TO DETECT.
+    Nominatim fails obviously — returning "Montreal" when asked for a
+    sandwich shop is what made these bugs findable. Google almost always
+    returns something plausible. Migrating before adding the guardrails
+    leaves the same bugs producing better-looking wrong data, which is a
+    worse state, not a better one.
+
+A8. MIGRATION IS NOT A CONFIG CHANGE. Per the geo-endpoints.ts comment in
+    §1, the provider abstraction assumes Nominatim wire compatibility.
+    Google needs a real adapter plus a second attribution and display path.
+
+
+────────────────────────────────────────────────────────────────────────
+6. Q4 — WHAT THE AI STUDIO PROTOTYPE ACTUALLY SHOWS
+────────────────────────────────────────────────────────────────────────
+The owner built a Béa prototype in Google AI Studio. Reviewed from a screen
+recording and two screenshots. Findings:
+
+P1. The "turn-by-turn walking directions" are GENERATED, not routed.
+    - Step text reads e.g. "Exit through the Museum East Wing sliding glass
+      doors onto the central lawn", with waypoints "East Wing Courtyard",
+      "Cenotaph reflection axis", "Paper Crane Pavilions". No routing API
+      emits that; routers emit maneuver + street name.
+    - The numbers do not reconcile: the header says "3m Walk (0.2 km)" and
+      the four steps beneath it sum to ~320 m / ~5 min.
+    - One tap later in the same recording, real Google Maps says 4 min /
+      300 m via 広島市道中区2区2号線.
+    Three different answers for one 300 m walk.
+    => This is an LLM writing plausible directions. Béa's current OSRM path,
+       whatever its endpoint bugs, returns real distances.
+
+P2. The embedded map is NOT working. The tiles carry the diagonal repeating
+    watermark "...REQUIRED" / "...aps/apikey" — the Google Maps JS API
+    unauthenticated state. No valid key, no billing.
+    => The prototype does not demonstrate a working Google Maps integration.
+       It demonstrates the UI around one.
+
+P3. The handoff to real navigation is a DEEP LINK ("Live Navigation in
+    Maps" launches the Google Maps app; "◀ Chrome" is visible in the status
+    bar). Deep links are free, keyless, store nothing, and raise none of the
+    licensing questions above.
+    Béa ALREADY does this — mapsDirUrl and mapsPlaceUrl in
+    src/lib/direction-stops.ts build exactly those google.com/maps/dir and
+    /maps/search URLs. [VERIFIED]
+    => On this specific point there is no capability gap at all.
+
+P4. The prototype's UI is built on synthetic data: every stop has a time, an
+    address, a stay length and a clean walk to the next. It has no empty
+    states, no unplaced stop, no low-confidence match, no undated row. Real
+    Béa rows frequently have time_label: null and lat: null.
+
+CONCLUSION ON Q4: the prototype's DATA layer is weaker than Béa's current
+one. Its INTERACTION layer is meaningfully better (day selector, map/list
+sync, current-stop/up-next companion view). The gap worth closing is the
+second, and it is front-end work against data Béa already has.
+
+
+────────────────────────────────────────────────────────────────────────
+7. CURRENT RECOMMENDATION (the thing to argue with)
+────────────────────────────────────────────────────────────────────────
+R1. Fix the guardrails first; they are provider-independent and are the
+    difference between a vault you can trust and one you cannot.
+R2. Harvest what is already in the response: opening_hours via extraTags,
+    house_number/road via addressDetails (F5). Two features, zero vendors.
+R3. If adding Google, add it INTERACTIVELY and NARROWLY: the search box
+    where the user picks a result. Not background batch placement, which is
+    the expensive path, the caching-exposed path, and the one that papers
+    over the missing confidence check instead of fixing it.
+R4. For transit: most long legs in a real itinerary are BOOKED — the row
+    already carries kind=flight|transport plus the time and confirmation.
+    Béa should stop overwriting them with a fabricated driving route (it
+    currently picks mode by straight-line distance: `straight < 3000 ?
+    "walking" : "driving"` at directions.functions.ts:301, so a Tokyo–Kyoto
+    Shinkansen renders as "Drive · 452 km · 5 h 40 min"). Fixing that is one
+    line and removes a FALSE claim. Only genuinely unbooked transit remains,
+    and that is a much smaller gap.
+R5. Do not migrate the basemap or the vault's stored coordinates.
+
+
+────────────────────────────────────────────────────────────────────────
+8. WHAT I WANT A SECOND OPINION ON, SPECIFICALLY
+────────────────────────────────────────────────────────────────────────
+S1. Are A1 and A2 actually correct under the CURRENT Google Maps Platform
+    terms? I could not fetch them. Specifically:
+      - What may be cached/stored, for how long, and what the Place ID
+        exception actually covers.
+      - Whether the non-Google-basemap restriction exists as I describe it.
+      - Whether a permanent personal vault has a compliant pattern I have
+        missed (e.g. storing Place IDs and re-resolving on read — and if so,
+        whether that is viable for bulk map rendering and offline proximity
+        maths, which is where I think it breaks down).
+S2. Current pricing SHAPE, not just headline numbers. Google moved to
+    per-SKU free tiers in 2025 [UNVERIFIED]; the Essentials/Pro/Enterprise
+    split matters more than the free allowance for an app with F3's usage
+    pattern.
+S3. Is A4's fact-vs-content distinction sound, or am I rationalising? I
+    believe using Google to disambiguate and OSM to store is legitimate and
+    not a circumvention, but I would like that challenged.
+S4. Is A6/A7 too convenient an argument for inaction? The counter is that
+    a better provider would prevent a large fraction of wrong pins from ever
+    being generated, making the missing guardrails less load-bearing. I do
+    not think that is right — undetectable errors are worse than detectable
+    ones — but it deserves a real rebuttal rather than my assertion.
+S5. Anything in §4 I have underweighted.
+
+
+────────────────────────────────────────────────────────────────────────
+9. CAVEATS ON THIS DOCUMENT
+────────────────────────────────────────────────────────────────────────
+- Written by Claude. §5 is my position; §4 is my attempt to argue the other
+  side fairly, and may still be weaker than a genuine advocate would make it.
+- All [UNVERIFIED] items are from training data, are legal/commercial rather
+  than technical, and should be checked against primary sources before any
+  budget or architecture decision. I am not a lawyer.
+- The codebase audit this draws on was written against commit fd9480e; main
+  has since moved to 4cd9bda. Five commits landed, two touching
+  place-label.ts and places.functions.ts. F5b was re-verified against
+  current main and still holds. Other audit findings may have shifted.

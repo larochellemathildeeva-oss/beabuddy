@@ -1,0 +1,6 @@
+{
+  "name": "Béa — Itinerary Companion",
+  "description": "Mobile-first itinerary experience designed from first principles for Béa, an AI travel companion. Features 3 distinct design concepts: Editor First, Map Balanced, and Travel Companion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

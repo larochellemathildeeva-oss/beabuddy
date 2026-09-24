@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { neighbourInDay, nextPosition } from "@/lib/timeline-order";
+import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
 import {
   datesStatusOrDefault,
   isMissingDatesStatusColumn,
@@ -151,6 +151,10 @@ export type ItineraryRow = {
   position: number;
   updated_by: string | null;
   updated_at: string;
+  /** Tapped "I'm here" — the companion view's record of the day. */
+  arrived_at: string | null;
+  left_at: string | null;
+  planned_stay_minutes: number | null;
 };
 
 export function useTrips() {
@@ -413,7 +417,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     const { data, error } = await supabase
       .from("itinerary_items")
       .select(
-        "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at",
+        "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at, arrived_at, left_at, planned_stay_minutes",
       )
       .eq("trip_id", tripId)
       .order("day_date", { ascending: true })
@@ -531,6 +535,64 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       return data?.id as string | undefined;
     },
     [tripId, me.id, items.length, load],
+  );
+
+  /**
+   * Add a row straight after another, for "+ Add stop between".
+   *
+   * Rows after the anchor move down one place first, then the new row takes
+   * the gap. Positions have no uniqueness rule, so a reader who reloads
+   * mid-way sees at worst two rows sharing a place for a moment, never a
+   * failure.
+   */
+  const insertItemAfter = useCallback(
+    async (
+      afterId: string,
+      item: {
+        day_date?: string;
+        time_label?: string;
+        kind: string;
+        title: string;
+        detail?: string;
+        address?: string;
+        lat?: number;
+        lon?: number;
+      },
+    ) => {
+      const id = tripIdRef.current;
+      if (!id) throw new Error("Open a trip first");
+      const authorId = await liveUserId(me.id);
+      const { position, shifts } = insertAfter(items, afterId);
+      for (const shift of shifts) {
+        const { error } = await supabase
+          .from("itinerary_items")
+          .update({ position: shift.position, updated_by: authorId })
+          .eq("id", shift.id);
+        if (error) throw error;
+      }
+      const { data, error } = await supabase
+        .from("itinerary_items")
+        .insert({
+          trip_id: id,
+          day_date: item.day_date || null,
+          time_label: item.time_label || null,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail || null,
+          address: item.address || null,
+          lat: item.lat ?? null,
+          lon: item.lon ?? null,
+          position,
+          created_by: authorId,
+          updated_by: authorId,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      await load();
+      return data?.id as string | undefined;
+    },
+    [items, me.id, load],
   );
 
   const addItems = useCallback(
@@ -661,7 +723,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       patch: Partial<
         Pick<
           ItineraryRow,
-          "title" | "detail" | "time_label" | "kind" | "day_date" | "address" | "lat" | "lon"
+          | "title"
+          | "detail"
+          | "time_label"
+          | "kind"
+          | "day_date"
+          | "address"
+          | "lat"
+          | "lon"
+          | "planned_stay_minutes"
         >
       >,
     ) => {
@@ -671,6 +741,36 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         .eq("id", id);
       if (error) throw error;
       await load();
+    },
+    [me.id, load],
+  );
+
+  /**
+   * Record arriving at or leaving stops, several rows in one gesture.
+   *
+   * Arriving somewhere closes the stop you were at, and the database refuses
+   * a departure before an arrival, so the writes are applied in the order
+   * given and the board reloads once at the end rather than flickering
+   * through each.
+   */
+  const setProgress = useCallback(
+    async (
+      writes: {
+        id: string;
+        patch: Partial<Pick<ItineraryRow, "arrived_at" | "left_at">>;
+      }[],
+    ) => {
+      try {
+        for (const { id, patch } of writes) {
+          const { error } = await supabase
+            .from("itinerary_items")
+            .update({ ...patch, updated_by: me.id })
+            .eq("id", id);
+          if (error) throw error;
+        }
+      } finally {
+        await load();
+      }
     },
     [me.id, load],
   );
@@ -762,6 +862,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     upsertItems,
     applySchedule,
     updateItem,
+    setProgress,
+    insertItemAfter,
     moveItem,
     removeItem,
     setEditing,

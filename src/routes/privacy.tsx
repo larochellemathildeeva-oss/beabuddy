@@ -165,8 +165,8 @@ function PrivacyPage() {
             Béa's server sends just that text or those coordinates to one map service —
             OpenStreetMap's own geocoder and router, or a hosted OpenStreetMap service where one is
             configured. Your identity is not sent with those requests, and your device does not
-            contact that service directly. The small map under Near loads its picture tiles from
-            OpenStreetMap.
+            contact that service directly. The small map under Near and the map of a trip's day load
+            their picture tiles the same way: through Béa's server, from that map service.
           </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
         </Section>

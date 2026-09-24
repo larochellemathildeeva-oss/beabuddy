@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { parseTilePath, tilePath, tileSourceUrl } from "./tile-proxy.ts";
+import { parseTilePath, tilePath, tileSourceUrl, TILE_URL_TEMPLATE } from "./tile-proxy.ts";
 
 test("a real tile path parses", () => {
   assert.deepEqual(parseTilePath("/api/tile/14/4695/6053.png"), { z: 14, x: 4695, y: 6053 });
@@ -10,6 +10,13 @@ test("a real tile path parses", () => {
 test("tilePath and parseTilePath agree", () => {
   const coords = { z: 12, x: 1183, y: 1512 };
   assert.deepEqual(parseTilePath(tilePath(coords)), coords);
+});
+
+test("the Leaflet template asks for paths the proxy accepts", () => {
+  const filled = TILE_URL_TEMPLATE.replace("{z}", "15")
+    .replace("{x}", "16372")
+    .replace("{y}", "10895");
+  assert.deepEqual(parseTilePath(filled), { z: 15, x: 16372, y: 10895 });
 });
 
 test("coordinates outside the world at that zoom are refused", () => {

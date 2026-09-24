@@ -109,6 +109,7 @@ export type Database = {
       itinerary_items: {
         Row: {
           address: string | null
+          arrived_at: string | null
           created_at: string
           created_by: string | null
           day_date: string | null
@@ -116,7 +117,9 @@ export type Database = {
           id: string
           kind: string
           lat: number | null
+          left_at: string | null
           lon: number | null
+          planned_stay_minutes: number | null
           position: number
           time_label: string | null
           title: string
@@ -126,6 +129,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          arrived_at?: string | null
           created_at?: string
           created_by?: string | null
           day_date?: string | null
@@ -133,7 +137,9 @@ export type Database = {
           id?: string
           kind?: string
           lat?: number | null
+          left_at?: string | null
           lon?: number | null
+          planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null
           title: string
@@ -143,6 +149,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          arrived_at?: string | null
           created_at?: string
           created_by?: string | null
           day_date?: string | null
@@ -150,7 +157,9 @@ export type Database = {
           id?: string
           kind?: string
           lat?: number | null
+          left_at?: string | null
           lon?: number | null
+          planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null
           title?: string

@@ -16,7 +16,14 @@ export default tseslint.config(
    * lets lint block like typecheck and test do.
    */
   {
-    ignores: ["dist", ".output", ".vinxi", "src/integrations/supabase/types.ts"],
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      "src/integrations/supabase/types.ts",
+      // Reference copy of the AI Studio prototype, not part of the app.
+      "docs/prototype",
+    ],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

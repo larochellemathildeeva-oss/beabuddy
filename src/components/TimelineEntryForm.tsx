@@ -66,6 +66,7 @@ export function TimelineEntryForm({
   tripStart,
   tripEnd,
   openDay,
+  openTime,
   near,
   onAdd,
   onUpdateEntry,
@@ -76,6 +77,8 @@ export function TimelineEntryForm({
   tripEnd?: string | null | undefined;
   /** The day group the user is looking at, so a new entry lands there. */
   openDay?: string | undefined;
+  /** A time to start from, e.g. halfway between two stops for "Add stop between". */
+  openTime?: string | undefined;
   /** City, country — biases place search towards where the trip is. */
   near?: string | undefined;
   /** Returns the new row's id, so the form can offer to schedule it. */
@@ -103,7 +106,7 @@ export function TimelineEntryForm({
   const [detail, setDetail] = useState("");
   const [place, setPlace] = useState(EMPTY_PLACE);
   const [day, setDay] = useState(() => defaultEntryDay({ openDay, tripStart, tripEnd }));
-  const [time, setTime] = useState("");
+  const [time, setTime] = useState(openTime ?? "");
   const [freeTime, setFreeTime] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");

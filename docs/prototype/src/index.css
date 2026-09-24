@@ -1,0 +1,118 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  h1, h2, .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+
+  .font-title-hero {
+    font-family: 'Italiana', 'Playfair Display', serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Custom map pulse animations */
+@keyframes routePulse {
+  0% {
+    stroke-dashoffset: 40;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animated-route-line {
+  stroke-dasharray: 8, 8;
+  animation: routePulse 1.2s linear infinite;
+}
+
+/* Leaflet container polish */
+.leaflet-container {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  background-color: #f7f4ee !important;
+  width: 100%;
+  height: 100%;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(59, 37, 24, 0.15) !important;
+  padding: 4px !important;
+  border: 1px solid #E8DFD3 !important;
+  background: #FFFDF9 !important;
+}
+
+.leaflet-popup-tip {
+  background: #FFFDF9 !important;
+}
+
+/* Smooth drag ghost styling */
+.dragging-card {
+  box-shadow: 0 20px 30px -10px rgba(59, 37, 24, 0.22), 0 0 0 2px #D97742 !important;
+  transform: scale(1.02);
+  cursor: grabbing !important;
+}
+
+/* Hide scrollbar for clean horizontal tab flows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Glassy luxury panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-dark {
+  background: rgba(38, 32, 28, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Subtle editorial card shine */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  pointer-events: none;
+  transition: 0.6s ease;
+}
+.card-shine:hover::after {
+  left: 150%;
+}
+
+/* 3D Flip Card Utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+
