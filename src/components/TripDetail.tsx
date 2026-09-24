@@ -22,7 +22,6 @@ import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
 import { TripPrep } from "@/components/TripPrep";
-import { TripToday } from "@/components/TripToday";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -616,10 +615,6 @@ export function TripDetail({
                 </p>
               </div>
             )}
-            {/* Below the live pieces, not above: on a long day this list ran
-                to every entry and pushed the tracker, ribbon and Now card off
-                the screen. It shows the first few and opens to the rest. */}
-            <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
           </div>
         )}
 
