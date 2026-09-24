@@ -43,8 +43,8 @@ them and a day-centric screen that dropped them loses more than it wins.
 ## Next, in order
 
 1. ~~**Leaflet day map.**~~ Done — see "Day map" below.
-2. **Migration** — `arrived_at`, `left_at`, `planned_stay_minutes` on
-   `itinerary_items`. Applied **by hand**; writing it changes nothing live.
+2. ~~**Migration.**~~ Written — see "Stop progress (step 2)" below. **Not
+   applied until someone runs it by hand.**
 3. **Now (companion).** Current stop / up next / "Leave by". Use **manual
    progression** (tap on arrival), not clock inference: it needs no
    `time_label`, survives running late, and captures what actually happened.
@@ -72,6 +72,41 @@ them and a day-centric screen that dropped them loses more than it wins.
 - **`TripMap` is not replaced on the old page or the trip card backdrop.**
   It stays there — an offline SVG with no requests suits a card backdrop —
   until the old screen is retired.
+
+## Stop progress (step 2)
+
+`supabase/migrations/20260924120000_itinerary_stop_progress.sql` adds
+`arrived_at`, `left_at` (timestamptz) and `planned_stay_minutes` (integer) to
+`itinerary_items`, all nullable. It is **applied by hand** in the Supabase SQL
+editor; until then the live database does not have these columns. It is safe
+to re-run, and carries its own undo block. Checked against a scratch Postgres
+16: idempotent, existing rows untouched, constraints refuse what they should.
+
+To see whether it has been applied:
+
+```sql
+select column_name from information_schema.columns
+where table_schema = 'public' and table_name = 'itinerary_items'
+  and column_name in ('arrived_at', 'left_at', 'planned_stay_minutes');
+```
+
+What step 3 has to respect:
+
+- **Do not add these columns to the itinerary `select` in `useTrips.ts`.** That
+  query names its columns and, on error, keeps what it had — so on a database
+  without the migration, every trip would load empty. Read progress in its own
+  query and treat a missing column as "not available yet" (the pattern is
+  `isMissingTravelTagsColumn` in `reco-tags.ts`). Only then does Now stay inert
+  rather than breaking the trip.
+- **Constraints:** `left_at` needs `arrived_at` and must not precede it;
+  `planned_stay_minutes` is 1–44640. So "undo arrival" clears `left_at` in the
+  same update, or the database refuses it.
+- **Progress is per stop, not per person.** Every member sees the same
+  arrived / left state, under the existing "Members manage itinerary" policy.
+  Right for a group travelling together; wrong if they split up for a day. No
+  per-person table until that is shown to matter.
+- The types in `src/integrations/supabase/types.ts` were extended by hand to
+  match — regenerate them when there is a connection to the project.
 
 ## Settled — don't relitigate
 
