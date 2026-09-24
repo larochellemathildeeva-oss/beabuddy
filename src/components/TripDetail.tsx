@@ -589,7 +589,6 @@ export function TripDetail({
 
         {perspective === "companion" && (
           <div className="space-y-3">
-            <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
             {nowStops.length > 0 ? (
               <>
                 {view.prefs.journey && <JourneyTracker stops={nowStops} />}
@@ -617,6 +616,10 @@ export function TripDetail({
                 </p>
               </div>
             )}
+            {/* Below the live pieces, not above: on a long day this list ran
+                to every entry and pushed the tracker, ribbon and Now card off
+                the screen. It shows the first few and opens to the rest. */}
+            <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
           </div>
         )}
 

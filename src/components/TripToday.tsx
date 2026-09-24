@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { format } from "date-fns";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { timeForRail } from "@/lib/timeline-kind";
@@ -28,6 +29,7 @@ export function TripToday({
   items: readonly TodayItem[];
 }) {
   const view = tripTodayView({ startDate, endDate, items }, format(new Date(), "yyyy-MM-dd"));
+  const [showAll, setShowAll] = useState(false);
 
   // A finished trip has nothing to say here, and an undated one has no day to
   // say it about. Both stay quiet rather than showing an empty strip.
@@ -47,7 +49,7 @@ export function TripToday({
         <p className="mt-1 text-[13px] text-muted-foreground">{empty}</p>
       ) : (
         <ul className="mt-2 space-y-1.5">
-          {view.items.map((item) => {
+          {(showAll ? view.items : view.items.slice(0, PREVIEW)).map((item) => {
             const time = timeForRail(item.time_label);
             return (
               <li key={item.id} className="flex items-center gap-2.5">
@@ -63,6 +65,19 @@ export function TripToday({
           })}
         </ul>
       )}
+      {view.items.length > PREVIEW && (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          className="mt-2 min-h-9 text-[12.5px] font-semibold text-primary underline underline-offset-2"
+        >
+          {showAll ? "Show fewer" : `Show all ${view.items.length}`}
+        </button>
+      )}
     </div>
   );
 }
+
+/** A day of forty-five entries is a list to open, not one to scroll past. */
+const PREVIEW = 5;

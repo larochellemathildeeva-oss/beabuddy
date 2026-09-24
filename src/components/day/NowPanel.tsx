@@ -83,6 +83,8 @@ export function NowPanel({
       : null;
 
   const later = next ? dayStops.slice(dayStops.indexOf(next) + 1).filter((s) => !s.arrived_at) : [];
+  const [showAllLater, setShowAllLater] = useState(false);
+  const laterShown = showAllLater ? later : later.slice(0, LATER_PREVIEW);
 
   return (
     <div className="space-y-3">
@@ -230,7 +232,7 @@ export function NowPanel({
         <div className="space-y-1.5">
           <p className="label-caps text-muted-foreground">Later</p>
           <ul className="space-y-1">
-            {later.map((stop) => (
+            {laterShown.map((stop) => (
               <li key={stop.id} className="flex items-baseline gap-3 text-[13.5px]">
                 <span className="w-11 shrink-0 font-semibold tabular-nums text-muted-foreground">
                   {timeForRail(stop.time_label) || "–"}
@@ -239,6 +241,16 @@ export function NowPanel({
               </li>
             ))}
           </ul>
+          {later.length > LATER_PREVIEW && (
+            <button
+              type="button"
+              onClick={() => setShowAllLater((v) => !v)}
+              aria-expanded={showAllLater}
+              className="min-h-9 text-[12.5px] font-semibold text-primary underline underline-offset-2"
+            >
+              {showAllLater ? "Show fewer" : `Show all ${later.length}`}
+            </button>
+          )}
         </div>
       )}
 
@@ -343,3 +355,6 @@ function useMinuteClock(): Date | null {
   }, []);
   return now;
 }
+
+/** The rest of a long day stays one tap away rather than filling the screen. */
+const LATER_PREVIEW = 5;
