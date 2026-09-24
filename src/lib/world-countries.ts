@@ -267,7 +267,9 @@ for (const country of WORLD_COUNTRIES) {
  * "France" or "USA" resolve here without hitting the map API.
  */
 export function matchWorldCountry(query: string): WorldCountry | null {
-  const raw = query.trim();
+  // Trailing punctuation is the keyboard, not the place: "Japan," or "Japan."
+  // from autocorrect used to fall through to the map service.
+  const raw = query.trim().replace(/[\s,.;:!?]+$/, "");
   if (raw.length < 2) return null;
   const needle = foldCountryName(raw);
   if (!needle) return null;
@@ -293,4 +295,20 @@ export function placeFromWorldCountry(country: WorldCountry) {
 export function localPlaceHits(query: string) {
   const country = matchWorldCountry(query);
   return country ? [placeFromWorldCountry(country)] : [];
+}
+
+/**
+ * Countries whose name starts with what has been typed so far — "Jap" is
+ * Japan while the person is still typing, not a shop called Japan. Offered
+ * only where a destination is being chosen.
+ */
+export function countriesStartingWith(query: string, limit = 3): WorldCountry[] {
+  const needle = foldCountryName(query.trim().replace(/[\s,.;:!?]+$/, ""));
+  if (needle.length < 3) return [];
+  const out: WorldCountry[] = [];
+  for (const [key, country] of INDEX) {
+    if (key.startsWith(needle) && !out.includes(country)) out.push(country);
+    if (out.length >= limit) break;
+  }
+  return out;
 }

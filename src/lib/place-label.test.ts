@@ -320,3 +320,36 @@ test("isVenueHit prefers shops over streets that share the name", () => {
   assert.equal(isVenueHit({ class: "amenity", type: "fast_food" }), true);
   assert.equal(isVenueHit({ class: "highway", type: "residential" }), false);
 });
+
+test("a town named exactly as typed beats a restaurant found by a spelling variant", async () => {
+  const { exactPlaceHits } = await import("./place-label.ts");
+  const kyoto: NominatimHitLike = {
+    lat: "35.0116",
+    lon: "135.7681",
+    name: "Kyoto",
+    display_name: "Kyoto, Kyoto Prefecture, Japan",
+    category: "boundary",
+    type: "administrative",
+    addresstype: "city",
+    address: { city: "Kyoto", state: "Kyoto Prefecture", country: "Japan" },
+  };
+  const restaurant: NominatimHitLike = {
+    lat: "30.23",
+    lon: "-93.37",
+    name: "Kyoto's",
+    display_name: "Kyoto's, Sulphur, Louisiana, United States of America",
+    category: "amenity",
+    type: "restaurant",
+    addresstype: "amenity",
+    address: {
+      amenity: "Kyoto's",
+      town: "Sulphur",
+      state: "Louisiana",
+      country: "United States of America",
+    },
+  };
+  assert.deepEqual(exactPlaceHits([restaurant, kyoto], "kyoto"), [kyoto]);
+  assert.deepEqual(exactPlaceHits([restaurant, kyoto], "Kyōto"), [kyoto], "accents fold");
+  assert.deepEqual(exactPlaceHits([restaurant], "kyoto"), []);
+  assert.deepEqual(exactPlaceHits([kyoto], "subway"), []);
+});

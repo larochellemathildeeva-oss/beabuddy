@@ -141,6 +141,7 @@ function TripsPage() {
                     });
                   }}
                   placeholder="Starting city — search it"
+                  areas
                 />
                 <p className="px-1 text-[12px] text-muted-foreground">
                   Going to more than one country? Open the trip after creating it and add each stop
