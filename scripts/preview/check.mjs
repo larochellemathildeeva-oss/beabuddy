@@ -315,7 +315,8 @@ await flow("stop card: compact front turns over to edit, and back", async (page)
   await goTab(page, "Timeline");
   const front = page.getByRole("button", { name: /tap to edit$/ }).first();
   const box = await front.boundingBox();
-  if (!box || box.height > 76) throw new Error(`card front is ${box?.height}px tall, not compact`);
+  // Names wrap rather than cut off, so a long one takes a second or third line.
+  if (!box || box.height > 130) throw new Error(`card front is ${box?.height}px tall, not compact`);
   const before = await page.getByRole("button", { name: /tap to edit$/ }).count();
   await front.click();
   await page.waitForTimeout(300);
@@ -354,6 +355,18 @@ await flow("timeline: Not visited hides done stops, All brings them back", async
   await page.getByRole("button", { name: "All", exact: true }).click();
   await page.waitForTimeout(300);
   if ((await cards()) !== all) throw new Error("All did not bring every stop back");
+});
+
+await flow("timeline: paws between stops open directions to the next one", async (page) => {
+  await goTab(page, "Timeline");
+  if ((await page.getByRole("button", { name: /Add stop between/ }).count()) > 0) throw new Error("Add stop between is still there");
+  const paws = page.getByRole("link", { name: /^Directions from .* to / });
+  if ((await paws.count()) < 2) throw new Error("no paw between stops");
+  const href = await paws.first().getAttribute("href");
+  if (!href || !/google\.com\/maps\/dir\//.test(href)) throw new Error(`paw goes to ${href}`);
+  const front = page.getByRole("button", { name: /Peace Park.*tap to edit$/ });
+  const text = await front.innerText();
+  if (!text.includes("Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)")) throw new Error(`name cut off: ${text}`);
 });
 
 await flow("banner stays pinned while the page scrolls", async (page) => {

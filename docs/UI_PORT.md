@@ -285,3 +285,8 @@ See `docs/UI_PORT_PLAN.md`. In short:
   in the list header shows every back at once. "Add stop between" is a small
   + on the line between cards. Checker flow: "stop card: compact front turns
   over to edit, and back" (front ≤ 76 px; every back action writes).
+- **Paws between stops (replaces "Add stop between" and the walk row):** a
+  small paw on the line between two cards opens directions from one to the
+  next in the phone's maps app, with the walk or drive time beside it once
+  directions are measured. Adding still happens from the day's + or Add.
+  Card fronts wrap long names instead of cutting them off.

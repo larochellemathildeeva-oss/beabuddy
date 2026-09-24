@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import {
   Bookmark,
-  Car,
   Check,
   ChevronDown,
   ChevronUp,
-  Footprints,
   MapPin,
   MapPinPlus,
-  Plus,
+  PawPrint,
   Ticket,
   Trash2,
 } from "lucide-react";
@@ -22,11 +20,11 @@ import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone } from "@/lib/companion";
 import type { RouteLeg } from "@/lib/directions.functions";
-import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
-import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
+import { stripEmbeddedMapsUrl, syncDetailDraft } from "@/lib/timeline-directions";
 import { timeForRail } from "@/lib/timeline-kind";
 
 /**
@@ -170,7 +168,7 @@ export function TimelineEntry({
         onClick={() => flip(true)}
         aria-expanded={false}
         aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
-        className="flex min-h-14 w-full min-w-0 items-center gap-2.5 px-3 py-2 text-left"
+        className="flex min-h-16 w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left"
       >
         <span
           className={`w-11 shrink-0 text-[14px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
@@ -180,7 +178,7 @@ export function TimelineEntry({
         <TimelineGlyphMark item={item} />
         <span className="min-w-0 flex-1">
           <span
-            className={`block truncate text-[15px] font-semibold leading-snug ${
+            className={`block break-words text-[15.5px] font-semibold leading-snug ${
               done ? "text-muted-foreground line-through" : ""
             }`}
           >
@@ -191,7 +189,7 @@ export function TimelineEntry({
             ) : null}
             {item.title}
           </span>
-          <span className="block truncate text-[12.5px] text-muted-foreground">
+          <span className="mt-0.5 line-clamp-2 break-words text-[13px] text-muted-foreground">
             {where || "No place yet"}
           </span>
         </span>
@@ -536,85 +534,49 @@ function TimelineDetailInput({
 }
 
 /**
- * The walk or drive to the next stop, drawn between the two cards.
- *
- * The prototype's transit row: how long and how far, and "Map route". The
- * turn-by-turn steps open from the summary, because they are only worth the
- * space when you are about to walk them. Hidden by "Walk times" in Customize.
+ * Between two cards: a paw to tap for directions to the next stop, and how
+ * far it is when Béa has measured the leg. Opens the phone's maps app, which
+ * has transit, live traffic and turn-by-turn that a list of steps here would
+ * only imitate.
  */
-export function TransitConnector({ leg }: { leg?: RouteLeg | undefined }) {
-  const [open, setOpen] = useState(false);
-  if (!leg) return null;
-
-  const measured = leg.distance > 0;
-  const how = leg.mode === "walking" ? "walk" : "drive";
-  const summary = measured
-    ? `${prettyDuration(leg.duration)} ${how} (${prettyDistance(leg.distance)}) to ${leg.to}`
-    : `Directions to ${leg.to}`;
-  const Icon = leg.mode === "walking" ? Footprints : Car;
-
+export function PawConnector({
+  from,
+  to,
+  leg,
+  area,
+  showTime = true,
+}: {
+  from: Pick<ItineraryRow, "title" | "lat" | "lon">;
+  to: Pick<ItineraryRow, "title" | "lat" | "lon">;
+  /** The measured leg from `from` to `to`, when there is one. */
+  leg?: RouteLeg | undefined;
+  area: string;
+  /** The walk-times preference: off shows the paw alone. */
+  showTime?: boolean;
+}) {
+  const mode = leg?.mode === "driving" ? "driving" : "walking";
+  const href = leg?.mapUrl || mapsDirUrl(from, to, area, mode);
+  const measured = leg && leg.distance > 0;
+  const how = mode === "walking" ? "walk" : "drive";
   return (
     <li className="list-none">
-      <div className="rounded-2xl border border-border/70 bg-card px-3 py-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            className="flex min-h-9 min-w-0 items-center gap-2 text-left text-[12.5px] text-muted-foreground"
-          >
-            <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-            <span className="min-w-0 [overflow-wrap:anywhere]">
-              {open ? "Hide directions" : summary}
-            </span>
-          </button>
-          <a
-            href={leg.mapUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 text-[12.5px] font-semibold text-nexttime"
-          >
-            Map route ↗
-          </a>
-        </div>
-        {open && (
-          <div className="mb-1.5 mt-1 rounded-lg border border-border bg-elevated p-2">
-            {leg.steps.length > 0 ? (
-              <ol className="space-y-1">
-                {leg.steps.map((step, s) => (
-                  <li key={s} className="text-[12px] text-muted-foreground">
-                    {step.instruction}
-                    {step.distance > 0 && ` · ${prettyDistance(step.distance)}`}
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-[12px] text-muted-foreground">{unroutedLegCopy(leg)}.</p>
-            )}
-          </div>
-        )}
-      </div>
-    </li>
-  );
-}
-
-/** Between two cards, centred on the line: add a stop there at a halfway time. */
-export function AddBetween({ onAdd }: { onAdd: () => void }) {
-  return (
-    <li className="list-none">
-      {/* A small + on the line between two cards: there when you want it,
-          not a card's worth of height between every stop. */}
       <div className="flex items-center gap-2 px-6">
         <span aria-hidden className="h-px flex-1 bg-border/70" />
-        <button
-          type="button"
-          onClick={onAdd}
-          aria-label="Add stop between"
-          title="Add stop between"
-          className="tap-44 grid size-6 place-items-center rounded-full border border-primary/30 bg-card text-primary"
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          aria-label={`Directions from ${from.title} to ${to.title}`}
+          title={`Directions to ${to.title}`}
+          className="tap-44 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-primary/30 bg-card px-2.5 text-[11.5px] font-semibold text-muted-foreground shadow-sm"
         >
-          <Plus className="size-3.5" aria-hidden />
-        </button>
+          <PawPrint className="size-4 text-primary" aria-hidden />
+          {showTime && measured ? (
+            <span>
+              {prettyDuration(leg.duration)} {how} · {prettyDistance(leg.distance)}
+            </span>
+          ) : null}
+        </a>
         <span aria-hidden className="h-px flex-1 bg-border/70" />
       </div>
     </li>

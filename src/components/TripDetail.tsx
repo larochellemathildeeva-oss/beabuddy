@@ -71,10 +71,10 @@ import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { NowPanel } from "@/components/day/NowPanel";
 import { PackingBody } from "@/components/PackingLists";
 import { TripTodosBody } from "@/components/TripTodos";
-import { companionStops, isDone, midpointTime, toggleDoneWrite } from "@/lib/companion";
+import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
 import { CustomizeTrip } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
-import { AddBetween, TimelineEntry, TransitConnector } from "@/components/day/TimelineCard";
+import { PawConnector, TimelineEntry } from "@/components/day/TimelineCard";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
 import {
   asPerspective,
@@ -832,7 +832,7 @@ export function TripDetail({
                 ))}
               </div>
               <span className="w-full text-[12px] text-muted-foreground">
-                Tap a stop to edit it · Add stops between
+                Tap a stop to edit it · 🐾 for directions
               </span>
             </div>
           )}
@@ -1040,29 +1040,27 @@ export function TripDetail({
                                       tripEnd={trip.end_date}
                                       onKeep={keepItemAsReco}
                                     />
-                                    {view.prefs.walkTimes && (
-                                      <TransitConnector
-                                        leg={legFor(itemIndexById.get(item.id) ?? -1)}
-                                      />
-                                    )}
-                                    {!editingTimeline &&
-                                      group.key &&
-                                      dayIndex < group.items.length - 1 && (
-                                        <AddBetween
-                                          onAdd={() => {
-                                            insertAnchor.current = null;
-                                            setAddBetween({
-                                              afterId: item.id,
-                                              time: midpointTime(
-                                                item.time_label,
-                                                group.items[dayIndex + 1]!.time_label,
-                                              ),
-                                            });
-                                            setAddDay(group.key);
-                                            setAddingTimeline(true);
-                                          }}
+                                    {(() => {
+                                      // The next stop on the list as shown, so
+                                      // the paw never points at a hidden one.
+                                      const next = group.items
+                                        .slice(dayIndex + 1)
+                                        .find((n) => !(hidingDone && isDone(n)));
+                                      if (!next || editingTimeline) return null;
+                                      const adjacent = group.items[dayIndex + 1] === next;
+                                      const leg = adjacent
+                                        ? legFor(itemIndexById.get(item.id) ?? -1)
+                                        : undefined;
+                                      return (
+                                        <PawConnector
+                                          from={item}
+                                          to={next}
+                                          leg={leg}
+                                          area={directionArea ?? ""}
+                                          showTime={view.prefs.walkTimes}
                                         />
-                                      )}
+                                      );
+                                    })()}
                                   </Fragment>
                                 ),
                               )}
@@ -1098,7 +1096,21 @@ export function TripDetail({
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
                           />
-                          {view.prefs.walkTimes && <TransitConnector leg={legFor(i)} />}
+                          {(() => {
+                            const next = board.items
+                              .slice(i + 1)
+                              .find((n) => !(hidingDone && isDone(n)));
+                            if (!next || editingTimeline) return null;
+                            return (
+                              <PawConnector
+                                from={item}
+                                to={next}
+                                leg={board.items[i + 1] === next ? legFor(i) : undefined}
+                                area={directionArea ?? ""}
+                                showTime={view.prefs.walkTimes}
+                              />
+                            );
+                          })()}
                         </Fragment>
                       ),
                     )}

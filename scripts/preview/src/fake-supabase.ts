@@ -58,7 +58,7 @@ function items(): Row[] {
   return [
     r("a", D1, 0, "08:36", "transport", "Arrive Hiroshima Station", 34.3977, 132.4753, { arrived_at: ago(95), left_at: ago(70) }),
     r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4" }),
-    r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome", 34.3955, 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
+    r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", 34.3955, 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
     r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", 34.396, 132.4518),
     r("e", D1, 4, "13:00", "meal", "Lunch: Kakiya", 34.2968, 132.3207, { address: "Miyajima Omotesando", planned_stay_minutes: 50 }),
     r("f", D1, 5, "14:15", "activity", "Omotesando food crawl", 34.2985, 132.3218),
