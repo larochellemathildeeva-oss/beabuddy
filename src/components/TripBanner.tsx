@@ -34,6 +34,7 @@ export function TripBanner({
   stops = [],
   note,
   viewTransitionName,
+  compact = false,
 }: {
   title: string;
   city?: string | null;
@@ -61,6 +62,12 @@ export function TripBanner({
    * never by anything a second trip could also be.
    */
   viewTransitionName?: string | undefined;
+  /**
+   * The thin bar pinned to the top of the trip page: title, one line of where
+   * and when, and the countdown. No note, map or credit, because it stays on
+   * screen the whole time and every pixel of it is taken from the itinerary.
+   */
+  compact?: boolean;
 }) {
   const url = useSignedPhoto(photo?.storage_path ?? null);
   const tint = fallbackTint(title || city || "Béa");
@@ -74,16 +81,24 @@ export function TripBanner({
   const placeLine = [where, length].filter(Boolean).join(" · ");
   const whenLine = [tripDateLine(startDate, endDate), companions].filter(Boolean).join(" · ");
 
+  const height = compact ? "h-[68px]" : "h-[136px]";
+  const pad = compact ? "px-3 py-2" : "p-3.5";
+  const titleSize = compact ? "text-[18px]" : "text-[21px]";
+  // Compact joins the two lines: a bar with three lines is not thin.
+  const lines = compact
+    ? [[placeLine, whenLine].filter(Boolean).join(" · ")]
+    : [placeLine, whenLine];
+  const shownNote = compact ? null : note;
+
   const pill = now ? "Underway" : soon ? soon : tentative ? "Tentative" : "";
   // Only worth drawing a map when there is something on it.
-  const hasPlacedStop = stops.some(
-    (stop) => typeof stop.lat === "number" && typeof stop.lon === "number",
-  );
+  const hasPlacedStop =
+    !compact && stops.some((stop) => typeof stop.lat === "number" && typeof stop.lon === "number");
 
   if (!url) {
     return (
       <div
-        className="relative h-[136px] w-full overflow-hidden"
+        className={`relative ${height} w-full overflow-hidden`}
         style={{
           backgroundImage: `linear-gradient(150deg, ${tint.from}, ${tint.to})`,
           ...(viewTransitionName ? { viewTransitionName } : {}),
@@ -106,7 +121,7 @@ export function TripBanner({
           >
             <TripMap stops={stops} compact />
           </span>
-        ) : (
+        ) : compact ? null : (
           <span
             aria-hidden
             className="absolute right-3 top-1 font-display text-[92px] leading-none text-foreground/10"
@@ -114,13 +129,21 @@ export function TripBanner({
             {tripMonogram(title, city)}
           </span>
         )}
-        <div className="absolute inset-x-0 bottom-0 flex items-end gap-2 p-3.5">
+        <div className={`absolute inset-x-0 bottom-0 flex items-end gap-2 ${pad}`}>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-[21px] leading-tight">{title}</p>
-            <p className="truncate text-[12.5px] text-foreground/70">{placeLine}</p>
-            <p className="truncate text-[12.5px] text-foreground/60">{whenLine}</p>
-            {note ? (
-              <p className="mt-1 line-clamp-2 text-[12.5px] text-foreground/75">{note}</p>
+            <p className={`truncate font-display ${titleSize} leading-tight`}>{title}</p>
+            {lines.map((line, i) =>
+              line ? (
+                <p
+                  key={i}
+                  className={`truncate text-[12.5px] ${i === 0 ? "text-foreground/70" : "text-foreground/60"}`}
+                >
+                  {line}
+                </p>
+              ) : null,
+            )}
+            {shownNote ? (
+              <p className="mt-1 line-clamp-2 text-[12.5px] text-foreground/75">{shownNote}</p>
             ) : null}
           </div>
           {pill ? (
@@ -135,7 +158,7 @@ export function TripBanner({
 
   return (
     <div
-      className="relative h-[136px] w-full overflow-hidden"
+      className={`relative ${height} w-full overflow-hidden`}
       style={viewTransitionName ? { viewTransitionName } : undefined}
     >
       {/* eager, not lazy: a transition cannot tween an image the browser has
@@ -151,12 +174,22 @@ export function TripBanner({
             "linear-gradient(to top, rgba(23,16,12,0.80), rgba(23,16,12,0.28) 45%, rgba(23,16,12,0.02) 78%)",
         }}
       />
-      <div className="absolute inset-x-0 bottom-0 flex items-end gap-2 p-3.5">
+      <div className={`absolute inset-x-0 bottom-0 flex items-end gap-2 ${pad}`}>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-display text-[21px] leading-tight text-white">{title}</p>
-          <p className="truncate text-[12.5px] text-white/80">{placeLine}</p>
-          <p className="truncate text-[12.5px] text-white/70">{whenLine}</p>
-          {note ? <p className="mt-1 line-clamp-2 text-[12.5px] text-white/80">{note}</p> : null}
+          <p className={`truncate font-display ${titleSize} leading-tight text-white`}>{title}</p>
+          {lines.map((line, i) =>
+            line ? (
+              <p
+                key={i}
+                className={`truncate text-[12.5px] ${i === 0 ? "text-white/80" : "text-white/70"}`}
+              >
+                {line}
+              </p>
+            ) : null,
+          )}
+          {shownNote ? (
+            <p className="mt-1 line-clamp-2 text-[12.5px] text-white/80">{shownNote}</p>
+          ) : null}
         </div>
         {pill ? (
           <span className="shrink-0 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-foreground">
@@ -164,7 +197,7 @@ export function TripBanner({
           </span>
         ) : null}
       </div>
-      {photo ? (
+      {photo && !compact ? (
         <span className="absolute right-2.5 top-2.5 rounded-full bg-black/25 px-2 py-0.5 text-[10.5px] text-white/85">
           {photoCreditLine(photo)}
         </span>

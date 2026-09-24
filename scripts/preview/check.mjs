@@ -293,6 +293,30 @@ await flow("locate on map: opens Map Split on that stop", async (page) => {
     throw new Error("the located stop is not the one selected");
 });
 
+await flow("companion: pick a day from the prompt itself", async (page) => {
+  await goTab(page, "Companion");
+  await page.getByRole("tab", { name: /Whole trip/ }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.getByText("Pick a day to follow.").count()) === 0) throw new Error("no prompt on Whole trip");
+  const days = page.getByRole("group", { name: "Day to follow" }).getByRole("button");
+  if ((await days.count()) < 2) throw new Error("the prompt offers fewer than two days");
+  await days.first().click();
+  await page.waitForTimeout(400);
+  if ((await page.getByText("Pick a day to follow.").count()) > 0) throw new Error("picking a day left the prompt up");
+  if ((await page.getByRole("tab", { name: /Day 1/, selected: true }).count()) === 0)
+    throw new Error("the day strip does not show the picked day");
+});
+
+await flow("banner stays pinned while the page scrolls", async (page) => {
+  await goTab(page, "Timeline");
+  const bar = page.locator("article > div.sticky").first();
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(300);
+  const box = await bar.boundingBox();
+  if (!box || Math.abs(box.y) > 2) throw new Error(`banner is at y=${box?.y}, not pinned to the top`);
+  if (box.height > 80) throw new Error(`banner is ${box.height}px tall, not thin`);
+});
+
 await browser.close();
 writeFileSync(join(out, "report.json"), JSON.stringify({ clicked, failures }, null, 2));
 console.log(`\n${clicked} controls clicked, ${failures.length} problem(s). Screenshots in scripts/preview/out/`);

@@ -484,38 +484,50 @@ export function TripDetail({
     cities: cities.stops.map((stop) => stop.city),
   });
 
+  const tripNote = beaTripNote(
+    {
+      startDate: trip.start_date,
+      endDate: trip.end_date,
+      stopCount: cities.stops.length,
+      plannedCount: board.items.length,
+    },
+    toLocalISODate(new Date()),
+  );
+
   return (
-    <article className="card-soft overflow-hidden">
-      <TripBanner
-        title={trip.title}
-        city={trip.city}
-        country={trip.country}
-        cities={cities.stops.map((stop) => stop.city)}
-        startDate={trip.start_date}
-        endDate={trip.end_date}
-        tentative={trip.dates_status === "tentative"}
-        photo={banner}
-        companions={companionsLine}
-        stops={cities.stops.map((stop) => ({
-          title: stop.place_name || stop.city,
-          ...(stop.lat != null ? { lat: stop.lat } : {}),
-          ...(stop.lon != null ? { lon: stop.lon } : {}),
-        }))}
-        note={beaTripNote(
-          {
-            startDate: trip.start_date,
-            endDate: trip.end_date,
-            stopCount: cities.stops.length,
-            plannedCount: board.items.length,
-          },
-          toLocalISODate(new Date()),
-        )}
-        // The same name as the card in the list, so the browser tweens the one
-        // photograph between them instead of cutting.
-        viewTransitionName={`trip-photo-${trip.id}`}
-      />
+    // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
+    // not hidden: hidden makes this the scroll box and the pinned banner would
+    // never stick.
+    <article className="overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card">
+      {/* Pinned: where and when stay on screen while the itinerary scrolls. */}
+      <div className="sticky top-0 z-30 shadow-sm">
+        <TripBanner
+          compact
+          title={trip.title}
+          city={trip.city}
+          country={trip.country}
+          cities={cities.stops.map((stop) => stop.city)}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          tentative={trip.dates_status === "tentative"}
+          photo={banner}
+          companions={companionsLine}
+          stops={cities.stops.map((stop) => ({
+            title: stop.place_name || stop.city,
+            ...(stop.lat != null ? { lat: stop.lat } : {}),
+            ...(stop.lon != null ? { lon: stop.lon } : {}),
+          }))}
+          // The same name as the card in the list, so the browser tweens the one
+          // photograph between them instead of cutting.
+          viewTransitionName={`trip-photo-${trip.id}`}
+        />
+      </div>
+      {/* Béa's line scrolls away with the page; only the bar above stays. */}
+      {tripNote ? (
+        <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
+      ) : null}
       {/* The prototype's labelled action pills, in place of bare icons. */}
-      <div className="flex flex-wrap items-center gap-1.5 p-3">
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5">
         <button
           data-guide="bea-plan"
           title="Let Béa plan this trip"
@@ -577,7 +589,7 @@ export function TripDetail({
         </span>
       </div>
 
-      <div className="section-stagger border-t border-border px-4 pb-4 pt-3">
+      <div className="section-stagger border-t border-border px-3 pb-4 pt-3">
         <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
           <div className="flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
@@ -709,8 +721,36 @@ export function TripDetail({
                 <p className="text-[14px] text-muted-foreground">
                   {board.items.length === 0
                     ? "Add stops in the Timeline tab, or let Béa draft the days from a plan you already have."
-                    : "Choose a day above and Companion walks through it with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
+                    : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
                 </p>
+                {/* The days right here, so the prompt is never a dead end: the
+                    strip above scrolls sideways and is easy to miss. */}
+                {board.items.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Day to follow"
+                    className="flex flex-wrap gap-1.5 pt-1"
+                  >
+                    {dayChips(timelineGroups, todayKey)
+                      .filter((chip) => chip.count > 0)
+                      .map((chip) => (
+                        <button
+                          key={chip.key || "undated"}
+                          type="button"
+                          onClick={() => setDayChoice(chip.key)}
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold"
+                        >
+                          {chip.ordinal ? (
+                            <span className="text-primary">{chip.ordinal}</span>
+                          ) : null}
+                          {chip.label}
+                          <span className="text-[11.5px] font-normal text-muted-foreground">
+                            {chip.count}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

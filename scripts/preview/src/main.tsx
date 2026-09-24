@@ -18,7 +18,8 @@ const trip = {
 } as never;
 
 createRoot(document.getElementById("root")!).render(
-  <div style={{ width: 390 }} className="bg-background px-3 py-3">
+  // Like the app shell on a phone: full width, no padding, page scrolls.
+  <div className="min-h-screen bg-background pb-7">
     <Toaster />
     <TripDetail
       trip={trip}

@@ -33,6 +33,7 @@ export function AppShell({
   title,
   headerAction,
   publicPage = false,
+  flush = false,
 }: {
   children: ReactNode;
   eyebrow?: string;
@@ -45,6 +46,11 @@ export function AppShell({
    * behind an account makes the consent unreadable before it is given.
    */
   publicPage?: boolean;
+  /**
+   * Content runs to the edges of the frame with no top gap, for a page that
+   * pins its own header (the trip page) and needs the width on a phone.
+   */
+  flush?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // The plane travels with the route, so the shell asks the router rather than
@@ -218,7 +224,7 @@ export function AppShell({
           // the list rather than on the card you left — the single thing that
           // makes a back button feel broken.
           data-scroll-restoration-id="app-main"
-          className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-7 pt-3"
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-7 ${flush ? "px-0 pt-0" : "px-4 pt-3"}`}
         >
           {/* Keyed by path so each destination plays its plane's entrance once.
               Path, not the whole location: a filter change writes to the search

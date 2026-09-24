@@ -264,3 +264,17 @@ See `docs/UI_PORT_PLAN.md`. In short:
 - `audit/bea-google-maps-briefing.txt` — the provider decision (this branch).
 - The full product/logic/trust audit is on branch
   `claude/bea-codebase-audit-lcvwkb`, not here.
+
+## Owner feedback after phase 4 (2026-09-24)
+
+- **Wider page:** the trip page runs edge to edge on a phone (`AppShell flush`),
+  and is a card again from tablet width up. The shell's page title is dropped
+  there because the banner carries the trip's name.
+- **Pinned, thin banner:** `TripBanner compact` (68 px: title, one line of
+  where and when, countdown) is `sticky top-0` inside the page. Béa's note
+  moved under it and scrolls away. The article uses `overflow-clip`, not
+  `overflow-hidden`, or the banner would not stick.
+- **Companion "Pick a day":** the prompt lists the days as buttons, so it is
+  never a dead end even when the day strip's cards are off screen.
+- Checker: two new flows, "companion: pick a day from the prompt itself" and
+  "banner stays pinned while the page scrolls".
