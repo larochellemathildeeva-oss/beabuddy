@@ -1,13 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  ListChecks,
-  Pencil,
-  Plus,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { Check, ChevronDown, ListChecks, Pencil, Plus, Settings, Sparkles } from "lucide-react";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
@@ -668,6 +660,16 @@ export function TripDetail({
             progress survives a tab switch and the action row's buttons can
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
+          {board.items.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-sm">
+              <span className="text-[13px] font-semibold">
+                {board.items.length} scheduled {board.items.length === 1 ? "stop" : "stops"}
+              </span>
+              <span className="text-[12px] text-muted-foreground">
+                Tap a time to change it · Add stops between
+              </span>
+            </div>
+          )}
           <Section
             guide="trip-timeline"
             title="Your itinerary"
@@ -830,7 +832,7 @@ export function TripDetail({
                             )}
                           </div>
                           {dayOpen && (
-                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
+                            <ol className="relative mx-1.5 mb-2 min-w-0 space-y-2 overflow-x-hidden py-1.5">
                               {group.items.map((item, dayIndex) => (
                                 <Fragment key={item.id}>
                                   {divider === dayIndex && <NowLine />}
