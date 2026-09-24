@@ -22,7 +22,6 @@ import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
 import { TripPrep } from "@/components/TripPrep";
-import { TripToday } from "@/components/TripToday";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -589,7 +588,6 @@ export function TripDetail({
 
         {perspective === "companion" && (
           <div className="space-y-3">
-            <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
             {nowStops.length > 0 ? (
               <>
                 {view.prefs.journey && <JourneyTracker stops={nowStops} />}
