@@ -35,3 +35,21 @@ test("placeFromWorldCountry pins the country on the globe", () => {
   assert.ok(Number.isFinite(place.lat));
   assert.ok(Number.isFinite(place.lon));
 });
+
+test("a country with trailing punctuation or half typed is still the country", async () => {
+  const { localPlaceHits, countriesStartingWith } = await import("./world-countries.ts");
+  assert.equal(localPlaceHits("Japan,")[0]?.name, "Japan");
+  assert.equal(localPlaceHits("Japan.")[0]?.name, "Japan");
+  assert.deepEqual(
+    countriesStartingWith("Jap").map((c) => c.name),
+    ["Japan"],
+  );
+  assert.deepEqual(
+    countriesStartingWith("Japa").map((c) => c.name),
+    ["Japan"],
+  );
+  assert.deepEqual(countriesStartingWith("Ja"), []);
+  assert.ok(countriesStartingWith("Ital").some((c) => c.name === "Italy"));
+  // A city is not turned into a country.
+  assert.equal(localPlaceHits("Paris, France").length, 0);
+});

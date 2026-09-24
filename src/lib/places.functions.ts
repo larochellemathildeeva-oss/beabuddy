@@ -17,7 +17,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { extractPastedPlaceLink } from "@/lib/place-paste";
 import { fetchPlaceHtml, UnsupportedPlaceUrlError, type FetchFailure } from "@/lib/place-url";
 import { geocodeIsTrustworthy, queryIsLocatable } from "@/lib/geocode-trust";
-import { fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
+import { foldAccents, fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import {
   placeFromNominatim,
   refineNominatimHits,
@@ -31,7 +31,11 @@ import {
   resolvePlaceCoords,
   splitPlacePathName,
 } from "@/lib/place-link";
-import { localPlaceHits } from "@/lib/world-countries";
+import {
+  countriesStartingWith,
+  localPlaceHits,
+  placeFromWorldCountry,
+} from "@/lib/world-countries";
 import {
   reverseUrl,
   searchUrl,
@@ -316,11 +320,23 @@ async function nominatimVariants(
   query: string,
   area: { viewbox: string; bounded: boolean } | undefined,
   pace: Pace,
+  prefer: "venue" | "area" = "venue",
 ): Promise<NominatimHit[]> {
   let fallback: NominatimHit[] = [];
-  for (const variant of fuzzyQueryVariants(query)) {
+  // Choosing a destination: the fuzzy variants ("japa", "japan's") exist to
+  // find shops, and a place people travel to is spelt as typed.
+  const variants = prefer === "area" ? [foldAccents(query)] : fuzzyQueryVariants(query);
+  for (const variant of variants) {
     const batch = await nominatim(variant, 10, area, pace);
     if (!batch.length) continue;
+    // A destination is a country, a region or a town — never the restaurant
+    // in Ohio that happens to be called "Japan".
+    if (prefer === "area") {
+      const places = batch.filter((hit) => !isVenueHit(hit));
+      if (places.length) return places;
+      if (!fallback.length) fallback = batch;
+      continue;
+    }
     // Prefer a venue over whatever else came back, bounded or not. Returning
     // the first non-empty worldwide batch outright — as this used to do —
     // trusted Nominatim's raw ranking for a query like "subway", which is
@@ -434,6 +450,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
          */
         near: z.string().max(200).nullish(),
         /**
+         * Choosing where a trip goes: countries and towns, not venues. Adds
+         * countries that start with what is typed, skips the tag search, and
+         * drops shops and restaurants from the geocoder's answer.
+         */
+        areas: z.boolean().nullish(),
+        /**
          * The middle of the trip, when there is no position: where "coffee"
          * or "subway" should be looked for while planning from home.
          */
@@ -447,13 +469,16 @@ export const searchPlaces = createServerFn({ method: "POST" })
     const data = { ...input, query: within(name) };
     const local = localPlaceHits(data.query);
     if (local.length) return local;
+    const typedCountries = input.areas
+      ? countriesStartingWith(name).map(placeFromWorldCountry)
+      : [];
 
     // A chain or a kind of place, with somewhere to look around: ask OSM's
     // tags first (see poi-search.ts). A category is answered by its tags
     // alone; a name is, when the answer is that exact brand or name —
     // otherwise its nearby look-alikes go first and the geocoder still runs.
     const anchor = input.at ?? input.center ?? null;
-    const intent = anchor ? poiIntent(name) : null;
+    const intent = anchor && !input.areas ? poiIntent(name) : null;
     let nearbyFirst: ParsedPlace[] = [];
     if (anchor && intent) {
       const radius = input.at ? RADIUS_NEAR_YOU_M : RADIUS_AROUND_TRIP_M;
@@ -486,7 +511,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     let hits: NominatimHit[] = [];
     if (area) {
       try {
-        hits = await nominatimVariants(data.query, area, pace);
+        hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");
       } catch {
         // A rate limit or outage on the *bounded* attempt must not skip the
         // worldwide fallback below — only a worldwide failure should reach
@@ -495,7 +520,13 @@ export const searchPlaces = createServerFn({ method: "POST" })
       }
     }
     if (!hits.length) {
-      hits = await nominatimVariants(data.query, undefined, pace);
+      try {
+        hits = await nominatimVariants(data.query, undefined, pace, input.areas ? "area" : "venue");
+      } catch (error) {
+        // "Jap" still has Japan to offer when the map service is busy.
+        if (!typedCountries.length) throw error;
+        return typedCountries;
+      }
     }
     // Still nothing: the name may be a list, or carry its local-script name in
     // brackets. One plain request per part, in the same place, first answer
@@ -526,6 +557,12 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // Searching near you: the nearest branch is the answer, whatever order the
     // map service ranked them in. Sort is stable, so equal distances keep it.
     const at = data.at;
+    if (typedCountries.length) {
+      const rest = ranked.filter(
+        (p) => !typedCountries.some((c) => c.name.toLowerCase() === p.name.toLowerCase()),
+      );
+      return [...typedCountries, ...rest].slice(0, 10);
+    }
     if (nearbyFirst.length) return mergeNearbyFirst(nearbyFirst, ranked);
     if (!at) return ranked;
     const away = (p: ParsedPlace) =>

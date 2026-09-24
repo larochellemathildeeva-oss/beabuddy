@@ -62,6 +62,7 @@ export function TripDetailsForm({ trip, onUpdate }: { trip: TripRow; onUpdate: O
           setForm({ ...form, city: loc.city, country: loc.country || form.country });
         }}
         placeholder="Starting city — search it"
+        areas
       />
       <DateRangeField
         start={form.start_date}

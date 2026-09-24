@@ -18,6 +18,7 @@ export function PlaceSearchInput({
   placeholder = "Search or type a place",
   near,
   center,
+  areas = false,
   /**
    * Where the person is, when it is known.
    *
@@ -42,6 +43,8 @@ export function PlaceSearchInput({
   near?: string;
   /** The middle of the trip: where a chain or "coffee" is looked for when `at` is unknown. */
   center?: { lat: number; lon: number } | null | undefined;
+  /** Choosing a destination: countries and towns first, never shops or restaurants. */
+  areas?: boolean;
   at?: { lat: number; lon: number } | null | undefined;
   onLocate?: (() => void) | undefined;
   typeAhead?: boolean;
@@ -93,6 +96,7 @@ export function PlaceSearchInput({
           ...(near ? { near } : {}),
           ...(at ? { at } : {}),
           ...(center ? { center } : {}),
+          ...(areas ? { areas: true } : {}),
         },
       });
       setHits(res);
@@ -140,6 +144,7 @@ export function PlaceSearchInput({
             ...(near ? { near } : {}),
             ...(at ? { at } : {}),
             ...(center ? { center } : {}),
+            ...(areas ? { areas: true } : {}),
           },
         });
         if (cancelled) return;
@@ -164,7 +169,7 @@ export function PlaceSearchInput({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [value, near, at, center, typeAhead, search]);
+  }, [value, near, at, center, areas, typeAhead, search]);
 
   /**
    * A position arriving is an answer to the search that just failed, so run
