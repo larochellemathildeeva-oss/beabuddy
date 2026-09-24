@@ -186,7 +186,7 @@ export function NowPanel({
           {offMap && (
             <p className="text-[12.5px] text-muted-foreground">
               {offMap.title} isn't on the map yet, so there's no time to leave by. Add its address
-              on the full trip page.
+              in the Day tab.
             </p>
           )}
           <div className="flex flex-wrap gap-2">

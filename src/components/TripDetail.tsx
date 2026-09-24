@@ -75,6 +75,19 @@ import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
+import { DayMapView } from "@/components/day/DayMapView";
+import { DayRibbon } from "@/components/day/DayRibbon";
+import { JourneyTracker } from "@/components/day/JourneyTracker";
+import { NowPanel } from "@/components/day/NowPanel";
+import { PackingBody } from "@/components/PackingLists";
+import { TripTodosBody } from "@/components/TripTodos";
+import { companionStops } from "@/lib/companion";
+import {
+  defaultPerspective,
+  TRIP_PERSPECTIVES,
+  tripIsUnderway,
+  type TripPerspective,
+} from "@/lib/trip-perspective";
 
 /**
  * A trip, as a page.
@@ -371,6 +384,33 @@ export function TripDetail({
   const offerDays = shouldOfferDays(timelineGroups);
   const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
 
+  /**
+   * Which way you are looking at the trip: Now, Map, Day or Trip.
+   *
+   * On the trip, Now opens first; before and after it, the day list does.
+   * Every function the page had is still here, sorted under a tab.
+   */
+  const [perspective, setPerspective] = useState<TripPerspective>(() =>
+    defaultPerspective(tripIsUnderway(trip, todayKey)),
+  );
+  const activePerspective = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
+  // Now follows one day: the one picked, or today when every day is showing.
+  const companionDay =
+    chosenDay === ALL_DAYS
+      ? (timelineGroups.find((group) => group.key !== "" && group.key === todayKey) ?? null)
+      : (shownGroups[0] ?? null);
+  const nowStops = companionDay ? companionStops(companionDay.items) : [];
+  // Fresh legs first, then saved ones while they still match the timeline.
+  const nowLegs = liveLegs ?? (savedFitsTimeline ? (dir.saved?.legs ?? null) : null);
+  const tripWide = {
+    international: cities.countries.length > 1 || Boolean(trip.country),
+    // Asked by glyph, not by raw kind. A flight stores as "flight" and a
+    // hotel as "hotel", so comparing strings here is how both of these
+    // quietly answered no for every imported trip.
+    hasLodging: board.items.some((item) => timelineGlyph(item) === "lodging"),
+    hasFlights: board.items.some((item) => timelineGlyph(item) === "transport"),
+  };
+
   // The trip's own photo, out of the one list loaded for the whole page.
   const banner = pickTripPhoto(photos, {
     city: trip.city,
@@ -426,7 +466,10 @@ export function TripDetail({
           data-guide="add-stop"
           aria-label="Add a stop to this trip"
           title="Add a stop"
-          onClick={() => setStopSignal((n) => n + 1)}
+          onClick={() => {
+            setPerspective("trip");
+            setStopSignal((n) => n + 1);
+          }}
           className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
         >
           <MapPinPlus className="size-4" />
@@ -485,326 +528,463 @@ export function TripDetail({
           </div>
         </div>
 
-        <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
-
-        <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
-
-        <TripPrep
-          tripId={trip.id}
-          uid={me.id}
-          international={cities.countries.length > 1 || Boolean(trip.country)}
-          hasLodging={
-            // Asked by glyph, not by raw kind. A flight stores as "flight" and
-            // a hotel as "hotel", so comparing strings here is how both of
-            // these quietly answered no for every imported trip.
-            board.items.some((item) => timelineGlyph(item) === "lodging")
-          }
-          hasFlights={board.items.some((item) => timelineGlyph(item) === "transport")}
-          tripStart={trip.start_date}
-          openSignal={prepSignal}
-        />
-
-        {trip.budget_enabled && <TripBudget tripId={trip.id} />}
-
-        <Section
-          guide="trip-timeline"
-          title="Your itinerary"
-          hint={
-            board.items.length === 0
-              ? "Activities, meals, transport and notes."
-              : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`
-          }
-          open={timelineOpen}
-          onToggle={() => setTimelineOpen((v) => !v)}
-          actions={
-            <>
-              <SectionAction
-                onClick={() => {
-                  setAddDay("");
-                  setTimelineOpen(true);
-                  setAddingTimeline(!addingTimeline);
-                }}
-              >
-                {addingTimeline ? "Cancel" : "Add"}
-              </SectionAction>
-              {board.items.length > 0 && (
-                <SectionAction
-                  icon
-                  pressed={editingTimeline}
-                  label={editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
-                  onClick={() => {
-                    setTimelineOpen(true);
-                    setEditingTimeline((v) => !v);
-                  }}
-                >
-                  {editingTimeline ? (
-                    <Check className="size-4" aria-hidden />
-                  ) : (
-                    <Pencil className="size-4" aria-hidden />
-                  )}
-                </SectionAction>
-              )}
-              {board.items.length >= 2 && (
-                <SectionAction
-                  guide="optimize-trip"
-                  onClick={() => {
-                    setPlannerTab("optimize");
-                    setPlannerOpen(true);
-                  }}
-                >
-                  Optimize
-                </SectionAction>
-              )}
-            </>
-          }
+        <nav
+          role="tablist"
+          aria-label="How to look at this trip"
+          className="no-scrollbar -mx-1 mb-1.5 flex gap-1.5 overflow-x-auto px-1"
         >
-          {timelineOpen && (
-            <div className="space-y-3">
-              {board.items.length > 0 && (
-                <div
-                  role="group"
-                  aria-label="Timeline layout"
-                  className="flex gap-1.5 rounded-xl border border-border bg-elevated p-1"
-                >
-                  {(
-                    [
-                      ["list", "All entries"],
-                      ["day", "By day"],
-                    ] as const
-                  ).map(([mode, label]) => {
-                    const active = mode === "day" ? timelineByDay : !timelineByDay;
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        aria-pressed={active}
-                        onClick={() => setTimelineByDay(mode === "day")}
-                        className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
-                          active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* The strip only appears in day view: the flat list is one
-                  run of rows on purpose, and filtering it to a day would
-                  leave a list with nothing to be flat about. */}
-              {board.items.length > 0 && timelineByDay && offerDays && (
-                <DaySelector
-                  chips={dayChips(timelineGroups, todayKey)}
-                  value={chosenDay}
-                  onChange={setDayChoice}
-                />
-              )}
-
-              {board.items.length === 0 ? null : timelineByDay ? (
-                <div className="space-y-3">
-                  {shownGroups.map((group) => {
-                    const dayOpen = !collapsedDays[group.key];
-                    const isToday = group.key === todayKey;
-                    const divider = isToday ? nowDivider(group.items, minutesNow) : null;
-                    const coming = isToday ? nextUp(group.items, minutesNow) : null;
-                    const untilNext = minutesUntilLabel(coming, minutesNow);
-                    // Both read the day as written: one says where the clock
-                    // and the distances disagree, the other says which stops
-                    // are close enough that their order stops mattering.
-                    const tight = dayTightnessNote(group.items);
-                    const runLabels = runLabelsByIndex(walkableRuns(group.items));
-                    return (
-                      <div
-                        key={group.key || "undated"}
-                        className="rounded-xl border border-border/60"
-                      >
-                        <div className="flex items-center gap-1 pr-2">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCollapsedDays((prev) => ({
-                                ...prev,
-                                [group.key]: !prev[group.key],
-                              }))
-                            }
-                            aria-expanded={dayOpen}
-                            className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
-                          >
-                            <span className="min-w-0">
-                              <span className="block font-display text-[20px] leading-tight">
-                                {group.label}
-                              </span>
-                              <span className="block text-[12.5px] text-muted-foreground">
-                                {/* What the day is made of, not just how big it
-                                    is: eighteen museums and eighteen meals are
-                                    not the same Tuesday. */}
-                                {dayShapeLine(group.items) ||
-                                  `${group.items.length} ${group.items.length === 1 ? "thing" : "things"}`}
-                              </span>
-                              {coming && (
-                                <span className="mt-0.5 block text-[12.5px] font-semibold text-primary">
-                                  Next: {coming.title}
-                                  {untilNext ? ` · ${untilNext}` : ""}
-                                </span>
-                              )}
-                              {/* Two numbers the plan already carries, put
-                                  next to each other. Never a verdict on the
-                                  day — the reader draws that themselves. */}
-                              {tight && (
-                                <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                  {tight}
-                                </span>
-                              )}
-                            </span>
-                            <ChevronDown
-                              className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
-                                dayOpen ? "" : "-rotate-90"
-                              }`}
-                              aria-hidden
-                            />
-                          </button>
-                          {group.key && (
-                            <button
-                              type="button"
-                              aria-label={`Add something to ${group.label}`}
-                              onClick={() => {
-                                setAddDay(group.key);
-                                setAddingTimeline(true);
-                              }}
-                              className="tap-44 grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
-                            >
-                              <Plus className="size-3.5" aria-hidden />
-                            </button>
-                          )}
-                        </div>
-                        {dayOpen && (
-                          <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
-                            {group.items.map((item, dayIndex) => (
-                              <Fragment key={item.id}>
-                                {divider === dayIndex && <NowLine />}
-                                {/* A run of stops close enough together to be
-                                    one decision rather than several. A label,
-                                    not a container: the rows underneath are
-                                    unchanged, and still reorder one at a
-                                    time. */}
-                                {runLabels.has(dayIndex) && (
-                                  <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
-                                    {runLabels.get(dayIndex)}
-                                  </li>
-                                )}
-                                <TimelineEntry
-                                  item={item}
-                                  showDay={false}
-                                  leg={legFor(itemIndexById.get(item.id) ?? -1)}
-                                  editing={editingTimeline}
-                                  {...(directionArea ? { near: directionArea } : {})}
-                                  onEdit={(field) => board.setEditing(field)}
-                                  onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                                  onRemove={() => void removeTimelineItem(item)}
-                                  onMove={(direction) => void board.moveItem(item.id, direction)}
-                                  canMoveUp={canMove(board.items, item.id, -1)}
-                                  canMoveDown={canMove(board.items, item.id, 1)}
-                                  tripStart={trip.start_date}
-                                  tripEnd={trip.end_date}
-                                  onKeep={keepItemAsReco}
-                                />
-                              </Fragment>
-                            ))}
-                            {divider === group.items.length && <NowLine done />}
-                          </ol>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
-                  {board.items.map((item, i) => (
-                    <TimelineEntry
-                      key={item.id}
-                      item={item}
-                      showDay
-                      leg={legFor(i)}
-                      editing={editingTimeline}
-                      {...(directionArea ? { near: directionArea } : {})}
-                      onEdit={(field) => board.setEditing(field)}
-                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                      onRemove={() => void removeTimelineItem(item)}
-                      onMove={(direction) => void board.moveItem(item.id, direction)}
-                      canMoveUp={canMove(board.items, item.id, -1)}
-                      canMoveDown={canMove(board.items, item.id, 1)}
-                      tripStart={trip.start_date}
-                      tripEnd={trip.end_date}
-                      onKeep={keepItemAsReco}
-                    />
-                  ))}
-                </ol>
-              )}
-
-              {/**
-               * Adding opens over the page, not under the list.
-               *
-               * This form used to render after every entry on the timeline, so
-               * on a trip with a day's worth of stops the Add button scrolled
-               * a form into existence somewhere below the fold. Over the page
-               * it arrives where you are looking, with the fields in reach.
-               */}
-              <Sheet
-                open={addingTimeline}
-                onClose={() => {
-                  setAddingTimeline(false);
-                  setAddDay("");
-                }}
-                title="Add to the timeline"
+          {TRIP_PERSPECTIVES.map((p) => {
+            const on = p.id === perspective;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                onClick={() => setPerspective(p.id)}
+                className={`min-h-11 shrink-0 rounded-xl border px-4 text-[13.5px] font-semibold transition-colors ${
+                  on
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground"
+                }`}
               >
-                <TimelineEntryForm
-                  tripStart={trip.start_date}
-                  tripEnd={trip.end_date}
-                  {...(addDay ? { openDay: addDay } : {})}
-                  {...(directionArea ? { near: directionArea } : {})}
-                  existing={board.items.map((item) => ({
-                    title: item.title,
-                    address: item.address,
-                    lat: item.lat,
-                    lon: item.lon,
-                  }))}
-                  onAdd={board.addItem}
-                  onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
-                  onDone={() => {
-                    setAddingTimeline(false);
-                    setAddDay("");
-                  }}
-                />
-              </Sheet>
+                {p.label}
+              </button>
+            );
+          })}
+        </nav>
+        <p className="mb-3 text-[12.5px] text-muted-foreground">{activePerspective.hint}</p>
+
+        {(perspective === "companion" || perspective === "map") &&
+          board.items.length > 0 &&
+          offerDays && (
+            <div className="mb-3">
+              <DaySelector
+                chips={dayChips(timelineGroups, todayKey)}
+                value={chosenDay}
+                onChange={setDayChoice}
+              />
             </div>
           )}
 
-          {/* Directions live with the stops they join rather than in a section
-              of their own: this is the control strip, and each leg draws under
-              the entry it leaves from. */}
-          <ItineraryDirections
-            stops={directionStops}
-            existingTitles={board.items.map((i) => i.title)}
-            onAddToTimeline={board.upsertItems}
-            onKeepOffline={dir.keep}
-            onLegs={setLiveLegs}
-            onPlaced={(placed) => {
-              // The router already found these. Keep them, so the map can draw
-              // the trip and the next Refresh does not pay for the same lookups.
-              for (const stop of placed) {
-                void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
-              }
-            }}
-            {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
-            {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
-            {...(directionArea ? { area: directionArea } : {})}
-          />
-        </Section>
+        {perspective === "companion" && (
+          <div className="space-y-3">
+            <TripToday startDate={trip.start_date} endDate={trip.end_date} items={board.items} />
+            {nowStops.length > 0 ? (
+              <>
+                <JourneyTracker stops={nowStops} />
+                <DayRibbon stops={nowStops} />
+                <NowPanel
+                  key={companionDay?.key ?? ""}
+                  dayStops={nowStops}
+                  tripStops={companionStops(board.items)}
+                  legs={nowLegs}
+                  onProgress={board.setProgress}
+                  onPlanStay={(id, minutes) =>
+                    board.updateItem(id, { planned_stay_minutes: minutes })
+                  }
+                />
+              </>
+            ) : (
+              <div className="card-soft space-y-2 p-4">
+                <p className="font-display text-[19px] leading-snug">
+                  {board.items.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
+                </p>
+                <p className="text-[14px] text-muted-foreground">
+                  {board.items.length === 0
+                    ? "Add stops in the Day tab, or let Béa draft the days from a plan you already have."
+                    : "Choose a day above and Now walks through it with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* The same stop list the directions are built from, so the map and
-            the route can never describe different journeys. */}
-        <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+        {/* Mounted only while showing: Leaflet cannot lay out in a hidden box. */}
+        {perspective === "map" && (
+          <div className="space-y-3">
+            {board.items.length > 0 && (
+              <DayMapView
+                key={chosenDay}
+                groups={shownGroups}
+                area={formatTripLocation(trip.city, trip.country)}
+              />
+            )}
+            {/* The whole trip, city to city. The same stop list the directions
+                are built from, so the map and the route can never describe
+                different journeys. */}
+            <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+          </div>
+        )}
+
+        {/* Day and Trip stay mounted and are hidden instead, so an edit in
+            progress survives a tab switch and the action row's buttons can
+            open their forms from any tab. */}
+        <div hidden={perspective !== "timeline"}>
+          <Section
+            guide="trip-timeline"
+            title="Your itinerary"
+            hint={
+              board.items.length === 0
+                ? "Activities, meals, transport and notes."
+                : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`
+            }
+            open={timelineOpen}
+            onToggle={() => setTimelineOpen((v) => !v)}
+            actions={
+              <>
+                <SectionAction
+                  onClick={() => {
+                    setAddDay("");
+                    setTimelineOpen(true);
+                    setAddingTimeline(!addingTimeline);
+                  }}
+                >
+                  {addingTimeline ? "Cancel" : "Add"}
+                </SectionAction>
+                {board.items.length > 0 && (
+                  <SectionAction
+                    icon
+                    pressed={editingTimeline}
+                    label={editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                    onClick={() => {
+                      setTimelineOpen(true);
+                      setEditingTimeline((v) => !v);
+                    }}
+                  >
+                    {editingTimeline ? (
+                      <Check className="size-4" aria-hidden />
+                    ) : (
+                      <Pencil className="size-4" aria-hidden />
+                    )}
+                  </SectionAction>
+                )}
+                {board.items.length >= 2 && (
+                  <SectionAction
+                    guide="optimize-trip"
+                    onClick={() => {
+                      setPlannerTab("optimize");
+                      setPlannerOpen(true);
+                    }}
+                  >
+                    Optimize
+                  </SectionAction>
+                )}
+              </>
+            }
+          >
+            {timelineOpen && (
+              <div className="space-y-3">
+                {board.items.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Timeline layout"
+                    className="flex gap-1.5 rounded-xl border border-border bg-elevated p-1"
+                  >
+                    {(
+                      [
+                        ["list", "All entries"],
+                        ["day", "By day"],
+                      ] as const
+                    ).map(([mode, label]) => {
+                      const active = mode === "day" ? timelineByDay : !timelineByDay;
+                      return (
+                        <button
+                          key={mode}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() => setTimelineByDay(mode === "day")}
+                          className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
+                            active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* The strip only appears in day view: the flat list is one
+                    run of rows on purpose, and filtering it to a day would
+                    leave a list with nothing to be flat about. */}
+                {board.items.length > 0 && timelineByDay && offerDays && (
+                  <DaySelector
+                    chips={dayChips(timelineGroups, todayKey)}
+                    value={chosenDay}
+                    onChange={setDayChoice}
+                  />
+                )}
+
+                {board.items.length === 0 ? null : timelineByDay ? (
+                  <div className="space-y-3">
+                    {shownGroups.map((group) => {
+                      const dayOpen = !collapsedDays[group.key];
+                      const isToday = group.key === todayKey;
+                      const divider = isToday ? nowDivider(group.items, minutesNow) : null;
+                      const coming = isToday ? nextUp(group.items, minutesNow) : null;
+                      const untilNext = minutesUntilLabel(coming, minutesNow);
+                      // Both read the day as written: one says where the clock
+                      // and the distances disagree, the other says which stops
+                      // are close enough that their order stops mattering.
+                      const tight = dayTightnessNote(group.items);
+                      const runLabels = runLabelsByIndex(walkableRuns(group.items));
+                      return (
+                        <div
+                          key={group.key || "undated"}
+                          className="rounded-xl border border-border/60"
+                        >
+                          <div className="flex items-center gap-1 pr-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCollapsedDays((prev) => ({
+                                  ...prev,
+                                  [group.key]: !prev[group.key],
+                                }))
+                              }
+                              aria-expanded={dayOpen}
+                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
+                            >
+                              <span className="min-w-0">
+                                <span className="block font-display text-[20px] leading-tight">
+                                  {group.label}
+                                </span>
+                                <span className="block text-[12.5px] text-muted-foreground">
+                                  {/* What the day is made of, not just how big it
+                                      is: eighteen museums and eighteen meals are
+                                      not the same Tuesday. */}
+                                  {dayShapeLine(group.items) ||
+                                    `${group.items.length} ${group.items.length === 1 ? "thing" : "things"}`}
+                                </span>
+                                {coming && (
+                                  <span className="mt-0.5 block text-[12.5px] font-semibold text-primary">
+                                    Next: {coming.title}
+                                    {untilNext ? ` · ${untilNext}` : ""}
+                                  </span>
+                                )}
+                                {/* Two numbers the plan already carries, put
+                                    next to each other. Never a verdict on the
+                                    day — the reader draws that themselves. */}
+                                {tight && (
+                                  <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
+                                    {tight}
+                                  </span>
+                                )}
+                              </span>
+                              <ChevronDown
+                                className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
+                                  dayOpen ? "" : "-rotate-90"
+                                }`}
+                                aria-hidden
+                              />
+                            </button>
+                            {group.key && (
+                              <button
+                                type="button"
+                                aria-label={`Add something to ${group.label}`}
+                                onClick={() => {
+                                  setAddDay(group.key);
+                                  setAddingTimeline(true);
+                                }}
+                                className="tap-44 grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
+                              >
+                                <Plus className="size-3.5" aria-hidden />
+                              </button>
+                            )}
+                          </div>
+                          {dayOpen && (
+                            <ol className="relative mx-3 mb-3 min-w-0 space-y-3 overflow-x-hidden py-2">
+                              {group.items.map((item, dayIndex) => (
+                                <Fragment key={item.id}>
+                                  {divider === dayIndex && <NowLine />}
+                                  {/* A run of stops close enough together to be
+                                      one decision rather than several. A label,
+                                      not a container: the rows underneath are
+                                      unchanged, and still reorder one at a
+                                      time. */}
+                                  {runLabels.has(dayIndex) && (
+                                    <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
+                                      {runLabels.get(dayIndex)}
+                                    </li>
+                                  )}
+                                  <TimelineEntry
+                                    item={item}
+                                    showDay={false}
+                                    leg={legFor(itemIndexById.get(item.id) ?? -1)}
+                                    editing={editingTimeline}
+                                    {...(directionArea ? { near: directionArea } : {})}
+                                    onEdit={(field) => board.setEditing(field)}
+                                    onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                    onRemove={() => void removeTimelineItem(item)}
+                                    onMove={(direction) => void board.moveItem(item.id, direction)}
+                                    canMoveUp={canMove(board.items, item.id, -1)}
+                                    canMoveDown={canMove(board.items, item.id, 1)}
+                                    tripStart={trip.start_date}
+                                    tripEnd={trip.end_date}
+                                    onKeep={keepItemAsReco}
+                                  />
+                                </Fragment>
+                              ))}
+                              {divider === group.items.length && <NowLine done />}
+                            </ol>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
+                    {board.items.map((item, i) => (
+                      <TimelineEntry
+                        key={item.id}
+                        item={item}
+                        showDay
+                        leg={legFor(i)}
+                        editing={editingTimeline}
+                        {...(directionArea ? { near: directionArea } : {})}
+                        onEdit={(field) => board.setEditing(field)}
+                        onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                        onRemove={() => void removeTimelineItem(item)}
+                        onMove={(direction) => void board.moveItem(item.id, direction)}
+                        canMoveUp={canMove(board.items, item.id, -1)}
+                        canMoveDown={canMove(board.items, item.id, 1)}
+                        tripStart={trip.start_date}
+                        tripEnd={trip.end_date}
+                        onKeep={keepItemAsReco}
+                      />
+                    ))}
+                  </ol>
+                )}
+
+                {/**
+                 * Adding opens over the page, not under the list.
+                 *
+                 * This form used to render after every entry on the timeline, so
+                 * on a trip with a day's worth of stops the Add button scrolled
+                 * a form into existence somewhere below the fold. Over the page
+                 * it arrives where you are looking, with the fields in reach.
+                 */}
+                <Sheet
+                  open={addingTimeline}
+                  onClose={() => {
+                    setAddingTimeline(false);
+                    setAddDay("");
+                  }}
+                  title="Add to the timeline"
+                >
+                  <TimelineEntryForm
+                    tripStart={trip.start_date}
+                    tripEnd={trip.end_date}
+                    {...(addDay ? { openDay: addDay } : {})}
+                    {...(directionArea ? { near: directionArea } : {})}
+                    existing={board.items.map((item) => ({
+                      title: item.title,
+                      address: item.address,
+                      lat: item.lat,
+                      lon: item.lon,
+                    }))}
+                    onAdd={board.addItem}
+                    onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
+                    onDone={() => {
+                      setAddingTimeline(false);
+                      setAddDay("");
+                    }}
+                  />
+                </Sheet>
+              </div>
+            )}
+
+            {/* Directions live with the stops they join rather than in a section
+                of their own: this is the control strip, and each leg draws under
+                the entry it leaves from. */}
+            <ItineraryDirections
+              stops={directionStops}
+              existingTitles={board.items.map((i) => i.title)}
+              onAddToTimeline={board.upsertItems}
+              onKeepOffline={dir.keep}
+              onLegs={setLiveLegs}
+              onPlaced={(placed) => {
+                // The router already found these. Keep them, so the map can draw
+                // the trip and the next Refresh does not pay for the same lookups.
+                for (const stop of placed) {
+                  void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+                }
+              }}
+              {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+              {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+              {...(directionArea ? { area: directionArea } : {})}
+            />
+          </Section>
+        </div>
+
+        <div hidden={perspective !== "trip"}>
+          <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
+
+          <Section
+            title="To do"
+            hint="Before you go, and anything that comes up on the way."
+            defaultOpen
+          >
+            <TripTodosBody
+              tripId={trip.id}
+              uid={me.id}
+              international={tripWide.international}
+              hasLodging={tripWide.hasLodging}
+              hasFlights={tripWide.hasFlights}
+              tripStart={trip.start_date}
+            />
+          </Section>
+
+          <Section title="Packing" defaultOpen={false}>
+            <PackingBody tripId={trip.id} />
+          </Section>
+
+          {trip.budget_enabled ? (
+            <TripBudget tripId={trip.id} />
+          ) : (
+            <p className="mb-3 px-1 text-[13px] text-muted-foreground">
+              The budget is off for this trip. Turn it on under Trip details below.
+            </p>
+          )}
+
+          <Section title="People" hint="Who is on this trip, and invite codes." defaultOpen={false}>
+            <TripPeople
+              trip={trip}
+              meId={me.id}
+              members={members}
+              invites={board.invites}
+              onInvite={onInvite}
+              onRevokeInvite={onRevokeInvite}
+              onRemoveMember={onRemoveMember}
+              onLeave={onLeave}
+              onChanged={board.reload}
+            />
+          </Section>
+
+          <Section
+            title="Trip details"
+            hint="Name, dates, status and the budget."
+            defaultOpen={false}
+          >
+            <div className="space-y-3">
+              <TripDetailsForm trip={trip} onUpdate={onUpdate} />
+              <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
+              {me.id === trip.owner_id && <TripDeleteButton onDelete={onDelete} />}
+            </div>
+          </Section>
+        </div>
+
+        {/* A sheet, opened by the "Before you go" button from any tab. */}
+        <TripPrep
+          tripId={trip.id}
+          uid={me.id}
+          international={tripWide.international}
+          hasLodging={tripWide.hasLodging}
+          hasFlights={tripWide.hasFlights}
+          tripStart={trip.start_date}
+          openSignal={prepSignal}
+        />
       </div>
 
       <ItineraryImport

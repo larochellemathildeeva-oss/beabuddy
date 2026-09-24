@@ -284,3 +284,51 @@ export function liveLegKey(
   const at = (p: Placeable) => `${p.lat?.toFixed(5)},${p.lon?.toFixed(5)}`;
   return `${from.id}@${at(from)}>${to.id}@${at(to)}`;
 }
+
+export type StopStatus =
+  /** Reached and moved on from. */
+  | "done"
+  /** Where you are now. */
+  | "here"
+  /** Passed without arriving: it sits before the furthest stop reached. */
+  | "skipped"
+  /** The next place to go. */
+  | "next"
+  /** Later in the day. */
+  | "upcoming";
+
+/**
+ * One status per stop, for the journey tracker and the ribbon.
+ *
+ * Read from the same state as the Now card, so the three never disagree
+ * about where you are.
+ */
+export function stopStatuses<T extends CompanionStop>(stops: readonly T[]): StopStatus[] {
+  const state = companionState(stops);
+  let furthest = -1;
+  stops.forEach((stop, i) => {
+    if (stop.arrived_at) furthest = i;
+  });
+  return stops.map((stop, i) => {
+    if (stop === state.current) return "here";
+    if (stop.arrived_at) return "done";
+    if (stop === state.next) return "next";
+    if (i < furthest) return "skipped";
+    return "upcoming";
+  });
+}
+
+export type PartOfDay = "morning" | "afternoon" | "evening";
+
+/**
+ * Morning before noon, afternoon before five, evening after. Null for a stop
+ * with no clock time ("Lunch"), which the ribbon shows only under All rather
+ * than guessing which part of the day it belongs to.
+ */
+export function partOfDay(timeLabel: string | null | undefined): PartOfDay | null {
+  const minutes = clockMinutes(timeLabel);
+  if (minutes == null) return null;
+  if (minutes < 12 * 60) return "morning";
+  if (minutes < 17 * 60) return "afternoon";
+  return "evening";
+}

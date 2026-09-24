@@ -10,6 +10,8 @@ import {
   legBetween,
   liveLegKey,
   needsLiveLeg,
+  partOfDay,
+  stopStatuses,
   stayLine,
   undoArrivalWrite,
   type CompanionStop,
@@ -197,4 +199,26 @@ test("a live leg is keyed by both stops and where they are", () => {
     "a moved stop routes again",
   );
   assert.notEqual(liveLegKey(a, b), liveLegKey(b, a), "direction matters");
+});
+
+test("statuses follow the same progress as the Now card", () => {
+  const stops = [
+    stop("a", { arrived_at: T("09:00"), left_at: T("09:40") }),
+    stop("b"),
+    stop("c", { arrived_at: T("10:30") }),
+    stop("d"),
+    stop("e"),
+  ];
+  assert.deepEqual(stopStatuses(stops), ["done", "skipped", "here", "next", "upcoming"]);
+  assert.deepEqual(stopStatuses([stop("a"), stop("b")]), ["next", "upcoming"]);
+});
+
+test("parts of the day come from clock times only", () => {
+  assert.equal(partOfDay("08:30"), "morning");
+  assert.equal(partOfDay("11:59"), "morning");
+  assert.equal(partOfDay("12:00"), "afternoon");
+  assert.equal(partOfDay("4:30 pm"), "afternoon");
+  assert.equal(partOfDay("17:00"), "evening");
+  assert.equal(partOfDay("Lunch"), null);
+  assert.equal(partOfDay(null), null);
 });

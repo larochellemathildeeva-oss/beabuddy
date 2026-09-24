@@ -7,17 +7,35 @@ Read this instead of re-deriving the context. It is the whole brief.
 
 ## The decision that shapes everything
 
-**A new route, not a port into the old screen.** `/trips/$tripId/day`
-(`src/routes/trips_.$tripId_.day.tsx`) lives *beside* `/trips/$tripId`,
-which is untouched and still the default.
+**The owner's brief is a merge: everything the trip page already does, plus
+the prototype's new features, on one page.** Nothing existing is left out.
 
-Porting the design piece by piece into `TripDetail` was tried and rejected:
-each piece gets assimilated into the surrounding style as it lands, and the
-composition — most of what makes the new design good — never arrives. The
-"restyle it at the end" step always gets cut.
+This reverses an earlier call in this doc. The port first grew as a separate
+screen at `/trips/$tripId/day` beside the trip page, on the reasoning that
+porting piece by piece into `TripDetail` lets the old style absorb the new
+composition. That screen never had the old page's functions (editing, adding
+stops, Plan with Béa, directions, undo), and the owner had not asked for a
+second screen. It was removed on 2026-09-24.
 
-So: composition is right from commit one, gaps are visible rather than
-implied, and nothing is migrated or removed while it grows.
+Now `TripDetail` (`/trips/$tripId`) carries the four tabs — **Now · Map ·
+Day · Trip** — under its banner and action row, and every existing section
+sits under one of them:
+
+| Tab | What is in it |
+| --- | --- |
+| Always visible | banner, action row (Plan with Béa: import / optimize / compare, add a stop, before you go, settings), who else is here |
+| Now | `TripToday`, `JourneyTracker`, `DayRibbon`, `NowPanel` |
+| Map | `DayMapView` (day map + cards), `TripMap` (whole trip) |
+| Day | the whole "Your itinerary" section, unchanged: add, edit mode, reorder, day / time / stay pickers, By day / All entries, directions, nearby-stop runs, the now line, undo, keep to vault |
+| Trip | `TripStops`, To do, Packing, budget, `TripPeople`, trip details |
+| Settings sheet | unchanged, including offline directions and packing templates |
+
+Day and Trip stay mounted behind `hidden` so edits survive a tab switch and
+the action row can open their forms from anywhere; Map mounts only while
+shown, because Leaflet cannot lay out in a hidden box.
+
+**Before building anything else, check scope with the owner.** The costliest
+mistake in this port was deciding scope from this doc instead of asking.
 
 ## Built
 
@@ -32,17 +50,24 @@ implied, and nothing is migrated or removed while it grows.
 | `src/lib/companion.ts` (+test) | Now: progress, up next, leave by, writes |
 | `src/components/day/NowPanel.tsx` | the Now view |
 | `src/lib/planned-stay.ts` (+test) | planned-stay choices and labels |
-| `src/routes/trips_.$tripId_.day.tsx` | the screen |
+| `src/components/day/JourneyTracker.tsx` | the prototype's live journey tracker |
+| `src/components/day/DayRibbon.tsx` | the prototype's itinerary ribbon, with part-of-day filters |
+| `src/components/day/DayMapView.tsx` | the day map with its cards |
+| `src/components/TripDetail.tsx` | the trip page, now with the four tabs |
 
-`DaySelector` is also wired into the old `TripDetail` (commit `8fb4800`).
-That wiring is the only throwaway work if the old screen is retired.
 
-**Four perspectives: Now · Map · Day · Trip.** All four are built. **Trip**
-has stops, to-dos, packing, people, budget and trip details; only offline
-directions and attaching a packing template are still on the old page. **Trip** is
-where stops, prep, packing, to-dos, documents, budget and invites will live —
-it is a *peer* of the day views on purpose, because the prototype had none of
-them and a day-centric screen that dropped them loses more than it wins.
+**Four perspectives: Now · Map · Day · Trip**, all on the trip page. Trip is
+a *peer* of the day views on purpose: the prototype had no place for
+stops, prep, packing, budget or people, and dropping them would lose more
+than the redesign gains.
+
+## Still to build from the prototype
+
+Not started, in the order proposed to the owner (confirm before building):
+Day-tab restyle with transit cards between stops, "+ Add stop between",
+swipe to complete / delete with undo, Customize (three toggles), saved
+places drawer, the A/B/C plan comparison. See the spec table on the
+progress page for the full list.
 
 ## Next, in order
 
@@ -70,9 +95,9 @@ them and a day-centric screen that dropped them loses more than it wins.
   (re-placed on every zoom, since it works in screen pixels), and
   `OSM_ATTRIBUTION` sits under the map beside Leaflet's own tile credit.
 - Leaflet is imported inside an effect; it never runs on the server.
-- **`TripMap` is not replaced on the old page or the trip card backdrop.**
-  It stays there — an offline SVG with no requests suits a card backdrop —
-  until the old screen is retired.
+- **`TripMap` is kept**: under the day map on the Map tab (the whole trip,
+  city to city) and as the trip card backdrop, where an offline SVG with no
+  requests suits better than tiles.
 
 ## Stop progress (step 2)
 
@@ -132,7 +157,7 @@ What step 3 has to respect:
 - **Which day:** the day picked, or today when "All days" is showing. With
   neither, it asks for a day.
 - **Planned stay** is set two ways: "Plan to stay" on the "You're at" card,
-  and "Stay" beside Day and Time in the old page's itinerary edit mode. Both
+  and "Stay" beside Day and Time in the Day tab's edit mode. Both
   are pick-lists (`planned-stay.ts`) that cannot produce a value the database
   refuses, and keep an odd value already on a row.
 - Walk / Drive rows from saved directions are the journey, not stops, and are
@@ -142,7 +167,8 @@ What step 3 has to respect:
 
 "Bucket D" was the trip-wide material: everything that belongs to the trip
 rather than to a day. The first pass renders the **existing components**,
-not copies, so an edit on either page is the same edit:
+not copies. (Written when there were two pages; since the merge there is
+one, and the settings sheet still offers the same controls.)
 
 | On the Trip tab | Component |
 | --- | --- |
@@ -154,22 +180,17 @@ not copies, so an edit on either page is the same edit:
 | Trip details | `TripDetailsForm`, `TripBudgetSwitch`, `TripDeleteButton` (`TripSettings.tsx`), extracted from the settings sheet |
 
 Each hook instance opens its own realtime channel (`…:${channelId}`), so the
-two pages rendering the same component do not collide. The to-do suggestions
+Trip tab and the settings sheet rendering the same component do not
+collide. The to-do suggestions
 get the same `international` / `hasLodging` / `hasFlights` readings the old
 page computes.
-
-**Still on the old page**, all written inline in `TripDetail`'s settings sheet
-rather than as components, so each needs extracting before it can move:
-
-- offline directions (`"offline"`) — Now no longer depends on it
-- attaching a packing template (`"packing"`)
 
 Delete is now shown only to the owner on both pages. The "Owner deletes
 trips" policy already refused it for guests, but silently — the delete
 matched no rows, raised no error, and sent them to the trip list as if it
 had worked.
 
-The Trip tab names these and links to the old page. "Documents" was dropped
+"Documents" was dropped
 from the Trip hint: vault documents belong to the account, not a trip, and
 there is no trip-level documents section to move.
 
