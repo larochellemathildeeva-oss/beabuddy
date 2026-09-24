@@ -1,3 +1,4 @@
+import { autoPinTrusted } from "@/lib/match-confidence";
 import { areaBoxFrom, boxViewbox, inBox, widenBox, type AreaBox } from "@/lib/geocode-plan";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -63,11 +64,21 @@ const LOOKUP_BUDGET = 30;
 const LEG_BUDGET = 60;
 const WALL_MS = 80_000;
 
+type GeoFound = {
+  lat: number;
+  lon: number;
+  boundingbox?: string[];
+  /** What the geocoder called it and what kind of thing it is, for autoPinTrusted. */
+  label?: string;
+  category?: string;
+  kind?: string;
+};
+
 async function geocode(
   provider: GeoProvider,
   query: string,
   box?: AreaBox | null,
-): Promise<{ lat: number; lon: number; boundingbox?: string[] } | null> {
+): Promise<GeoFound | null> {
   // Inside the trip's area when there is one: bounded in the request, and
   // checked on the way back, because these pins are saved onto the stops.
   const url = searchUrl(provider, {
@@ -83,13 +94,29 @@ async function geocode(
     // A throttled lookup is not a missing place: caching it as one would
     // blank a real stop for the rest of this request.
     if (classifyGeoStatus(res.status) !== "ok") return null;
-    const json = (await res.json()) as { lat: string; lon: string; boundingbox?: string[] }[];
+    const json = (await res.json()) as {
+      lat: string;
+      lon: string;
+      boundingbox?: string[];
+      display_name?: string;
+      class?: string;
+      category?: string;
+      type?: string;
+      addresstype?: string;
+    }[];
     for (const hit of json) {
       const lat = Number(hit.lat);
       const lon = Number(hit.lon);
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       if (box && !inBox(box, lat, lon)) continue;
-      return { lat, lon, ...(hit.boundingbox ? { boundingbox: hit.boundingbox } : {}) };
+      return {
+        lat,
+        lon,
+        ...(hit.boundingbox ? { boundingbox: hit.boundingbox } : {}),
+        ...(hit.display_name ? { label: hit.display_name } : {}),
+        ...(hit.category || hit.class ? { category: hit.category || hit.class } : {}),
+        ...(hit.addresstype || hit.type ? { kind: hit.addresstype || hit.type } : {}),
+      };
     }
     return null;
   } catch {
@@ -208,10 +235,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const points: ({ lat: number; lon: number } | null)[] = [];
     const deferred: string[] = [];
     const remembered = new Map<string, { lat: number; lon: number }>();
-    const queryCache = new Map<
-      string,
-      { lat: number; lon: number; boundingbox?: string[] } | null
-    >();
+    const queryCache = new Map<string, GeoFound | null>();
     let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
     const deadline = Date.now() + WALL_MS;
@@ -265,15 +289,20 @@ export const buildRoutes = createServerFn({ method: "POST" })
       }
       const region = cleanArea(area);
       const names = placeQueryCandidates(stop.title, stop.address);
-      let found: { lat: number; lon: number } | null = null;
+      // A lookup counts only if it plausibly is this stop. These pins are
+      // saved onto the stops; a namesake is treated as not found, so the leg
+      // opens Maps by name instead of routing to the wrong place.
+      const trusted = (hit: GeoFound | null) =>
+        hit && autoPinTrusted({ title: stop.title, address: stop.address }, hit) ? hit : null;
+      let found: GeoFound | null = null;
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
-        found = await lookup(q);
+        found = trusted(await lookup(q));
         if (found) break;
       }
       // Some well-known places (e.g. Beaver Lake) only resolve without a region suffix.
       if (!found && region && names[0]) {
-        const hit = await lookup(names[0]);
+        const hit = trusted(await lookup(names[0]));
         const anchor = points.find((p) => p !== null);
         // Bounded to the area when it has a box; the anchor check is what is
         // left when it has none.

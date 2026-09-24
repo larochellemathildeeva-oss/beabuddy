@@ -428,6 +428,18 @@ await flow("import: after alternatives, pins are looked up again, not carried by
   if ((await page.getByText("Okonomiyaki lunch").count()) === 0) throw new Error("the revision did not show");
 });
 
+await flow("background lookup: a doubtful match is not pinned onto a stop", async (page) => {
+  await page.waitForTimeout(800);
+  const asked = await page.evaluate(() =>
+    (window.__geoCalls ?? []).some((c) => c.stops?.[0]?.title === "Sunset ferry back to Hiroshima"),
+  );
+  if (!asked) throw new Error("the background lookup never ran for the unplaced stop");
+  const pinned = (await writes(page)).some(
+    (x) => x.table === "itinerary_items" && x.op === "update" && x.payload?.lat === 34.3,
+  );
+  if (pinned) throw new Error("the namesake park was saved onto the stop");
+});
+
 await flow("banner stays pinned while the page scrolls", async (page) => {
   await goTab(page, "Timeline");
   const bar = page.locator("article > div.sticky").first();

@@ -5,6 +5,17 @@ export * from "../../../src/lib/geocode-plan.functions";
 export const geocodePlanStops = async (args: { data: { stops: unknown[]; area?: string | null } }) => {
   const w = window as unknown as { __geoCalls?: unknown[] };
   (w.__geoCalls ??= []).push(args.data);
+  // The trip page's background lookup for the sample's one unplaced stop:
+  // answered with a namesake park, which must not be saved onto it.
+  const first = args.data.stops[0] as { title?: string } | undefined;
+  if (first?.title === "Sunset ferry back to Hiroshima") {
+    return {
+      area: args.data.area ?? "",
+      lookedUp: 1,
+      throttled: false,
+      placed: [{ index: 0, lat: 34.3, lon: 132.33, label: "Momijidani Park, Miyajima", category: "leisure", kind: "park" }],
+    };
+  }
   return {
     area: args.data.area ?? "",
     lookedUp: 5,

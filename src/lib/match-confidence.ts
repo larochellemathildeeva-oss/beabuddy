@@ -155,3 +155,30 @@ export function tallyConfidence(list: readonly Confidence[]): {
   const low = list.filter((c) => c === "low").length;
   return { high, medium, low, needsLook: medium + low };
 }
+
+/**
+ * Whether a pin found without anyone looking may be saved.
+ *
+ * Background lookups — filling in a trip's stops, the add-stop form, the
+ * directions — used to save whatever came back, so a wrong namesake was
+ * saved as confidently as the right place. This holds them to the same bar
+ * the import review uses: anything but "low" is saved, "low" is not, and the
+ * stop stays unplaced for the person to set, which is honest.
+ *
+ * A lookup may have been made by the stop's address or venue rather than its
+ * title ("Lunch by the water" found at "310 Rue de la Commune"), so the name
+ * found is checked against each of them; any one that echoes is enough.
+ */
+export function autoPinTrusted(
+  stop: {
+    title: string;
+    address?: string | null | undefined;
+    place?: string | null | undefined;
+  },
+  hit: Omit<MatchEvidence, "title">,
+): boolean {
+  const names = [stop.title, stop.place, stop.address].filter((name): name is string =>
+    Boolean(name && name.trim()),
+  );
+  return names.some((title) => scoreMatch({ ...hit, title }).confidence !== "low");
+}
