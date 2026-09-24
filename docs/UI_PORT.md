@@ -43,8 +43,8 @@ them and a day-centric screen that dropped them loses more than it wins.
 ## Next, in order
 
 1. ~~**Leaflet day map.**~~ Done — see "Day map" below.
-2. ~~**Migration.**~~ Written — see "Stop progress (step 2)" below. **Not
-   applied until someone runs it by hand.**
+2. ~~**Migration.**~~ Done and **applied to the live project** (2026-09-24) —
+   see "Stop progress (step 2)" below.
 3. **Now (companion).** Current stop / up next / "Leave by". Use **manual
    progression** (tap on arrival), not clock inference: it needs no
    `time_label`, survives running late, and captures what actually happened.
@@ -77,8 +77,9 @@ them and a day-centric screen that dropped them loses more than it wins.
 
 `supabase/migrations/20260924120000_itinerary_stop_progress.sql` adds
 `arrived_at`, `left_at` (timestamptz) and `planned_stay_minutes` (integer) to
-`itinerary_items`, all nullable. It is **applied by hand** in the Supabase SQL
-editor; until then the live database does not have these columns. It is safe
+`itinerary_items`, all nullable. **Applied by hand to the live project on
+2026-09-24**, along with `20260924130000_grant_trip_invite_attempts.sql`
+(both reported successful by the owner). It is safe
 to re-run, and carries its own undo block. Checked against a scratch Postgres
 16: idempotent, existing rows untouched, constraints refuse what they should.
 
@@ -92,12 +93,12 @@ where table_schema = 'public' and table_name = 'itinerary_items'
 
 What step 3 has to respect:
 
-- **Do not add these columns to the itinerary `select` in `useTrips.ts`.** That
-  query names its columns and, on error, keeps what it had — so on a database
-  without the migration, every trip would load empty. Read progress in its own
-  query and treat a missing column as "not available yet" (the pattern is
-  `isMissingTravelTagsColumn` in `reco-tags.ts`). Only then does Now stay inert
-  rather than breaking the trip.
+- **The columns exist live, so they can go in the itinerary `select` in
+  `useTrips.ts`** and on `ItineraryRow`. Be aware of how that query fails: it
+  names its columns and, on any error, keeps what it had. On a database that
+  lacks the migration, every trip would load empty. Live has it now and any
+  rebuild from this folder includes it, but that is why the migration has to
+  run before the code that reads it reaches `main`.
 - **Constraints:** `left_at` needs `arrived_at` and must not precede it;
   `planned_stay_minutes` is 1–44640. So "undo arrival" clears `left_at` in the
   same update, or the database refuses it.
