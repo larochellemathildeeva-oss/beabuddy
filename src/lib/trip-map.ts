@@ -40,7 +40,12 @@ type Placeable = {
   lon?: number | null | undefined;
 };
 
-function placed(point: Placeable): point is Placeable & { lat: number; lon: number } {
+/**
+ * Whether a stop has a real position. Exported so a view that has to keep
+ * each stop's identity — the day map, which selects by id — decides "on the
+ * map" by exactly the rule the plan does.
+ */
+export function placed<T extends Placeable>(point: T): point is T & { lat: number; lon: number } {
   return (
     typeof point.lat === "number" &&
     typeof point.lon === "number" &&

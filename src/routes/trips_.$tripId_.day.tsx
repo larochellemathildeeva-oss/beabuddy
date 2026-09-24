@@ -3,13 +3,16 @@ import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DaySelector } from "@/components/DaySelector";
+import { DayMap } from "@/components/day/DayMap";
 import { StopCard } from "@/components/day/StopCard";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { useAuth } from "@/hooks/useAuth";
-import { useTripBoard, useTrips } from "@/hooks/useTrips";
+import { useTripBoard, useTrips, type ItineraryRow } from "@/hooks/useTrips";
+import { dayMapCaption, dayMapModel, toggleSelection } from "@/lib/day-map";
 import { dayShapeLine } from "@/lib/day-shape";
+import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { formatTripLocation } from "@/lib/place-label";
-import { groupTimelineByDay } from "@/lib/timeline-groups";
+import { groupTimelineByDay, type TimelineDayGroup } from "@/lib/timeline-groups";
 import { toLocalISODate } from "@/lib/trip-dates";
 import {
   ALL_DAYS,
@@ -192,13 +195,89 @@ function TripDay({
                   </section>
                 ))}
               </div>
+            ) : perspective === "map" ? (
+              // Keyed on the day, so a selection never outlives the stops it
+              // pointed at.
+              <DayMapView key={chosenDay} groups={shown} area={where} />
             ) : (
-              <NotYet perspective={perspective} tripId={trip.id} />
+              <NotYet tripId={trip.id} />
             )}
           </>
         )}
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * The chosen day as a map and a list that point at the same stop.
+ *
+ * With every day shown, the stops are numbered straight through rather than
+ * restarting each day: the pins share one map, and two pins both saying "1"
+ * would leave the reader to work out which card each belongs to.
+ */
+function DayMapView({ groups, area }: { groups: TimelineDayGroup<ItineraryRow>[]; area: string }) {
+  // Recomputed each render: `groups` is rebuilt upstream every time, and a
+  // day's worth of stops costs nothing to walk.
+  const model = dayMapModel(groups.flatMap((group) => group.items));
+  const caption = dayMapCaption(model);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const pickFromMap = (id: string) => {
+    setSelectedId((current) => toggleSelection(current, id));
+    // "nearest" leaves the page alone when the card is already in view.
+    document.getElementById(`stop-${id}`)?.scrollIntoView({ block: "nearest" });
+  };
+
+  // Numbering runs across the days shown, matching the pins.
+  const offsets = groups.reduce<number[]>(
+    (acc, group, i) => [...acc, i === 0 ? 0 : acc[i - 1]! + groups[i - 1]!.items.length],
+    [],
+  );
+
+  return (
+    <div className="space-y-3">
+      {model.plan.kind === "none" ? (
+        <div className="card-soft space-y-1 p-4">
+          <p className="font-display text-[19px] leading-snug">Nothing to put on the map yet.</p>
+          <p className="text-[14px] text-muted-foreground">
+            None of {area ? `your ${area} stops` : "these stops"} has a location. Add an address to
+            a stop on the full trip page and it appears here.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <DayMap
+            pins={model.pins}
+            selectedId={selectedId}
+            onSelect={pickFromMap}
+            label={`Map of ${model.pins.length === 1 ? "one stop" : `${model.pins.length} stops`}`}
+          />
+          {caption && <p className="text-[12.5px] text-muted-foreground">{caption}</p>}
+          {/* The credit ODbL asks for, next to the data it applies to. */}
+          <p className="text-[11.5px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
+        </div>
+      )}
+
+      {groups.map((group, g) => (
+        <section key={group.key || "undated"} className="space-y-2">
+          {groups.length > 1 && (
+            <h2 className="font-display text-[19px] leading-tight">{group.label}</h2>
+          )}
+          <div className="space-y-2">
+            {group.items.map((item, i) => (
+              <StopCard
+                key={item.id}
+                item={item}
+                index={offsets[g]! + i}
+                selected={item.id === selectedId}
+                onSelect={() => setSelectedId((current) => toggleSelection(current, item.id))}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -228,17 +307,11 @@ function EmptyTimeline({ tripId }: { tripId: string }) {
  * an empty frame. A blank panel reads as broken; a named gap reads as a
  * roadmap, and this route is being built in the open.
  */
-function NotYet({ perspective, tripId }: { perspective: TripPerspective; tripId: string }) {
-  const copy =
-    perspective === "companion"
-      ? {
-          title: "The companion view is next.",
-          body: "Where you are now, what is next, and when to leave for it. It needs a place to record that you arrived somewhere, which the timeline does not store yet.",
-        }
-      : {
-          title: "The day map is on its way.",
-          body: "Today's stops drawn in relation to each other, with the list and the map moving together.",
-        };
+function NotYet({ tripId }: { tripId: string }) {
+  const copy = {
+    title: "The companion view is next.",
+    body: "Where you are now, what is next, and when to leave for it. It needs a place to record that you arrived somewhere, which the timeline does not store yet.",
+  };
   return (
     <div className="card-soft space-y-3 p-4">
       <p className="font-display text-[19px] leading-snug">{copy.title}</p>

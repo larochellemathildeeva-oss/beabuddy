@@ -3,6 +3,7 @@ import { ChevronDown, MapPin } from "lucide-react";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { timeForRail } from "@/lib/timeline-kind";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { placed as hasPosition } from "@/lib/trip-map";
 import type { ItineraryRow } from "@/hooks/useTrips";
 
 /**
@@ -24,54 +25,95 @@ export function StopCard({
   item,
   index,
   onOpenPlace,
+  selected = false,
+  onSelect,
 }: {
   item: ItineraryRow;
   /** Position within the day, for the numbered rail. */
   index: number;
   onOpenPlace?: ((item: ItineraryRow) => void) | undefined;
+  /** Whether this is the stop the map is pointing at. */
+  selected?: boolean;
+  /**
+   * Makes the top of the card a control that picks this stop on the map.
+   * Only offered for a stop the map can show — selecting something with no
+   * pin would move nothing and look broken.
+   */
+  onSelect?: (() => void) | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const time = timeForRail(item.time_label);
   // A stop can be placed, or named, or neither. Each reads differently and
-  // only the first can be pointed at on a map.
-  const placed = item.lat != null && item.lon != null;
+  // only the first can be pointed at on a map — decided by the map's own
+  // rule, so a card never offers a pin the map declines to draw.
+  const placed = hasPosition(item);
   const hasMore = Boolean(item.detail?.trim() || item.address?.trim());
+  const selectable = placed && onSelect != null;
+
+  // Spans throughout, because this sits inside a button when the card is
+  // selectable and a button may only hold phrasing content.
+  const summary = (
+    <span className="flex items-start gap-3 p-3">
+      <span className="flex w-11 shrink-0 flex-col items-center gap-1 pt-0.5">
+        <span
+          className={`text-[13px] font-bold tabular-nums leading-none ${
+            time ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          {/* An undated row says so rather than borrowing a neighbour's
+              time, which is what an em dash in this column would do. */}
+          {time || "–"}
+        </span>
+        <TimelineGlyphMark item={item} />
+      </span>
+
+      <span className="block min-w-0 flex-1">
+        <span className="block break-words text-[15.5px] font-semibold leading-snug">
+          {item.title}
+        </span>
+        {item.address?.trim() && (
+          <span className="mt-0.5 block break-words text-[12.5px] leading-snug text-muted-foreground">
+            {item.address}
+          </span>
+        )}
+        {!placed && (
+          <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-elevated px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <MapPin className="size-3" aria-hidden />
+            Not on the map yet
+          </span>
+        )}
+      </span>
+
+      <span
+        className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold tabular-nums ${
+          selected ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+        }`}
+      >
+        {index + 1}
+      </span>
+    </span>
+  );
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-border/70 bg-card">
-      <div className="flex items-start gap-3 p-3">
-        <div className="flex w-11 shrink-0 flex-col items-center gap-1 pt-0.5">
-          <span
-            className={`text-[13px] font-bold tabular-nums leading-none ${
-              time ? "text-primary" : "text-muted-foreground"
-            }`}
-          >
-            {/* An undated row says so rather than borrowing a neighbour's
-                time, which is what an em dash in this column would do. */}
-            {time || "–"}
-          </span>
-          <TimelineGlyphMark item={item} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="break-words text-[15.5px] font-semibold leading-snug">{item.title}</p>
-          {item.address?.trim() && (
-            <p className="mt-0.5 break-words text-[12.5px] leading-snug text-muted-foreground">
-              {item.address}
-            </p>
-          )}
-          {!placed && (
-            <p className="mt-1 inline-flex items-center gap-1 rounded-lg bg-elevated px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-              <MapPin className="size-3" aria-hidden />
-              Not on the map yet
-            </p>
-          )}
-        </div>
-
-        <span className="shrink-0 pt-0.5 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {index + 1}
-        </span>
-      </div>
+    <article
+      id={`stop-${item.id}`}
+      className={`overflow-hidden rounded-2xl border bg-card transition-colors ${
+        selected ? "border-primary ring-2 ring-primary/25" : "border-border/70"
+      }`}
+    >
+      {selectable ? (
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-pressed={selected}
+          className="block w-full text-left"
+        >
+          {summary}
+          <span className="sr-only">Show on the map</span>
+        </button>
+      ) : (
+        summary
+      )}
 
       {hasMore && (
         <>

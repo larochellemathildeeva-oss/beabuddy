@@ -49,6 +49,13 @@ export function tilePath({ z, x, y }: TileCoords): string {
 }
 
 /**
+ * The same path as a Leaflet URL template, for a map that asks for its own
+ * tiles. It has to stay the shape `parseTilePath` accepts, or every tile the
+ * day map requests is refused — the test holds the two together.
+ */
+export const TILE_URL_TEMPLATE = "/api/tile/{z}/{x}/{y}.png";
+
+/**
  * Where Béa fetches it from.
  *
  * LocationIQ when there is a token, OpenStreetMap when there is not — the

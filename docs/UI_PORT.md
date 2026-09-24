@@ -26,25 +26,23 @@ implied, and nothing is migrated or removed while it grows.
 | `src/lib/trip-days.ts` (+test) | day chips, default choice, filtering |
 | `src/components/DaySelector.tsx` | the chip strip |
 | `src/lib/trip-perspective.ts` (+test) | the four perspectives |
-| `src/components/day/StopCard.tsx` | collapsed stop card |
+| `src/components/day/StopCard.tsx` | collapsed stop card; selectable on the Map view |
+| `src/lib/day-map.ts` (+test) | pin numbering, partial-map caption, selection |
+| `src/components/day/DayMap.tsx` | the Leaflet day map |
 | `src/routes/trips_.$tripId_.day.tsx` | the screen |
 
 `DaySelector` is also wired into the old `TripDetail` (commit `8fb4800`).
 That wiring is the only throwaway work if the old screen is retired.
 
-**Four perspectives: Now · Map · Day · Trip.** Only **Day** is built. Now and
-Map render a named "not built yet" card pointing at the old page. **Trip** is
+**Four perspectives: Now · Map · Day · Trip.** **Day** and **Map** are built.
+Now renders a named "not built yet" card pointing at the old page. **Trip** is
 where stops, prep, packing, to-dos, documents, budget and invites will live —
 it is a *peer* of the day views on purpose, because the prototype had none of
 them and a day-centric screen that dropped them loses more than it wins.
 
 ## Next, in order
 
-1. **Leaflet day map.** Replaces `TripMap` (currently d3-geo + topojson SVG,
-   no selection state). Prototype uses Leaflet + CartoDB Voyager tiles — OSM
-   data, so no licensing change. **`OSM_ATTRIBUTION` must stay visible** (ODbL,
-   see `AGENTS.md`), and `legLabels` + `tripMapPlan` from `trip-map.ts` must
-   carry over.
+1. ~~**Leaflet day map.**~~ Done — see "Day map" below.
 2. **Migration** — `arrived_at`, `left_at`, `planned_stay_minutes` on
    `itinerary_items`. Applied **by hand**; writing it changes nothing live.
 3. **Now (companion).** Current stop / up next / "Leave by". Use **manual
@@ -53,6 +51,27 @@ them and a day-centric screen that dropped them loses more than it wins.
    "Leave by" = next `time_label` − `RouteLeg.duration`; suppress it when the
    leg is `unknownSpot` or `capped` — never a number over a guess.
 4. **Trip tab** — move bucket D across, one component at a time.
+
+## Day map (step 1)
+
+- **Tiles come through Béa's `/api/tile` proxy, not CartoDB Voyager.** The
+  prototype loads Voyager straight from the browser. The repo already proxies
+  tiles for the Near map (`tile-proxy.ts`): the LocationIQ token stays on the
+  server, and the device contacts no new third party, which keeps the privacy
+  page true. The cost is Voyager's warmer styling. Switching would mean
+  adding CARTO to the privacy page and its attribution to the map.
+- **Pins carry the card's number, counted before unplaced stops are
+  dropped**, so card 3 is always pin 3. With all days shown, numbering runs
+  straight through so two pins never both say "1".
+- One selection drives both halves: tap a card or a pin; tap again to clear.
+  A pin tap scrolls its card into view only if it is off screen.
+- `tripMapPlan` decides the empty state, `legLabels` places the distances
+  (re-placed on every zoom, since it works in screen pixels), and
+  `OSM_ATTRIBUTION` sits under the map beside Leaflet's own tile credit.
+- Leaflet is imported inside an effect; it never runs on the server.
+- **`TripMap` is not replaced on the old page or the trip card backdrop.**
+  It stays there — an offline SVG with no requests suits a card backdrop —
+  until the old screen is retired.
 
 ## Settled — don't relitigate
 
