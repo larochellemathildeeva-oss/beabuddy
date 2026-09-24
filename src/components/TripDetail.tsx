@@ -51,6 +51,15 @@ import {
   placePatchForSavedRow,
 } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
+import { DaySelector } from "@/components/DaySelector";
+import {
+  ALL_DAYS,
+  dayChips,
+  defaultDayChoice,
+  shouldOfferDays,
+  visibleGroups,
+  type DayChoice,
+} from "@/lib/trip-days";
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
@@ -366,6 +375,16 @@ export function TripDetail({
   });
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(board.items);
+  /**
+   * The day on screen. Null until the traveller picks one, so the default
+   * keeps tracking the data while it loads — the first render has no items,
+   * and "today" only becomes answerable once they arrive. Once a choice is
+   * made it sticks, and stops being recomputed underneath them.
+   */
+  const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
+  const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
+  const shownGroups = visibleGroups(timelineGroups, chosenDay);
+  const offerDays = shouldOfferDays(timelineGroups);
   const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
 
   // The trip's own photo, out of the one list loaded for the whole page.
@@ -587,9 +606,20 @@ export function TripDetail({
                 </div>
               )}
 
+              {/* The strip only appears in day view: the flat list is one
+                  run of rows on purpose, and filtering it to a day would
+                  leave a list with nothing to be flat about. */}
+              {board.items.length > 0 && timelineByDay && offerDays && (
+                <DaySelector
+                  chips={dayChips(timelineGroups, todayKey)}
+                  value={chosenDay}
+                  onChange={setDayChoice}
+                />
+              )}
+
               {board.items.length === 0 ? null : timelineByDay ? (
                 <div className="space-y-3">
-                  {timelineGroups.map((group) => {
+                  {shownGroups.map((group) => {
                     const dayOpen = !collapsedDays[group.key];
                     const isToday = group.key === todayKey;
                     const divider = isToday ? nowDivider(group.items, minutesNow) : null;
