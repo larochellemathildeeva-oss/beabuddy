@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { Footprints, MapPin } from "lucide-react";
 import type { ItineraryRow } from "@/hooks/useTrips";
-import type { RouteLeg } from "@/lib/directions.functions";
+import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { timeForRail } from "@/lib/timeline-kind";
 import {
@@ -11,10 +12,13 @@ import {
   leaveBy,
   leavingWrite,
   legBetween,
+  liveLegKey,
+  needsLiveLeg,
   stayLine,
   undoArrivalWrite,
   type LeaveBy,
 } from "@/lib/companion";
+import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 
 type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "left_at">> };
 
@@ -24,13 +28,15 @@ type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "lef
  * Moves only when you tap. "I'm here" on arrival, "Leaving" on the way out;
  * nothing advances because the clock says it should have. The one number
  * worked out for you is "Leave by", and it is shown only when both halves of
- * it are real: a clock time on the next stop and a routed leg to it.
+ * it are real: a clock time on the next stop and a routed leg to it — from
+ * directions saved on the phone, or else routed here for that one journey.
  */
 export function NowPanel({
   dayStops,
   tripStops,
   legs,
   onProgress,
+  onPlanStay,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
@@ -39,6 +45,8 @@ export function NowPanel({
   /** Saved directions, only when they still describe this timeline. */
   legs: RouteLeg[] | null;
   onProgress: (writes: Write[]) => Promise<void>;
+  /** Set or clear how long the plan allows at a stop. */
+  onPlanStay: (id: string, minutes: number | null) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -47,11 +55,11 @@ export function NowPanel({
   const state = companionState(dayStops);
   const { phase, current, previous, next } = state;
 
-  const act = async (writes: Write[]) => {
+  const act = async (write: () => Promise<void>) => {
     setBusy(true);
     setError("");
     try {
-      await onProgress(writes);
+      await write();
     } catch {
       setError("That didn't save. Check your connection and try again.");
     } finally {
@@ -60,14 +68,19 @@ export function NowPanel({
   };
 
   const from = phase === "at" ? current : phase === "between" ? previous : null;
-  const leg = from && next ? legBetween(tripStops, legs, from.id, next.id) : null;
-  const leave = next ? leaveBy(next.time_label, leg) : null;
-  // Worth a pointer only when the next stop has a time to aim for and no
-  // directions are saved at all; a missing leg for a skipped stop is not
-  // something a download would fix.
-  const couldHaveLeaveBy = Boolean(
-    from && next && !leave && legs == null && clockMinutes(next.time_label) != null,
-  );
+  const savedLeg = from && next ? legBetween(tripStops, legs, from.id, next.id) : null;
+  const live = useLiveLeg(savedLeg, from, next);
+  const leave = next ? leaveBy(next.time_label, savedLeg ?? live.leg) : null;
+  // The one case worth explaining: the next stop has a time to aim for, but
+  // an end of the journey is not on the map, so there is nothing to route.
+  const offMap =
+    from &&
+    next &&
+    !savedLeg &&
+    !needsLiveLeg(null, from, next) &&
+    clockMinutes(next.time_label) != null
+      ? ([from, next].find((s) => s.lat == null || s.lon == null) ?? null)
+      : null;
 
   const later = next ? dayStops.slice(dayStops.indexOf(next) + 1).filter((s) => !s.arrived_at) : [];
 
@@ -84,11 +97,30 @@ export function NowPanel({
             {current.title}
           </h2>
           <StayLine stop={current} now={now} />
+          <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+            Plan to stay
+            <select
+              value={current.planned_stay_minutes ?? ""}
+              disabled={busy}
+              onChange={(e) => {
+                const minutes = parseStayChoice(e.target.value);
+                void act(() => onPlanStay(current.id, minutes));
+              }}
+              className="min-h-11 rounded-xl border border-border bg-card px-3 text-[13.5px] text-foreground"
+            >
+              <option value="">Not set</option>
+              {stayChoices(current.planned_stay_minutes).map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {stayLabel(minutes)}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={busy}
-              onClick={() => void act([leavingWrite(current, new Date())])}
+              onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
               className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
             >
               Leaving
@@ -96,7 +128,7 @@ export function NowPanel({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void act([undoArrivalWrite(current)])}
+              onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
               className="inline-flex min-h-11 items-center rounded-xl border border-border px-4 text-[13.5px] font-semibold text-muted-foreground disabled:opacity-60"
             >
               Not here yet
@@ -113,7 +145,9 @@ export function NowPanel({
           <button
             type="button"
             disabled={busy}
-            onClick={() => void act([{ id: previous.id, patch: { left_at: null } }])}
+            onClick={() =>
+              void act(() => onProgress([{ id: previous.id, patch: { left_at: null } }]))
+            }
             className="min-h-11 px-2 text-[12.5px] font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
           >
             Still there
@@ -146,16 +180,22 @@ export function NowPanel({
             <p className="text-[13px] text-muted-foreground">{next.address}</p>
           )}
           <LeaveByLine leave={leave} dueLabel={timeForRail(next.time_label)} />
-          {couldHaveLeaveBy && (
+          {live.loading && (
+            <p className="text-[12.5px] text-muted-foreground">Working out the journey…</p>
+          )}
+          {offMap && (
             <p className="text-[12.5px] text-muted-foreground">
-              Save directions on the full trip page and Béa can say when to leave.
+              {offMap.title} isn't on the map yet, so there's no time to leave by. Add its address
+              on the full trip page.
             </p>
           )}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               disabled={busy}
-              onClick={() => void act(arrivalWrites(dayStops, next.id, new Date()))}
+              onClick={() =>
+                void act(() => onProgress(arrivalWrites(dayStops, next.id, new Date())))
+              }
               className={`inline-flex min-h-11 items-center rounded-xl px-4 text-[14.5px] font-semibold disabled:opacity-60 ${
                 phase === "at" ? "border border-border" : "bg-primary text-primary-foreground"
               }`}
@@ -235,6 +275,62 @@ function StayLine({ stop, now }: { stop: ItineraryRow; now: Date | null }) {
   // Nothing on the server render: the time there depends on this clock.
   const line = now ? stayLine(stop, now) : null;
   return line ? <p className="text-[13.5px] text-muted-foreground">{line}</p> : null;
+}
+
+/**
+ * Route the one journey Now is about, when nothing saved covers it.
+ *
+ * One request per journey per session: the answer is kept by the two stops
+ * and where they are, so re-renders and tab switches do not ask again, and
+ * a stop that moves is routed afresh. A failure leaves no leg, and with no
+ * leg there is no "Leave by" — the view goes quiet rather than guessing.
+ */
+const liveLegs = new Map<string, RouteLeg | null>();
+
+function useLiveLeg(
+  savedLeg: RouteLeg | null,
+  from: ItineraryRow | null,
+  to: ItineraryRow | null,
+): { leg: RouteLeg | null; loading: boolean } {
+  const route = useServerFn(buildRoutes);
+  const wanted = from && to && needsLiveLeg(savedLeg, from, to) ? liveLegKey(from, to) : null;
+  const [, rerender] = useState(0);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!wanted || !from || !to || liveLegs.has(wanted)) return;
+    let cancelled = false;
+    setLoadingKey(wanted);
+    route({
+      data: {
+        stops: [
+          { title: from.title, lat: from.lat, lon: from.lon },
+          { title: to.title, lat: to.lat, lon: to.lon },
+        ],
+      },
+    })
+      .then((result) => {
+        liveLegs.set(wanted, (result as { legs: RouteLeg[] }).legs[0] ?? null);
+      })
+      .catch(() => {
+        // Remembered as "no leg" so a failing router is not asked on every
+        // render; a reload tries again.
+        liveLegs.set(wanted, null);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoadingKey(null);
+        rerender((n) => n + 1);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [wanted]); // eslint-disable-line react-hooks/exhaustive-deps -- `wanted` stands for both stops
+
+  return {
+    leg: wanted ? (liveLegs.get(wanted) ?? null) : null,
+    loading: wanted != null && loadingKey === wanted && !liveLegs.has(wanted),
+  };
 }
 
 /** The current time, refreshed each minute; null until mounted. */

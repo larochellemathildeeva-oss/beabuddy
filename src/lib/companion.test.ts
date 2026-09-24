@@ -8,6 +8,8 @@ import {
   leaveBy,
   leavingWrite,
   legBetween,
+  liveLegKey,
+  needsLiveLeg,
   stayLine,
   undoArrivalWrite,
   type CompanionStop,
@@ -173,4 +175,26 @@ test("a departure is never before its arrival, whatever this clock says", () => 
 
 test("undoing an arrival clears the departure with it", () => {
   assert.deepEqual(undoArrivalWrite(stop("a")).patch, { arrived_at: null, left_at: null });
+});
+
+test("Now routes a journey itself only between two placed stops with nothing saved", () => {
+  const here = { lat: 45.5, lon: -73.6 };
+  const there = { lat: 45.51, lon: -73.58 };
+  assert.equal(needsLiveLeg(null, here, there), true);
+  assert.equal(needsLiveLeg({ duration: 60 }, here, there), false, "a saved leg wins");
+  assert.equal(needsLiveLeg(null, here, { lat: null, lon: null }), false, "unplaced end");
+  assert.equal(needsLiveLeg(null, { lat: 0, lon: 0 }, there), false, "null island");
+  assert.equal(needsLiveLeg(null, null, there), false, "nowhere to start from");
+});
+
+test("a live leg is keyed by both stops and where they are", () => {
+  const a = { id: "a", lat: 45.5, lon: -73.6 };
+  const b = { id: "b", lat: 45.51, lon: -73.58 };
+  assert.equal(liveLegKey(a, b), liveLegKey({ ...a }, { ...b }));
+  assert.notEqual(
+    liveLegKey(a, b),
+    liveLegKey(a, { ...b, lat: 45.52 }),
+    "a moved stop routes again",
+  );
+  assert.notEqual(liveLegKey(a, b), liveLegKey(b, a), "direction matters");
 });

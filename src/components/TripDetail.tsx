@@ -78,6 +78,7 @@ import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
+import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 
 /**
  * A trip, as a page.
@@ -1365,7 +1366,15 @@ function TimelineEntry({
     patch: Partial<
       Pick<
         ItineraryRow,
-        "title" | "detail" | "time_label" | "kind" | "day_date" | "address" | "lat" | "lon"
+        | "title"
+        | "detail"
+        | "time_label"
+        | "kind"
+        | "day_date"
+        | "address"
+        | "lat"
+        | "lon"
+        | "planned_stay_minutes"
       >
     >,
   ) => void;
@@ -1470,6 +1479,26 @@ function TimelineEntry({
                 onChange={(e) => onUpdate({ time_label: e.target.value || null })}
                 className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
               />
+            </label>
+            {/* How long the plan allows here. Now counts it down once you
+                tap "I'm here"; left empty, Now only says how long it has been. */}
+            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
+              Stay
+              <select
+                value={item.planned_stay_minutes ?? ""}
+                aria-label={`How long to stay at ${item.title}`}
+                onChange={(e) =>
+                  onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })
+                }
+                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
+              >
+                <option value="">—</option>
+                {stayChoices(item.planned_stay_minutes).map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {stayLabel(minutes)}
+                  </option>
+                ))}
+              </select>
             </label>
             {onMove && (
               <div className="flex items-center gap-1">

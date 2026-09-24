@@ -31,6 +31,7 @@ implied, and nothing is migrated or removed while it grows.
 | `src/components/day/DayMap.tsx` | the Leaflet day map |
 | `src/lib/companion.ts` (+test) | Now: progress, up next, leave by, writes |
 | `src/components/day/NowPanel.tsx` | the Now view |
+| `src/lib/planned-stay.ts` (+test) | planned-stay choices and labels |
 | `src/routes/trips_.$tripId_.day.tsx` | the screen |
 
 `DaySelector` is also wired into the old `TripDetail` (commit `8fb4800`).
@@ -117,18 +118,21 @@ What step 3 has to respect:
 - **Up next is after the furthest stop reached**, so a skipped stop is
   behind you rather than offered again.
 - **Leave by** = next stop's clock time minus the saved leg's duration,
-  rounded early. The leg comes only from directions saved on this phone,
-  and only while their signature still matches the timeline's direction
-  stops; a leg exists only between consecutive stops. It is not shown for a
-  capped leg, an unplaced end, a zero duration, a missing leg, or a next stop
-  with no clock time ("Lunch"). The same spot at both ends shows "no need to
-  move". When no directions are saved at all it points at the old page to
-  save them. There is no live routing call from Now.
+  rounded early. The leg comes from directions saved on this phone when
+  their signature still matches the timeline's direction stops (a saved leg
+  exists only between consecutive stops). Otherwise Now routes that one
+  journey itself through `buildRoutes` — **only when both ends are on the
+  map**, never by name — once per journey per session, cached by both stops
+  and their coordinates. It is not shown for a capped leg, an unplaced end, a
+  zero duration or failed route, or a next stop with no clock time ("Lunch").
+  When an end is off the map it says which and where to fix it. The same spot
+  at both ends shows "no need to move".
 - **Which day:** the day picked, or today when "All days" is showing. With
   neither, it asks for a day.
-- `planned_stay_minutes` is read but **nothing writes it yet**, so "about N
-  min left" appears only on rows that somehow have one. Adding it to the stop
-  editor is the natural next step.
+- **Planned stay** is set two ways: "Plan to stay" on the "You're at" card,
+  and "Stay" beside Day and Time in the old page's itinerary edit mode. Both
+  are pick-lists (`planned-stay.ts`) that cannot produce a value the database
+  refuses, and keep an odd value already on a row.
 - Walk / Drive rows from saved directions are the journey, not stops, and are
   left out — the same filter the directions use, so leg indexes line up.
 

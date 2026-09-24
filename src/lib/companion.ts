@@ -243,3 +243,44 @@ export function legBetween<L>(
   if (from < 0 || tripStops[from + 1]?.id !== toId) return null;
   return legs[from] ?? null;
 }
+
+type Placeable = { lat?: number | null; lon?: number | null };
+
+function isPlaced(point: Placeable): point is { lat: number; lon: number } {
+  return (
+    typeof point.lat === "number" &&
+    typeof point.lon === "number" &&
+    Number.isFinite(point.lat) &&
+    Number.isFinite(point.lon) &&
+    (point.lat !== 0 || point.lon !== 0)
+  );
+}
+
+/**
+ * Whether Now should route this one journey itself.
+ *
+ * Only when nothing saved covers it, and only between two stops that are
+ * already on the map. Routing by name would mean guessing where a place is,
+ * and a "Leave by" built on a guessed pin is the number-over-a-guess this
+ * view refuses. Unlike a saved leg, it does not need the stops to be
+ * consecutive: it is the journey you are actually about to make.
+ */
+export function needsLiveLeg(
+  savedLeg: unknown,
+  from: Placeable | null | undefined,
+  to: Placeable | null | undefined,
+): boolean {
+  return savedLeg == null && from != null && to != null && isPlaced(from) && isPlaced(to);
+}
+
+/**
+ * One key per journey between two pins, so the same walk is routed once a
+ * session however often the view re-renders — and again if either stop moves.
+ */
+export function liveLegKey(
+  from: { id: string } & Placeable,
+  to: { id: string } & Placeable,
+): string {
+  const at = (p: Placeable) => `${p.lat?.toFixed(5)},${p.lon?.toFixed(5)}`;
+  return `${from.id}@${at(from)}>${to.id}@${at(to)}`;
+}

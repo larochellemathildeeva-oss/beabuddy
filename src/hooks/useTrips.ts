@@ -665,7 +665,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       patch: Partial<
         Pick<
           ItineraryRow,
-          "title" | "detail" | "time_label" | "kind" | "day_date" | "address" | "lat" | "lon"
+          | "title"
+          | "detail"
+          | "time_label"
+          | "kind"
+          | "day_date"
+          | "address"
+          | "lat"
+          | "lon"
+          | "planned_stay_minutes"
         >
       >,
     ) => {

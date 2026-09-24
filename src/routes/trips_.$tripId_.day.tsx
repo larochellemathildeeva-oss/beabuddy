@@ -224,6 +224,9 @@ function TripDay({
                 tripStops={companionStops(board.items)}
                 legs={legs}
                 onProgress={board.setProgress}
+                onPlanStay={(id, minutes) =>
+                  board.updateItem(id, { planned_stay_minutes: minutes })
+                }
               />
             ) : (
               <PickADay />
