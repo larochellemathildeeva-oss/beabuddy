@@ -3,7 +3,6 @@ import {
   Check,
   ChevronDown,
   ListChecks,
-  MapPinPlus,
   Pencil,
   Plus,
   Settings,
@@ -465,52 +464,52 @@ export function TripDetail({
         // photograph between them instead of cutting.
         viewTransitionName={`trip-photo-${trip.id}`}
       />
-      <div className="flex items-center gap-1 p-3">
+      {/* The prototype's labelled action pills, in place of bare icons. */}
+      <div className="flex flex-wrap items-center gap-1.5 p-3">
         <button
           data-guide="bea-plan"
-          aria-label="Let Béa plan this trip"
           title="Let Béa plan this trip"
           onClick={() => {
             setPlannerTab("import");
             setPlannerOpen(true);
           }}
-          className="relative grid size-9 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 pl-1 pr-3 text-[13px] font-semibold text-primary"
         >
-          <img src={logo} alt="" className="size-7 object-contain" />
-          <Sparkles className="absolute -right-1 -top-1 size-3.5 rounded-full bg-card p-0.5 text-primary" />
-        </button>
-        <button
-          data-guide="add-stop"
-          aria-label="Add a stop to this trip"
-          title="Add a stop"
-          onClick={() => {
-            setPerspective("trip");
-            setStopSignal((n) => n + 1);
-          }}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
-        >
-          <MapPinPlus className="size-4" />
+          <img src={logo} alt="" className="size-8 object-contain" />
+          Plan with Béa
         </button>
         <button
           data-guide="trip-prep"
-          aria-label="Things to do and packing for this trip"
-          title="Before you go"
+          title="To-dos and packing for this trip"
           onClick={() => setPrepSignal((n) => n + 1)}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold text-muted-foreground"
         >
-          <ListChecks className="size-4" />
+          <ListChecks className="size-4 text-primary" aria-hidden />
+          Before you go
         </button>
         <button
-          aria-label="Trip settings"
           onClick={() => {
             setSettingsOpen(true);
             setSheetSection(null);
           }}
-          className="grid size-9 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold text-muted-foreground"
         >
-          <Settings className="size-4" />
+          <Settings className="size-4 text-primary" aria-hidden />
+          Settings
         </button>
-        <span className="ml-auto truncate pl-2 text-[12.5px] text-muted-foreground">
+        <button
+          data-guide="add-stop"
+          title="Add a stop to this trip"
+          onClick={() => {
+            setPerspective("trip");
+            setStopSignal((n) => n + 1);
+          }}
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-primary px-3.5 text-[13px] font-bold text-primary-foreground shadow-sm"
+        >
+          <Plus className="size-4" aria-hidden />
+          Add stop
+        </button>
+        <span className="ml-auto truncate pl-1 text-[12px] text-muted-foreground">
           {[
             board.items.length ? `${board.items.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
@@ -545,53 +544,83 @@ export function TripDetail({
           </div>
         </div>
 
-        <nav
-          role="tablist"
-          aria-label="How to look at this trip"
-          className="no-scrollbar -mx-1 mb-1.5 flex items-center gap-1.5 overflow-x-auto px-1"
-        >
-          {TRIP_PERSPECTIVES.map((p) => {
-            const on = p.id === perspective;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                onClick={() => setPerspective(p.id)}
-                className={`min-h-11 shrink-0 rounded-xl border px-4 text-[13.5px] font-semibold transition-colors ${
-                  on
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground"
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-          <span className="ml-auto" />
-          <CustomizeTrip prefs={view.prefs} onToggle={view.toggle} />
-        </nav>
-        <p className="mb-3 text-[12.5px] text-muted-foreground">{activePerspective.hint}</p>
-
-        {(perspective === "companion" || perspective === "map") &&
-          board.items.length > 0 &&
-          offerDays && (
-            <div className="mb-3">
-              <DaySelector
-                chips={dayChips(timelineGroups, todayKey)}
-                value={chosenDay}
-                onChange={setDayChoice}
-              />
+        {/* One day strip for Now, Map and Day (by day), as in the prototype:
+            the chosen day in charcoal, and the optimiser beside it. */}
+        {board.items.length > 0 &&
+          (perspective === "companion" ||
+            perspective === "map" ||
+            (perspective === "timeline" && timelineByDay)) && (
+            <div className="mb-3 flex items-center gap-2">
+              {offerDays && (
+                <div className="min-w-0 flex-1">
+                  <DaySelector
+                    chips={dayChips(timelineGroups, todayKey)}
+                    value={chosenDay}
+                    onChange={setDayChoice}
+                  />
+                </div>
+              )}
+              {board.items.length >= 2 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlannerTab("optimize");
+                    setPlannerOpen(true);
+                  }}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-[12.5px] font-semibold text-primary shadow-sm"
+                >
+                  <Sparkles className="size-4" aria-hidden />
+                  Optimize route
+                </button>
+              )}
             </div>
           )}
+
+        {/* The prototype's segmented control, holding Béa's four views. */}
+        <div className="mb-1.5 flex items-center gap-1.5">
+          <nav
+            role="tablist"
+            aria-label="How to look at this trip"
+            className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border bg-elevated p-1"
+          >
+            {TRIP_PERSPECTIVES.map((p) => {
+              const on = p.id === perspective;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setPerspective(p.id)}
+                  className={`min-h-10 flex-1 rounded-lg px-2 text-[13px] transition-all ${
+                    on
+                      ? "bg-card font-bold text-foreground shadow-sm ring-1 ring-primary/20"
+                      : "font-semibold text-muted-foreground"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </nav>
+          <CustomizeTrip prefs={view.prefs} onToggle={view.toggle} />
+        </div>
+        <p className="mb-3 px-0.5 text-[12.5px] text-muted-foreground">{activePerspective.hint}</p>
 
         {perspective === "companion" && (
           <div className="space-y-3">
             {nowStops.length > 0 ? (
               <>
                 {view.prefs.journey && <JourneyTracker stops={nowStops} />}
-                {view.prefs.ribbon && <DayRibbon stops={nowStops} />}
+                {view.prefs.ribbon && (
+                  <DayRibbon
+                    stops={nowStops}
+                    dayLabel={
+                      dayChips(timelineGroups, todayKey).find((c) => c.key === companionDay?.key)
+                        ?.ordinal
+                    }
+                  />
+                )}
                 <NowPanel
                   key={companionDay?.key ?? ""}
                   dayStops={nowStops}
@@ -721,17 +750,6 @@ export function TripDetail({
                       );
                     })}
                   </div>
-                )}
-
-                {/* The strip only appears in day view: the flat list is one
-                    run of rows on purpose, and filtering it to a day would
-                    leave a list with nothing to be flat about. */}
-                {board.items.length > 0 && timelineByDay && offerDays && (
-                  <DaySelector
-                    chips={dayChips(timelineGroups, todayKey)}
-                    value={chosenDay}
-                    onChange={setDayChoice}
-                  />
                 )}
 
                 {board.items.length === 0 ? null : timelineByDay ? (

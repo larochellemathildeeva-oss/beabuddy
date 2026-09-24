@@ -2,11 +2,11 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { companionState, stopStatuses, type StopStatus } from "@/lib/companion";
 
 const DOT: Record<StopStatus, string> = {
-  done: "border-primary bg-primary text-primary-foreground",
-  here: "border-primary bg-primary text-primary-foreground ring-4 ring-primary/20",
-  next: "border-primary bg-card text-primary",
-  skipped: "border-border bg-elevated text-muted-foreground line-through",
-  upcoming: "border-border bg-card text-muted-foreground",
+  done: "bg-nexttime text-white",
+  here: "scale-125 bg-primary text-primary-foreground shadow-sm ring-4 ring-primary/25",
+  next: "border-2 border-primary bg-card text-primary",
+  skipped: "border border-border bg-elevated text-muted-foreground line-through",
+  upcoming: "border border-border bg-card text-muted-foreground",
 };
 
 const STATUS_WORD: Record<StopStatus, string> = {
@@ -20,7 +20,8 @@ const STATUS_WORD: Record<StopStatus, string> = {
 /**
  * The day as a line of numbered stops, with where you are marked on it.
  *
- * From the prototype's Live Journey Tracker. It moves only when you tap
+ * The prototype's Live Journey Tracker: a track that fills as the day goes,
+ * done stops ticked, the current one ringed. It moves only when you tap
  * "I'm here" or "Leaving", like the rest of Now, and a stop you went past
  * without arriving shows as skipped rather than pretending you went.
  */
@@ -30,64 +31,78 @@ export function JourneyTracker({ stops }: { stops: ItineraryRow[] }) {
   const statuses = stopStatuses(stops);
   const focus = state.current ?? state.next;
   const position = focus ? stops.indexOf(focus) + 1 : stops.length;
+  const behind = statuses.filter((s) => s === "done" || s === "skipped").length;
+  const percent = Math.round((behind / stops.length) * 100);
+  const filled = stops.length > 1 ? Math.min(1, (position - 1) / (stops.length - 1)) : 1;
 
   return (
     <section
       aria-label="Live journey"
-      className="rounded-2xl border border-border/70 bg-card p-3.5"
+      className="rounded-2xl border border-border bg-card p-3.5 shadow-sm"
     >
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="flex items-center gap-2 text-[14px] font-semibold">
-          <span className="size-2 rounded-full bg-nexttime" aria-hidden />
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-[14px] font-bold">
+          <span className="relative flex size-2" aria-hidden>
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-nexttime opacity-60 motion-reduce:animate-none" />
+            <span className="relative inline-flex size-2 rounded-full bg-nexttime" />
+          </span>
           Live journey
         </p>
-        <p className="text-[12.5px] font-semibold tabular-nums text-muted-foreground">
-          Stop <span className="text-primary">{position}</span> of {stops.length}
+        <p className="text-[12px] font-semibold tabular-nums text-muted-foreground">
+          Stop <span className="font-bold text-primary">{position}</span> of {stops.length}
+          <span className="ml-1.5 opacity-80">({percent}% done)</span>
         </p>
       </div>
 
-      <ol className="no-scrollbar mt-3 flex items-center overflow-x-auto pb-1">
-        {stops.map((stop, i) => (
-          <li key={stop.id} className="flex shrink-0 items-center">
-            {i > 0 && (
+      {/* Scrolls sideways on a long day; each stop keeps a thumb-sized dot. */}
+      <div className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
+        <ol
+          className="relative flex items-center justify-between gap-2 px-1 py-1.5"
+          style={{ minWidth: `${stops.length * 36}px` }}
+        >
+          <span
+            aria-hidden
+            className="absolute inset-x-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-elevated"
+          />
+          <span
+            aria-hidden
+            className="absolute left-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `calc((100% - 1.5rem) * ${filled})` }}
+          />
+          {stops.map((stop, i) => (
+            <li key={stop.id} className="relative z-10 shrink-0">
               <span
-                aria-hidden
-                className={`h-0.5 w-5 ${
-                  statuses[i - 1] === "done" || statuses[i - 1] === "skipped"
-                    ? "bg-primary/60"
-                    : "bg-border"
-                }`}
-              />
-            )}
-            <span
-              title={`${stop.title}, ${STATUS_WORD[statuses[i]!]}`}
-              className={`grid size-8 place-items-center rounded-full border-2 text-[12.5px] font-bold tabular-nums ${DOT[statuses[i]!]}`}
-            >
-              {i + 1}
-              <span className="sr-only">
-                {" "}
-                {stop.title}, {STATUS_WORD[statuses[i]!]}
+                title={`${stop.title}, ${STATUS_WORD[statuses[i]!]}`}
+                className={`grid size-7 place-items-center rounded-full text-[11px] font-bold tabular-nums transition-all ${DOT[statuses[i]!]}`}
+              >
+                {statuses[i] === "done" ? "✓" : i + 1}
+                <span className="sr-only">
+                  {" "}
+                  {stop.title}, {STATUS_WORD[statuses[i]!]}
+                </span>
               </span>
-            </span>
-          </li>
-        ))}
-      </ol>
+            </li>
+          ))}
+        </ol>
+      </div>
 
-      <div className="mt-2.5 space-y-1.5 text-[13.5px]">
+      <div className="mt-2 grid grid-cols-1 gap-1.5 text-[13px] sm:grid-cols-2">
         {state.current && (
-          <p className="rounded-xl bg-elevated px-3 py-2">
-            <span className="mr-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-              Now
+          <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border/60 bg-elevated px-2.5 py-1.5">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Now:
             </span>
-            <span className="font-semibold">{state.current.title}</span>
+            <span className="truncate font-bold">{state.current.title}</span>
           </p>
         )}
-        {state.next && (
-          <p className="rounded-xl bg-primary/10 px-3 py-2">
-            <span className="mr-2 text-[11px] font-bold uppercase tracking-wider text-primary">
-              Next
-            </span>
-            <span className="font-semibold text-primary">{state.next.title}</span>
+        {state.next ? (
+          <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-primary">
+            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider">Next:</span>
+            <span className="truncate font-bold">{state.next.title}</span>
+          </p>
+        ) : (
+          <p className="rounded-xl bg-elevated px-2.5 py-1.5 font-semibold text-nexttime">
+            Every stop behind you for this day.
           </p>
         )}
       </div>
