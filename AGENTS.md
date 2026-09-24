@@ -34,6 +34,15 @@ Migrations live in `supabase/migrations/` and are **applied by hand**, not by
 the deploy. Writing a migration does not change the live database — say so
 plainly rather than reporting a schema fix as done.
 
+**Every migration that creates a table in `public` grants it explicitly**, in
+the same file. From 2026-10-30 Supabase no longer grants new tables to the API
+roles automatically, so a table without grants is unreachable on any database
+rebuilt from this folder. Follow the existing tables, not Supabase's template:
+`select, insert, update, delete` to `authenticated`, `all` to `service_role`,
+and nothing to `anon` — Béa has no signed-out data access. A table only a
+`SECURITY DEFINER` function touches still needs `service_role` if server code
+reaches it with the admin client.
+
 Storage buckets and auth settings are configured in the Supabase dashboard and
 are not fully represented in this repo. Do not assume the repo describes the
 live configuration; check before relying on it.
