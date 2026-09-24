@@ -17,6 +17,7 @@ export function PlaceSearchInput({
   onPick,
   placeholder = "Search or type a place",
   near,
+  center,
   /**
    * Where the person is, when it is known.
    *
@@ -39,6 +40,8 @@ export function PlaceSearchInput({
   onPick: (p: ParsedPlace) => void;
   placeholder?: string;
   near?: string;
+  /** The middle of the trip: where a chain or "coffee" is looked for when `at` is unknown. */
+  center?: { lat: number; lon: number } | null | undefined;
   at?: { lat: number; lon: number } | null | undefined;
   onLocate?: (() => void) | undefined;
   typeAhead?: boolean;
@@ -85,7 +88,12 @@ export function PlaceSearchInput({
         return;
       }
       const res = await search({
-        data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
+        data: {
+          query: q,
+          ...(near ? { near } : {}),
+          ...(at ? { at } : {}),
+          ...(center ? { center } : {}),
+        },
       });
       setHits(res);
       if (res.length === 0) {
@@ -127,7 +135,12 @@ export function PlaceSearchInput({
     const timer = setTimeout(async () => {
       try {
         const res = await search({
-          data: { query: q, ...(near ? { near } : {}), ...(at ? { at } : {}) },
+          data: {
+            query: q,
+            ...(near ? { near } : {}),
+            ...(at ? { at } : {}),
+            ...(center ? { center } : {}),
+          },
         });
         if (cancelled) return;
         setHits(res);
@@ -151,7 +164,7 @@ export function PlaceSearchInput({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [value, near, at, typeAhead, search]);
+  }, [value, near, at, center, typeAhead, search]);
 
   /**
    * A position arriving is an answer to the search that just failed, so run

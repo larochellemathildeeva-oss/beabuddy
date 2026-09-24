@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bookmark,
   Check,
@@ -60,6 +60,7 @@ import {
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
+import { strayStopIds } from "@/lib/geocode-plan";
 import { unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -319,6 +320,24 @@ export function TripDetail({
    * they are right now.
    */
   const [liveLegs, setLiveLegs] = useState<RouteLeg[] | null>(null);
+  // Where the trip is, as a point: the median of its placed stops, so one
+  // stop in another city does not drag it. Chain and category searches
+  // ("coffee", "subway") look around here while you plan from home.
+  const tripCenter = useMemo(() => {
+    const placed = board.items.filter(
+      (item): item is ItineraryRow & { lat: number; lon: number } =>
+        item.lat != null && item.lon != null,
+    );
+    if (!placed.length) return null;
+    const median = (values: number[]) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      return sorted[Math.floor(sorted.length / 2)]!;
+    };
+    return { lat: median(placed.map((p) => p.lat)), lon: median(placed.map((p) => p.lon)) };
+  }, [board.items]);
+  // Pins far from the rest of the trip, saved before lookups were bounded to
+  // the trip's area: flagged on their cards so they get checked.
+  const strayIds = useMemo(() => strayStopIds(board.items), [board.items]);
   const legFor = (index: number) =>
     liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   const templates = usePacking(null);
@@ -1028,6 +1047,7 @@ export function TripDetail({
                                       onToggleDone={() => toggleDone(item)}
                                       editing={editingTimeline}
                                       {...(directionArea ? { near: directionArea } : {})}
+                                      {...(tripCenter ? { center: tripCenter } : {})}
                                       onEdit={(field) => board.setEditing(field)}
                                       onUpdate={(patch) => void board.updateItem(item.id, patch)}
                                       onRemove={() => void removeTimelineItem(item)}
@@ -1039,6 +1059,7 @@ export function TripDetail({
                                       tripStart={trip.start_date}
                                       tripEnd={trip.end_date}
                                       onKeep={keepItemAsReco}
+                                      stray={strayIds.has(item.id)}
                                     />
                                     {(() => {
                                       // The next stop on the list as shown, so
@@ -1086,6 +1107,7 @@ export function TripDetail({
                             onToggleDone={() => toggleDone(item)}
                             editing={editingTimeline}
                             {...(directionArea ? { near: directionArea } : {})}
+                            {...(tripCenter ? { center: tripCenter } : {})}
                             onEdit={(field) => board.setEditing(field)}
                             onUpdate={(patch) => void board.updateItem(item.id, patch)}
                             onRemove={() => void removeTimelineItem(item)}
@@ -1095,6 +1117,7 @@ export function TripDetail({
                             tripStart={trip.start_date}
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
+                            stray={strayIds.has(item.id)}
                           />
                           {(() => {
                             const next = board.items
@@ -1140,6 +1163,7 @@ export function TripDetail({
                     {...(addDay ? { openDay: addDay } : {})}
                     {...(addBetween?.time ? { openTime: addBetween.time } : {})}
                     {...(directionArea ? { near: directionArea } : {})}
+                    {...(tripCenter ? { center: tripCenter } : {})}
                     existing={board.items.map((item) => ({
                       title: item.title,
                       address: item.address,

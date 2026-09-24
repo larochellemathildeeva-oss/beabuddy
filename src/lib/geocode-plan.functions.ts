@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { planStopQueries, QUERIES_PER_STOP } from "@/lib/geocode-plan";
+import {
+  areaBoxFrom,
+  boxViewbox,
+  inBox,
+  planStopQueries,
+  QUERIES_PER_STOP,
+  widenBox,
+  type AreaBox,
+} from "@/lib/geocode-plan";
 import { classifyGeoStatus, nextDelayMs, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
 
 const UA = "BeaBot/1.0 (travel app)";
@@ -49,41 +57,66 @@ function wait(ms: number) {
 type GeoHit = { lat: number; lon: number; label?: string; category?: string; kind?: string };
 type GeoResult = GeoHit | null | "throttled";
 
-async function geocode(provider: GeoProvider, query: string): Promise<GeoResult> {
+type RawHit = {
+  lat: string;
+  lon: string;
+  display_name?: string;
+  class?: string;
+  type?: string;
+  boundingbox?: string[];
+};
+
+async function lookup(
+  provider: GeoProvider,
+  query: string,
+  extra: { limit?: number; box?: AreaBox } = {},
+): Promise<RawHit[] | "throttled"> {
   // accept-language=* asks for the name in the local language rather than an
   // English translation. It does not change what matches — OSM indexes local
   // names either way — but it means a place found as 清水寺 comes back as
   // 清水寺, which is what a reader standing in front of it needs.
-  const url = searchUrl(provider, { query, limit: 1, language: "*" });
+  const url = searchUrl(provider, {
+    query,
+    limit: extra.limit ?? 1,
+    language: "*",
+    ...(extra.box ? { viewbox: boxViewbox(extra.box), bounded: true } : {}),
+  });
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
     const verdict = classifyGeoStatus(res.status);
-    if (verdict !== "ok") return verdict === "retry" ? "throttled" : null;
-    const json = (await res.json()) as {
-      lat: string;
-      lon: string;
-      display_name?: string;
-      class?: string;
-      type?: string;
-    }[];
-    const first = json[0];
-    if (!first) return null;
-    const lat = Number(first.lat);
-    const lon = Number(first.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (verdict !== "ok") return verdict === "retry" ? "throttled" : [];
+    const json = (await res.json()) as RawHit[];
+    return Array.isArray(json) ? json : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * A stop, looked up only inside the trip's area. The request is bounded to
+ * the box, and the answer is checked against it too, because a provider that
+ * treats the box as a hint would otherwise still hand back a namesake in the
+ * next province.
+ */
+async function geocode(provider: GeoProvider, query: string, box: AreaBox): Promise<GeoResult> {
+  const hits = await lookup(provider, query, { limit: 3, box });
+  if (hits === "throttled") return "throttled";
+  for (const hit of hits) {
+    const lat = Number(hit.lat);
+    const lon = Number(hit.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !inBox(box, lat, lon)) continue;
     return {
       lat,
       lon,
-      ...(first.display_name ? { label: first.display_name } : {}),
-      ...(first.class ? { category: first.class } : {}),
-      ...(first.type ? { kind: first.type } : {}),
+      ...(hit.display_name ? { label: hit.display_name } : {}),
+      ...(hit.class ? { category: hit.class } : {}),
+      ...(hit.type ? { kind: hit.type } : {}),
     };
-  } catch {
-    return null;
   }
+  return null;
 }
 
 /**
@@ -123,6 +156,18 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     let lookedUp = 0;
     let first = true;
 
+    // The area first, for its box. No box, no placing: an unbounded lookup
+    // is how a Montreal stop landed at a water park near Quebec City.
+    budget -= 1;
+    lookedUp += 1;
+    sent.push(Date.now());
+    first = false;
+    const areaHits = await lookup(provider, area);
+    if (areaHits === "throttled") return { placed, lookedUp, area, throttled: true };
+    const areaBox = areaBoxFrom(areaHits[0]?.boundingbox);
+    if (!areaBox) return { placed, lookedUp, area, throttled: false };
+    const box = widenBox(areaBox);
+
     for (const [index, stop] of data.stops.entries()) {
       const queries = planStopQueries({ title: stop.title, detail: stop.detail }, area).slice(
         0,
@@ -152,7 +197,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         budget -= 1;
         lookedUp += 1;
         sent.push(Date.now());
-        const found = await geocode(provider, query);
+        const found = await geocode(provider, query, box);
         if (found === "throttled") {
           // Asking harder will not help, and recording these as misses would
           // mark real places unfindable for the rest of the session.

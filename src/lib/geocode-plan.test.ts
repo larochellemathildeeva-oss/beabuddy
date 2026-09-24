@@ -68,3 +68,50 @@ test("estimatedSeconds rounds up, because a part second is still a wait", () => 
   assert.equal(estimatedSeconds(1, 1100), 2);
   assert.equal(estimatedSeconds(0, 1100), 0);
 });
+
+test("the area's box, widened, keeps Old Montreal and rejects Valcartier", async () => {
+  const { areaBoxFrom, widenBox, inBox, boxViewbox } = await import("./geocode-plan.ts");
+  // Montreal's box as Nominatim gives it: [south, north, west, east].
+  const montreal = areaBoxFrom(["45.4100", "45.7048", "-73.9740", "-73.4742"]);
+  assert.ok(montreal);
+  const box = widenBox(montreal);
+  assert.ok(inBox(box, 45.5075, -73.5519), "Old Port");
+  assert.ok(inBox(box, 45.4576, -73.7497), "the airport, just past the line");
+  assert.ok(!inBox(box, 46.985723, -71.407334), "Valcartier");
+  assert.equal(boxViewbox(montreal), "-73.97400,45.70480,-73.47420,45.41000");
+});
+
+test("a malformed box is no box", async () => {
+  const { areaBoxFrom } = await import("./geocode-plan.ts");
+  assert.equal(areaBoxFrom(undefined), null);
+  assert.equal(areaBoxFrom(["1", "2", "3"]), null);
+  assert.equal(areaBoxFrom(["50", "40", "0", "1"]), null);
+  assert.equal(areaBoxFrom(["a", "b", "c", "d"]), null);
+});
+
+test("a city with no size still gets a margin of about ten kilometres", async () => {
+  const { areaBoxFrom, widenBox, inBox } = await import("./geocode-plan.ts");
+  const point = widenBox(areaBoxFrom(["45.5", "45.5", "-73.5", "-73.5"])!);
+  assert.ok(inBox(point, 45.55, -73.45));
+  assert.ok(!inBox(point, 45.8, -73.5));
+});
+
+test("a stop far from the rest of the trip is flagged; a road trip is not", async () => {
+  const { strayStopIds } = await import("./geocode-plan.ts");
+  const city = [
+    { id: "a", lat: 45.5075, lon: -73.5519 },
+    { id: "b", lat: 45.5017, lon: -73.5673 },
+    { id: "c", lat: 45.5231, lon: -73.6017 },
+    { id: "d", lat: 45.4972, lon: -73.5794 },
+    { id: "castor", lat: 46.985723, lon: -71.407334 },
+    { id: "unplaced", lat: null, lon: null },
+  ];
+  assert.deepEqual([...strayStopIds(city)], ["castor"]);
+  const roadTrip = [
+    { id: "mtl", lat: 45.5, lon: -73.57 },
+    { id: "qc", lat: 46.81, lon: -71.21 },
+    { id: "ott", lat: 45.42, lon: -75.69 },
+    { id: "tor", lat: 43.65, lon: -79.38 },
+  ];
+  assert.equal(strayStopIds(roadTrip).size, 0);
+});
