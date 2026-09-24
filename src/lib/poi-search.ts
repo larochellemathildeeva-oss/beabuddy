@@ -1,0 +1,248 @@
+/**
+ * Searching for a kind of place, or a chain, around a point.
+ *
+ * Nominatim is a geocoder: it turns a name or an address into a point. Asked
+ * for "subway" it ranks every Subway on Earth, plus the transit systems and a
+ * street or two, and picks by importance, not by where you are. That is how
+ * two branches an hour away came back while one sat on the next block.
+ *
+ * OpenStreetMap already answers the real question in its tags. A branch is
+ * mapped `brand=Subway` even when it has no name of its own; a café is
+ * `amenity=cafe`; a sushi bar carries `cuisine=sushi`. Overpass reads those
+ * tags directly around a point, so "subway", "coffee" and "sushi" become
+ * lookups rather than guesses. Named places and addresses stay with the
+ * geocoder, which is what it is for.
+ *
+ * Pure: builds the query and reads the answer. The request itself lives in
+ * places.functions.ts.
+ */
+import { foldAccents } from "./fuzzy.ts";
+import { haversine, type LatLon } from "./geo.ts";
+
+/** One tag filter, as Overpass writes it: ["key"="value"] or ["key"~"regex",i]. */
+type TagFilter = { key: string; value: string; regex?: boolean };
+
+type Category = { label: string; filters: TagFilter[] };
+
+const exact = (key: string, value: string): TagFilter => ({ key, value });
+const like = (key: string, value: string): TagFilter => ({ key, value, regex: true });
+
+/**
+ * Words people type for a kind of place, and the tags that mean it. Singular,
+ * accent-free and lower case; plurals and accents are folded before lookup.
+ */
+const CATEGORIES: Record<string, Category> = {
+  coffee: { label: "Coffee", filters: [exact("amenity", "cafe"), like("cuisine", "coffee")] },
+  cafe: { label: "Cafés", filters: [exact("amenity", "cafe")] },
+  "coffee shop": { label: "Coffee", filters: [exact("amenity", "cafe")] },
+  bakery: { label: "Bakeries", filters: [exact("shop", "bakery")] },
+  boulangerie: { label: "Bakeries", filters: [exact("shop", "bakery")] },
+  bagel: { label: "Bagels", filters: [like("cuisine", "bagel"), like("name", "bagel")] },
+  sushi: { label: "Sushi", filters: [like("cuisine", "sushi")] },
+  ramen: { label: "Ramen", filters: [like("cuisine", "ramen")] },
+  pizza: { label: "Pizza", filters: [like("cuisine", "pizza")] },
+  burger: { label: "Burgers", filters: [like("cuisine", "burger")] },
+  "ice cream": {
+    label: "Ice cream",
+    filters: [exact("amenity", "ice_cream"), like("cuisine", "ice_cream")],
+  },
+  gelato: {
+    label: "Ice cream",
+    filters: [exact("amenity", "ice_cream"), like("cuisine", "ice_cream")],
+  },
+  restaurant: { label: "Restaurants", filters: [exact("amenity", "restaurant")] },
+  bar: { label: "Bars", filters: [exact("amenity", "bar")] },
+  pub: { label: "Pubs", filters: [exact("amenity", "pub")] },
+  brewery: { label: "Breweries", filters: [like("craft", "brewery"), like("microbrewery", "yes")] },
+  museum: { label: "Museums", filters: [exact("tourism", "museum")] },
+  musee: { label: "Museums", filters: [exact("tourism", "museum")] },
+  gallery: { label: "Galleries", filters: [exact("tourism", "gallery")] },
+  park: { label: "Parks", filters: [exact("leisure", "park")] },
+  hotel: { label: "Hotels", filters: [exact("tourism", "hotel")] },
+  pharmacy: { label: "Pharmacies", filters: [exact("amenity", "pharmacy")] },
+  supermarket: { label: "Supermarkets", filters: [exact("shop", "supermarket")] },
+  grocery: {
+    label: "Groceries",
+    filters: [exact("shop", "supermarket"), exact("shop", "convenience")],
+  },
+  atm: { label: "ATMs", filters: [exact("amenity", "atm")] },
+  toilet: { label: "Toilets", filters: [exact("amenity", "toilets")] },
+  bookstore: { label: "Bookshops", filters: [exact("shop", "books")] },
+  bookshop: { label: "Bookshops", filters: [exact("shop", "books")] },
+  market: { label: "Markets", filters: [exact("amenity", "marketplace")] },
+  temple: {
+    label: "Temples",
+    filters: [exact("amenity", "place_of_worship"), like("religion", "buddhist")],
+  },
+  shrine: { label: "Shrines", filters: [like("religion", "shinto")] },
+};
+
+/** "Bagels" → "bagel", "cafés" → "cafe", "Coffee shops" → "coffee shop". */
+function categoryKey(query: string): string | null {
+  const q = foldAccents(query)
+    .replace(/['’]/g, "")
+    .replace(/\s+near me$/, "")
+    .trim();
+  if (CATEGORIES[q]) return q;
+  const singular = q
+    .replace(/(ie)s$/, "y")
+    .replace(/(s|x|z|ch|sh)es$/, "$1")
+    .replace(/s$/, "");
+  if (CATEGORIES[singular]) return singular;
+  return null;
+}
+
+export type PoiIntent =
+  { kind: "category"; label: string; filters: TagFilter[] } | { kind: "brand"; text: string };
+
+/**
+ * What kind of search this is. Null means "leave it to the geocoder": an
+ * address, a long phrase, or anything with a number in it is not a brand.
+ */
+export function poiIntent(query: string): PoiIntent | null {
+  const q = query.trim();
+  if (q.length < 2 || q.length > 40) return null;
+  const key = categoryKey(q);
+  if (key) return { kind: "category", ...CATEGORIES[key]! };
+  // Addresses and long phrases belong to the geocoder.
+  if (/\d/.test(q) || q.split(/\s+/).length > 4 || /,/.test(q)) return null;
+  // "subways" was typed for "Subway": the plural is how people say chains.
+  const text = q.replace(/['’]?s$/i, "").trim() || q;
+  return { kind: "brand", text };
+}
+
+/** A regex that matches `value` literally. */
+function regexEscape(value: string): string {
+  return value.replace(/[\\^$.|?*+()[\]{}]/g, "\\$&");
+}
+
+/**
+ * A regex source, ready for Overpass's double-quoted strings, where a
+ * backslash and a quote must themselves be escaped.
+ */
+function qlString(regex: string): string {
+  return regex.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+/** Matches the name with or without its apostrophes: "Mandys", "Mandy's", "Mandy’s". */
+function apostropheTolerant(text: string): string {
+  return [...text.replace(/['’]/g, "")].map(regexEscape).join("['’]?");
+}
+
+function filterQL(f: TagFilter): string {
+  return f.regex
+    ? `["${f.key}"~"${qlString(regexEscape(f.value))}",i]`
+    : `["${f.key}"="${f.value}"]`;
+}
+
+/**
+ * The Overpass request for an intent around a point. Brand searches match the
+ * `brand` tag or the start of the `name`, so a branch mapped with only a brand
+ * is found, and so is "Mandy's" by its own name.
+ */
+export function overpassQuery(intent: PoiIntent, at: LatLon, radiusM: number, limit = 40): string {
+  const around = `(around:${Math.round(radiusM)},${at.lat.toFixed(5)},${at.lon.toFixed(5)})`;
+  const parts: string[] = [];
+  if (intent.kind === "category") {
+    for (const f of intent.filters) parts.push(`nwr${around}${filterQL(f)}["name"];`);
+  } else {
+    const t = qlString(apostropheTolerant(intent.text));
+    // The trailing s was taken off as a plural; the chain may be named with it.
+    parts.push(`nwr${around}["brand"~"^${t}(['’]?s)?$",i];`);
+    parts.push(`nwr${around}["name"~"^${t}",i];`);
+  }
+  return `[out:json][timeout:15];(${parts.join("")});out center tags ${limit};`;
+}
+
+export type OverpassElement = {
+  type?: string;
+  id: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat: number; lon: number };
+  tags?: Record<string, string>;
+};
+
+export type PoiHit = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  address?: string;
+  city?: string;
+  country?: string;
+  category?: string;
+  placeType?: string;
+  openingHours?: string;
+  /** The chain, when OSM tags one: a branch is often named only by this. */
+  brand?: string;
+  distanceM: number;
+};
+
+const KIND_KEYS = ["amenity", "shop", "tourism", "leisure", "craft"] as const;
+
+/**
+ * The answer, as places: named, placed, nearest first, one per spot. Streets
+ * and bus stops that happen to share a chain's name are dropped — a brand
+ * search wants somewhere you can walk into.
+ */
+export function readOverpass(elements: readonly OverpassElement[], at: LatLon): PoiHit[] {
+  const out: PoiHit[] = [];
+  for (const e of elements) {
+    const tags = e.tags ?? {};
+    const lat = e.lat ?? e.center?.lat;
+    const lon = e.lon ?? e.center?.lon;
+    if (lat == null || lon == null) continue;
+    const kindKey = KIND_KEYS.find((k) => tags[k]);
+    if (!kindKey) continue; // a road, a stop, a boundary: not a place to go
+    const name = tags["name"] || tags["brand"];
+    if (!name) continue;
+    const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
+    const city = tags["addr:city"];
+    const address = [street, city].filter(Boolean).join(", ");
+    out.push({
+      id: `${e.type ?? "node"}/${e.id}`,
+      name,
+      lat,
+      lon,
+      ...(address ? { address } : {}),
+      ...(city ? { city } : {}),
+      ...(tags["addr:country"] ? { country: tags["addr:country"] } : {}),
+      category: kindKey,
+      placeType: tags[kindKey]!,
+      ...(tags["opening_hours"] ? { openingHours: tags["opening_hours"] } : {}),
+      ...(tags["brand"] ? { brand: tags["brand"] } : {}),
+      distanceM: haversine(at, { lat, lon }),
+    });
+  }
+  out.sort((a, b) => a.distanceM - b.distanceM);
+  // The same café mapped as a node and as its building is one place.
+  const kept: PoiHit[] = [];
+  for (const hit of out) {
+    const twin = kept.some(
+      (k) =>
+        foldAccents(k.name) === foldAccents(hit.name) && Math.abs(k.distanceM - hit.distanceM) < 40,
+    );
+    if (!twin) kept.push(hit);
+  }
+  return kept;
+}
+
+/** How far to look: walking distance around you, a city around a trip. */
+export const RADIUS_NEAR_YOU_M = 2_000;
+export const RADIUS_AROUND_TRIP_M = 6_000;
+
+/** "Tim Horton's", "tim hortons", "Tim Hortons" → one key. */
+function nameKey(value: string): string {
+  return foldAccents(value).replace(/['’]/g, "").replace(/s$/, "").trim();
+}
+
+/**
+ * Whether a hit is the thing asked for, not only something whose name starts
+ * the same way: the brand itself, or a place with exactly that name. "Paris"
+ * typed in Montreal is not answered by "Paris Pizza" alone.
+ */
+export function isExactPoiMatch(hit: Pick<PoiHit, "name" | "brand">, text: string): boolean {
+  const want = nameKey(text);
+  return nameKey(hit.name) === want || (hit.brand != null && nameKey(hit.brand) === want);
+}

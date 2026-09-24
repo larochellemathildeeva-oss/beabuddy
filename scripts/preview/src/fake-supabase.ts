@@ -55,11 +55,13 @@ function items(): Row[] {
     return Array.from({ length: 45 }, (_, i) =>
       r(`l${i}`, D1, i, `${String(8 + Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`, i % 5 === 0 ? "meal" : "activity", `Stop ${i + 1}`, 34.39 + i * 0.001, 132.45 + i * 0.001, i < 3 ? { arrived_at: ago(200 - i * 30), left_at: ago(190 - i * 30) } : {}),
     );
+  // "stray": one stop saved with a namesake's pin far away (Osaka, ~280 km).
+  const strayPin: [number, number] = sample === "stray" ? [34.6937, 135.5023] : [34.396, 132.4518];
   return [
     r("a", D1, 0, "08:36", "transport", "Arrive Hiroshima Station", 34.3977, 132.4753, { arrived_at: ago(95), left_at: ago(70) }),
     r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4" }),
     r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", 34.3955, 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
-    r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", 34.396, 132.4518),
+    r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", strayPin[0], strayPin[1]),
     r("e", D1, 4, "13:00", "meal", "Lunch: Kakiya", 34.2968, 132.3207, { address: "Miyajima Omotesando", planned_stay_minutes: 50 }),
     r("f", D1, 5, "14:15", "activity", "Omotesando food crawl", 34.2985, 132.3218),
     r("g", D1, 6, "15:30", "activity", "Itsukushima Shrine + Great Torii", 34.2959, 132.3197),

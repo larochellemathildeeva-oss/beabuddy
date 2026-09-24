@@ -1,3 +1,4 @@
+import { areaBoxFrom, boxViewbox, inBox, widenBox, type AreaBox } from "@/lib/geocode-plan";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -65,8 +66,15 @@ const WALL_MS = 80_000;
 async function geocode(
   provider: GeoProvider,
   query: string,
-): Promise<{ lat: number; lon: number } | null> {
-  const url = searchUrl(provider, { query, limit: 1 });
+  box?: AreaBox | null,
+): Promise<{ lat: number; lon: number; boundingbox?: string[] } | null> {
+  // Inside the trip's area when there is one: bounded in the request, and
+  // checked on the way back, because these pins are saved onto the stops.
+  const url = searchUrl(provider, {
+    query,
+    limit: box ? 3 : 1,
+    ...(box ? { viewbox: boxViewbox(box), bounded: true } : {}),
+  });
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
@@ -75,10 +83,15 @@ async function geocode(
     // A throttled lookup is not a missing place: caching it as one would
     // blank a real stop for the rest of this request.
     if (classifyGeoStatus(res.status) !== "ok") return null;
-    const json = (await res.json()) as { lat: string; lon: string }[];
-    const first = json[0];
-    if (!first) return null;
-    return { lat: Number(first.lat), lon: Number(first.lon) };
+    const json = (await res.json()) as { lat: string; lon: string; boundingbox?: string[] }[];
+    for (const hit of json) {
+      const lat = Number(hit.lat);
+      const lon = Number(hit.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (box && !inBox(box, lat, lon)) continue;
+      return { lat, lon, ...(hit.boundingbox ? { boundingbox: hit.boundingbox } : {}) };
+    }
+    return null;
   } catch {
     return null;
   }
@@ -195,7 +208,10 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const points: ({ lat: number; lon: number } | null)[] = [];
     const deferred: string[] = [];
     const remembered = new Map<string, { lat: number; lon: number }>();
-    const queryCache = new Map<string, { lat: number; lon: number } | null>();
+    const queryCache = new Map<
+      string,
+      { lat: number; lon: number; boundingbox?: string[] } | null
+    >();
     let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
     const deadline = Date.now() + WALL_MS;
@@ -204,6 +220,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const provider = geoProvider();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
+    let box: AreaBox | null = null;
     const lookup = async (query: string) => {
       const cacheKey = query.toLowerCase();
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
@@ -217,10 +234,18 @@ export const buildRoutes = createServerFn({ method: "POST" })
       }
       lookupsLeft -= 1;
       sent.push(Date.now());
-      const found = await geocode(provider, query);
+      const found = await geocode(provider, query, box);
       queryCache.set(cacheKey, found);
       return found;
     };
+    // The area's box, once, before any stop that needs looking up. Without
+    // it a stop's name alone could land anywhere — "Queue de Castor" in
+    // Montreal was saved at a stand near Quebec City.
+    if (area && data.stops.some((stop) => !hasCoords(stop))) {
+      const areaHit = await lookup(cleanArea(area));
+      const areaBox = areaBoxFrom(areaHit?.boundingbox);
+      if (areaBox) box = widenBox(areaBox);
+    }
     for (const stop of data.stops) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
@@ -250,10 +275,13 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (!found && region && names[0]) {
         const hit = await lookup(names[0]);
         const anchor = points.find((p) => p !== null);
-        if (hit && (!anchor || haversine(anchor, hit) <= 150_000)) found = hit;
+        // Bounded to the area when it has a box; the anchor check is what is
+        // left when it has none.
+        if (hit && (box || !anchor || haversine(anchor, hit) <= 150_000)) found = hit;
       }
-      if (found) remembered.set(reuseKeyForStop(stop), found);
-      points.push(found);
+      const pin = found ? { lat: found.lat, lon: found.lon } : null;
+      if (pin) remembered.set(reuseKeyForStop(stop), pin);
+      points.push(pin);
     }
 
     const legs: RouteLeg[] = [];

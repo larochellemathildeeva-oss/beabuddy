@@ -1,3 +1,14 @@
+import {
+  RADIUS_AROUND_TRIP_M,
+  RADIUS_NEAR_YOU_M,
+  isExactPoiMatch,
+  overpassQuery,
+  poiIntent,
+  readOverpass,
+  type OverpassElement,
+  type PoiHit,
+  type PoiIntent,
+} from "@/lib/poi-search";
 import { haversine } from "@/lib/geo";
 import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -63,6 +74,8 @@ export type ParsedPlace = {
    * unnoticed in the first place.
    */
   unlocated?: boolean;
+  /** OSM's opening_hours, when the place carries it. Not stored yet. */
+  openingHours?: string;
 };
 
 /**
@@ -333,6 +346,72 @@ async function nominatimVariants(
   return area ? [] : fallback;
 }
 
+/**
+ * OSM tags around a point, from the public Overpass servers: the main one,
+ * then an independent mirror. An empty list on any failure — the geocoder is
+ * still there behind it, so a slow Overpass costs a few seconds, not a search.
+ */
+async function overpassPlaces(
+  intent: PoiIntent,
+  at: { lat: number; lon: number },
+  radiusM: number,
+): Promise<PoiHit[]> {
+  const body = overpassQuery(intent, at, radiusM);
+  for (const base of [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+  ]) {
+    try {
+      const res = await fetch(base, {
+        method: "POST",
+        body: new URLSearchParams({ data: body }),
+        headers: { "user-agent": UA, accept: "application/json" },
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as { elements?: OverpassElement[] };
+      return readOverpass(json.elements ?? [], at);
+    } catch {
+      // try the mirror
+    }
+  }
+  return [];
+}
+
+function poiToPlace(hit: PoiHit): ParsedPlace {
+  return {
+    name: hit.name,
+    ...(hit.address ? { address: hit.address } : {}),
+    ...(hit.city ? { city: hit.city } : {}),
+    ...(hit.country ? { country: hit.country } : {}),
+    ...(hit.category ? { category: hit.category } : {}),
+    ...(hit.placeType ? { placeType: hit.placeType } : {}),
+    ...(hit.openingHours ? { openingHours: hit.openingHours } : {}),
+    lat: hit.lat,
+    lon: hit.lon,
+    source: "OpenStreetMap",
+    url: mapsPlaceUrl(hit.name, { lat: hit.lat, lon: hit.lon }),
+  };
+}
+
+/** Nearby look-alikes first, then the geocoder's answers, without repeats. */
+function mergeNearbyFirst(nearby: ParsedPlace[], rest: ParsedPlace[]): ParsedPlace[] {
+  const out = [...nearby];
+  for (const place of rest) {
+    const twin = out.some(
+      (p) =>
+        p.name.toLowerCase() === place.name.toLowerCase() &&
+        p.lat != null &&
+        place.lat != null &&
+        p.lon != null &&
+        place.lon != null &&
+        haversine({ lat: p.lat, lon: p.lon }, { lat: place.lat, lon: place.lon }) < 60,
+    );
+    if (!twin) out.push(place);
+  }
+  return out.slice(0, 10);
+}
+
 /** Search the web for a place by name, so anything can be saved without a link. */
 export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -354,6 +433,11 @@ export const searchPlaces = createServerFn({ method: "POST" })
          * (厳島神社)") each part can be asked for in the same place.
          */
         near: z.string().max(200).nullish(),
+        /**
+         * The middle of the trip, when there is no position: where "coffee"
+         * or "subway" should be looked for while planning from home.
+         */
+        center: z.object({ lat: z.number(), lon: z.number() }).nullish(),
       })
       .parse(data),
   )
@@ -363,6 +447,29 @@ export const searchPlaces = createServerFn({ method: "POST" })
     const data = { ...input, query: within(name) };
     const local = localPlaceHits(data.query);
     if (local.length) return local;
+
+    // A chain or a kind of place, with somewhere to look around: ask OSM's
+    // tags first (see poi-search.ts). A category is answered by its tags
+    // alone; a name is, when the answer is that exact brand or name —
+    // otherwise its nearby look-alikes go first and the geocoder still runs.
+    const anchor = input.at ?? input.center ?? null;
+    const intent = anchor ? poiIntent(name) : null;
+    let nearbyFirst: ParsedPlace[] = [];
+    if (anchor && intent) {
+      const radius = input.at ? RADIUS_NEAR_YOU_M : RADIUS_AROUND_TRIP_M;
+      const found = await overpassPlaces(intent, anchor, radius);
+      if (found.length) {
+        const places = found.slice(0, 10).map(poiToPlace);
+        if (intent.kind === "category") return places;
+        if (found.some((hit) => isExactPoiMatch(hit, intent.text))) {
+          return found
+            .filter((hit) => isExactPoiMatch(hit, intent.text))
+            .slice(0, 10)
+            .map(poiToPlace);
+        }
+        nearbyFirst = places.slice(0, 5);
+      }
+    }
     // Server-only: the token must not be compiled into the client bundle.
     const { geoProvider } = await import("@/lib/geo-provider.server");
     // Shared across every variant tried below, nearby and worldwide alike, so
@@ -419,6 +526,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // Searching near you: the nearest branch is the answer, whatever order the
     // map service ranked them in. Sort is stable, so equal distances keep it.
     const at = data.at;
+    if (nearbyFirst.length) return mergeNearbyFirst(nearbyFirst, ranked);
     if (!at) return ranked;
     const away = (p: ParsedPlace) =>
       p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;

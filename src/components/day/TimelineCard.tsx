@@ -44,6 +44,7 @@ export function TimelineEntry({
   number,
   editing = false,
   near,
+  center,
   onEdit,
   onUpdate,
   onRemove,
@@ -57,6 +58,7 @@ export function TimelineEntry({
   showSwipeHint = false,
   onLocate,
   onSaveBooking,
+  stray = false,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -66,6 +68,8 @@ export function TimelineEntry({
   editing?: boolean;
   /** Where the trip is, so a place search is answered locally. */
   near?: string | undefined;
+  /** The middle of the trip, for chain and category searches. */
+  center?: { lat: number; lon: number } | null | undefined;
   onEdit: (field: string | null) => void;
   onUpdate: (
     patch: Partial<
@@ -98,6 +102,8 @@ export function TimelineEntry({
   showSwipeHint?: boolean;
   /** Show this stop on the Map Split tab. Only offered for a placed stop. */
   onLocate?: (() => void) | undefined;
+  /** Placed far from the rest of the trip: probably the wrong place with the same name. */
+  stray?: boolean;
   /** Save the booking switch, reference and details. Rejects on failure. */
   onSaveBooking?: ((patch: BookingPatch) => Promise<void>) | undefined;
 }) {
@@ -189,9 +195,15 @@ export function TimelineEntry({
             ) : null}
             {item.title}
           </span>
-          <span className="mt-0.5 line-clamp-2 break-words text-[13px] text-muted-foreground">
-            {where || "No place yet"}
-          </span>
+          {stray ? (
+            <span className="mt-0.5 block text-[13px] font-semibold text-destructive">
+              ⚠ Pinned far from the rest of this trip. Tap to check the place.
+            </span>
+          ) : (
+            <span className="mt-0.5 line-clamp-2 break-words text-[13px] text-muted-foreground">
+              {where || "No place yet"}
+            </span>
+          )}
         </span>
         {booked && (
           <span
@@ -304,9 +316,17 @@ export function TimelineEntry({
             ))}
           </select>
         </label>
+        {stray && (
+          <p className="w-full text-[12.5px] font-semibold text-destructive">
+            ⚠ This pin is far from the rest of the trip, so it may be a different place with the
+            same name. Use “Change place” to pick the right one.
+          </p>
+        )}
         <TimelinePlaceEditor
           item={item}
           {...(near ? { near } : {})}
+          {...(center ? { center } : {})}
+          {...(center ? { center } : {})}
           onPick={(place) => onUpdate(placePatchForSavedRow(place))}
         />
         {placed && (
@@ -444,10 +464,13 @@ export function TimelineEntry({
 function TimelinePlaceEditor({
   item,
   near,
+  center,
   onPick,
 }: {
   item: ItineraryRow;
   near?: string | undefined;
+  /** The middle of the trip, for chain and category searches. */
+  center?: { lat: number; lon: number } | null | undefined;
   onPick: (place: ParsedPlace) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -479,6 +502,7 @@ function TimelinePlaceEditor({
         }}
         placeholder={`Where is ${item.title}?`}
         {...(near ? { near } : {})}
+        {...(center ? { center } : {})}
       />
       <button
         type="button"

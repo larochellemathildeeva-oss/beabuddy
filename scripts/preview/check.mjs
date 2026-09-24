@@ -379,6 +379,34 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   if (box.height > 80) throw new Error(`banner is ${box.height}px tall, not thin`);
 });
 
+{
+  const name = "a stop pinned far from the trip is flagged, and only that one";
+  const { page, errors } = await open("stray");
+  try {
+    await goTab(page, "Timeline");
+    const flagged = page.getByText("Pinned far from the rest of this trip", { exact: false });
+    if ((await flagged.count()) !== 1) throw new Error(`${await flagged.count()} cards flagged, expected 1`);
+    const card = page.getByRole("button", { name: /Motoyasubashi.*tap to edit$/ });
+    if ((await card.getByText("Pinned far", { exact: false }).count()) !== 1) throw new Error("the wrong card is flagged");
+    await card.click();
+    if ((await page.getByText("may be a different place with the same name", { exact: false }).count()) !== 1)
+      throw new Error("the back does not explain the flag");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
+  const { page } = await open("default");
+  await goTab(page, "Timeline");
+  if ((await page.getByText("Pinned far from the rest", { exact: false }).count()) !== 0)
+    note("a normal trip has a stop flagged as far away");
+  else console.log("✓ a normal trip has no stop flagged");
+  await page.close();
+}
+
 await browser.close();
 writeFileSync(join(out, "report.json"), JSON.stringify({ clicked, failures }, null, 2));
 console.log(`\n${clicked} controls clicked, ${failures.length} problem(s). Screenshots in scripts/preview/out/`);

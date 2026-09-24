@@ -68,6 +68,7 @@ export function TimelineEntryForm({
   openDay,
   openTime,
   near,
+  center,
   onAdd,
   onUpdateEntry,
   onDone,
@@ -81,6 +82,8 @@ export function TimelineEntryForm({
   openTime?: string | undefined;
   /** City, country — biases place search towards where the trip is. */
   near?: string | undefined;
+  /** The middle of the trip's placed stops, for chain and category searches. */
+  center?: { lat: number; lon: number } | null | undefined;
   /** Returns the new row's id, so the form can offer to schedule it. */
   onAdd: (entry: NewTimelineEntry) => Promise<string | undefined | void>;
   /** Set a day or time on something already added. */
@@ -301,6 +304,7 @@ export function TimelineEntryForm({
         onPick={pickPlace}
         placeholder="What's happening?"
         {...(near ? { near } : {})}
+        {...(center ? { center } : {})}
         {...(onUpdateEntry
           ? { quickAdd: { label: "Add", busyLabel: "Adding…", onAdd: quickAddPlace } }
           : {})}
