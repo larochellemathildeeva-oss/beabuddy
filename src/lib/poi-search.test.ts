@@ -125,3 +125,39 @@ test("an exact match is the brand or the whole name, not a name that starts the 
   assert.ok(isExactPoiMatch({ name: "Tim Horton's" }, "tim hortons"));
   assert.ok(!isExactPoiMatch({ name: "Paris Pizza" }, "Paris"));
 });
+
+test("a place mapped under its local name is found and shown by its English one", () => {
+  const q = overpassQuery(
+    { kind: "brand", text: "Itsukushima Shrine" },
+    { lat: 34.2975, lon: 132.3219 },
+    2000,
+  );
+  assert.match(q, /\["name:en"~"\^I/);
+  const [hit] = readOverpass(
+    [
+      {
+        type: "way",
+        id: 9,
+        center: { lat: 34.2959, lon: 132.3198 },
+        tags: { amenity: "place_of_worship", name: "厳島神社", "name:en": "Itsukushima Shrine" },
+      },
+    ],
+    { lat: 34.2975, lon: 132.3219 },
+  );
+  assert.equal(hit!.name, "Itsukushima Shrine (厳島神社)");
+  assert.ok(isExactPoiMatch(hit!, "itsukushima shrine"));
+  // A Latin-script name is left as it is.
+  const [louvre] = readOverpass(
+    [
+      {
+        type: "node",
+        id: 1,
+        lat: 48.86,
+        lon: 2.34,
+        tags: { tourism: "museum", name: "Musée du Louvre", "name:en": "Louvre Museum" },
+      },
+    ],
+    { lat: 48.86, lon: 2.34 },
+  );
+  assert.equal(louvre!.name, "Musée du Louvre");
+});

@@ -392,11 +392,17 @@ async function overpassPlaces(
         headers: { "user-agent": UA, accept: "application/json" },
         signal: AbortSignal.timeout(8_000),
       });
-      if (!res.ok) continue;
+      if (!res.ok) {
+        console.warn(`[places] Overpass ${new URL(base).host} answered ${res.status}`);
+        continue;
+      }
       const json = (await res.json()) as { elements?: OverpassElement[] };
       return readOverpass(json.elements ?? [], at);
-    } catch {
-      // try the mirror
+    } catch (error) {
+      // Logged so a quiet fallback is visible in the server log; then the mirror.
+      console.warn(
+        `[places] Overpass ${new URL(base).host} failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
   return [];
@@ -561,6 +567,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
     // Server-only: the token must not be compiled into the client bundle.
     const { geoProvider } = await import("@/lib/geo-provider.server");
+    const categoryHere = Boolean(anchor && intent?.kind === "category");
     // Shared across every variant tried below, nearby and worldwide alike, so
     // a search that needs several attempts paces them instead of bursting
     // past the provider's own rate limit.
@@ -573,6 +580,19 @@ export const searchPlaces = createServerFn({ method: "POST" })
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
       : undefined;
     let hits: NominatimHit[] = [];
+    // "coffee" near you is a kind of place, not a word to look for: with
+    // nothing tagged nearby, the geocoder may look only around the same
+    // point, never worldwide — where "coffee" found a school called "CofE"
+    // in Chester for someone standing in Montreal.
+    if (categoryHere && anchor) {
+      try {
+        const around = { viewbox: viewboxAround(anchor.lat, anchor.lon), bounded: true };
+        hits = await nominatimVariants(data.query, around, pace);
+      } catch {
+        hits = [];
+      }
+      return hits.length ? refineNominatimHits(hits, data.query).map(hitToPlace) : [];
+    }
     // Search-as-you-type first, where the provider has it (LocationIQ): it
     // understands a half-typed name and can be held to towns and countries.
     // Nothing from it, or no such service, and the full search below runs.

@@ -150,6 +150,9 @@ export function overpassQuery(intent: PoiIntent, at: LatLon, radiusM: number, li
     // The trailing s was taken off as a plural; the chain may be named with it.
     parts.push(`nwr${around}["brand"~"^${t}(['’]?s)?$",i];`);
     parts.push(`nwr${around}["name"~"^${t}",i];`);
+    // A place mapped under its local name (厳島神社) is found by its English
+    // one ("Itsukushima Shrine") only through this tag.
+    parts.push(`nwr${around}["name:en"~"^${t}",i];`);
   }
   return `[out:json][timeout:15];(${parts.join("")});out center tags ${limit};`;
 }
@@ -176,6 +179,8 @@ export type PoiHit = {
   openingHours?: string;
   /** The chain, when OSM tags one: a branch is often named only by this. */
   brand?: string;
+  /** OSM's name:en, when the place carries one. */
+  nameEn?: string;
   distanceM: number;
 };
 
@@ -195,8 +200,16 @@ export function readOverpass(elements: readonly OverpassElement[], at: LatLon): 
     if (lat == null || lon == null) continue;
     const kindKey = KIND_KEYS.find((k) => tags[k]);
     if (!kindKey) continue; // a road, a stop, a boundary: not a place to go
-    const name = tags["name"] || tags["brand"];
-    if (!name) continue;
+    const local = tags["name"] || tags["brand"];
+    if (!local) continue;
+    // A name in another script gets its English one first, the local one
+    // kept beside it: "Itsukushima Shrine (厳島神社)", which is both what the
+    // person typed and what the sign says.
+    const english = tags["name:en"];
+    const name =
+      english && english !== local && /[^\u0020-\u024F]/.test(local)
+        ? `${english} (${local})`
+        : local;
     const street = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean).join(" ");
     const city = tags["addr:city"];
     const address = [street, city].filter(Boolean).join(", ");
@@ -212,6 +225,7 @@ export function readOverpass(elements: readonly OverpassElement[], at: LatLon): 
       placeType: tags[kindKey]!,
       ...(tags["opening_hours"] ? { openingHours: tags["opening_hours"] } : {}),
       ...(tags["brand"] ? { brand: tags["brand"] } : {}),
+      ...(english ? { nameEn: english } : {}),
       distanceM: haversine(at, { lat, lon }),
     });
   }
@@ -242,7 +256,14 @@ function nameKey(value: string): string {
  * the same way: the brand itself, or a place with exactly that name. "Paris"
  * typed in Montreal is not answered by "Paris Pizza" alone.
  */
-export function isExactPoiMatch(hit: Pick<PoiHit, "name" | "brand">, text: string): boolean {
+export function isExactPoiMatch(
+  hit: Pick<PoiHit, "name" | "brand" | "nameEn">,
+  text: string,
+): boolean {
   const want = nameKey(text);
-  return nameKey(hit.name) === want || (hit.brand != null && nameKey(hit.brand) === want);
+  return (
+    nameKey(hit.name) === want ||
+    (hit.brand != null && nameKey(hit.brand) === want) ||
+    (hit.nameEn != null && nameKey(hit.nameEn) === want)
+  );
 }
