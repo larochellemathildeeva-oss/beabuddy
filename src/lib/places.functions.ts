@@ -21,6 +21,7 @@ import { foldAccents, fuzzyQueryVariants, fuzzyRank } from "@/lib/fuzzy";
 import {
   placeFromNominatim,
   refineNominatimHits,
+  exactPlaceHits,
   isVenueHit,
   type NominatimHitLike,
 } from "@/lib/place-label";
@@ -343,6 +344,11 @@ async function nominatimVariants(
     // also a transit system and an ordinary word, and a country or a metro
     // station can rank ahead of the sandwich shop that was actually meant.
     const venues = batch.filter(isVenueHit);
+    // The name exactly as typed is a town or country: that is the answer,
+    // with any venues of the same name after it, and no spelling variants.
+    // Worldwide only — near you, a chain's branch is still what is meant.
+    const exact = !area && variant === variants[0] ? exactPlaceHits(batch, query) : [];
+    if (exact.length) return [...exact, ...venues];
     if (venues.length) return venues;
     if (!fallback.length) fallback = batch;
   }

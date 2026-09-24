@@ -158,6 +158,19 @@ export function formatPlaceLine(hit: NominatimHitLike): string {
   return uniqueParts([local, admin, country]).join(", ");
 }
 
+/**
+ * A town, region or country named exactly what was typed. "kyoto" is Kyoto,
+ * even though the possessive spelling Béa also tries ("kyoto's") finds a
+ * restaurant in Louisiana, and a restaurant is otherwise preferred.
+ */
+export function exactPlaceHits<T extends NominatimHitLike>(hits: readonly T[], query: string): T[] {
+  const want = foldAccents(query).trim();
+  if (!want) return [];
+  return hits.filter(
+    (hit) => !isVenueHit(hit) && isLocalityHit(hit) && foldAccents(hitOwnName(hit)) === want,
+  );
+}
+
 export function isLocalityHit(hit: NominatimHitLike): boolean {
   const kind = kindOf(hit);
   if (LOCALITY_TYPES.has(kind)) return true;
