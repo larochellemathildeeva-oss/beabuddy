@@ -521,6 +521,28 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   await page.close();
 }
 
+{
+  const name = "home: next-trip card shows the flight, the hotel, packing and the way in";
+  const { page, errors } = await open("home");
+  try {
+    for (const text of ["Your next trip", "Leaving in 2 days", "Flight out", "AC 781 · 08:15", "YUL → LAX", "Lodging", "The Line Hotel", "6 / 12 items", "5 scheduled stops"]) {
+      if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
+    }
+    const open = page.getByRole("link", { name: /Open LA itinerary/ });
+    if ((await open.count()) !== 1) throw new Error("no Open itinerary link");
+    if ((await open.getAttribute("href")) !== "/trips/la") throw new Error(`Open itinerary goes to ${await open.getAttribute("href")}`);
+    const later = page.getByRole("link", { name: /JQAPALA A · Hiroshima & Miyajima/ });
+    if ((await later.count()) !== 1) throw new Error("the later trip is not listed");
+    if ((await later.getAttribute("href")) !== "/trips/t1") throw new Error("the later trip does not open its page");
+    if ((await page.getByText(/^Later this /).count()) === 0) throw new Error("no later heading");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+
 await browser.close();
 writeFileSync(join(out, "report.json"), JSON.stringify({ clicked, failures }, null, 2));
 console.log(`\n${clicked} controls clicked, ${failures.length} problem(s). Screenshots in scripts/preview/out/`);

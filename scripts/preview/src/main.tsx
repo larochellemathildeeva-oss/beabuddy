@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 import { TripDetail } from "@/components/TripDetail";
+import { HomeTripCard } from "@/components/HomeTripCard";
 
 const sample = new URLSearchParams(location.search).get("sample") ?? "default";
 const guest = sample === "guest";
@@ -17,7 +18,13 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-createRoot(document.getElementById("root")!).render(
+if (sample === "home") {
+  createRoot(document.getElementById("root")!).render(
+    <div className="min-h-screen bg-background px-4 py-4">
+      <HomeTripCard />
+    </div>,
+  );
+} else createRoot(document.getElementById("root")!).render(
   // Like the app shell on a phone: full width, no padding, page scrolls.
   <div className="min-h-screen bg-background pb-7">
     <Toaster />
