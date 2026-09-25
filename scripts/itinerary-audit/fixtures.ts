@@ -4,7 +4,7 @@
  * Each is written the way people actually paste plans — a tidy list, a blog
  * paragraph, a WhatsApp thread, another language — and each carries one or
  * two traps Béa has fallen into before or plausibly could. `expect` is the
- * answer a careful human would give; `audit.ts` scores Béa against it.
+ * answer a careful human would give; `audit.mjs` scores Béa against it.
  */
 
 export type Fixture = {
@@ -26,6 +26,13 @@ export type Fixture = {
     mustInclude: string[];
     /** Addresses given in the source, which must come back verbatim. */
     addresses?: string[];
+    /** Plans the source drops or cancels, which must not be stops. */
+    mustExclude?: string[];
+    /**
+     * Where a stop must be pinned: the stop that mentions `match` must have
+     * a place containing `place` (the restaurant, not the street it is on).
+     */
+    pins?: { match: string; place: string }[];
   };
 };
 
@@ -162,6 +169,7 @@ Sun Nov 15
         "Hamilton",
       ],
       addresses: ["179 E Houston St"],
+      pins: [{ match: "Hamilton", place: "Richard Rodgers" }],
     },
   },
   {
@@ -185,12 +193,15 @@ Sun Nov 15
       mustInclude: [
         "Fushimi Inari",
         "Tofuku",
+        "Komyo-in",
         "Nishiki",
         "Kiyomizu",
+        "Sannenzaka",
         "Yasaka",
         "Hanamikoji",
         "Pontocho",
       ],
+      pins: [{ match: "Yuki", place: "Yuki" }],
     },
   },
   {
@@ -223,9 +234,11 @@ Día 2
         "Xampanyet",
         "Boqueria",
         "Gótic",
+        "Barceloneta",
         "Cova Fumada",
         "Búnkers",
       ],
+      pins: [{ match: "Cova Fumada", place: "Cova Fumada" }],
     },
   },
   {
@@ -245,7 +258,16 @@ Día 2
       stops: 6,
       times: ["08:00", "09:00", "12:30", "14:30", "16:00", "20:00"],
       booked: 2,
-      mustInclude: ["Sant'Eustachio", "Colosseum", "Forno", "Trevi", "Pantheon", "Da Enzo"],
+      mustInclude: [
+        "Sant'Eustachio",
+        "Colosseum",
+        "Roman Forum",
+        "Forno",
+        "Trevi",
+        "Spanish Steps",
+        "Pantheon",
+        "Da Enzo",
+      ],
     },
   },
   {
@@ -275,6 +297,7 @@ Día 2
         "Teotihuacan",
         "Huequito",
       ],
+      mustExclude: ["Xochimilco"],
     },
   },
   {
@@ -336,6 +359,58 @@ Sun 13 Sep
       times: ["08:45", "09:30", "11:00", "12:30", "14:30", "18:00"],
       booked: 1,
       mustInclude: ["Itsukushima", "Daisho-in", "Ueno", "Misen", "Okonomimura"],
+    },
+  },
+  {
+    id: "sf-chat-us",
+    traps: [
+      "Android chat export with US dates (3/6/26)",
+      "a booking cancelled and replaced",
+      "'like 1' with no am/pm",
+      "a stop mentioned out of order",
+    ],
+    tripCity: "San Francisco, USA",
+    startDate: "2026-03-07",
+    text: `3/6/26, 8:02 PM - Sam: ok SF plan for tomorrow
+3/6/26, 8:03 PM - Sam: Tartine Bakery at 8:30 for breakfast?
+3/6/26, 8:03 PM - Jo: yes. then Alcatraz, I got us the 10:30 ferry, tickets booked
+3/6/26, 8:05 PM - Sam: lunch at the Ferry Building after, like 1
+3/6/26, 8:07 PM - Jo: I booked State Bird Provisions for 7 but let's cancel, too pricey
+3/6/26, 8:08 PM - Sam: fine, Zuni Café at 7:30 instead, I'll book it now
+3/6/26, 8:12 PM - Jo: done, Zuni confirmed 7:30
+3/6/26, 8:15 PM - Sam: oh and Lands End trail around 3:30 before dinner`,
+    expect: {
+      days: 1,
+      stops: 5,
+      times: ["08:30", "10:30", "13:00", "15:30", "19:30"],
+      booked: 2,
+      mustInclude: ["Tartine", "Alcatraz", "Ferry Building", "Lands End", "Zuni"],
+      mustExclude: ["State Bird"],
+    },
+  },
+  {
+    id: "seoul-implied-bookings",
+    traps: [
+      "bookings said without 'booked' ('we have seats', 'got our passes')",
+      "'no booking needed' is not booked",
+      "a show at a named theatre",
+    ],
+    tripCity: "Seoul, South Korea",
+    startDate: "2026-11-14",
+    text: `Sat 14 Nov — Seoul
+09:30 Gyeongbokgung Palace (free entry if you wear hanbok)
+12:30 Lunch at Tosokchon Samgyetang (no booking needed, just queue)
+14:30 Bukchon Hanok Village
+16:00 N Seoul Tower — got our cable car passes already
+19:00 NANTA at Myeongdong Theatre, we have seats in row F
+21:30 Gwangjang Market for bindaetteok`,
+    expect: {
+      days: 1,
+      stops: 6,
+      times: ["09:30", "12:30", "14:30", "16:00", "19:00", "21:30"],
+      booked: 2,
+      mustInclude: ["Gyeongbokgung", "Tosokchon", "Bukchon", "Seoul Tower", "NANTA", "Gwangjang"],
+      pins: [{ match: "NANTA", place: "Myeongdong Theatre" }],
     },
   },
 ];

@@ -99,15 +99,26 @@ export const judgmentCall = {
  * Run against the primary model, then each fallback in turn when the current
  * one is out of capacity or free-tier quota. Without GEMINI_FALLBACK_MODEL
  * this is a single attempt on the primary.
+ *
+ * `models` replaces the chain (one id: that model or nothing, which is how
+ * the import audit compares like with like); `onModel` hears which one ran.
  */
 export async function withModelFallback<T>(
   run: (model: ReturnType<typeof getGeminiModel>) => Promise<T>,
+  opts?: { models?: readonly string[]; onModel?: (id: string) => void },
 ): Promise<T> {
-  const ids = geminiModelChain();
-  return runModelChain(ids, (id, index) => run(modelForId(id)), {
-    onStepDown: (fromIndex, error) => {
-      const reason = isRateLimited(error) ? "rate-limited" : "overloaded";
-      console.error(`[ai] ${ids[fromIndex]} ${reason}, stepping down to ${ids[fromIndex + 1]}`);
+  const ids = opts?.models?.length ? [...opts.models] : geminiModelChain();
+  return runModelChain(
+    ids,
+    (id) => {
+      opts?.onModel?.(id);
+      return run(modelForId(id));
     },
-  });
+    {
+      onStepDown: (fromIndex, error) => {
+        const reason = isRateLimited(error) ? "rate-limited" : "overloaded";
+        console.error(`[ai] ${ids[fromIndex]} ${reason}, stepping down to ${ids[fromIndex + 1]}`);
+      },
+    },
+  );
 }
