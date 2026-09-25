@@ -24,7 +24,7 @@ import {
   visitedCountryKeys,
   visitsByCountry,
 } from "@/lib/world-visits";
-import { countryWorldShare, deriveTravelStats } from "@/lib/travel-stats";
+import { countryWorldShare } from "@/lib/travel-stats";
 import { isCityLevelPlace } from "@/lib/reco-place";
 import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 
@@ -87,13 +87,9 @@ function WorldPage() {
   }, [provinces]);
   const cityOf = (pin: Pin) => cities.find((c) => `city:${c.key}` === pin.id);
 
-  // Photo rows plus vault pins, so a city added by hand on this map counts too.
-  // photo.pins are omitted on purpose — they are derived from photo.rows and
-  // would be the same places twice.
-  const travelStats = useMemo(
-    () => deriveTravelStats(photo.rows, vault.pins),
-    [photo.rows, vault.pins],
-  );
+  // The Countries and Cities stats count the same places the globe draws:
+  // photos and saved places alike, a country in any language once, and a
+  // country added by hand as a country rather than a city.
 
   const [counts, setCounts] = useState<ItineraryCounts>({ flights: 0, hotels: 0, restaurants: 0 });
 
@@ -112,10 +108,7 @@ function WorldPage() {
       }, 0),
     [t.trips],
   );
-  const worldShare = useMemo(
-    () => countryWorldShare(travelStats.countries),
-    [travelStats.countries],
-  );
+  const worldShare = useMemo(() => countryWorldShare(byCountry.length), [byCountry.length]);
 
   useEffect(() => {
     if (!statsOpen || !t.trips.length) return;
@@ -148,11 +141,17 @@ function WorldPage() {
     <AppShell
       eyebrow="Your world"
       title={
+        // Counted from the same places the globe draws. It used to wait for a
+        // photo, so someone who added every city by hand read "Your map
+        // starts here." above seventeen cities.
         places.length === 0
           ? BEA_SIGNATURE.world
-          : photo.stats.cities
-            ? `${travelStats.cities} cities, ${travelStats.countries} countries.`
-            : "Your map starts here."
+          : `${[
+              cities.length > 0 ? plural(cities.length, "city", "cities") : "",
+              plural(byCountry.length, "country", "countries"),
+            ]
+              .filter(Boolean)
+              .join(", ")}.`
       }
     >
       <div className="space-y-5">
@@ -180,16 +179,18 @@ function WorldPage() {
         <div data-guide="globe" className="relative">
           {/* The only way to add a place on this tab. It sits on the globe
               because that is what you are adding to, and because a full-width
-              panel at the foot of the page was a section nobody scrolled to. */}
+              panel at the foot of the page was a section nobody scrolled to.
+              Top left and labelled: a bare "+" at top right sat on the zoom
+              buttons and read as one more of them. */}
           <button
             type="button"
             data-guide="add-city"
             onClick={() => setAddOpen(true)}
-            aria-label="Add a city or country to your globe"
             title="Add a city or country"
-            className="absolute right-2 top-2 z-10 grid size-10 place-items-center rounded-full border border-border bg-card text-muted-foreground shadow-md"
+            className="absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13.5px] font-semibold text-foreground shadow-md"
           >
-            <Plus className="size-5" aria-hidden />
+            <Plus className="size-4" aria-hidden />
+            Add a place
           </button>
           <Globe
             pins={globeCities}
@@ -333,9 +334,9 @@ function WorldPage() {
                       hint={`${worldShare.visited} of ${worldShare.world} countries`}
                     />
                   ) : (
-                    <Stat value={travelStats.countries} label="Countries" />
+                    <Stat value={byCountry.length} label="Countries" />
                   ))}
-                {statsLayout.layout.cities && <Stat value={travelStats.cities} label="Cities" />}
+                {statsLayout.layout.cities && <Stat value={cities.length} label="Cities" />}
                 {statsLayout.layout.trips && (
                   <Stat value={tripsCompleted} label="Trips completed" />
                 )}
