@@ -39,6 +39,10 @@ type TimelineItem = {
   lon?: number | null;
 };
 
+/** Detail lines that describe the booking or the journey, never a place. */
+const STATUS_LINE =
+  /^(?:booked|reserved|confirmed|booking|reservation|conf(?:irmation)?\b|ticket(?:s|ed)?\b|paid|getting there|afterwards|optional|no booking)/i;
+
 /** Walk/Drive rows Béa already saved from Get directions — skip them on the next lookup. */
 export function isSavedDirectionItem(item: {
   kind?: string | null;
@@ -77,13 +81,13 @@ function titlePlaceCandidates(title: string): string[] {
   const stripVerb = (v: string) =>
     v
       .replace(
-        /^(?:purchase|buy|hike|explore|visit|walk|stroll|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip|check\s+in(?:\s+at)?|check\s+out(?:\s+of)?)\b\s*/i,
+        /^(?:(?:purchase|buy|hike|explore|visit|walk|stroll|browse|shop|self-guided|guided|classic|historic|picnic|lunch|dinner|breakfast|brunch|coffee|drinks?|tour|day\s+trip|check\s+in(?:\s+at)?|check\s+out(?:\s+of)?|arrive(?:\s+(?:at|in))?|arrival(?:\s+(?:at|in))?|depart(?:\s+from)?)\b\s*(?:[/:,&]\s*)?)+/i,
         "",
       )
       .trim();
   const out: string[] = [];
   const push = (v: string | undefined) => {
-    const t = (v ?? "").replace(/^[-,&\s]+|[-,&\s]+$/g, "").trim();
+    const t = (v ?? "").replace(/^[-,&:/\s]+|[-,&:/\s]+$/g, "").trim();
     if (t.length >= minimumNameLength(t) - 1 && !out.includes(t)) out.push(t);
   };
   const stripTail = (v: string) =>
@@ -164,6 +168,9 @@ export function placeHintFromDetail(detail?: string | null): string | null {
     .trim();
   if (first.length < minimumNameLength(first) || first.length > 180) return null;
   if (looksLikeStreetAddress(first)) return first;
+  // A booking's status or a folded travel note, not somewhere to look up:
+  // "Booked 09:30" was being searched for as a place.
+  if (STATUS_LINE.test(first)) return null;
   const street = streetNameFromText(first);
   if (street) return street;
   if (

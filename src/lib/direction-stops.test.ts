@@ -212,3 +212,24 @@ test("a stop without a pin is looked up next to its own day, before or after it"
   ]);
   assert.deepEqual(sameDayAnchors([lunch, crawl])[0], { lat: 34.2985, lon: 132.3218 });
 });
+
+test("a booking status or travel note in the detail is never looked up", () => {
+  for (const detail of [
+    "Booked",
+    "Booked 09:30",
+    "BOOKED · 2 people",
+    "Confirmed",
+    "Getting there: Head to Motoyasubashi Pier, 11:30",
+    "Afterwards: Leave for Hiroshima Station",
+  ]) {
+    assert.equal(placeHintFromDetail(detail), null, detail);
+  }
+});
+
+test("an arrival, a label and a browse are stripped to the place", () => {
+  assert.equal(placeQueryCandidates("Arrive Hiroshima Station")[0], "Hiroshima Station");
+  assert.ok(
+    placeQueryCandidates("Walk/browse Hondori Shopping Street").includes("Hondori Shopping Street"),
+  );
+  assert.ok(placeQueryCandidates("Lunch: Kakiya").includes("Kakiya"));
+});

@@ -623,6 +623,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         lat?: number;
         lon?: number;
         planned_stay_minutes?: number;
+        /** Booked in the plan it came from. */
+        booked?: boolean;
       }>,
     ) => {
       const id = tripIdRef.current;
@@ -630,28 +632,42 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
 
-      const { data, error } = await supabase
-        .from("itinerary_items")
-        .insert(
-          additions.map((item, index) => ({
-            trip_id: id,
-            day_date: item.day_date || null,
-            time_label: item.time_label || null,
-            kind: item.kind,
-            title: item.title,
-            detail: item.detail || null,
-            address: item.address || null,
-            lat: item.lat ?? null,
-            lon: item.lon ?? null,
-            planned_stay_minutes: item.planned_stay_minutes ?? null,
-            position: nextPosition(items) + index,
-            created_by: authorId,
-            updated_by: authorId,
-          })),
-        )
-        // The ids come back so a bulk save can be undone in one go rather
-        // than one Remove tap per row.
-        .select("id");
+      // The booked column only exists once its migration is applied by hand,
+      // so it is sent only when something is booked, and a save that fails
+      // for want of it is made again without it — the stops matter more than
+      // the mark.
+      const anyBooked = additions.some((item) => item.booked === true);
+      const rowFor = (item: (typeof additions)[number], index: number) => ({
+        trip_id: id,
+        day_date: item.day_date || null,
+        time_label: item.time_label || null,
+        kind: item.kind,
+        title: item.title,
+        detail: item.detail || null,
+        address: item.address || null,
+        lat: item.lat ?? null,
+        lon: item.lon ?? null,
+        planned_stay_minutes: item.planned_stay_minutes ?? null,
+        position: nextPosition(items) + index,
+        created_by: authorId,
+        updated_by: authorId,
+      });
+      const insertRows = (withBooked: boolean) =>
+        supabase
+          .from("itinerary_items")
+          .insert(
+            additions.map((item, index) => ({
+              ...(withBooked ? { booked: item.booked === true } : {}),
+              ...rowFor(item, index),
+            })),
+          )
+          // The ids come back so a bulk save can be undone in one go rather
+          // than one Remove tap per row.
+          .select("id");
+      let { data, error } = await insertRows(anyBooked);
+      if (error && anyBooked && isMissingColumn(error, ["booked"])) {
+        ({ data, error } = await insertRows(false));
+      }
       if (error) throw error;
       await load();
       return (data ?? []).map((row) => row.id);
