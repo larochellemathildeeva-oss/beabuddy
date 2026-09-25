@@ -114,6 +114,15 @@ test("dayTightnessNote stays quiet about a walk it cannot measure", () => {
   assert.equal(dayTightnessNote(day), null);
 });
 
+test("dayTightnessNote says nothing about a trip nobody would walk", () => {
+  // Hiroshima to Miyajima: a ferry, not a 252-minute walk.
+  const day = [
+    { title: "Shukkeien", time_label: "14:45", lat: 34.4006, lon: 132.4679 },
+    { title: "Kakiya", time_label: "16:30", lat: 34.2986, lon: 132.3212 },
+  ];
+  assert.equal(dayTightnessNote(day), null);
+});
+
 test("dayTightnessNote needs two clock times, not two labels", () => {
   const day = [placed("Morning", "Breakfast"), placed("09:20", "Kiyomizu-dera", ACROSS_TOWN)];
   assert.equal(dayTightnessNote(day), null);

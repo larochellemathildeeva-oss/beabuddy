@@ -856,6 +856,10 @@ export function TripDetail({
                 focusId={mapFocus}
                 groups={shownGroups}
                 area={formatTripLocation(trip.city, trip.country)}
+                todayKey={todayKey}
+                ordinals={Object.fromEntries(
+                  dayChips(timelineGroups, todayKey).map((chip) => [chip.key, chip.ordinal]),
+                )}
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole

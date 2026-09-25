@@ -67,3 +67,58 @@ test("curvedLeg starts and ends on the stops and bows to alternating sides", asy
   );
   assert.deepEqual(curvedLeg(a, a, 0), [[34.39, 132.45]]);
 });
+
+test("pins are tinted by what the stop is, in four families", async () => {
+  const { pinTone, tonesUsed } = await import("./day-map.ts");
+  assert.equal(pinTone({ kind: "restaurant", title: "Kakiya" }), "food");
+  assert.equal(pinTone({ kind: "train", title: "Shinkansen" }), "transit");
+  assert.equal(pinTone({ kind: "hotel", title: "Ryokan" }), "stay");
+  assert.equal(pinTone({ kind: "museum", title: "Peace Museum" }), "sight");
+  assert.equal(pinTone({ kind: "note", title: "Buy tickets" }), "sight");
+  assert.deepEqual(
+    tonesUsed([{ tone: "food" }, { tone: "sight" }, { tone: "food" }]).map((t) => t.tone),
+    ["sight", "food"],
+  );
+});
+
+test("a leg says a walk when it is one, and a distance when it is not", async () => {
+  const { legEstimate, dayDistance } = await import("./day-map.ts");
+  const near = legEstimate({ lat: 34.3955, lon: 132.4536 }, { lat: 34.4006, lon: 132.4596 });
+  assert.ok(near.walkMinutes !== null && near.walkMinutes > 5 && near.walkMinutes < 20);
+  assert.match(near.label, /^about \d+ min walk · \d+ m$/);
+  const far = legEstimate({ lat: 34.3955, lon: 132.4536 }, { lat: 34.296, lon: 132.3198 });
+  assert.equal(far.walkMinutes, null);
+  assert.match(far.label, /^about \d+ km away$/);
+  assert.equal(dayDistance([{ lat: 1, lon: 1 }]), 0);
+  const there = dayDistance([cafe, museum]);
+  assert.ok(Math.abs(dayDistance([cafe, museum, cafe]) - 2 * there) < 1e-6);
+});
+
+test("stepping wraps at both ends and starts at the first", async () => {
+  const { stepPin } = await import("./day-map.ts");
+  const pins = [{ id: "a" }, { id: "b" }, { id: "c" }];
+  assert.equal(stepPin(pins, "a", 1), "b");
+  assert.equal(stepPin(pins, "c", 1), "a");
+  assert.equal(stepPin(pins, "a", -1), "c");
+  assert.equal(stepPin(pins, null, 1), "a");
+  assert.equal(stepPin(pins, null, -1), "c");
+  assert.equal(stepPin([], "a", 1), null);
+});
+
+test("Focus opens on the asked stop, then what is next today, then the first", async () => {
+  const { focusStart } = await import("./day-map.ts");
+  const pins = [{ id: "a" }, { id: "c" }, { id: "d" }];
+  const stops = [
+    { id: "a", time_label: "09:00" },
+    { id: "b", time_label: "10:00" },
+    { id: "c", time_label: "12:00" },
+    { id: "d", time_label: "15:00" },
+  ];
+  const at = (h: number) => ({ isToday: true, minutesNow: h * 60 });
+  assert.equal(focusStart(pins, stops, { ...at(11), requested: "d" }), "d");
+  // "b" is next but has no pin, so the next placed stop is chosen.
+  assert.equal(focusStart(pins, stops, at(9.5)), "c");
+  assert.equal(focusStart(pins, stops, at(20)), "d");
+  assert.equal(focusStart(pins, stops, { isToday: false, minutesNow: 600 }), "a");
+  assert.equal(focusStart([], stops, at(9)), null);
+});
