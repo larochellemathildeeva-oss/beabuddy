@@ -9,7 +9,6 @@ import {
   Route,
 } from "lucide-react";
 import { DayMap } from "@/components/day/DayMap";
-import { StopCard } from "@/components/day/StopCard";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isBooked } from "@/lib/bookings";
@@ -43,9 +42,14 @@ const LAYOUT_KEY = "bea.mapLayout";
  * each scroll or pan inside them instead of the whole page moving under a
  * map. Tall enough to be the screen on a phone once the banner scrolls away.
  */
-const PANEL_HEIGHT = "h-[calc(100dvh-11rem)] min-h-[30rem] max-h-[56rem]";
-/** The floating card in Focus covers about this much of the map's foot. */
-const FOCUS_CARD_INSET = 210;
+const PANEL_HEIGHT = "h-[calc(100dvh-18rem)] min-h-[26rem] max-h-[56rem]";
+/**
+ * Focus's map fills what is left of a phone screen under the trip banner and
+ * above the tab bar, so the card over its foot is in view without scrolling.
+ */
+const FOCUS_MAP_HEIGHT = "h-[calc(100dvh-18rem)] min-h-[24rem] max-h-[52rem]";
+/** The stop card in Focus covers about this much of the map's foot. */
+const FOCUS_CARD_INSET = 180;
 
 function readLayout(): MapLayout {
   try {
@@ -57,16 +61,15 @@ function readLayout(): MapLayout {
 }
 
 /**
- * The chosen day on a map, three ways:
+ * The chosen day on a map, two ways:
  *
  * - **Split** — the day as a timeline beside its map, the way a guidebook
  *   lays a walk out: times on a rail, roughly how far each next stop is,
  *   and the map framing the whole day.
  * - **Focus** — the map first, one stop's card laid over it. Step or swipe
  *   through the day and the map travels to each stop.
- * - **Timeline** — the map on top, then every stop's card in order.
  *
- * The itinerary stays the source of truth in all three: the map draws the
+ * The itinerary stays the source of truth in both: the map draws the
  * stops, numbered like their cards, and joins them with a soft arc that
  * says "then here", never a route to follow. Distances between stops are
  * as the crow flies and say "about" — nothing here is routed or paid for.
@@ -200,28 +203,6 @@ export function DayMapView({
         />
       )}
 
-      {layout === "timeline" && (
-        <div className="space-y-8">
-          <DayMap
-            pins={model.pins}
-            selectedId={selectedId}
-            onSelect={pickFromMap}
-            heightClass="h-[22rem] md:h-[26rem]"
-            fitSignal={fitSignal}
-            label={mapLabel}
-          >
-            {fitButton}
-            <Legend model={model} />
-          </DayMap>
-          <CardList
-            groups={groups}
-            ordinals={ordinals}
-            selectedId={selectedId}
-            onSelect={pickFromList}
-          />
-        </div>
-      )}
-
       <MapFootnotes model={model} />
     </div>
   );
@@ -257,9 +238,6 @@ function LayoutSwitch({
           </button>
         ))}
       </div>
-      <p className="text-[11.5px] text-muted-foreground">
-        {MAP_LAYOUTS.find((layout) => layout.id === value)!.hint}
-      </p>
     </div>
   );
 }
@@ -558,55 +536,6 @@ function RailStop({
   );
 }
 
-/** Timeline's list: the stop cards in order, under the map. */
-function CardList({
-  groups,
-  ordinals,
-  selectedId,
-  onSelect,
-}: {
-  groups: TimelineDayGroup<ItineraryRow>[];
-  ordinals: Record<string, string>;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  const offsets = numberOffsets(groups);
-  return (
-    <div className="space-y-10">
-      {groups.map((group, g) => {
-        const onMap = group.items.filter((item) => hasPosition(item)).length;
-        return (
-          <section key={group.key || "undated"} aria-label={group.label}>
-            <header className="mb-5 px-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {kicker(group, ordinals, groups.length > 1)}
-              </p>
-              <h2 className="mt-1.5 font-display text-[30px] leading-[1.05] tracking-tight">
-                {group.label}
-              </h2>
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                {group.items.length} {group.items.length === 1 ? "place" : "places"}
-                {onMap < group.items.length ? ` · ${onMap} on the map` : ""}
-              </p>
-            </header>
-            <div className="space-y-2.5">
-              {group.items.map((item, i) => (
-                <StopCard
-                  key={item.id}
-                  item={item}
-                  index={offsets[g]! + i}
-                  selected={item.id === selectedId}
-                  onSelect={() => onSelect(item.id)}
-                />
-              ))}
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
 /**
  * Focus: the map is the page, and one stop's card sits on it. Arrows, a
  * swipe on the card, the numbered strip or a pin all move to another stop,
@@ -645,12 +574,12 @@ function FocusLayout({
   }, [selectedId]);
 
   return (
-    <div className={`relative ${PANEL_HEIGHT}`}>
+    <div className="relative">
       <DayMap
         pins={pins}
         selectedId={selectedId}
         onSelect={onPick}
-        heightClass="h-full"
+        heightClass={FOCUS_MAP_HEIGHT}
         follow
         insetBottom={FOCUS_CARD_INSET}
         label={mapLabel}
@@ -681,63 +610,92 @@ function FocusLayout({
             </button>
           ))}
         </div>
+      </DayMap>
 
-        {pin && stop && (
-          <div
-            className="absolute inset-x-3 bottom-3 z-[500] touch-pan-y"
-            onPointerDown={(e) => {
-              swipe.current = { x: e.clientX, y: e.clientY };
-            }}
-            onPointerUp={(e) => {
-              const start = swipe.current;
-              swipe.current = null;
-              if (!start) return;
-              const dx = e.clientX - start.x;
-              if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
-                step(dx < 0 ? 1 : -1);
-              }
-            }}
+      {/* The stop's card sits over the foot of the map, and sticks to the
+          bottom of the screen when the map runs past it: laid inside the
+          map, it was cut off below the fold on a phone. */}
+      {pin && stop && (
+        <div
+          className="sticky bottom-3 z-20 mx-3 -mt-28 touch-pan-y"
+          onPointerDown={(e) => {
+            swipe.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={(e) => {
+            const start = swipe.current;
+            swipe.current = null;
+            if (!start) return;
+            const dx = e.clientX - start.x;
+            if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
+              step(dx < 0 ? 1 : -1);
+            }
+          }}
+        >
+          <article
+            aria-live="polite"
+            className="rounded-3xl border border-border/70 bg-card/95 p-3 shadow-lg backdrop-blur-md"
           >
-            <article
-              aria-live="polite"
-              className="rounded-3xl border border-border/70 bg-card/95 p-3.5 shadow-lg backdrop-blur-md"
-            >
-              <div className="flex items-start gap-3">
-                <TimelineGlyphMark item={stop} />
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
-                    {timeForRail(stop.time_label) && (
-                      <span className="font-bold tabular-nums text-primary">
-                        {timeForRail(stop.time_label)}
-                      </span>
-                    )}
-                    {stop.planned_stay_minutes ? (
-                      <span className="text-muted-foreground">
-                        ~{stayLabel(stop.planned_stay_minutes)} stay
-                      </span>
-                    ) : null}
-                    {isBooked(stop) && (
-                      <span className="rounded-full bg-nexttime/12 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
-                        Booked
-                      </span>
-                    )}
-                  </p>
-                  <h3 className="mt-0.5 break-words font-display text-[21px] leading-tight">
-                    {stop.title}
-                  </h3>
-                  {stop.address?.trim() && (
-                    <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">
-                      {stop.address.trim()}
-                    </p>
-                  )}
-                </div>
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-semibold tabular-nums text-primary-foreground">
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[11.5px] font-semibold tabular-nums text-primary-foreground">
                   {pin.number}
                 </span>
+                {timeForRail(stop.time_label) && (
+                  <span className="font-bold tabular-nums text-primary">
+                    {timeForRail(stop.time_label)}
+                  </span>
+                )}
+                {stop.planned_stay_minutes ? (
+                  <span className="text-muted-foreground">
+                    ~{stayLabel(stop.planned_stay_minutes)} stay
+                  </span>
+                ) : null}
+                {isBooked(stop) && (
+                  <span className="rounded-full bg-nexttime/12 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
+                    Booked
+                  </span>
+                )}
+              </p>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => step(-1)}
+                  aria-label="Previous stop"
+                  className="grid size-9 place-items-center rounded-xl border border-border bg-elevated"
+                >
+                  <ChevronLeft className="size-4" aria-hidden />
+                </button>
+                <span className="min-w-9 text-center text-[11.5px] tabular-nums text-muted-foreground">
+                  {at + 1}/{pins.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => step(1)}
+                  aria-label="Next stop"
+                  className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground"
+                >
+                  <ChevronRight className="size-4" aria-hidden />
+                </button>
               </div>
+            </div>
 
-              {leg && nextPin && (
-                <p className="mt-2.5 flex items-start gap-1.5 rounded-xl bg-elevated px-2.5 py-1.5 text-[12px] text-muted-foreground">
+            <div className="mt-1.5 flex items-start gap-2.5">
+              <TimelineGlyphMark item={stop} />
+              <div className="min-w-0 flex-1">
+                <h3 className="line-clamp-2 break-words font-display text-[19px] leading-tight">
+                  {stop.title}
+                </h3>
+                {stop.address?.trim() && (
+                  <p className="mt-0.5 line-clamp-1 text-[12px] leading-snug text-muted-foreground">
+                    {stop.address.trim()}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center gap-2">
+              {leg && nextPin ? (
+                <p className="flex min-w-0 flex-1 items-start gap-1.5 rounded-xl bg-elevated px-2.5 py-1.5 text-[12px] text-muted-foreground">
                   {leg.walkMinutes !== null ? (
                     <Footprints className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                   ) : (
@@ -747,44 +705,23 @@ function FocusLayout({
                     Then {nextPin.title}, {leg.label}
                   </span>
                 </p>
+              ) : (
+                <span className="flex-1" />
               )}
-
-              <div className="mt-2.5 flex items-center justify-between gap-2">
-                <a
-                  href={mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border px-3 text-[12.5px] font-semibold whitespace-nowrap"
-                >
-                  <MapPin className="size-3.5" aria-hidden />
-                  Open in maps
-                </a>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => step(-1)}
-                    aria-label="Previous stop"
-                    className="grid size-10 place-items-center rounded-xl border border-border bg-elevated"
-                  >
-                    <ChevronLeft className="size-4" aria-hidden />
-                  </button>
-                  <span className="min-w-10 text-center text-[12px] tabular-nums text-muted-foreground">
-                    {at + 1} / {pins.length}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => step(1)}
-                    aria-label="Next stop"
-                    className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground"
-                  >
-                    <ChevronRight className="size-4" aria-hidden />
-                  </button>
-                </div>
-              </div>
-            </article>
-          </div>
-        )}
-      </DayMap>
+              <a
+                href={mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-border px-2.5 text-[12px] font-semibold"
+              >
+                <MapPin className="size-3.5" aria-hidden />
+                Maps
+                <span className="sr-only">: open {stop.title} in maps</span>
+              </a>
+            </div>
+          </article>
+        </div>
+      )}
     </div>
   );
 }

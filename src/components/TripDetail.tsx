@@ -506,7 +506,7 @@ export function TripDetail({
   /** A stop tapped on Companion's ribbon or tracker, to look at without moving Now. */
   const [peekId, setPeekId] = useState<string | null>(null);
 
-  /** "Locate on map" from a Timeline card: the stop Map Split opens on. */
+  /** "Locate on map" from a Timeline card: the stop the Map tab opens on. */
   const [mapFocus, setMapFocus] = useState<string | null>(null);
   const locate = (item: ItineraryRow) => {
     if (item.day_date) setDayChoice(item.day_date);
@@ -758,7 +758,11 @@ export function TripDetail({
             })}
           </nav>
         </div>
-        <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
+        {activePerspective.hint ? (
+          <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
+        ) : (
+          <div className="mb-3" />
+        )}
 
         {perspective === "companion" && (
           <div className="space-y-3">
