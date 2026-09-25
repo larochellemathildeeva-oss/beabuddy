@@ -126,6 +126,9 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
 const MOVEMENT =
   /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*(?:\b(?:to|toward|towards|back|for)\b|→|->)/i;
 
+/** "Hibiya Line to Ginza": a named line, then where it goes. */
+const LINE_TO = /^(?:[\p{L}-]+\s+){1,2}line\s+(?:to|toward|towards)\b/iu;
+
 export function isTravelLeg(row: {
   kind: string;
   title: string;
@@ -134,7 +137,8 @@ export function isTravelLeg(row: {
   // A booked ferry is a thing you must be on, not the gap between stops,
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
-  return row.kind === "transport" && MOVEMENT.test(row.title.trim());
+  const title = row.title.trim();
+  return row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title));
 }
 
 type FoldableRow = {
@@ -196,13 +200,54 @@ export function legTarget(
   return null;
 }
 
+/** Words that say how, not which journey. */
+const GENERIC_LEG_WORDS = new Set([
+  "take",
+  "travel",
+  "walk",
+  "head",
+  "from",
+  "toward",
+  "towards",
+  "line",
+  "back",
+  "getting",
+  "there",
+]);
+
+/**
+ * The stop's note already describes this journey: same departure time, or —
+ * when the leg has no time — a word naming the same service or place.
+ */
+function alreadyNoted(
+  detail: string,
+  label: string,
+  leg: Pick<FoldableRow, "title" | "time_label">,
+): boolean {
+  const notes = detail
+    .split(" · ")
+    .filter((n) => n.startsWith(`${label}:`))
+    .map((n) => n.toLowerCase());
+  if (!notes.length) return false;
+  if (leg.time_label) return notes.some((n) => n.includes(leg.time_label!));
+  const words = leg.title
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4 && !GENERIC_LEG_WORDS.has(w));
+  return notes.some((n) => words.some((w) => n.includes(w)));
+}
+
 /** A stop's note with the leg added: "Getting there: Take the ferry to Miyajima, 10:30". */
 export function withLegNote(
   detail: string | null,
   leg: Pick<FoldableRow, "title" | "time_label" | "detail">,
   after: boolean,
 ): string {
+  const label = after ? "Afterwards" : "Getting there";
+  // The model sometimes writes the journey into the stop *and* as a line of
+  // its own; the second copy is the same journey, not another one.
+  if (detail && alreadyNoted(detail, label, leg)) return detail;
   const what = [leg.title, leg.time_label, leg.detail].filter(Boolean).join(", ");
-  const note = `${after ? "Afterwards" : "Getting there"}: ${what}`;
+  const note = `${label}: ${what}`;
   return detail ? `${detail} · ${note}` : note;
 }

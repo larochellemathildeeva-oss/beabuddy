@@ -16,6 +16,7 @@ import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
 import { foldTravelLegs, normalizeClock } from "@/lib/import-stop";
+import { readPlainPlan } from "@/lib/plan-lines";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -199,6 +200,8 @@ export async function runParse(
   model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>,
   data: z.infer<typeof ParseInput>,
   preferenceText: string,
+  /** For the audit: the model's rows before any clean-up. */
+  onRaw?: (items: readonly ParsedItineraryItem[]) => void,
 ): Promise<ParsedItinerary> {
   const text = instructions(
     data.tripCity,
@@ -245,6 +248,7 @@ export async function runParse(
     ],
   });
   const out = result.output;
+  onRaw?.(out.items);
   const parsed: ParsedItinerary = {
     ...out,
     // Travel legs the model made anyway become notes on the stop they lead to.
@@ -374,11 +378,22 @@ async function readItineraryLink(
   return { kind: "page", text: content.text, url: fetched.finalUrl };
 }
 
+/** The pasted text read without a model, when it is plainly a list. */
+export function readPlainAsList(data: z.infer<typeof ParseInput>): ParsedItinerary | null {
+  if (data.mode !== "import" || data.includeCosts) return null;
+  if (data.pageUrl || data.pdfDataUrl || data.imageDataUrls?.length || !data.text) return null;
+  return readPlainPlan(data.text, { startDate: data.startDate, tripCity: data.tripCity });
+}
+
 export const parseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseInput.parse(input))
   .handler(async ({ data: input, context }): Promise<ParsedItinerary> => {
     let data = input;
+    // A pasted plan that is already a tidy list is read as a list: exactly,
+    // and without AI. Anything less plain still goes to the model.
+    const plain = readPlainAsList(input);
+    if (plain) return plain;
     if (data.mode === "import" && data.pageUrl) {
       const page = await readItineraryLink(data.pageUrl);
       // A calendar feed is read as a calendar: exactly, and without AI.
