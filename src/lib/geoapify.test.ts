@@ -137,3 +137,55 @@ test("a GeoJSON route reads like OSRM's, instructions kept", () => {
   });
   assert.deepEqual(geoapifyToOsrm({ features: [] }), { routes: [] });
 });
+
+test("places: a circle around the point, nearest first, keyed", async () => {
+  const { geoapifyPlacesUrl } = await import("./geoapify.ts");
+  const url = new URL(geoapifyPlacesUrl("K", "catering.cafe", { lat: 45.52, lon: -73.6 }, 2000));
+  assert.equal(url.pathname, "/v2/places");
+  assert.equal(url.searchParams.get("categories"), "catering.cafe");
+  assert.equal(url.searchParams.get("filter"), "circle:-73.6,45.52,2000");
+  assert.equal(url.searchParams.get("bias"), "proximity:-73.6,45.52");
+  assert.equal(url.searchParams.get("apiKey"), "K");
+});
+
+test("places come back as OSM elements, tags kept and gaps filled", async () => {
+  const { geoapifyPlacesToElements } = await import("./geoapify.ts");
+  const els = geoapifyPlacesToElements({
+    features: [
+      {
+        geometry: { coordinates: [-73.6005, 45.5229] },
+        properties: {
+          name: "Café Olimpico",
+          street: "Rue Saint-Viateur Ouest",
+          housenumber: "124",
+          city: "Montréal",
+          categories: ["catering", "catering.cafe"],
+          datasource: {
+            raw: { amenity: "cafe", name: "Café Olimpico", osm_id: 123, osm_type: "n" },
+          },
+        },
+      },
+      {
+        properties: { lat: 1, lon: 2, name: "No tags café", categories: ["catering.cafe"] },
+      },
+      { properties: { name: "nowhere" } },
+    ],
+  });
+  assert.equal(els.length, 2);
+  assert.deepEqual(els[0], {
+    type: "node",
+    id: 123,
+    lat: 45.5229,
+    lon: -73.6005,
+    tags: {
+      amenity: "cafe",
+      name: "Café Olimpico",
+      osm_id: "123",
+      osm_type: "n",
+      "addr:housenumber": "124",
+      "addr:street": "Rue Saint-Viateur Ouest",
+      "addr:city": "Montréal",
+    },
+  });
+  assert.equal(els[1]?.tags["amenity"], "cafe", "kind taken from the category");
+});

@@ -311,3 +311,88 @@ export function geoapifyToOsrm(json: unknown): OsrmShaped {
     ],
   };
 }
+
+/**
+ * Kinds of place around a point, from Geoapify's Places API: "cafés within
+ * 2 km", nearest first. `categories` is its comma-separated category names.
+ */
+export function geoapifyPlacesUrl(
+  key: string,
+  categories: string,
+  at: { lat: number; lon: number },
+  radiusM: number,
+  limit = 40,
+): string {
+  const params = new URLSearchParams({
+    categories,
+    filter: `circle:${at.lon},${at.lat},${Math.round(radiusM)}`,
+    bias: `proximity:${at.lon},${at.lat}`,
+    limit: String(Math.max(1, Math.min(limit, 100))),
+    lang: "en",
+    apiKey: key,
+  });
+  return `${GEOAPIFY_BASE}/v2/places?${params.toString()}`;
+}
+
+type PlaceFeature = {
+  geometry?: { coordinates?: [number, number] };
+  properties?: GeoapifyResult & { categories?: string[] };
+};
+
+/** An OSM-style element, as `readOverpass` in poi-search.ts reads it. */
+export type TaggedElement = {
+  type: string;
+  id: number;
+  lat: number;
+  lon: number;
+  tags: Record<string, string>;
+};
+
+/**
+ * Geoapify's places as the OpenStreetMap elements they came from.
+ *
+ * Its answer carries the original OSM tags (`datasource.raw`), so a café
+ * found here goes through the very reader, filters and naming rules an
+ * Overpass answer does. The address fields fill in whatever the tags lack,
+ * and a place with no kind tag gets one from its Geoapify category.
+ */
+export function geoapifyPlacesToElements(json: unknown): TaggedElement[] {
+  const features = (json as { features?: PlaceFeature[] })?.features;
+  if (!Array.isArray(features)) return [];
+  const out: TaggedElement[] = [];
+  features.forEach((feature, i) => {
+    const p = feature.properties ?? {};
+    const lat = p.lat ?? feature.geometry?.coordinates?.[1];
+    const lon = p.lon ?? feature.geometry?.coordinates?.[0];
+    if (typeof lat !== "number" || typeof lon !== "number") return;
+    const tags: Record<string, string> = {};
+    for (const [key, value] of Object.entries(p.datasource?.raw ?? {})) {
+      if (typeof value === "string" || typeof value === "number") tags[key] = String(value);
+    }
+    const fill = (key: string, value: string | undefined) => {
+      if (value && !tags[key]) tags[key] = value;
+    };
+    fill("name", p.name);
+    fill("addr:housenumber", p.housenumber);
+    fill("addr:street", p.street);
+    fill("addr:city", p.city);
+    fill("addr:country", p.country);
+    if (!["amenity", "shop", "tourism", "leisure", "craft"].some((k) => tags[k])) {
+      const category = (p.categories ?? []).find((c) => c.includes(".")) ?? p.categories?.[0] ?? "";
+      const [top, sub] = category.split(".");
+      const kind = top ? CATEGORY_CLASS[top] : undefined;
+      if (kind === "amenity" || kind === "shop" || kind === "tourism" || kind === "leisure") {
+        tags[kind] = sub || top!;
+      }
+    }
+    const osmId = Number(tags["osm_id"]);
+    out.push({
+      type: tags["osm_type"] === "w" ? "way" : tags["osm_type"] === "r" ? "relation" : "node",
+      id: Number.isFinite(osmId) && osmId > 0 ? osmId : i + 1,
+      lat,
+      lon,
+      tags,
+    });
+  });
+  return out;
+}

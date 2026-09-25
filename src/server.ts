@@ -65,8 +65,9 @@ async function serveTile(request: Request): Promise<Response | null> {
   }
 
   const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
+  const geoapifyKey = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
   try {
-    const upstream = await fetch(tileSourceUrl(coords, token), {
+    const upstream = await fetch(tileSourceUrl(coords, token, geoapifyKey), {
       headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "image/png,image/*" },
       signal: AbortSignal.timeout(8_000),
     });

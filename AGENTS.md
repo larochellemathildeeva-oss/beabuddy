@@ -53,8 +53,10 @@ Place lookups and directions go through `src/lib/geo-endpoints.ts` (pure URL
 building, tested) with the provider chosen in `geo-provider.server.ts`, in this
 order:
 
-1. `GEOAPIFY_API_KEY` set: **Geoapify** — geocoding, autocomplete, reverse and
-   walking/driving routes, five requests a second. Its terms allow storing
+1. `GEOAPIFY_API_KEY` set: **Geoapify** — geocoding, autocomplete, reverse,
+   walking/driving routes, "coffee near me" category searches (its Places API,
+   ahead of the public Overpass servers) and the map tiles served through
+   `/api/tile`, five requests a second. Its terms allow storing
    results, which is what saved pins are. It answers in its own shapes;
    `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
    callers read every answer through `readGeoJson`.

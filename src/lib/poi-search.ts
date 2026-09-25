@@ -22,7 +22,12 @@ import { haversine, type LatLon } from "./geo.ts";
 /** One tag filter, as Overpass writes it: ["key"="value"] or ["key"~"regex",i]. */
 type TagFilter = { key: string; value: string; regex?: boolean };
 
-type Category = { label: string; filters: TagFilter[] };
+/**
+ * `geoapify`: the same kind of place in Geoapify's category names, for its
+ * Places API. Its answers are checked against `filters` all the same, so a
+ * broader category there only costs a few results filtered out here.
+ */
+type Category = { label: string; filters: TagFilter[]; geoapify?: string };
 
 const exact = (key: string, value: string): TagFilter => ({ key, value });
 const like = (key: string, value: string): TagFilter => ({ key, value, regex: true });
@@ -32,49 +37,121 @@ const like = (key: string, value: string): TagFilter => ({ key, value, regex: tr
  * accent-free and lower case; plurals and accents are folded before lookup.
  */
 const CATEGORIES: Record<string, Category> = {
-  coffee: { label: "Coffee", filters: [exact("amenity", "cafe"), like("cuisine", "coffee")] },
-  cafe: { label: "Cafés", filters: [exact("amenity", "cafe")] },
-  "coffee shop": { label: "Coffee", filters: [exact("amenity", "cafe")] },
-  bakery: { label: "Bakeries", filters: [exact("shop", "bakery")] },
-  boulangerie: { label: "Bakeries", filters: [exact("shop", "bakery")] },
-  bagel: { label: "Bagels", filters: [like("cuisine", "bagel"), like("name", "bagel")] },
-  sushi: { label: "Sushi", filters: [like("cuisine", "sushi")] },
-  ramen: { label: "Ramen", filters: [like("cuisine", "ramen")] },
-  pizza: { label: "Pizza", filters: [like("cuisine", "pizza")] },
-  burger: { label: "Burgers", filters: [like("cuisine", "burger")] },
+  coffee: {
+    label: "Coffee",
+    filters: [exact("amenity", "cafe"), like("cuisine", "coffee")],
+    geoapify: "catering.cafe",
+  },
+  cafe: { label: "Cafés", filters: [exact("amenity", "cafe")], geoapify: "catering.cafe" },
+  "coffee shop": {
+    label: "Coffee",
+    filters: [exact("amenity", "cafe")],
+    geoapify: "catering.cafe",
+  },
+  bakery: {
+    label: "Bakeries",
+    filters: [exact("shop", "bakery")],
+    geoapify: "commercial.food_and_drink.bakery",
+  },
+  boulangerie: {
+    label: "Bakeries",
+    filters: [exact("shop", "bakery")],
+    geoapify: "commercial.food_and_drink.bakery",
+  },
+  bagel: {
+    label: "Bagels",
+    filters: [like("cuisine", "bagel"), like("name", "bagel")],
+    geoapify: "catering",
+  },
+  sushi: { label: "Sushi", filters: [like("cuisine", "sushi")], geoapify: "catering.restaurant" },
+  ramen: { label: "Ramen", filters: [like("cuisine", "ramen")], geoapify: "catering.restaurant" },
+  pizza: {
+    label: "Pizza",
+    filters: [like("cuisine", "pizza")],
+    geoapify: "catering.restaurant,catering.fast_food",
+  },
+  burger: {
+    label: "Burgers",
+    filters: [like("cuisine", "burger")],
+    geoapify: "catering.restaurant,catering.fast_food",
+  },
   "ice cream": {
     label: "Ice cream",
     filters: [exact("amenity", "ice_cream"), like("cuisine", "ice_cream")],
+    geoapify: "catering.ice_cream",
   },
   gelato: {
     label: "Ice cream",
     filters: [exact("amenity", "ice_cream"), like("cuisine", "ice_cream")],
+    geoapify: "catering.ice_cream",
   },
-  restaurant: { label: "Restaurants", filters: [exact("amenity", "restaurant")] },
-  bar: { label: "Bars", filters: [exact("amenity", "bar")] },
-  pub: { label: "Pubs", filters: [exact("amenity", "pub")] },
-  brewery: { label: "Breweries", filters: [like("craft", "brewery"), like("microbrewery", "yes")] },
-  museum: { label: "Museums", filters: [exact("tourism", "museum")] },
-  musee: { label: "Museums", filters: [exact("tourism", "museum")] },
-  gallery: { label: "Galleries", filters: [exact("tourism", "gallery")] },
-  park: { label: "Parks", filters: [exact("leisure", "park")] },
-  hotel: { label: "Hotels", filters: [exact("tourism", "hotel")] },
-  pharmacy: { label: "Pharmacies", filters: [exact("amenity", "pharmacy")] },
-  supermarket: { label: "Supermarkets", filters: [exact("shop", "supermarket")] },
+  restaurant: {
+    label: "Restaurants",
+    filters: [exact("amenity", "restaurant")],
+    geoapify: "catering.restaurant",
+  },
+  bar: { label: "Bars", filters: [exact("amenity", "bar")], geoapify: "catering.bar" },
+  pub: { label: "Pubs", filters: [exact("amenity", "pub")], geoapify: "catering.pub" },
+  brewery: {
+    label: "Breweries",
+    filters: [like("craft", "brewery"), like("microbrewery", "yes")],
+    geoapify: "catering",
+  },
+  museum: {
+    label: "Museums",
+    filters: [exact("tourism", "museum")],
+    geoapify: "entertainment.museum",
+  },
+  musee: {
+    label: "Museums",
+    filters: [exact("tourism", "museum")],
+    geoapify: "entertainment.museum",
+  },
+  gallery: {
+    label: "Galleries",
+    filters: [exact("tourism", "gallery")],
+    geoapify: "entertainment.culture",
+  },
+  park: { label: "Parks", filters: [exact("leisure", "park")], geoapify: "leisure.park" },
+  hotel: { label: "Hotels", filters: [exact("tourism", "hotel")], geoapify: "accommodation.hotel" },
+  pharmacy: {
+    label: "Pharmacies",
+    filters: [exact("amenity", "pharmacy")],
+    geoapify: "healthcare.pharmacy",
+  },
+  supermarket: {
+    label: "Supermarkets",
+    filters: [exact("shop", "supermarket")],
+    geoapify: "commercial.supermarket",
+  },
   grocery: {
     label: "Groceries",
     filters: [exact("shop", "supermarket"), exact("shop", "convenience")],
+    geoapify: "commercial.supermarket,commercial.convenience",
   },
-  atm: { label: "ATMs", filters: [exact("amenity", "atm")] },
-  toilet: { label: "Toilets", filters: [exact("amenity", "toilets")] },
-  bookstore: { label: "Bookshops", filters: [exact("shop", "books")] },
-  bookshop: { label: "Bookshops", filters: [exact("shop", "books")] },
-  market: { label: "Markets", filters: [exact("amenity", "marketplace")] },
+  atm: { label: "ATMs", filters: [exact("amenity", "atm")], geoapify: "service.financial.atm" },
+  toilet: { label: "Toilets", filters: [exact("amenity", "toilets")], geoapify: "amenity.toilet" },
+  bookstore: {
+    label: "Bookshops",
+    filters: [exact("shop", "books")],
+    geoapify: "commercial.books",
+  },
+  bookshop: { label: "Bookshops", filters: [exact("shop", "books")], geoapify: "commercial.books" },
+  market: {
+    label: "Markets",
+    filters: [exact("amenity", "marketplace")],
+    geoapify: "commercial.marketplace",
+  },
   temple: {
     label: "Temples",
     filters: [exact("amenity", "place_of_worship"), like("religion", "buddhist")],
+    geoapify: "religion.place_of_worship",
   },
-  shrine: { label: "Shrines", filters: [like("religion", "shinto")] },
+  shrine: {
+    label: "Shrines",
+    filters: [like("religion", "shinto")],
+    geoapify: "religion.place_of_worship",
+  },
 };
 
 /** "Bagels" → "bagel", "cafés" → "cafe", "Coffee shops" → "coffee shop". */
@@ -93,7 +170,20 @@ function categoryKey(query: string): string | null {
 }
 
 export type PoiIntent =
-  { kind: "category"; label: string; filters: TagFilter[] } | { kind: "brand"; text: string };
+  | { kind: "category"; label: string; filters: TagFilter[]; geoapify?: string }
+  | { kind: "brand"; text: string };
+
+/** Whether a place's tags are the kind a category search asked for. */
+export function matchesCategory(
+  tags: Readonly<Record<string, string>>,
+  intent: Extract<PoiIntent, { kind: "category" }>,
+): boolean {
+  return intent.filters.some((f) => {
+    const value = tags[f.key];
+    if (!value) return false;
+    return f.regex ? value.toLowerCase().includes(f.value.toLowerCase()) : value === f.value;
+  });
+}
 
 /**
  * What kind of search this is. Null means "leave it to the geocoder": an

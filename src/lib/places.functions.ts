@@ -2,6 +2,7 @@ import {
   RADIUS_AROUND_TRIP_M,
   RADIUS_NEAR_YOU_M,
   isExactPoiMatch,
+  matchesCategory,
   overpassQuery,
   poiIntent,
   readOverpass,
@@ -10,6 +11,7 @@ import {
   type PoiIntent,
 } from "@/lib/poi-search";
 import { haversine } from "@/lib/geo";
+import { geoapifyPlacesToElements, geoapifyPlacesUrl } from "@/lib/geoapify";
 import { dropBareAreas, widerQueries } from "@/lib/place-search-near";
 import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -386,6 +388,36 @@ async function overpassPlaces(
   at: { lat: number; lon: number },
   radiusM: number,
 ): Promise<PoiHit[]> {
+  // A kind of place, with Geoapify configured: its Places API first. The
+  // public Overpass servers time out or refuse often enough that "coffee
+  // near me" came back empty; Geoapify answers from the same OSM data with a
+  // key. Its places are checked against the same tags, and Overpass is still
+  // there if Geoapify fails.
+  if (intent.kind === "category" && intent.geoapify) {
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const provider = geoProvider();
+    if (provider.name === "geoapify") {
+      try {
+        const res = await fetch(geoapifyPlacesUrl(provider.token, intent.geoapify, at, radiusM), {
+          headers: { "user-agent": UA, accept: "application/json" },
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (res.ok) {
+          const elements = geoapifyPlacesToElements(await res.json()).filter((e) =>
+            matchesCategory(e.tags, intent),
+          );
+          const hits = readOverpass(elements, at);
+          if (hits.length) return hits;
+        } else {
+          console.warn(`[places] Geoapify places answered ${res.status}`);
+        }
+      } catch (error) {
+        console.warn(
+          `[places] Geoapify places failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
   const body = overpassQuery(intent, at, radiusM);
   for (const base of [
     "https://overpass-api.de/api/interpreter",
