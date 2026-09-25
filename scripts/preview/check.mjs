@@ -506,6 +506,12 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     await card.click();
     if ((await page.getByText("may be a different place with the same name", { exact: false }).count()) !== 1)
       throw new Error("the back does not explain the flag");
+    await page.getByRole("button", { name: "Done" }).first().click();
+    // Directions between same-day stops hundreds of km apart are a warning, not a drive.
+    await page.getByRole("button", { name: /^(Get directions|Refresh)$/ }).first().click();
+    await page.waitForTimeout(600);
+    if ((await page.getByText(/km apart on the map on the same day/).count()) === 0)
+      throw new Error("a 280 km same-day leg was shown as a journey");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {

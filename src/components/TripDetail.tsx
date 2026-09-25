@@ -373,8 +373,17 @@ export function TripDetail({
   // Pins far from the rest of the trip, saved before lookups were bounded to
   // the trip's area: flagged on their cards so they get checked.
   const strayIds = useMemo(() => strayStopIds(board.items), [board.items]);
-  const legFor = (index: number) =>
-    liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+  // Legs are worked out over `directionStops` (the timeline without its
+  // Walk / Drive rows), so a leg is found by the stop's place in that list —
+  // not in board.items, where every such row shifted every leg after it.
+  const directionIndexById = new Map(
+    directionStops.map((stop, i) => [stop.id ?? `#${i}`, i] as const),
+  );
+  const legFor = (fromId: string, toId: string) => {
+    const index = directionIndexById.get(fromId);
+    if (index == null || directionStops[index + 1]?.id !== toId) return undefined;
+    return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+  };
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
@@ -431,7 +440,6 @@ export function TripDetail({
   const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
   const shownGroups = visibleGroups(timelineGroups, chosenDay);
   const offerDays = shouldOfferDays(timelineGroups);
-  const itemIndexById = new Map(board.items.map((item, i) => [item.id, i]));
 
   /**
    * Which way you are looking at the trip: Now, Map, Day or Trip.
@@ -1235,10 +1243,7 @@ export function TripDetail({
                                             .slice(dayIndex + 1)
                                             .find((n) => !(hidingDone && isDone(n)));
                                           if (!next || editingTimeline) return null;
-                                          const adjacent = group.items[dayIndex + 1] === next;
-                                          const leg = adjacent
-                                            ? legFor(itemIndexById.get(item.id) ?? -1)
-                                            : undefined;
+                                          const leg = legFor(item.id, next.id);
                                           return (
                                             <TravelConnector
                                               from={item}
@@ -1296,7 +1301,7 @@ export function TripDetail({
                               <TravelConnector
                                 from={item}
                                 to={next}
-                                leg={board.items[i + 1] === next ? legFor(i) : undefined}
+                                leg={legFor(item.id, next.id)}
                                 area={directionArea ?? ""}
                                 showTime={view.prefs.walkTimes}
                               />

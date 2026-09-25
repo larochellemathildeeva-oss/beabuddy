@@ -382,8 +382,14 @@ function useLiveLeg(
     route({
       data: {
         stops: [
-          { title: from.title, address: from.address, lat: from.lat, lon: from.lon },
-          { title: to.title, address: to.address, lat: to.lat, lon: to.lon },
+          {
+            title: from.title,
+            address: from.address,
+            day_date: from.day_date,
+            lat: from.lat,
+            lon: from.lon,
+          },
+          { title: to.title, address: to.address, day_date: to.day_date, lat: to.lat, lon: to.lon },
         ],
         ...(pinned ? { near: { lat: pinned.lat, lon: pinned.lon } } : area ? { area } : {}),
       },

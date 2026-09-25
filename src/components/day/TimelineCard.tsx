@@ -729,13 +729,22 @@ export function TravelConnector({
                   </span>
                 )}
               </p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {showTime && measured
-                  ? `Travelling to ${to.title}`
-                  : showTime
-                    ? "Not measured yet"
-                    : "Directions in Maps"}
-              </p>
+              {leg?.farApartKm ? (
+                // One of the two pins is wrong; a drive between them would be
+                // a confident answer to the wrong question.
+                <p className="mt-0.5 text-[11px] font-semibold text-destructive">
+                  ⚠ {leg.farApartKm} km apart on the map on the same day — one of these stops is
+                  probably in the wrong place. Tap it to check.
+                </p>
+              ) : (
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {showTime && measured
+                    ? `Travelling to ${to.title}`
+                    : showTime
+                      ? "Not measured yet"
+                      : "Directions in Maps"}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 self-center">

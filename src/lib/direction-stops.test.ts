@@ -195,3 +195,20 @@ test("a place link falls back to the name when there is no pin", () => {
   const url = mapsPlaceUrl("Crew Collective & Café", { lat: null, lon: null });
   assert.equal(new URL(url).searchParams.get("query"), "Crew Collective & Café");
 });
+
+test("a stop without a pin is looked up next to its own day, before or after it", async () => {
+  const { sameDayAnchors } = await import("./direction-stops.ts");
+  const museum = { day_date: "2026-10-07", lat: 34.3915, lon: 132.4523 };
+  const lunch = { day_date: "2026-10-07", lat: null, lon: null };
+  const crawl = { day_date: "2026-10-07", lat: 34.2985, lon: 132.3218 };
+  const nextDay = { day_date: "2026-10-08", lat: null, lon: null };
+  const undated = { lat: null, lon: null };
+  assert.deepEqual(sameDayAnchors([museum, lunch, crawl, nextDay, undated]), [
+    { lat: 34.2985, lon: 132.3218 },
+    { lat: 34.3915, lon: 132.4523 },
+    { lat: 34.3915, lon: 132.4523 },
+    null,
+    null,
+  ]);
+  assert.deepEqual(sameDayAnchors([lunch, crawl])[0], { lat: 34.2985, lon: 132.3218 });
+});
