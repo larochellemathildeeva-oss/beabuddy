@@ -814,9 +814,6 @@ export function TripDetail({
                   tripStops={companionStops(board.items)}
                   legs={nowLegs}
                   onProgress={board.setProgress}
-                  onPlanStay={(id, minutes) =>
-                    board.updateItem(id, { planned_stay_minutes: minutes })
-                  }
                 />
               </>
             ) : (

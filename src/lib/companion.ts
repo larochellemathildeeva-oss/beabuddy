@@ -14,6 +14,7 @@
 
 import type { RouteLeg } from "./directions.functions.ts";
 import { isSavedDirectionItem } from "./direction-stops.ts";
+import { isTravelLeg } from "./import-stop.ts";
 import { timeForRail } from "./timeline-kind.ts";
 
 export type CompanionStop = {
@@ -28,11 +29,17 @@ export type CompanionStop = {
 
 /**
  * The places in a day, without the Walk / Drive rows that saved directions
- * add between them. Those are the journey, not somewhere to arrive, and
- * counting them would make every other "up next" a walk.
+ * add between them, or journeys a plan wrote as rows of their own ("Travel
+ * to Peace Memorial Park"). Those are the way between stops, not somewhere
+ * to arrive, and counting them would make every other "up next" a walk.
  */
 export function companionStops<T extends CompanionStop>(items: readonly T[]): T[] {
-  return items.filter((item) => item.title.trim() && !isSavedDirectionItem(item));
+  return items.filter(
+    (item) =>
+      item.title.trim() &&
+      !isSavedDirectionItem(item) &&
+      !isTravelLeg({ kind: item.kind ?? "", title: item.title }),
+  );
 }
 
 export type CompanionPhase =
@@ -154,26 +161,15 @@ export function leaveBy(
 }
 
 /**
- * How long you have been somewhere, against how long the plan allows.
- *
- * Silent without an arrival, and without a planned stay says only how long
- * it has been — nothing invents an allowance the row does not have.
+ * How long you have been somewhere. Silent without an arrival.
  */
-export function stayLine(
-  stop: Pick<CompanionStop, "arrived_at" | "planned_stay_minutes">,
-  now: Date,
-): string | null {
+export function stayLine(stop: Pick<CompanionStop, "arrived_at">, now: Date): string | null {
   const since = time(stop.arrived_at);
   if (since === -Infinity) return null;
   const elapsed = Math.max(0, Math.floor((now.getTime() - since) / 60_000));
   const spent =
     elapsed < 60 ? `${elapsed} min` : `${Math.floor(elapsed / 60)} h ${elapsed % 60} min`;
-  const planned = stop.planned_stay_minutes;
-  if (!planned || planned <= 0) return `Here ${spent}`;
-  const left = planned - elapsed;
-  return left >= 0
-    ? `Here ${spent} · about ${left} min of ${planned} left`
-    : `Here ${spent} · ${-left} min past the ${planned} planned`;
+  return `Here ${spent}`;
 }
 
 /**

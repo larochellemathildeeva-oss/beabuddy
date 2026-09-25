@@ -18,7 +18,6 @@ import {
   undoArrivalWrite,
   type LeaveBy,
 } from "@/lib/companion";
-import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 
 type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "left_at">> };
 
@@ -36,7 +35,6 @@ export function NowPanel({
   tripStops,
   legs,
   onProgress,
-  onPlanStay,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
@@ -45,8 +43,6 @@ export function NowPanel({
   /** Saved directions, only when they still describe this timeline. */
   legs: RouteLeg[] | null;
   onProgress: (writes: Write[]) => Promise<void>;
-  /** Set or clear how long the plan allows at a stop. */
-  onPlanStay: (id: string, minutes: number | null) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -122,25 +118,6 @@ export function NowPanel({
             <p className="-mt-1.5 text-xs text-background/65 sm:text-sm">{current.address}</p>
           )}
           <StayLine stop={current} now={now} tone="dark" />
-          <label className="flex items-center gap-2 text-xs text-background/70 sm:text-sm">
-            Plan to stay
-            <select
-              value={current.planned_stay_minutes ?? ""}
-              disabled={busy}
-              onChange={(e) => {
-                const minutes = parseStayChoice(e.target.value);
-                void act(() => onPlanStay(current.id, minutes));
-              }}
-              className="rounded-lg border border-background/20 bg-background/10 px-2 py-1 text-xs text-background sm:text-sm"
-            >
-              <option value="">Not set</option>
-              {stayChoices(current.planned_stay_minutes).map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {stayLabel(minutes)}
-                </option>
-              ))}
-            </select>
-          </label>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -296,21 +273,29 @@ export function NowPanel({
 }
 
 function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: string }) {
-  if (!leave) return null;
-  if (leave.kind === "same-spot") {
+  if (leave?.kind === "time") {
+    const how = leave.mode === "walking" ? "walk" : "drive";
     return (
-      <p className="text-xs text-muted-foreground sm:text-sm">Same place — no need to move.</p>
+      <p className="flex max-w-full items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm">
+        <Clock className="size-3 shrink-0 text-primary" aria-hidden />
+        <span className="font-bold text-primary">Leave by {leave.at}</span>
+        <span className="text-[10px] text-muted-foreground sm:text-xs">
+          ({leave.travelMinutes} min {how}
+          <span className="sr-only"> for {dueLabel}</span>)
+        </span>
+      </p>
     );
   }
-  const how = leave.mode === "walking" ? "walk" : "drive";
+  // No journey to time — not measured, or pinned to the same spot — but the
+  // next stop still has a time to be there by, which is what the chip is for.
+  if (!dueLabel) return null;
   return (
     <p className="flex max-w-full items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm">
       <Clock className="size-3 shrink-0 text-primary" aria-hidden />
-      <span className="font-bold text-primary">Leave by {leave.at}</span>
-      <span className="text-[10px] text-muted-foreground sm:text-xs">
-        ({leave.travelMinutes} min {how}
-        <span className="sr-only"> for {dueLabel}</span>)
-      </span>
+      <span className="font-bold text-primary">Be there by {dueLabel}</span>
+      {leave?.kind === "same-spot" && (
+        <span className="text-[10px] text-muted-foreground sm:text-xs">(same spot)</span>
+      )}
     </p>
   );
 }
