@@ -45,7 +45,8 @@ export const optimizeItinerary = async (args: { data: { goals: string[]; items: 
     summary: "Tighter days, less doubling back.",
     changes: "The shrine moves before lunch.",
     items,
-    travel: { beforeSec: 7_800, afterSec: 4_500, mode: "walk" },
+    travel: { beforeSec: 7_800, afterSec: 4_500, mode: "walk", checkedSec: 4_920 },
     plannedDays: args.data.goals.includes("hours") ? 2 : 0,
+    recheckedDays: 1,
   };
 };

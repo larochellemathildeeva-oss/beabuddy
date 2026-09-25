@@ -9,8 +9,12 @@ import {
   dayRequest,
   isMovable,
   lodgingFor,
-  matrixCredits,
-  matrixGroups,
+  checkedTotal,
+  estimatedTables,
+  isSurprise,
+  legKey,
+  legsOf,
+  withChecked,
   planDays,
   solveDay,
   travelTimeFrom,
@@ -58,19 +62,33 @@ test("walk inside a neighbourhood, drive across a city", () => {
   assert.equal(modeFor([KYOTO, { lat: 35.0394, lon: 135.7292 }]), "drive"); // Kinkaku-ji, ~5 km
 });
 
-test("matrices: lone stops skipped, big groups trimmed, the budget respected", () => {
-  assert.equal(matrixCredits(8), 64);
-  assert.equal(matrixCredits(25), 250);
-  const many = Array.from({ length: 30 }, (_, i) => ({ id: `k${i}`, ...KYOTO }));
-  const groups = matrixGroups([...many, { id: "o", ...OSAKA }]);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0]!.length, 25);
-  // Two groups of 20 cost 200 each: only one fits in 300.
-  const two = [
-    ...Array.from({ length: 20 }, (_, i) => ({ id: `k${i}`, ...KYOTO })),
-    ...Array.from({ length: 20 }, (_, i) => ({ id: `o${i}`, ...OSAKA })),
-  ];
-  assert.equal(matrixGroups(two, 300).length, 1);
+test("estimated tables: one per place, walked in a neighbourhood, lone stops left out", () => {
+  const tables = estimatedTables([
+    stop("a", KYOTO),
+    stop("b", KYOTO_NEAR),
+    stop("a", KYOTO), // the same stop twice is timed once
+    stop("o", OSAKA),
+    stop("nowhere", { lat: null, lon: null }),
+  ]);
+  assert.equal(tables.length, 1);
+  const [t] = tables;
+  assert.deepEqual(t!.ids, ["a", "b"]);
+  assert.equal(t!.mode, "walk");
+  assert.equal(t!.seconds[0]![0], 0);
+  // About 1.3 km apart: a little over twenty minutes on foot, both ways.
+  const s = t!.seconds[0]![1]!;
+  assert.ok(s > 20 * 60 && s < 25 * 60, `${s}s`);
+  assert.equal(t!.seconds[1]![0], s);
+});
+
+test("estimated tables: a spread-out place is driven, but its short hops still walked", () => {
+  const far = { lat: 35.0394, lon: 135.7292 }; // Kinkaku-ji, ~5 km from KYOTO
+  const [t] = estimatedTables([stop("a", KYOTO), stop("b", KYOTO_NEAR), stop("c", far)]);
+  assert.equal(t!.mode, "drive");
+  const walkAB = t!.seconds[0]![1]!;
+  const driveAC = t!.seconds[0]![2]!;
+  assert.ok(walkAB > 20 * 60, "a 1.3 km hop is walked");
+  assert.ok(driveAC < 25 * 60, "5 km across town is driven");
 });
 
 const table: TravelTable = {
@@ -85,9 +103,9 @@ const table: TravelTable = {
 
 test("the model sees each stop's nearest neighbours in minutes", () => {
   assert.deepEqual(neighbourLines([table], 2), [
-    "- id=a: 5 min to id=b, 30 min to id=c (on foot)",
-    "- id=b: 5 min to id=a, 10 min to id=c (on foot)",
-    "- id=c: 10 min to id=b, 30 min to id=a (on foot)",
+    "- id=a: ~5 min to id=b, ~30 min to id=c (on foot)",
+    "- id=b: ~5 min to id=a, ~10 min to id=c (on foot)",
+    "- id=c: ~10 min to id=b, ~30 min to id=a (on foot)",
   ]);
 });
 
@@ -352,4 +370,60 @@ test("plan days: each dated day ordered around its hours, undated stops left alo
     ["temple", "museum"],
   );
   assert.equal(day.order[1]!.time_label, "13:00");
+});
+
+test("journeys: consecutive pinned stops per day, walked when short, driven across town", () => {
+  const far = { lat: 35.0394, lon: 135.7292 }; // ~5 km from KYOTO
+  const items = [
+    stop("a", { ...KYOTO }),
+    stop("note", { kind: "note", lat: null, lon: null }),
+    stop("b", { ...KYOTO_NEAR }),
+    stop("c", { ...far }),
+    stop("d", { ...KYOTO, day_date: "2026-10-08" }),
+    stop("e", { ...KYOTO_NEAR, day_date: null }),
+  ];
+  const tables = estimatedTables(items);
+  const legs = legsOf(tables, items);
+  assert.deepEqual(
+    legs.map((l) => [l.from.id, l.to.id, l.mode]),
+    [
+      ["a", "b", "walk"],
+      ["b", "c", "drive"],
+    ],
+  );
+  assert.ok(legs.every((l) => l.estimate > 0 && l.day === "2026-10-07"));
+});
+
+test("a real route much longer than the map suggests is a surprise; a little longer is not", () => {
+  assert.equal(isSurprise(600, 1800), true); // 10 min on the map, 30 real
+  assert.equal(isSurprise(600, 1000), false); // longer, but not by much
+  assert.equal(isSurprise(60, 400), false); // triple, but only six minutes
+});
+
+test("checked journeys replace the estimate, either way round", () => {
+  const travel = withChecked(() => 100, new Map([[legKey("a", "b"), 900]]));
+  const a = { id: "a", lat: 0, lon: 0 };
+  const b = { id: "b", lat: 0, lon: 0 };
+  const c = { id: "c", lat: 0, lon: 0 };
+  assert.equal(travel(a, b), 900);
+  assert.equal(travel(b, a), 900);
+  assert.equal(travel(a, c), 100);
+});
+
+test("the real total is given only when every journey was checked", () => {
+  const leg = (from: string, to: string) => ({
+    day: "d",
+    from: { id: from, lat: 0, lon: 0 },
+    to: { id: to, lat: 0, lon: 0 },
+    mode: "walk" as const,
+    estimate: 60,
+  });
+  const legs = [leg("a", "b"), leg("b", "c")];
+  const both = new Map([
+    [legKey("a", "b"), 300],
+    [legKey("b", "c"), 420],
+  ]);
+  assert.equal(checkedTotal(legs, both), 720);
+  assert.equal(checkedTotal(legs, new Map([[legKey("a", "b"), 300]])), null);
+  assert.equal(checkedTotal([], both), null);
 });

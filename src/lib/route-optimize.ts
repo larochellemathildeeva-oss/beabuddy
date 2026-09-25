@@ -1,28 +1,34 @@
 /**
- * Rearranging a trip on real travel times rather than on names.
+ * Rearranging a trip on travel times rather than on names.
  *
  * Optimize used to hand the model a list of titles and coordinates and ask it
  * to cluster them. A model reading "35.0116,135.7681" cannot tell a four-
- * minute walk from a river in the way, so "Closest together" was a guess
- * presented as a plan. Now the two halves are measured:
+ * minute walk from a forty-minute one, so "Closest together" was a guess
+ * presented as a plan. Now both halves work from travel times:
  *
- * - Which day: Geoapify's Route Matrix times every pair of pinned stops in a
- *   place, and the model is shown each stop's nearest neighbours in minutes.
+ * - Which day: every pair of pinned stops in a place is timed, and the model
+ *   is shown each stop's nearest neighbours in minutes.
  * - Which order, and when: for "Open when you get there", each day is then
- *   solved here, exactly, from those same travel times and the opening hours
- *   Place Details knows. A museum that opens at 10:00 is not visited at 09:00.
+ *   solved here, exactly, from those times and the opening hours Place
+ *   Details knows. A museum that opens at 10:00 is not visited at 09:00.
  *
- * Why not Geoapify's Route Planner for the second half: it is priced like a
- * matrix over every location it is given, again, for each day — about 600
- * credits for a five-day trip on top of the matrix — and it is built for
- * fleets of vans, where a good answer beats a perfect one. One traveller with
- * at most twelve stops a day is small enough to try every order, so this
- * gives the best order for no credits at all.
+ * The times are estimated from the pins' positions — straight-line distance,
+ * stretched for streets, at walking pace or a city drive — not bought from a
+ * router. Geoapify's Route Matrix measured them for real, but at locations ×
+ * min(locations, 10) credits, a single Optimize could spend a sixth of the
+ * day's free allowance. For choosing which stops share a day and in what
+ * order, the estimate points the same way, and costs nothing. Directions,
+ * when asked for, still come from the router.
  *
- * This file is the pure part — grouping, prompts, tallies and the day solver
- * — so every rule is tested. The fetching is in `route-optimize.server.ts`.
+ * Why not Geoapify's Route Planner for the second half, for the same reason:
+ * it is priced like a matrix over every location, for each day, and is built
+ * for fleets. One traveller with at most twelve stops a day is small enough
+ * to try every order.
+ *
+ * This file is the pure part — grouping, estimates, prompts, tallies and the
+ * day solver — so every rule is tested. The only lookup Optimize still makes,
+ * opening hours, is in `route-optimize.server.ts`.
  */
-import type { TravelMode } from "./geoapify.ts";
 import { openWindowsOn } from "./opening-hours.ts";
 import { timelineGlyph } from "./timeline-kind.ts";
 
@@ -39,6 +45,9 @@ export type OptStop = {
 
 type Pinned = OptStop & { lat: number; lon: number };
 
+/** How a place's stops are timed: on foot, or by car when it is too spread out to walk. */
+export type TravelMode = "walk" | "drive";
+
 export const isPinned = (s: OptStop): s is Pinned =>
   typeof s.lat === "number" &&
   typeof s.lon === "number" &&
@@ -47,21 +56,21 @@ export const isPinned = (s: OptStop): s is Pinned =>
 
 /** Stops further apart than this are in different places, not one day's walk. */
 export const CLUSTER_KM = 25;
-/** Most stops in one matrix: 25 × 10 = 250 credits, a twelfth of a day's allowance. */
-export const MATRIX_MAX_STOPS = 25;
-/** Most credits one Optimize may spend on matrices, across all its places. */
-export const MATRIX_CREDIT_BUDGET = 400;
+/** Most stops timed against each other in one place; the rest go unmeasured. */
+export const ESTIMATE_MAX_STOPS = 60;
 /** A group of stops spread wider than this is driven between, not walked. */
 export const WALK_SPAN_M = 4_000;
 /** Most stops ordered in one day: 2¹² orders to weigh, a few milliseconds. */
 export const PLANNER_MAX_JOBS = 12;
 /** A short hop is walked, even in a place whose stops are timed by car. */
 export const WALK_HOP_M = 1_500;
-
-/** What Geoapify charges for an n × n matrix. */
-export function matrixCredits(n: number): number {
-  return n * Math.min(n, 10);
-}
+/**
+ * Directions walk a journey shorter than this and drive a longer one
+ * (directions.functions.ts). The route check asks the router the same way,
+ * so the journeys it buys are the ones directions will want — and are free
+ * to them through the shared cache.
+ */
+export const DIRECTIONS_WALK_M = 3_000;
 
 export function distanceM(
   a: { lat: number; lon: number },
@@ -79,7 +88,7 @@ export function distanceM(
 /**
  * Stops grouped by place: two stops share a group when a chain of stops each
  * within `km` of the next joins them. Kyoto and Osaka on one trip become two
- * groups, so no matrix is spent timing the drive between them.
+ * groups, and the drive between them is never counted as a day's travel.
  */
 export function clusterStops<T extends { lat: number; lon: number }>(
   stops: readonly T[],
@@ -121,26 +130,33 @@ export type TravelTable = {
 };
 
 /**
- * Which stops go into a matrix: groups of two or more, biggest first, each
- * trimmed to `MATRIX_MAX_STOPS` in trip order, until the budget is spent.
+ * Travel times between the pinned stops of each place, estimated from their
+ * positions: one table per group of two or more, in trip order, each timed
+ * on foot when the whole place is walkable and by car otherwise — short hops
+ * are walked either way. Free, and the same every time for the same pins.
  */
-export function matrixGroups<T extends { lat: number; lon: number }>(
-  stops: readonly T[],
-  budget = MATRIX_CREDIT_BUDGET,
-): T[][] {
-  const out: T[][] = [];
-  let left = budget;
-  const groups = clusterStops(stops)
+export function estimatedTables(stops: readonly OptStop[]): TravelTable[] {
+  const seen = new Set<string>();
+  const pinned = stops.filter(isPinned).filter((s) => !seen.has(s.id) && seen.add(s.id));
+  return clusterStops(pinned)
     .filter((g) => g.length >= 2)
-    .sort((a, b) => b.length - a.length);
-  for (const g of groups) {
-    const take = g.slice(0, MATRIX_MAX_STOPS);
-    const cost = matrixCredits(take.length);
-    if (cost > left) continue;
-    left -= cost;
-    out.push(take);
-  }
-  return out;
+    .map((g) => {
+      const group = g.slice(0, ESTIMATE_MAX_STOPS);
+      const mode = modeFor(group);
+      return {
+        ids: group.map((s) => s.id),
+        mode,
+        seconds: group.map((a) =>
+          group.map((b) => {
+            const metres = distanceM(a, b);
+            if (metres < 1) return 0;
+            return mode === "walk" || metres <= WALK_HOP_M
+              ? walkSeconds(metres)
+              : driveSeconds(metres);
+          }),
+        ),
+      };
+    });
 }
 
 export function minutesLabel(seconds: number): string {
@@ -152,7 +168,7 @@ export function minutesLabel(seconds: number): string {
 }
 
 /**
- * For the model: each stop's nearest few by real travel time. A full table
+ * For the model: each stop's nearest few by estimated travel time. A full table
  * would be n² numbers the model skims; nearest neighbours are what
  * clustering actually needs, and a short line each is read properly.
  */
@@ -168,7 +184,7 @@ export function neighbourLines(tables: readonly TravelTable[], perStop = 3): str
         .slice(0, perStop);
       if (!near.length) return;
       lines.push(
-        `- id=${id}: ${near.map((x) => `${minutesLabel(x.s)} to id=${x.other}`).join(", ")} (${how})`,
+        `- id=${id}: ${near.map((x) => `~${minutesLabel(x.s)} to id=${x.other}`).join(", ")} (${how})`,
       );
     });
   }
@@ -203,6 +219,84 @@ export function travelTotal(
     prev = { ...here, day: stop.day_date };
   }
   return { seconds, pairs };
+}
+
+/** One journey in a day: a pinned stop to the next pinned stop, in the same place. */
+export type Leg = {
+  day: string;
+  from: Place & { id: string };
+  to: Place & { id: string };
+  mode: TravelMode;
+  /** The map's estimate, in seconds. */
+  estimate: number;
+};
+
+export const legKey = (from: string, to: string) => `${from}>${to}`;
+
+/**
+ * The journeys a trip makes in this order, day by day — the same pairs
+ * `travelTotal` counts — each with how directions would travel it: walked
+ * under `DIRECTIONS_WALK_M`, driven beyond.
+ */
+export function legsOf(tables: readonly TravelTable[], ordered: readonly OptStop[]): Leg[] {
+  const where = new Map<string, { t: TravelTable; i: number }>();
+  for (const t of tables) t.ids.forEach((id, i) => where.set(id, { t, i }));
+  const legs: Leg[] = [];
+  let prev: { t: TravelTable; i: number; day: string; stop: Pinned } | null = null;
+  for (const stop of ordered) {
+    const here = where.get(stop.id);
+    if (!here || !stop.day_date || !isPinned(stop)) continue;
+    if (prev && prev.day === stop.day_date && prev.t === here.t) {
+      const estimate = here.t.seconds[prev.i]?.[here.i];
+      if (estimate != null) {
+        const from = { id: prev.stop.id, lat: prev.stop.lat, lon: prev.stop.lon };
+        const to = { id: stop.id, lat: stop.lat, lon: stop.lon };
+        legs.push({
+          day: stop.day_date,
+          from,
+          to,
+          mode: distanceM(from, to) < DIRECTIONS_WALK_M ? "walk" : "drive",
+          estimate,
+        });
+      }
+    }
+    prev = { ...here, day: stop.day_date, stop };
+  }
+  return legs;
+}
+
+/** A checked journey this much longer than its estimate means the map misled. */
+export const SURPRISE_RATIO = 1.5;
+export const SURPRISE_MIN_SEC = 10 * 60;
+
+/** Whether the real route is so much longer than the map suggested that the day should be looked at again. */
+export function isSurprise(estimate: number, real: number): boolean {
+  return real > estimate * SURPRISE_RATIO && real - estimate > SURPRISE_MIN_SEC;
+}
+
+/** Travel times with the checked journeys put in, either way round. */
+export function withChecked(travel: TravelTime, checked: ReadonlyMap<string, number>): TravelTime {
+  return (from, to) => {
+    if (from.id && to.id) {
+      const real = checked.get(legKey(from.id, to.id)) ?? checked.get(legKey(to.id, from.id));
+      if (real != null) return real;
+    }
+    return travel(from, to);
+  };
+}
+
+/** The journeys' total on real routes, or null unless every one was checked. */
+export function checkedTotal(
+  legs: readonly Leg[],
+  checked: ReadonlyMap<string, number>,
+): number | null {
+  let seconds = 0;
+  for (const leg of legs) {
+    const real = checked.get(legKey(leg.from.id, leg.to.id));
+    if (real == null) return null;
+    seconds += real;
+  }
+  return legs.length ? seconds : null;
 }
 
 const FIXED_KINDS = new Set(["flight", "hotel", "reservation", "lodging"]);
@@ -307,10 +401,10 @@ export function driveSeconds(metres: number): number {
 }
 
 /**
- * Travel times from the matrices where they have them, estimated where they
- * don't: a stop past the matrix's size, or the hotel if it is not pinned as
- * a stop. A hop short enough to walk is timed on foot even where the place
- * as a whole was measured by car.
+ * Travel times from the tables where they have them, estimated on the spot
+ * where they don't: a stop past a table's size, or the hotel if it is not
+ * pinned as a stop. A hop short enough to walk is timed on foot even where
+ * the place as a whole is timed by car.
  */
 export function travelTimeFrom(tables: readonly TravelTable[]): TravelTime {
   const where = new Map<string, { t: TravelTable; i: number }>();

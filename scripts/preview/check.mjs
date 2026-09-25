@@ -505,7 +505,7 @@ await flow("timeline editor: the travelling-to card opens its directions", async
   if ((await page.getByText("Open in Maps ↗").count()) === 0) throw new Error("no Maps link in the directions");
 });
 
-await flow("optimize: real travel times shown, days planned around opening hours", async (page) => {
+await flow("optimize: estimated travel times, checked on real routes, days planned around opening hours", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Optimize", exact: true }).click();
   await page.getByRole("button", { name: /Open when you get there/ }).click();
@@ -515,7 +515,11 @@ await flow("optimize: real travel times shown, days planned around opening hours
   if (!sent) throw new Error("Optimize was never asked");
   if (!sent.goals.includes("hours")) throw new Error(`goals sent: ${sent.goals.join(", ")}`);
   if (!sent.items.some((i) => "planned_stay_minutes" in i)) throw new Error("stay lengths were not sent");
-  for (const text of ["Getting between stops: 2 h 10 min on foot → 1 h 15 min.", "2 days were ordered"]) {
+  for (const text of [
+    "Getting between stops: about 2 h 10 min on foot → about 1 h 15 min. Checked on real routes: 1 h 22 min.",
+    "2 days were ordered",
+    "One day was put in order again",
+  ]) {
     if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`the result does not show "${text}"`);
   }
 });
