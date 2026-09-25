@@ -118,6 +118,22 @@ export function areaBoxFrom(bbox: readonly (string | number)[] | null | undefine
  * suburb) still counts. A quarter of the box each way, never less than about
  * ten kilometres, because a city mapped as a point has a box of nothing.
  */
+/**
+ * A box of about 45 km each way around a point: where to look for a stop
+ * when the trip's area is the wrong place (a Hiroshima day on a Kyoto trip)
+ * but the stop before it is on the map.
+ */
+export function boxAround(point: { lat: number; lon: number }, km = 45): AreaBox {
+  const dLat = km / 111;
+  const dLon = km / (111 * Math.max(0.2, Math.cos((point.lat * Math.PI) / 180)));
+  return {
+    south: point.lat - dLat,
+    north: point.lat + dLat,
+    west: point.lon - dLon,
+    east: point.lon + dLon,
+  };
+}
+
 export function widenBox(box: AreaBox, fraction = 0.25, minDeg = 0.1): AreaBox {
   const dLat = Math.max((box.north - box.south) * fraction, minDeg);
   const dLon = Math.max((box.east - box.west) * fraction, minDeg);

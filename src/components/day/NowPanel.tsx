@@ -34,6 +34,7 @@ export function NowPanel({
   dayStops,
   tripStops,
   legs,
+  area,
   onProgress,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
@@ -42,6 +43,8 @@ export function NowPanel({
   tripStops: ItineraryRow[];
   /** Saved directions, only when they still describe this timeline. */
   legs: RouteLeg[] | null;
+  /** The trip's area, so a stop without a pin can be looked up to time the journey. */
+  area?: string | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -64,18 +67,29 @@ export function NowPanel({
   };
 
   const from = phase === "at" ? current : phase === "between" ? previous : null;
-  const savedLeg = from && next ? legBetween(tripStops, legs, from.id, next.id) : null;
-  const live = useLiveLeg(savedLeg, from, next);
-  const leave = next ? leaveBy(next.time_label, savedLeg ?? live.leg) : null;
+  // A saved leg counts only when it carries a time; one saved as "open in
+  // Maps" would otherwise stop Now from working the journey out itself.
+  const saved = from && next ? legBetween(tripStops, legs, from.id, next.id) : null;
+  const savedLeg = saved && (saved.duration > 0 || saved.sameSpot) ? saved : null;
+  const live = useLiveLeg(savedLeg, from, next, area);
+  const leg = savedLeg ?? live.leg;
+  const leave = next ? leaveBy(next.time_label, leg) : null;
   // The one case worth explaining: the next stop has a time to aim for, but
-  // an end of the journey is not on the map, so there is nothing to route.
+  // an end of the journey could not be found on the map, so nothing to time.
   const offMap =
-    from &&
-    next &&
-    !savedLeg &&
-    !needsLiveLeg(null, from, next) &&
-    clockMinutes(next.time_label) != null
-      ? ([from, next].find((s) => s.lat == null || s.lon == null) ?? null)
+    from && next && !live.loading && !leave && clockMinutes(next.time_label) != null
+      ? leg?.unknownSpot
+        ? leg.fromLat == null
+          ? from
+          : next
+        : !needsLiveLeg(
+              savedLeg,
+              from,
+              next,
+              Boolean(area) || [from, next].some((s) => s.lat != null && s.lon != null),
+            ) && !savedLeg
+          ? ([from, next].find((s) => s.lat == null || s.lon == null) ?? null)
+          : null
       : null;
 
   const later = next ? dayStops.slice(dayStops.indexOf(next) + 1).filter((s) => !s.arrived_at) : [];
@@ -280,7 +294,8 @@ function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: str
         <Clock className="size-3 shrink-0 text-primary" aria-hidden />
         <span className="font-bold text-primary">Leave by {leave.at}</span>
         <span className="text-[10px] text-muted-foreground sm:text-xs">
-          ({leave.travelMinutes} min {how}
+          ({leave.estimated ? "~" : ""}
+          {leave.travelMinutes} min {how}
           <span className="sr-only"> for {dueLabel}</span>)
         </span>
       </p>
@@ -334,9 +349,18 @@ function useLiveLeg(
   savedLeg: RouteLeg | null,
   from: ItineraryRow | null,
   to: ItineraryRow | null,
+  area: string | undefined,
 ): { leg: RouteLeg | null; loading: boolean } {
   const route = useServerFn(buildRoutes);
-  const wanted = from && to && needsLiveLeg(savedLeg, from, to) ? liveLegKey(from, to) : null;
+  // Where to look up an end without a pin: around the end that has one —
+  // a day in Hiroshima on a trip set to Kyoto — else in the trip's area.
+  const pinned = [from, to].find(
+    (s): s is ItineraryRow & { lat: number; lon: number } =>
+      s != null && s.lat != null && s.lon != null && (s.lat !== 0 || s.lon !== 0),
+  );
+  const canLookUp = Boolean(area) || Boolean(pinned);
+  const wanted =
+    from && to && needsLiveLeg(savedLeg, from, to, canLookUp) ? liveLegKey(from, to) : null;
   const [, rerender] = useState(0);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
@@ -347,9 +371,10 @@ function useLiveLeg(
     route({
       data: {
         stops: [
-          { title: from.title, lat: from.lat, lon: from.lon },
-          { title: to.title, lat: to.lat, lon: to.lon },
+          { title: from.title, address: from.address, lat: from.lat, lon: from.lon },
+          { title: to.title, address: to.address, lat: to.lat, lon: to.lon },
         ],
+        ...(pinned ? { near: { lat: pinned.lat, lon: pinned.lon } } : area ? { area } : {}),
       },
     })
       .then((result) => {

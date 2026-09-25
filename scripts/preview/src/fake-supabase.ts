@@ -60,7 +60,8 @@ function items(): Row[] {
   return [
     r("a", D1, 0, "08:36", "transport", "Arrive Hiroshima Station", 34.3977, 132.4753, { arrived_at: ago(95), left_at: ago(70) }),
     r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4" }),
-    r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", 34.3955, 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
+    // "unpinned": the next stop has no pin yet, as a plan's stops often don't.
+    r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", sample === "unpinned" ? null : 34.3955, sample === "unpinned" ? null : 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
     // "legs": a journey saved as a stop, as plans imported before folding have.
     ...(sample === "legs" ? [r("leg", D1, 3, "11:30", "transport", "Head to Motoyasubashi Pier", null, null)] : []),
     r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", strayPin[0], strayPin[1]),

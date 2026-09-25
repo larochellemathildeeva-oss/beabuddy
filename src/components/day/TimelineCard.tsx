@@ -697,6 +697,7 @@ export function TravelConnector({
                 {showTime && measured && leg ? (
                   <>
                     <span className="text-xs font-bold">
+                      {leg.estimated ? "~" : ""}
                       {prettyDuration(leg.duration)} {how}
                     </span>
                     <span className="text-[10px] font-medium text-muted-foreground">

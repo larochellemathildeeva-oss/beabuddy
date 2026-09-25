@@ -1,5 +1,12 @@
 import { autoPinTrusted } from "@/lib/match-confidence";
-import { areaBoxFrom, boxViewbox, inBox, widenBox, type AreaBox } from "@/lib/geocode-plan";
+import {
+  areaBoxFrom,
+  boxAround,
+  boxViewbox,
+  inBox,
+  widenBox,
+  type AreaBox,
+} from "@/lib/geocode-plan";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -9,6 +16,7 @@ import {
   placeQueryCandidates,
   reuseKeyForStop,
 } from "@/lib/direction-stops";
+import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
@@ -35,6 +43,11 @@ export type RouteLeg = {
   unknownSpot?: boolean;
   /** True when both ends resolved to the same pin. */
   sameSpot?: boolean;
+  /**
+   * The router failed, so distance and duration are worked out from the
+   * straight line between the pins (see route-estimate.ts). No steps.
+   */
+  estimated?: boolean;
   fromLat?: number;
   fromLon?: number;
   toLat?: number;
@@ -198,6 +211,11 @@ const BuildRoutesInput = z.object({
     .min(2)
     .max(200),
   area: z.string().max(200).optional(),
+  /**
+   * Look stops up around here instead of in the trip's area: the other end
+   * of a journey, already on the map, on a day spent outside the trip's city.
+   */
+  near: z.object({ lat: z.number(), lon: z.number() }).optional(),
 });
 
 function mapsOnlyLeg(
@@ -236,7 +254,9 @@ function mapsOnlyLeg(
 
 export const buildRoutes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: Stop[]; area?: string }) => BuildRoutesInput.parse(input))
+  .inputValidator((input: { stops: Stop[]; area?: string; near?: { lat: number; lon: number } }) =>
+    BuildRoutesInput.parse(input),
+  )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const points: ({ lat: number; lon: number } | null)[] = [];
@@ -277,6 +297,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const areaBox = areaBoxFrom(areaHit?.boundingbox);
       if (areaBox) box = widenBox(areaBox);
     }
+    if (!box && data.near) box = boxAround(data.near);
     for (const stop of data.stops) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
@@ -370,7 +391,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
       legsLeft -= 1;
       const r = await leg(provider, a, b, mode);
       if (!r) {
-        legs.push(mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }));
+        // Both ends are on the map; only the router failed. An estimate from
+        // the distance keeps "Leave by" rather than dropping it.
+        legs.push({
+          ...mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }),
+          distance: estimatedLegMeters(straight, mode),
+          duration: estimatedLegSeconds(straight, mode),
+          estimated: true,
+        });
         continue;
       }
       legs.push({
