@@ -667,7 +667,7 @@ export const OPTIMIZE_GOALS = [
   {
     id: "hours",
     label: "Open when you get there",
-    hint: "Each day ordered around opening hours and real travel times.",
+    hint: "Each day ordered around opening hours and the distances between stops.",
   },
   {
     id: "rainy",
@@ -750,7 +750,7 @@ const OptimizeSchema = z.object({
   items: z.array(OptimizeItemOut),
 });
 
-/** Time between stops within each day, before and after, from real routes. */
+/** Time between stops within each day, before and after, estimated from the pins. */
 export type OptimizeTravel = {
   beforeSec: number;
   afterSec: number;
@@ -758,11 +758,11 @@ export type OptimizeTravel = {
 };
 
 export type OptimizeItinerary = z.infer<typeof OptimizeSchema> & {
-  /** Present when travel times could be measured; the rearrangement is judged on them. */
+  /** Present when there were pinned stops to time; the rearrangement is judged on them. */
   travel?: OptimizeTravel | null;
   /** How many days were put in order around opening hours. */
   plannedDays?: number;
-  /** Today's share of route lookups was spent, so some of the trip was not measured. */
+  /** Today's share of place lookups was spent, so opening hours were not checked. */
   limited?: boolean;
 };
 export type OptimizeSourceItem = z.infer<typeof OptimizeItemIn>;
@@ -772,7 +772,7 @@ const GOAL_PROMPT: Record<OptimizeGoalId, string> = {
   closest:
     "Cluster places that are near each other on the same day, in walking or short-transit order. Cut backtracking.",
   hours:
-    "Put each stop on a day it is likely open — where hours are listed, use them. The order and times within each day are then fitted to opening hours and real travel times, so do not agonise over exact times.",
+    "Put each stop on a day it is likely open — where hours are listed, use them. The order and times within each day are then fitted to opening hours and the distances between stops, so do not agonise over exact times.",
   rainy:
     "Cluster indoor, museum, café and shopping activities so they can sit on a wet day. Put outdoor and walking things together on a fair-weather day. You do not have a weather forecast — do not invent rain or sunshine.",
   "easy-morning":
@@ -798,25 +798,24 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
     }));
     const byId = new Map(items.map((item) => [item.id, item]));
 
-    // Real travel times and opening hours, when Geoapify is configured. Any
-    // failure here leaves Optimize exactly as it was: the model, unmeasured.
+    // Travel times estimated from the pins, for nothing. Opening hours are the
+    // one lookup, and only for the goal that uses them; any failure there
+    // leaves Optimize as it was, without hours.
     const planHours = data.goals.includes("hours");
-    const geo = await import("@/lib/geo-provider.server")
-      .then((m) => m.geoProvider())
-      .catch(() => null);
-    const routes = await import("@/lib/route-optimize.server");
-    const { neighbourLines, planDays, travelTimeFrom, travelTotal } =
+    const { estimatedTables, neighbourLines, planDays, travelTimeFrom, travelTotal } =
       await import("@/lib/route-optimize");
-    const measureBy = Date.now() + 15_000;
-    const measured = geo
-      ? await routes.travelTables(geo, items, measureBy).catch(() => null)
+    const tables = estimatedTables(items);
+    const listed = planHours
+      ? await import("@/lib/geo-provider.server")
+          .then(async (m) => {
+            const routes = await import("@/lib/route-optimize.server");
+            return routes.hoursFor(m.geoProvider(), items, Date.now() + 15_000);
+          })
+          .catch(() => null)
       : null;
-    const tables = measured?.tables ?? [];
-    const listed =
-      geo && planHours ? await routes.hoursFor(geo, items, measureBy).catch(() => null) : null;
     const hours = listed?.hours ?? new Map<string, string>();
-    // Today's share of Geoapify credits ran out before everything was measured.
-    const limited = Boolean(measured?.limited || listed?.limited);
+    // Today's share of Geoapify credits ran out before the hours were looked up.
+    const limited = Boolean(listed?.limited);
     const nearest = neighbourLines(tables);
 
     const prompt = [
@@ -853,7 +852,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
           }${item.detail ? ` | ${item.detail}` : ""}`,
       ),
       nearest.length
-        ? `Real travel times between pinned stops, from a routing service — each stop's nearest few. Trust these over guesses from coordinates or names:\n${nearest.join("\n")}`
+        ? `Estimated travel times between pinned stops, from their map positions — each stop's nearest few. Use these to judge what is close, over guesses from names:\n${nearest.join("\n")}`
         : "",
       "summary: one warm sentence on the new shape of the days.",
       "changes: two or three short sentences on what moved and why.",
@@ -898,8 +897,8 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       }
 
       // The model chose the days; each one is then put in its best order
-      // around opening hours, on the measured travel times (estimated where
-      // there are none). Days with fewer than two stops keep the model's order.
+      // around opening hours, on the estimated travel times. Days with fewer
+      // than two stops keep the model's order.
       let plannedDays = 0;
       if (planHours) {
         const asStops = rearranged.map((row) => ({ ...byId.get(row.id)!, ...row }));

@@ -3,16 +3,20 @@
  *
  * The free plan is 3,000 credits a day for the whole app, and running out
  * stops place search and directions too, not just Optimize. So before a
- * Route Matrix or a batch of opening-hours lookups, Optimize reserves what it
- * is about to spend (reserve_geo_credits, see the geo_credit_usage
- * migration); once its share is gone it stops measuring and says so, and the
- * rest of the allowance is left for everything else.
+ * batch of opening-hours lookups, Optimize reserves what it is about to
+ * spend (reserve_geo_credits, see the geo_credit_usage migration); once its
+ * share is gone it skips the hours and says so, and the rest of the
+ * allowance is left for everything else.
  *
  * Server only: it uses the service-role client.
  */
 
-/** What Optimize may spend in a UTC day; the other half is left for search and directions. */
-export const OPTIMIZE_DAILY_CREDITS = 1_500;
+/**
+ * What Optimize may spend in a UTC day: a sixth of the free plan. At one
+ * credit a new place (known places are free), that is hours for about 500
+ * places a day; everything else keeps the rest.
+ */
+export const OPTIMIZE_DAILY_CREDITS = 500;
 
 let unavailable = false;
 

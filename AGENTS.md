@@ -60,21 +60,19 @@ order:
    results, which is what saved pins are. It answers in its own shapes;
    `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
    callers read every answer through `readGeoJson`.
-   Optimize also uses two Geoapify-only services, which the fallbacks do not
-   have: **Route Matrix** (real travel times between pinned stops, shown to
-   the model and used to measure the result) and **Place Details** (opening
-   hours, shared with the stop card through `place-facts.server.ts`). For the
-   "Open when you get there" goal each day is then ordered by Béa's own exact
-   solver (`solveDay` in `route-optimize.ts`, pure and tested) on those times
-   and hours. Geoapify's **Route Planner is deliberately not used**: it costs
-   another matrix per day and is built for fleets, where one traveller with
-   at most twelve stops a day can be solved exactly for free.
-   A matrix costs locations × min(locations, 10) credits, so Optimize is
-   capped per run (`MATRIX_CREDIT_BUDGET`, `HOURS_LOOKUP_MAX`), caches in
-   process, and reserves every spend against a daily ceiling,
-   `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts` (half the free plan's
-   3,000), through the `geo_credit_usage` migration. That migration is applied
-   by hand; until it is, the ceiling is skipped with one warning in the log.
+   Optimize makes one Geoapify-only lookup: **Place Details** for opening
+   hours (shared with the stop card through `place-facts.server.ts`), only
+   for the "Open when you get there" goal, one credit per place not seen
+   before. Travel times between stops are **estimated from the pins**
+   (`estimatedTables` in `route-optimize.ts`), and each day is ordered by
+   Béa's own exact solver (`solveDay`), both pure, tested and free. Geoapify's
+   **Route Matrix and Route Planner are deliberately not used**: they cost
+   locations × min(locations, 10) credits, and a single Optimize could spend
+   a sixth of the day. Hours lookups are capped per run (`HOURS_LOOKUP_MAX`),
+   cached in process, and reserved against a daily ceiling,
+   `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts`, through the
+   `geo_credit_usage` migration. That migration is applied by hand; until it
+   is, the ceiling is skipped with one warning in the log.
 2. `LOCATIONIQ_TOKEN` set: LocationIQ, which speaks Nominatim's and OSRM's
    shapes directly, at two requests a second. A walk its router refuses is
    routed as a drive and timed at walking pace, marked as an estimate.

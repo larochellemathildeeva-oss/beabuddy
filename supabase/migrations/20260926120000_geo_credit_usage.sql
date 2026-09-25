@@ -2,10 +2,9 @@
 --
 -- Geoapify's free plan allows 3,000 credits a day for the whole app, and once
 -- they are gone every call is refused until the next day: place search, pins
--- and directions included. Optimize is the one feature that spends in bulk
--- (a Route Matrix is locations × min(locations, 10) credits), so it reserves
--- what it is about to spend here first, and stops measuring once the day's
--- share is used. Everything else keeps the rest.
+-- and directions included. Optimize looks up opening hours for a whole trip
+-- at once, so it reserves what it is about to spend here first, and skips
+-- the hours once the day's share is used. Everything else keeps the rest.
 --
 -- One row per UTC day, which is when Geoapify's allowance resets. Written only
 -- by the server with the service-role client, through reserve_geo_credits, so

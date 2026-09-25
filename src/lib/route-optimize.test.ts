@@ -9,8 +9,7 @@ import {
   dayRequest,
   isMovable,
   lodgingFor,
-  matrixCredits,
-  matrixGroups,
+  estimatedTables,
   planDays,
   solveDay,
   travelTimeFrom,
@@ -58,19 +57,33 @@ test("walk inside a neighbourhood, drive across a city", () => {
   assert.equal(modeFor([KYOTO, { lat: 35.0394, lon: 135.7292 }]), "drive"); // Kinkaku-ji, ~5 km
 });
 
-test("matrices: lone stops skipped, big groups trimmed, the budget respected", () => {
-  assert.equal(matrixCredits(8), 64);
-  assert.equal(matrixCredits(25), 250);
-  const many = Array.from({ length: 30 }, (_, i) => ({ id: `k${i}`, ...KYOTO }));
-  const groups = matrixGroups([...many, { id: "o", ...OSAKA }]);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0]!.length, 25);
-  // Two groups of 20 cost 200 each: only one fits in 300.
-  const two = [
-    ...Array.from({ length: 20 }, (_, i) => ({ id: `k${i}`, ...KYOTO })),
-    ...Array.from({ length: 20 }, (_, i) => ({ id: `o${i}`, ...OSAKA })),
-  ];
-  assert.equal(matrixGroups(two, 300).length, 1);
+test("estimated tables: one per place, walked in a neighbourhood, lone stops left out", () => {
+  const tables = estimatedTables([
+    stop("a", KYOTO),
+    stop("b", KYOTO_NEAR),
+    stop("a", KYOTO), // the same stop twice is timed once
+    stop("o", OSAKA),
+    stop("nowhere", { lat: null, lon: null }),
+  ]);
+  assert.equal(tables.length, 1);
+  const [t] = tables;
+  assert.deepEqual(t!.ids, ["a", "b"]);
+  assert.equal(t!.mode, "walk");
+  assert.equal(t!.seconds[0]![0], 0);
+  // About 1.3 km apart: a little over twenty minutes on foot, both ways.
+  const s = t!.seconds[0]![1]!;
+  assert.ok(s > 20 * 60 && s < 25 * 60, `${s}s`);
+  assert.equal(t!.seconds[1]![0], s);
+});
+
+test("estimated tables: a spread-out place is driven, but its short hops still walked", () => {
+  const far = { lat: 35.0394, lon: 135.7292 }; // Kinkaku-ji, ~5 km from KYOTO
+  const [t] = estimatedTables([stop("a", KYOTO), stop("b", KYOTO_NEAR), stop("c", far)]);
+  assert.equal(t!.mode, "drive");
+  const walkAB = t!.seconds[0]![1]!;
+  const driveAC = t!.seconds[0]![2]!;
+  assert.ok(walkAB > 20 * 60, "a 1.3 km hop is walked");
+  assert.ok(driveAC < 25 * 60, "5 km across town is driven");
 });
 
 const table: TravelTable = {
@@ -85,9 +98,9 @@ const table: TravelTable = {
 
 test("the model sees each stop's nearest neighbours in minutes", () => {
   assert.deepEqual(neighbourLines([table], 2), [
-    "- id=a: 5 min to id=b, 30 min to id=c (on foot)",
-    "- id=b: 5 min to id=a, 10 min to id=c (on foot)",
-    "- id=c: 10 min to id=b, 30 min to id=a (on foot)",
+    "- id=a: ~5 min to id=b, ~30 min to id=c (on foot)",
+    "- id=b: ~5 min to id=a, ~10 min to id=c (on foot)",
+    "- id=c: ~10 min to id=b, ~30 min to id=a (on foot)",
   ]);
 });
 

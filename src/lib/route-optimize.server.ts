@@ -1,95 +1,19 @@
-import { geoapifyMatrixRequest, readMatrix } from "./geoapify.ts";
 import type { GeoProvider } from "./geo-endpoints.ts";
 import { reserveGeoCredits } from "./geo-budget.server.ts";
 import { factsCached, placeFactsFor } from "./place-facts.server.ts";
-import {
-  isMovable,
-  isPinned,
-  matrixCredits,
-  matrixGroups,
-  modeFor,
-  type OptStop,
-  type TravelTable,
-} from "./route-optimize.ts";
+import { isMovable, type OptStop } from "./route-optimize.ts";
 
 /**
- * The fetching half of route-optimize.ts: Route Matrix and Place Details,
- * with the key from geo-provider.server.ts and never in anything the browser
- * downloads. Every call is bounded in time and in count, reserves its credits
- * against the day's ceiling first (geo-budget.server.ts), and falls back to
- * what Optimize did before — the model's arrangement, unmeasured — rather
- * than to an error.
+ * The one lookup Optimize makes: opening hours from Place Details, for the
+ * "Open when you get there" goal. Travel times are estimated from the pins
+ * (route-optimize.ts) and cost nothing. The key comes from
+ * geo-provider.server.ts and never reaches the browser; each batch of new
+ * lookups is reserved against the day's ceiling first (geo-budget.server.ts).
  */
 
-const UA = "BeaTravelApp/1.0 (travel memory vault)";
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Matrices already bought, by their points; a second Optimize of the same trip is free. */
-const matrixCache = new Map<string, TravelTable>();
-const MATRIX_CACHE_MAX = 200;
-
-async function postJson(url: string, body: string, timeoutMs: number): Promise<unknown | null> {
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "user-agent": UA, "content-type": "application/json", accept: "application/json" },
-      body,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Real travel times between the trip's pinned stops, one table per place.
- * `limited` is true when today's share of credits stopped a table being bought.
- */
-export async function travelTables(
-  provider: GeoProvider,
-  stops: readonly OptStop[],
-  deadline: number,
-): Promise<{ tables: TravelTable[]; limited: boolean }> {
-  const tables: TravelTable[] = [];
-  let limited = false;
-  if (provider.name !== "geoapify") return { tables, limited };
-  const seen = new Set<string>();
-  const pinned = stops.filter(isPinned).filter((s) => !seen.has(s.id) && seen.add(s.id));
-  let first = true;
-  for (const group of matrixGroups(pinned)) {
-    if (Date.now() > deadline) break;
-    const mode = modeFor(group);
-    const cacheKey = `${mode}|${group.map((s) => `${s.lat.toFixed(5)},${s.lon.toFixed(5)}`).join(";")}`;
-    const ids = group.map((s) => s.id);
-    const cached = matrixCache.get(cacheKey);
-    if (cached) {
-      tables.push({ ...cached, ids });
-      continue;
-    }
-    if (!(await reserveGeoCredits(matrixCredits(group.length)))) {
-      limited = true;
-      continue;
-    }
-    if (!first) await wait(provider.gapMs);
-    first = false;
-    const { url, body } = geoapifyMatrixRequest(provider.token, mode, group);
-    const json = await postJson(
-      url,
-      body,
-      Math.max(1_000, Math.min(12_000, deadline - Date.now())),
-    );
-    if (!json) continue;
-    const table: TravelTable = { ids, mode, seconds: readMatrix(json, group.length) };
-    if (matrixCache.size >= MATRIX_CACHE_MAX) matrixCache.delete(matrixCache.keys().next().value!);
-    matrixCache.set(cacheKey, table);
-    tables.push(table);
-  }
-  return { tables, limited };
-}
-
-/** Most places looked up for hours in one Optimize: 40 credits, eight seconds. */
+/** Most new places looked up for hours in one Optimize: 40 credits, eight seconds. */
 export const HOURS_LOOKUP_MAX = 40;
 
 /**
