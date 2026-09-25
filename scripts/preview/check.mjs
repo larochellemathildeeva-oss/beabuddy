@@ -102,7 +102,7 @@ async function open(sample) {
 }
 
 const tabNames = async (page) =>
-  page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.textContent.trim()));
+  page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.getAttribute("aria-label") ?? e.textContent.trim()));
 
 async function goTab(page, name) {
   await page.getByRole("tab", { name, exact: true }).click();
@@ -513,11 +513,54 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   await page.close();
 }
 {
+  const name = "a journey saved as a stop becomes a note on the stop it leads to";
+  const { page, errors } = await open("legs");
+  try {
+    await goTab(page, "Timeline Editor");
+    await page.getByRole("button", { name: /Head to Motoyasubashi Pier.*tap to edit$/ }).click();
+    await page.getByRole("button", { name: "Make it a note on Motoyasubashi Pier ferry" }).click();
+    await page.waitForTimeout(600);
+    const writes = await page.evaluate(() => window.__writes);
+    const noted = writes.some(
+      (w) => w.op === "update" && String(w.payload?.detail ?? "").startsWith("Getting there: Head to Motoyasubashi Pier, 11:30"),
+    );
+    if (!noted) throw new Error("the next stop did not get the note");
+    if (!writes.some((w) => w.op === "delete")) throw new Error("the journey row was not removed");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
   const { page } = await open("default");
   await goTab(page, "Timeline Editor");
   if ((await page.getByText("Pinned far from the rest", { exact: false }).count()) !== 0)
     note("a normal trip has a stop flagged as far away");
   else console.log("✓ a normal trip has no stop flagged");
+  await page.close();
+}
+
+{
+  const name = "home: next-trip card shows the flight, the hotel, packing and the way in";
+  const { page, errors } = await open("home");
+  try {
+    for (const text of ["Your next trip", "Leaving in 2 days", "Flight out", "AC 781 · 08:15", "YUL → LAX", "Lodging", "The Line Hotel", "6 / 12 items", "5 scheduled stops"]) {
+      if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
+    }
+    const open = page.getByRole("link", { name: /Open LA itinerary/ });
+    if ((await open.count()) !== 1) throw new Error("no Open itinerary link");
+    if ((await open.getAttribute("href")) !== "/trips/la") throw new Error(`Open itinerary goes to ${await open.getAttribute("href")}`);
+    const later = page.getByRole("link", { name: /JQAPALA A · Hiroshima & Miyajima/ });
+    if ((await later.count()) !== 1) throw new Error("the later trip is not listed");
+    if ((await later.getAttribute("href")) !== "/trips/t1") throw new Error("the later trip does not open its page");
+    if ((await page.getByText(/^Later this /).count()) === 0) throw new Error("no later heading");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
   await page.close();
 }
 

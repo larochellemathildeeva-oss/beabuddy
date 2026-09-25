@@ -29,7 +29,7 @@ export function DaySelector({
       aria-label="Which day to show"
       // -mx-1/px-1 so the focus ring on the first and last chip is not
       // clipped by the scroll container.
-      className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1"
+      className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 py-1 sm:gap-2"
     >
       <DayTab
         selected={value === ALL_DAYS}
@@ -78,7 +78,8 @@ function DayTab({
       aria-selected={selected}
       onClick={onSelect}
       // The prototype's day card: charcoal when chosen, white otherwise.
-      className={`flex min-h-11 shrink-0 items-center gap-3 rounded-2xl border px-3.5 py-2 text-left shadow-sm transition-all ${
+      // Sizes from the prototype's DaySelector: 40px tall on a phone, 46 wider.
+      className={`flex min-h-[40px] shrink-0 items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-1.5 text-left shadow-2xs transition-all sm:min-h-[46px] sm:gap-3 sm:rounded-2xl sm:px-4 sm:py-2 ${
         selected
           ? "scale-[1.01] border-foreground bg-foreground text-background"
           : "border-border bg-card text-foreground"
@@ -86,7 +87,7 @@ function DayTab({
     >
       <span className="min-w-0">
         <span
-          className={`block text-[10px] font-bold uppercase tracking-wider ${
+          className={`block text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${
             selected ? "text-[oklch(0.78_0.1_45)]" : "text-muted-foreground"
           }`}
         >
@@ -95,12 +96,12 @@ function DayTab({
               hears it without needing the colour. */}
           {isToday && <span className="ml-1">· Today</span>}
         </span>
-        <span className="block whitespace-nowrap text-[13px] font-semibold tracking-tight">
+        <span className="block whitespace-nowrap text-xs font-semibold tracking-tight">
           {label}
         </span>
       </span>
       <span
-        className={`shrink-0 rounded-lg px-2 py-0.5 text-[10.5px] font-semibold ${
+        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold sm:rounded-lg sm:px-2 sm:text-[10px] ${
           selected ? "bg-background/15 text-background/85" : "bg-elevated text-muted-foreground"
         }`}
       >

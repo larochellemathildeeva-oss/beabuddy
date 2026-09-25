@@ -10,6 +10,7 @@ import {
   type PoiIntent,
 } from "@/lib/poi-search";
 import { haversine } from "@/lib/geo";
+import { dropBareAreas, widerQueries } from "@/lib/place-search-near";
 import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -624,16 +625,42 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // wins. A failure here returns what there is rather than an error: the
     // full name was already asked for successfully.
     let asked = data.query;
-    if (!hits.length) {
-      for (const part of placeQueryParts(name, 3)) {
+    // A venue that is not in the trip's city (a day trip away): the answers
+    // above are the city itself, so set them aside and look in the country,
+    // then anywhere, by the name alone.
+    const venueNear = Boolean(input.near && !input.areas);
+    if (venueNear) hits = dropBareAreas(hits, name);
+    if (!hits.length && venueNear && input.near) {
+      for (const wider of widerQueries(name, input.near)) {
         try {
-          hits = await nominatim(within(part), 10, undefined, pace);
+          hits = dropBareAreas(await nominatimVariants(wider, undefined, pace, "venue"), name);
         } catch {
           break;
         }
         if (hits.length) {
-          asked = within(part);
+          asked = wider;
           break;
+        }
+      }
+    }
+    if (!hits.length) {
+      // Each part in the trip's city, then — for a stop away from it — in
+      // the trip's country.
+      const places = (part: string) =>
+        venueNear && input.near
+          ? [within(part), widerQueries(part, input.near)[0]!]
+          : [within(part)];
+      search: for (const part of placeQueryParts(name, 3)) {
+        for (const q of places(part)) {
+          try {
+            hits = dropBareAreas(await nominatim(q, 10, undefined, pace), part);
+          } catch {
+            break search;
+          }
+          if (hits.length) {
+            asked = q;
+            break search;
+          }
         }
       }
     }

@@ -65,15 +65,15 @@ export function DayRibbon({
   return (
     <section
       aria-label="The day at a glance"
-      className="rounded-2xl border border-border bg-gradient-to-b from-card via-card to-elevated/60 p-3 shadow-sm"
+      className="rounded-2xl border border-border bg-gradient-to-b from-card via-card to-elevated/60 p-3 shadow-2xs sm:p-3.5"
     >
-      <div className="mb-2.5 flex flex-col gap-2 px-0.5">
+      <div className="mb-2.5 flex flex-col justify-between gap-2 px-0.5 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-1.5">
-          <Compass className="size-4 shrink-0 text-primary" aria-hidden />
-          <span className="truncate text-[12.5px] font-bold uppercase tracking-wider">
+          <Compass className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
+          <span className="truncate text-xs font-bold uppercase tracking-wider sm:text-sm">
             {dayLabel ? `${dayLabel} itinerary ribbon` : "Itinerary ribbon"}
           </span>
-          <span className="shrink-0 rounded-md border border-border bg-elevated px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-border bg-elevated px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground sm:text-xs">
             {stops.length} {stops.length === 1 ? "stop" : "stops"}
           </span>
         </div>
@@ -81,7 +81,7 @@ export function DayRibbon({
           <div
             role="group"
             aria-label="Part of the day"
-            className="no-scrollbar flex gap-1 overflow-x-auto"
+            className="no-scrollbar flex items-center gap-1 overflow-x-auto py-0.5"
           >
             {offered.map((f) => {
               const on = f.id === filter;
@@ -91,9 +91,9 @@ export function DayRibbon({
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFilter(f.id)}
-                  className={`min-h-8 shrink-0 rounded-lg px-2.5 text-[12px] font-semibold ${
+                  className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold transition-all sm:px-2.5 sm:text-xs ${
                     on
-                      ? "bg-foreground text-background shadow-sm"
+                      ? "bg-foreground text-background shadow-2xs"
                       : "border border-border bg-elevated text-muted-foreground"
                   }`}
                 >
@@ -105,7 +105,10 @@ export function DayRibbon({
         )}
       </div>
 
-      <ol ref={strip} className="no-scrollbar flex snap-x gap-2.5 overflow-x-auto py-1">
+      <ol
+        ref={strip}
+        className="no-scrollbar flex snap-x gap-2 overflow-x-auto overscroll-x-contain py-1 sm:gap-2.5"
+      >
         {shown.map(({ stop, i }) => {
           const status = statuses[i]!;
           const here = status === "here";
@@ -119,15 +122,15 @@ export function DayRibbon({
             .join(" · ");
           const selected = stop.id === selectedId;
           return (
-            <li key={stop.id} data-index={i} className="w-44 shrink-0 snap-start">
+            <li key={stop.id} data-index={i} className="w-40 shrink-0 snap-start sm:w-48">
               <button
                 type="button"
                 aria-pressed={selected}
                 aria-label={`${timeForRail(stop.time_label) || ""} ${stop.title} — show this stop`}
                 onClick={() => onSelect?.(selected ? null : stop.id)}
-                className={`block h-full w-full rounded-2xl border p-3 text-left transition-all ${
+                className={`block h-full w-full rounded-xl border p-2.5 text-left transition-all sm:rounded-2xl sm:p-3 ${
                   here
-                    ? "scale-[1.02] border-foreground bg-foreground text-background shadow-sm"
+                    ? "scale-[1.02] border-foreground bg-foreground text-background shadow-xs"
                     : next
                       ? "border-border bg-elevated"
                       : "border-border bg-card"
@@ -137,30 +140,34 @@ export function DayRibbon({
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span
-                    className={`text-[13px] font-bold tabular-nums ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
+                    className={`font-mono text-xs font-bold tabular-nums sm:text-sm ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
                   >
                     {timeForRail(stop.time_label) || "–"}
                   </span>
                   {here ? (
-                    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10.5px] font-bold text-primary-foreground">
+                    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground sm:text-[10px]">
                       Current
                     </span>
                   ) : next ? (
-                    <span className="rounded bg-nexttime/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
+                    <span className="rounded bg-nexttime/15 px-1.5 py-0.5 text-[9px] font-semibold text-nexttime sm:text-[10px]">
                       Next
                     </span>
                   ) : status === "done" ? (
-                    <span className="text-[10.5px] font-semibold text-nexttime">✓ Done</span>
+                    <span className="text-[9px] font-semibold text-nexttime sm:text-[10px]">
+                      ✓ Done
+                    </span>
                   ) : status === "skipped" ? (
-                    <span className="text-[10.5px] font-medium text-muted-foreground">Skipped</span>
+                    <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">
+                      Skipped
+                    </span>
                   ) : (
-                    <span className="text-[10.5px] font-medium text-muted-foreground">
+                    <span className="text-[9px] font-medium text-muted-foreground sm:text-[10px]">
                       #{i + 1}
                     </span>
                   )}
                 </div>
                 <p
-                  className={`line-clamp-2 min-h-9 break-words text-[14px] font-bold leading-snug ${
+                  className={`line-clamp-2 min-h-8 break-words text-xs font-bold leading-snug sm:min-h-9 sm:text-sm ${
                     status === "skipped" ? "line-through" : ""
                   }`}
                 >
@@ -168,7 +175,7 @@ export function DayRibbon({
                 </p>
                 {meta && (
                   <p
-                    className={`mt-1 truncate text-[11.5px] ${here ? "text-background/70" : "text-muted-foreground"}`}
+                    className={`mt-1 truncate text-[10px] sm:text-xs ${here ? "text-background/70" : "text-muted-foreground"}`}
                   >
                     {meta}
                   </p>

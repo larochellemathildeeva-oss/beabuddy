@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Footprints, MapPin } from "lucide-react";
+import { ArrowRight, Clock, MapPin } from "lucide-react";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
@@ -88,14 +88,14 @@ export function NowPanel({
 
   return (
     <div className="space-y-3">
-      <p className="text-[12.5px] font-semibold text-muted-foreground">
+      <p className="text-[11px] font-semibold text-muted-foreground">
         {state.reached} of {state.total} {state.total === 1 ? "stop" : "stops"} reached
       </p>
 
       {phase === "at" && current && (
         // The prototype's dark "Current stop" card.
         <section
-          className="space-y-3 rounded-2xl border border-foreground/80 bg-gradient-to-br from-foreground via-foreground/95 to-foreground p-4 text-background shadow-md"
+          className="space-y-2.5 rounded-2xl border border-foreground/80 bg-gradient-to-br from-foreground via-foreground/95 to-foreground p-4 text-background shadow-md sm:p-5"
           aria-labelledby="now-here"
         >
           <div className="flex items-center gap-2">
@@ -103,23 +103,26 @@ export function NowPanel({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[oklch(0.78_0.1_45)]">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[oklch(0.78_0.1_45)] sm:text-xs">
               Current stop
             </span>
             {timeForRail(current.time_label) && (
-              <span className="rounded bg-background/10 px-2 py-0.5 text-[12px] font-semibold tabular-nums text-background/85">
+              <span className="rounded bg-background/10 px-2 py-0.5 font-mono text-xs font-semibold tabular-nums text-background/85 sm:text-sm">
                 {timeForRail(current.time_label)}
               </span>
             )}
           </div>
-          <h2 id="now-here" className="font-display text-[26px] leading-tight">
+          <h2
+            id="now-here"
+            className="font-display text-base font-bold leading-snug break-words sm:text-lg md:text-xl"
+          >
             {current.title}
           </h2>
           {current.address?.trim() && (
-            <p className="-mt-1.5 text-[13px] text-background/65">{current.address}</p>
+            <p className="-mt-1.5 text-xs text-background/65 sm:text-sm">{current.address}</p>
           )}
           <StayLine stop={current} now={now} tone="dark" />
-          <label className="flex items-center gap-2 text-[13px] text-background/70">
+          <label className="flex items-center gap-2 text-xs text-background/70 sm:text-sm">
             Plan to stay
             <select
               value={current.planned_stay_minutes ?? ""}
@@ -128,7 +131,7 @@ export function NowPanel({
                 const minutes = parseStayChoice(e.target.value);
                 void act(() => onPlanStay(current.id, minutes));
               }}
-              className="min-h-11 rounded-xl border border-background/20 bg-background/10 px-3 text-[13.5px] text-background"
+              className="rounded-lg border border-background/20 bg-background/10 px-2 py-1 text-xs text-background sm:text-sm"
             >
               <option value="">Not set</option>
               {stayChoices(current.planned_stay_minutes).map((minutes) => (
@@ -143,7 +146,7 @@ export function NowPanel({
               type="button"
               disabled={busy}
               onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-              className="inline-flex min-h-11 items-center rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm bg-primary text-primary-foreground"
             >
               Leaving
             </button>
@@ -151,7 +154,7 @@ export function NowPanel({
               type="button"
               disabled={busy}
               onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
-              className="inline-flex min-h-11 items-center rounded-xl border border-background/25 px-4 text-[13.5px] font-semibold text-background/80 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm border border-background/25 text-background/80"
             >
               Not here yet
             </button>
@@ -160,8 +163,8 @@ export function NowPanel({
       )}
 
       {phase === "between" && previous && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-elevated px-3 py-2">
-          <p className="text-[13px] text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-elevated px-3 py-1.5">
+          <p className="text-xs text-muted-foreground">
             Left <span className="font-semibold text-foreground">{previous.title}</span>
           </p>
           <button
@@ -170,7 +173,7 @@ export function NowPanel({
             onClick={() =>
               void act(() => onProgress([{ id: previous.id, patch: { left_at: null } }]))
             }
-            className="min-h-11 px-2 text-[12.5px] font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
+            className="px-2 py-1 text-xs font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
           >
             Still there
           </button>
@@ -179,34 +182,37 @@ export function NowPanel({
 
       {next && (
         <section
-          className={`space-y-3 p-4 ${phase === "at" ? "rounded-2xl border border-border/70 bg-card" : "card-soft"}`}
+          className="space-y-2.5 rounded-2xl border border-border bg-card p-3.5 shadow-2xs sm:p-4"
           aria-labelledby="now-next"
         >
-          <p className="label-caps text-muted-foreground">
-            {phase === "between" ? "On the way to" : phase === "at" ? "Up next" : "First up"}
-          </p>
-          <div className="flex items-baseline justify-between gap-3">
-            <h2
-              id="now-next"
-              className={`font-display leading-tight ${phase === "at" ? "text-[20px]" : "text-[24px]"}`}
-            >
-              {next.title}
-            </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-xs">
+              <ArrowRight className="size-3.5 text-primary" aria-hidden />
+              {phase === "between" ? "On the way to" : phase === "at" ? "Up next stop" : "First up"}
+            </p>
+            <LeaveByLine leave={leave} dueLabel={timeForRail(next.time_label)} />
+          </div>
+          <div>
             {timeForRail(next.time_label) && (
-              <span className="shrink-0 text-[14px] font-bold tabular-nums text-primary">
+              <span className="font-mono text-xs font-bold tabular-nums text-primary sm:text-sm">
                 {timeForRail(next.time_label)}
               </span>
             )}
+            <h2
+              id="now-next"
+              className="mt-0.5 break-words font-sans text-sm font-bold leading-snug sm:text-base md:text-lg"
+            >
+              {next.title}
+            </h2>
+            {next.address?.trim() && (
+              <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{next.address}</p>
+            )}
           </div>
-          {next.address?.trim() && (
-            <p className="text-[13px] text-muted-foreground">{next.address}</p>
-          )}
-          <LeaveByLine leave={leave} dueLabel={timeForRail(next.time_label)} />
           {live.loading && (
-            <p className="text-[12.5px] text-muted-foreground">Working out the journey…</p>
+            <p className="text-xs text-muted-foreground">Working out the journey…</p>
           )}
           {offMap && (
-            <p className="text-[12.5px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {offMap.title} isn't on the map yet, so there's no time to leave by. Add its address
               in the Timeline Editor.
             </p>
@@ -218,8 +224,10 @@ export function NowPanel({
               onClick={() =>
                 void act(() => onProgress(arrivalWrites(dayStops, next.id, new Date())))
               }
-              className={`inline-flex min-h-11 items-center rounded-xl px-4 text-[14.5px] font-semibold disabled:opacity-60 ${
-                phase === "at" ? "border border-border" : "bg-primary text-primary-foreground"
+              className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm ${
+                phase === "at"
+                  ? "border border-border bg-elevated"
+                  : "bg-primary text-primary-foreground"
               }`}
             >
               I'm here
@@ -228,7 +236,7 @@ export function NowPanel({
               href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon })}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border px-3 text-[13.5px] font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm border border-border bg-elevated"
             >
               <MapPin className="size-3.5" aria-hidden />
               Open in maps
@@ -238,9 +246,11 @@ export function NowPanel({
       )}
 
       {phase === "done" && (
-        <section className="card-soft space-y-2 p-4">
-          <p className="font-display text-[22px] leading-snug">That's the day.</p>
-          <p className="text-[14px] text-muted-foreground">
+        <section className="space-y-1.5 rounded-2xl border border-border bg-card p-3.5 shadow-2xs sm:p-4">
+          <p className="font-display text-base font-bold leading-snug sm:text-lg">
+            That's the day.
+          </p>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {state.reached === state.total
               ? "Every stop reached."
               : `${state.reached} of ${state.total} stops reached — the rest were skipped along the way.`}
@@ -250,11 +260,13 @@ export function NowPanel({
 
       {later.length > 0 && (
         <div className="space-y-1.5">
-          <p className="label-caps text-muted-foreground">Later</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-xs">
+            Later
+          </p>
           <ul className="space-y-1">
             {laterShown.map((stop) => (
-              <li key={stop.id} className="flex items-baseline gap-3 text-[13.5px]">
-                <span className="w-11 shrink-0 font-semibold tabular-nums text-muted-foreground">
+              <li key={stop.id} className="flex items-baseline gap-3 text-xs sm:text-sm">
+                <span className="w-11 shrink-0 font-mono font-semibold tabular-nums text-muted-foreground">
                   {timeForRail(stop.time_label) || "–"}
                 </span>
                 <span className="min-w-0 break-words">{stop.title}</span>
@@ -266,7 +278,7 @@ export function NowPanel({
               type="button"
               onClick={() => setShowAllLater((v) => !v)}
               aria-expanded={showAllLater}
-              className="min-h-9 text-[12.5px] font-semibold text-primary underline underline-offset-2"
+              className="py-1 text-xs font-semibold text-primary underline underline-offset-2"
             >
               {showAllLater ? "Show fewer" : `Show all ${later.length}`}
             </button>
@@ -286,18 +298,18 @@ export function NowPanel({
 function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: string }) {
   if (!leave) return null;
   if (leave.kind === "same-spot") {
-    return <p className="text-[13.5px] text-muted-foreground">Same place — no need to move.</p>;
+    return (
+      <p className="text-xs text-muted-foreground sm:text-sm">Same place — no need to move.</p>
+    );
   }
   const how = leave.mode === "walking" ? "walk" : "drive";
   return (
-    <p className="flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-[14px]">
-      <Footprints className="size-4 shrink-0 text-primary" aria-hidden />
-      <span>
-        <span className="font-bold">Leave by {leave.at}</span>
-        <span className="text-muted-foreground">
-          {" "}
-          · {leave.travelMinutes} min {how} for {dueLabel}
-        </span>
+    <p className="flex max-w-full items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm">
+      <Clock className="size-3 shrink-0 text-primary" aria-hidden />
+      <span className="font-bold text-primary">Leave by {leave.at}</span>
+      <span className="text-[10px] text-muted-foreground sm:text-xs">
+        ({leave.travelMinutes} min {how}
+        <span className="sr-only"> for {dueLabel}</span>)
       </span>
     </p>
   );
@@ -316,7 +328,7 @@ function StayLine({
   const line = now ? stayLine(stop, now) : null;
   return line ? (
     <p
-      className={`text-[13.5px] ${tone === "dark" ? "text-background/75" : "text-muted-foreground"}`}
+      className={`text-xs sm:text-sm ${tone === "dark" ? "text-background/75" : "text-muted-foreground"}`}
     >
       {line}
     </p>

@@ -4,7 +4,7 @@ import { companionState, stopStatuses, type StopStatus } from "@/lib/companion";
 
 const DOT: Record<StopStatus, string> = {
   done: "bg-nexttime text-white",
-  here: "scale-125 bg-primary text-primary-foreground shadow-sm ring-4 ring-primary/25",
+  here: "scale-110 bg-primary text-primary-foreground shadow-2xs ring-4 ring-primary/25",
   next: "border-2 border-primary bg-card text-primary",
   skipped: "border border-border bg-elevated text-muted-foreground line-through",
   upcoming: "border border-border bg-card text-muted-foreground",
@@ -59,17 +59,17 @@ export function JourneyTracker({
   return (
     <section
       aria-label="Live journey"
-      className="rounded-2xl border border-border bg-card p-3.5 shadow-sm"
+      className="rounded-2xl border border-border bg-card p-3.5 shadow-2xs sm:p-4"
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-[14px] font-bold">
+        <p className="flex items-center gap-2 text-xs font-bold sm:text-sm">
           <span className="relative flex size-2" aria-hidden>
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-nexttime opacity-60 motion-reduce:animate-none" />
             <span className="relative inline-flex size-2 rounded-full bg-nexttime" />
           </span>
-          Live journey
+          Live Journey Tracker
         </p>
-        <p className="text-[12px] font-semibold tabular-nums text-muted-foreground">
+        <p className="text-[10px] font-semibold tabular-nums text-muted-foreground sm:text-xs">
           Stop <span className="font-bold text-primary">{position}</span> of {stops.length}
           <span className="ml-1.5 opacity-80">({percent}% done)</span>
         </p>
@@ -79,7 +79,7 @@ export function JourneyTracker({
       <div ref={track} className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
         <ol
           className="relative flex items-center justify-between gap-2 px-1 py-1.5"
-          style={{ minWidth: `${stops.length * 36}px` }}
+          style={{ minWidth: `${stops.length * 28}px` }}
         >
           <span
             aria-hidden
@@ -97,8 +97,8 @@ export function JourneyTracker({
                 aria-pressed={i === pickedIndex}
                 onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
                 title={`${stop.title}, ${STATUS_WORD[statuses[i]!]}`}
-                className={`tap-44 grid size-7 place-items-center rounded-full text-[11px] font-bold tabular-nums transition-all ${DOT[statuses[i]!]} ${
-                  i === pickedIndex ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : ""
+                className={`tap-44 grid size-5 place-items-center rounded-full text-[9px] font-bold sm:size-6 sm:text-[10px] tabular-nums transition-all ${DOT[statuses[i]!]} ${
+                  i === pickedIndex ? "ring-2 ring-foreground ring-offset-1 ring-offset-card" : ""
                 }`}
               >
                 {statuses[i] === "done" ? "✓" : i + 1}
@@ -112,10 +112,10 @@ export function JourneyTracker({
         </ol>
       </div>
 
-      <div className="mt-2 grid grid-cols-1 gap-1.5 text-[13px] sm:grid-cols-2">
+      <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2 sm:text-sm">
         {state.current && (
           <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border/60 bg-elevated px-2.5 py-1.5">
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-xs">
               Now:
             </span>
             <span className="truncate font-bold">{state.current.title}</span>
@@ -123,7 +123,9 @@ export function JourneyTracker({
         )}
         {state.next ? (
           <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-primary">
-            <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider">Next:</span>
+            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider sm:text-xs">
+              Next:
+            </span>
             <span className="truncate font-bold">{state.next.title}</span>
           </p>
         ) : (

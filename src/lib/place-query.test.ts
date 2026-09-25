@@ -69,3 +69,16 @@ test("the directions and import lookups try each name as well", async () => {
     ],
   );
 });
+
+test("placeQueryParts tries both ends of a named route, starting point first", () => {
+  assert.deepEqual(placeQueryParts("World Heritage Sea Route: Peace Park to Miyajima", 3), [
+    "Peace Park",
+    "Miyajima",
+    "Peace Park to Miyajima",
+  ]);
+});
+
+test("placeQueryParts does not take a lone verb for a place", () => {
+  assert.deepEqual(placeQueryParts("Walk to Peace Memorial Park"), ["Peace Memorial Park"]);
+  assert.deepEqual(placeQueryParts("Start toward Miyajima Pier"), ["Miyajima Pier"]);
+});

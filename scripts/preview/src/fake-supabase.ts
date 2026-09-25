@@ -61,6 +61,8 @@ function items(): Row[] {
     r("a", D1, 0, "08:36", "transport", "Arrive Hiroshima Station", 34.3977, 132.4753, { arrived_at: ago(95), left_at: ago(70) }),
     r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4" }),
     r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", 34.3955, 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
+    // "legs": a journey saved as a stop, as plans imported before folding have.
+    ...(sample === "legs" ? [r("leg", D1, 3, "11:30", "transport", "Head to Motoyasubashi Pier", null, null)] : []),
     r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", strayPin[0], strayPin[1]),
     r("e", D1, 4, "13:00", "meal", "Lunch: Kakiya", 34.2968, 132.3207, { address: "Miyajima Omotesando", planned_stay_minutes: 50 }),
     r("f", D1, 5, "14:15", "activity", "Omotesando food crawl", 34.2985, 132.3218),
@@ -71,7 +73,27 @@ function items(): Row[] {
   ];
 }
 
-export const db: Record<string, Row[]> = {
+// "home": Home's next-trip card — an LA trip in two days with a flight, a
+// hotel and half-packed bags, and the Hiroshima trip after it.
+const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+const homeDb: Record<string, Row[]> = {
+  trips: [
+    { id: "la", title: "LA · Coastal Sun & Art", city: "Los Angeles, California", country: "United States", start_date: inDays(2), end_date: inDays(3), dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(900) },
+    { id: "t1", title: "JQAPALA A · Hiroshima & Miyajima", city: "Hiroshima", country: "Japan", start_date: "2026-10-07", end_date: "2026-10-09", dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(800) },
+  ],
+  trip_members: [{ id: "m1", trip_id: "la", user_id: "me", role: "owner", display_name: "Mattie" }],
+  itinerary_items: [
+    { id: "la1", trip_id: "la", day_date: inDays(2), time_label: "08:15", kind: "flight", title: "AC 781", detail: "YUL → LAX (Non-stop)", address: null, lat: null, lon: null, position: 0 },
+    { id: "la2", trip_id: "la", day_date: inDays(2), time_label: "15:00", kind: "hotel", title: "The Line Hotel", detail: "Koreatown · Conf #LA-882", address: "3515 Wilshire Blvd", lat: null, lon: null, position: 1 },
+    { id: "la3", trip_id: "la", day_date: inDays(2), time_label: "18:00", kind: "meal", title: "Dinner at Guelaguetza", detail: null, address: null, lat: null, lon: null, position: 2 },
+    { id: "la4", trip_id: "la", day_date: inDays(3), time_label: "10:00", kind: "sight", title: "The Broad", detail: null, address: null, lat: null, lon: null, position: 3 },
+    { id: "la5", trip_id: "la", day_date: inDays(3), time_label: "16:00", kind: "sight", title: "Venice Beach", detail: null, address: null, lat: null, lon: null, position: 4 },
+  ],
+  packing_lists: [{ id: "pl1", trip_id: "la", name: "LA", emoji: null }],
+  packing_items: Array.from({ length: 12 }, (_, i) => ({ id: `pi${i}`, list_id: "pl1", label: `Item ${i + 1}`, packed: i < 6, position: i })),
+};
+
+export const db: Record<string, Row[]> = sample === "home" ? homeDb : {
   itinerary_items: items(),
   recommendations: [
     { id: "rec1", user_id: "me", name: "Okonomiyaki at Nagata-ya", city: "Hiroshima", country: "Japan", address: "1-7-19 Otemachi", category: "Food", notes: null, recommended_by: "Kenji", source: null, url: null, lat: 34.3948, lon: 132.4547, visited: false, pin_type: "reco", created_at: ago(9000) },

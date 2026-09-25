@@ -62,6 +62,13 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
   assert.ok(t("Take the ferry to Miyajima"));
   assert.ok(t("Walk back to the hotel"));
   assert.ok(t("Shinkansen to Kyoto"));
+  assert.ok(t("Head to Motoyasubashi Pier"));
+  assert.ok(t("Start toward Miyajima Pier"));
+  assert.ok(t("Leave for the station"));
+  assert.ok(
+    !t("World Heritage Sea Route: Peace Park to Miyajima"),
+    "a named, booked crossing stays",
+  );
   assert.ok(!t("Arrive Hiroshima Station"));
   assert.ok(!t("Motoyasubashi Pier ferry"));
   assert.ok(!t("Flight JL123 to Tokyo", "flight"));

@@ -20,9 +20,9 @@ export function CustomizeTrip({
         aria-label="Customize the trip page"
         title="Customize"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[12.5px] font-semibold text-muted-foreground shadow-sm"
+        className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95 sm:px-3"
       >
-        <Settings2 className="size-4 text-primary" aria-hidden />
+        <Settings2 className="size-3.5 text-primary" aria-hidden />
         <span className="hidden sm:inline">Customize</span>
       </button>
       <Sheet
