@@ -291,3 +291,34 @@ test("a country added by hand shades its country and is not a city", async () =>
   );
   assert.deepEqual([...visitedCountryKeys(pins, [])].sort(), ["DE", "JP", "PT"]);
 });
+
+test("a country with no city of its own is named on the globe", async () => {
+  const { countryMarks } = await import("./world-visits.ts");
+  const pins = [
+    pin({
+      name: "Iceland",
+      city: "Iceland",
+      country: "Iceland",
+      category: "City",
+      lat: 64.9,
+      lon: -18.6,
+    }),
+    pin({ name: "Japon", city: "Japon", country: "", lat: 36, lon: 138 }),
+    pin({ name: "Museum", city: "Hiroshima", country: "Japan" }),
+    pin({
+      name: "Ireland",
+      city: "Ireland",
+      country: "Ireland",
+      category: "Country",
+      lat: 0,
+      lon: 0,
+    }),
+  ];
+  const cities = visitedCities(pins);
+  const marks = countryMarks(pins, visitsByCountry(pins, cities, []));
+  // Japan has a city dot already; Ireland was saved with no real point.
+  assert.deepEqual(
+    marks.map((m) => [m.name, m.lat]),
+    [["Iceland", 64.9]],
+  );
+});

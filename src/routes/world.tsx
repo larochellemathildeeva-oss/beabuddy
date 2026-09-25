@@ -19,6 +19,7 @@ import { useVisitedProvinces } from "@/hooks/useVisitedProvinces";
 import { countryKey } from "@/lib/country-names";
 import {
   cityPins,
+  countryMarks,
   isVisitedPin,
   visitedCities,
   visitedCountryKeys,
@@ -79,6 +80,7 @@ function WorldPage() {
     [places, cities, provinces],
   );
   const globeCities = useMemo(() => cityPins(cities), [cities]);
+  const namedCountries = useMemo(() => countryMarks(places, byCountry), [places, byCountry]);
   const shadedCountries = useMemo(() => visitedCountryKeys(places, provinces), [places, provinces]);
   const provinceOf = useMemo(() => {
     const map = new Map<string, (typeof provinces)[number]>();
@@ -196,6 +198,7 @@ function WorldPage() {
             pins={globeCities}
             regions={provinces}
             visitedCountries={shadedCountries}
+            countryMarks={namedCountries}
             selectedId={selected?.id}
             onSelect={setSelected}
             onCountrySelect={(name) => {
