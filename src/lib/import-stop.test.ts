@@ -11,6 +11,9 @@ test("clock times in the ways plans write them", () => {
     ["12pm", "12:00"],
     ["12am", "00:00"],
     ["21h30", "21:30"],
+    ["19h", "19:00"],
+    ["12h", "12:00"],
+    ["9 h", "09:00"],
     ["noon", "12:00"],
     ["7:05 a.m.", "07:05"],
   ];
@@ -18,7 +21,7 @@ test("clock times in the ways plans write them", () => {
 });
 
 test("things that are not a time stay empty", () => {
-  for (const input of ["", "9", "morning", "25:00", "10:75", "Day 2", null, undefined]) {
+  for (const input of ["", "9", "25h", "morning", "25:00", "10:75", "Day 2", null, undefined]) {
     assert.equal(normalizeClock(input as string | null | undefined), null, String(input));
   }
 });
@@ -65,6 +68,9 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
   assert.ok(t("Head to Motoyasubashi Pier"));
   assert.ok(t("Start toward Miyajima Pier"));
   assert.ok(t("Leave for the station"));
+  assert.ok(t("JR Sanyo line Hiroshima → Miyajimaguchi"));
+  assert.ok(t("Train Kyoto -> Nara"));
+  assert.ok(!t("World Heritage Sea Route: Peace Park → Miyajima"), "no movement word up front");
   assert.ok(
     !t("World Heritage Sea Route: Peace Park to Miyajima"),
     "a named, booked crossing stays",

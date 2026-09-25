@@ -27,13 +27,16 @@ export function normalizeClock(value: string | null | undefined): string | null 
   if (!raw) return null;
   if (raw === "noon" || raw === "midday") return "12:00";
   if (raw === "midnight") return "00:00";
-  const m = raw.match(/^(\d{1,2})(?:\s*[:.h]\s*(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?$/);
+  const m = raw.match(/^(\d{1,2})(?:\s*[:.h]\s*(\d{2})|\s*h)?\s*(am|pm|a\.m\.|p\.m\.)?$/);
   if (!m) return null;
   let hour = Number(m[1]);
   const minute = m[2] ? Number(m[2]) : 0;
   const half = m[3]?.replace(/\./g, "");
-  // A bare "9" is not a time: it is as likely a day or a stop number.
-  if (!m[2] && !half) return null;
+  // A bare "9" is not a time: it is as likely a day or a stop number. "19h"
+  // is: the French and Spanish way to write the hour, as "21h30" is with
+  // its minutes.
+  const hourMark = /^\d{1,2}\s*h$/.test(raw);
+  if (!m[2] && !half && !hourMark) return null;
   if (half === "pm" && hour < 12) hour += 12;
   if (half === "am" && hour === 12) hour = 0;
   if (hour > 23 || minute > 59) return null;
@@ -115,12 +118,13 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
  * card on the timeline with "No place yet" — a stop that is really the gap
  * between two stops, which the paws between cards already are.
  *
- * Only movement *to* somewhere counts. "Arrive Hiroshima Station" is a place
+ * Only movement *to* somewhere counts, written "to" or as an arrow
+ * ("JR line Hiroshima → Miyajimaguchi"). "Arrive Hiroshima Station" is a place
  * with a time and stays; a booked flight or reservation is its own kind and
  * is never touched.
  */
 const MOVEMENT =
-  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*\b(?:to|toward|towards|back|for)\b/i;
+  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*(?:\b(?:to|toward|towards|back|for)\b|→|->)/i;
 
 export function isTravelLeg(row: {
   kind: string;

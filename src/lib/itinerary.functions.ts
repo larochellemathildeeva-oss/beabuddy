@@ -194,7 +194,8 @@ function attachedNote(pictures: number, hasPdf: boolean): string {
   return "";
 }
 
-async function runParse(
+/** Exported for scripts/itinerary-audit, which runs the real prompt on fixtures. */
+export async function runParse(
   model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>,
   data: z.infer<typeof ParseInput>,
   preferenceText: string,
