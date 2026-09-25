@@ -69,6 +69,11 @@ const ItemSchema = z.object({
   estimated_cost: z.number().nullable(),
   currency: z.string().nullable(),
   source: z.enum(["vault", "new"]).nullish(),
+  /**
+   * The source says this is already booked ("BOOKED", "✅", a confirmation
+   * number). Saved as the stop's Booked mark, not guessed.
+   */
+  booked: z.boolean().nullish(),
 });
 
 const CostSchema = z.object({
@@ -123,12 +128,17 @@ const instructions = (
     "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
     'end_time: 24h HH:MM when the source gives when it ends ("10:00–12:00"). duration_minutes: when it gives a length ("2h", "45 min"). Otherwise null — never guess either.',
-    'place: the venue or landmark as it would be found on a map, in the source\'s wording, including a local-language name if the source gives one ("Itsukushima Shrine (厳島神社)"). Null for a note or a leg of transport with no single place.',
+    'place: the venue or landmark as it would be found on a map, in the source\'s wording, including a local-language name if the source gives one ("Itsukushima Shrine (厳島神社)"). One place only: when an entry names several ("Peace Park / Atomic Bomb Dome / Cenotaph", "Shrine + Great Torii"), the first or main one. For a train, ferry, bus or flight, where it leaves from — the station, pier or airport ("Motoyasubashi Pier", "Hiroshima Station"); for an arrival, where you arrive. For a reminder about a place ("Be at the ferry area"), that place. Null only for a note with no place at all.',
     "address: the street address only when the source gives one, exactly as written. Never invent or complete an address.",
+    mode === "import"
+      ? 'booked: true when the source marks the entry as booked, reserved, confirmed or ticketed ("BOOKED", "🎟️ booked", "✅", a confirmation number). false otherwise, including when it says no booking is needed.'
+      : "booked: false.",
     "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
-    startDate ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2'.` : "",
+    startDate
+      ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2', and for the year of a date the source gives without one. When the source names its own dates, keep them even if they disagree with the trip's — the traveller is asked which is right.`
+      : "",
     endDate ? `The trip ends on ${endDate}.` : "",
     pace ? `Requested pace: ${pace}.` : "",
     budgetLevel ? `Requested budget style: ${budgetLevel}.` : "",
@@ -152,7 +162,7 @@ const instructions = (
       ? "costs: grouped planned expenses using categories Accommodation, Transport, Meals, Activities, Shopping, or Other. Do not double-count. estimated_total must equal the costs sum."
       : "",
     "Keep the original order of each day and include enough detail to follow the plan.",
-    'Do not make an entry for getting from one stop to the next ("Travel to X", "Walk to Y", "Take the tram to Z"). Put it in the next entry\'s detail as "Getting there: …", keeping any departure time. A booked flight, train or ferry with a confirmation is still its own entry.',
+    'Do not make an entry for getting from one stop to the next ("Travel to X", "Walk to Y", "Take the tram to Z"). Put it in the next entry\'s detail as "Getting there: …", keeping any departure time. A booked flight, train or ferry is still its own entry, with or without a confirmation number.',
     mode === "build"
       ? 'source: "vault" when the stop is one of the traveller\'s saved vault places listed below — keep that name. Otherwise "new".'
       : "source: null.",
@@ -221,6 +231,9 @@ async function runParse(
         time_label: normalizeClock(i.time_label),
         end_time: normalizeClock(i.end_time),
         kind: normaliseKind(i.kind),
+        // Only a plan the traveller already has can hold a booking; a plan
+        // Béa drafts never does, whatever the model said.
+        booked: data.mode === "import" && i.booked === true,
         source:
           i.source === "vault"
             ? ("vault" as const)

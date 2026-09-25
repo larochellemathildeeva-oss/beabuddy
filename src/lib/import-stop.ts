@@ -16,7 +16,14 @@ import type { Confidence } from "./match-confidence.ts";
  * time: it lands the stop in the wrong place in the day.
  */
 export function normalizeClock(value: string | null | undefined): string | null {
-  const raw = (value ?? "").trim().toLowerCase();
+  // "~19:30", "around 9:00", "09:00-ish": a rough time is still the time.
+  // Dropping it left "Arrive Hiroshima Station" with no place in the day.
+  const raw = (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^(?:~|≈|approx(?:\.|imately)?|about|around|circa|ca\.?)\s*/, "")
+    .replace(/\s*-?\s*ish$/, "")
+    .trim();
   if (!raw) return null;
   if (raw === "noon" || raw === "midday") return "12:00";
   if (raw === "midnight") return "00:00";
@@ -115,7 +122,14 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
 const MOVEMENT =
   /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*\b(?:to|toward|towards|back|for)\b/i;
 
-export function isTravelLeg(row: { kind: string; title: string }): boolean {
+export function isTravelLeg(row: {
+  kind: string;
+  title: string;
+  booked?: boolean | null | undefined;
+}): boolean {
+  // A booked ferry is a thing you must be on, not the gap between stops,
+  // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
+  if (row.booked === true) return false;
   return row.kind === "transport" && MOVEMENT.test(row.title.trim());
 }
 
@@ -148,7 +162,13 @@ export function foldTravelLegs<T extends FoldableRow>(rows: readonly T[]): T[] {
   return out.filter((_, i) => !drop.has(i));
 }
 
-type DayRow = { kind: string; title: string; day_date: string | null; day_number?: number | null };
+type DayRow = {
+  kind: string;
+  title: string;
+  day_date: string | null;
+  day_number?: number | null;
+  booked?: boolean | null | undefined;
+};
 
 const sameDay = (a: DayRow, b: DayRow) =>
   (a.day_date ?? "") === (b.day_date ?? "") && (a.day_number ?? 0) === (b.day_number ?? 0);

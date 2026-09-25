@@ -117,3 +117,44 @@ test("a travel leg becomes a note on the stop it leads to", async () => {
   );
   assert.equal(out[3]!.detail, null, "a leg alone on its day stays");
 });
+
+test("a rough time keeps its time", () => {
+  for (const [input, want] of [
+    ["~19:30", "19:30"],
+    ["~ 20:00", "20:00"],
+    ["09:00-ish", "09:00"],
+    ["9:00 ish", "09:00"],
+    ["around 7pm", "19:00"],
+    ["approx. 11:25", "11:25"],
+    ["ca. 8:15", "08:15"],
+  ] as const) {
+    assert.equal(normalizeClock(input), want, input);
+  }
+  // Still not a time without its minutes or an am/pm.
+  assert.equal(normalizeClock("~9"), null);
+});
+
+test("a booked journey is its own stop, however it is worded", async () => {
+  const { foldTravelLegs, isTravelLeg } = await import("./import-stop.ts");
+  const ferry = { kind: "transport", title: "Take the ferry to Miyajima" };
+  assert.equal(isTravelLeg(ferry), true);
+  assert.equal(isTravelLeg({ ...ferry, booked: true }), false);
+  const day = (rows: { kind: string; title: string; booked?: boolean }[]) =>
+    rows.map((row) => ({
+      ...row,
+      detail: null,
+      time_label: null,
+      day_date: "2026-10-07",
+      day_number: 1,
+    }));
+  const folded = foldTravelLegs(
+    day([
+      { ...ferry, booked: true },
+      { kind: "sight", title: "Itsukushima Shrine" },
+    ]),
+  );
+  assert.deepEqual(
+    folded.map((row) => row.title),
+    ["Take the ferry to Miyajima", "Itsukushima Shrine"],
+  );
+});

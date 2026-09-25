@@ -36,6 +36,14 @@ import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
 import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
+import {
+  daysBetween,
+  movedTripRange,
+  planOutsideTrip,
+  planRange,
+  shiftPlanDates,
+} from "@/lib/plan-dates";
+import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { scoreMatch, tallyConfidence, type Confidence } from "@/lib/match-confidence";
 import { dayShapeLine } from "@/lib/day-shape";
 import {
@@ -64,6 +72,7 @@ type NewItineraryItem = {
   lat?: number;
   lon?: number;
   planned_stay_minutes?: number;
+  booked?: boolean;
 };
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
@@ -253,6 +262,11 @@ function ImportPanel({
    */
   const [dayOneDate, setDayOneDate] = useState("");
   /**
+   * The plan names dates outside the trip's: which one is right. Asked, not
+   * assumed — saving used to move the trip to the plan without a word.
+   */
+  const [dateChoice, setDateChoice] = useState<"move-trip" | "keep-trip" | null>(null);
+  /**
    * Where each parsed row landed, worked out before saving rather than during.
    *
    * Placing used to happen inside the save, so the first anyone saw of a
@@ -304,6 +318,7 @@ function ImportPanel({
       setRebuildReason("");
       setPlacements({});
       setPinChoices({});
+      setDateChoice(null);
       if (out.items.length > 0) {
         const ready = beaLine("plan.ready");
         toast.success(ready.title, { description: ready.body });
@@ -416,17 +431,33 @@ function ImportPanel({
   /** "6 meals · 5 sights · 3 walks", using the kinds the parse returned. */
   const foundShape = items ? dayShapeLine(items) : "";
   const placedTally = tallyConfidence(Object.values(placements).map((p) => p.confidence));
+  // Day 1 becomes a real date here, so everything downstream — the day
+  // groups, Today, the calendar — sees an ordinary dated plan.
+  const dated = items ? (planStart ? resolveDayDates(items, planStart) : items) : null;
+  const datedRange = dated ? planRange(dated) : null;
+  const datesDisagree = planOutsideTrip(datedRange, startDate, endDate);
+  const tripRange = startDate ? { start: startDate, end: endDate || startDate } : null;
+  const movedTrip =
+    datesDisagree && datedRange && tripRange ? movedTripRange(tripRange, datedRange) : null;
+  const dayLabel = (iso: string) => formatTimelineDayLabel(iso);
+  const rangeLabel = (range: { start: string; end: string }) =>
+    range.start === range.end
+      ? dayLabel(range.start)
+      : `${dayLabel(range.start)} – ${dayLabel(range.end)}`;
 
   const addChosen = async () => {
     if (!items) return;
     setBusy(true);
     setError(null);
     try {
-      // Day 1 becomes a real date here, so everything downstream — the day
-      // groups, Today, the calendar — sees an ordinary dated plan.
-      const dated = planStart ? resolveDayDates(items, planStart) : items;
+      // "Keep the trip's dates": the whole plan slides onto the trip's first
+      // day, each row by the same number of days.
+      const rows =
+        datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
+          ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
+          : (dated ?? items);
       const chosen = picked.flatMap((i) => {
-        const it = dated[i];
+        const it = rows[i];
         if (!it) return [];
         // The address the source gave, pulled out by the parse; the detail
         // line's first clause only when it gave none.
@@ -445,6 +476,7 @@ function ImportPanel({
             title: it.title,
             ...(address ? { address } : {}),
             ...(stay ? { planned_stay_minutes: stay } : {}),
+            ...(it.booked === true ? { booked: true } : {}),
             ...(it.detail || (includeCosts && it.estimated_cost != null)
               ? {
                   detail: [
@@ -482,13 +514,19 @@ function ImportPanel({
         setSaveStatus("Saving the budget…");
         await onAddCosts(plan.costs);
       }
-      if (onApplyDates && plan?.start_date && plan.end_date) {
+      if (onApplyDates && movedTrip && dateChoice === "move-trip") {
+        setSaveStatus("Moving the trip…");
+        await onApplyDates({ start_date: movedTrip.start, end_date: movedTrip.end });
+      } else if (onApplyDates && !startDate && plan?.start_date && plan.end_date) {
+        // A trip with no dates takes the plan's. A dated trip is only ever
+        // moved by the choice above: a one-day import used to overwrite a
+        // whole trip's dates here without asking.
         setSaveStatus("Updating the trip dates…");
         await onApplyDates({ start_date: plan.start_date, end_date: plan.end_date });
       } else if (onApplyDates && dayOneDate && !startDate) {
         // The user just told Béa when day one is, so the trip should know it
         // too — otherwise the timeline has dates the trip itself does not.
-        const last = lastDayDate(dated) ?? dayOneDate;
+        const last = lastDayDate(rows) ?? dayOneDate;
         setSaveStatus("Updating the trip dates…");
         await onApplyDates({ start_date: dayOneDate, end_date: last });
       }
@@ -855,6 +893,37 @@ function ImportPanel({
                   </p>
                 </div>
               )}
+              {datesDisagree && datedRange && tripRange && movedTrip && (
+                <fieldset className="mb-2 rounded-xl border border-primary/40 bg-elevated p-2.5">
+                  <legend className="sr-only">Which dates are right</legend>
+                  <p className="text-[13px]">
+                    <CalendarDays className="mr-1 inline size-3.5 text-primary" aria-hidden />
+                    This plan is for <strong>{rangeLabel(datedRange)}</strong>, but the trip is{" "}
+                    <strong>{rangeLabel(tripRange)}</strong>. Which is right?
+                  </p>
+                  <div className="mt-1.5 space-y-1">
+                    {(
+                      [
+                        ["move-trip", `The plan — move the trip to ${rangeLabel(movedTrip)}`],
+                        ["keep-trip", `The trip — put this plan on ${dayLabel(tripRange.start)}`],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <label
+                        key={value}
+                        className="flex min-h-11 items-center gap-2 rounded-lg px-1 text-[13px]"
+                      >
+                        <input
+                          type="radio"
+                          name="plan-dates"
+                          checked={dateChoice === value}
+                          onChange={() => setDateChoice(value)}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               {/**
                * What Béa found, said out loud.
                *
@@ -880,11 +949,13 @@ function ImportPanel({
                 {picked.length} of {items.length} stops selected.
                 {duplicateIndexes.size > 0 &&
                   ` ${duplicateIndexes.size} already on your timeline, left unticked.`}{" "}
-                Nothing here is reserved — book hotels, tables and tickets yourself.
+                {items.some((it) => it.booked)
+                  ? "Stops your plan marks as booked keep a Booked tag; Béa has not checked or made any booking."
+                  : "Nothing here is reserved — book hotels, tables and tickets yourself."}
               </p>
               <button
                 onClick={() => void addChosen()}
-                disabled={busy || picked.length === 0}
+                disabled={busy || picked.length === 0 || (datesDisagree && !dateChoice)}
                 className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
               >
                 {busy
@@ -933,6 +1004,11 @@ function ImportPanel({
                   {it.source === "vault" && (
                     <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[11.5px] font-semibold text-primary">
                       From your vault
+                    </span>
+                  )}
+                  {it.booked && (
+                    <span className="ml-1.5 rounded-full bg-nexttime/12 px-1.5 py-0.5 text-[11.5px] font-semibold text-nexttime">
+                      Booked
                     </span>
                   )}
                   {duplicateIndexes.has(i) && (

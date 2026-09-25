@@ -82,3 +82,14 @@ test("placeQueryParts does not take a lone verb for a place", () => {
   assert.deepEqual(placeQueryParts("Walk to Peace Memorial Park"), ["Peace Memorial Park"]);
   assert.deepEqual(placeQueryParts("Start toward Miyajima Pier"), ["Miyajima Pier"]);
 });
+
+test("a plus sign lists two places, and a one-word start is where you leave from", () => {
+  assert.deepEqual(placeQueryParts("Itsukushima Shrine + Great Torii"), [
+    "Itsukushima Shrine",
+    "Great Torii",
+  ]);
+  assert.equal(placeQueryParts("Hiroshima → Shin-Osaka")[0], "Hiroshima");
+  assert.equal(placeQueryParts("Miyajima → Peace Park")[0], "Miyajima");
+  // A lone verb before "to" is still not a place.
+  assert.ok(!placeQueryParts("Walk to Peace Park").includes("Walk"));
+});

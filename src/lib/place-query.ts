@@ -27,7 +27,7 @@ export function placeQueryParts(name: string, max = 4): string[] {
   if (bracketed.length) add(outside);
 
   for (const source of [outside, name]) {
-    for (const part of source.split(/\s*(?:\/|\||・|;|；|\s[–—-]\s)\s*/)) add(part);
+    for (const part of source.split(/\s*(?:\/|\||・|;|；|\s[–—+-]\s)\s*/)) add(part);
   }
 
   // "World Heritage Sea Route: Peace Park to Miyajima" — a label, then a
@@ -37,12 +37,11 @@ export function placeQueryParts(name: string, max = 4): string[] {
   const body = colon >= 0 ? outside.slice(colon + 1) : outside;
   const route = body.match(/^\s*(?:from\s+)?(.+?)\s+(?:to|toward|towards|→|->)\s+(.+)$/i);
   if (route) {
-    // "Walk to Peace Park": a lone verb before "to" is not a place.
+    // "Walk to Peace Park": a lone verb before "to" is not a place. A lone
+    // name is: "Hiroshima → Shin-Osaka" leaves from Hiroshima, and the
+    // start is where a train or ferry is caught.
     const from = tidy(route[1] ?? "");
-    const ends = [
-      /\s/.test(from) || /[^\p{Script=Latin}\s]/u.test(from) ? from : "",
-      tidy(route[2] ?? ""),
-    ];
+    const ends = [from && !MOVEMENT_VERB.test(from) ? from : "", tidy(route[2] ?? "")];
     out.unshift(...ends.filter((t) => t.length >= 2 && t !== full && !out.includes(t)));
   }
   if (colon >= 0) {
@@ -51,6 +50,10 @@ export function placeQueryParts(name: string, max = 4): string[] {
   }
   return out.slice(0, max);
 }
+
+/** A single word before "to" that is the journey, not where it starts. */
+const MOVEMENT_VERB =
+  /^(?:walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|get|hop|catch|take|board|travel|continue|proceed|cross|leave|depart|start|fly|sail|back|then|onward|onwards)$/i;
 
 function tidy(value: string): string {
   return value
