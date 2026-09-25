@@ -61,6 +61,8 @@ export function TimelineEntry({
   onLocate,
   onSaveBooking,
   stray = false,
+  foldInto,
+  onFold,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -108,6 +110,13 @@ export function TimelineEntry({
   stray?: boolean;
   /** Save the booking switch, reference and details. Rejects on failure. */
   onSaveBooking?: ((patch: BookingPatch) => Promise<void>) | undefined;
+  /**
+   * A journey saved as a stop ("Head to the pier"): the stop it leads to,
+   * and turning it into a note there. Plans imported before journeys were
+   * folded on import still carry these.
+   */
+  foldInto?: string | undefined;
+  onFold?: (() => void) | undefined;
 }) {
   const [kept, setKept] = useState(false);
   const [flipped, setFlipped] = useState(false);
@@ -328,6 +337,22 @@ export function TimelineEntry({
         <div className="rounded-lg border border-border bg-elevated px-2 py-1.5">{titleInput}</div>
         {detailInput}
       </div>
+
+      {onFold && foldInto && (
+        <div className="mt-2 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-2">
+          <p className="text-[12px] text-muted-foreground">
+            This is the way to a stop, not a stop. It can live as a note on{" "}
+            <span className="font-semibold text-foreground">{foldInto}</span> instead.
+          </p>
+          <button
+            type="button"
+            onClick={onFold}
+            className="mt-1.5 inline-flex items-center rounded-lg bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs"
+          >
+            Make it a note on {foldInto}
+          </button>
+        </div>
+      )}
 
       {booked && (
         <button

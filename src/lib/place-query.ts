@@ -29,6 +29,26 @@ export function placeQueryParts(name: string, max = 4): string[] {
   for (const source of [outside, name]) {
     for (const part of source.split(/\s*(?:\/|\||・|;|；|\s[–—-]\s)\s*/)) add(part);
   }
+
+  // "World Heritage Sea Route: Peace Park to Miyajima" — a label, then a
+  // route. The two ends are places; the label and the whole route are not,
+  // so the ends go first, where they start from before where they go.
+  const colon = outside.indexOf(":");
+  const body = colon >= 0 ? outside.slice(colon + 1) : outside;
+  const route = body.match(/^\s*(?:from\s+)?(.+?)\s+(?:to|toward|towards|→|->)\s+(.+)$/i);
+  if (route) {
+    // "Walk to Peace Park": a lone verb before "to" is not a place.
+    const from = tidy(route[1] ?? "");
+    const ends = [
+      /\s/.test(from) || /[^\p{Script=Latin}\s]/u.test(from) ? from : "",
+      tidy(route[2] ?? ""),
+    ];
+    out.unshift(...ends.filter((t) => t.length >= 2 && t !== full && !out.includes(t)));
+  }
+  if (colon >= 0) {
+    add(outside.slice(colon + 1));
+    add(outside.slice(0, colon));
+  }
   return out.slice(0, max);
 }
 

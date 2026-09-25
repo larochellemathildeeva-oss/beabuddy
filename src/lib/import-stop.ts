@@ -113,7 +113,7 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
  * is never touched.
  */
 const MOVEMENT =
-  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar)\b.*\b(?:to|towards|back)\b/i;
+  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*\b(?:to|toward|towards|back|for)\b/i;
 
 export function isTravelLeg(row: { kind: string; title: string }): boolean {
   return row.kind === "transport" && MOVEMENT.test(row.title.trim());
@@ -135,35 +135,50 @@ type FoldableRow = {
  * goes onto the stop before it as "Afterwards: …"; a leg alone on its day stays.
  */
 export function foldTravelLegs<T extends FoldableRow>(rows: readonly T[]): T[] {
-  const sameDay = (a: FoldableRow, b: FoldableRow) =>
-    (a.day_date ?? "") === (b.day_date ?? "") && (a.day_number ?? 0) === (b.day_number ?? 0);
   const out = rows.map((row) => ({ ...row }));
   const drop = new Set<number>();
   out.forEach((row, i) => {
     if (!isTravelLeg(row)) return;
-    const what = [row.title, row.time_label, row.detail].filter(Boolean).join(", ");
-    let target = -1;
-    let after = false;
-    for (let j = i + 1; j < out.length && sameDay(out[j]!, row); j++) {
-      if (!isTravelLeg(out[j]!)) {
-        target = j;
-        break;
-      }
-    }
-    if (target < 0) {
-      for (let j = i - 1; j >= 0 && sameDay(out[j]!, row); j--) {
-        if (!isTravelLeg(out[j]!) && !drop.has(j)) {
-          target = j;
-          after = true;
-          break;
-        }
-      }
-    }
-    if (target < 0) return;
-    const note = `${after ? "Afterwards" : "Getting there"}: ${what}`;
-    const into = out[target]!;
-    into.detail = into.detail ? `${into.detail} · ${note}` : note;
+    const target = legTarget(out, i, drop);
+    if (!target) return;
+    const into = out[target.index]!;
+    into.detail = withLegNote(into.detail, row, target.after);
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
+}
+
+type DayRow = { kind: string; title: string; day_date: string | null; day_number?: number | null };
+
+const sameDay = (a: DayRow, b: DayRow) =>
+  (a.day_date ?? "") === (b.day_date ?? "") && (a.day_number ?? 0) === (b.day_number ?? 0);
+
+/**
+ * The stop a travel leg belongs to: the next stop that day, or — when it is
+ * the day's last movement — the stop before it. Null when it is alone.
+ */
+export function legTarget(
+  rows: readonly DayRow[],
+  i: number,
+  skip: ReadonlySet<number> = new Set(),
+): { index: number; after: boolean } | null {
+  const row = rows[i]!;
+  for (let j = i + 1; j < rows.length && sameDay(rows[j]!, row); j++) {
+    if (!isTravelLeg(rows[j]!)) return { index: j, after: false };
+  }
+  for (let j = i - 1; j >= 0 && sameDay(rows[j]!, row); j--) {
+    if (!isTravelLeg(rows[j]!) && !skip.has(j)) return { index: j, after: true };
+  }
+  return null;
+}
+
+/** A stop's note with the leg added: "Getting there: Take the ferry to Miyajima, 10:30". */
+export function withLegNote(
+  detail: string | null,
+  leg: Pick<FoldableRow, "title" | "time_label" | "detail">,
+  after: boolean,
+): string {
+  const what = [leg.title, leg.time_label, leg.detail].filter(Boolean).join(", ");
+  const note = `${after ? "Afterwards" : "Getting there"}: ${what}`;
+  return detail ? `${detail} · ${note}` : note;
 }

@@ -81,6 +81,7 @@ import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
 import { CustomizeTrip } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
+import { isTravelLeg, legTarget, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
 import {
   asPerspective,
@@ -322,6 +323,23 @@ export function TripDetail({
         });
       },
     });
+
+  // A journey saved as a stop, from a plan imported before journeys were
+  // folded on import: offer to make it a note on the stop it leads to.
+  const foldProps = (item: ItineraryRow) => {
+    if (!isTravelLeg(item)) return {};
+    const i = board.items.indexOf(item);
+    const target = legTarget(board.items, i);
+    const into = target ? board.items[target.index] : undefined;
+    if (!target || !into) return {};
+    return {
+      foldInto: into.title,
+      onFold: () => {
+        void board.updateItem(into.id, { detail: withLegNote(into.detail, item, target.after) });
+        void removeTimelineItem(item);
+      },
+    };
+  };
 
   const savedFitsTimeline = savedMatchesStops(dir.saved?.signature, directionStops);
   /**
@@ -1144,6 +1162,7 @@ export function TripDetail({
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
                                           stray={strayIds.has(item.id)}
+                                          {...foldProps(item)}
                                         />
                                       ))}
                                     </Fragment>
@@ -1189,6 +1208,7 @@ export function TripDetail({
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
                                           stray={strayIds.has(item.id)}
+                                          {...foldProps(item)}
                                         />
                                         {(() => {
                                           // The next stop on the list as shown, so
@@ -1247,6 +1267,7 @@ export function TripDetail({
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
                             stray={strayIds.has(item.id)}
+                            {...foldProps(item)}
                           />
                           {(() => {
                             const next = board.items

@@ -644,15 +644,23 @@ export const searchPlaces = createServerFn({ method: "POST" })
       }
     }
     if (!hits.length) {
-      for (const part of placeQueryParts(name, 3)) {
-        try {
-          hits = await nominatim(within(part), 10, undefined, pace);
-        } catch {
-          break;
-        }
-        if (hits.length) {
-          asked = within(part);
-          break;
+      // Each part in the trip's city, then — for a stop away from it — in
+      // the trip's country.
+      const places = (part: string) =>
+        venueNear && input.near
+          ? [within(part), widerQueries(part, input.near)[0]!]
+          : [within(part)];
+      search: for (const part of placeQueryParts(name, 3)) {
+        for (const q of places(part)) {
+          try {
+            hits = dropBareAreas(await nominatim(q, 10, undefined, pace), part);
+          } catch {
+            break search;
+          }
+          if (hits.length) {
+            asked = q;
+            break search;
+          }
         }
       }
     }

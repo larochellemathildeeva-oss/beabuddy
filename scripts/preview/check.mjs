@@ -513,6 +513,27 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   await page.close();
 }
 {
+  const name = "a journey saved as a stop becomes a note on the stop it leads to";
+  const { page, errors } = await open("legs");
+  try {
+    await goTab(page, "Timeline Editor");
+    await page.getByRole("button", { name: /Head to Motoyasubashi Pier.*tap to edit$/ }).click();
+    await page.getByRole("button", { name: "Make it a note on Motoyasubashi Pier ferry" }).click();
+    await page.waitForTimeout(600);
+    const writes = await page.evaluate(() => window.__writes);
+    const noted = writes.some(
+      (w) => w.op === "update" && String(w.payload?.detail ?? "").startsWith("Getting there: Head to Motoyasubashi Pier, 11:30"),
+    );
+    if (!noted) throw new Error("the next stop did not get the note");
+    if (!writes.some((w) => w.op === "delete")) throw new Error("the journey row was not removed");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
   const { page } = await open("default");
   await goTab(page, "Timeline Editor");
   if ((await page.getByText("Pinned far from the rest", { exact: false }).count()) !== 0)
