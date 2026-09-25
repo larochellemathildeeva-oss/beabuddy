@@ -813,6 +813,7 @@ export function TripDetail({
                   dayStops={nowStops}
                   tripStops={companionStops(board.items)}
                   legs={nowLegs}
+                  {...(directionArea ? { area: directionArea } : {})}
                   onProgress={board.setProgress}
                 />
               </>

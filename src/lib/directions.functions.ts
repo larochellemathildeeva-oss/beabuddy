@@ -1,5 +1,12 @@
 import { autoPinTrusted } from "@/lib/match-confidence";
-import { areaBoxFrom, boxViewbox, inBox, widenBox, type AreaBox } from "@/lib/geocode-plan";
+import {
+  areaBoxFrom,
+  boxAround,
+  boxViewbox,
+  inBox,
+  widenBox,
+  type AreaBox,
+} from "@/lib/geocode-plan";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -9,10 +16,12 @@ import {
   placeQueryCandidates,
   reuseKeyForStop,
 } from "@/lib/direction-stops";
+import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
   nextDelayMs,
+  readGeoJson,
   routeProfile,
   routeUrl,
   searchUrl,
@@ -35,6 +44,11 @@ export type RouteLeg = {
   unknownSpot?: boolean;
   /** True when both ends resolved to the same pin. */
   sameSpot?: boolean;
+  /**
+   * The router failed, so distance and duration are worked out from the
+   * straight line between the pins (see route-estimate.ts). No steps.
+   */
+  estimated?: boolean;
   fromLat?: number;
   fromLon?: number;
   toLat?: number;
@@ -99,7 +113,7 @@ async function geocode(
     // A throttled lookup is not a missing place: caching it as one would
     // blank a real stop for the rest of this request.
     if (classifyGeoStatus(res.status) !== "ok") return null;
-    const json = (await res.json()) as {
+    const json = (await readGeoJson(provider, "search", res)) as {
       lat: string;
       lon: string;
       boundingbox?: string[];
@@ -131,21 +145,53 @@ async function geocode(
   }
 }
 
-function stepText(s: { maneuver?: { type?: string; modifier?: string }; name?: string }): string {
+function stepText(s: {
+  maneuver?: { type?: string; modifier?: string };
+  name?: string;
+  instruction?: string;
+}): string {
   const type = s.maneuver?.type ?? "continue";
   const mod = s.maneuver?.modifier ? ` ${s.maneuver.modifier}` : "";
   const name = s.name ? ` onto ${s.name}` : "";
+  if (s.instruction) return s.instruction;
   if (type === "arrive") return "Arrive at your destination";
   if (type === "depart") return `Head off${name}`;
   return `${type}${mod}${name}`.replace(/^\w/, (c) => c.toUpperCase());
 }
 
+/**
+ * One journey from the router. A walk the router will not route — some
+ * hosted OSRM services offer driving only — is asked again as a drive and
+ * timed at walking pace along those streets, marked as an estimate, rather
+ * than coming back as no route at all.
+ */
 async function leg(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
   mode: "walking" | "driving",
-) {
+): Promise<{ distance: number; duration: number; steps: RouteStep[]; estimated?: boolean } | null> {
+  const routed = await routeOnce(provider, a, b, mode);
+  if (routed || mode === "driving") return routed;
+  const byRoad = await routeOnce(provider, a, b, "driving");
+  if (!byRoad || !(byRoad.distance > 0)) return null;
+  return {
+    distance: byRoad.distance,
+    duration: Math.max(60, Math.round(byRoad.distance / WALK_METERS_PER_SECOND)),
+    steps: [],
+    estimated: true,
+  };
+}
+
+/** 4.5 km/h, the pace route-estimate.ts assumes too. */
+const WALK_METERS_PER_SECOND = 4500 / 3600;
+
+async function routeOnce(
+  provider: GeoProvider,
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+  mode: "walking" | "driving",
+): Promise<{ distance: number; duration: number; steps: RouteStep[] } | null> {
   // "foot" on the demo router, "walking" on LocationIQ — the same mode under
   // two names, and the wrong one 400s every walking leg without saying so.
   const url = routeUrl(provider, routeProfile(provider, mode), a, b);
@@ -155,7 +201,7 @@ async function leg(
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as {
+    const json = (await readGeoJson(provider, "route", res)) as {
       routes?: {
         distance: number;
         duration: number;
@@ -163,6 +209,7 @@ async function leg(
           steps: {
             distance: number;
             name?: string;
+            instruction?: string;
             maneuver?: { type?: string; modifier?: string };
           }[];
         }[];
@@ -198,6 +245,11 @@ const BuildRoutesInput = z.object({
     .min(2)
     .max(200),
   area: z.string().max(200).optional(),
+  /**
+   * Look stops up around here instead of in the trip's area: the other end
+   * of a journey, already on the map, on a day spent outside the trip's city.
+   */
+  near: z.object({ lat: z.number(), lon: z.number() }).optional(),
 });
 
 function mapsOnlyLeg(
@@ -236,7 +288,9 @@ function mapsOnlyLeg(
 
 export const buildRoutes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: Stop[]; area?: string }) => BuildRoutesInput.parse(input))
+  .inputValidator((input: { stops: Stop[]; area?: string; near?: { lat: number; lon: number } }) =>
+    BuildRoutesInput.parse(input),
+  )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const points: ({ lat: number; lon: number } | null)[] = [];
@@ -277,6 +331,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const areaBox = areaBoxFrom(areaHit?.boundingbox);
       if (areaBox) box = widenBox(areaBox);
     }
+    if (!box && data.near) box = boxAround(data.near);
     for (const stop of data.stops) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
@@ -370,7 +425,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
       legsLeft -= 1;
       const r = await leg(provider, a, b, mode);
       if (!r) {
-        legs.push(mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }));
+        // Both ends are on the map; only the router failed. An estimate from
+        // the distance keeps "Leave by" rather than dropping it.
+        legs.push({
+          ...mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode }),
+          distance: estimatedLegMeters(straight, mode),
+          duration: estimatedLegSeconds(straight, mode),
+          estimated: true,
+        });
         continue;
       }
       legs.push({
@@ -380,6 +442,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         distance: r.distance,
         duration: r.duration,
         steps: r.steps,
+        ...(r.estimated ? { estimated: true } : {}),
         mapUrl: mapsDirUrl(
           { title: fromName, lat: a.lat, lon: a.lon },
           { title: toName, lat: b.lat, lon: b.lon },

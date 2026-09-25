@@ -58,11 +58,16 @@ export const TILE_URL_TEMPLATE = "/api/tile/{z}/{x}/{y}.png";
 /**
  * Where Béa fetches it from.
  *
- * LocationIQ when there is a token, OpenStreetMap when there is not — the
- * same rule as every other lookup, so an app with no key still draws a map.
+ * Geoapify when its key is set, LocationIQ when there is a token,
+ * OpenStreetMap when there is neither — the same order as every other
+ * lookup, so an app with no key still draws a map.
  */
-export function tileSourceUrl(coords: TileCoords, token: string): string {
+export function tileSourceUrl(coords: TileCoords, token: string, geoapifyKey = ""): string {
   const { z, x, y } = coords;
+  // Geoapify first when its key is set, like every other lookup.
+  if (geoapifyKey) {
+    return `https://maps.geoapify.com/v1/tile/osm-bright/${z}/${x}/${y}.png?apiKey=${encodeURIComponent(geoapifyKey)}`;
+  }
   return token
     ? `https://tiles.locationiq.com/v3/streets/r/${z}/${x}/${y}.png?key=${encodeURIComponent(token)}`
     : `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;

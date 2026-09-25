@@ -8,7 +8,8 @@
  * A result counts when one of the first three answers is within the case's
  * distance of where the place really is.
  *
- * Needs the network (OpenStreetMap, or LocationIQ with LOCATIONIQ_TOKEN set).
+ * Needs the network: Geoapify with GEOAPIFY_API_KEY set, else LocationIQ with
+ * LOCATIONIQ_TOKEN, else public OpenStreetMap.
  * Report only: it never fails, because the internet's answer is the thing
  * being measured. Runs in CI on changes to search; see places-bench.yml.
  */
@@ -94,7 +95,7 @@ for (const c of CASES) {
 }
 
 const lines = [
-  `### Place search benchmark — ${process.env.LOCATIONIQ_TOKEN ? "LocationIQ" : "public OpenStreetMap"}`,
+  `### Place search benchmark — ${process.env.GEOAPIFY_API_KEY ? "Geoapify" : process.env.LOCATIONIQ_TOKEN ? "LocationIQ" : "public OpenStreetMap"}`,
   "",
   "| Search | Where | Found | First answer | Off by |",
   "| --- | --- | --- | --- | --- |",

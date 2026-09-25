@@ -4,7 +4,7 @@ import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
 import { legLabels, tripMapPlan, type LegLabel, type MapStop } from "@/lib/trip-map";
-import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 const W = 720;
 const H = 420;
@@ -305,7 +305,9 @@ export function TripMap({
       {/* The credit ODbL asks for, next to the data it applies to. The pins
           are geocoded from OpenStreetMap however they got here. */}
       {!compact && (
-        <p className="px-3 pb-2 text-[11.5px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
+        <p className="px-3 pb-2 text-[11.5px] text-muted-foreground">
+          {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+        </p>
       )}
     </div>
   );

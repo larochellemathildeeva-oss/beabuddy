@@ -18,9 +18,19 @@
  * token lives in `geo-provider.server.ts` and never reaches the browser.
  */
 
+import {
+  GEOAPIFY_BASE,
+  geoapifyAutocompleteUrl,
+  geoapifyReverseUrl,
+  geoapifyRouteUrl,
+  geoapifySearchUrl,
+  geoapifyToNominatim,
+  geoapifyToOsrm,
+} from "./geoapify.ts";
+
 export type GeoProvider = {
   /** Which service is answering, for logs and for the attribution line. */
-  name: "nominatim" | "locationiq";
+  name: "nominatim" | "locationiq" | "geoapify";
   /** No trailing slash. */
   searchBase: string;
   routeBase: string;
@@ -57,6 +67,23 @@ export function locationIqProvider(token: string): GeoProvider {
     token,
     gapMs: 500,
     perMinute: 60,
+  };
+}
+
+/**
+ * Geoapify, once a key exists. OpenStreetMap data, answered in its own shape
+ * and translated back in `geoapify.ts`. Its terms allow keeping results, it
+ * routes walking with a key rather than a demo server, and the free plan
+ * allows five requests a second (3,000 a day).
+ */
+export function geoapifyProvider(key: string): GeoProvider {
+  return {
+    name: "geoapify",
+    searchBase: GEOAPIFY_BASE,
+    routeBase: GEOAPIFY_BASE,
+    token: key,
+    gapMs: 250,
+    perMinute: 240,
   };
 }
 
@@ -115,6 +142,7 @@ export type SearchOptions = {
  * asking for jsonv2 on Nominatim without breaking the paid provider.
  */
 export function searchUrl(provider: GeoProvider, options: SearchOptions): string {
+  if (provider.name === "geoapify") return geoapifySearchUrl(provider.token, options);
   const params = new URLSearchParams();
   params.set("q", options.query);
   const format = provider.name === "locationiq" ? "json" : (options.format ?? "json");
@@ -156,6 +184,7 @@ export function autocompleteUrl(
   provider: GeoProvider,
   options: AutocompleteOptions,
 ): string | null {
+  if (provider.name === "geoapify") return geoapifyAutocompleteUrl(provider.token, options);
   if (provider.name !== "locationiq" || !provider.token) return null;
   const params = new URLSearchParams();
   params.set("key", provider.token);
@@ -193,6 +222,7 @@ export const DESTINATION_TAGS = [
  * with everything else.
  */
 export function reverseUrl(provider: GeoProvider, lat: number, lon: number): string {
+  if (provider.name === "geoapify") return geoapifyReverseUrl(provider.token, lat, lon);
   // Same jsonv2 trap as searchUrl — LocationIQ 400s it.
   const format = provider.name === "locationiq" ? "json" : "jsonv2";
   const params = new URLSearchParams({
@@ -212,6 +242,14 @@ export function routeUrl(
   from: { lat: number; lon: number },
   to: { lat: number; lon: number },
 ): string {
+  if (provider.name === "geoapify") {
+    return geoapifyRouteUrl(
+      provider.token,
+      profile === "driving" ? "driving" : "walking",
+      from,
+      to,
+    );
+  }
   const params = new URLSearchParams({ overview: "false", steps: "true" });
   if (provider.token) params.set("key", provider.token);
   const pair = `${from.lon},${from.lat};${to.lon},${to.lat}`;
@@ -227,6 +265,9 @@ export function routeUrl(
  */
 export const OSM_ATTRIBUTION = "Places and routes © OpenStreetMap contributors";
 
+/** Geoapify's own credit, which its free plan asks for beside its results. */
+export const GEOAPIFY_ATTRIBUTION = "Powered by Geoapify";
+
 /**
  * OSRM's profile names are not the same on both services.
  *
@@ -238,7 +279,7 @@ export const OSM_ATTRIBUTION = "Places and routes © OpenStreetMap contributors"
  */
 export function routeProfile(provider: GeoProvider, mode: "walking" | "driving"): string {
   if (mode === "driving") return "driving";
-  return provider.name === "locationiq" ? "walking" : "foot";
+  return provider.name === "nominatim" ? "foot" : "walking";
 }
 
 /**
@@ -311,4 +352,21 @@ export function viewboxAround(lat: number, lon: number, km = 25): string {
   ]
     .map((n) => n.toFixed(5))
     .join(",");
+}
+
+/**
+ * A response's JSON in the shape callers parse: a Nominatim array for
+ * "search", one Nominatim object for "reverse", OSRM's `{routes}` for
+ * "route". Only Geoapify needs translating; the others already speak it.
+ */
+export async function readGeoJson(
+  provider: GeoProvider,
+  kind: "search" | "reverse" | "route",
+  res: Response,
+): Promise<unknown> {
+  const json: unknown = await res.json();
+  if (provider.name !== "geoapify") return json;
+  if (kind === "route") return geoapifyToOsrm(json);
+  const hits = geoapifyToNominatim(json);
+  return kind === "reverse" ? (hits[0] ?? {}) : hits;
 }

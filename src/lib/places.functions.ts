@@ -2,6 +2,7 @@ import {
   RADIUS_AROUND_TRIP_M,
   RADIUS_NEAR_YOU_M,
   isExactPoiMatch,
+  matchesCategory,
   overpassQuery,
   poiIntent,
   readOverpass,
@@ -10,6 +11,7 @@ import {
   type PoiIntent,
 } from "@/lib/poi-search";
 import { haversine } from "@/lib/geo";
+import { geoapifyPlacesToElements, geoapifyPlacesUrl } from "@/lib/geoapify";
 import { dropBareAreas, widerQueries } from "@/lib/place-search-near";
 import { placeQueryParts } from "@/lib/place-query";
 import { createServerFn } from "@tanstack/react-start";
@@ -46,6 +48,7 @@ import {
   DESTINATION_TAGS,
   classifyGeoStatus,
   nextDelayMs,
+  readGeoJson,
   type GeoProvider,
 } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
@@ -182,12 +185,13 @@ const UA = "BeaTravelApp/1.0 (travel memory vault)";
 async function reverse(lat: number, lon: number) {
   const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(reverseUrl(geoProvider(), lat, lon), {
+    const provider = geoProvider();
+    const res = await fetch(reverseUrl(provider, lat, lon), {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return {};
-    const d = (await res.json()) as {
+    const d = (await readGeoJson(provider, "reverse", res)) as {
       address?: {
         city?: string;
         town?: string;
@@ -278,17 +282,20 @@ async function nominatim(
   }
 
   let res: Response;
+  let answered = provider;
   try {
     res = await fetchProvider(provider);
   } catch (error) {
     // A thrown fetch (timeout, DNS, TLS) never reaches the !res.ok branch
-    // below. LocationIQ is the one we can replace; Nominatim failures stay
-    // failures so the box can say the map was unreachable.
-    if (provider.name !== "locationiq") throw error;
+    // below. A keyed service is the one we can replace; Nominatim failures
+    // stay failures so the box can say the map was unreachable.
+    if (!provider.token) throw error;
+    answered = PUBLIC_PROVIDER;
     res = await fetchProvider(PUBLIC_PROVIDER);
   }
-  // HTTP errors from LocationIQ (400 jsonv2, bad key, …) — same idea.
-  if (!res.ok && provider.name === "locationiq") {
+  // HTTP errors from a keyed service (400, bad key, …) — same idea.
+  if (!res.ok && answered.token) {
+    answered = PUBLIC_PROVIDER;
     res = await fetchProvider(PUBLIC_PROVIDER);
   }
   const verdict = classifyGeoStatus(res.status);
@@ -296,7 +303,7 @@ async function nominatim(
     throw new Error(`Geocoder temporarily unavailable (${res.status})`);
   }
   if (verdict !== "ok") return [];
-  const json = (await res.json()) as NominatimHit[];
+  const json = (await readGeoJson(answered, "search", res)) as NominatimHit[];
   return Array.isArray(json) ? json : [];
 }
 
@@ -381,6 +388,36 @@ async function overpassPlaces(
   at: { lat: number; lon: number },
   radiusM: number,
 ): Promise<PoiHit[]> {
+  // A kind of place, with Geoapify configured: its Places API first. The
+  // public Overpass servers time out or refuse often enough that "coffee
+  // near me" came back empty; Geoapify answers from the same OSM data with a
+  // key. Its places are checked against the same tags, and Overpass is still
+  // there if Geoapify fails.
+  if (intent.kind === "category" && intent.geoapify) {
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const provider = geoProvider();
+    if (provider.name === "geoapify") {
+      try {
+        const res = await fetch(geoapifyPlacesUrl(provider.token, intent.geoapify, at, radiusM), {
+          headers: { "user-agent": UA, accept: "application/json" },
+          signal: AbortSignal.timeout(8_000),
+        });
+        if (res.ok) {
+          const elements = geoapifyPlacesToElements(await res.json()).filter((e) =>
+            matchesCategory(e.tags, intent),
+          );
+          const hits = readOverpass(elements, at);
+          if (hits.length) return hits;
+        } else {
+          console.warn(`[places] Geoapify places answered ${res.status}`);
+        }
+      } catch (error) {
+        console.warn(
+          `[places] Geoapify places failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+  }
   const body = overpassQuery(intent, at, radiusM);
   for (const base of [
     "https://overpass-api.de/api/interpreter",
@@ -431,9 +468,12 @@ type AutocompleteHit = {
   lon: string;
   display_name?: string;
   display_place?: string;
+  /** Geoapify's, translated in geoapify.ts; LocationIQ uses display_place. */
+  name?: string;
   class?: string;
   type?: string;
   address?: Record<string, string>;
+  namedetails?: Record<string, string>;
 };
 
 /**
@@ -462,14 +502,15 @@ async function autocompleteHits(
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return [];
-    const json = (await res.json()) as AutocompleteHit[];
+    const json = (await readGeoJson(pace.provider, "search", res)) as AutocompleteHit[];
     if (!Array.isArray(json)) return [];
     const hits: NominatimHit[] = json.map((raw) => ({
       lat: raw.lat,
       lon: raw.lon,
-      ...(raw.address?.["name"] || raw.display_place
-        ? { name: raw.address?.["name"] || raw.display_place }
+      ...(raw.address?.["name"] || raw.display_place || raw.name
+        ? { name: raw.address?.["name"] || raw.display_place || raw.name }
         : {}),
+      ...(raw.namedetails ? { namedetails: raw.namedetails } : {}),
       ...(raw.display_name ? { display_name: raw.display_name } : {}),
       ...(raw.class ? { class: raw.class } : {}),
       ...(raw.type ? { type: raw.type } : {}),

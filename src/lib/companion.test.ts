@@ -195,6 +195,12 @@ test("Now routes a journey itself only between two placed stops with nothing sav
   assert.equal(needsLiveLeg(null, here, { lat: null, lon: null }), false, "unplaced end");
   assert.equal(needsLiveLeg(null, { lat: 0, lon: 0 }, there), false, "null island");
   assert.equal(needsLiveLeg(null, null, there), false, "nowhere to start from");
+  assert.equal(
+    needsLiveLeg(null, here, { lat: null, lon: null }, true),
+    true,
+    "unplaced, but the trip's area lets the router look it up",
+  );
+  assert.equal(needsLiveLeg(null, null, there, true), false);
 });
 
 test("a live leg is keyed by both stops and where they are", () => {

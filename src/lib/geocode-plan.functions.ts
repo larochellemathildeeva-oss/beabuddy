@@ -11,7 +11,13 @@ import {
   type AreaBox,
 } from "@/lib/geocode-plan";
 import { stopArea } from "@/lib/import-stop";
-import { classifyGeoStatus, nextDelayMs, searchUrl, type GeoProvider } from "@/lib/geo-endpoints";
+import {
+  classifyGeoStatus,
+  nextDelayMs,
+  readGeoJson,
+  searchUrl,
+  type GeoProvider,
+} from "@/lib/geo-endpoints";
 
 const UA = "BeaBot/1.0 (travel app)";
 
@@ -113,7 +119,7 @@ async function lookup(
     });
     const verdict = classifyGeoStatus(res.status);
     if (verdict !== "ok") return verdict === "retry" ? "throttled" : [];
-    const json = (await res.json()) as RawHit[];
+    const json = (await readGeoJson(provider, "search", res)) as RawHit[];
     return Array.isArray(json) ? json : [];
   } catch {
     return [];

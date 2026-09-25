@@ -129,7 +129,14 @@ function formatClock(minutes: number): string {
 }
 
 export type LeaveBy =
-  | { kind: "time"; at: string; travelMinutes: number; mode: RouteLeg["mode"] }
+  | {
+      kind: "time";
+      at: string;
+      travelMinutes: number;
+      mode: RouteLeg["mode"];
+      /** Worked out from the distance because the router failed. */
+      estimated?: boolean;
+    }
   /** Same pin at both ends: nothing to travel, so nothing to leave by. */
   | { kind: "same-spot" };
 
@@ -148,7 +155,9 @@ export type LeaveBy =
 export function leaveBy(
   nextTimeLabel: string | null | undefined,
   leg:
-    Pick<RouteLeg, "duration" | "mode" | "capped" | "unknownSpot" | "sameSpot"> | null | undefined,
+    | Pick<RouteLeg, "duration" | "mode" | "capped" | "unknownSpot" | "sameSpot" | "estimated">
+    | null
+    | undefined,
 ): LeaveBy | null {
   if (!leg) return null;
   if (leg.sameSpot) return { kind: "same-spot" };
@@ -157,7 +166,13 @@ export function leaveBy(
   const due = clockMinutes(nextTimeLabel);
   if (due == null) return null;
   const travelMinutes = Math.ceil(leg.duration / 60);
-  return { kind: "time", at: formatClock(due - travelMinutes), travelMinutes, mode: leg.mode };
+  return {
+    kind: "time",
+    at: formatClock(due - travelMinutes),
+    travelMinutes,
+    mode: leg.mode,
+    ...(leg.estimated ? { estimated: true } : {}),
+  };
 }
 
 /**
@@ -265,8 +280,16 @@ export function needsLiveLeg(
   savedLeg: unknown,
   from: Placeable | null | undefined,
   to: Placeable | null | undefined,
+  /**
+   * The trip's area is known, so a stop without a pin can be looked up by
+   * name on the way (the router does it, bounded to the area). Without it,
+   * both ends need pins.
+   */
+  canLookUp = false,
 ): boolean {
-  return savedLeg == null && from != null && to != null && isPlaced(from) && isPlaced(to);
+  if (savedLeg != null || from == null || to == null) return false;
+  if (isPlaced(from) && isPlaced(to)) return true;
+  return canLookUp;
 }
 
 /**

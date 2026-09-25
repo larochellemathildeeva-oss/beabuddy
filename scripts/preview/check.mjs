@@ -533,6 +533,27 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   await page.close();
 }
 {
+  const name = "companion: Leave by even when the next stop has no pin yet";
+  const { page, errors } = await open("unpinned");
+  try {
+    await goTab(page, "Companion");
+    const day1 = page.getByRole("tab", { name: /Day 1/ });
+    if (await day1.count()) await day1.first().click();
+    await page.waitForTimeout(800);
+    const calls = await page.evaluate(() => window.__routeCalls ?? []);
+    const asked = calls.find((c) => c?.stops?.some((s) => s.lat == null && s.title.startsWith("Peace Park")));
+    if (!asked) throw new Error("the unpinned stop was not sent to be looked up");
+    // Looked up around the stop that is on the map, not in the trip's area.
+    if (!asked.near || Math.abs(asked.near.lat - 34.3915) > 0.001) throw new Error("not looked up around the pinned stop");
+    if ((await page.getByText(/Leave by \d/).count()) === 0) throw new Error("no Leave by");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
   const name = "a journey saved as a stop becomes a note on the stop it leads to";
   const { page, errors } = await open("legs");
   try {

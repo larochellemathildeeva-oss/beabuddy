@@ -141,3 +141,14 @@ test("a venue with its local name in brackets tries both", async () => {
     "厳島神社, Miyajima, Japan",
   ]);
 });
+
+test("boxAround is about 45 km each way", async () => {
+  const { boxAround } = await import("./geocode-plan.ts");
+  const box = boxAround({ lat: 34.39, lon: 132.45 });
+  assert.ok(Math.abs(box.north - box.south - 0.81) < 0.01);
+  assert.ok(box.west < 132.45 && box.east > 132.45);
+  assert.ok(
+    box.east - box.west > box.north - box.south,
+    "wider in longitude away from the equator",
+  );
+});

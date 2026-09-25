@@ -2,7 +2,10 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   PUBLIC_PROVIDER,
+  autocompleteUrl,
   classifyGeoStatus,
+  geoapifyProvider,
+  readGeoJson,
   locationIqProvider,
   nextDelayMs,
   routeProfile,
@@ -226,4 +229,49 @@ test("autocomplete exists only with a LocationIQ key", async () => {
   assert.equal(url.searchParams.get("limit"), "20", "capped");
   assert.equal(url.searchParams.get("bounded"), "1");
   assert.match(url.searchParams.get("tag")!, /^place:country,.*place:city/);
+});
+
+test("Geoapify: every URL goes to Geoapify with its key, walking included", () => {
+  const g = geoapifyProvider("GK");
+  const search = new URL(searchUrl(g, { query: "Miyajima Pier", format: "jsonv2", limit: 2 }));
+  assert.equal(search.host, "api.geoapify.com");
+  assert.equal(search.searchParams.get("apiKey"), "GK");
+  assert.equal(search.searchParams.get("format"), "json");
+  assert.ok(autocompleteUrl(g, { query: "miya" })?.includes("/v1/geocode/autocomplete?"));
+  assert.ok(reverseUrl(g, 34.3, 132.3).includes("/v1/geocode/reverse?"));
+  const route = new URL(
+    routeUrl(
+      g,
+      routeProfile(g, "walking"),
+      { lat: 34.39, lon: 132.45 },
+      { lat: 34.3, lon: 132.32 },
+    ),
+  );
+  assert.equal(route.pathname, "/v1/routing");
+  assert.equal(route.searchParams.get("mode"), "walk");
+});
+
+test("readGeoJson hands callers Nominatim and OSRM shapes whoever answered", async () => {
+  const g = geoapifyProvider("GK");
+  const answer = (body: unknown) => new Response(JSON.stringify(body));
+  const hits = (await readGeoJson(
+    g,
+    "search",
+    answer({ results: [{ lat: 1, lon: 2, name: "X", result_type: "amenity" }] }),
+  )) as { lat: string }[];
+  assert.equal(hits[0]?.lat, "1");
+  const one = (await readGeoJson(
+    g,
+    "reverse",
+    answer({ results: [{ lat: 1, lon: 2, city: "Hiroshima", country: "Japan" }] }),
+  )) as { address: Record<string, string> };
+  assert.equal(one.address["city"], "Hiroshima");
+  const route = (await readGeoJson(
+    g,
+    "route",
+    answer({ features: [{ properties: { distance: 900, time: 700, legs: [] } }] }),
+  )) as { routes: { duration: number }[] };
+  assert.equal(route.routes[0]?.duration, 700);
+  const plain = await readGeoJson(PUBLIC_PROVIDER, "search", answer([{ lat: "5" }]));
+  assert.deepEqual(plain, [{ lat: "5" }], "Nominatim's own answer is untouched");
 });
