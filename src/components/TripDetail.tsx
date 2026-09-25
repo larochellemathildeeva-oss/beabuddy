@@ -883,10 +883,13 @@ export function TripDetail({
                 area={formatTripLocation(trip.city, trip.country)}
               />
             )}
-            {/* The whole trip, city to city. The same stop list the directions
-                are built from, so the map and the route can never describe
-                different journeys. */}
-            <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+            {/* The whole trip, city to city — only when looking at the whole
+                trip. Under a single day it was a second, busier map repeating
+                the first. The same stop list the directions are built from,
+                so the map and the route can never describe different journeys. */}
+            {shownGroups.length > 1 && (
+              <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+            )}
           </div>
         )}
 

@@ -80,3 +80,38 @@ export function dayMapCaption(model: DayMapModel): string | null {
 export function toggleSelection(current: string | null, tapped: string): string | null {
   return current === tapped ? null : tapped;
 }
+
+/**
+ * A gently curved path from one stop to the next, for the map's route.
+ *
+ * The route on the Map is a story of the day, not directions: a soft arc
+ * reads as "then we went here", where a straight or street-following line
+ * reads as navigation. A quadratic curve bowed sideways by `bend` of the
+ * leg's length, alternating sides leg to leg so a day that doubles back
+ * does not stack its arcs. Pure maths on the pins; nothing is routed.
+ */
+export function curvedLeg(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+  index: number,
+  bend = 0.16,
+  steps = 18,
+): [number, number][] {
+  const dLat = b.lat - a.lat;
+  const dLon = b.lon - a.lon;
+  if (dLat === 0 && dLon === 0) return [[a.lat, a.lon]];
+  const side = index % 2 === 0 ? 1 : -1;
+  // The control point: the midpoint, pushed along the perpendicular.
+  const cLat = (a.lat + b.lat) / 2 - dLon * bend * side;
+  const cLon = (a.lon + b.lon) / 2 + dLat * bend * side;
+  const out: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const u = 1 - t;
+    out.push([
+      u * u * a.lat + 2 * u * t * cLat + t * t * b.lat,
+      u * u * a.lon + 2 * u * t * cLon + t * t * b.lon,
+    ]);
+  }
+  return out;
+}

@@ -66,7 +66,7 @@ export function tileSourceUrl(coords: TileCoords, token: string, geoapifyKey = "
   const { z, x, y } = coords;
   // Geoapify first when its key is set, like every other lookup.
   if (geoapifyKey) {
-    return `https://maps.geoapify.com/v1/tile/osm-bright/${z}/${x}/${y}.png?apiKey=${encodeURIComponent(geoapifyKey)}`;
+    return `https://maps.geoapify.com/v1/tile/positron/${z}/${x}/${y}.png?apiKey=${encodeURIComponent(geoapifyKey)}`;
   }
   return token
     ? `https://tiles.locationiq.com/v3/streets/r/${z}/${x}/${y}.png?key=${encodeURIComponent(token)}`
