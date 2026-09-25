@@ -399,3 +399,104 @@ export function geoapifyPlacesToElements(json: unknown): TaggedElement[] {
   });
   return out;
 }
+
+/** Details of the place at a point: hours, website, phone, access. */
+export function geoapifyDetailsUrl(key: string, lat: number, lon: number): string {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+    features: "details",
+    lang: "en",
+    apiKey: key,
+  });
+  return `${GEOAPIFY_BASE}/v2/place-details?${params.toString()}`;
+}
+
+export type PlaceFacts = {
+  name?: string;
+  /** Every name the place carries, for matching against what the stop is called. */
+  names: string[];
+  /** As OpenStreetMap writes it; read with opening-hours.ts. */
+  openingHours?: string;
+  website?: string;
+  phone?: string;
+  wheelchair?: string;
+};
+
+type DetailsProps = GeoapifyResult & {
+  feature_type?: string;
+  opening_hours?: string;
+  website?: string;
+  contact?: { phone?: string; email?: string };
+  facilities?: { wheelchair?: boolean | string };
+};
+
+/** The "details" feature of a place-details answer, or null. */
+export function readPlaceDetails(json: unknown): PlaceFacts | null {
+  const features = (json as { features?: { properties?: DetailsProps }[] })?.features;
+  if (!Array.isArray(features)) return null;
+  const p =
+    features.find((f) => f.properties?.feature_type === "details")?.properties ??
+    features[0]?.properties;
+  if (!p) return null;
+  const raw = p.datasource?.raw ?? {};
+  const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+  const openingHours = str(p.opening_hours) ?? str(raw["opening_hours"]);
+  const website = str(p.website) ?? str(raw["website"]) ?? str(raw["contact:website"]);
+  const phone = str(p.contact?.phone) ?? str(raw["phone"]) ?? str(raw["contact:phone"]);
+  const wheel = p.facilities?.wheelchair ?? raw["wheelchair"];
+  const wheelchair =
+    wheel === true ? "yes" : wheel === false ? "no" : typeof wheel === "string" ? wheel : undefined;
+  const names = [
+    p.name,
+    ...Object.entries(raw)
+      .filter(([k]) => k === "name" || k.startsWith("name:"))
+      .map(([, v]) => v),
+  ].filter((v): v is string => typeof v === "string" && v.length > 0);
+  return {
+    ...(p.name ? { name: p.name } : {}),
+    names: [...new Set(names)],
+    ...(openingHours ? { openingHours } : {}),
+    ...(website && /^https?:\/\//i.test(website) ? { website } : {}),
+    ...(phone ? { phone } : {}),
+    ...(wheelchair ? { wheelchair } : {}),
+  };
+}
+
+/**
+ * A picture of a day: its stops as numbered pins, joined in order by a line.
+ *
+ * Fitted to the pins by Geoapify when no centre is given. The line joins the
+ * stops in visiting order — it is not the walking route, and the picture
+ * says so where it is shown. Colours are Béa's primary and ink.
+ */
+export function geoapifyStaticMapUrl(
+  key: string,
+  points: readonly { lat: number; lon: number }[],
+  size: { width: number; height: number } = { width: 640, height: 420 },
+): string {
+  const pins = points
+    .slice(0, 30)
+    .map(
+      (p, i) =>
+        `lonlat:${p.lon.toFixed(6)},${p.lat.toFixed(6)};type:material;color:#c2410c;size:medium;text:${i + 1};textsize:small`,
+    )
+    .join("|");
+  const params = new URLSearchParams({
+    style: "osm-bright",
+    width: String(size.width),
+    height: String(size.height),
+    scaleFactor: "2",
+    format: "jpeg",
+    apiKey: key,
+  });
+  if (pins) params.set("marker", pins);
+  if (points.length > 1) {
+    const line = points
+      .slice(0, 30)
+      .map((p) => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`)
+      .join(",");
+    params.set("geometry", `polyline:${line};linecolor:#2c2623;linewidth:3;lineopacity:0.6`);
+  }
+  return `https://maps.geoapify.com/v1/staticmap?${params.toString()}`;
+}

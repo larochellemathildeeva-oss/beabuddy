@@ -80,6 +80,9 @@ import { TripTodosBody } from "@/components/TripTodos";
 import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
 import { CustomizeTrip } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
+import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
+import { daysForMaps } from "@/lib/day-maps";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
 import { isTravelLeg, legTarget, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
@@ -136,6 +139,7 @@ export function TripDetail({
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
+  const dayMaps = useOfflineDayMaps(activeId);
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
   /**
@@ -1117,6 +1121,22 @@ export function TripDetail({
                               </button>
                             )}
                           </div>
+                          {dayOpen && dayMaps.maps[group.key] && (
+                            <details className="mb-2 rounded-xl border border-border bg-card p-2 shadow-2xs">
+                              <summary className="cursor-pointer px-1 text-xs font-semibold">
+                                Map of the day · saved on this phone
+                              </summary>
+                              <img
+                                src={dayMaps.maps[group.key]}
+                                alt={`Map of ${group.label}, stops numbered in order`}
+                                className="mt-2 w-full rounded-lg"
+                              />
+                              <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
+                                Stops numbered in order; the line joins them, it isn't the walking
+                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+                              </p>
+                            </details>
+                          )}
                           {dayOpen && (
                             <ol className="relative mb-2 min-w-0 space-y-2 overflow-x-hidden py-1">
                               {hidingDone && group.items.every(isDone) && (
@@ -1348,7 +1368,13 @@ export function TripDetail({
               stops={directionStops}
               existingTitles={board.items.map((i) => i.title)}
               onAddToTimeline={board.upsertItems}
-              onKeepOffline={dir.keep}
+              onKeepOffline={(result, stops) => {
+                const kept = dir.keep(result, stops);
+                // A picture of each day's map goes with the directions, so the
+                // day can be followed with no signal at all.
+                if (kept) void dayMaps.save(daysForMaps(board.items));
+                return kept;
+              }}
               onLegs={setLiveLegs}
               onPlaced={(placed) => {
                 // The router already found these. Keep them, so the map can draw
@@ -1683,8 +1709,22 @@ export function TripDetail({
                       Later stretches open in maps — Béa stops looking after a long list.
                     </p>
                   )}
+                  {dayMaps.busy && (
+                    <p className="text-[12px] text-muted-foreground">Saving a map of each day…</p>
+                  )}
+                  {!dayMaps.busy && Object.keys(dayMaps.maps).length > 0 && (
+                    <p className="text-[12px] text-muted-foreground">
+                      {Object.keys(dayMaps.maps).length} day{" "}
+                      {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a
+                      day in the Timeline Editor to see it offline.
+                    </p>
+                  )}
+                  {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
                   <button
-                    onClick={dir.clear}
+                    onClick={() => {
+                      dir.clear();
+                      dayMaps.clear();
+                    }}
                     className="text-[12px] text-muted-foreground underline"
                   >
                     Delete saved directions

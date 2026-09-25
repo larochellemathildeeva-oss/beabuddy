@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
@@ -198,6 +199,16 @@ export function NowPanel({
             {next.address?.trim() && (
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{next.address}</p>
             )}
+            <div className="mt-1.5">
+              <PlaceFacts
+                name={next.title}
+                lat={next.lat}
+                lon={next.lon}
+                day={next.day_date}
+                time={next.time_label}
+                auto
+              />
+            </div>
           </div>
           {live.loading && (
             <p className="text-xs text-muted-foreground">Working out the journey…</p>

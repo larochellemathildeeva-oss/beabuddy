@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { SwipeRow } from "@/components/day/SwipeRow";
@@ -336,6 +337,19 @@ export function TimelineEntry({
       <div className="mt-2 space-y-1.5">
         <div className="rounded-lg border border-border bg-elevated px-2 py-1.5">{titleInput}</div>
         {detailInput}
+      </div>
+
+      {/* Hours, website and phone for a stop on the map, and a warning when
+          its time falls outside the hours. Looked up when the card turns. */}
+      <div className="mt-2 px-0.5">
+        <PlaceFacts
+          name={item.title}
+          lat={item.lat}
+          lon={item.lon}
+          day={item.day_date}
+          time={item.time_label}
+          auto
+        />
       </div>
 
       {onFold && foldInto && (
