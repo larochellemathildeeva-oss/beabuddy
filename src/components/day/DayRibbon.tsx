@@ -27,16 +27,23 @@ const FILTERS: { id: Filter; label: string }[] = [
 export function DayRibbon({
   stops,
   dayLabel,
+  selectedId = null,
+  onSelect,
 }: {
   stops: ItineraryRow[];
   /** "Day 1", for the card's heading. */
   dayLabel?: string | undefined;
+  /** The stop being looked at, from a tap here or on the tracker. */
+  selectedId?: string | null;
+  /** Tap a card to look at that stop; tap it again to stop looking. */
+  onSelect?: ((id: string | null) => void) | undefined;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
   const strip = useRef<HTMLOListElement>(null);
   const statuses = stopStatuses(stops);
   const here = statuses.indexOf("here");
-  const focusIndex = here >= 0 ? here : statuses.indexOf("next");
+  const picked = selectedId ? stops.findIndex((s) => s.id === selectedId) : -1;
+  const focusIndex = picked >= 0 ? picked : here >= 0 ? here : statuses.indexOf("next");
 
   // Open on where you are, not on the first stop of the day. Scrolls the
   // strip only, never the page.
@@ -110,54 +117,63 @@ export function DayRibbon({
           ]
             .filter(Boolean)
             .join(" · ");
+          const selected = stop.id === selectedId;
           return (
-            <li
-              key={stop.id}
-              data-index={i}
-              className={`w-44 shrink-0 snap-start rounded-2xl border p-3 transition-all ${
-                here
-                  ? "scale-[1.02] border-foreground bg-foreground text-background shadow-sm"
-                  : next
-                    ? "border-border bg-elevated"
-                    : "border-border bg-card"
-              } ${status === "done" || status === "skipped" ? "opacity-70" : ""}`}
-            >
-              <div className="mb-1.5 flex items-center justify-between gap-2">
-                <span
-                  className={`text-[13px] font-bold tabular-nums ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
-                >
-                  {timeForRail(stop.time_label) || "–"}
-                </span>
-                {here ? (
-                  <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10.5px] font-bold text-primary-foreground">
-                    Current
-                  </span>
-                ) : next ? (
-                  <span className="rounded bg-nexttime/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
-                    Next
-                  </span>
-                ) : status === "done" ? (
-                  <span className="text-[10.5px] font-semibold text-nexttime">✓ Done</span>
-                ) : status === "skipped" ? (
-                  <span className="text-[10.5px] font-medium text-muted-foreground">Skipped</span>
-                ) : (
-                  <span className="text-[10.5px] font-medium text-muted-foreground">#{i + 1}</span>
-                )}
-              </div>
-              <p
-                className={`line-clamp-2 min-h-9 break-words text-[14px] font-bold leading-snug ${
-                  status === "skipped" ? "line-through" : ""
+            <li key={stop.id} data-index={i} className="w-44 shrink-0 snap-start">
+              <button
+                type="button"
+                aria-pressed={selected}
+                aria-label={`${timeForRail(stop.time_label) || ""} ${stop.title} — show this stop`}
+                onClick={() => onSelect?.(selected ? null : stop.id)}
+                className={`block h-full w-full rounded-2xl border p-3 text-left transition-all ${
+                  here
+                    ? "scale-[1.02] border-foreground bg-foreground text-background shadow-sm"
+                    : next
+                      ? "border-border bg-elevated"
+                      : "border-border bg-card"
+                } ${status === "done" || status === "skipped" ? "opacity-70" : ""} ${
+                  selected ? "ring-2 ring-primary ring-offset-2 ring-offset-card" : ""
                 }`}
               >
-                {stop.title}
-              </p>
-              {meta && (
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span
+                    className={`text-[13px] font-bold tabular-nums ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
+                  >
+                    {timeForRail(stop.time_label) || "–"}
+                  </span>
+                  {here ? (
+                    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10.5px] font-bold text-primary-foreground">
+                      Current
+                    </span>
+                  ) : next ? (
+                    <span className="rounded bg-nexttime/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-nexttime">
+                      Next
+                    </span>
+                  ) : status === "done" ? (
+                    <span className="text-[10.5px] font-semibold text-nexttime">✓ Done</span>
+                  ) : status === "skipped" ? (
+                    <span className="text-[10.5px] font-medium text-muted-foreground">Skipped</span>
+                  ) : (
+                    <span className="text-[10.5px] font-medium text-muted-foreground">
+                      #{i + 1}
+                    </span>
+                  )}
+                </div>
                 <p
-                  className={`mt-1 truncate text-[11.5px] ${here ? "text-background/70" : "text-muted-foreground"}`}
+                  className={`line-clamp-2 min-h-9 break-words text-[14px] font-bold leading-snug ${
+                    status === "skipped" ? "line-through" : ""
+                  }`}
                 >
-                  {meta}
+                  {stop.title}
                 </p>
-              )}
+                {meta && (
+                  <p
+                    className={`mt-1 truncate text-[11.5px] ${here ? "text-background/70" : "text-muted-foreground"}`}
+                  >
+                    {meta}
+                  </p>
+                )}
+              </button>
             </li>
           );
         })}
