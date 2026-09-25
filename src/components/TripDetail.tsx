@@ -10,7 +10,6 @@ import {
   Pencil,
   Plus,
   Settings,
-  Sparkles,
 } from "lucide-react";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
@@ -75,10 +74,8 @@ import { DayRibbon } from "@/components/day/DayRibbon";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { NowPanel } from "@/components/day/NowPanel";
-import { PackingBody } from "@/components/PackingLists";
-import { TripTodosBody } from "@/components/TripTodos";
 import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
-import { CustomizeTrip } from "@/components/day/CustomizeTrip";
+import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { daysForMaps } from "@/lib/day-maps";
@@ -387,12 +384,11 @@ export function TripDetail({
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
-    "invite" | "budget" | "edit" | "offline" | "packing" | null
+    "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | null
   >(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
-  const [stopSignal, setStopSignal] = useState(0);
   /** The member about to lose access, or null. Named, so the sheet can say who. */
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -635,7 +631,7 @@ export function TripDetail({
           className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
           <ListChecks className="size-3.5 text-primary" aria-hidden />
-          Before you go
+          To do
         </button>
         <button
           onClick={() => {
@@ -657,10 +653,14 @@ export function TripDetail({
         </button>
         <button
           data-guide="add-stop"
-          title="Add a stop to this trip"
+          title="Add a stop to this trip's itinerary"
           onClick={() => {
-            setPerspective("trip");
-            setStopSignal((n) => n + 1);
+            // A stop on the itinerary, in the Timeline Editor. The trip's
+            // cities are added in Settings → Cities on this trip.
+            setPerspective("timeline");
+            setTimelineOpen(true);
+            setAddDay("");
+            setAddingTimeline(true);
           }}
           className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
         >
@@ -718,30 +718,6 @@ export function TripDetail({
                   />
                 </div>
               )}
-              {board.items.length >= 2 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPlannerTab("optimize");
-                    setPlannerOpen(true);
-                  }}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
-                >
-                  <Sparkles className="size-3.5" aria-hidden />
-                  Optimize route
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsOpen(true);
-                  setSheetSection("offline");
-                }}
-                className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
-              >
-                <Download className="size-3.5 text-primary" aria-hidden />
-                Offline
-              </button>
             </div>
           )}
 
@@ -781,7 +757,6 @@ export function TripDetail({
               );
             })}
           </nav>
-          <CustomizeTrip prefs={view.prefs} onToggle={view.toggle} />
         </div>
         <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
 
@@ -1398,64 +1373,7 @@ export function TripDetail({
           </Section>
         </div>
 
-        <div hidden={perspective !== "trip"}>
-          <TripStops tripId={trip.id} uid={me.id} openSignal={stopSignal} />
-
-          <Section
-            title="To do"
-            hint="Before you go, and anything that comes up on the way."
-            defaultOpen
-          >
-            <TripTodosBody
-              tripId={trip.id}
-              uid={me.id}
-              international={tripWide.international}
-              hasLodging={tripWide.hasLodging}
-              hasFlights={tripWide.hasFlights}
-              tripStart={trip.start_date}
-            />
-          </Section>
-
-          <Section title="Packing" defaultOpen={false}>
-            <PackingBody tripId={trip.id} />
-          </Section>
-
-          {trip.budget_enabled ? (
-            <TripBudget tripId={trip.id} />
-          ) : (
-            <p className="mb-3 px-1 text-[13px] text-muted-foreground">
-              The budget is off for this trip. Turn it on under Trip details below.
-            </p>
-          )}
-
-          <Section title="People" hint="Who is on this trip, and invite codes." defaultOpen={false}>
-            <TripPeople
-              trip={trip}
-              meId={me.id}
-              members={members}
-              invites={board.invites}
-              onInvite={onInvite}
-              onRevokeInvite={onRevokeInvite}
-              onRemoveMember={onRemoveMember}
-              onLeave={onLeave}
-              onChanged={board.reload}
-            />
-          </Section>
-
-          <Section
-            title="Trip details"
-            hint="Name, dates, status and the budget."
-            defaultOpen={false}
-          >
-            <div className="space-y-3">
-              <TripDetailsForm trip={trip} onUpdate={onUpdate} />
-              <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
-              {me.id === trip.owner_id && <TripDeleteButton onDelete={onDelete} />}
-            </div>
-          </Section>
-        </div>
-
-        {/* A sheet, opened by the "Before you go" button from any tab. */}
+        {/* A sheet, opened by the "To do" button from any tab. */}
         <TripPrep
           tripId={trip.id}
           uid={me.id}
@@ -1751,6 +1669,38 @@ export function TripDetail({
           {sheetSection === "budget" && (
             <div className="space-y-2 rounded-xl bg-elevated p-3">
               <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
+              {trip.budget_enabled && <TripBudget tripId={trip.id} />}
+            </div>
+          )}
+
+          {/* The trip's cities, in order — the route the trip map draws. */}
+          <button
+            onClick={() => setSheetSection(sheetSection === "cities" ? null : "cities")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+          >
+            Cities on this trip
+            {cities.stops.length > 0 && (
+              <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                {cities.stops.length}
+              </span>
+            )}
+          </button>
+          {sheetSection === "cities" && (
+            <div className="rounded-xl bg-elevated p-3">
+              <TripStops tripId={trip.id} uid={me.id} />
+            </div>
+          )}
+
+          {/* What the trip page shows: the switches that sat beside the tabs. */}
+          <button
+            onClick={() => setSheetSection(sheetSection === "customize" ? null : "customize")}
+            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
+          >
+            Customize this page
+          </button>
+          {sheetSection === "customize" && (
+            <div className="rounded-xl bg-elevated px-3 py-1">
+              <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
             </div>
           )}
 

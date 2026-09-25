@@ -289,6 +289,27 @@ await flow("saved places: add one to the chosen day", async (page) => {
   if (w.payload.day_date !== "2026-10-07") throw new Error(`added to ${w.payload.day_date}, not the chosen day`);
 });
 
+await flow("trip actions: To do, Add stop to the itinerary, Offline and Customize in Settings", async (page) => {
+  if ((await page.getByRole("tab", { name: "Trip", exact: true }).count()) !== 0) throw new Error("the Trip tab is still there");
+  if ((await page.getByRole("button", { name: "Optimize route" }).count()) !== 0) throw new Error("Optimize route is still in the bar");
+  if ((await page.getByRole("button", { name: /^To do$/ }).count()) === 0) throw new Error("no To do button");
+  await page.getByRole("button", { name: /Add stop/ }).first().click();
+  await page.waitForTimeout(500);
+  if ((await page.getByRole("tab", { name: "Timeline Editor", exact: true }).getAttribute("aria-selected")) !== "true")
+    throw new Error("Add stop did not open the Timeline Editor");
+  if ((await page.getByText("Add to the timeline").count()) === 0) throw new Error("Add stop did not open the add form");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: /^Settings$/ }).first().click();
+  await page.waitForTimeout(400);
+  for (const label of ["Saved directions", "Cities on this trip", "Customize this page"]) {
+    if ((await page.getByRole("button", { name: new RegExp(label) }).count()) === 0) throw new Error(`Settings has no ${label}`);
+  }
+  await page.getByRole("button", { name: /Customize this page/ }).click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("switch").count()) === 0) throw new Error("Customize switches missing in Settings");
+});
+
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline Editor");
   await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();

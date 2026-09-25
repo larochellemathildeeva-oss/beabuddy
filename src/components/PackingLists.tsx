@@ -116,7 +116,7 @@ const STARTERS: Record<string, string[]> = {
 
 /**
  * The list itself, without any sheet around it. Rendered inside the trip's
- * "Before you go" sheet next to the to-dos, and inside the standalone
+ * "To do" sheet next to the to-dos, and inside the standalone
  * PackingLists sheet on You, where the packs are reusable templates.
  */
 export function PackingBody({ tripId }: { tripId?: string | null | undefined }) {
@@ -488,7 +488,7 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
 
 /**
  * The saved packs on You, where they are reusable templates rather than a
- * trip's list. On a trip, packing lives in the "Before you go" sheet next to
+ * trip's list. On a trip, packing lives in the "To do" sheet next to
  * the to-dos instead — see TripPrep.
  */
 export function PackingLists({

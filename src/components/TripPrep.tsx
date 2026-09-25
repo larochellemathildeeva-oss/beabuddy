@@ -46,7 +46,7 @@ export function TripPrep({
   ];
 
   return (
-    <Sheet open={open} onClose={() => setOpen(false)} title="Before you go">
+    <Sheet open={open} onClose={() => setOpen(false)} title="To do">
       <div className="mb-3 flex gap-1.5" role="tablist">
         {tabs.map((t) => (
           <button

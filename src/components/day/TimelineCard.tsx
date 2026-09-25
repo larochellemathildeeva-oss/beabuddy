@@ -179,7 +179,9 @@ export function TimelineEntry({
   // chevron turns the card over to edit it.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const meta = [
-    stray ? "" : where || "No place yet",
+    // A note with no address uses its text as "where"; that text is already
+    // the line above, so it is not said twice.
+    stray ? "" : where && where === detail ? "" : where || "No place yet",
     item.planned_stay_minutes ? `~${stayLabel(item.planned_stay_minutes)}` : "",
   ].filter(Boolean);
   // The prototype's small action tiles; each still reaches 44px of tap.

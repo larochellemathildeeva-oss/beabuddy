@@ -3,17 +3,16 @@ import { describe, it } from "node:test";
 import {
   asPerspective,
   defaultPerspective,
-  isDayScoped,
   TRIP_PERSPECTIVES,
   tripIsUnderway,
 } from "./trip-perspective.ts";
 
 describe("TRIP_PERSPECTIVES", () => {
-  it("keeps the trip-wide view as a peer, not a footnote", () => {
-    // The whole point of the fourth perspective is that stops, prep, packing,
-    // documents and budget stay reachable from a day-centric screen. If it
-    // ever stops being in this list, half the product has gone with it.
-    assert.ok(TRIP_PERSPECTIVES.some((p) => p.id === "trip"));
+  it("is the three day views; the trip-wide things live in To do and Settings", () => {
+    assert.deepEqual(
+      TRIP_PERSPECTIVES.map((p) => p.id),
+      ["companion", "map", "timeline"],
+    );
   });
 
   it("gives every perspective a label and a hint", () => {
@@ -21,18 +20,6 @@ describe("TRIP_PERSPECTIVES", () => {
       assert.ok(p.label.length > 0, `${p.id} has no label`);
       assert.ok(p.hint.length > 0, `${p.id} has no hint`);
     }
-  });
-});
-
-describe("isDayScoped", () => {
-  it("scopes the three day views", () => {
-    assert.equal(isDayScoped("companion"), true);
-    assert.equal(isDayScoped("map"), true);
-    assert.equal(isDayScoped("timeline"), true);
-  });
-
-  it("does not scope the trip view — a packing list is not a Tuesday thing", () => {
-    assert.equal(isDayScoped("trip"), false);
   });
 });
 
@@ -49,7 +36,8 @@ describe("defaultPerspective", () => {
 describe("asPerspective", () => {
   it("accepts the known ids", () => {
     assert.equal(asPerspective("map"), "map");
-    assert.equal(asPerspective("trip"), "trip");
+    assert.equal(asPerspective("timeline"), "timeline");
+    assert.equal(asPerspective("trip"), null, "a saved Trip view opens on the default");
   });
 
   it("refuses anything else", () => {

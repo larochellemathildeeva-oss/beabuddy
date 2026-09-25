@@ -115,13 +115,8 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='bea-plan']",
       },
       {
-        title: "Where you're going",
-        body: "City by city, with arrive and depart dates. Stops feed the timeline, the directions and the map, so filling this in once saves you doing it three times.",
-        selector: "[data-guide='trip-stops']",
-      },
-      {
         title: "Add a stop quickly",
-        body: "The pin icon is how you add a city or stopover — it is the only button for it, so the section below stays a list rather than a form. From saved pulls one out of your recommendation vault instead, keeping its address and map pin.",
+        body: "Add stop puts a place on the itinerary, in the Timeline Editor. Saved pulls one out of your recommendation vault instead, keeping its address and map pin. The trip's cities are under Settings → Cities on this trip.",
         selector: "[data-guide='add-stop']",
       },
       {
@@ -135,8 +130,8 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='optimize-trip']",
       },
       {
-        title: "Before you go",
-        body: "The checklist icon opens everything still to be done before you leave, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
+        title: "To do",
+        body: "To do opens everything still to be done, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
         selector: "[data-guide='trip-prep']",
       },
     ],

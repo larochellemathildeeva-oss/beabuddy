@@ -24,7 +24,7 @@ const DUE_TONE: Record<DueState, string> = {
  * The trip's errands — the things that are not timeline stops and not packing
  * items. Renew the passport, book the transfer, tell the bank, print tickets.
  *
- * This is the body only. It lives inside the "Before you go" sheet next to
+ * This is the body only. It lives inside the "To do" sheet next to
  * packing, because both answer the same question: what is left to do before
  * you leave. See TripPrep for the sheet itself.
  */

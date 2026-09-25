@@ -36,19 +36,13 @@ export const TRIP_PERSPECTIVES = [
     shortLabel: "Timeline",
     hint: "The day in order: reorder, retime, add and edit.",
   },
-  {
-    id: "trip",
-    label: "Trip",
-    hint: "Stops, to-dos, packing, budget, people and details.",
-  },
 ] as const;
+// The trip-wide "Trip" view is gone: its to-dos and packing live under the
+// "To do" button, and its cities, budget, people and details in Settings,
+// all reachable from any view. A saved "trip" preference reads as unknown
+// and the page opens on its default view.
 
 export type TripPerspective = (typeof TRIP_PERSPECTIVES)[number]["id"];
-
-/** Whether a perspective shows one day, or the trip as a whole. */
-export function isDayScoped(perspective: TripPerspective): boolean {
-  return perspective !== "trip";
-}
 
 /**
  * Where to open.
