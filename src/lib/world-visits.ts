@@ -16,13 +16,36 @@
 import { geoArea, geoBounds, geoContains } from "d3-geo";
 import type { Feature, Geometry } from "geojson";
 import type { Pin } from "@/data/atlas";
-import { countryDisplayName, countryKey } from "./country-names.ts";
+import { countryCode, countryDisplayName, countryKey } from "./country-names.ts";
 import { foldAccents } from "./fuzzy.ts";
 import { haversine } from "./geo.ts";
 
 /** A pin that records somewhere you have been. */
 export function isVisitedPin(pin: Pick<Pin, "type" | "visited">): boolean {
   return pin.type === "visited" || pin.visited === true;
+}
+
+/**
+ * A visited pin that stands for a whole country: one added with + as
+ * "Japan", or saved from a country search. It shades its country and adds
+ * no city dot — a dot in the middle of Japan labelled "Japan" is not a
+ * city. Read from the category when there is one, and otherwise from a
+ * "city" that is itself a country name ("Japan", "Japon"), which is how
+ * countries added by hand were stored before they had a category.
+ */
+export function isCountryOnly(pin: Pick<Pin, "city" | "country" | "category" | "name">): boolean {
+  if (foldAccents(pin.category ?? "") === "country") return true;
+  const asCountry = countryCode(pin.city);
+  if (!asCountry) return false;
+  const country = countryCode(pin.country);
+  return !country || country === asCountry;
+}
+
+/** The country a visited pin is in: its country field, or its name when it is one. */
+export function pinCountry(pin: Pick<Pin, "city" | "country" | "category" | "name">): string {
+  const given = pin.country?.trim();
+  if (given) return given;
+  return isCountryOnly(pin) ? pin.city?.trim() || pin.name?.trim() || "" : "";
 }
 
 export type VisitedCity = {
@@ -67,7 +90,7 @@ export function visitedCities(pins: readonly Pin[]): VisitedCity[] {
   const found: Acc[] = [];
   const centre = (c: Acc) => ({ lat: c.latSum / c.places, lon: c.lonSum / c.places });
   for (const pin of pins) {
-    if (!isVisitedPin(pin)) continue;
+    if (!isVisitedPin(pin) || isCountryOnly(pin)) continue;
     const city = pin.city?.trim();
     if (!city || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lon)) continue;
     if (pin.lat === 0 && pin.lon === 0) continue; // a failed geocode, not a place
@@ -291,7 +314,8 @@ export function visitsByCountry(
     for (const key of province.cityKeys) provinceByCity.set(key, province);
   }
   for (const pin of pins) {
-    if (isVisitedPin(pin) && pin.country?.trim()) entry(pin.country.trim());
+    const country = isVisitedPin(pin) ? pinCountry(pin) : "";
+    if (country) entry(country);
   }
   for (const city of cities) {
     const country = city.country || provinceByCity.get(city.key)?.country;
@@ -319,7 +343,8 @@ export function visitedCountryKeys(
 ): Set<string> {
   const keys = new Set<string>();
   for (const pin of pins) {
-    if (isVisitedPin(pin) && pin.country?.trim()) keys.add(countryKey(pin.country));
+    const country = isVisitedPin(pin) ? pinCountry(pin) : "";
+    if (country) keys.add(countryKey(country));
   }
   // A city saved without a country still shades the one it is in.
   for (const province of provinces) keys.add(countryKey(province.country));

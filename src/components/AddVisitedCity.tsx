@@ -15,6 +15,22 @@ import { placeSuggestionLines } from "@/lib/place-label";
 import { searchPlaces, type ParsedPlace } from "@/lib/places.functions";
 import { localPlaceHits, PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
 import type { PinType } from "@/data/atlas";
+import { foldAccents } from "@/lib/fuzzy";
+
+function typeWord(type: PinType): string {
+  return type === "wishlist" ? "wishlist" : "next-time list";
+}
+
+/**
+ * The globe shows where you have been, so only "Been there" lands on it. The
+ * wishlist and next time are still saved from here, and the line says where
+ * they went instead of promising a globe they will not appear on.
+ */
+function savedLine(name: string, type: PinType): string {
+  return type === "visited"
+    ? `${name} is on your globe.`
+    : `${name} is saved to your ${typeWord(type)} on Recs.`;
+}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -164,20 +180,26 @@ export function AddVisitedCity({
     }
     setBusy(true);
     setErr("");
+    // A country picked here is saved as one, so the globe shades it rather
+    // than putting a city dot in its middle.
+    const isCountry = foldAccents(picked.category ?? "") === "country";
+    const label = isCountry
+      ? picked.country || picked.name || query.trim()
+      : picked.city || picked.name || query.trim();
     try {
       await vault.add({
-        name: picked.city || picked.name || query.trim(),
-        city: picked.city || picked.name || query.trim(),
-        country: picked.country,
+        name: label,
+        city: label,
+        country: picked.country || (isCountry ? label : undefined),
         lat: picked.lat,
         lon: picked.lon,
-        category: "City",
+        category: isCountry ? "Country" : "City",
         pin_type: type,
         source: "Added by hand",
         notes:
           [when ? `Visited ${when}` : "", note.trim()].filter(Boolean).join(" — ") || undefined,
       });
-      setMsg(`${picked.city || picked.name} is on your globe.`);
+      setMsg(savedLine(label, type));
       setPicked(null);
       setQuery("");
       setWhen("");
@@ -203,8 +225,10 @@ export function AddVisitedCity({
       await vault.addMany(payload);
       setMsg(
         payload.length === 1
-          ? `${payload[0]?.name} is on your globe.`
-          : `${payload.length} cities are on your globe.`,
+          ? savedLine(payload[0]?.name ?? "That place", type)
+          : type === "visited"
+            ? `${payload.length} places are on your globe.`
+            : `${payload.length} places saved to your ${typeWord(type)} on Recs.`,
       );
       resetList();
       onSaved?.();
