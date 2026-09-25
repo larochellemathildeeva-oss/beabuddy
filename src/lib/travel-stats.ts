@@ -1,4 +1,5 @@
 import type { Pin } from "../data/atlas.ts";
+import { countryKey } from "./country-names.ts";
 import { isCountryLevelPlace } from "./reco-place.ts";
 
 /**
@@ -38,6 +39,11 @@ function key(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
+/** A country in any language is one country: "Japan", "Japon" and "日本" count once. */
+function countryOf(value: string | null | undefined): string | null {
+  return (value ?? "").trim() ? countryKey(value) : null;
+}
+
 function countsAsVisited(pin: Pin): boolean {
   return pin.type === "visited" || pin.visited === true;
 }
@@ -60,7 +66,7 @@ export function deriveTravelStats(
 
   for (const row of photoRows) {
     const city = key(row.city);
-    const country = key(row.country);
+    const country = countryOf(row.country);
     if (city) cities.add(`${city}|${country ?? ""}`);
     if (country) countries.add(country);
     const day = row.taken_at ? row.taken_at.slice(0, 10) : null;
@@ -70,7 +76,7 @@ export function deriveTravelStats(
   for (const pin of pins) {
     if (!countsAsVisited(pin)) continue;
     const city = key(pin.city);
-    const country = key(pin.country);
+    const country = countryOf(pin.country);
     if (country) countries.add(country);
     if (city && !isCountryLevelPlace(pin)) cities.add(`${city}|${country ?? ""}`);
   }

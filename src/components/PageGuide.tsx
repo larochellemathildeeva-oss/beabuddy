@@ -56,13 +56,13 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "The map itself",
-        body: "Drag to spin the globe, pinch or scroll to zoom. Each dot is a place: blue you've been, green for next time, yellow wish list, purple a recommendation.",
+        body: "Drag to spin the globe, pinch or scroll to zoom. It shows where you've been: the countries, the provinces or states inside them, and a dot for each city.",
         selector: "[data-guide='globe']",
       },
       {
-        title: "Show only what you want",
-        body: "These chips hide and show whole groups of pins, so a busy map calms down in one tap.",
-        selector: "[data-guide='pin-filters']",
+        title: "Where you've been",
+        body: "Every country you've visited, its provinces or states, and your cities. Tap a city and the globe spins to it. A place saved as Japon or 日本 is still Japan.",
+        selector: "[data-guide='places-list']",
       },
       {
         title: "Help me choose",

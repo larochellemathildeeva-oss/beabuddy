@@ -2,10 +2,10 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
 import { feature } from "topojson-client";
-import type { FeatureCollection, Geometry } from "geojson";
+import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
 import type { Pin } from "@/data/atlas";
-import { foldAccents } from "@/lib/fuzzy";
+import { countryKey } from "@/lib/country-names";
 import { labelBudget, placeCityLabels } from "@/lib/globe-labels";
 
 const PIN_FILL: Record<Pin["type"], string> = {
@@ -22,62 +22,22 @@ const world = feature(topo, topo.objects["countries"]!) as unknown as FeatureCol
   { name?: string }
 >;
 
-/** world-atlas short names → names people save on pins. */
-const COUNTRY_ALIASES: Record<string, string[]> = {
-  "united states of america": ["united states", "usa", "us", "u.s.", "u.s.a."],
-  "united kingdom": ["uk", "great britain", "britain", "england"],
-  "czech republic": ["czechia"],
-  "bosnia and herz.": ["bosnia", "bosnia and herzegovina"],
-  "central african rep.": ["central african republic"],
-  "dem. rep. congo": ["democratic republic of the congo", "drc", "dr congo"],
-  "eq. guinea": ["equatorial guinea"],
-  "dominican rep.": ["dominican republic"],
-  "solomon is.": ["solomon islands"],
-  "s. sudan": ["south sudan"],
-  "n. cyprus": ["northern cyprus"],
-  "w. sahara": ["western sahara"],
-  "cote d'ivoire": ["ivory coast", "côte d'ivoire"],
-  swaziland: ["eswatini"],
-  macedonia: ["north macedonia"],
-  russia: ["russian federation"],
-  syria: ["syrian arab republic"],
-  iran: ["iran (islamic republic of)"],
-  venezuela: ["venezuela (bolivarian republic of)"],
-  bolivia: ["bolivia (plurinational state of)"],
-  tanzania: ["united republic of tanzania"],
-  "south korea": ["korea", "republic of korea"],
-  "north korea": ["dem. rep. korea", "dprk"],
-};
-
-function norm(name: string) {
-  return foldAccents(name).toLowerCase().replace(/\./g, "").trim();
-}
-
-function countryKeys(name: string): string[] {
-  const n = norm(name);
-  const keys = new Set<string>([n]);
-  for (const [canonical, aliases] of Object.entries(COUNTRY_ALIASES)) {
-    if (n === canonical || aliases.some((a) => norm(a) === n)) {
-      keys.add(canonical);
-      for (const a of aliases) keys.add(norm(a));
-    }
-  }
-  return [...keys];
-}
-
+/**
+ * The countries the visited pins are in, as ISO codes — so a pin saved as
+ * "Japon" or "日本" shades Japan like one saved as "Japan" does.
+ */
 function visitedCountryKeySet(pins: Pin[]): Set<string> {
   const keys = new Set<string>();
   for (const pin of pins) {
     if (pin.type !== "visited" && !pin.visited) continue;
     if (!pin.country?.trim()) continue;
-    for (const k of countryKeys(pin.country)) keys.add(k);
+    keys.add(countryKey(pin.country));
   }
   return keys;
 }
 
 function featureVisited(name: string | undefined, visited: Set<string>): boolean {
-  if (!name) return false;
-  return countryKeys(name).some((k) => visited.has(k));
+  return Boolean(name) && visited.has(countryKey(name));
 }
 
 const SIZE = 320;
@@ -135,9 +95,23 @@ export function Globe({
   selectedId,
   onSelect,
   onCountrySelect,
+  regions,
+  visitedCountries,
   className,
 }: {
   pins: Pin[];
+  /**
+   * Provinces or states to fill, drawn over their country in a deeper tone:
+   * the World tab's "where you have been", one level down from countries.
+   */
+  regions?:
+    { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> }[] | undefined;
+  /**
+   * Countries to shade, as `countryKey`s, when the caller knows better than
+   * the pins' own names — the World tab adds the countries its provinces
+   * found, for cities saved without one.
+   */
+  visitedCountries?: ReadonlySet<string> | undefined;
   selectedId?: string | null | undefined;
   onSelect?: ((pin: Pin) => void) | undefined;
   onCountrySelect?: ((countryName: string) => void) | undefined;
@@ -171,7 +145,11 @@ export function Globe({
   const rafDrag = useRef<number | null>(null);
   const rafInertia = useRef<number | null>(null);
 
-  const visitedKeys = useMemo(() => visitedCountryKeySet(pins), [pins]);
+  const visitedKeys = useMemo(() => {
+    const keys = visitedCountryKeySet(pins);
+    for (const key of visitedCountries ?? []) keys.add(key);
+    return keys;
+  }, [pins, visitedCountries]);
 
   // Stable country ids — never Math.random() (that remounts paths every render).
   const countries = useMemo(
@@ -184,7 +162,7 @@ export function Globe({
     [],
   );
 
-  const { countryPaths, graticulePath, spherePath, projection } = useMemo(() => {
+  const { countryPaths, regionPaths, graticulePath, spherePath, projection } = useMemo(() => {
     const proj = geoOrthographic()
       .scale(150 * zoom)
       .translate([SIZE / 2, SIZE / 2])
@@ -198,10 +176,15 @@ export function Globe({
         d: path(c.feature) ?? "",
         visited: featureVisited(c.name, visitedKeys),
       })),
+      regionPaths: (regions ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+        d: path(r.feature) ?? "",
+      })),
       graticulePath: path(geoGraticule10()) ?? "",
       spherePath: path({ type: "Sphere" }) ?? "",
     };
-  }, [rotation, zoom, countries, visitedKeys]);
+  }, [rotation, zoom, countries, visitedKeys, regions]);
 
   const clipTest = useMemo(() => {
     const c: [number, number] = [-rotation[0], -rotation[1]];
@@ -494,6 +477,21 @@ export function Globe({
                   trySelectCountry(c.name);
                 }}
               />
+            ) : null,
+          )}
+          {regionPaths.map((r) =>
+            r.d ? (
+              <path
+                key={`region-${r.id}`}
+                d={r.d}
+                fill="var(--visited)"
+                stroke="var(--card)"
+                strokeWidth={0.3}
+                opacity={0.9}
+                className="pointer-events-none"
+              >
+                <title>{r.name}</title>
+              </path>
             ) : null,
           )}
           {projected.map(({ pin, x, y }) => {

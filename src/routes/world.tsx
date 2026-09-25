@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { formatTripLocation } from "@/lib/place-label";
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -15,7 +14,16 @@ import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTrips } from "@/hooks/useTrips";
 import { STAT_OPTIONS, useStatsLayout } from "@/hooks/useStatsLayout";
-import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
+import type { Pin } from "@/data/atlas";
+import { useVisitedProvinces } from "@/hooks/useVisitedProvinces";
+import { countryKey } from "@/lib/country-names";
+import {
+  cityPins,
+  isVisitedPin,
+  visitedCities,
+  visitedCountryKeys,
+  visitsByCountry,
+} from "@/lib/world-visits";
 import { countryWorldShare, deriveTravelStats } from "@/lib/travel-stats";
 import { isCityLevelPlace } from "@/lib/reco-place";
 import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
@@ -30,44 +38,54 @@ export const Route = createFileRoute("/world")({
       {
         name: "description",
         content:
-          "Spin the globe to see every city you've visited, every place on your wishlist and every recommendation waiting for you.",
+          "Spin the globe to see everywhere you've been: the countries, the provinces and states, and the cities.",
       },
       { property: "og:title", content: "World — Béa" },
       {
         property: "og:description",
-        content:
-          "An interactive globe of your visited, wishlist, next-time and recommendation pins.",
+        content: "An interactive globe of the countries, provinces and cities you've visited.",
       },
     ],
   }),
   component: WorldPage,
 });
 
-const filters: { type: PinType; label: string }[] = [
-  { type: "visited", label: "Visited" },
-  { type: "nexttime", label: "Next time" },
-  { type: "wishlist", label: "Wishlist" },
-  { type: "reco", label: "Recs" },
-];
-
 function WorldPage() {
-  const [active, setActive] = useState<PinType[]>(["visited", "nexttime", "wishlist", "reco"]);
   const [selected, setSelected] = useState<Pin | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [statsEdit, setStatsEdit] = useState(false);
   /** The caveat about what the numbers count — asked for, not always on. */
   const [statsNote, setStatsNote] = useState(false);
-  const [query, setQuery] = useState("");
-  const [country, setCountry] = useState("all");
   const statsLayout = useStatsLayout();
 
   const photo = usePhotoMemories();
   const vault = useRecommendations();
   const t = useTrips();
-  const allPins = [...photo.pins, ...vault.pins].filter(
-    (p) => p.type !== "reco" || !isCityLevelPlace(p),
+  // Only where you have been. Wishlist, next time and recommendations live on
+  // Recs; a globe of everything was a second, busier copy of that tab.
+  const places = useMemo(
+    () => [...photo.pins, ...vault.pins].filter(isVisitedPin),
+    [photo.pins, vault.pins],
   );
+  // The "Pins" statistic still counts everything saved, as it always has.
+  const savedPinCount = [...photo.pins, ...vault.pins].filter(
+    (p) => p.type !== "reco" || !isCityLevelPlace(p),
+  ).length;
+  const cities = useMemo(() => visitedCities(places), [places]);
+  const provinces = useVisitedProvinces(cities);
+  const byCountry = useMemo(
+    () => visitsByCountry(places, cities, provinces),
+    [places, cities, provinces],
+  );
+  const globeCities = useMemo(() => cityPins(cities), [cities]);
+  const shadedCountries = useMemo(() => visitedCountryKeys(places, provinces), [places, provinces]);
+  const provinceOf = useMemo(() => {
+    const map = new Map<string, (typeof provinces)[number]>();
+    for (const p of provinces) for (const key of p.cityKeys) map.set(key, p);
+    return map;
+  }, [provinces]);
+  const cityOf = (pin: Pin) => cities.find((c) => `city:${c.key}` === pin.id);
 
   // Photo rows plus vault pins, so a city added by hand on this map counts too.
   // photo.pins are omitted on purpose — they are derived from photo.rows and
@@ -126,31 +144,11 @@ function WorldPage() {
     };
   }, [statsOpen, t.trips]);
 
-  const countries = useMemo(
-    () => Array.from(new Set(allPins.map((p) => p.country).filter(Boolean))).sort(),
-    [allPins.length],
-  );
-
-  const q = query.trim().toLowerCase();
-  const visible = allPins.filter(
-    (p) =>
-      active.includes(p.type) &&
-      (country === "all" || p.country === country) &&
-      (!q ||
-        p.name.toLowerCase().includes(q) ||
-        p.city.toLowerCase().includes(q) ||
-        p.country.toLowerCase().includes(q) ||
-        (p.category ?? "").toLowerCase().includes(q)),
-  );
-
-  const toggle = (t: PinType) =>
-    setActive((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
-
   return (
     <AppShell
       eyebrow="Your world"
       title={
-        allPins.length === 0
+        places.length === 0
           ? BEA_SIGNATURE.world
           : photo.stats.cities
             ? `${travelStats.cities} cities, ${travelStats.countries} countries.`
@@ -158,69 +156,25 @@ function WorldPage() {
       }
     >
       <div className="space-y-5">
-        <div data-guide="pin-filters" className="flex flex-wrap gap-2">
-          {filters.map((f) => (
-            <button
-              key={f.type}
-              onClick={() => toggle(f.type)}
-              className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                active.includes(f.type)
-                  ? "border-border bg-card"
-                  : "border-border/60 bg-transparent text-muted-foreground"
-              }`}
-            >
-              <span className={`size-2 rounded-full ${pinColorClass[f.type]}`} />
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search a place, city or country"
-            aria-label="Search your pins"
-            className="min-w-[180px] flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-          />
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            aria-label="Filter by country"
-            className="rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-          >
-            <option value="all">All countries</option>
-            {countries.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          {(query || country !== "all" || active.length < 4) && (
-            <button
-              onClick={() => {
-                setQuery("");
-                setCountry("all");
-                setActive(["visited", "nexttime", "wishlist", "reco"]);
-              }}
-              className="rounded-xl border border-border px-3 py-2 text-[13px] text-muted-foreground"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        <p className="text-[12px] text-muted-foreground" aria-live="polite">
-          Showing {visible.length} of {allPins.length} pins.
-        </p>
-
-        {allPins.length === 0 && (
+        {places.length === 0 ? (
           <div className="card-soft p-4">
             <p className="font-display text-[18px] leading-snug">{beaLine("empty.globe").title}</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               {beaLine("empty.globe").body}
             </p>
           </div>
+        ) : (
+          <p className="text-[13px] text-muted-foreground" aria-live="polite">
+            {[
+              plural(cities.length, "city", "cities"),
+              provinces.length > 0
+                ? plural(provinces.length, "province or state", "provinces and states")
+                : "",
+              plural(byCountry.length, "country", "countries"),
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
         )}
 
         <div data-guide="globe" className="relative">
@@ -238,89 +192,35 @@ function WorldPage() {
             <Plus className="size-5" aria-hidden />
           </button>
           <Globe
-            pins={visible}
+            pins={globeCities}
+            regions={provinces}
+            visitedCountries={shadedCountries}
             selectedId={selected?.id}
             onSelect={setSelected}
             onCountrySelect={(name) => {
-              // Open a pin in that country — do not rewrite the country filter.
-              // Filtering here made a near-miss tap on a pin look like the whole
-              // map emptied (only that country's dots stayed).
-              const lower = name.toLowerCase();
-              const match =
-                visible.find((p) => p.country.toLowerCase() === lower) ??
-                allPins.find((p) => p.country.toLowerCase() === lower) ??
-                allPins.find((p) => {
-                  if (lower.includes("united states") || lower === "usa") {
-                    return /united states|usa/i.test(p.country);
-                  }
-                  if (lower.includes("united kingdom") || lower === "uk") {
-                    return /united kingdom|uk|britain/i.test(p.country);
-                  }
-                  return (
-                    p.country.toLowerCase().includes(lower) ||
-                    (p.country.length > 0 && lower.includes(p.country.toLowerCase()))
-                  );
-                });
+              // A tap on a country opens one of your cities there, in any
+              // language the country was saved in.
+              const key = countryKey(name);
+              const match = globeCities.find((pin) => countryKey(pin.country) === key);
               if (match) setSelected(match);
             }}
           />
         </div>
 
-        {visible.length > 0 && (
-          <Section
-            title="Your pins"
-            hint={`${visible.length} showing — pick one and the globe spins to it, handy when a pin is round the back`}
-            defaultOpen
-          >
-            <ul className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-border p-1.5">
-              {visible.map((pin) => {
-                const active = selected?.id === pin.id;
-                return (
-                  <li key={pin.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(pin)}
-                      aria-current={active ? "true" : undefined}
-                      className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left ${
-                        active ? "bg-elevated" : ""
-                      }`}
-                    >
-                      <span
-                        className={`size-2 shrink-0 rounded-full ${
-                          pinColorClass[pin.type] ?? pinColorClass.reco
-                        }`}
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[14.5px] font-medium">{pin.name}</span>
-                        <span className="block truncate text-[12px] text-muted-foreground">
-                          {formatTripLocation(pin.city, pin.country) || "Somewhere on the map"}
-                        </span>
-                      </span>
-                      <span className="shrink-0 text-[11.5px] uppercase tracking-wider text-muted-foreground">
-                        {pinLabel[pin.type] ?? pinLabel.reco}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </Section>
-        )}
-
-        {selected ? (
+        {selected && cityOf(selected) && (
           <section className="rise card-soft p-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`size-2 rounded-full ${pinColorClass[selected.type] ?? pinColorClass.reco}`}
-                  />
-                  <span className="label-caps">{pinLabel[selected.type] ?? pinLabel.reco}</span>
-                </div>
-                <h2 className="mt-1 text-[23px] leading-tight">{selected.name}</h2>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <span className="label-caps">You've been here</span>
+                <h2 className="mt-1 text-[23px] leading-tight">{selected.city}</h2>
                 <p className="text-[13px] text-muted-foreground">
-                  {formatTripLocation(selected.city, selected.country) || "Somewhere on the map"}
+                  {[provinceOf.get(cityOf(selected)!.key)?.name, cityOf(selected)!.country]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  {plural(cityOf(selected)!.places, "place", "places")} you've saved or photographed
+                  here.
                 </p>
               </div>
               <button
@@ -331,26 +231,57 @@ function WorldPage() {
                 Close
               </button>
             </div>
-
-            {selected.notes && (
-              <p className="mt-3 font-display text-[16.5px] leading-snug">“{selected.notes}”</p>
-            )}
-
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              {["Photos", "Hotels", "Restaurants", "Attractions", "Notes", "Budget"].map((t) => (
-                <span
-                  key={t}
-                  className="rounded-xl border border-border bg-card px-2 py-2 text-center text-[12px] text-muted-foreground"
-                >
-                  {t}
-                </span>
-              ))}
-            </div>
           </section>
-        ) : (
-          <p className="text-[13px] text-muted-foreground">
-            Tap any pin on the globe to open that place — photos, notes, budget and Future Me notes.
-          </p>
+        )}
+
+        {byCountry.length > 0 && (
+          <div data-guide="places-list">
+            <Section
+              title="Where you've been"
+              hint="Pick a city and the globe spins to it"
+              defaultOpen
+            >
+              <ul className="space-y-3">
+                {byCountry.map((visit) => (
+                  <li key={visit.key} className="rounded-xl border border-border p-3">
+                    <p className="text-[15px] font-semibold">{visit.country}</p>
+                    {visit.provinces.length > 0 && (
+                      <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                        {visit.provinces.map((p) => p.name).join(" · ")}
+                      </p>
+                    )}
+                    {visit.cities.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {visit.cities.map((city) => {
+                          const on = selected?.id === `city:${city.key}`;
+                          return (
+                            <button
+                              key={city.key}
+                              type="button"
+                              aria-pressed={on}
+                              onClick={() =>
+                                setSelected(
+                                  globeCities.find((pin) => pin.id === `city:${city.key}`) ?? null,
+                                )
+                              }
+                              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] ${
+                                on
+                                  ? "border-primary/40 bg-primary-soft font-semibold"
+                                  : "border-border bg-card"
+                              }`}
+                            >
+                              <span className="size-2 rounded-full bg-visited" aria-hidden />
+                              {city.city}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          </div>
         )}
 
         <section data-guide="travel-stats">
@@ -414,7 +345,7 @@ function WorldPage() {
                   <Stat value={counts.restaurants} label="Restaurants" />
                 )}
                 {statsLayout.layout.travelDays && <Stat value={travelDays} label="Travel days" />}
-                {statsLayout.layout.pins && <Stat value={allPins.length} label="Pins" accent />}
+                {statsLayout.layout.pins && <Stat value={savedPinCount} label="Pins" accent />}
               </div>
               {!STAT_OPTIONS.some((option) => statsLayout.layout[option.key]) && (
                 <p className="text-[13px] text-muted-foreground">
@@ -542,4 +473,8 @@ function Stat({
       {hint && <p className="mt-0.5 text-[11.5px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
+}
+
+function plural(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
 }
