@@ -103,3 +103,15 @@ describe("countryWorldShare", () => {
     assert.equal(countryWorldShare(WORLD_COUNTRY_COUNT + 4).percent, 100);
   });
 });
+
+describe("countries in other languages", () => {
+  it("counts a country once in any language", () => {
+    const stats = deriveTravelStats([
+      { city: "Kyoto", country: "Japan", taken_at: null },
+      { city: "Osaka", country: "Japon", taken_at: null },
+      { city: "Nara", country: "日本", taken_at: null },
+    ]);
+    assert.equal(stats.countries, 1);
+    assert.equal(stats.cities, 3);
+  });
+});

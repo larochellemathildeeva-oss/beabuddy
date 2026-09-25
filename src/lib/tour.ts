@@ -119,10 +119,10 @@ export const DEEP_STEPS: TourStep[] = [
     selector: "[data-guide='globe']",
   },
   {
-    title: "Your vault on the globe",
-    body: "Visited, next time, wishlist, and recommendation pins. Filter chips calm a busy map. This is one memory bank for everywhere you've saved.",
+    title: "Everywhere you've been",
+    body: "The globe shades the countries, provinces and states you've visited, with a dot for each city — in any language you saved them in. Wishlist and recommendations stay on Recs.",
     to: "/world",
-    selector: "[data-guide='pin-filters']",
+    selector: "[data-guide='places-list']",
   },
   {
     title: "Travel statistics",
