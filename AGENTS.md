@@ -50,23 +50,33 @@ live configuration; check before relying on it.
 ## Geocoding and routing
 
 Place lookups and directions go through `src/lib/geo-endpoints.ts` (pure URL
-building, tested) with the provider chosen in `geo-provider.server.ts`. With no
-`LOCATIONIQ_TOKEN` set it uses OpenStreetMap's public Nominatim and the OSRM
-demo router — keyless, one request a second, and not really intended for
-systematic geocoding. Setting the token switches to LocationIQ, which speaks
-the same request and response shapes, at two requests a second.
+building, tested) with the provider chosen in `geo-provider.server.ts`, in this
+order:
 
-The token is read only in `*.server.ts` and imported lazily inside handlers,
-because `*.functions.ts` ships to the client bundle. Never prefix it `VITE_`.
-After changing anything here, check the token did not follow the code into the
-browser:
+1. `GEOAPIFY_API_KEY` set: **Geoapify** — geocoding, autocomplete, reverse and
+   walking/driving routes, five requests a second. Its terms allow storing
+   results, which is what saved pins are. It answers in its own shapes;
+   `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
+   callers read every answer through `readGeoJson`.
+2. `LOCATIONIQ_TOKEN` set: LocationIQ, which speaks Nominatim's and OSRM's
+   shapes directly, at two requests a second. A walk its router refuses is
+   routed as a drive and timed at walking pace, marked as an estimate.
+3. Neither: OpenStreetMap's public Nominatim and the OSRM demo router —
+   keyless, one request a second, and not really intended for systematic
+   geocoding.
+
+Keys are read only in `*.server.ts` and imported lazily inside handlers,
+because `*.functions.ts` ships to the client bundle. Never prefix them
+`VITE_`. After changing anything here, check neither followed the code into
+the browser:
 
 ```
-npm run build && grep -rl "LOCATIONIQ_TOKEN" .output/public/   # must print nothing
+npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN" .output/public/   # must print nothing
 ```
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
-its data is shown — currently the trip map and the privacy page.
+its data is shown — currently the trip map and the privacy page — and
+`GEOAPIFY_ATTRIBUTION` beside it on the maps, as Geoapify's free plan asks.
 
 ## Notes
 

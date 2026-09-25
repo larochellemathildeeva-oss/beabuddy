@@ -1,4 +1,9 @@
-import { PUBLIC_PROVIDER, locationIqProvider, type GeoProvider } from "./geo-endpoints.ts";
+import {
+  PUBLIC_PROVIDER,
+  geoapifyProvider,
+  locationIqProvider,
+  type GeoProvider,
+} from "./geo-endpoints.ts";
 
 /**
  * The geocoding token, on the server and nowhere else.
@@ -17,8 +22,15 @@ import { PUBLIC_PROVIDER, locationIqProvider, type GeoProvider } from "./geo-end
 let announced = false;
 
 export function geoProvider(): GeoProvider {
-  const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
-  const provider = token ? locationIqProvider(token) : PUBLIC_PROVIDER;
+  // Geoapify first when both are set: its terms allow keeping what it finds,
+  // and it routes walks, which LocationIQ's hosted router may not.
+  const geoapifyKey = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
+  const token = geoapifyKey || (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
+  const provider = geoapifyKey
+    ? geoapifyProvider(geoapifyKey)
+    : token
+      ? locationIqProvider(token)
+      : PUBLIC_PROVIDER;
 
   /**
    * Say once, in the server log, which service is answering.
@@ -32,9 +44,11 @@ export function geoProvider(): GeoProvider {
   if (!announced) {
     announced = true;
     console.info(
-      token
-        ? `[geo] LocationIQ (token ${token.length} chars, ${provider.gapMs}ms between lookups)`
-        : "[geo] OpenStreetMap public endpoints — no LOCATIONIQ_TOKEN set, 1.1s between lookups",
+      geoapifyKey
+        ? `[geo] Geoapify (key ${geoapifyKey.length} chars, ${provider.gapMs}ms between lookups)`
+        : token
+          ? `[geo] LocationIQ (token ${token.length} chars, ${provider.gapMs}ms between lookups)`
+          : "[geo] OpenStreetMap public endpoints — no GEOAPIFY_API_KEY or LOCATIONIQ_TOKEN set, 1.1s between lookups",
     );
   }
   return provider;

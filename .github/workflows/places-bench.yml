@@ -32,3 +32,4 @@ jobs:
           # Optional: set this repository secret to measure LocationIQ instead
           # of the public OpenStreetMap servers.
           LOCATIONIQ_TOKEN: ${{ secrets.LOCATIONIQ_TOKEN }}
+          GEOAPIFY_API_KEY: ${{ secrets.GEOAPIFY_API_KEY }}

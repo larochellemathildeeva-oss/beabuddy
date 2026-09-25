@@ -46,6 +46,7 @@ import {
   DESTINATION_TAGS,
   classifyGeoStatus,
   nextDelayMs,
+  readGeoJson,
   type GeoProvider,
 } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
@@ -182,12 +183,13 @@ const UA = "BeaTravelApp/1.0 (travel memory vault)";
 async function reverse(lat: number, lon: number) {
   const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(reverseUrl(geoProvider(), lat, lon), {
+    const provider = geoProvider();
+    const res = await fetch(reverseUrl(provider, lat, lon), {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return {};
-    const d = (await res.json()) as {
+    const d = (await readGeoJson(provider, "reverse", res)) as {
       address?: {
         city?: string;
         town?: string;
@@ -278,17 +280,20 @@ async function nominatim(
   }
 
   let res: Response;
+  let answered = provider;
   try {
     res = await fetchProvider(provider);
   } catch (error) {
     // A thrown fetch (timeout, DNS, TLS) never reaches the !res.ok branch
-    // below. LocationIQ is the one we can replace; Nominatim failures stay
-    // failures so the box can say the map was unreachable.
-    if (provider.name !== "locationiq") throw error;
+    // below. A keyed service is the one we can replace; Nominatim failures
+    // stay failures so the box can say the map was unreachable.
+    if (!provider.token) throw error;
+    answered = PUBLIC_PROVIDER;
     res = await fetchProvider(PUBLIC_PROVIDER);
   }
-  // HTTP errors from LocationIQ (400 jsonv2, bad key, …) — same idea.
-  if (!res.ok && provider.name === "locationiq") {
+  // HTTP errors from a keyed service (400, bad key, …) — same idea.
+  if (!res.ok && answered.token) {
+    answered = PUBLIC_PROVIDER;
     res = await fetchProvider(PUBLIC_PROVIDER);
   }
   const verdict = classifyGeoStatus(res.status);
@@ -296,7 +301,7 @@ async function nominatim(
     throw new Error(`Geocoder temporarily unavailable (${res.status})`);
   }
   if (verdict !== "ok") return [];
-  const json = (await res.json()) as NominatimHit[];
+  const json = (await readGeoJson(answered, "search", res)) as NominatimHit[];
   return Array.isArray(json) ? json : [];
 }
 
@@ -431,9 +436,12 @@ type AutocompleteHit = {
   lon: string;
   display_name?: string;
   display_place?: string;
+  /** Geoapify's, translated in geoapify.ts; LocationIQ uses display_place. */
+  name?: string;
   class?: string;
   type?: string;
   address?: Record<string, string>;
+  namedetails?: Record<string, string>;
 };
 
 /**
@@ -462,14 +470,15 @@ async function autocompleteHits(
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return [];
-    const json = (await res.json()) as AutocompleteHit[];
+    const json = (await readGeoJson(pace.provider, "search", res)) as AutocompleteHit[];
     if (!Array.isArray(json)) return [];
     const hits: NominatimHit[] = json.map((raw) => ({
       lat: raw.lat,
       lon: raw.lon,
-      ...(raw.address?.["name"] || raw.display_place
-        ? { name: raw.address?.["name"] || raw.display_place }
+      ...(raw.address?.["name"] || raw.display_place || raw.name
+        ? { name: raw.address?.["name"] || raw.display_place || raw.name }
         : {}),
+      ...(raw.namedetails ? { namedetails: raw.namedetails } : {}),
       ...(raw.display_name ? { display_name: raw.display_name } : {}),
       ...(raw.class ? { class: raw.class } : {}),
       ...(raw.type ? { type: raw.type } : {}),

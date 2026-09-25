@@ -8,7 +8,7 @@ import { DayMap } from "@/components/day/DayMap";
 import { StopCard } from "@/components/day/StopCard";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { dayMapCaption, dayMapModel, toggleSelection } from "@/lib/day-map";
-import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 
 /**
@@ -223,7 +223,9 @@ export function DayMapView({
           </DayMap>
           {caption && <p className="text-[12.5px] text-muted-foreground">{caption}</p>}
           {/* The credit ODbL asks for, next to the data it applies to. */}
-          <p className="text-[11.5px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
+          <p className="text-[11.5px] text-muted-foreground">
+            {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+          </p>
           <p className="pt-1 text-[14px] font-bold">Complete itinerary</p>
         </div>
       )}

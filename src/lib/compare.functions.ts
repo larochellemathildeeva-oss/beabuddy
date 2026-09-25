@@ -10,7 +10,7 @@ import {
 } from "@/lib/compare-facts";
 import { AI_CALL } from "@/lib/ai-errors";
 import { isLatLon, type LatLon } from "@/lib/geo";
-import { searchUrl } from "@/lib/geo-endpoints";
+import { readGeoJson, searchUrl } from "@/lib/geo-endpoints";
 
 const PlaceInput = z.object({
   name: z.string().min(1),
@@ -73,7 +73,8 @@ async function geocodeHome(city: string | null): Promise<LatLon | null> {
   if (cached) return cached;
   const { geoProvider } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(searchUrl(geoProvider(), { query, limit: 1, format: "jsonv2" }), {
+    const provider = geoProvider();
+    const res = await fetch(searchUrl(provider, { query, limit: 1, format: "jsonv2" }), {
       headers: {
         "user-agent": "BeaTravelApp/1.0 (travel memory vault)",
         accept: "application/json",
@@ -81,7 +82,7 @@ async function geocodeHome(city: string | null): Promise<LatLon | null> {
       signal: AbortSignal.timeout(5_000),
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as { lat: string; lon: string }[];
+    const json = (await readGeoJson(provider, "search", res)) as { lat: string; lon: string }[];
     const first = json[0];
     const coords = first ? { lat: Number(first.lat), lon: Number(first.lon) } : null;
     if (!coords || !isLatLon(coords)) return null;

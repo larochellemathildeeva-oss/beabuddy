@@ -21,6 +21,7 @@ import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
   nextDelayMs,
+  readGeoJson,
   routeProfile,
   routeUrl,
   searchUrl,
@@ -112,7 +113,7 @@ async function geocode(
     // A throttled lookup is not a missing place: caching it as one would
     // blank a real stop for the rest of this request.
     if (classifyGeoStatus(res.status) !== "ok") return null;
-    const json = (await res.json()) as {
+    const json = (await readGeoJson(provider, "search", res)) as {
       lat: string;
       lon: string;
       boundingbox?: string[];
@@ -144,21 +145,53 @@ async function geocode(
   }
 }
 
-function stepText(s: { maneuver?: { type?: string; modifier?: string }; name?: string }): string {
+function stepText(s: {
+  maneuver?: { type?: string; modifier?: string };
+  name?: string;
+  instruction?: string;
+}): string {
   const type = s.maneuver?.type ?? "continue";
   const mod = s.maneuver?.modifier ? ` ${s.maneuver.modifier}` : "";
   const name = s.name ? ` onto ${s.name}` : "";
+  if (s.instruction) return s.instruction;
   if (type === "arrive") return "Arrive at your destination";
   if (type === "depart") return `Head off${name}`;
   return `${type}${mod}${name}`.replace(/^\w/, (c) => c.toUpperCase());
 }
 
+/**
+ * One journey from the router. A walk the router will not route — some
+ * hosted OSRM services offer driving only — is asked again as a drive and
+ * timed at walking pace along those streets, marked as an estimate, rather
+ * than coming back as no route at all.
+ */
 async function leg(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
   mode: "walking" | "driving",
-) {
+): Promise<{ distance: number; duration: number; steps: RouteStep[]; estimated?: boolean } | null> {
+  const routed = await routeOnce(provider, a, b, mode);
+  if (routed || mode === "driving") return routed;
+  const byRoad = await routeOnce(provider, a, b, "driving");
+  if (!byRoad || !(byRoad.distance > 0)) return null;
+  return {
+    distance: byRoad.distance,
+    duration: Math.max(60, Math.round(byRoad.distance / WALK_METERS_PER_SECOND)),
+    steps: [],
+    estimated: true,
+  };
+}
+
+/** 4.5 km/h, the pace route-estimate.ts assumes too. */
+const WALK_METERS_PER_SECOND = 4500 / 3600;
+
+async function routeOnce(
+  provider: GeoProvider,
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+  mode: "walking" | "driving",
+): Promise<{ distance: number; duration: number; steps: RouteStep[] } | null> {
   // "foot" on the demo router, "walking" on LocationIQ — the same mode under
   // two names, and the wrong one 400s every walking leg without saying so.
   const url = routeUrl(provider, routeProfile(provider, mode), a, b);
@@ -168,7 +201,7 @@ async function leg(
       signal: AbortSignal.timeout(8_000),
     });
     if (!res.ok) return null;
-    const json = (await res.json()) as {
+    const json = (await readGeoJson(provider, "route", res)) as {
       routes?: {
         distance: number;
         duration: number;
@@ -176,6 +209,7 @@ async function leg(
           steps: {
             distance: number;
             name?: string;
+            instruction?: string;
             maneuver?: { type?: string; modifier?: string };
           }[];
         }[];
@@ -408,6 +442,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         distance: r.distance,
         duration: r.duration,
         steps: r.steps,
+        ...(r.estimated ? { estimated: true } : {}),
         mapUrl: mapsDirUrl(
           { title: fromName, lat: a.lat, lon: a.lon },
           { title: toName, lat: b.lat, lon: b.lon },
