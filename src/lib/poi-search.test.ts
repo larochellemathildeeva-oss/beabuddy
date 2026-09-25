@@ -161,3 +161,23 @@ test("a place mapped under its local name is found and shown by its English one"
   );
   assert.equal(louvre!.name, "Musée du Louvre");
 });
+
+test("matchesBrand keeps the chain and drops its neighbours", async () => {
+  const { matchesBrand } = await import("./poi-search.ts");
+  assert.ok(matchesBrand({ name: "McDonald's", amenity: "fast_food" }, "mcdonald"));
+  assert.ok(matchesBrand({ brand: "McDonald's", amenity: "fast_food" }, "mcdonalds"));
+  assert.ok(matchesBrand({ name: "マクドナルド", "name:en": "McDonald's" }, "McDonalds"));
+  assert.ok(!matchesBrand({ name: "Tim Hortons", amenity: "cafe" }, "mcdonald"));
+  assert.ok(!matchesBrand({ name: "Burger King" }, ""));
+});
+
+test("a brand search asks Geoapify by name across the broad categories", async () => {
+  const { geoapifyPlacesUrl } = await import("./geoapify.ts");
+  const { BRAND_CATEGORIES } = await import("./poi-search.ts");
+  const url = new URL(
+    geoapifyPlacesUrl("K", BRAND_CATEGORIES, { lat: 45.5, lon: -73.6 }, 2000, 60, "mcdonald"),
+  );
+  assert.equal(url.searchParams.get("name"), "mcdonald");
+  assert.match(url.searchParams.get("categories")!, /^catering,commercial,/);
+  assert.equal(url.searchParams.get("limit"), "60");
+});

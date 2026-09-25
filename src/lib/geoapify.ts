@@ -322,9 +322,12 @@ export function geoapifyPlacesUrl(
   at: { lat: number; lon: number },
   radiusM: number,
   limit = 40,
+  /** Only places with this name — a chain, "McDonald's" — among those categories. */
+  name?: string,
 ): string {
   const params = new URLSearchParams({
     categories,
+    ...(name ? { name } : {}),
     filter: `circle:${at.lon},${at.lat},${Math.round(radiusM)}`,
     bias: `proximity:${at.lon},${at.lat}`,
     limit: String(Math.max(1, Math.min(limit, 100))),
