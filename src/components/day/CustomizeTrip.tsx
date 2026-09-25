@@ -51,3 +51,30 @@ export function CustomizeTrip({
     </>
   );
 }
+
+/** The same switches, laid out inline — for the Settings sheet. */
+export function CustomizeOptions({
+  prefs,
+  onToggle,
+}: {
+  prefs: TripViewPrefs;
+  onToggle: (key: TripViewKey) => void;
+}) {
+  return (
+    <div className="divide-y divide-border">
+      {TRIP_VIEW_OPTIONS.map((option) => (
+        <div key={option.key} className="flex items-center justify-between gap-4 py-2.5">
+          <div>
+            <p className="text-[14px] font-medium">{option.label}</p>
+            <p className="text-[12px] text-muted-foreground">{option.hint}</p>
+          </div>
+          <Switch
+            checked={prefs[option.key]}
+            onCheckedChange={() => onToggle(option.key)}
+            aria-label={`Show ${option.label}`}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
