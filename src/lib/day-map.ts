@@ -239,11 +239,13 @@ export function focusStart(
   return pins[0]!.id;
 }
 
-/** The Map tab's three layouts. */
+/**
+ * The Map tab's two layouts. A third, "map then the list", repeated the
+ * Timeline tab and is gone; a device that saved it opens on Split.
+ */
 export const MAP_LAYOUTS = [
-  { id: "split", label: "Split", hint: "The day beside its map." },
-  { id: "focus", label: "Focus", hint: "One stop at a time; the map follows." },
-  { id: "timeline", label: "Timeline", hint: "The map, then the day in order." },
+  { id: "split", label: "Split" },
+  { id: "focus", label: "Focus" },
 ] as const;
 export type MapLayout = (typeof MAP_LAYOUTS)[number]["id"];
 

@@ -105,7 +105,7 @@ export function TimelineEntry({
   onToggleDone: () => void;
   /** The swipe hint line; shown on the first card of a day, not all of them. */
   showSwipeHint?: boolean;
-  /** Show this stop on the Map Split tab. Only offered for a placed stop. */
+  /** Show this stop on the Map tab. Only offered for a placed stop. */
   onLocate?: (() => void) | undefined;
   /** Placed far from the rest of the trip: probably the wrong place with the same name. */
   stray?: boolean;

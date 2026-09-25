@@ -27,8 +27,9 @@ export const TRIP_PERSPECTIVES = [
   },
   {
     id: "map",
-    label: "Map Split",
-    hint: "The day on a map, with the stops beside it.",
+    label: "Map",
+    // No line under the tabs for the map: its layout switch says enough.
+    hint: "",
   },
   {
     id: "timeline",
