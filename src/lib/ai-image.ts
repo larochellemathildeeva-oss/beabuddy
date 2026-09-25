@@ -1,3 +1,5 @@
+import { isPdfDataUrl, PDF_DATA_URL_PREFIX } from "./itinerary-pdf.ts";
+
 /** Turn a browser data URL into the file part Gemini expects. */
 export function filePartFromDataUrl(dataUrl: string): {
   type: "file";
@@ -13,6 +15,21 @@ export function filePartFromDataUrl(dataUrl: string): {
 
 export function filePartsFromDataUrls(urls: string[]) {
   return urls.map(filePartFromDataUrl);
+}
+
+/** The same, for a PDF — checked by its own first bytes, not only its label. */
+export function pdfPartFromDataUrl(dataUrl: string): {
+  type: "file";
+  mediaType: "application/pdf";
+  data: string;
+} {
+  const trimmed = dataUrl.trim();
+  if (!isPdfDataUrl(trimmed)) throw new Error("Could not read that PDF.");
+  return {
+    type: "file",
+    mediaType: "application/pdf",
+    data: trimmed.slice(PDF_DATA_URL_PREFIX.length),
+  };
 }
 
 /**

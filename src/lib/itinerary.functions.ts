@@ -4,7 +4,10 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
+import { MAX_PDF_DATA_URL_LENGTH, PDF_DATA_URL_PREFIX } from "@/lib/itinerary-pdf";
+import { IcsReadError, icsToParsedItinerary } from "@/lib/itinerary-ics";
+import { readFetchedLink } from "@/lib/itinerary-link";
 import { AI_CALL } from "@/lib/ai-errors";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
@@ -13,6 +16,7 @@ import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
 import { foldTravelLegs, normalizeClock } from "@/lib/import-stop";
+import { readPlainPlan } from "@/lib/plan-lines";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -27,7 +31,11 @@ const KINDS = TIMELINE_KINDS;
 const ParseInput = z
   .object({
     imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(6).nullable(),
+    /** One PDF of the plan: a booking confirmation, a tour document, an export. */
+    pdfDataUrl: z.string().startsWith(PDF_DATA_URL_PREFIX).max(MAX_PDF_DATA_URL_LENGTH).nullish(),
     text: z.string().max(20_000).nullable(),
+    /** A link to the plan: a tour page, a blog itinerary, a calendar feed. */
+    pageUrl: z.string().url().max(2_000).nullish(),
     tripCity: z.string().max(120).nullable(),
     startDate: z.string().max(20).nullable(),
     endDate: z.string().max(20).nullable(),
@@ -38,8 +46,10 @@ const ParseInput = z
     includeCosts: z.boolean().optional().default(false),
   })
   .refine(
-    (v) => v.mode === "build" || Boolean(v.imageDataUrls?.length || (v.text && v.text.trim())),
-    { message: "Add a photo or paste an itinerary." },
+    (v) =>
+      v.mode === "build" ||
+      Boolean(v.imageDataUrls?.length || v.pdfDataUrl || v.pageUrl || (v.text && v.text.trim())),
+    { message: "Add a photo or a PDF, or paste an itinerary." },
   );
 
 const ItemSchema = z.object({
@@ -171,10 +181,27 @@ const instructions = (
     .filter(Boolean)
     .join("\n");
 
-async function runParse(
+/** What to say about the attached files, so they are read as one plan. */
+function attachedNote(pictures: number, hasPdf: boolean): string {
+  const pdfNote =
+    "The traveller attached a PDF of their plan — a booking confirmation, a tour document or an exported itinerary. Read every page. Ignore terms and conditions, adverts and fare rules; keep what happens when and where, and any confirmation numbers.";
+  if (hasPdf && pictures > 0) {
+    return `${pdfNote} They also attached ${pictures === 1 ? "a picture" : `${pictures} pictures`} of the same trip. Merge everything into ONE itinerary in chronological order, removing duplicates.`;
+  }
+  if (hasPdf) return pdfNote;
+  if (pictures > 1) {
+    return `The traveller attached ${pictures} pictures of the same trip. Read them all and merge them into ONE itinerary in chronological order, removing duplicates.`;
+  }
+  return "";
+}
+
+/** Exported for scripts/itinerary-audit, which runs the real prompt on fixtures. */
+export async function runParse(
   model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>,
   data: z.infer<typeof ParseInput>,
   preferenceText: string,
+  /** For the audit: the model's rows before any clean-up. */
+  onRaw?: (items: readonly ParsedItineraryItem[]) => void,
 ): Promise<ParsedItinerary> {
   const text = instructions(
     data.tripCity,
@@ -188,6 +215,11 @@ async function runParse(
     preferenceText,
   );
 
+  // Files are only read for a plan the traveller already has.
+  const images = data.mode === "import" ? (data.imageDataUrls ?? []) : [];
+  const pdf = data.mode === "import" && data.pdfDataUrl ? data.pdfDataUrl : null;
+  const importFiles = [...(pdf ? [pdfPartFromDataUrl(pdf)] : []), ...filePartsFromDataUrls(images)];
+
   const result = await generateText({
     model,
     ...AI_CALL,
@@ -196,16 +228,13 @@ async function runParse(
     messages: [
       {
         role: "user",
-        content: data.imageDataUrls?.length
+        content: importFiles.length
           ? [
               {
                 type: "text" as const,
-                text:
-                  data.imageDataUrls.length > 1
-                    ? `${text}\n\nThe traveller attached ${data.imageDataUrls.length} pictures of the same trip. Read them all and merge them into ONE itinerary in chronological order, removing duplicates.${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`
-                    : `${text}${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`,
+                text: `${text}\n\n${attachedNote(images.length, Boolean(pdf))}${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`,
               },
-              ...filePartsFromDataUrls(data.imageDataUrls),
+              ...importFiles,
             ]
           : [
               {
@@ -219,6 +248,7 @@ async function runParse(
     ],
   });
   const out = result.output;
+  onRaw?.(out.items);
   const parsed: ParsedItinerary = {
     ...out,
     // Travel legs the model made anyway become notes on the stop they lead to.
@@ -313,10 +343,66 @@ function finishBuild(
   return parsed;
 }
 
+/**
+ * Open a pasted link and say what it holds. The fetch is the guarded one
+ * place links use: https only, public addresses only, re-checked each hop.
+ */
+async function readItineraryLink(
+  href: string,
+): Promise<
+  { kind: "calendar"; plan: ParsedItinerary } | { kind: "page"; text: string; url: string }
+> {
+  const { fetchPublicHtml, UnsupportedPlaceUrlError } = await import("@/lib/place-url");
+  const url = new URL(href);
+  let fetched: Awaited<ReturnType<typeof fetchPublicHtml>>;
+  try {
+    fetched = await fetchPublicHtml(href);
+  } catch (error) {
+    if (error instanceof UnsupportedPlaceUrlError) {
+      throw new Error("Use a normal https link — not a private or local address.");
+    }
+    throw new Error(
+      "Béa couldn't open that page. Copy the plan from it and paste it here instead.",
+    );
+  }
+  const content = readFetchedLink(fetched, url.hostname);
+  if (content.kind === "failed") throw new Error(content.message);
+  if (content.kind === "calendar") {
+    try {
+      return { kind: "calendar", plan: icsToParsedItinerary(content.text) };
+    } catch (error) {
+      if (error instanceof IcsReadError) throw new Error(error.message);
+      throw error;
+    }
+  }
+  return { kind: "page", text: content.text, url: fetched.finalUrl };
+}
+
+/** The pasted text read without a model, when it is plainly a list. */
+export function readPlainAsList(data: z.infer<typeof ParseInput>): ParsedItinerary | null {
+  if (data.mode !== "import" || data.includeCosts) return null;
+  if (data.pageUrl || data.pdfDataUrl || data.imageDataUrls?.length || !data.text) return null;
+  return readPlainPlan(data.text, { startDate: data.startDate, tripCity: data.tripCity });
+}
+
 export const parseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseInput.parse(input))
-  .handler(async ({ data, context }): Promise<ParsedItinerary> => {
+  .handler(async ({ data: input, context }): Promise<ParsedItinerary> => {
+    let data = input;
+    // A pasted plan that is already a tidy list is read as a list: exactly,
+    // and without AI. Anything less plain still goes to the model.
+    const plain = readPlainAsList(input);
+    if (plain) return plain;
+    if (data.mode === "import" && data.pageUrl) {
+      const page = await readItineraryLink(data.pageUrl);
+      // A calendar feed is read as a calendar: exactly, and without AI.
+      if (page.kind === "calendar") return page.plan;
+      data = {
+        ...data,
+        text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
+      };
+    }
     const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
       context,
       data.tripCity,
