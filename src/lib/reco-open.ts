@@ -18,7 +18,7 @@ export function recMapsUrl(rec: {
   lon?: number | null | undefined;
 }): string {
   if (rec.lat != null && rec.lon != null) {
-    return mapsPlaceUrl(rec.name, { lat: rec.lat, lon: rec.lon });
+    return mapsPlaceUrl(rec.name, { lat: rec.lat, lon: rec.lon }, rec.address);
   }
   const where = rec.address?.trim() || rec.city?.trim() || "";
   const parts = [rec.name.trim(), where, where === rec.address?.trim() ? "" : rec.country?.trim()];

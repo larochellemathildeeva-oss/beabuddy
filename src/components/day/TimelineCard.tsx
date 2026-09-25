@@ -441,7 +441,7 @@ export function TimelineEntry({
         />
         {placed && (
           <a
-            href={mapsPlaceUrl(item.title, item)}
+            href={mapsPlaceUrl(item.title, item, item.address)}
             target="_blank"
             rel="noreferrer"
             className="text-[12px] font-semibold text-primary underline"

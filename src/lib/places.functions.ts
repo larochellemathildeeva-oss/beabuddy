@@ -317,7 +317,7 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
     // Saved on the recommendation and tapped months later, so it wants to
     // open the phone's maps app rather than the OpenStreetMap website. The
     // data still comes from OSM; this is only where the link goes.
-    url: mapsPlaceUrl(found.name, { lat: found.lat, lon: found.lon }),
+    url: mapsPlaceUrl(found.name, { lat: found.lat, lon: found.lon }, found.address),
   };
 }
 
@@ -485,7 +485,7 @@ function poiToPlace(hit: PoiHit): ParsedPlace {
     lat: hit.lat,
     lon: hit.lon,
     source: "OpenStreetMap",
-    url: mapsPlaceUrl(hit.name, { lat: hit.lat, lon: hit.lon }),
+    url: mapsPlaceUrl(hit.name, { lat: hit.lat, lon: hit.lon }, hit.address),
   };
 }
 

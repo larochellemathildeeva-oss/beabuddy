@@ -205,10 +205,11 @@ export function DayMapView({
                     <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
                       <span className="truncate">{focusStop.address?.trim()}</span>
                       <a
-                        href={mapsPlaceUrl(focusStop.title, {
-                          lat: focusStop.lat,
-                          lon: focusStop.lon,
-                        })}
+                        href={mapsPlaceUrl(
+                          focusStop.title,
+                          { lat: focusStop.lat, lon: focusStop.lon },
+                          focusStop.address,
+                        )}
                         target="_blank"
                         rel="noreferrer"
                         className="shrink-0 font-semibold text-nexttime underline"

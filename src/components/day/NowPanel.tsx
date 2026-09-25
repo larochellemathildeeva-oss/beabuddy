@@ -235,7 +235,7 @@ export function NowPanel({
               I'm here
             </button>
             <a
-              href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon })}
+              href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm border border-border bg-elevated"

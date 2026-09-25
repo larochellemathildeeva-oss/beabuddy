@@ -144,7 +144,7 @@ export function StopCard({
               )}
               <div className="flex flex-wrap gap-2">
                 <a
-                  href={mapsPlaceUrl(item.title, { lat: item.lat, lon: item.lon })}
+                  href={mapsPlaceUrl(item.title, { lat: item.lat, lon: item.lon }, item.address)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border px-3 text-[13px] font-semibold"
