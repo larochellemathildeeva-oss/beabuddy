@@ -176,12 +176,39 @@ test("a place link opens the phone's maps app, not a website", () => {
   // openstreetmap.org is a web page on a phone: no directions button, no
   // handover to the app already holding your route.
   const url = mapsPlaceUrl("Peace Memorial Museum", { lat: 34.3955, lon: 132.4536 });
-  assert.ok(url.startsWith("https://www.google.com/maps/search/?api=1&query="));
-  assert.ok(url.includes("34.3955%2C132.4536"));
+  assert.ok(url.startsWith("https://maps.google.com/?q="));
   assert.ok(!url.includes("openstreetmap"));
+});
+
+test("a place link carries the name, so Maps shows the place, not a coordinate", () => {
+  const pinned = new URL(mapsPlaceUrl("Peace Memorial Museum", { lat: 34.3955, lon: 132.4536 }));
+  assert.equal(pinned.searchParams.get("q"), "Peace Memorial Museum@34.3955,132.4536");
+  const withStreet = new URL(
+    mapsPlaceUrl("Kakiya", { lat: 34.29, lon: 132.32 }, "539 Miyajimacho, Hatsukaichi"),
+  );
+  assert.equal(withStreet.searchParams.get("query"), "Kakiya, 539 Miyajimacho, Hatsukaichi");
+  const nameless = new URL(mapsPlaceUrl("  ", { lat: 34.3955, lon: 132.4536 }));
+  assert.equal(nameless.searchParams.get("query"), "34.3955,132.4536");
 });
 
 test("a place link falls back to the name when there is no pin", () => {
   const url = mapsPlaceUrl("Crew Collective & Café", { lat: null, lon: null });
   assert.equal(new URL(url).searchParams.get("query"), "Crew Collective & Café");
+});
+
+test("a stop without a pin is looked up next to its own day, before or after it", async () => {
+  const { sameDayAnchors } = await import("./direction-stops.ts");
+  const museum = { day_date: "2026-10-07", lat: 34.3915, lon: 132.4523 };
+  const lunch = { day_date: "2026-10-07", lat: null, lon: null };
+  const crawl = { day_date: "2026-10-07", lat: 34.2985, lon: 132.3218 };
+  const nextDay = { day_date: "2026-10-08", lat: null, lon: null };
+  const undated = { lat: null, lon: null };
+  assert.deepEqual(sameDayAnchors([museum, lunch, crawl, nextDay, undated]), [
+    { lat: 34.2985, lon: 132.3218 },
+    { lat: 34.3915, lon: 132.4523 },
+    { lat: 34.3915, lon: 132.4523 },
+    null,
+    null,
+  ]);
+  assert.deepEqual(sameDayAnchors([lunch, crawl])[0], { lat: 34.2985, lon: 132.3218 });
 });

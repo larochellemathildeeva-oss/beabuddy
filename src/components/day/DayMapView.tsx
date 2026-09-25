@@ -1,32 +1,26 @@
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Compass } from "lucide-react";
-import { mapsPlaceUrl } from "@/lib/direction-stops";
-import { stayLabel } from "@/lib/planned-stay";
-import { isBooked } from "@/lib/bookings";
-import { timeForRail } from "@/lib/timeline-kind";
 import { DayMap } from "@/components/day/DayMap";
 import { StopCard } from "@/components/day/StopCard";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { dayMapCaption, dayMapModel, toggleSelection } from "@/lib/day-map";
 import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { placed as hasPosition } from "@/lib/trip-map";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 
 /**
- * The chosen day as a map and a list that point at the same stop.
+ * The chosen day as a travel guide: the itinerary first, the map beside it.
+ *
+ * The map answers "where are my places?", not "how do I get there?" — the
+ * itinerary is the source of truth and the map supports it. So the list is
+ * the hero (70% on a wide screen, first on a phone), and the map is a quiet
+ * journal map beside it: numbered terracotta pins, a soft dotted arc from
+ * each stop to the next, and the chosen place named. No layout switches,
+ * no jump bar, no distances on the map.
  *
  * With every day shown, the stops are numbered straight through rather than
  * restarting each day: the pins share one map, and two pins both saying "1"
  * would leave the reader to work out which card each belongs to.
  */
-type MapLayout = "dual" | "peek" | "list";
-
-/** The prototype's three map layouts, as map heights. */
-const LAYOUTS: { id: MapLayout; label: string; height: string }[] = [
-  { id: "dual", label: "Dual", height: "h-72" },
-  { id: "peek", label: "Map + cards", height: "h-[26rem]" },
-  { id: "list", label: "List focus", height: "h-40" },
-];
-
 export function DayMapView({
   groups,
   area,
@@ -42,17 +36,6 @@ export function DayMapView({
   const model = dayMapModel(groups.flatMap((group) => group.items));
   const caption = dayMapCaption(model);
   const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
-  const [layout, setLayout] = useState<MapLayout>("dual");
-  const stopById = new Map(groups.flatMap((group) => group.items).map((item) => [item.id, item]));
-  // The floating card shows the chosen stop, or the day's first one.
-  const focus = model.pins.find((pin) => pin.id === selectedId) ?? model.pins[0] ?? null;
-  const focusStop = focus ? stopById.get(focus.id) : undefined;
-  const focusIndex = focus ? model.pins.indexOf(focus) : 0;
-  const step = (by: -1 | 1) => {
-    const n = model.pins.length;
-    if (n === 0) return;
-    setSelectedId(model.pins[(focusIndex + by + n) % n]!.id);
-  };
 
   const pickFromMap = (id: string) => {
     setSelectedId((current) => toggleSelection(current, id));
@@ -66,188 +49,72 @@ export function DayMapView({
     [],
   );
 
+  if (model.plan.kind === "none") {
+    return (
+      <div className="card-soft space-y-1 p-4">
+        <p className="font-display text-[19px] leading-snug">Nothing to put on the map yet.</p>
+        <p className="text-[14px] text-muted-foreground">
+          None of {area ? `your ${area} stops` : "these stops"} has a location. Add an address to a
+          stop in the Timeline Editor and it appears here.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-3">
-      {model.plan.kind === "none" ? (
-        <div className="card-soft space-y-1 p-4">
-          <p className="font-display text-[19px] leading-snug">Nothing to put on the map yet.</p>
-          <p className="text-[14px] text-muted-foreground">
-            None of {area ? `your ${area} stops` : "these stops"} has a location. Add an address to
-            a stop in the Timeline Editor and it appears here.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {/* The prototype's "Map & stops" bar: three layouts, and a row of
-              numbered stops to jump to. */}
-          <div className="space-y-2 rounded-2xl border border-border bg-card p-2.5 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="flex items-center gap-1.5 text-[13.5px] font-bold">
-                <Compass className="size-4 text-nexttime" aria-hidden />
-                Map & stops
-                <span className="rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-                  {model.pins.length} on the map
-                </span>
-              </p>
-              <div
-                role="group"
-                aria-label="Map layout"
-                className="flex items-center rounded-xl border border-border bg-elevated p-0.5 text-[11.5px] font-semibold"
-              >
-                {LAYOUTS.map((l) => (
-                  <button
-                    key={l.id}
-                    type="button"
-                    aria-pressed={layout === l.id}
-                    onClick={() => setLayout(l.id)}
-                    className={`min-h-8 rounded-lg px-2.5 ${
-                      layout === l.id
-                        ? l.id === "dual"
-                          ? "bg-nexttime font-bold text-white shadow-sm"
-                          : "bg-foreground font-bold text-background shadow-sm"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {l.label}
-                  </button>
+    <div className="lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-start lg:gap-8">
+      {/* The itinerary: the hero, set like a guide's chapter. */}
+      <div className="space-y-10">
+        {groups.map((group, g) => {
+          const onMap = group.items.filter((item) => hasPosition(item)).length;
+          return (
+            <section key={group.key || "undated"} aria-label={group.label}>
+              <header className="mb-5 px-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                  {groups.length > 1 ? `Day ${g + 1}` : "The day"}
+                </p>
+                <h2 className="mt-1.5 font-display text-[34px] leading-[1.05] tracking-tight">
+                  {group.label}
+                </h2>
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  {group.items.length} {group.items.length === 1 ? "place" : "places"}
+                  {onMap < group.items.length ? ` · ${onMap} on the map` : ""}
+                </p>
+              </header>
+              <div className="space-y-2.5">
+                {group.items.map((item, i) => (
+                  <StopCard
+                    key={item.id}
+                    item={item}
+                    index={offsets[g]! + i}
+                    selected={item.id === selectedId}
+                    onSelect={() => setSelectedId((current) => toggleSelection(current, item.id))}
+                  />
                 ))}
               </div>
-            </div>
-            <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
-              <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Jump to:
-              </span>
-              {model.pins.map((pin) => {
-                const on = pin.id === focus?.id;
-                const time = timeForRail(stopById.get(pin.id)?.time_label);
-                return (
-                  <button
-                    key={pin.id}
-                    type="button"
-                    onClick={() => setSelectedId(pin.id)}
-                    aria-pressed={on}
-                    className={`inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[11.5px] font-medium ${
-                      on
-                        ? "bg-primary font-bold text-primary-foreground shadow-sm"
-                        : "border border-border bg-card text-muted-foreground"
-                    }`}
-                  >
-                    <span className="grid size-4 place-items-center rounded-full bg-foreground/15 text-[9.5px]">
-                      {pin.number}
-                    </span>
-                    {time && <span className="tabular-nums">{time}</span>}
-                    <span className="max-w-[90px] truncate">{pin.title.split(" ")[0]}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+            </section>
+          );
+        })}
+      </div>
 
-          <DayMap
-            pins={model.pins}
-            selectedId={selectedId}
-            onSelect={pickFromMap}
-            heightClass={LAYOUTS.find((l) => l.id === layout)!.height}
-            label={`Map of ${model.pins.length === 1 ? "one stop" : `${model.pins.length} stops`}`}
-          >
-            {/* The floating stop card, as in the prototype. Hidden in List
-                focus, where the map is only a strip. */}
-            {layout !== "list" && focus && focusStop && (
-              <div className="pointer-events-none absolute inset-x-2.5 bottom-2.5 z-[500]">
-                <div className="pointer-events-auto rounded-2xl border border-border bg-card/95 p-2.5 shadow-lg backdrop-blur-md">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-foreground text-[11.5px] font-bold text-background">
-                        {focus.number}
-                      </span>
-                      {timeForRail(focusStop.time_label) && (
-                        <span className="text-[13px] font-bold tabular-nums text-primary">
-                          {timeForRail(focusStop.time_label)}
-                        </span>
-                      )}
-                      {focusStop.planned_stay_minutes ? (
-                        <span className="truncate rounded-full border border-border bg-elevated px-2 py-0.5 text-[11px] text-muted-foreground">
-                          ~{stayLabel(focusStop.planned_stay_minutes)} stay
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => step(-1)}
-                        aria-label="Previous stop"
-                        className="grid size-8 place-items-center rounded-xl border border-border bg-elevated"
-                      >
-                        <ChevronLeft className="size-4" aria-hidden />
-                      </button>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
-                        {focusIndex + 1}/{model.pins.length}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => step(1)}
-                        aria-label="Next stop"
-                        className="grid size-8 place-items-center rounded-xl border border-border bg-elevated"
-                      >
-                        <ChevronRight className="size-4" aria-hidden />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="mt-1 flex min-w-0 items-center gap-2">
-                    <span className="truncate text-[14px] font-bold">{focusStop.title}</span>
-                    {isBooked(focusStop) && (
-                      <span className="shrink-0 rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
-                        ✓ Booked
-                      </span>
-                    )}
-                  </p>
-                  {layout === "peek" && (
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-muted-foreground">
-                      <span className="truncate">{focusStop.address?.trim()}</span>
-                      <a
-                        href={mapsPlaceUrl(focusStop.title, {
-                          lat: focusStop.lat,
-                          lon: focusStop.lon,
-                        })}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="shrink-0 font-semibold text-nexttime underline"
-                      >
-                        Directions
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </DayMap>
-          {caption && <p className="text-[12.5px] text-muted-foreground">{caption}</p>}
-          {/* The credit ODbL asks for, next to the data it applies to. */}
-          <p className="text-[11.5px] text-muted-foreground">
-            {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
-          </p>
-          <p className="pt-1 text-[14px] font-bold">Complete itinerary</p>
-        </div>
-      )}
-
-      {groups.map((group, g) => (
-        <section key={group.key || "undated"} className="space-y-2">
-          {groups.length > 1 && (
-            <h2 className="font-display text-[19px] leading-tight">{group.label}</h2>
-          )}
-          <div className="space-y-2">
-            {group.items.map((item, i) => (
-              <StopCard
-                key={item.id}
-                item={item}
-                index={offsets[g]! + i}
-                selected={item.id === selectedId}
-                onSelect={() => setSelectedId((current) => toggleSelection(current, item.id))}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {/* The map: beside the list and still while it scrolls on a wide
+          screen; after the list on a phone. */}
+      <aside className="mt-8 lg:sticky lg:top-28 lg:mt-0">
+        <DayMap
+          pins={model.pins}
+          selectedId={selectedId}
+          onSelect={pickFromMap}
+          heightClass="h-[22rem] lg:h-[calc(100vh-10rem)]"
+          label={`Map of ${model.pins.length === 1 ? "one place" : `${model.pins.length} places`}`}
+        />
+        {caption && (
+          <p className="mt-2 px-1 text-[12px] leading-snug text-muted-foreground">{caption}</p>
+        )}
+        {/* The credit ODbL asks for, next to the data it applies to. */}
+        <p className="mt-1.5 px-1 text-[10.5px] text-muted-foreground/80">
+          {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+        </p>
+      </aside>
     </div>
   );
 }

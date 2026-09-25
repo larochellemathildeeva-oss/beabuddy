@@ -725,3 +725,107 @@
     animation: none;
   }
 }
+
+/*
+ * Map Split: an editorial travel-journal map.
+ *
+ * The base map is a quiet light style (Positron), warmed towards paper so
+ * roads nearly disappear and water, parks and place names carry it. The
+ * palette is the journal's own — paper, stone roads, pale water and park —
+ * and stays light in dark mode, like a printed map on the table.
+ */
+.journal-map {
+  --journal-paper: #f8f5f1;
+  --journal-road: #d9d2c7;
+  --journal-water: #dcebf2;
+  --journal-park: #dce6d3;
+  --journal-ink: #443d36;
+  --journal-accent: #d96b43;
+  background: var(--journal-paper);
+  box-shadow:
+    0 0 0 1px rgb(68 61 54 / 0.07),
+    0 1px 2px rgb(68 61 54 / 0.05);
+}
+.journal-map .leaflet-container {
+  background: var(--journal-paper);
+  font-family: inherit;
+}
+.journal-map .leaflet-tile-pane {
+  filter: sepia(0.18) saturate(0.78) hue-rotate(-8deg) brightness(1.03) contrast(0.9);
+  opacity: 0.9;
+}
+.journal-route {
+  stroke: var(--journal-accent);
+}
+.journal-pin {
+  width: 26px;
+  height: 26px;
+  margin: 4px;
+  background: var(--journal-accent);
+  color: #fff;
+  font-size: 11.5px;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 2px 6px rgb(68 61 54 / 0.22);
+  transition:
+    width 150ms ease,
+    height 150ms ease,
+    margin 150ms ease,
+    background-color 150ms ease;
+}
+.journal-pin--on {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  background: #b4502b;
+  font-size: 13px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 4px 12px rgb(68 61 54 / 0.3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .journal-pin {
+    transition: none;
+  }
+}
+.journal-tag {
+  position: absolute;
+  left: 24px;
+  top: -13px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--journal-ink);
+  background: rgb(248 245 241 / 0.94);
+  padding: 5px 10px 6px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgb(68 61 54 / 0.16);
+}
+.journal-tag--left {
+  left: auto;
+  right: 24px;
+}
+.journal-map .leaflet-container .leaflet-bar {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(68 61 54 / 0.14);
+}
+.journal-map .leaflet-container .leaflet-bar a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  background: rgb(248 245 241 / 0.94);
+  color: var(--journal-ink);
+  border-bottom: 1px solid var(--journal-road);
+  font-weight: 400;
+}
+.journal-map .leaflet-container .leaflet-control-attribution {
+  background: transparent;
+  color: rgb(68 61 54 / 0.55);
+  font-size: 9.5px;
+}
+.journal-map .leaflet-container .leaflet-control-attribution a {
+  color: inherit;
+}

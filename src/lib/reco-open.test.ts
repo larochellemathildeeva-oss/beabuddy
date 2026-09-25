@@ -4,8 +4,14 @@ import { draftFromTyped, recMapsUrl } from "./reco-open.ts";
 
 const q = (url: string) => new URL(url).searchParams.get("query");
 
-test("a pinned rec opens on its pin", () => {
-  assert.equal(q(recMapsUrl({ name: "Mandy's", lat: 45.5, lon: -73.55 })), "45.5,-73.55");
+test("a pinned rec opens on its pin, labelled with its name", () => {
+  const url = new URL(recMapsUrl({ name: "Mandy's", lat: 45.5, lon: -73.55 }));
+  assert.equal(url.searchParams.get("q"), "Mandy's@45.5,-73.55");
+  assert.equal(
+    q(recMapsUrl({ name: "Mandy's", address: "2067 Crescent St", lat: 45.5, lon: -73.55 })),
+    "Mandy's, 2067 Crescent St",
+    "with a street address, Maps finds the place itself",
+  );
 });
 
 test("an unpinned rec opens a search for its name and where it is", () => {

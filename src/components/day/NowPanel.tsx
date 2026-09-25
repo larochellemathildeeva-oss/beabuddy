@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
@@ -198,6 +199,16 @@ export function NowPanel({
             {next.address?.trim() && (
               <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{next.address}</p>
             )}
+            <div className="mt-1.5">
+              <PlaceFacts
+                name={next.title}
+                lat={next.lat}
+                lon={next.lon}
+                day={next.day_date}
+                time={next.time_label}
+                auto
+              />
+            </div>
           </div>
           {live.loading && (
             <p className="text-xs text-muted-foreground">Working out the journey…</p>
@@ -224,7 +235,7 @@ export function NowPanel({
               I'm here
             </button>
             <a
-              href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon })}
+              href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-2xs transition-all active:scale-95 disabled:opacity-60 sm:text-sm border border-border bg-elevated"
@@ -371,8 +382,14 @@ function useLiveLeg(
     route({
       data: {
         stops: [
-          { title: from.title, address: from.address, lat: from.lat, lon: from.lon },
-          { title: to.title, address: to.address, lat: to.lat, lon: to.lon },
+          {
+            title: from.title,
+            address: from.address,
+            day_date: from.day_date,
+            lat: from.lat,
+            lon: from.lon,
+          },
+          { title: to.title, address: to.address, day_date: to.day_date, lat: to.lat, lon: to.lon },
         ],
         ...(pinned ? { near: { lat: pinned.lat, lon: pinned.lon } } : area ? { area } : {}),
       },

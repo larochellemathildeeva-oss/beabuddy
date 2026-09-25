@@ -173,6 +173,28 @@ export type PoiIntent =
   | { kind: "category"; label: string; filters: TagFilter[]; geoapify?: string }
   | { kind: "brand"; text: string };
 
+/**
+ * Geoapify's broad categories a chain can be in: somewhere to eat, shop, sleep
+ * or go. A brand search asks all of them with the name, and `matchesBrand`
+ * keeps only that brand.
+ */
+export const BRAND_CATEGORIES =
+  "catering,commercial,accommodation,entertainment,leisure,tourism,service,healthcare";
+
+/**
+ * Whether a place's tags are the chain a brand search asked for — the same
+ * rule the Overpass query uses: the brand itself, or a name (or English
+ * name) that starts with it, apostrophes and a plural s optional.
+ */
+export function matchesBrand(tags: Readonly<Record<string, string>>, text: string): boolean {
+  const key = (v: string) => foldAccents(v).replace(/['’]/g, "").trim();
+  const want = key(text).replace(/s$/, "");
+  if (!want) return false;
+  const brand = tags["brand"] ? key(tags["brand"]).replace(/s$/, "") : "";
+  if (brand === want) return true;
+  return [tags["name"], tags["name:en"]].some((n) => n != null && key(n).startsWith(want));
+}
+
 /** Whether a place's tags are the kind a category search asked for. */
 export function matchesCategory(
   tags: Readonly<Record<string, string>>,

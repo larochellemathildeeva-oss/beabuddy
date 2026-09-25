@@ -49,6 +49,7 @@ import { fuzzyRank } from "@/lib/fuzzy";
 import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
+import { PlaceFacts } from "@/components/PlaceFacts";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
 
@@ -1044,14 +1045,19 @@ function RecommendationsPage() {
                           const row = vault.rows.find((r) => r.id === v.id);
                           if (!row) return null;
                           return (
-                            <a
-                              href={recMapsUrl(row)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="mt-1.5 inline-block text-[12.5px] font-semibold text-primary underline"
-                            >
-                              Open in Maps ↗
-                            </a>
+                            <div className="mt-1.5 space-y-1">
+                              <a
+                                href={recMapsUrl(row)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-block text-[12.5px] font-semibold text-primary underline"
+                              >
+                                Open in Maps ↗
+                              </a>
+                              {/* Hours on request: one lookup per card tapped,
+                                  not one per card listed. */}
+                              <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
+                            </div>
                           );
                         })()}
                       </div>

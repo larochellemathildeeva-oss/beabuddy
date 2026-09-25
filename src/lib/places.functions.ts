@@ -2,6 +2,8 @@ import {
   RADIUS_AROUND_TRIP_M,
   RADIUS_NEAR_YOU_M,
   isExactPoiMatch,
+  BRAND_CATEGORIES,
+  matchesBrand,
   matchesCategory,
   overpassQuery,
   poiIntent,
@@ -315,7 +317,7 @@ function hitToPlace(h: NominatimHit): ParsedPlace {
     // Saved on the recommendation and tapped months later, so it wants to
     // open the phone's maps app rather than the OpenStreetMap website. The
     // data still comes from OSM; this is only where the link goes.
-    url: mapsPlaceUrl(found.name, { lat: found.lat, lon: found.lon }),
+    url: mapsPlaceUrl(found.name, { lat: found.lat, lon: found.lon }, found.address),
   };
 }
 
@@ -393,18 +395,43 @@ async function overpassPlaces(
   // near me" came back empty; Geoapify answers from the same OSM data with a
   // key. Its places are checked against the same tags, and Overpass is still
   // there if Geoapify fails.
-  if (intent.kind === "category" && intent.geoapify) {
+  // A chain ("mcdonalds") the same way, by name across the categories a
+  // chain can be in, keeping only that brand.
+  const geoapifyAsk =
+    intent.kind === "category"
+      ? intent.geoapify
+        ? {
+            categories: intent.geoapify,
+            keep: (tags: Record<string, string>) => matchesCategory(tags, intent),
+          }
+        : null
+      : {
+          categories: BRAND_CATEGORIES,
+          name: intent.text,
+          keep: (tags: Record<string, string>) => matchesBrand(tags, intent.text),
+        };
+  if (geoapifyAsk) {
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
     if (provider.name === "geoapify") {
       try {
-        const res = await fetch(geoapifyPlacesUrl(provider.token, intent.geoapify, at, radiusM), {
-          headers: { "user-agent": UA, accept: "application/json" },
-          signal: AbortSignal.timeout(8_000),
-        });
+        const res = await fetch(
+          geoapifyPlacesUrl(
+            provider.token,
+            geoapifyAsk.categories,
+            at,
+            radiusM,
+            60,
+            geoapifyAsk.name,
+          ),
+          {
+            headers: { "user-agent": UA, accept: "application/json" },
+            signal: AbortSignal.timeout(8_000),
+          },
+        );
         if (res.ok) {
           const elements = geoapifyPlacesToElements(await res.json()).filter((e) =>
-            matchesCategory(e.tags, intent),
+            geoapifyAsk.keep(e.tags),
           );
           const hits = readOverpass(elements, at);
           if (hits.length) return hits;
@@ -458,7 +485,7 @@ function poiToPlace(hit: PoiHit): ParsedPlace {
     lat: hit.lat,
     lon: hit.lon,
     source: "OpenStreetMap",
-    url: mapsPlaceUrl(hit.name, { lat: hit.lat, lon: hit.lon }),
+    url: mapsPlaceUrl(hit.name, { lat: hit.lat, lon: hit.lon }, hit.address),
   };
 }
 
@@ -642,6 +669,18 @@ export const searchPlaces = createServerFn({ method: "POST" })
       areas: Boolean(input.areas),
       ...(area ? { area } : {}),
     });
+    // Near you, a type-ahead that found one or two is not the answer to
+    // "mcdonalds" — there are dozens in a city. The full search, bounded to
+    // around you, runs as well and its branches join the list.
+    if (hits.length > 0 && hits.length < 3 && area && data.at) {
+      try {
+        const more = await nominatimVariants(data.query, area, pace, "venue");
+        const seen = new Set(hits.map((h) => `${h.lat},${h.lon}`));
+        hits = [...hits, ...more.filter((h) => !seen.has(`${h.lat},${h.lon}`))];
+      } catch {
+        // What the type-ahead found still stands.
+      }
+    }
     if (!hits.length && area) {
       try {
         hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");

@@ -53,6 +53,7 @@ await build({
     "@/lib/directions.functions": join(src, "fake-directions.ts"),
     "@/lib/itinerary.functions": join(src, "fake-itinerary.ts"),
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
+    "@/lib/place-details.functions": join(src, "fake-place-details.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
   },
@@ -505,6 +506,12 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     await card.click();
     if ((await page.getByText("may be a different place with the same name", { exact: false }).count()) !== 1)
       throw new Error("the back does not explain the flag");
+    await page.getByRole("button", { name: "Done" }).first().click();
+    // Directions between same-day stops hundreds of km apart are a warning, not a drive.
+    await page.getByRole("button", { name: /^(Get directions|Refresh)$/ }).first().click();
+    await page.waitForTimeout(600);
+    if ((await page.getByText(/km apart on the map on the same day/).count()) === 0)
+      throw new Error("a 280 km same-day leg was shown as a journey");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
@@ -525,6 +532,23 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     if ((await page.getByText(/planned/).count()) !== 0) throw new Error("the stay line still talks about a plan");
     const tracker = page.getByRole("region", { name: "Live journey" });
     if ((await tracker.getByText("Head to Motoyasubashi Pier").count()) !== 0) throw new Error("a journey row is a tracker stop");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
+  const name = "place details: hours on the stop, and a warning when the visit falls outside them";
+  const { page, errors } = await open("default");
+  try {
+    await goTab(page, "Timeline Editor");
+    await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
+    await page.waitForTimeout(400);
+    if ((await page.getByText("Mo-Su 10:00-18:00").count()) === 0) throw new Error("no hours shown");
+    if ((await page.getByText(/Likely closed at 09:30/).count()) === 0) throw new Error("no closed warning for a 09:30 visit");
+    if ((await page.getByRole("link", { name: "hpmmuseum.jp" }).count()) === 0) throw new Error("no website link");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {

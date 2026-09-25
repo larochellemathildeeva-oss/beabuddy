@@ -13,6 +13,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { SwipeRow } from "@/components/day/SwipeRow";
@@ -338,6 +339,19 @@ export function TimelineEntry({
         {detailInput}
       </div>
 
+      {/* Hours, website and phone for a stop on the map, and a warning when
+          its time falls outside the hours. Looked up when the card turns. */}
+      <div className="mt-2 px-0.5">
+        <PlaceFacts
+          name={item.title}
+          lat={item.lat}
+          lon={item.lon}
+          day={item.day_date}
+          time={item.time_label}
+          auto
+        />
+      </div>
+
       {onFold && foldInto && (
         <div className="mt-2 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-2">
           <p className="text-[12px] text-muted-foreground">
@@ -427,7 +441,7 @@ export function TimelineEntry({
         />
         {placed && (
           <a
-            href={mapsPlaceUrl(item.title, item)}
+            href={mapsPlaceUrl(item.title, item, item.address)}
             target="_blank"
             rel="noreferrer"
             className="text-[12px] font-semibold text-primary underline"
@@ -715,13 +729,22 @@ export function TravelConnector({
                   </span>
                 )}
               </p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {showTime && measured
-                  ? `Travelling to ${to.title}`
-                  : showTime
-                    ? "Not measured yet"
-                    : "Directions in Maps"}
-              </p>
+              {leg?.farApartKm ? (
+                // One of the two pins is wrong; a drive between them would be
+                // a confident answer to the wrong question.
+                <p className="mt-0.5 text-[11px] font-semibold text-destructive">
+                  ⚠ {leg.farApartKm} km apart on the map on the same day — one of these stops is
+                  probably in the wrong place. Tap it to check.
+                </p>
+              ) : (
+                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {showTime && measured
+                    ? `Travelling to ${to.title}`
+                    : showTime
+                      ? "Not measured yet"
+                      : "Directions in Maps"}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 self-center">

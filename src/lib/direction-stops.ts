@@ -235,10 +235,22 @@ export function mapsDirUrl(
 export function mapsPlaceUrl(
   name: string,
   point: { lat?: number | null; lon?: number | null } | null | undefined,
+  /** The place's street address, when known: with the name, Maps finds the place itself. */
+  address?: string | null,
 ): string {
-  // Coordinates when there are any, because they are unambiguous; the name
-  // only when there is nothing better, where it is a search rather than a pin.
-  const query = hasCoords(point) ? `${point.lat},${point.lon}` : name.trim();
+  const label = name.trim();
+  const street = address?.trim() ?? "";
+  // Name and street: Maps opens the place — its card, hours, photos — rather
+  // than a dropped pin with a coordinate for a title.
+  if (label && street) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${label}, ${street}`)}`;
+  }
+  // A pin and a name: the name searched at the pin, so the result is labelled
+  // and lands on the place there. A bare "34.88,135.77" is what people saw.
+  if (hasCoords(point) && label) {
+    return `https://maps.google.com/?q=${encodeURIComponent(label)}@${point.lat},${point.lon}`;
+  }
+  const query = hasCoords(point) ? `${point.lat},${point.lon}` : label;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
@@ -275,4 +287,50 @@ export function stopsForDirections(cities: CityStop[], items: TimelineItem[]): D
     });
   }
   return timelineStopsForDirections(items);
+}
+
+/**
+ * Two stops on the same day this far apart, in a straight line, are almost
+ * certainly one wrong pin, not a drive to take. 150 km: a day trip by train
+ * (Hiroshima to Miyajima is 20 km, Kyoto to Nara 35) fits well inside it; a
+ * stop looked up in the wrong city (Kyoto for a Hiroshima lunch, 300+ km)
+ * does not.
+ */
+export const SAME_DAY_FAR_APART_M = 150_000;
+
+/**
+ * For each stop, the pin of the nearest stop on the same day that has one —
+ * the one before it first, then the one after. That is where to look up a
+ * stop with no pin: next to the rest of its day, not in the trip's home
+ * city, which on a multi-city trip is often the wrong place entirely.
+ */
+export function sameDayAnchors(
+  stops: readonly {
+    day_date?: string | null | undefined;
+    lat?: number | null | undefined;
+    lon?: number | null | undefined;
+  }[],
+): ({ lat: number; lon: number } | null)[] {
+  const pin = (i: number) => {
+    const s = stops[i];
+    return s &&
+      typeof s.lat === "number" &&
+      typeof s.lon === "number" &&
+      hasCoords({ lat: s.lat, lon: s.lon })
+      ? { lat: s.lat, lon: s.lon }
+      : null;
+  };
+  return stops.map((stop, i) => {
+    const day = stop.day_date ?? null;
+    if (!day) return null;
+    for (let j = i - 1; j >= 0 && (stops[j]!.day_date ?? null) === day; j--) {
+      const p = pin(j);
+      if (p) return p;
+    }
+    for (let j = i + 1; j < stops.length && (stops[j]!.day_date ?? null) === day; j++) {
+      const p = pin(j);
+      if (p) return p;
+    }
+    return null;
+  });
 }

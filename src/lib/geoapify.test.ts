@@ -189,3 +189,60 @@ test("places come back as OSM elements, tags kept and gaps filled", async () => 
   });
   assert.equal(els[1]?.tags["amenity"], "cafe", "kind taken from the category");
 });
+
+test("place details: hours, website, phone and every name", async () => {
+  const { readPlaceDetails, geoapifyDetailsUrl } = await import("./geoapify.ts");
+  const url = new URL(geoapifyDetailsUrl("K", 34.3915, 132.4523));
+  assert.equal(url.pathname, "/v2/place-details");
+  assert.equal(url.searchParams.get("lat"), "34.3915");
+  const facts = readPlaceDetails({
+    features: [
+      {
+        properties: {
+          feature_type: "details",
+          name: "Hiroshima Peace Memorial Museum",
+          opening_hours: "Mo-Su 08:30-18:00",
+          website: "https://hpmmuseum.jp/",
+          contact: { phone: "+81 82-241-4004" },
+          facilities: { wheelchair: true },
+          datasource: { raw: { name: "広島平和記念資料館", "name:en": "Peace Memorial Museum" } },
+        },
+      },
+    ],
+  });
+  assert.deepEqual(facts, {
+    name: "Hiroshima Peace Memorial Museum",
+    names: ["Hiroshima Peace Memorial Museum", "広島平和記念資料館", "Peace Memorial Museum"],
+    openingHours: "Mo-Su 08:30-18:00",
+    website: "https://hpmmuseum.jp/",
+    phone: "+81 82-241-4004",
+    wheelchair: "yes",
+  });
+  assert.equal(readPlaceDetails({ features: [] }), null);
+  assert.equal(
+    readPlaceDetails({ features: [{ properties: { name: "x", website: "javascript:alert(1)" } }] })
+      ?.website,
+    undefined,
+    "only web links",
+  );
+});
+
+test("static map: numbered pins in order, joined by a line, keyed", async () => {
+  const { geoapifyStaticMapUrl } = await import("./geoapify.ts");
+  const url = new URL(
+    geoapifyStaticMapUrl("K", [
+      { lat: 34.3915, lon: 132.4523 },
+      { lat: 34.3955, lon: 132.4536 },
+    ]),
+  );
+  assert.equal(url.host, "maps.geoapify.com");
+  assert.equal(url.pathname, "/v1/staticmap");
+  const marker = url.searchParams.get("marker")!;
+  assert.match(marker, /^lonlat:132\.452300,34\.391500;.*text:1/);
+  assert.match(marker, /\|lonlat:132\.453600,34\.395500;.*text:2/);
+  assert.equal(
+    url.searchParams.get("geometry")?.split(";")[0],
+    "polyline:132.452300,34.391500,132.453600,34.395500",
+  );
+  assert.equal(url.searchParams.get("apiKey"), "K");
+});

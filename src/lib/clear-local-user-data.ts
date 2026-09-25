@@ -3,6 +3,8 @@ import { clearStoredVaultKeys } from "./vaultCrypto.ts";
 
 /** Same prefix as `DIRECTIONS_KEY_PREFIX` in useOfflineDirections. */
 const DIRECTIONS_KEY_PREFIX = "bea.directions.";
+/** Same prefix as `DAY_MAPS_KEY_PREFIX` in useOfflineDayMaps. */
+const DAY_MAPS_KEY_PREFIX = "bea.daymaps.";
 
 /**
  * Drop this-device leftovers after a cloud erase / account delete.
@@ -34,7 +36,9 @@ export function clearLocalUserData(uid: string) {
     const doomed: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(DIRECTIONS_KEY_PREFIX)) doomed.push(key);
+      if (key?.startsWith(DIRECTIONS_KEY_PREFIX) || key?.startsWith(DAY_MAPS_KEY_PREFIX)) {
+        doomed.push(key);
+      }
     }
     for (const key of doomed) window.localStorage.removeItem(key);
   } catch {

@@ -64,6 +64,6 @@ test("a token with URL-unsafe characters cannot break out of the query", () => {
 test("Geoapify's tiles win when its key is set, with the key kept in the query", () => {
   const url = new URL(tileSourceUrl({ z: 14, x: 4695, y: 6053 }, "pk.abc", "G&K"));
   assert.equal(url.host, "maps.geoapify.com");
-  assert.equal(url.pathname, "/v1/tile/osm-bright/14/4695/6053.png");
+  assert.equal(url.pathname, "/v1/tile/positron/14/4695/6053.png");
   assert.equal(url.searchParams.get("apiKey"), "G&K");
 });

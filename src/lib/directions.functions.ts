@@ -12,6 +12,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   hasCoords,
+  SAME_DAY_FAR_APART_M,
+  sameDayAnchors,
   mapsDirUrl,
   placeQueryCandidates,
   reuseKeyForStop,
@@ -45,6 +47,11 @@ export type RouteLeg = {
   /** True when both ends resolved to the same pin. */
   sameSpot?: boolean;
   /**
+   * Two stops on the same day whose pins are this many km apart — too far to
+   * be a walk or drive anyone planned, so one pin is wrong. Not routed.
+   */
+  farApartKm?: number;
+  /**
    * The router failed, so distance and duration are worked out from the
    * straight line between the pins (see route-estimate.ts). No steps.
    */
@@ -58,6 +65,7 @@ export type RouteLeg = {
 type Stop = {
   title: string;
   address?: string | null;
+  day_date?: string | null;
   lat?: number | null;
   lon?: number | null;
 };
@@ -238,6 +246,7 @@ const BuildRoutesInput = z.object({
       z.object({
         title: z.string().trim().min(1).max(200),
         address: z.string().max(300).nullable().optional(),
+        day_date: z.string().max(20).nullable().optional(),
         lat: coord,
         lon: coord,
       }),
@@ -306,8 +315,8 @@ export const buildRoutes = createServerFn({ method: "POST" })
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
     let box: AreaBox | null = null;
-    const lookup = async (query: string) => {
-      const cacheKey = query.toLowerCase();
+    const lookup = async (query: string, within: AreaBox | null = box) => {
+      const cacheKey = `${query.toLowerCase()}|${within ? boxViewbox(within) : ""}`;
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
       // The provider's own pace, honouring the minute cap as well as the gap,
@@ -319,7 +328,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
       }
       lookupsLeft -= 1;
       sent.push(Date.now());
-      const found = await geocode(provider, query, box);
+      const found = await geocode(provider, query, within);
       queryCache.set(cacheKey, found);
       return found;
     };
@@ -332,7 +341,10 @@ export const buildRoutes = createServerFn({ method: "POST" })
       if (areaBox) box = widenBox(areaBox);
     }
     if (!box && data.near) box = boxAround(data.near);
-    for (const stop of data.stops) {
+    // Where each stop's day already is on the map: a stop without a pin is
+    // looked up next to the rest of its day, not in the trip's home city.
+    const anchors = sameDayAnchors(data.stops);
+    for (const [index, stop] of data.stops.entries()) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
         remembered.set(reuseKeyForStop(stop), pin);
@@ -357,6 +369,30 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const trusted = (hit: GeoFound | null) =>
         hit && autoPinTrusted({ title: stop.title, address: stop.address }, hit) ? hit : null;
       let found: GeoFound | null = null;
+      // The day's own place first: a pin on this day before or after this
+      // stop, or one found earlier in this request. A Hiroshima lunch on a
+      // trip set to Kyoto was found in Kyoto, 370 km from the rest of its day.
+      const earlier = (() => {
+        for (let j = index - 1; j >= 0; j--) {
+          if ((data.stops[j]!.day_date ?? null) !== (stop.day_date ?? null)) break;
+          if (points[j]) return points[j]!;
+        }
+        return null;
+      })();
+      const dayAnchor = stop.day_date ? (anchors[index] ?? earlier) : null;
+      if (dayAnchor) {
+        const near = boxAround(dayAnchor);
+        for (const name of names) {
+          found = trusted(await lookup(name, near));
+          if (found) break;
+        }
+        // Not near the rest of its day: left unplaced — Maps by name — rather
+        // than looked for in the trip's home city, where it is not.
+        const pin = found ? { lat: found.lat, lon: found.lon } : null;
+        if (pin) remembered.set(reuseKeyForStop(stop), pin);
+        points.push(pin);
+        continue;
+      }
       for (const name of names) {
         const q = region ? `${name}, ${region}` : name;
         found = trusted(await lookup(q));
@@ -395,6 +431,17 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       const straight = haversine(a, b);
+      // Same day, hundreds of km apart: one pin is wrong. Routing it gave a
+      // 4½-hour drive between a lunch and a food crawl on the same island.
+      const sameDay =
+        Boolean(data.stops[i]!.day_date) && data.stops[i]!.day_date === data.stops[i + 1]!.day_date;
+      if (sameDay && straight > SAME_DAY_FAR_APART_M) {
+        legs.push({
+          ...mapsOnlyLeg(fromName, toName, area, { from: a, to: b }),
+          farApartKm: Math.round(straight / 1000),
+        });
+        continue;
+      }
       if (straight < 25) {
         legs.push({
           from: fromName,

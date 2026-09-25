@@ -91,8 +91,13 @@ export function StopCard({
       </span>
 
       <span
-        className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold tabular-nums ${
-          selected ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+        // The same terracotta disc as the pin it matches on the map.
+        className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors ${
+          selected
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : placed
+              ? "bg-primary/12 text-primary"
+              : "text-muted-foreground"
         }`}
       >
         {index + 1}
@@ -104,7 +109,7 @@ export function StopCard({
     <article
       id={`stop-${item.id}`}
       className={`overflow-hidden rounded-2xl border bg-card transition-colors ${
-        selected ? "border-primary ring-2 ring-primary/25" : "border-border/70"
+        selected ? "border-primary/45 shadow-sm ring-1 ring-primary/15" : "border-border/60"
       }`}
     >
       {selectable ? (
@@ -144,7 +149,7 @@ export function StopCard({
               )}
               <div className="flex flex-wrap gap-2">
                 <a
-                  href={mapsPlaceUrl(item.title, { lat: item.lat, lon: item.lon })}
+                  href={mapsPlaceUrl(item.title, { lat: item.lat, lon: item.lon }, item.address)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-border px-3 text-[13px] font-semibold"

@@ -2,14 +2,14 @@ import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import type { DayMapPin } from "@/lib/day-map";
-import { legLabels } from "@/lib/trip-map";
+import { curvedLeg } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
 
 /** Close enough to read street names, not so close one stop fills the frame. */
 const SINGLE_STOP_ZOOM = 15;
 /** A fitted day stops here, so two stops across the road do not zoom to 19. */
 const FIT_MAX_ZOOM = 16;
-const FIT_PADDING: [number, number] = [36, 36];
+const FIT_PADDING: [number, number] = [44, 44];
 /** Closer to the border than this and a selected pin is brought into view. Half a pin. */
 const PIN_EDGE_MARGIN = 16;
 
@@ -19,12 +19,19 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+/**
+ * Warm terracotta discs, numbered. The chosen one is larger and deeper, and
+ * that is all it does — no bounce, no pulse, nothing that says "GPS".
+ */
 function pinClass(selected: boolean): string {
-  return `grid size-[30px] place-items-center rounded-full border-2 text-[12.5px] font-bold tabular-nums shadow-md transition-transform ${
-    selected
-      ? "scale-110 border-card bg-primary text-primary-foreground"
-      : "border-primary bg-card text-primary"
-  }`;
+  return selected
+    ? "journal-pin journal-pin--on grid place-items-center rounded-full font-semibold tabular-nums"
+    : "journal-pin grid place-items-center rounded-full font-semibold tabular-nums";
+}
+
+/** The chosen place's name beside its pin, set like a caption in a guide. */
+function nameTag(title: string, toLeft: boolean): string {
+  return `<span class="journal-tag${toLeft ? " journal-tag--left" : ""}">${escapeHtml(title)}</span>`;
 }
 
 function escapeHtml(text: string): string {
@@ -81,7 +88,9 @@ export function DayMap({
       if (cancelled || !container.current) return;
 
       const m = L.map(container.current, {
-        zoomControl: true,
+        // Zoom stays (a map you cannot zoom is a picture) but sits quietly
+        // in the corner; everything else Leaflet offers is left off.
+        zoomControl: false,
         attributionControl: true,
         minZoom: TILE_ZOOM_MIN,
         maxZoom: TILE_ZOOM_MAX,
@@ -90,6 +99,7 @@ export function DayMap({
         scrollWheelZoom: false,
       });
       m.attributionControl.setPrefix(false);
+      L.control.zoom({ position: "topright" }).addTo(m);
       L.tileLayer(TILE_URL_TEMPLATE, {
         minZoom: TILE_ZOOM_MIN,
         maxZoom: TILE_ZOOM_MAX,
@@ -152,30 +162,31 @@ export function DayMap({
     if (!ready || !L || !m) return;
 
     const layer = L.layerGroup().addTo(m);
-    const legs = L.layerGroup().addTo(m);
     const byId = markers.current;
 
-    if (pins.length > 1) {
-      L.polyline(
-        pins.map((p) => [p.lat, p.lon] as [number, number]),
-        {
-          className: "stroke-primary",
-          weight: 2.5,
-          opacity: 0.85,
-          dashArray: "6 5",
-          lineCap: "round",
-          lineJoin: "round",
-          interactive: false,
-        },
-      ).addTo(layer);
+    // The day as a story: each stop joined to the next by a soft dotted arc
+    // in the accent colour. Not the streets, not a route to follow — the
+    // itinerary is the source of truth, and this only says "then here".
+    for (let i = 0; i < pins.length - 1; i++) {
+      L.polyline(curvedLeg(pins[i]!, pins[i + 1]!, i), {
+        className: "journal-route",
+        color: "#d96b43",
+        weight: 2.5,
+        opacity: 0.9,
+        dashArray: "0.5 7",
+        lineCap: "round",
+        lineJoin: "round",
+        interactive: false,
+        smoothFactor: 0,
+      }).addTo(layer);
     }
 
     for (const pin of pins) {
       const marker = L.marker([pin.lat, pin.lon], {
         icon: L.divIcon({
           className: "",
-          iconSize: [30, 30],
-          iconAnchor: [15, 15],
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
           // The number is an integer this file made, but escape it anyway:
           // this string becomes markup.
           html: `<span class="${pinClass(false)}">${escapeHtml(String(pin.number))}</span>`,
@@ -200,50 +211,45 @@ export function DayMap({
       byId.set(pin.id, marker);
     }
 
-    // How far apart each pair is, placed with the same helper the old map
-    // used. It works in screen pixels, which change with every zoom, so the
-    // labels are placed again whenever the zoom settles.
-    const drawLegs = () => {
-      legs.clearLayers();
-      if (pins.length < 2) return;
-      const points = pins.map((p) => {
-        const pt = m.latLngToLayerPoint([p.lat, p.lon]);
-        return [pt.x, pt.y] as const;
-      });
-      for (const leg of legLabels(pins, points)) {
-        L.marker(m.layerPointToLatLng([leg.x, leg.y]), {
-          interactive: false,
-          keyboard: false,
-          icon: L.divIcon({
-            className: "",
-            iconSize: [0, 0],
-            html: `<span class="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-card/90 px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground shadow-sm">${escapeHtml(leg.label)}</span>`,
-          }),
-        }).addTo(legs);
-      }
-    };
-    m.on("zoomend", drawLegs);
-    drawLegs();
-
     return () => {
-      m.off("zoomend", drawLegs);
       layer.remove();
-      legs.remove();
       byId.clear();
     };
   }, [ready, drawn]); // eslint-disable-line react-hooks/exhaustive-deps -- `drawn` stands for `pins`
 
   // Mark the chosen pin by restyling it in place. Redrawing it would move
   // keyboard focus off the pin someone just pressed Enter on.
+  const tag = useRef<Leaflet.Marker | null>(null);
   useEffect(() => {
-    if (!ready) return;
+    const L = leaflet.current;
+    const m = map.current;
+    if (!ready || !L || !m) return;
     for (const [id, marker] of markers.current) {
       const on = id === selectedId;
       const face = marker.getElement()?.firstElementChild;
       if (face) face.className = pinClass(on);
       marker.setZIndexOffset(on ? 1000 : 0);
     }
-  }, [ready, drawn, selectedId]);
+    // Only the chosen place is named on the map; the rest are numbers that
+    // match the list. A name on every pin is a map product, not a guide.
+    const pin = pins.find((p) => p.id === selectedId);
+    if (pin) {
+      // On the side with room, so a pin near the right edge is not named
+      // off the map.
+      const at = m.latLngToContainerPoint([pin.lat, pin.lon]);
+      const toLeft = at.x > m.getSize().x * 0.55;
+      tag.current = L.marker([pin.lat, pin.lon], {
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 900,
+        icon: L.divIcon({ className: "", iconSize: [0, 0], html: nameTag(pin.title, toLeft) }),
+      }).addTo(m);
+    }
+    return () => {
+      tag.current?.remove();
+      tag.current = null;
+    };
+  }, [ready, drawn, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- `drawn` stands for `pins`
 
   // Bring the chosen stop into view without losing the zoom the reader chose.
   useEffect(() => {
@@ -270,7 +276,7 @@ export function DayMap({
     <div
       role="region"
       aria-label={label}
-      className={`relative isolate overflow-hidden rounded-2xl border border-border/70 bg-elevated ${heightClass}`}
+      className={`journal-map relative isolate overflow-hidden rounded-3xl ${heightClass}`}
     >
       <div ref={container} className="absolute inset-0" />
       {children}
