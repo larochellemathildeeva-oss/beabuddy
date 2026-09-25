@@ -11,6 +11,7 @@ import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
+import type { DayOutcome } from "@/lib/route-optimize";
 import { foldTravelLegs, normalizeClock } from "@/lib/import-stop";
 
 /**
@@ -755,6 +756,8 @@ export type OptimizeTravel = {
   beforeSec: number;
   afterSec: number;
   mode: "walk" | "drive" | "mixed";
+  /** The new arrangement's journeys on real routes, when every one was checked. */
+  checkedSec?: number;
 };
 
 export type OptimizeItinerary = z.infer<typeof OptimizeSchema> & {
@@ -762,7 +765,9 @@ export type OptimizeItinerary = z.infer<typeof OptimizeSchema> & {
   travel?: OptimizeTravel | null;
   /** How many days were put in order around opening hours. */
   plannedDays?: number;
-  /** Today's share of place lookups was spent, so opening hours were not checked. */
+  /** Days put in order again because a real route was much longer than the map suggested. */
+  recheckedDays?: number;
+  /** Today's share of place and route lookups was spent, so some checks were skipped. */
   limited?: boolean;
 };
 export type OptimizeSourceItem = z.infer<typeof OptimizeItemIn>;
@@ -802,8 +807,19 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
     // one lookup, and only for the goal that uses them; any failure there
     // leaves Optimize as it was, without hours.
     const planHours = data.goals.includes("hours");
-    const { estimatedTables, neighbourLines, planDays, travelTimeFrom, travelTotal } =
-      await import("@/lib/route-optimize");
+    const {
+      checkedTotal,
+      estimatedTables,
+      isSurprise,
+      legKey,
+      legsOf,
+      minutesLabel,
+      neighbourLines,
+      planDays,
+      travelTimeFrom,
+      travelTotal,
+      withChecked,
+    } = await import("@/lib/route-optimize");
     const tables = estimatedTables(items);
     const listed = planHours
       ? await import("@/lib/geo-provider.server")
@@ -815,7 +831,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       : null;
     const hours = listed?.hours ?? new Map<string, string>();
     // Today's share of Geoapify credits ran out before the hours were looked up.
-    const limited = Boolean(listed?.limited);
+    const hoursLimited = Boolean(listed?.limited);
     const nearest = neighbourLines(tables);
 
     const prompt = [
@@ -899,10 +915,9 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       // The model chose the days; each one is then put in its best order
       // around opening hours, on the estimated travel times. Days with fewer
       // than two stops keep the model's order.
-      let plannedDays = 0;
-      if (planHours) {
-        const asStops = rearranged.map((row) => ({ ...byId.get(row.id)!, ...row }));
-        const outcomes = planDays(asStops, asStops, hours, travelTimeFrom(tables));
+      const asStops = () => rearranged.map((row) => ({ ...byId.get(row.id)!, ...row }));
+      const applyDays = (outcomes: Map<string, DayOutcome>): number => {
+        let applied = 0;
         for (const [date, outcome] of outcomes) {
           const slots = rearranged.flatMap((row, i) => (row.day_date === date ? [i] : []));
           const rows = new Map(slots.map((i) => [rearranged[i]!.id, rearranged[i]!]));
@@ -924,9 +939,68 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
                   : row.reason),
             };
           });
-          plannedDays += 1;
+          applied += 1;
         }
         rearranged.forEach((row, i) => (row.position = i));
+        return applied;
+      };
+      const estimate = travelTimeFrom(tables);
+      let plannedDays = 0;
+      if (planHours) {
+        const stops = asStops();
+        plannedDays = applyDays(planDays(stops, stops, hours, estimate));
+      }
+
+      // Check the journeys the plan actually makes on real routes — one
+      // credit each, not a matrix of every pair. Where the map misled badly
+      // (a river, a motorway, a hill), the day is put in order again on the
+      // real times, and only its new journeys are checked.
+      let checked = new Map<string, number>();
+      let recheckedDays = 0;
+      let checkLimited = false;
+      const geo = await import("@/lib/geo-provider.server")
+        .then((m) => m.geoProvider())
+        .catch(() => null);
+      if (geo) {
+        const routes = await import("@/lib/route-optimize.server");
+        const checkBy = Date.now() + 15_000;
+        const first = await routes
+          .checkLegs(geo, legsOf(tables, asStops()), checkBy)
+          .catch(() => null);
+        checked = first?.times ?? checked;
+        checkLimited = Boolean(first?.limited);
+        const surprised = legsOf(tables, asStops()).filter((leg) => {
+          const real = checked.get(legKey(leg.from.id, leg.to.id));
+          return real != null && isSurprise(leg.estimate, real);
+        });
+        if (surprised.length) {
+          const days = new Set(surprised.map((leg) => leg.day));
+          if (planHours) {
+            const stops = asStops();
+            const again = planDays(
+              stops.filter((s) => s.day_date != null && days.has(s.day_date)),
+              stops,
+              hours,
+              withChecked(estimate, checked),
+            );
+            recheckedDays = applyDays(again);
+            const second = await routes
+              .checkLegs(geo, legsOf(tables, asStops()), checkBy)
+              .catch(() => null);
+            for (const [k, v] of second?.times ?? []) checked.set(k, v);
+          }
+          // Whatever is still much longer than it looks is said on the stop.
+          for (const leg of legsOf(tables, asStops())) {
+            const real = checked.get(legKey(leg.from.id, leg.to.id));
+            if (real == null || !isSurprise(leg.estimate, real)) continue;
+            const i = rearranged.findIndex((row) => row.id === leg.to.id);
+            if (i < 0) continue;
+            rearranged[i] = {
+              ...rearranged[i]!,
+              reason: `Getting here takes about ${minutesLabel(real)} — longer than it looks on the map.`,
+            };
+          }
+        }
       }
 
       // Compared only like for like: a stop left alone on its day is one
@@ -934,12 +1008,14 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       const before = travelTotal(tables, items);
       const after = travelTotal(tables, rearranged);
       const modes = new Set(tables.map((t) => t.mode));
+      const checkedSec = checkedTotal(legsOf(tables, asStops()), checked);
       const travel =
         before.pairs > 0 && after.pairs === before.pairs
           ? {
               beforeSec: before.seconds,
               afterSec: after.seconds,
               mode: modes.size === 1 ? [...modes][0]! : ("mixed" as const),
+              ...(checkedSec != null ? { checkedSec } : {}),
             }
           : null;
 
@@ -949,7 +1025,8 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
         items: rearranged,
         travel,
         plannedDays,
-        limited,
+        recheckedDays,
+        limited: hoursLimited || checkLimited,
       };
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {

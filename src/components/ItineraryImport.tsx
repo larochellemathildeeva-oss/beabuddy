@@ -1272,10 +1272,16 @@ function OptimizePanel({
           {plan.travel && <p className="text-[13px] text-foreground">{travelLine(plan.travel)}</p>}
           {plan.limited && (
             <p className="text-[12px] text-muted-foreground">
-              Béa has used today&apos;s share of place lookups, so opening hours weren&apos;t
-              checked this time. Try again tomorrow.
+              Béa has used today&apos;s share of place and route lookups, so some of this
+              wasn&apos;t checked. Try again tomorrow.
             </p>
           )}
+          {plan.recheckedDays ? (
+            <p className="text-[12px] text-muted-foreground">
+              {plan.recheckedDays === 1 ? "One day was" : `${plan.recheckedDays} days were`} put in
+              order again: a real route was much longer than it looked on the map.
+            </p>
+          ) : null}
           {plan.plannedDays ? (
             <p className="text-[12px] text-muted-foreground">
               {plan.plannedDays === 1 ? "One day was" : `${plan.plannedDays} days were`} ordered
@@ -1321,14 +1327,17 @@ function OptimizePanel({
  * "Getting between stops: about 3 h 10 min on foot → about 2 h 5 min."
  * Estimated from the pins of each day, so the claim that a plan is closer
  * together is something the reader can see — and says "about", because it
- * is a distance on the map, not a route.
+ * is a distance on the map, not a route. When every journey of the new plan
+ * was checked on the router, its real total follows.
  */
 function travelLine(travel: OptimizeTravel): string {
   const how = travel.mode === "walk" ? " on foot" : travel.mode === "drive" ? " by car" : "";
   const was = minutesLabel(travel.beforeSec);
   const now = minutesLabel(travel.afterSec);
-  if (was === now) return `Getting between stops: about ${now}${how}, as before.`;
-  return `Getting between stops: about ${was}${how} → about ${now}.`;
+  const real =
+    travel.checkedSec != null ? ` Checked on real routes: ${minutesLabel(travel.checkedSec)}.` : "";
+  if (was === now) return `Getting between stops: about ${now}${how}, as before.${real}`;
+  return `Getting between stops: about ${was}${how} → about ${now}.${real}`;
 }
 
 function ComparePanel() {

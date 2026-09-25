@@ -64,6 +64,13 @@ export const WALK_SPAN_M = 4_000;
 export const PLANNER_MAX_JOBS = 12;
 /** A short hop is walked, even in a place whose stops are timed by car. */
 export const WALK_HOP_M = 1_500;
+/**
+ * Directions walk a journey shorter than this and drive a longer one
+ * (directions.functions.ts). The route check asks the router the same way,
+ * so the journeys it buys are the ones directions will want — and are free
+ * to them through the shared cache.
+ */
+export const DIRECTIONS_WALK_M = 3_000;
 
 export function distanceM(
   a: { lat: number; lon: number },
@@ -212,6 +219,84 @@ export function travelTotal(
     prev = { ...here, day: stop.day_date };
   }
   return { seconds, pairs };
+}
+
+/** One journey in a day: a pinned stop to the next pinned stop, in the same place. */
+export type Leg = {
+  day: string;
+  from: Place & { id: string };
+  to: Place & { id: string };
+  mode: TravelMode;
+  /** The map's estimate, in seconds. */
+  estimate: number;
+};
+
+export const legKey = (from: string, to: string) => `${from}>${to}`;
+
+/**
+ * The journeys a trip makes in this order, day by day — the same pairs
+ * `travelTotal` counts — each with how directions would travel it: walked
+ * under `DIRECTIONS_WALK_M`, driven beyond.
+ */
+export function legsOf(tables: readonly TravelTable[], ordered: readonly OptStop[]): Leg[] {
+  const where = new Map<string, { t: TravelTable; i: number }>();
+  for (const t of tables) t.ids.forEach((id, i) => where.set(id, { t, i }));
+  const legs: Leg[] = [];
+  let prev: { t: TravelTable; i: number; day: string; stop: Pinned } | null = null;
+  for (const stop of ordered) {
+    const here = where.get(stop.id);
+    if (!here || !stop.day_date || !isPinned(stop)) continue;
+    if (prev && prev.day === stop.day_date && prev.t === here.t) {
+      const estimate = here.t.seconds[prev.i]?.[here.i];
+      if (estimate != null) {
+        const from = { id: prev.stop.id, lat: prev.stop.lat, lon: prev.stop.lon };
+        const to = { id: stop.id, lat: stop.lat, lon: stop.lon };
+        legs.push({
+          day: stop.day_date,
+          from,
+          to,
+          mode: distanceM(from, to) < DIRECTIONS_WALK_M ? "walk" : "drive",
+          estimate,
+        });
+      }
+    }
+    prev = { ...here, day: stop.day_date, stop };
+  }
+  return legs;
+}
+
+/** A checked journey this much longer than its estimate means the map misled. */
+export const SURPRISE_RATIO = 1.5;
+export const SURPRISE_MIN_SEC = 10 * 60;
+
+/** Whether the real route is so much longer than the map suggested that the day should be looked at again. */
+export function isSurprise(estimate: number, real: number): boolean {
+  return real > estimate * SURPRISE_RATIO && real - estimate > SURPRISE_MIN_SEC;
+}
+
+/** Travel times with the checked journeys put in, either way round. */
+export function withChecked(travel: TravelTime, checked: ReadonlyMap<string, number>): TravelTime {
+  return (from, to) => {
+    if (from.id && to.id) {
+      const real = checked.get(legKey(from.id, to.id)) ?? checked.get(legKey(to.id, from.id));
+      if (real != null) return real;
+    }
+    return travel(from, to);
+  };
+}
+
+/** The journeys' total on real routes, or null unless every one was checked. */
+export function checkedTotal(
+  legs: readonly Leg[],
+  checked: ReadonlyMap<string, number>,
+): number | null {
+  let seconds = 0;
+  for (const leg of legs) {
+    const real = checked.get(legKey(leg.from.id, leg.to.id));
+    if (real == null) return null;
+    seconds += real;
+  }
+  return legs.length ? seconds : null;
 }
 
 const FIXED_KINDS = new Set(["flight", "hotel", "reservation", "lodging"]);

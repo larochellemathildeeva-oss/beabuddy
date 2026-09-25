@@ -9,7 +9,12 @@ import {
   dayRequest,
   isMovable,
   lodgingFor,
+  checkedTotal,
   estimatedTables,
+  isSurprise,
+  legKey,
+  legsOf,
+  withChecked,
   planDays,
   solveDay,
   travelTimeFrom,
@@ -365,4 +370,60 @@ test("plan days: each dated day ordered around its hours, undated stops left alo
     ["temple", "museum"],
   );
   assert.equal(day.order[1]!.time_label, "13:00");
+});
+
+test("journeys: consecutive pinned stops per day, walked when short, driven across town", () => {
+  const far = { lat: 35.0394, lon: 135.7292 }; // ~5 km from KYOTO
+  const items = [
+    stop("a", { ...KYOTO }),
+    stop("note", { kind: "note", lat: null, lon: null }),
+    stop("b", { ...KYOTO_NEAR }),
+    stop("c", { ...far }),
+    stop("d", { ...KYOTO, day_date: "2026-10-08" }),
+    stop("e", { ...KYOTO_NEAR, day_date: null }),
+  ];
+  const tables = estimatedTables(items);
+  const legs = legsOf(tables, items);
+  assert.deepEqual(
+    legs.map((l) => [l.from.id, l.to.id, l.mode]),
+    [
+      ["a", "b", "walk"],
+      ["b", "c", "drive"],
+    ],
+  );
+  assert.ok(legs.every((l) => l.estimate > 0 && l.day === "2026-10-07"));
+});
+
+test("a real route much longer than the map suggests is a surprise; a little longer is not", () => {
+  assert.equal(isSurprise(600, 1800), true); // 10 min on the map, 30 real
+  assert.equal(isSurprise(600, 1000), false); // longer, but not by much
+  assert.equal(isSurprise(60, 400), false); // triple, but only six minutes
+});
+
+test("checked journeys replace the estimate, either way round", () => {
+  const travel = withChecked(() => 100, new Map([[legKey("a", "b"), 900]]));
+  const a = { id: "a", lat: 0, lon: 0 };
+  const b = { id: "b", lat: 0, lon: 0 };
+  const c = { id: "c", lat: 0, lon: 0 };
+  assert.equal(travel(a, b), 900);
+  assert.equal(travel(b, a), 900);
+  assert.equal(travel(a, c), 100);
+});
+
+test("the real total is given only when every journey was checked", () => {
+  const leg = (from: string, to: string) => ({
+    day: "d",
+    from: { id: from, lat: 0, lon: 0 },
+    to: { id: to, lat: 0, lon: 0 },
+    mode: "walk" as const,
+    estimate: 60,
+  });
+  const legs = [leg("a", "b"), leg("b", "c")];
+  const both = new Map([
+    [legKey("a", "b"), 300],
+    [legKey("b", "c"), 420],
+  ]);
+  assert.equal(checkedTotal(legs, both), 720);
+  assert.equal(checkedTotal(legs, new Map([[legKey("a", "b"), 300]])), null);
+  assert.equal(checkedTotal([], both), null);
 });

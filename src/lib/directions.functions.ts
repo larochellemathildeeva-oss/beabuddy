@@ -19,13 +19,12 @@ import {
   reuseKeyForStop,
 } from "@/lib/direction-stops";
 import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
+import { DIRECTIONS_WALK_M } from "@/lib/route-optimize";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
   nextDelayMs,
   readGeoJson,
-  routeProfile,
-  routeUrl,
   searchUrl,
   type GeoProvider,
 } from "@/lib/geo-endpoints";
@@ -153,20 +152,6 @@ async function geocode(
   }
 }
 
-function stepText(s: {
-  maneuver?: { type?: string; modifier?: string };
-  name?: string;
-  instruction?: string;
-}): string {
-  const type = s.maneuver?.type ?? "continue";
-  const mod = s.maneuver?.modifier ? ` ${s.maneuver.modifier}` : "";
-  const name = s.name ? ` onto ${s.name}` : "";
-  if (s.instruction) return s.instruction;
-  if (type === "arrive") return "Arrive at your destination";
-  if (type === "depart") return `Head off${name}`;
-  return `${type}${mod}${name}`.replace(/^\w/, (c) => c.toUpperCase());
-}
-
 /**
  * One journey from the router. A walk the router will not route — some
  * hosted OSRM services offer driving only — is asked again as a drive and
@@ -194,44 +179,15 @@ async function leg(
 /** 4.5 km/h, the pace route-estimate.ts assumes too. */
 const WALK_METERS_PER_SECOND = 4500 / 3600;
 
+/** The router's answer, shared with Optimize's route check through one cache. */
 async function routeOnce(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
   mode: "walking" | "driving",
 ): Promise<{ distance: number; duration: number; steps: RouteStep[] } | null> {
-  // "foot" on the demo router, "walking" on LocationIQ — the same mode under
-  // two names, and the wrong one 400s every walking leg without saying so.
-  const url = routeUrl(provider, routeProfile(provider, mode), a, b);
-  try {
-    const res = await fetch(url, {
-      headers: { "User-Agent": UA },
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) return null;
-    const json = (await readGeoJson(provider, "route", res)) as {
-      routes?: {
-        distance: number;
-        duration: number;
-        legs: {
-          steps: {
-            distance: number;
-            name?: string;
-            instruction?: string;
-            maneuver?: { type?: string; modifier?: string };
-          }[];
-        }[];
-      }[];
-    };
-    const route = json.routes?.[0];
-    if (!route) return null;
-    const steps: RouteStep[] = (route.legs[0]?.steps ?? [])
-      .map((s) => ({ instruction: stepText(s), distance: Math.round(s.distance) }))
-      .filter((s) => s.distance > 0 || s.instruction.startsWith("Arrive"));
-    return { distance: Math.round(route.distance), duration: Math.round(route.duration), steps };
-  } catch {
-    return null;
-  }
+  const { routeOnce: route } = await import("@/lib/route-legs.server");
+  return route(provider, a, b, mode);
 }
 
 const coord = z.preprocess((value) => {
@@ -464,7 +420,9 @@ export const buildRoutes = createServerFn({ method: "POST" })
         });
         continue;
       }
-      const mode: "walking" | "driving" = straight < 3000 ? "walking" : "driving";
+      // The same cut-off Optimize's route check uses, so the journeys it
+      // checked are the ones found in the shared cache here.
+      const mode: "walking" | "driving" = straight < DIRECTIONS_WALK_M ? "walking" : "driving";
       if (legsLeft <= 0 || Date.now() > deadline) {
         legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a, to: b, mode }));
         continue;

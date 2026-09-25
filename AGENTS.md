@@ -60,17 +60,24 @@ order:
    results, which is what saved pins are. It answers in its own shapes;
    `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
    callers read every answer through `readGeoJson`.
-   Optimize makes one Geoapify-only lookup: **Place Details** for opening
-   hours (shared with the stop card through `place-facts.server.ts`), only
-   for the "Open when you get there" goal, one credit per place not seen
-   before. Travel times between stops are **estimated from the pins**
-   (`estimatedTables` in `route-optimize.ts`), and each day is ordered by
-   Béa's own exact solver (`solveDay`), both pure, tested and free. Geoapify's
-   **Route Matrix and Route Planner are deliberately not used**: they cost
-   locations × min(locations, 10) credits, and a single Optimize could spend
-   a sixth of the day. Hours lookups are capped per run (`HOURS_LOOKUP_MAX`),
-   cached in process, and reserved against a daily ceiling,
-   `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts`, through the
+   Optimize plans on travel times **estimated from the pins**
+   (`estimatedTables` in `route-optimize.ts`) and orders each day with Béa's
+   own exact solver (`solveDay`), both pure, tested and free. It then spends
+   credits on two things only: **checking the journeys the plan actually
+   makes** on the Routing API (`checkLegs` in `route-optimize.server.ts`, one
+   credit per journey, at most `CHECK_MAX_LEGS` new ones a run — a day whose
+   real route is much longer than the map said is ordered again on the real
+   times). Journeys go through one cache shared with directions
+   (`route-legs.server.ts`), asked the same way (`DIRECTIONS_WALK_M`), so a
+   journey checked by Optimize is free when its directions are kept, and the
+   other way round. The other spend is **Place Details** opening hours for
+   the "Open when you get there" goal (one credit per new place,
+   `HOURS_LOOKUP_MAX`, shared with the stop card through
+   `place-facts.server.ts`). Geoapify's **Route Matrix and
+   Route Planner are deliberately not used**: they cost locations ×
+   min(locations, 10) credits, where checking the chosen route costs one per
+   journey. Both lookups are cached in process and reserved against a daily
+   ceiling, `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts`, through the
    `geo_credit_usage` migration. That migration is applied by hand; until it
    is, the ceiling is skipped with one warning in the log.
 2. `LOCATIONIQ_TOKEN` set: LocationIQ, which speaks Nominatim's and OSRM's
