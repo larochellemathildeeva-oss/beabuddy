@@ -346,12 +346,24 @@ function ImportPanel({
       for (const hit of result.placed) {
         const row = parsed[hit.index];
         if (!row) continue;
-        const { confidence, reason } = scoreMatch({
-          title: row.title,
-          label: hit.label ?? null,
-          category: hit.category ?? null,
-          kind: hit.kind ?? null,
-        });
+        // Scored against the stop's venue as well as its title: "Arrive
+        // Hiroshima Station" is about the station, and the lookup was made by
+        // the venue name when the plan gave one.
+        const scored = [row.title, row.place, row.address]
+          .filter((name): name is string => Boolean(name && name.trim()))
+          .map((title) =>
+            scoreMatch({
+              title,
+              label: hit.label ?? null,
+              category: hit.category ?? null,
+              kind: hit.kind ?? null,
+              alsoNamed: hit.alsoNamed ?? null,
+            }),
+          );
+        const rank = { high: 2, medium: 1, low: 0 } as const;
+        const { confidence, reason } = scored.reduce((best, next) =>
+          rank[next.confidence] > rank[best.confidence] ? next : best,
+        );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,

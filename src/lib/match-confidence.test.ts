@@ -64,3 +64,66 @@ test("tallyConfidence counts what needs a look", () => {
   const t = tallyConfidence(["high", "high", "medium", "low", "high"]);
   assert.deepEqual(t, { high: 3, medium: 1, low: 1, needsLook: 2 });
 });
+
+test("a background pin is saved only when it plausibly is the stop", async () => {
+  const { autoPinTrusted } = await import("./match-confidence.ts");
+  // The right place, by name.
+  assert.equal(
+    autoPinTrusted(
+      { title: "Lunch: Kakiya" },
+      { label: "Kakiya, Miyajimacho, Hatsukaichi", category: "amenity", kind: "restaurant" },
+    ),
+    true,
+  );
+  // A namesake park for a restaurant: not saved.
+  assert.equal(
+    autoPinTrusted(
+      { title: "Oyster lunch" },
+      { label: "Momijidani Park, Miyajima", category: "leisure", kind: "park" },
+    ),
+    false,
+  );
+  // Found by its street address: the title does not echo, the address does.
+  assert.equal(
+    autoPinTrusted(
+      { title: "Morning treat by the water", address: "310 Rue de la Commune E" },
+      {
+        label: "310, Rue de la Commune Est, Vieux-Montréal, Montréal",
+        category: "place",
+        kind: "house",
+      },
+    ),
+    true,
+  );
+  // A whole neighbourhood for a café: not saved.
+  assert.equal(
+    autoPinTrusted(
+      { title: "Mandy's" },
+      { label: "Old Montreal, Montréal", category: "place", kind: "neighbourhood" },
+    ),
+    false,
+  );
+});
+
+test("a place labelled in its own script matches through its other names", () => {
+  const station = {
+    label: "広島駅, 広島駅南北自由通路",
+    category: "railway",
+    kind: "station",
+  };
+  assert.equal(scoreMatch({ title: "Arrive Hiroshima Station", ...station }).confidence, "low");
+  assert.equal(
+    scoreMatch({
+      title: "Arrive Hiroshima Station",
+      ...station,
+      alsoNamed: ["広島駅", "Hiroshima Station", "ひろしまえき"],
+    }).confidence,
+    "high",
+  );
+  // Other names that do not echo change nothing.
+  assert.equal(
+    scoreMatch({ title: "Oyster lunch", ...station, alsoNamed: ["広島駅", "Hiroshima Station"] })
+      .confidence,
+    "low",
+  );
+});

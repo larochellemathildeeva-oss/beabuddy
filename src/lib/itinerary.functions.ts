@@ -11,7 +11,7 @@ import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
-import { normalizeClock } from "@/lib/import-stop";
+import { foldTravelLegs, normalizeClock } from "@/lib/import-stop";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -151,6 +151,7 @@ const instructions = (
       ? "costs: grouped planned expenses using categories Accommodation, Transport, Meals, Activities, Shopping, or Other. Do not double-count. estimated_total must equal the costs sum."
       : "",
     "Keep the original order of each day and include enough detail to follow the plan.",
+    'Do not make an entry for getting from one stop to the next ("Travel to X", "Walk to Y", "Take the tram to Z"). Put it in the next entry\'s detail as "Getting there: …", keeping any departure time. A booked flight, train or ferry with a confirmation is still its own entry.',
     mode === "build"
       ? 'source: "vault" when the stop is one of the traveller\'s saved vault places listed below — keep that name. Otherwise "new".'
       : "source: null.",
@@ -209,14 +210,24 @@ async function runParse(
   const out = result.output;
   const parsed: ParsedItinerary = {
     ...out,
-    items: out.items.slice(0, 60).map((i) => ({
-      ...i,
-      // A time the timeline cannot sort is worse than none.
-      time_label: normalizeClock(i.time_label),
-      end_time: normalizeClock(i.end_time),
-      kind: normaliseKind(i.kind),
-      source: i.source === "vault" ? "vault" : data.mode === "build" ? "new" : null,
-    })),
+    // Travel legs the model made anyway become notes on the stop they lead to.
+    // Kinds normalised first, so the fold sees "transport" however it was
+    // spelt; the times too, so a folded note carries a readable time.
+    items: foldTravelLegs(
+      out.items.slice(0, 60).map((i) => ({
+        ...i,
+        // A time the timeline cannot sort is worse than none.
+        time_label: normalizeClock(i.time_label),
+        end_time: normalizeClock(i.end_time),
+        kind: normaliseKind(i.kind),
+        source:
+          i.source === "vault"
+            ? ("vault" as const)
+            : data.mode === "build"
+              ? ("new" as const)
+              : null,
+      })),
+    ),
   };
   return applyCostPolicy(parsed, Boolean(data.includeCosts));
 }

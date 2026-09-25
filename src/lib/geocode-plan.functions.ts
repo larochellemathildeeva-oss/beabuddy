@@ -61,13 +61,22 @@ export type PlacedStop = {
   category?: string;
   /** OSM type, e.g. cafe, museum, suburb. */
   kind?: string;
+  /** Its other names (local, English, alternative), for the confidence check. */
+  alsoNamed?: string[];
 };
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-type GeoHit = { lat: number; lon: number; label?: string; category?: string; kind?: string };
+type GeoHit = {
+  lat: number;
+  lon: number;
+  label?: string;
+  category?: string;
+  kind?: string;
+  alsoNamed?: string[];
+};
 type GeoResult = GeoHit | null | "throttled";
 
 type RawHit = {
@@ -77,6 +86,8 @@ type RawHit = {
   class?: string;
   type?: string;
   boundingbox?: string[];
+  /** With namedetails=1: name, name:en, name:ja, alt_name… */
+  namedetails?: Record<string, string>;
 };
 
 async function lookup(
@@ -84,14 +95,15 @@ async function lookup(
   query: string,
   extra: { limit?: number; box?: AreaBox } = {},
 ): Promise<RawHit[] | "throttled"> {
-  // accept-language=* asks for the name in the local language rather than an
-  // English translation. It does not change what matches — OSM indexes local
-  // names either way — but it means a place found as 清水寺 comes back as
-  // 清水寺, which is what a reader standing in front of it needs.
+  // English labels, and every name the place has. The labels were asked for
+  // in the local language, so a stop called "Hiroshima Station" was checked
+  // against "広島駅" and judged a mismatch although it was the right place.
+  // namedetails carries the local name too, and the check reads all of them.
   const url = searchUrl(provider, {
     query,
     limit: extra.limit ?? 1,
-    language: "*",
+    language: "en",
+    nameDetails: true,
     ...(extra.box ? { viewbox: boxViewbox(extra.box), bounded: true } : {}),
   });
   try {
@@ -127,6 +139,7 @@ async function geocode(provider: GeoProvider, query: string, box: AreaBox): Prom
       ...(hit.display_name ? { label: hit.display_name } : {}),
       ...(hit.class ? { category: hit.class } : {}),
       ...(hit.type ? { kind: hit.type } : {}),
+      ...(hit.namedetails ? { alsoNamed: Object.values(hit.namedetails) } : {}),
     };
   }
   return null;
@@ -143,6 +156,15 @@ async function geocode(provider: GeoProvider, query: string, box: AreaBox): Prom
  * The one-a-second gap is Nominatim's usage policy, not caution. It is why
  * this is slow enough to need something to look at while it runs.
  */
+/** "Kyoto, Kyoto Prefecture, Japan" → "Japan"; nothing for a one-part area. */
+function countryOf(area: string): string {
+  const parts = area
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts.length > 1 ? parts[parts.length - 1]! : "";
+}
+
 export const geocodePlanStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { stops: StopInput[]; area?: string | null }) => Input.parse(input))
@@ -223,33 +245,53 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (!box) continue;
 
-      const queries = planStopQueries(
-        { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
-        where,
-      ).slice(0, QUERIES_PER_STOP);
-      for (const query of queries) {
-        const key = query.toLowerCase();
-        if (cache.has(key)) {
-          const hit = cache.get(key) ?? null;
-          if (hit) {
-            placed.push({ index, ...hit });
-            break;
+      /** The stop's queries inside one area; true once one of them lands. */
+      const tryIn = async (inWhere: string, bounds: AreaBox): Promise<boolean> => {
+        const queries = planStopQueries(
+          { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
+          inWhere,
+        ).slice(0, QUERIES_PER_STOP);
+        for (const query of queries) {
+          const key = query.toLowerCase();
+          if (cache.has(key)) {
+            const hit = cache.get(key) ?? null;
+            if (hit) {
+              placed.push({ index, ...hit });
+              return true;
+            }
+            continue;
           }
-          continue;
+          if (!(await takeTurn())) return false;
+          const found = await geocode(provider, query, bounds);
+          if (found === "throttled") {
+            // Asking harder will not help, and recording these as misses would
+            // mark real places unfindable for the rest of the session.
+            throttled = true;
+            return false;
+          }
+          cache.set(key, found);
+          if (found) {
+            placed.push({ index, ...found });
+            return true;
+          }
         }
-        if (!(await takeTurn())) break;
-        const found = await geocode(provider, query, box);
-        if (found === "throttled") {
-          // Asking harder will not help, and recording these as misses would
-          // mark real places unfindable for the rest of the session.
+        return false;
+      };
+
+      const landed = await tryIn(where, box);
+      // Not in its town: the trip's country, last. A stop saved without its
+      // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
+      // ever looked for in the wrong city. Callers still check the match
+      // before saving it (autoPinTrusted), and the stray-pin warning flags
+      // anything far from the rest of the trip.
+      const country = countryOf(area);
+      if (!landed && !throttled && country && country.toLowerCase() !== where.toLowerCase()) {
+        const countryBox = await boxFor(country);
+        if (countryBox === "throttled") {
           throttled = true;
           break;
         }
-        cache.set(key, found);
-        if (found) {
-          placed.push({ index, ...found });
-          break;
-        }
+        if (countryBox) await tryIn(country, countryBox);
       }
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.

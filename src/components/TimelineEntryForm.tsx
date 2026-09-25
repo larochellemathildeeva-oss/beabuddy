@@ -14,6 +14,7 @@ import {
 import type { ParsedPlace } from "@/lib/places.functions";
 import { filledFromMapSummary, timelineKindForPlace } from "@/lib/place-kind";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
+import { autoPinTrusted } from "@/lib/match-confidence";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
 import { capturedFromParsedPlace, toTimelineItem, type CapturedPlace } from "@/lib/captured-place";
 
@@ -247,7 +248,9 @@ export function TimelineEntryForm({
         })
           .then((found) => {
             const hit = found.placed[0];
-            if (hit) void onUpdateEntry(id, { lat: hit.lat, lon: hit.lon });
+            // Only a match that plausibly is this entry is saved.
+            if (hit && autoPinTrusted({ title: name, address: hint || null }, hit))
+              void onUpdateEntry(id, { lat: hit.lat, lon: hit.lon });
           })
           .catch(() => {
             /* Unplaced is the old behaviour, not a failure worth reporting. */
