@@ -11,6 +11,9 @@ test("clock times in the ways plans write them", () => {
     ["12pm", "12:00"],
     ["12am", "00:00"],
     ["21h30", "21:30"],
+    ["19h", "19:00"],
+    ["12h", "12:00"],
+    ["9 h", "09:00"],
     ["noon", "12:00"],
     ["7:05 a.m.", "07:05"],
   ];
@@ -18,7 +21,7 @@ test("clock times in the ways plans write them", () => {
 });
 
 test("things that are not a time stay empty", () => {
-  for (const input of ["", "9", "morning", "25:00", "10:75", "Day 2", null, undefined]) {
+  for (const input of ["", "9", "25h", "morning", "25:00", "10:75", "Day 2", null, undefined]) {
     assert.equal(normalizeClock(input as string | null | undefined), null, String(input));
   }
 });
@@ -65,6 +68,9 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
   assert.ok(t("Head to Motoyasubashi Pier"));
   assert.ok(t("Start toward Miyajima Pier"));
   assert.ok(t("Leave for the station"));
+  assert.ok(t("JR Sanyo line Hiroshima → Miyajimaguchi"));
+  assert.ok(t("Train Kyoto -> Nara"));
+  assert.ok(!t("World Heritage Sea Route: Peace Park → Miyajima"), "no movement word up front");
   assert.ok(
     !t("World Heritage Sea Route: Peace Park to Miyajima"),
     "a named, booked crossing stays",
@@ -73,6 +79,9 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
   assert.ok(!t("Motoyasubashi Pier ferry"));
   assert.ok(!t("Flight JL123 to Tokyo", "flight"));
   assert.ok(!t("Walk to the torii", "sight"), "only transport rows");
+  assert.ok(t("Hibiya Line to Ginza"), "a named line going somewhere");
+  assert.ok(t("Ginza line toward Asakusa"));
+  assert.ok(!t("Line up at the gate"));
 });
 
 test("a travel leg becomes a note on the stop it leads to", async () => {
@@ -156,5 +165,37 @@ test("a booked journey is its own stop, however it is worded", async () => {
   assert.deepEqual(
     folded.map((row) => row.title),
     ["Take the ferry to Miyajima", "Itsukushima Shrine"],
+  );
+});
+
+test("a journey the model wrote into the stop and as its own line is noted once", async () => {
+  const { foldTravelLegs } = await import("./import-stop.ts");
+  // As the audit caught it on the Miyajima fixture, before folding.
+  const row = (title: string, kind: string, time: string | null, detail: string | null) => ({
+    title,
+    kind,
+    detail,
+    time_label: time,
+    day_date: "2026-10-05",
+    day_number: 1,
+  });
+  const out = foldTravelLegs([
+    row("JR Sanyo Line to Miyajimaguchi", "transport", "08:10", null),
+    row("Be at the JR ferry pier", "note", "08:45", "Getting there: Take JR Sanyo line at 08:10"),
+    row("Ferry to Miyajima", "transport", "09:10", null),
+    row("Itsukushima Shrine", "sight", "09:30", null),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.detail),
+    ["Getting there: Take JR Sanyo line at 08:10", "Getting there: Ferry to Miyajima, 09:10"],
+  );
+  // A different journey to the same stop is still added.
+  const two = foldTravelLegs([
+    row("Take the ferry to Miyajima", "transport", "10:30", null),
+    row("Itsukushima Shrine", "sight", "11:00", "Getting there: Tram 2 to the pier, 10:00"),
+  ]);
+  assert.equal(
+    two[0]!.detail,
+    "Getting there: Tram 2 to the pier, 10:00 · Getting there: Take the ferry to Miyajima, 10:30",
   );
 });

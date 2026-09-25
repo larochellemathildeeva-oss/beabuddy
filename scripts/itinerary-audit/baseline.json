@@ -1,0 +1,32 @@
+{
+  "auto": {
+    "savedAt": "2026-09-25",
+    "engine": "auto",
+    "model": "gemini-3.5-flash-lite",
+    "runs": 3,
+    "answers": 20,
+    "models": {
+      "rules (no model)": 8,
+      "gemini-3.5-flash-lite": 12
+    },
+    "rates": {
+      "invented-leg": 0.15
+    },
+    "perFixture": {
+      "paris-tidy": {},
+      "tokyo-days-ampm": {},
+      "lisbon-blog": {},
+      "nyc-dates-ranges": {},
+      "kyoto-slashes-rough": {},
+      "barcelona-spanish": {},
+      "rome-emoji": {},
+      "cdmx-chat": {},
+      "london-bookings": {},
+      "miyajima-daytrip": {},
+      "sf-chat-us": {
+        "invented-leg": "2/3"
+      },
+      "seoul-implied-bookings": {}
+    }
+  }
+}

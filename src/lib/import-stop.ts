@@ -27,13 +27,16 @@ export function normalizeClock(value: string | null | undefined): string | null 
   if (!raw) return null;
   if (raw === "noon" || raw === "midday") return "12:00";
   if (raw === "midnight") return "00:00";
-  const m = raw.match(/^(\d{1,2})(?:\s*[:.h]\s*(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?$/);
+  const m = raw.match(/^(\d{1,2})(?:\s*[:.h]\s*(\d{2})|\s*h)?\s*(am|pm|a\.m\.|p\.m\.)?$/);
   if (!m) return null;
   let hour = Number(m[1]);
   const minute = m[2] ? Number(m[2]) : 0;
   const half = m[3]?.replace(/\./g, "");
-  // A bare "9" is not a time: it is as likely a day or a stop number.
-  if (!m[2] && !half) return null;
+  // A bare "9" is not a time: it is as likely a day or a stop number. "19h"
+  // is: the French and Spanish way to write the hour, as "21h30" is with
+  // its minutes.
+  const hourMark = /^\d{1,2}\s*h$/.test(raw);
+  if (!m[2] && !half && !hourMark) return null;
   if (half === "pm" && hour < 12) hour += 12;
   if (half === "am" && hour === 12) hour = 0;
   if (hour > 23 || minute > 59) return null;
@@ -115,12 +118,16 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
  * card on the timeline with "No place yet" — a stop that is really the gap
  * between two stops, which the paws between cards already are.
  *
- * Only movement *to* somewhere counts. "Arrive Hiroshima Station" is a place
+ * Only movement *to* somewhere counts, written "to" or as an arrow
+ * ("JR line Hiroshima → Miyajimaguchi"). "Arrive Hiroshima Station" is a place
  * with a time and stays; a booked flight or reservation is its own kind and
  * is never touched.
  */
 const MOVEMENT =
-  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*\b(?:to|toward|towards|back|for)\b/i;
+  /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*(?:\b(?:to|toward|towards|back|for)\b|→|->)/i;
+
+/** "Hibiya Line to Ginza": a named line, then where it goes. */
+const LINE_TO = /^(?:[\p{L}-]+\s+){1,2}line\s+(?:to|toward|towards)\b/iu;
 
 export function isTravelLeg(row: {
   kind: string;
@@ -130,7 +137,8 @@ export function isTravelLeg(row: {
   // A booked ferry is a thing you must be on, not the gap between stops,
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
-  return row.kind === "transport" && MOVEMENT.test(row.title.trim());
+  const title = row.title.trim();
+  return row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title));
 }
 
 type FoldableRow = {
@@ -192,13 +200,54 @@ export function legTarget(
   return null;
 }
 
+/** Words that say how, not which journey. */
+const GENERIC_LEG_WORDS = new Set([
+  "take",
+  "travel",
+  "walk",
+  "head",
+  "from",
+  "toward",
+  "towards",
+  "line",
+  "back",
+  "getting",
+  "there",
+]);
+
+/**
+ * The stop's note already describes this journey: same departure time, or —
+ * when the leg has no time — a word naming the same service or place.
+ */
+function alreadyNoted(
+  detail: string,
+  label: string,
+  leg: Pick<FoldableRow, "title" | "time_label">,
+): boolean {
+  const notes = detail
+    .split(" · ")
+    .filter((n) => n.startsWith(`${label}:`))
+    .map((n) => n.toLowerCase());
+  if (!notes.length) return false;
+  if (leg.time_label) return notes.some((n) => n.includes(leg.time_label!));
+  const words = leg.title
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w.length >= 4 && !GENERIC_LEG_WORDS.has(w));
+  return notes.some((n) => words.some((w) => n.includes(w)));
+}
+
 /** A stop's note with the leg added: "Getting there: Take the ferry to Miyajima, 10:30". */
 export function withLegNote(
   detail: string | null,
   leg: Pick<FoldableRow, "title" | "time_label" | "detail">,
   after: boolean,
 ): string {
+  const label = after ? "Afterwards" : "Getting there";
+  // The model sometimes writes the journey into the stop *and* as a line of
+  // its own; the second copy is the same journey, not another one.
+  if (detail && alreadyNoted(detail, label, leg)) return detail;
   const what = [leg.title, leg.time_label, leg.detail].filter(Boolean).join(", ");
-  const note = `${after ? "Afterwards" : "Getting there"}: ${what}`;
+  const note = `${label}: ${what}`;
   return detail ? `${detail} · ${note}` : note;
 }
