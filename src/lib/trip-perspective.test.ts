@@ -15,11 +15,13 @@ describe("TRIP_PERSPECTIVES", () => {
     );
   });
 
-  it("gives every perspective a label and a hint", () => {
+  it("gives every perspective a label, and a hint where one helps", () => {
     for (const p of TRIP_PERSPECTIVES) {
       assert.ok(p.label.length > 0, `${p.id} has no label`);
-      assert.ok(p.hint.length > 0, `${p.id} has no hint`);
+      assert.equal(typeof p.hint, "string", `${p.id} has no hint field`);
     }
+    // The map's layout switch says enough; its tab carries no hint line.
+    assert.equal(TRIP_PERSPECTIVES.find((p) => p.id === "map")!.hint, "");
   });
 });
 
