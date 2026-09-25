@@ -513,6 +513,26 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   await page.close();
 }
 {
+  const name = "companion: a time to leave by, no planned stay, no journey rows as stops";
+  const { page, errors } = await open("legs");
+  try {
+    await goTab(page, "Companion");
+    const day1 = page.getByRole("tab", { name: /Day 1/ });
+    if (await day1.count()) await day1.first().click();
+    await page.waitForTimeout(800);
+    if ((await page.getByText("Plan to stay").count()) !== 0) throw new Error("Plan to stay is still offered");
+    if ((await page.getByText(/Leave by \d|Be there by \d/).count()) === 0) throw new Error("no Leave by / Be there by chip");
+    if ((await page.getByText(/planned/).count()) !== 0) throw new Error("the stay line still talks about a plan");
+    const tracker = page.getByRole("region", { name: "Live journey" });
+    if ((await tracker.getByText("Head to Motoyasubashi Pier").count()) !== 0) throw new Error("a journey row is a tracker stop");
+    if (errors.length) throw new Error(errors.join(" | "));
+    console.log(`✓ ${name}`);
+  } catch (e) {
+    note(`${name}: ${String(e.message).split("\n")[0]}`);
+  }
+  await page.close();
+}
+{
   const name = "a journey saved as a stop becomes a note on the stop it leads to";
   const { page, errors } = await open("legs");
   try {

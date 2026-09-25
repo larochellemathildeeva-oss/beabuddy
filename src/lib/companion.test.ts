@@ -146,17 +146,22 @@ test("a leg exists only between consecutive stops", () => {
   assert.equal(legBetween(trip, null, "a", "b"), null, "nothing saved");
 });
 
-test("stay line counts time there, against the plan only when there is one", () => {
+test("stay line counts time there, and never against a planned stay", () => {
   const now = new Date(T("10:40"));
   assert.equal(stayLine({ arrived_at: null }, now), null);
   assert.equal(stayLine({ arrived_at: T("10:00") }, now), "Here 40 min");
-  assert.equal(
-    stayLine({ arrived_at: T("10:00"), planned_stay_minutes: 90 }, now),
-    "Here 40 min · about 50 min of 90 left",
-  );
-  assert.equal(
-    stayLine({ arrived_at: T("09:00"), planned_stay_minutes: 60 }, now),
-    "Here 1 h 40 min · 40 min past the 60 planned",
+  assert.equal(stayLine({ arrived_at: T("09:00") }, now), "Here 1 h 40 min");
+});
+
+test("a journey written as its own row is not a Companion stop", () => {
+  const rows = [
+    { id: "a", title: "Travel to Peace Memorial Park", kind: "transport" },
+    { id: "b", title: "Peace Memorial Museum", kind: "activity" },
+    { id: "c", title: "Motoyasubashi Pier ferry", kind: "transport" },
+  ];
+  assert.deepEqual(
+    companionStops(rows).map((r) => r.id),
+    ["b", "c"],
   );
 });
 
