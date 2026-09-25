@@ -1419,6 +1419,7 @@ export function TripDetail({
           address: item.address,
           lat: item.lat,
           lon: item.lon,
+          planned_stay_minutes: item.planned_stay_minutes,
         }))}
         cities={cities.stops.map((stop) => ({
           city: stop.city,

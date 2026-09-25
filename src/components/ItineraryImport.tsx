@@ -24,6 +24,7 @@ import {
   type OptimizeItinerary,
   type OptimizeSourceCity,
   type OptimizeSourceItem,
+  type OptimizeTravel,
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
 import { aiFailure } from "@/lib/ai-errors";
@@ -33,6 +34,7 @@ import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
+import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
 import { scoreMatch, tallyConfidence, type Confidence } from "@/lib/match-confidence";
 import { dayShapeLine } from "@/lib/day-shape";
@@ -1267,6 +1269,19 @@ function OptimizePanel({
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
           <p className="text-[14.5px] font-medium">{plan.summary}</p>
           <p className="text-[13px] text-muted-foreground">{plan.changes}</p>
+          {plan.travel && <p className="text-[13px] text-foreground">{travelLine(plan.travel)}</p>}
+          {plan.limited && (
+            <p className="text-[12px] text-muted-foreground">
+              Béa has used today&apos;s share of route lookups, so some of this trip wasn&apos;t
+              measured. Try again tomorrow for real travel times.
+            </p>
+          )}
+          {plan.plannedDays ? (
+            <p className="text-[12px] text-muted-foreground">
+              {plan.plannedDays === 1 ? "One day was" : `${plan.plannedDays} days were`} ordered
+              around opening hours and real travel times.
+            </p>
+          ) : null}
           <ol className="space-y-1.5">
             {plan.items.map((row) => {
               const original = byId.get(row.id);
@@ -1300,6 +1315,19 @@ function OptimizePanel({
       )}
     </div>
   );
+}
+
+/**
+ * "Getting between stops: 3 h 10 min on foot → 2 h 5 min." Measured on real
+ * routes for the pinned stops of each day, so the claim that a plan is
+ * closer together is something the reader can see, not take on trust.
+ */
+function travelLine(travel: OptimizeTravel): string {
+  const how = travel.mode === "walk" ? " on foot" : travel.mode === "drive" ? " by car" : "";
+  const was = minutesLabel(travel.beforeSec);
+  const now = minutesLabel(travel.afterSec);
+  if (was === now) return `Getting between stops: about ${now}${how}, as before.`;
+  return `Getting between stops: ${was}${how} → ${now}.`;
 }
 
 function ComparePanel() {
