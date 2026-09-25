@@ -100,6 +100,16 @@ OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and
 `GEOAPIFY_ATTRIBUTION` beside it on the maps, as Geoapify's free plan asks.
 
+## World globe data
+
+The World tab shades provinces and states from `public/geo/admin1/` — one
+TopoJSON file per country plus an `index.json` of their boxes, built from
+Natural Earth's public-domain admin-1 boundaries by
+`scripts/provinces/build.mjs` (the steps are at the top of that file). They
+are static files, fetched only for the countries a user has been to; which
+province a city is in is worked out in the browser from its position.
+Country names are matched in any language through `src/lib/country-names.ts`.
+
 ## Notes
 
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
