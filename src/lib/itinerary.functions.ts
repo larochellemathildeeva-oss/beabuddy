@@ -4,7 +4,8 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
+import { MAX_PDF_DATA_URL_LENGTH, PDF_DATA_URL_PREFIX } from "@/lib/itinerary-pdf";
 import { AI_CALL } from "@/lib/ai-errors";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
@@ -27,6 +28,8 @@ const KINDS = TIMELINE_KINDS;
 const ParseInput = z
   .object({
     imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(6).nullable(),
+    /** One PDF of the plan: a booking confirmation, a tour document, an export. */
+    pdfDataUrl: z.string().startsWith(PDF_DATA_URL_PREFIX).max(MAX_PDF_DATA_URL_LENGTH).nullish(),
     text: z.string().max(20_000).nullable(),
     tripCity: z.string().max(120).nullable(),
     startDate: z.string().max(20).nullable(),
@@ -38,8 +41,10 @@ const ParseInput = z
     includeCosts: z.boolean().optional().default(false),
   })
   .refine(
-    (v) => v.mode === "build" || Boolean(v.imageDataUrls?.length || (v.text && v.text.trim())),
-    { message: "Add a photo or paste an itinerary." },
+    (v) =>
+      v.mode === "build" ||
+      Boolean(v.imageDataUrls?.length || v.pdfDataUrl || (v.text && v.text.trim())),
+    { message: "Add a photo or a PDF, or paste an itinerary." },
   );
 
 const ItemSchema = z.object({
@@ -171,6 +176,20 @@ const instructions = (
     .filter(Boolean)
     .join("\n");
 
+/** What to say about the attached files, so they are read as one plan. */
+function attachedNote(pictures: number, hasPdf: boolean): string {
+  const pdfNote =
+    "The traveller attached a PDF of their plan — a booking confirmation, a tour document or an exported itinerary. Read every page. Ignore terms and conditions, adverts and fare rules; keep what happens when and where, and any confirmation numbers.";
+  if (hasPdf && pictures > 0) {
+    return `${pdfNote} They also attached ${pictures === 1 ? "a picture" : `${pictures} pictures`} of the same trip. Merge everything into ONE itinerary in chronological order, removing duplicates.`;
+  }
+  if (hasPdf) return pdfNote;
+  if (pictures > 1) {
+    return `The traveller attached ${pictures} pictures of the same trip. Read them all and merge them into ONE itinerary in chronological order, removing duplicates.`;
+  }
+  return "";
+}
+
 async function runParse(
   model: ReturnType<(typeof import("@/lib/ai.server"))["getGeminiModel"]>,
   data: z.infer<typeof ParseInput>,
@@ -188,6 +207,11 @@ async function runParse(
     preferenceText,
   );
 
+  // Files are only read for a plan the traveller already has.
+  const images = data.mode === "import" ? (data.imageDataUrls ?? []) : [];
+  const pdf = data.mode === "import" && data.pdfDataUrl ? data.pdfDataUrl : null;
+  const importFiles = [...(pdf ? [pdfPartFromDataUrl(pdf)] : []), ...filePartsFromDataUrls(images)];
+
   const result = await generateText({
     model,
     ...AI_CALL,
@@ -196,16 +220,13 @@ async function runParse(
     messages: [
       {
         role: "user",
-        content: data.imageDataUrls?.length
+        content: importFiles.length
           ? [
               {
                 type: "text" as const,
-                text:
-                  data.imageDataUrls.length > 1
-                    ? `${text}\n\nThe traveller attached ${data.imageDataUrls.length} pictures of the same trip. Read them all and merge them into ONE itinerary in chronological order, removing duplicates.${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`
-                    : `${text}${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`,
+                text: `${text}\n\n${attachedNote(images.length, Boolean(pdf))}${data.text?.trim() ? `\n\nExtra notes:\n${data.text}` : ""}`,
               },
-              ...filePartsFromDataUrls(data.imageDataUrls),
+              ...importFiles,
             ]
           : [
               {

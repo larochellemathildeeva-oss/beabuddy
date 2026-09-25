@@ -7,6 +7,7 @@ import {
   Camera,
   MapPin,
   Columns2,
+  FileText,
   Image as ImageIcon,
   ListOrdered,
   Sparkles,
@@ -32,6 +33,7 @@ import { findDuplicate } from "@/lib/captured-place";
 import { useUndo } from "@/hooks/useUndo";
 import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
+import { pdfProblem, pdfProblemMessage } from "@/lib/itinerary-pdf";
 import { placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds } from "@/lib/geocode-plan";
 import { minutesLabel } from "@/lib/route-optimize";
@@ -131,7 +133,7 @@ export function ItineraryImport({
       hint="Built around your travel preferences and tagged recs"
       icon={<img src={logo} alt="" className="size-10 object-contain" />}
     >
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => setTab("import")}
           className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
@@ -233,6 +235,37 @@ function ImportPanel({
       setError(aiFailure(err).message);
     }
   };
+  const pdfRef = useRef<HTMLInputElement>(null);
+  /** One PDF at a time: a confirmation or a tour plan is already the whole trip. */
+  const [pdf, setPdf] = useState<{ name: string; dataUrl: string } | null>(null);
+  const onPdfPicked = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const all = new Uint8Array(await file.arrayBuffer());
+      const problem = pdfProblem({
+        size: file.size,
+        head: all.subarray(0, 4096),
+        tail: all.subarray(Math.max(0, all.length - 4096)),
+      });
+      if (problem) {
+        setError(pdfProblemMessage(problem));
+        return;
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error ?? new Error("Could not read that PDF."));
+        reader.readAsDataURL(new Blob([all], { type: "application/pdf" }));
+      });
+      setPdf({ name: file.name, dataUrl });
+      setError(null);
+    } catch (err) {
+      setError(aiFailure(err).message);
+    }
+  };
+  const hasFiles = images.length > 0 || pdf !== null;
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -299,6 +332,7 @@ function ImportPanel({
       const out = await run({
         data: {
           imageDataUrls: mode === "import" && images.length ? images : null,
+          pdfDataUrl: mode === "import" && pdf ? pdf.dataUrl : null,
           text: text.trim() || null,
           tripCity: tripCity || null,
           startDate: startDate || null,
@@ -673,8 +707,8 @@ function ImportPanel({
         >
           <span className="block text-[14px] font-semibold">I already have a plan</span>
           <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-            Paste an itinerary, a guide or a blog post — or photograph it. Béa keeps your times and
-            finds the places.
+            Paste an itinerary, a guide or a blog post — or add a photo or PDF of it. Béa keeps your
+            times and finds the places.
           </span>
         </button>
       </div>
@@ -747,9 +781,16 @@ function ImportPanel({
         className="hidden"
         onChange={onPicked}
       />
+      <input
+        ref={pdfRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(e) => void onPdfPicked(e)}
+      />
 
       {mode === "import" && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => fileRef.current?.click()}
             disabled={busy || images.length >= MAX_IMAGES}
@@ -763,6 +804,26 @@ function ImportPanel({
             className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-[14.5px] font-medium disabled:opacity-50"
           >
             <ImageIcon className="size-4" /> Choose photos
+          </button>
+          <button
+            onClick={() => pdfRef.current?.click()}
+            disabled={busy}
+            className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-[14.5px] font-medium disabled:opacity-50"
+          >
+            <FileText className="size-4" /> {pdf ? "Change PDF" : "Add a PDF"}
+          </button>
+        </div>
+      )}
+      {mode === "import" && pdf && (
+        <div className="flex items-center gap-2 rounded-xl border border-border px-3 py-2">
+          <FileText className="size-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate text-[13.5px]">{pdf.name}</span>
+          <button
+            aria-label={`Remove ${pdf.name}`}
+            onClick={() => setPdf(null)}
+            className="tap-44 grid size-6 place-items-center rounded-full border border-border bg-card"
+          >
+            <X className="size-3" />
           </button>
         </div>
       )}
@@ -793,7 +854,7 @@ function ImportPanel({
       )}
       {mode === "import" && (
         <p className="text-[12px] leading-relaxed text-muted-foreground">
-          Pictures and pasted plans are sent to an AI provider to read them — avoid including
+          Pictures, PDFs and pasted plans are sent to an AI provider to read them — avoid including
           passport numbers, card details or other sensitive information.
         </p>
       )}
@@ -806,7 +867,7 @@ function ImportPanel({
         placeholder={
           mode === "build"
             ? "Describe the trip you want: interests, must-dos, mobility needs, or anything Béa should know…"
-            : "Paste an itinerary here, or add notes about the pictures…"
+            : "Paste an itinerary here, or add notes about the pictures or PDF…"
         }
         className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
       />
@@ -830,25 +891,27 @@ function ImportPanel({
       )}
       <button
         onClick={() => void read()}
-        disabled={busy || (mode === "import" && !images.length && text.trim().length < 10)}
+        disabled={busy || (mode === "import" && !hasFiles && text.trim().length < 10)}
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
           ? "Working…"
           : mode === "build"
             ? "Build my trip"
-            : images.length > 1
-              ? `Read these ${images.length} pictures`
-              : "Read this itinerary"}
+            : pdf && !images.length
+              ? "Read this PDF"
+              : images.length > 1 && !pdf
+                ? `Read these ${images.length} pictures`
+                : "Read this itinerary"}
       </button>
       {busy && (
         <div className="mt-2">
           <BeaRunning moment="plan.working" />
         </div>
       )}
-      {mode === "import" && !images.length && text.trim().length < 10 && (
+      {mode === "import" && !hasFiles && text.trim().length < 10 && (
         <p className="text-[12px] text-muted-foreground">
-          Add one or more pictures above, or paste the plan first.
+          Add pictures or a PDF above, or paste the plan first.
         </p>
       )}
 

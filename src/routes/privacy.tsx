@@ -145,10 +145,11 @@ function PrivacyPage() {
 
         <Section title="AI processing">
           <p>
-            When you use an AI feature — building a trip, importing a plan from a photo or pasted
-            text, comparing two itineraries or places — the text or image you provide is sent to an
-            AI provider (Google Gemini) purely to produce your answer. Your saved travel preferences
-            (style, budget, interests, dietary rules) are included so suggestions fit you.
+            When you use an AI feature — building a trip, importing a plan from a photo, a PDF or
+            pasted text, comparing two itineraries or places — the text, image or PDF you provide is
+            sent to an AI provider (Google Gemini) purely to produce your answer. Your saved travel
+            preferences (style, budget, interests, dietary rules) are included so suggestions fit
+            you.
           </p>
           <p>
             This content is used only to generate your result; it is not sold and not used for
