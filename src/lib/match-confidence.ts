@@ -33,6 +33,12 @@ export type MatchEvidence = {
   category?: string | null | undefined;
   /** OSM's type: restaurant, cafe, museum, suburb, neighbourhood… */
   kind?: string | null | undefined;
+  /**
+   * The place's other names — local, English, alternative — when the lookup
+   * returned them. 広島駅 is Hiroshima Station; comparing the stop's English
+   * name only to the local label called a right answer wrong.
+   */
+  alsoNamed?: readonly string[] | null | undefined;
 };
 
 /**
@@ -126,7 +132,9 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   }
 
   const areaish = AREA_TYPES.has(kind) || category === "boundary";
-  const echoes = nameEchoes(evidence.title, label);
+  const echoes =
+    nameEchoes(evidence.title, label) ||
+    (evidence.alsoNamed ?? []).some((name) => name.trim() && nameEchoes(evidence.title, name));
 
   if (areaish && !echoes) {
     return {

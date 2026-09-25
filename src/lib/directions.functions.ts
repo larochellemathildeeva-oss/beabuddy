@@ -72,6 +72,7 @@ type GeoFound = {
   label?: string;
   category?: string;
   kind?: string;
+  alsoNamed?: string[];
 };
 
 async function geocode(
@@ -84,6 +85,10 @@ async function geocode(
   const url = searchUrl(provider, {
     query,
     limit: box ? 3 : 1,
+    // English labels plus every name, so the trust check can match
+    // "Hiroshima Station" to 広島駅.
+    language: "en",
+    nameDetails: true,
     ...(box ? { viewbox: boxViewbox(box), bounded: true } : {}),
   });
   try {
@@ -103,6 +108,7 @@ async function geocode(
       category?: string;
       type?: string;
       addresstype?: string;
+      namedetails?: Record<string, string>;
     }[];
     for (const hit of json) {
       const lat = Number(hit.lat);
@@ -116,6 +122,7 @@ async function geocode(
         ...(hit.display_name ? { label: hit.display_name } : {}),
         ...(hit.category || hit.class ? { category: hit.category || hit.class } : {}),
         ...(hit.addresstype || hit.type ? { kind: hit.addresstype || hit.type } : {}),
+        ...(hit.namedetails ? { alsoNamed: Object.values(hit.namedetails) } : {}),
       };
     }
     return null;

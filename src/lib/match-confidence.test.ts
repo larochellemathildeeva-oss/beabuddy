@@ -104,3 +104,26 @@ test("a background pin is saved only when it plausibly is the stop", async () =>
     false,
   );
 });
+
+test("a place labelled in its own script matches through its other names", () => {
+  const station = {
+    label: "広島駅, 広島駅南北自由通路",
+    category: "railway",
+    kind: "station",
+  };
+  assert.equal(scoreMatch({ title: "Arrive Hiroshima Station", ...station }).confidence, "low");
+  assert.equal(
+    scoreMatch({
+      title: "Arrive Hiroshima Station",
+      ...station,
+      alsoNamed: ["広島駅", "Hiroshima Station", "ひろしまえき"],
+    }).confidence,
+    "high",
+  );
+  // Other names that do not echo change nothing.
+  assert.equal(
+    scoreMatch({ title: "Oyster lunch", ...station, alsoNamed: ["広島駅", "Hiroshima Station"] })
+      .confidence,
+    "low",
+  );
+});

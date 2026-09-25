@@ -54,3 +54,59 @@ test("a doubtful pin is saved only when kept; any pin can be removed", () => {
   assert.equal(pinIsSaved("low", "keep"), true);
   assert.equal(pinIsSaved("high", "drop"), false);
 });
+
+test("movement between stops is a travel leg; arrivals and bookings are not", async () => {
+  const { isTravelLeg } = await import("./import-stop.ts");
+  const t = (title: string, kind = "transport") => isTravelLeg({ kind, title });
+  assert.ok(t("Travel to Peace Memorial Park"));
+  assert.ok(t("Take the ferry to Miyajima"));
+  assert.ok(t("Walk back to the hotel"));
+  assert.ok(t("Shinkansen to Kyoto"));
+  assert.ok(!t("Arrive Hiroshima Station"));
+  assert.ok(!t("Motoyasubashi Pier ferry"));
+  assert.ok(!t("Flight JL123 to Tokyo", "flight"));
+  assert.ok(!t("Walk to the torii", "sight"), "only transport rows");
+});
+
+test("a travel leg becomes a note on the stop it leads to", async () => {
+  const { foldTravelLegs } = await import("./import-stop.ts");
+  const row = (title: string, kind: string, extra: Record<string, unknown> = {}) => ({
+    title,
+    kind,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: null as string | null,
+    day_number: 1 as number | null,
+    ...extra,
+  });
+  const out = foldTravelLegs([
+    row("Arrive Hiroshima Station", "transport", { time_label: "08:36" }),
+    row("Travel to Peace Memorial Park", "transport", {
+      time_label: "09:00",
+      detail: "Tram 2, 15 min",
+    }),
+    row("Peace Memorial Museum", "sight", { time_label: "09:30", detail: "Booked" }),
+    row("Take the ferry to Miyajima", "transport", { day_number: 2, time_label: "10:30" }),
+    row("Itsukushima Shrine", "sight", { day_number: 2 }),
+    row("Walk back to the hotel", "transport", { day_number: 2 }),
+    row("Shinkansen to Kyoto", "transport", { day_number: 3 }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    [
+      "Arrive Hiroshima Station",
+      "Peace Memorial Museum",
+      "Itsukushima Shrine",
+      "Shinkansen to Kyoto",
+    ],
+  );
+  assert.equal(
+    out[1]!.detail,
+    "Booked · Getting there: Travel to Peace Memorial Park, 09:00, Tram 2, 15 min",
+  );
+  assert.equal(
+    out[2]!.detail,
+    "Getting there: Take the ferry to Miyajima, 10:30 · Afterwards: Walk back to the hotel",
+  );
+  assert.equal(out[3]!.detail, null, "a leg alone on its day stays");
+});

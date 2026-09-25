@@ -1,3 +1,4 @@
+import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { TripMap } from "@/components/TripMap";
 import {
@@ -73,7 +74,9 @@ export function TripBanner({
   const tint = fallbackTint(title || city || "Béa");
   const soon = countdownLabel(startDate);
   const now = isUnderway(startDate, endDate);
-  const where = tripPlacesLine(cities, [city, country].filter(Boolean).join(", "));
+  // formatTripLocation, not a plain join: the city field often already ends
+  // in the country ("Kyoto, Kyoto Prefecture, Japan"), which read "Japan, Japan".
+  const where = tripPlacesLine(cities, formatTripLocation(city, country));
   const length = tripLengthLabel(startDate, endDate);
 
   // Three short lines beat one long one: at phone width a single joined line
