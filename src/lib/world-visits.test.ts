@@ -253,3 +253,41 @@ test("only the countries holding your cities are fetched", async () => {
   assert.deepEqual(provinceFilesFor(index, [{ lat: -17.0, lon: -179.9 }]), ["FJI"]);
   assert.deepEqual(provinceFilesFor(index, []), []);
 });
+
+test("a country added by hand shades its country and is not a city", async () => {
+  const { isCountryOnly, visitedCountryKeys } = await import("./world-visits.ts");
+  const pins = [
+    // Added with + before countries had a category: "city" is the country.
+    pin({ name: "Japan", city: "Japan", country: "Japan", category: "City", lat: 36, lon: 138 }),
+    // Added from a pasted list: category Country.
+    pin({
+      name: "Portugal",
+      city: "Portugal",
+      country: "Portugal",
+      category: "Country",
+      lat: 39.5,
+      lon: -8,
+    }),
+    // In another language, with no country field.
+    pin({ name: "Allemagne", city: "Allemagne", country: "", lat: 51, lon: 10 }),
+    pin({ name: "Museum", city: "Hiroshima", country: "Japan" }),
+  ];
+  assert.equal(isCountryOnly(pins[0]!), true);
+  assert.equal(isCountryOnly(pins[3]!), false);
+  // A city-state is its country: one entry, not a city and a country.
+  assert.equal(isCountryOnly(pin({ city: "Singapore", country: "Singapore" })), true);
+  const cities = visitedCities(pins);
+  assert.deepEqual(
+    cities.map((c) => c.city),
+    ["Hiroshima"],
+  );
+  assert.deepEqual(
+    visitsByCountry(pins, cities, []).map((c) => [c.country, c.cities.length]),
+    [
+      ["Germany", 0],
+      ["Japan", 1],
+      ["Portugal", 0],
+    ],
+  );
+  assert.deepEqual([...visitedCountryKeys(pins, [])].sort(), ["DE", "JP", "PT"]);
+});
