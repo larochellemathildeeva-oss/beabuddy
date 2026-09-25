@@ -135,6 +135,12 @@ function legNotes(detail) {
   }));
 }
 
+/** Words that say how a journey is made. */
+const MODE_WORDS = new Set(
+  "walk walking stroll travel tram train bus metro subway taxi cab uber ferry boat line drive ride cycle bike hop take head jr shinkansen monorail streetcar".split(
+    " ",
+  ),
+);
 const GENERIC = new Set(["take", "travel", "walk", "head", "from", "line", "back", "there"]);
 
 /** Two notes about one journey: the same departure time, or a word naming the same service or place. */
@@ -219,10 +225,12 @@ function score(fixture, out) {
         add("doubled-leg", `empty or nested note on ${i.title}: "${note.label}: ${note.text}"`);
         continue;
       }
-      // The journey's first word ("Walk", "Take", "Ferry") should be the
-      // source's. Barcelona says "Paseo" and never "walk".
-      if (!source.has(first))
-        add("invented-leg", `note not in source on ${i.title}: "${note.text}"`);
+      // How the journey is made ("walk", "tram", "ferry") should be the
+      // source's. Barcelona says "Paseo" and never "walk"; "Take Tram 28" for
+      // Lisbon's "hop on Tram 28" is the same journey reworded.
+      const modes = words(note.text).filter((w) => MODE_WORDS.has(w));
+      const invented = modes.length ? !modes.some((w) => source.has(w)) : !source.has(first);
+      if (invented) add("invented-leg", `note not in source on ${i.title}: "${note.text}"`);
       else if (
         prev &&
         [prev.title, prev.place].some((p) => p && fold(note.text).startsWith(fold(p)))
@@ -274,6 +282,7 @@ async function answer(fixture) {
 
 const results = [];
 let modelCalls = 0;
+let quotaSpent = false;
 const rescore = value("--rescore", null);
 if (rescore) {
   const saved = JSON.parse(readFileSync(resolve(here, rescore), "utf8"));
@@ -289,6 +298,7 @@ if (rescore) {
   }
 }
 for (const fixture of FIXTURES.filter((f) => !rescore && (!only || f.id.includes(only)))) {
+  if (quotaSpent) break;
   for (let run = 1; run <= runs; run++) {
     const t0 = Date.now();
     let got = { engine: engine === "rules" ? "rules" : "model", model: null, out: null, raw: null };
@@ -305,6 +315,22 @@ for (const fixture of FIXTURES.filter((f) => !rescore && (!only || f.id.includes
         ? [{ trend: "error", text: error }]
         : [{ trend: "declined", text: "not a plain list; the model would read it" }];
     const ms = Date.now() - t0;
+    // A daily quota will not come back this run; every further call would
+    // fail the same way and read as a finding.
+    if (error && /quota/i.test(error) && /per ?day|free_tier/i.test(error)) {
+      console.log(
+        `✗ ${fixture.id} run ${run}: daily quota spent — stopping. ${error.split("\n")[0]}`,
+      );
+      results.push({
+        id: fixture.id,
+        run,
+        ms,
+        ...got,
+        findings: [{ trend: "error", text: error }],
+      });
+      quotaSpent = true;
+      break;
+    }
     results.push({ id: fixture.id, run, ms, ...got, findings });
     const by = got.engine === "rules" ? "rules" : (got.model ?? "model?");
     console.log(
@@ -321,11 +347,14 @@ for (const fixture of FIXTURES.filter((f) => !rescore && (!only || f.id.includes
 function consistency(rs) {
   const byFixture = {};
   for (const r of rs) {
-    const f = (byFixture[r.id] ??= { runs: 0, trends: {} });
+    const f = (byFixture[r.id] ??= { runs: 0, trends: {}, rules: false });
     f.runs++;
+    if (r.findings.some((x) => x.trend === "error")) continue;
+    if (r.engine === "rules") f.rules = true;
     for (const t of new Set(r.findings.map((x) => x.trend))) {
-      // Handing a fixture to the model is the reader working, not a mistake.
-      if (t !== "declined") f.trends[t] = (f.trends[t] ?? 0) + 1;
+      // Handing a fixture to the model is the reader working, and an error
+      // is no answer at all: neither is a mistake to fix.
+      if (t !== "declined" && t !== "error") f.trends[t] = (f.trends[t] ?? 0) + 1;
     }
   }
   return byFixture;
@@ -360,12 +389,17 @@ const every = [];
 const some = [];
 for (const [id, f] of Object.entries(perFixture)) {
   for (const [t, n] of Object.entries(f.trends)) {
-    (n === f.runs ? every : some).push(`${id} [${t}] ${n}/${f.runs}`);
+    // One model answer cannot show a mistake repeats; the list reader's can,
+    // since it gives the same answer every time.
+    const repeats = n === f.runs && (f.runs >= 2 || f.rules);
+    (repeats ? every : some).push(
+      `${id} [${t}] ${n}/${f.runs}${f.runs < 2 && !f.rules ? " (one answer)" : ""}`,
+    );
   }
 }
 console.log(`\nIn every run (${every.length}) — worth a fix:`);
 for (const line of every) console.log(`  ${line}`);
-console.log(`In some runs (${some.length}) — watch, don't fix yet:`);
+console.log(`In some runs, or too few to tell (${some.length}) — watch, don't fix yet:`);
 for (const line of some) console.log(`  ${line}`);
 
 /** Findings per answer for each trend, so runs of different sizes compare. */
@@ -416,7 +450,11 @@ if (flag("--compare")) {
 }
 
 if (flag("--save-baseline")) {
+  const errors = results.filter((r) => r.findings.some((f) => f.trend === "error")).length;
   if (only) console.log("\nNot saving a baseline from --only: it would drop the other fixtures.");
+  else if (rescore) console.log("\nNot saving a baseline from --rescore: run it for real.");
+  else if (errors || quotaSpent)
+    console.log(`\nNot saving a baseline: ${errors} answers were errors, not answers.`);
   else {
     const base = existsSync(baselineFile) ? JSON.parse(readFileSync(baselineFile, "utf8")) : {};
     base[engine] = { savedAt: new Date().toISOString().slice(0, 10), ...summary };
