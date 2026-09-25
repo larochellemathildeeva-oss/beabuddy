@@ -113,6 +113,12 @@ const WALK_METRES_PER_MIN = 70;
  */
 const MARGIN_MIN = 10;
 
+/**
+ * Past this, straight line, nobody walks it: it is a train, a ferry or a
+ * taxi, and a walking time for it ("the walk alone is about 252") is noise.
+ */
+const MAX_WALK_METRES = 5000;
+
 function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
   const { lat, lon } = item;
   if (typeof lat !== "number" || typeof lon !== "number") return null;
@@ -157,7 +163,9 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     const b = placedPoint(to);
     if (!a || !b) continue;
 
-    const walk = Math.round(haversine(a, b) / WALK_METRES_PER_MIN);
+    const metres = haversine(a, b);
+    if (metres > MAX_WALK_METRES) continue;
+    const walk = Math.round(metres / WALK_METRES_PER_MIN);
     if (walk - gap < MARGIN_MIN) continue;
 
     const fromTitle = (from.title ?? "").trim();

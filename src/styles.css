@@ -773,11 +773,22 @@
     margin 150ms ease,
     background-color 150ms ease;
 }
+/* Four families, each a warm earth tone so the map stays one palette. */
+.journal-pin--food {
+  background: #c8902f;
+}
+.journal-pin--transit {
+  background: #5d7d93;
+}
+.journal-pin--stay {
+  background: #8b6a8c;
+}
 .journal-pin--on {
   width: 34px;
   height: 34px;
   margin: 0;
-  background: #b4502b;
+  /* Deeper, in its own family's colour. */
+  filter: brightness(0.84) saturate(1.1);
   font-size: 13px;
   box-shadow:
     0 0 0 3px #fff,
@@ -801,6 +812,22 @@
   padding: 5px 10px 6px;
   border-radius: 999px;
   box-shadow: 0 1px 3px rgb(68 61 54 / 0.16);
+}
+.journal-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d96b43;
+}
+.journal-legend-dot--food {
+  background: #c8902f;
+}
+.journal-legend-dot--transit {
+  background: #5d7d93;
+}
+.journal-legend-dot--stay {
+  background: #8b6a8c;
 }
 .journal-tag--left {
   left: auto;

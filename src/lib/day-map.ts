@@ -13,7 +13,40 @@
  * cannot be imported under node, and none of this needs it.
  */
 
+import { formatMetres, haversine } from "./geo.ts";
+import { minutesOfDay } from "./day-shape.ts";
+import { timelineGlyph } from "./timeline-kind.ts";
 import { placed, tripMapPlan, type TripMapPlan } from "./trip-map.ts";
+
+/**
+ * The four families a pin is tinted by. Fewer than the glyphs on purpose: a
+ * legend of seven colours is a dashboard, and walks, notes and "things to
+ * do" read as the day's sights anyway.
+ */
+export type PinTone = "sight" | "food" | "transit" | "stay";
+
+export const PIN_TONES: { tone: PinTone; label: string }[] = [
+  { tone: "sight", label: "Sights" },
+  { tone: "food", label: "Food" },
+  { tone: "transit", label: "Transit" },
+  { tone: "stay", label: "Stay" },
+];
+
+export function pinTone(stop: {
+  kind?: string | null | undefined;
+  title?: string | null | undefined;
+}): PinTone {
+  switch (timelineGlyph({ kind: stop.kind ?? null, title: stop.title ?? null })) {
+    case "meal":
+      return "food";
+    case "transport":
+      return "transit";
+    case "lodging":
+      return "stay";
+    default:
+      return "sight";
+  }
+}
 
 export type DayMapPin = {
   id: string;
@@ -22,11 +55,13 @@ export type DayMapPin = {
   title: string;
   lat: number;
   lon: number;
+  tone: PinTone;
 };
 
 type DayStop = {
   id: string;
   title: string;
+  kind?: string | null | undefined;
   lat?: number | null | undefined;
   lon?: number | null | undefined;
 };
@@ -41,6 +76,7 @@ export function dayMapPins(stops: readonly DayStop[]): DayMapPin[] {
       title: stop.title.trim(),
       lat: stop.lat,
       lon: stop.lon,
+      tone: pinTone(stop),
     });
   });
   return pins;
@@ -114,4 +150,103 @@ export function curvedLeg(
     ]);
   }
   return out;
+}
+
+/** The tones a set of pins uses, in legend order, so the legend lists only those. */
+export function tonesUsed(pins: readonly { tone: PinTone }[]): typeof PIN_TONES {
+  const used = new Set(pins.map((pin) => pin.tone));
+  return PIN_TONES.filter((entry) => used.has(entry.tone));
+}
+
+/**
+ * Metres a minute on foot, straight line. The same slow city pace the day's
+ * tightness note uses, so the two never disagree about one walk.
+ */
+const WALK_METRES_PER_MIN = 70;
+/** Past this, a straight-line walk time stops being a useful thing to say. */
+const WALKABLE_METRES = 2500;
+
+export type LegEstimate = {
+  metres: number;
+  /** Null when it is too far to be a walk. */
+  walkMinutes: number | null;
+  label: string;
+};
+
+/**
+ * Roughly how far one stop is from the next, from the pins alone.
+ *
+ * As the crow flies, and said so with "about": nothing is routed here, so
+ * it costs no credits and can never pretend to be directions.
+ */
+export function legEstimate(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): LegEstimate {
+  const metres = haversine(a, b);
+  if (metres > WALKABLE_METRES) {
+    return { metres, walkMinutes: null, label: `about ${formatMetres(metres)} away` };
+  }
+  const walkMinutes = Math.max(1, Math.round(metres / WALK_METRES_PER_MIN));
+  return {
+    metres,
+    walkMinutes,
+    label: `about ${walkMinutes} min walk · ${formatMetres(metres)}`,
+  };
+}
+
+/** The distance a day covers, stop to stop in order, as the crow flies. */
+export function dayDistance(pins: readonly { lat: number; lon: number }[]): number {
+  let total = 0;
+  for (let i = 0; i < pins.length - 1; i++) total += haversine(pins[i]!, pins[i + 1]!);
+  return total;
+}
+
+/** The next or previous pin, wrapping at either end. Null selection starts at the first. */
+export function stepPin(
+  pins: readonly { id: string }[],
+  current: string | null,
+  by: 1 | -1,
+): string | null {
+  const n = pins.length;
+  if (n === 0) return null;
+  const at = pins.findIndex((pin) => pin.id === current);
+  if (at === -1) return pins[by === 1 ? 0 : n - 1]!.id;
+  return pins[(at + by + n) % n]!.id;
+}
+
+/**
+ * Where Focus opens: the stop asked for, else — on the day itself — the one
+ * still to come (or the last, once the day is behind you), else the first.
+ */
+export function focusStart(
+  pins: readonly { id: string }[],
+  stops: readonly { id: string; time_label?: string | null }[],
+  opts: { requested?: string | null; isToday: boolean; minutesNow: number },
+): string | null {
+  if (pins.length === 0) return null;
+  const onMap = new Set(pins.map((pin) => pin.id));
+  if (opts.requested && onMap.has(opts.requested)) return opts.requested;
+  if (opts.isToday) {
+    const timed = stops.filter(
+      (stop) => onMap.has(stop.id) && minutesOfDay(stop.time_label) !== null,
+    );
+    if (timed.length > 0) {
+      const ahead = timed.find((stop) => minutesOfDay(stop.time_label)! > opts.minutesNow);
+      return (ahead ?? timed[timed.length - 1]!).id;
+    }
+  }
+  return pins[0]!.id;
+}
+
+/** The Map tab's three layouts. */
+export const MAP_LAYOUTS = [
+  { id: "split", label: "Split", hint: "The day beside its map." },
+  { id: "focus", label: "Focus", hint: "One stop at a time; the map follows." },
+  { id: "timeline", label: "Timeline", hint: "The map, then the day in order." },
+] as const;
+export type MapLayout = (typeof MAP_LAYOUTS)[number]["id"];
+
+export function isMapLayout(value: unknown): value is MapLayout {
+  return MAP_LAYOUTS.some((layout) => layout.id === value);
 }
