@@ -219,7 +219,7 @@ export function HomeTripCard() {
           <p className="label-caps text-foreground">
             {started ? "Your trip right now" : "Your next trip"}
           </p>
-          <span className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-[12.5px] font-semibold text-primary">
+          <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-semibold text-primary">
             {status}
           </span>
         </div>
@@ -296,7 +296,7 @@ export function HomeTripCard() {
           <Link
             to="/trips/$tripId"
             params={{ tripId: trip.id }}
-            className="mt-4 flex min-h-12 items-center justify-center gap-1.5 rounded-2xl bg-primary px-4 text-[15px] font-semibold text-primary-foreground shadow-sm"
+            className="mt-4 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-2xs transition-all active:scale-95"
           >
             Open {shortName(trip)} itinerary
             <ChevronRight className="size-4" aria-hidden />

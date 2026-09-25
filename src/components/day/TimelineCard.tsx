@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import {
   Bookmark,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
   MapPin,
   MapPinPlus,
-  Navigation,
   PawPrint,
   ExternalLink,
   Ticket,
@@ -172,137 +172,128 @@ export function TimelineEntry({
     stray ? "" : where || "No place yet",
     item.planned_stay_minutes ? `~${stayLabel(item.planned_stay_minutes)}` : "",
   ].filter(Boolean);
-  const topIcon = "grid size-8 place-items-center rounded-lg text-muted-foreground";
-  const actions = (
-    <>
-      <button
-        type="button"
-        onClick={onToggleDone}
-        aria-pressed={done}
-        aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-        className={`${topIcon} ${done ? "text-nexttime" : ""}`}
-      >
-        <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
-      </button>
-      {canKeep && (
-        <button
-          type="button"
-          onClick={keep}
-          disabled={kept}
-          aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
-          className={`${topIcon} ${kept ? "text-primary" : ""}`}
-        >
-          <Bookmark className="size-4" fill={kept ? "currentColor" : "none"} aria-hidden />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`Delete ${item.title}`}
-        className={topIcon}
-      >
-        <Trash2 className="size-4" aria-hidden />
-      </button>
-      <button
-        type="button"
-        onClick={() => flip(true)}
-        aria-label={`Open ${item.title}`}
-        className={topIcon}
-      >
-        <ChevronDown className="size-4" aria-hidden />
-      </button>
-    </>
-  );
+  // The prototype's small action tiles; each still reaches 44px of tap.
+  const topIcon =
+    "tap-44 grid size-6 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-elevated";
   const front = (
     <article
-      className={`rounded-2xl border bg-card px-3 pb-2.5 pt-3 shadow-sm ${
+      className={`rounded-2xl border bg-card p-3.5 shadow-2xs transition-colors ${
         current
           ? "border-primary/50 ring-1 ring-primary/20"
           : done
             ? "border-nexttime/40"
-            : "border-border/70"
+            : "border-border"
       }`}
     >
-      {/* Phone: time, number and the actions share the top row, so the name
-          below gets the card's full width. Wider: the prototype's columns. */}
-      <div className="mb-1 flex items-center gap-2 sm:hidden">
-        <span
-          className={`text-[13.5px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
-        >
-          {rail || "–"}
-        </span>
-        {number != null && (
-          <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-            #{number}
-          </span>
-        )}
-        <div className="-my-1 -mr-1 ml-auto flex shrink-0 items-center">{actions}</div>
-      </div>
-      <div className="flex min-w-0 items-start gap-2.5">
-        <div className="hidden w-12 shrink-0 flex-col items-center gap-1 pt-0.5 sm:flex">
-          <span
-            className={`text-[13.5px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
-          >
-            {rail || "–"}
-          </span>
-          {number != null && (
-            <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
-              #{number}
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => flip(true)}
-          aria-expanded={false}
-          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
-          className="min-w-0 flex-1 text-left"
-        >
-          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {showDay && item.day_date ? (
-              <span className="text-[12px] text-muted-foreground">{item.day_date}</span>
-            ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <div className="flex shrink-0 flex-col items-center">
             <span
-              className={`break-words text-[16px] font-bold leading-snug ${
-                done ? "text-muted-foreground line-through" : ""
-              }`}
+              className={`mt-0.5 font-mono text-xs font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
             >
-              {item.title}
+              {rail || "–"}
             </span>
-            {current && (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
-                Current
+            {number != null && (
+              <span className="mt-1 rounded-md bg-elevated px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-muted-foreground">
+                #{number}
               </span>
             )}
-            {done && (
-              <span className="rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
-                ✓ Done
+          </div>
+          <button
+            type="button"
+            onClick={() => flip(true)}
+            aria-expanded={false}
+            aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
+            className="min-w-0 flex-1 text-left"
+          >
+            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              {showDay && item.day_date ? (
+                <span className="text-[10px] text-muted-foreground">{item.day_date}</span>
+              ) : null}
+              <span
+                className={`break-words text-sm font-bold leading-snug sm:text-base ${
+                  done ? "text-muted-foreground line-through" : ""
+                }`}
+              >
+                {item.title}
               </span>
-            )}
-          </span>
-          {detail ? (
-            <span className="mt-0.5 block break-words text-[13.5px] text-muted-foreground">
-              {detail}
-            </span>
-          ) : null}
-          {stray ? (
-            <span className="mt-1 block text-[12.5px] font-semibold text-destructive">
-              ⚠ Pinned far from the rest of this trip. Tap to check the place.
-            </span>
-          ) : null}
-          {(meta.length > 0 || booked) && (
-            <span className="mt-1 block break-words text-[12.5px] text-muted-foreground">
-              {meta.join(" · ")}
-              {booked && (
-                <span className="font-semibold text-nexttime">
-                  {meta.length ? " · " : ""}✓ Booked
-                  {item.booking_ref ? ` · ${item.booking_ref}` : ""}
+              {current && (
+                <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
+                  Current
+                </span>
+              )}
+              {done && (
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nexttime/30 bg-nexttime/10 px-2 py-0.5 text-[10px] font-bold text-nexttime">
+                  <Check className="size-3" strokeWidth={3} aria-hidden />
+                  Completed
                 </span>
               )}
             </span>
-          )}
-        </button>
-        <div className="-mr-1 -mt-1 hidden shrink-0 items-center sm:flex">{actions}</div>
+            {detail ? (
+              <span className="mt-0.5 line-clamp-2 block break-words text-xs leading-relaxed text-muted-foreground">
+                {detail}
+              </span>
+            ) : null}
+            {stray ? (
+              <span className="mt-1 block text-xs font-semibold text-destructive">
+                ⚠ Pinned far from the rest of this trip. Tap to check the place.
+              </span>
+            ) : null}
+            {(meta.length > 0 || booked) && (
+              <span className="mt-1 flex flex-wrap items-center gap-x-1.5 break-words text-xs text-muted-foreground">
+                {meta.join(" · ")}
+                {booked && (
+                  <span className="inline-flex items-center gap-1 font-semibold text-nexttime">
+                    {meta.length ? "· " : ""}
+                    <CheckCircle2 className="size-3" aria-hidden />
+                    Booked
+                    {item.booking_ref ? ` · ${item.booking_ref}` : ""}
+                  </span>
+                )}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 pt-0.5">
+          <div className="mr-1 flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={onToggleDone}
+              aria-pressed={done}
+              aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
+              className={`${topIcon} ${done ? "bg-nexttime/10 text-nexttime" : ""}`}
+            >
+              <Check className="size-3.5" strokeWidth={done ? 3 : 2} aria-hidden />
+            </button>
+            {canKeep && (
+              <button
+                type="button"
+                onClick={keep}
+                disabled={kept}
+                aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+                className={`${topIcon} ${kept ? "text-primary" : ""}`}
+              >
+                <Bookmark className="size-3.5" fill={kept ? "currentColor" : "none"} aria-hidden />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onRemove}
+              aria-label={`Delete ${item.title}`}
+              className={`${topIcon} hover:text-destructive`}
+            >
+              <Trash2 className="size-3.5" aria-hidden />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => flip(true)}
+            aria-label={`Open ${item.title}`}
+            className="tap-44 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -670,105 +661,108 @@ export function TravelConnector({
   const steps = leg?.steps ?? [];
   return (
     <li className="list-none">
-      <div className="flex flex-col items-center">
-        <span aria-hidden className="h-3 border-l-2 border-dotted border-primary/40" />
-        <div className="w-full max-w-[36rem] rounded-2xl border border-border/70 bg-card px-3 py-2.5 shadow-sm">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-              <PawPrint className="size-4" aria-hidden />
-              <span
-                aria-hidden
-                className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-nexttime"
-              />
+      <div className="my-1.5 rounded-2xl border border-border bg-elevated p-2.5 text-xs shadow-2xs sm:p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-[11rem] flex-1 items-center gap-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-xl border border-border bg-card text-primary shadow-2xs">
+              <PawPrint className="size-3.5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
-                <span className="mr-1 inline-block size-1.5 rounded-full bg-primary align-middle" />
-                Travelling to {to.title}
-              </p>
-              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] font-bold">
+              <p className="flex flex-wrap items-center gap-1.5">
                 {showTime && measured && leg ? (
                   <>
-                    {prettyDuration(leg.duration)} {how}
-                    <span className="text-[12.5px] font-normal text-muted-foreground">
-                      · {prettyDistance(leg.distance)}
+                    <span className="text-xs font-bold">
+                      {prettyDuration(leg.duration)} {how}
+                    </span>
+                    <span className="text-[10px] font-medium text-muted-foreground">
+                      ({prettyDistance(leg.distance)})
                     </span>
                   </>
                 ) : (
-                  <span className="text-[13px] font-semibold text-muted-foreground">
-                    {showTime ? "Not measured yet" : "Directions"}
+                  <span className="min-w-0 truncate text-xs font-bold">
+                    Travelling to {to.title}
                   </span>
                 )}
                 {leave?.kind === "time" && (
-                  <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[11.5px] font-semibold text-primary">
+                  <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                     Leave by {leave.at}
                   </span>
                 )}
               </p>
+              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                {showTime && measured
+                  ? `Travelling to ${to.title}`
+                  : showTime
+                    ? "Not measured yet"
+                    : "Directions in Maps"}
+              </p>
             </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5 self-center">
             <a
               href={href}
               target="_blank"
               rel="noreferrer"
               aria-label={`Directions from ${from.title} to ${to.title}`}
               title="Open in Maps"
-              className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground"
+              className="tap-44 rounded-lg border border-border bg-card p-1.5 text-muted-foreground transition-colors hover:text-primary"
             >
-              <ExternalLink className="size-4" aria-hidden />
+              <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-expanded={open}
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-semibold text-muted-foreground shadow-2xs transition-colors hover:text-foreground"
+            >
+              {open ? "Hide directions" : "See directions"}
+              <ChevronDown
+                className={`size-3.5 text-primary transition-transform ${open ? "rotate-180" : ""}`}
+                aria-hidden
+              />
+            </button>
+          </div>
+        </div>
+        {open && (
+          <div className="mt-3 space-y-2 border-t border-border pt-3">
+            {steps.length > 0 ? (
+              <ol className="space-y-2">
+                {steps.map((step, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-2.5 shadow-2xs"
+                  >
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-foreground text-[10px] font-bold text-background">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 text-xs font-medium leading-relaxed">
+                      {step.instruction}
+                      {step.distance > 0 && (
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          {" "}
+                          · {prettyDistance(step.distance)}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="rounded-xl border border-border bg-card p-3 text-xs text-muted-foreground">
+                {leg ? unroutedLegCopy(leg) : "Béa has not measured this walk yet"}. Open in Maps
+                for the full route, or save directions in Settings to see the steps here.
+              </p>
+            )}
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-[11px] font-bold text-nexttime hover:underline"
+            >
+              Open in Maps ↗
             </a>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-primary/30 px-3 text-[12.5px] font-semibold text-primary"
-          >
-            <Navigation className="size-3.5" aria-hidden />
-            {open ? "Hide directions" : "See directions"}
-            <ChevronDown
-              className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-              aria-hidden
-            />
-          </button>
-          {open && (
-            <div className="mt-2 rounded-xl border border-border bg-elevated p-2.5">
-              {steps.length > 0 ? (
-                <ol className="space-y-1.5">
-                  {steps.map((step, i) => (
-                    <li key={i} className="flex gap-2 text-[12.5px]">
-                      <span className="w-4 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0">
-                        {step.instruction}
-                        {step.distance > 0 && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            · {prettyDistance(step.distance)}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-[12.5px] text-muted-foreground">
-                  {leg ? unroutedLegCopy(leg) : "Béa has not measured this walk yet"}. Open in Maps
-                  for the full route, or save directions in Settings to see the steps here.
-                </p>
-              )}
-              <a
-                href={href}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-2 inline-block text-[12.5px] font-semibold text-nexttime underline"
-              >
-                Open in Maps ↗
-              </a>
-            </div>
-          )}
-        </div>
-        <span aria-hidden className="h-3 border-l-2 border-dotted border-primary/40" />
+        )}
       </div>
     </li>
   );

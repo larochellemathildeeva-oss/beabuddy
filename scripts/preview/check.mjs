@@ -102,7 +102,7 @@ async function open(sample) {
 }
 
 const tabNames = async (page) =>
-  page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.textContent.trim()));
+  page.$$eval('[role="tablist"][aria-label="How to look at this trip"] [role="tab"]', (els) => els.map((e) => e.getAttribute("aria-label") ?? e.textContent.trim()));
 
 async function goTab(page, name) {
   await page.getByRole("tab", { name, exact: true }).click();

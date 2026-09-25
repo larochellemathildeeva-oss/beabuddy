@@ -585,7 +585,7 @@ export function TripDetail({
         <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
       ) : null}
       {/* The prototype's labelled action pills, in place of bare icons. */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
         <button
           data-guide="bea-plan"
           title="Let Béa plan this trip"
@@ -593,18 +593,18 @@ export function TripDetail({
             setPlannerTab("import");
             setPlannerOpen(true);
           }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 pl-1 pr-3 text-[13px] font-semibold text-primary"
+          className="inline-flex items-center gap-1 rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
         >
-          <img src={logo} alt="" className="size-8 object-contain" />
+          <img src={logo} alt="" className="size-5 object-contain" />
           Plan with Béa
         </button>
         <button
           data-guide="trip-prep"
           title="To-dos and packing for this trip"
           onClick={() => setPrepSignal((n) => n + 1)}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold text-muted-foreground"
+          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
-          <ListChecks className="size-4 text-primary" aria-hidden />
+          <ListChecks className="size-3.5 text-primary" aria-hidden />
           Before you go
         </button>
         <button
@@ -612,17 +612,17 @@ export function TripDetail({
             setSettingsOpen(true);
             setSheetSection(null);
           }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold text-muted-foreground"
+          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
-          <Settings className="size-4 text-primary" aria-hidden />
+          <Settings className="size-3.5 text-primary" aria-hidden />
           Settings
         </button>
         <button
           type="button"
           onClick={() => setSavedOpen(true)}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold text-muted-foreground"
+          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
-          <Bookmark className="size-4 text-primary" aria-hidden />
+          <Bookmark className="size-3.5 text-primary" aria-hidden />
           Saved
         </button>
         <button
@@ -632,12 +632,12 @@ export function TripDetail({
             setPerspective("trip");
             setStopSignal((n) => n + 1);
           }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-primary px-3.5 text-[13px] font-bold text-primary-foreground shadow-sm"
+          className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
         >
-          <Plus className="size-4" aria-hidden />
+          <Plus className="size-3.5" aria-hidden />
           Add stop
         </button>
-        <span className="ml-auto truncate pl-1 text-[12px] text-muted-foreground">
+        <span className="ml-auto truncate pl-1 text-[11px] text-muted-foreground">
           {[
             board.items.length ? `${board.items.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
@@ -648,10 +648,10 @@ export function TripDetail({
       </div>
 
       <div className="section-stagger border-t border-border px-3 pb-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-3 py-2">
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5">
           <div className="flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-            <p className="text-[13px] text-muted-foreground">
+            <p className="text-[11.5px] text-muted-foreground">
               {others.length === 0
                 ? "You're the only one here right now"
                 : others.some((o) => o.editing)
@@ -695,9 +695,9 @@ export function TripDetail({
                     setPlannerTab("optimize");
                     setPlannerOpen(true);
                   }}
-                  className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-[12.5px] font-semibold text-primary shadow-sm"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
                 >
-                  <Sparkles className="size-4" aria-hidden />
+                  <Sparkles className="size-3.5" aria-hidden />
                   Optimize route
                 </button>
               )}
@@ -707,9 +707,9 @@ export function TripDetail({
                   setSettingsOpen(true);
                   setSheetSection("offline");
                 }}
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 text-[12.5px] font-semibold text-muted-foreground shadow-sm"
+                className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
               >
-                <Download className="size-4 text-primary" aria-hidden />
+                <Download className="size-3.5 text-primary" aria-hidden />
                 Offline
               </button>
             </div>
@@ -720,7 +720,7 @@ export function TripDetail({
           <nav
             role="tablist"
             aria-label="How to look at this trip"
-            className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border bg-elevated p-1"
+            className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border bg-elevated p-1 sm:flex-initial"
           >
             {TRIP_PERSPECTIVES.map((p) => {
               const on = p.id === perspective;
@@ -730,21 +730,30 @@ export function TripDetail({
                   type="button"
                   role="tab"
                   aria-selected={on}
+                  aria-label={p.label}
                   onClick={() => setPerspective(p.id)}
-                  className={`min-h-10 flex-1 rounded-lg px-2 text-[13px] transition-all ${
+                  className={`flex-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-center text-xs transition-all sm:flex-initial sm:px-3 ${
                     on
-                      ? "bg-card font-bold text-foreground shadow-sm ring-1 ring-primary/20"
+                      ? "bg-card font-bold text-foreground shadow-xs ring-1 ring-primary/20"
                       : "font-semibold text-muted-foreground"
                   }`}
                 >
-                  {p.label}
+                  {/* The prototype's short label on a phone. */}
+                  {"shortLabel" in p ? (
+                    <>
+                      <span className="hidden sm:inline">{p.label}</span>
+                      <span className="sm:hidden">{p.shortLabel}</span>
+                    </>
+                  ) : (
+                    p.label
+                  )}
                 </button>
               );
             })}
           </nav>
           <CustomizeTrip prefs={view.prefs} onToggle={view.toggle} />
         </div>
-        <p className="mb-3 px-0.5 text-[12.5px] text-muted-foreground">{activePerspective.hint}</p>
+        <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
 
         {perspective === "companion" && (
           <div className="space-y-3">
@@ -858,75 +867,78 @@ export function TripDetail({
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
           {board.items.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-sm">
-              <span className="text-[13px] font-semibold">
-                {board.items.length} scheduled {board.items.length === 1 ? "stop" : "stops"}
-                {doneCount > 0 ? (
-                  <span className="font-normal text-muted-foreground"> · {doneCount} visited</span>
-                ) : null}
-              </span>
-              {/* Every stop, or only the ones still ahead. A stop swiped done
-                  leaves the second list; Undo on its toast brings it back. */}
-              <div
-                role="group"
-                aria-label="Which stops to show"
-                className="flex rounded-lg border border-border bg-elevated p-0.5"
-              >
-                {(
-                  [
-                    [false, "All"],
-                    [true, `Not visited (${board.items.length - doneCount})`],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={String(value)}
-                    type="button"
-                    aria-pressed={hideDone === value}
-                    onClick={() => setHideDone(value)}
-                    className={`min-h-8 rounded-md px-2.5 text-[12px] font-semibold ${
-                      hideDone === value
-                        ? "bg-card text-foreground shadow-sm"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-2xs">
+              <div className="min-w-0">
+                <p className="text-xs font-bold">All Scheduled Stops</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {board.items.length} {board.items.length === 1 ? "stop" : "stops"} scheduled
+                  {doneCount > 0 ? ` · ${doneCount} visited` : ""}
+                </p>
               </div>
-              {timelineByDay && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Every stop, or only the ones still ahead. A stop swiped done
+                  leaves the second list; Undo on its toast brings it back. */}
                 <div
                   role="group"
-                  aria-label="How to list the stops"
-                  className="flex rounded-lg border border-border bg-elevated p-0.5"
+                  aria-label="Which stops to show"
+                  className="flex gap-0.5 rounded-xl border border-border bg-elevated p-0.5"
                 >
                   {(
                     [
-                      [false, "Timeline"],
-                      [true, "Neighbourhood"],
+                      [false, "All"],
+                      [true, `Not visited (${board.items.length - doneCount})`],
                     ] as const
                   ).map(([value, label]) => (
                     <button
-                      key={label}
+                      key={String(value)}
                       type="button"
-                      aria-pressed={byArea === value}
-                      onClick={() => setByArea(value)}
-                      className={`inline-flex min-h-8 items-center gap-1 rounded-md px-2.5 text-[12px] font-semibold ${
-                        byArea === value
-                          ? "bg-card text-foreground shadow-sm"
-                          : "text-muted-foreground"
+                      aria-pressed={hideDone === value}
+                      onClick={() => setHideDone(value)}
+                      className={`rounded-lg px-2.5 py-1 text-[11px] transition-all ${
+                        hideDone === value
+                          ? "border border-border bg-card font-bold text-foreground shadow-2xs"
+                          : "border border-transparent font-semibold text-muted-foreground"
                       }`}
                     >
-                      {value ? (
-                        <MapPin className="size-3.5" aria-hidden />
-                      ) : (
-                        <Clock className="size-3.5" aria-hidden />
-                      )}
                       {label}
                     </button>
                   ))}
                 </div>
-              )}
-              <span className="w-full text-[12px] text-muted-foreground">
+                {timelineByDay && (
+                  <div
+                    role="group"
+                    aria-label="How to list the stops"
+                    className="flex gap-0.5 rounded-xl border border-border bg-elevated p-0.5"
+                  >
+                    {(
+                      [
+                        [false, "Timeline"],
+                        [true, "Neighbourhood"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        aria-pressed={byArea === value}
+                        onClick={() => setByArea(value)}
+                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] transition-all ${
+                          byArea === value
+                            ? "border border-border bg-card font-bold text-foreground shadow-2xs"
+                            : "border border-transparent font-semibold text-muted-foreground"
+                        }`}
+                      >
+                        {value ? (
+                          <MapPin className="size-3" aria-hidden />
+                        ) : (
+                          <Clock className="size-3" aria-hidden />
+                        )}
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="w-full text-[10.5px] text-muted-foreground">
                 Tap a stop to edit it · the card between stops has the way there
               </span>
             </div>
@@ -1029,11 +1041,8 @@ export function TripDetail({
                       const tight = dayTightnessNote(group.items);
                       const runLabels = runLabelsByIndex(walkableRuns(group.items));
                       return (
-                        <div
-                          key={group.key || "undated"}
-                          className="rounded-xl border border-border/60"
-                        >
-                          <div className="flex items-center gap-1 pr-2">
+                        <div key={group.key || "undated"} className="min-w-0">
+                          <div className="flex items-center gap-1 pr-1">
                             <button
                               type="button"
                               onClick={() =>
@@ -1043,10 +1052,10 @@ export function TripDetail({
                                 }))
                               }
                               aria-expanded={dayOpen}
-                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-3 py-2.5 text-left"
+                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-2 text-left"
                             >
                               <span className="min-w-0">
-                                <span className="block font-display text-[20px] leading-tight">
+                                <span className="block text-sm font-bold leading-tight">
                                   {group.label}
                                 </span>
                                 <span className="block text-[12.5px] text-muted-foreground">
@@ -1093,7 +1102,7 @@ export function TripDetail({
                             )}
                           </div>
                           {dayOpen && (
-                            <ol className="relative mx-1.5 mb-2 min-w-0 space-y-2 overflow-x-hidden py-1.5">
+                            <ol className="relative mb-2 min-w-0 space-y-2 overflow-x-hidden py-1">
                               {hidingDone && group.items.every(isDone) && (
                                 <li className="list-none px-2 py-2 text-[13px] text-muted-foreground">
                                   ✓ Every stop on this day is visited.
