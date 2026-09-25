@@ -145,11 +145,11 @@ function PrivacyPage() {
 
         <Section title="AI processing">
           <p>
-            When you use an AI feature — building a trip, importing a plan from a photo, a PDF or
-            pasted text, comparing two itineraries or places — the text, image or PDF you provide is
-            sent to an AI provider (Google Gemini) purely to produce your answer. Your saved travel
-            preferences (style, budget, interests, dietary rules) are included so suggestions fit
-            you.
+            When you use an AI feature — building a trip, importing a plan from a photo, a PDF, a
+            link or pasted text, comparing two itineraries or places — the text, image or PDF you
+            provide is sent to an AI provider (Google Gemini) purely to produce your answer. Your
+            saved travel preferences (style, budget, interests, dietary rules) are included so
+            suggestions fit you.
           </p>
           <p>
             This content is used only to generate your result; it is not sold and not used for
@@ -157,6 +157,11 @@ function PrivacyPage() {
             — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories are
             never sent to the AI provider. Avoid pasting or photographing sensitive details such as
             passport or card numbers. Vault documents are not sent into AI prompts.
+          </p>
+          <p>
+            A link you import is opened by Béa&apos;s server, which reads the page&apos;s text. If
+            the link is a calendar feed, or you import a calendar file (.ics), the events are read
+            directly and are not sent to the AI provider; a calendar file is read on your device.
           </p>
         </Section>
 

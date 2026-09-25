@@ -6,6 +6,8 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
 import { MAX_PDF_DATA_URL_LENGTH, PDF_DATA_URL_PREFIX } from "@/lib/itinerary-pdf";
+import { IcsReadError, icsToParsedItinerary } from "@/lib/itinerary-ics";
+import { readFetchedLink } from "@/lib/itinerary-link";
 import { AI_CALL } from "@/lib/ai-errors";
 import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-metrics";
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
@@ -31,6 +33,8 @@ const ParseInput = z
     /** One PDF of the plan: a booking confirmation, a tour document, an export. */
     pdfDataUrl: z.string().startsWith(PDF_DATA_URL_PREFIX).max(MAX_PDF_DATA_URL_LENGTH).nullish(),
     text: z.string().max(20_000).nullable(),
+    /** A link to the plan: a tour page, a blog itinerary, a calendar feed. */
+    pageUrl: z.string().url().max(2_000).nullish(),
     tripCity: z.string().max(120).nullable(),
     startDate: z.string().max(20).nullable(),
     endDate: z.string().max(20).nullable(),
@@ -43,7 +47,7 @@ const ParseInput = z
   .refine(
     (v) =>
       v.mode === "build" ||
-      Boolean(v.imageDataUrls?.length || v.pdfDataUrl || (v.text && v.text.trim())),
+      Boolean(v.imageDataUrls?.length || v.pdfDataUrl || v.pageUrl || (v.text && v.text.trim())),
     { message: "Add a photo or a PDF, or paste an itinerary." },
   );
 
@@ -334,10 +338,55 @@ function finishBuild(
   return parsed;
 }
 
+/**
+ * Open a pasted link and say what it holds. The fetch is the guarded one
+ * place links use: https only, public addresses only, re-checked each hop.
+ */
+async function readItineraryLink(
+  href: string,
+): Promise<
+  { kind: "calendar"; plan: ParsedItinerary } | { kind: "page"; text: string; url: string }
+> {
+  const { fetchPublicHtml, UnsupportedPlaceUrlError } = await import("@/lib/place-url");
+  const url = new URL(href);
+  let fetched: Awaited<ReturnType<typeof fetchPublicHtml>>;
+  try {
+    fetched = await fetchPublicHtml(href);
+  } catch (error) {
+    if (error instanceof UnsupportedPlaceUrlError) {
+      throw new Error("Use a normal https link — not a private or local address.");
+    }
+    throw new Error(
+      "Béa couldn't open that page. Copy the plan from it and paste it here instead.",
+    );
+  }
+  const content = readFetchedLink(fetched, url.hostname);
+  if (content.kind === "failed") throw new Error(content.message);
+  if (content.kind === "calendar") {
+    try {
+      return { kind: "calendar", plan: icsToParsedItinerary(content.text) };
+    } catch (error) {
+      if (error instanceof IcsReadError) throw new Error(error.message);
+      throw error;
+    }
+  }
+  return { kind: "page", text: content.text, url: fetched.finalUrl };
+}
+
 export const parseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseInput.parse(input))
-  .handler(async ({ data, context }): Promise<ParsedItinerary> => {
+  .handler(async ({ data: input, context }): Promise<ParsedItinerary> => {
+    let data = input;
+    if (data.mode === "import" && data.pageUrl) {
+      const page = await readItineraryLink(data.pageUrl);
+      // A calendar feed is read as a calendar: exactly, and without AI.
+      if (page.kind === "calendar") return page.plan;
+      data = {
+        ...data,
+        text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
+      };
+    }
     const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
       context,
       data.tripCity,
