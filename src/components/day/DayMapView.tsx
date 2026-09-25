@@ -73,7 +73,7 @@ export function DayMapView({
           <p className="font-display text-[19px] leading-snug">Nothing to put on the map yet.</p>
           <p className="text-[14px] text-muted-foreground">
             None of {area ? `your ${area} stops` : "these stops"} has a location. Add an address to
-            a stop in the Timeline tab and it appears here.
+            a stop in the Timeline Editor and it appears here.
           </p>
         </div>
       ) : (

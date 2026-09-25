@@ -264,7 +264,7 @@ async function flow(name, run) {
 const writes = (page) => page.evaluate(() => window.__writes);
 
 await flow("booking: mark booked with a reference", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   await page.getByRole("button", { name: /tap to edit$/ }).first().click();
   await page.getByRole("button", { name: /^Booking for / }).first().click();
   await page.getByRole("switch").first().click();
@@ -289,7 +289,7 @@ await flow("saved places: add one to the chosen day", async (page) => {
 });
 
 await flow("locate on map: opens Map Split on that stop", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
   await page.getByRole("button", { name: /^Locate .* on the map$/ }).first().click();
   await page.waitForTimeout(700);
@@ -314,7 +314,7 @@ await flow("companion: pick a day from the prompt itself", async (page) => {
 });
 
 await flow("stop card: compact front turns over to edit, and back", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   const front = page.getByRole("button", { name: /tap to edit$/ }).first();
   const box = await front.boundingBox();
   // Names wrap rather than cut off, so a long one takes a second or third line.
@@ -343,15 +343,15 @@ await flow("stop card: compact front turns over to edit, and back", async (page)
 });
 
 await flow("timeline: Not visited hides done stops, All brings them back", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   const cards = () => page.getByRole("button", { name: /tap to edit$/ }).count();
   const all = await cards();
   await page.getByRole("button", { name: /^Not visited/ }).click();
   await page.waitForTimeout(300);
   const open = await cards();
   if (open >= all) throw new Error("Not visited hid nothing (the sample has a done stop)");
-  await page.getByRole("button", { name: /tap to edit$/ }).first().click();
-  await page.getByRole("button", { name: /^Mark .* done$/ }).click();
+  // Done is on the card's front now, as in the prototype.
+  await page.getByRole("button", { name: /^Mark .* done$/ }).first().click();
   await page.waitForTimeout(500);
   if ((await cards()) !== open - 1) throw new Error("a stop marked done stayed on the Not visited list");
   await page.getByRole("button", { name: "All", exact: true }).click();
@@ -360,7 +360,7 @@ await flow("timeline: Not visited hides done stops, All brings them back", async
 });
 
 await flow("timeline: paws between stops open directions to the next one", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   if ((await page.getByRole("button", { name: /Add stop between/ }).count()) > 0) throw new Error("Add stop between is still there");
   const paws = page.getByRole("link", { name: /^Directions from .* to / });
   if ((await paws.count()) < 2) throw new Error("no paw between stops");
@@ -440,8 +440,51 @@ await flow("background lookup: a doubtful match is not pinned onto a stop", asyn
   if (pinned) throw new Error("the namesake park was saved onto the stop");
 });
 
+await flow("companion: tapping the ribbon or the tracker shows that stop, Now stays", async (page) => {
+  await goTab(page, "Companion");
+  await page.getByRole("tab", { name: /Day 1/ }).first().click();
+  await page.waitForTimeout(300);
+  const nowBefore = await page.getByText(/^Now:/).locator("..").innerText().catch(() => "");
+  await page.getByRole("button", { name: /Lunch: Kakiya — show this stop/ }).first().click();
+  await page.waitForTimeout(200);
+  if ((await page.getByRole("region", { name: /Stop \d+: Lunch: Kakiya/ }).count()) !== 1)
+    throw new Error("tapping a ribbon card did not show the stop");
+  const pressed = await page.getByRole("button", { name: /Lunch: Kakiya, .* — show this stop/ }).getAttribute("aria-pressed");
+  if (pressed !== "true") throw new Error("the tracker does not mark the same stop");
+  const nowAfter = await page.getByText(/^Now:/).locator("..").innerText().catch(() => "");
+  if (nowBefore !== nowAfter) throw new Error("looking at a stop moved Now");
+  await page.getByRole("button", { name: /Omotesando food crawl, .* — show this stop/ }).click();
+  if ((await page.getByRole("region", { name: /Stop \d+: Omotesando food crawl/ }).count()) !== 1)
+    throw new Error("tapping a tracker dot did not show that stop");
+  await page.getByRole("button", { name: "Back to now" }).click();
+  if ((await page.getByRole("region", { name: /^Stop \d+:/ }).count()) !== 0) throw new Error("Back to now did not close it");
+});
+
+await flow("timeline editor: neighbourhood groups the day by area", async (page) => {
+  await goTab(page, "Timeline Editor");
+  await page.getByRole("tab", { name: /Day 1/ }).first().click();
+  await page.getByRole("button", { name: "Neighbourhood" }).click();
+  await page.waitForTimeout(300);
+  const heading = (area) => page.locator("li").filter({ hasText: new RegExp(`^${area} · \\d+ stops?$`) });
+  for (const area of ["Naka Ward", "Miyajima Omotesando", "No place yet"]) {
+    if ((await heading(area).count()) === 0) throw new Error(`no ${area} group`);
+  }
+  await page.getByRole("button", { name: "Timeline", exact: true }).click();
+  if ((await heading("Naka Ward").count()) !== 0) throw new Error("Timeline did not ungroup");
+});
+
+await flow("timeline editor: the travelling-to card opens its directions", async (page) => {
+  await goTab(page, "Timeline Editor");
+  const card = page.getByText(/^Travelling to /).first();
+  if ((await card.count()) === 0) throw new Error("no travelling-to card between stops");
+  await page.getByRole("button", { name: "See directions" }).first().click();
+  if ((await page.getByRole("button", { name: "Hide directions" }).count()) !== 1)
+    throw new Error("See directions did not open");
+  if ((await page.getByText("Open in Maps ↗").count()) === 0) throw new Error("no Maps link in the directions");
+});
+
 await flow("banner stays pinned while the page scrolls", async (page) => {
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   const bar = page.locator("article > div.sticky").first();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(300);
@@ -454,7 +497,7 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
   const name = "a stop pinned far from the trip is flagged, and only that one";
   const { page, errors } = await open("stray");
   try {
-    await goTab(page, "Timeline");
+    await goTab(page, "Timeline Editor");
     const flagged = page.getByText("Pinned far from the rest of this trip", { exact: false });
     if ((await flagged.count()) !== 1) throw new Error(`${await flagged.count()} cards flagged, expected 1`);
     const card = page.getByRole("button", { name: /Motoyasubashi.*tap to edit$/ });
@@ -471,7 +514,7 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
 }
 {
   const { page } = await open("default");
-  await goTab(page, "Timeline");
+  await goTab(page, "Timeline Editor");
   if ((await page.getByText("Pinned far from the rest", { exact: false }).count()) !== 0)
     note("a normal trip has a stop flagged as far away");
   else console.log("✓ a normal trip has no stop flagged");

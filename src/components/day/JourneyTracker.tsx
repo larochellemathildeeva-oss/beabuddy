@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { companionState, stopStatuses, type StopStatus } from "@/lib/companion";
 
@@ -25,7 +26,27 @@ const STATUS_WORD: Record<StopStatus, string> = {
  * "I'm here" or "Leaving", like the rest of Now, and a stop you went past
  * without arriving shows as skipped rather than pretending you went.
  */
-export function JourneyTracker({ stops }: { stops: ItineraryRow[] }) {
+export function JourneyTracker({
+  stops,
+  selectedId = null,
+  onSelect,
+}: {
+  stops: ItineraryRow[];
+  /** The stop being looked at, from a tap here or on the ribbon. */
+  selectedId?: string | null;
+  /** Tap a stop to look at it; tap it again to stop looking. */
+  onSelect?: ((id: string | null) => void) | undefined;
+}) {
+  const track = useRef<HTMLDivElement>(null);
+  const pickedIndex = selectedId ? stops.findIndex((s) => s.id === selectedId) : -1;
+  // Bring the looked-at stop, or where you are, into view on a long day.
+  useEffect(() => {
+    const box = track.current;
+    const state = companionState(stops);
+    const focus = pickedIndex >= 0 ? pickedIndex : stops.indexOf((state.current ?? state.next)!);
+    const dot = box?.querySelector<HTMLElement>(`[data-index="${focus}"]`);
+    if (box && dot) box.scrollLeft = Math.max(0, dot.offsetLeft - box.clientWidth / 2);
+  }, [pickedIndex, stops]);
   if (stops.length === 0) return null;
   const state = companionState(stops);
   const statuses = stopStatuses(stops);
@@ -55,7 +76,7 @@ export function JourneyTracker({ stops }: { stops: ItineraryRow[] }) {
       </div>
 
       {/* Scrolls sideways on a long day; each stop keeps a thumb-sized dot. */}
-      <div className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
+      <div ref={track} className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
         <ol
           className="relative flex items-center justify-between gap-2 px-1 py-1.5"
           style={{ minWidth: `${stops.length * 36}px` }}
@@ -70,17 +91,22 @@ export function JourneyTracker({ stops }: { stops: ItineraryRow[] }) {
             style={{ width: `calc((100% - 1.5rem) * ${filled})` }}
           />
           {stops.map((stop, i) => (
-            <li key={stop.id} className="relative z-10 shrink-0">
-              <span
+            <li key={stop.id} data-index={i} className="relative z-10 shrink-0">
+              <button
+                type="button"
+                aria-pressed={i === pickedIndex}
+                onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
                 title={`${stop.title}, ${STATUS_WORD[statuses[i]!]}`}
-                className={`grid size-7 place-items-center rounded-full text-[11px] font-bold tabular-nums transition-all ${DOT[statuses[i]!]}`}
+                className={`tap-44 grid size-7 place-items-center rounded-full text-[11px] font-bold tabular-nums transition-all ${DOT[statuses[i]!]} ${
+                  i === pickedIndex ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : ""
+                }`}
               >
                 {statuses[i] === "done" ? "✓" : i + 1}
                 <span className="sr-only">
                   {" "}
-                  {stop.title}, {STATUS_WORD[statuses[i]!]}
+                  {stop.title}, {STATUS_WORD[statuses[i]!]} — show this stop
                 </span>
-              </span>
+              </button>
             </li>
           ))}
         </ol>

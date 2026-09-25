@@ -6,7 +6,9 @@ import {
   ChevronUp,
   MapPin,
   MapPinPlus,
+  Navigation,
   PawPrint,
+  ExternalLink,
   Ticket,
   Trash2,
 } from "lucide-react";
@@ -18,13 +20,13 @@ import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
-import { isDone } from "@/lib/companion";
+import { isDone, leaveBy } from "@/lib/companion";
 import type { RouteLeg } from "@/lib/directions.functions";
 import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
-import { stripEmbeddedMapsUrl, syncDetailDraft } from "@/lib/timeline-directions";
+import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { timeForRail } from "@/lib/timeline-kind";
 
 /**
@@ -161,69 +163,147 @@ export function TimelineEntry({
     if (!open) onEdit(null);
   };
 
-  // The front: time, name and where. Everything else is one tap away, on the
-  // back of the card, so a day of twelve stops reads as twelve lines.
-  const front = (
-    <article
-      className={`overflow-hidden rounded-2xl border bg-card ${
-        done ? "border-nexttime/40" : "border-border/70"
-      }`}
-    >
+  // The front, as in the prototype: time and number down the left; name,
+  // the note and a line of where · how long · booked in the middle; done,
+  // save, delete and open along the top right. Tapping the name or the
+  // chevron turns the card over to edit it.
+  const current = Boolean(item.arrived_at) && !item.left_at;
+  const meta = [
+    stray ? "" : where || "No place yet",
+    item.planned_stay_minutes ? `~${stayLabel(item.planned_stay_minutes)}` : "",
+  ].filter(Boolean);
+  const topIcon = "grid size-8 place-items-center rounded-lg text-muted-foreground";
+  const actions = (
+    <>
+      <button
+        type="button"
+        onClick={onToggleDone}
+        aria-pressed={done}
+        aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
+        className={`${topIcon} ${done ? "text-nexttime" : ""}`}
+      >
+        <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
+      </button>
+      {canKeep && (
+        <button
+          type="button"
+          onClick={keep}
+          disabled={kept}
+          aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+          className={`${topIcon} ${kept ? "text-primary" : ""}`}
+        >
+          <Bookmark className="size-4" fill={kept ? "currentColor" : "none"} aria-hidden />
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Delete ${item.title}`}
+        className={topIcon}
+      >
+        <Trash2 className="size-4" aria-hidden />
+      </button>
       <button
         type="button"
         onClick={() => flip(true)}
-        aria-expanded={false}
-        aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
-        className="flex min-h-16 w-full min-w-0 items-center gap-2.5 px-3 py-2.5 text-left"
+        aria-label={`Open ${item.title}`}
+        className={topIcon}
       >
+        <ChevronDown className="size-4" aria-hidden />
+      </button>
+    </>
+  );
+  const front = (
+    <article
+      className={`rounded-2xl border bg-card px-3 pb-2.5 pt-3 shadow-sm ${
+        current
+          ? "border-primary/50 ring-1 ring-primary/20"
+          : done
+            ? "border-nexttime/40"
+            : "border-border/70"
+      }`}
+    >
+      {/* Phone: time, number and the actions share the top row, so the name
+          below gets the card's full width. Wider: the prototype's columns. */}
+      <div className="mb-1 flex items-center gap-2 sm:hidden">
         <span
-          className={`w-11 shrink-0 text-[14px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+          className={`text-[13.5px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
         >
           {rail || "–"}
         </span>
-        <TimelineGlyphMark item={item} />
-        <span className="min-w-0 flex-1">
-          <span
-            className={`block break-words text-[15.5px] font-semibold leading-snug ${
-              done ? "text-muted-foreground line-through" : ""
-            }`}
-          >
-            {showDay && item.day_date ? (
-              <span className="mr-1.5 text-[12px] font-normal text-muted-foreground">
-                {item.day_date}
-              </span>
-            ) : null}
-            {item.title}
+        {number != null && (
+          <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+            #{number}
           </span>
-          {stray ? (
-            <span className="mt-0.5 block text-[13px] font-semibold text-destructive">
-              ⚠ Pinned far from the rest of this trip. Tap to check the place.
-            </span>
-          ) : (
-            <span className="mt-0.5 line-clamp-2 break-words text-[13px] text-muted-foreground">
-              {where || "No place yet"}
+        )}
+        <div className="-my-1 -mr-1 ml-auto flex shrink-0 items-center">{actions}</div>
+      </div>
+      <div className="flex min-w-0 items-start gap-2.5">
+        <div className="hidden w-12 shrink-0 flex-col items-center gap-1 pt-0.5 sm:flex">
+          <span
+            className={`text-[13.5px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+          >
+            {rail || "–"}
+          </span>
+          {number != null && (
+            <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+              #{number}
             </span>
           )}
-        </span>
-        {booked && (
-          <span
-            title="Booked"
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
-          >
-            <Ticket className="size-3.5" aria-hidden />
-            <span className="sr-only">Booked</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => flip(true)}
+          aria-expanded={false}
+          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
+          className="min-w-0 flex-1 text-left"
+        >
+          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            {showDay && item.day_date ? (
+              <span className="text-[12px] text-muted-foreground">{item.day_date}</span>
+            ) : null}
+            <span
+              className={`break-words text-[16px] font-bold leading-snug ${
+                done ? "text-muted-foreground line-through" : ""
+              }`}
+            >
+              {item.title}
+            </span>
+            {current && (
+              <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
+                Current
+              </span>
+            )}
+            {done && (
+              <span className="rounded-full bg-nexttime/15 px-2 py-0.5 text-[11px] font-bold text-nexttime">
+                ✓ Done
+              </span>
+            )}
           </span>
-        )}
-        {done && (
-          <span
-            title="Done"
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
-          >
-            <Check className="size-3.5" strokeWidth={3} aria-hidden />
-            <span className="sr-only">Done</span>
-          </span>
-        )}
-      </button>
+          {detail ? (
+            <span className="mt-0.5 block break-words text-[13.5px] text-muted-foreground">
+              {detail}
+            </span>
+          ) : null}
+          {stray ? (
+            <span className="mt-1 block text-[12.5px] font-semibold text-destructive">
+              ⚠ Pinned far from the rest of this trip. Tap to check the place.
+            </span>
+          ) : null}
+          {(meta.length > 0 || booked) && (
+            <span className="mt-1 block break-words text-[12.5px] text-muted-foreground">
+              {meta.join(" · ")}
+              {booked && (
+                <span className="font-semibold text-nexttime">
+                  {meta.length ? " · " : ""}✓ Booked
+                  {item.booking_ref ? ` · ${item.booking_ref}` : ""}
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+        <div className="-mr-1 -mt-1 hidden shrink-0 items-center sm:flex">{actions}</div>
+      </div>
     </article>
   );
 
@@ -558,12 +638,15 @@ function TimelineDetailInput({
 }
 
 /**
- * Between two cards: a paw to tap for directions to the next stop, and how
- * far it is when Béa has measured the leg. Opens the phone's maps app, which
- * has transit, live traffic and turn-by-turn that a list of steps here would
- * only imitate.
+ * Between two cards, the prototype's "Travelling to" card: how long it takes
+ * to get to the next stop, when to leave, and the way there.
+ *
+ * Walk time, distance and steps appear once directions are measured (saved
+ * in Settings, or worked out on Companion); "Leave by" when the next stop has
+ * a clock time as well. The paw is still the mark, and opening Maps is always
+ * one tap, measured or not.
  */
-export function PawConnector({
+export function TravelConnector({
   from,
   to,
   leg,
@@ -571,37 +654,121 @@ export function PawConnector({
   showTime = true,
 }: {
   from: Pick<ItineraryRow, "title" | "lat" | "lon">;
-  to: Pick<ItineraryRow, "title" | "lat" | "lon">;
+  to: Pick<ItineraryRow, "title" | "lat" | "lon" | "time_label">;
   /** The measured leg from `from` to `to`, when there is one. */
   leg?: RouteLeg | undefined;
   area: string;
-  /** The walk-times preference: off shows the paw alone. */
+  /** The walk-times preference: off shows the destination and Maps only. */
   showTime?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
   const mode = leg?.mode === "driving" ? "driving" : "walking";
   const href = leg?.mapUrl || mapsDirUrl(from, to, area, mode);
-  const measured = leg && leg.distance > 0;
+  const measured = Boolean(leg && leg.distance > 0);
   const how = mode === "walking" ? "walk" : "drive";
+  const leave = showTime && leg ? leaveBy(to.time_label, leg) : null;
+  const steps = leg?.steps ?? [];
   return (
     <li className="list-none">
-      <div className="flex items-center gap-2 px-6">
-        <span aria-hidden className="h-px flex-1 bg-border/70" />
-        <a
-          href={href}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Directions from ${from.title} to ${to.title}`}
-          title={`Directions to ${to.title}`}
-          className="tap-44 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-primary/30 bg-card px-2.5 text-[11.5px] font-semibold text-muted-foreground shadow-sm"
-        >
-          <PawPrint className="size-4 text-primary" aria-hidden />
-          {showTime && measured ? (
-            <span>
-              {prettyDuration(leg.duration)} {how} · {prettyDistance(leg.distance)}
+      <div className="flex flex-col items-center">
+        <span aria-hidden className="h-3 border-l-2 border-dotted border-primary/40" />
+        <div className="w-full max-w-[36rem] rounded-2xl border border-border/70 bg-card px-3 py-2.5 shadow-sm">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+              <PawPrint className="size-4" aria-hidden />
+              <span
+                aria-hidden
+                className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-card bg-nexttime"
+              />
             </span>
-          ) : null}
-        </a>
-        <span aria-hidden className="h-px flex-1 bg-border/70" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
+                <span className="mr-1 inline-block size-1.5 rounded-full bg-primary align-middle" />
+                Travelling to {to.title}
+              </p>
+              <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] font-bold">
+                {showTime && measured && leg ? (
+                  <>
+                    {prettyDuration(leg.duration)} {how}
+                    <span className="text-[12.5px] font-normal text-muted-foreground">
+                      · {prettyDistance(leg.distance)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[13px] font-semibold text-muted-foreground">
+                    {showTime ? "Not measured yet" : "Directions"}
+                  </span>
+                )}
+                {leave?.kind === "time" && (
+                  <span className="rounded-md border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[11.5px] font-semibold text-primary">
+                    Leave by {leave.at}
+                  </span>
+                )}
+              </p>
+            </div>
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Directions from ${from.title} to ${to.title}`}
+              title="Open in Maps"
+              className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground"
+            >
+              <ExternalLink className="size-4" aria-hidden />
+            </a>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-primary/30 px-3 text-[12.5px] font-semibold text-primary"
+          >
+            <Navigation className="size-3.5" aria-hidden />
+            {open ? "Hide directions" : "See directions"}
+            <ChevronDown
+              className={`size-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </button>
+          {open && (
+            <div className="mt-2 rounded-xl border border-border bg-elevated p-2.5">
+              {steps.length > 0 ? (
+                <ol className="space-y-1.5">
+                  {steps.map((step, i) => (
+                    <li key={i} className="flex gap-2 text-[12.5px]">
+                      <span className="w-4 shrink-0 text-right font-semibold tabular-nums text-muted-foreground">
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0">
+                        {step.instruction}
+                        {step.distance > 0 && (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {prettyDistance(step.distance)}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="text-[12.5px] text-muted-foreground">
+                  {leg ? unroutedLegCopy(leg) : "Béa has not measured this walk yet"}. Open in Maps
+                  for the full route, or save directions in Settings to see the steps here.
+                </p>
+              )}
+              <a
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-[12.5px] font-semibold text-nexttime underline"
+              >
+                Open in Maps ↗
+              </a>
+            </div>
+          )}
+        </div>
+        <span aria-hidden className="h-3 border-l-2 border-dotted border-primary/40" />
       </div>
     </li>
   );
