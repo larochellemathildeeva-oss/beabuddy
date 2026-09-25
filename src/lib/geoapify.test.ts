@@ -246,3 +246,43 @@ test("static map: numbered pins in order, joined by a line, keyed", async () => 
   );
   assert.equal(url.searchParams.get("apiKey"), "K");
 });
+
+test("matrix: every point is a source and a target, lon first, keyed", async () => {
+  const { geoapifyMatrixRequest } = await import("./geoapify.ts");
+  const { url, body } = geoapifyMatrixRequest("K&Y", "walk", [
+    { lat: 35.0116, lon: 135.7681 },
+    { lat: 34.9949, lon: 135.785 },
+  ]);
+  assert.equal(url, "https://api.geoapify.com/v1/routematrix?apiKey=K%26Y");
+  const parsed = JSON.parse(body);
+  assert.equal(parsed.mode, "walk");
+  assert.deepEqual(parsed.sources, [
+    { location: [135.7681, 35.0116] },
+    { location: [135.785, 34.9949] },
+  ]);
+  assert.deepEqual(parsed.targets, parsed.sources);
+});
+
+test("matrix answer: read by index, gaps stay null, strays are ignored", async () => {
+  const { readMatrix } = await import("./geoapify.ts");
+  const m = readMatrix(
+    {
+      sources_to_targets: [
+        [
+          { source_index: 0, target_index: 0, time: 0, distance: 0 },
+          { source_index: 0, target_index: 1, time: 420, distance: 500 },
+        ],
+        [
+          { source_index: 1, target_index: 0, time: null },
+          { source_index: 1, target_index: 5, time: 99 },
+        ],
+      ],
+    },
+    2,
+  );
+  assert.deepEqual(m, [
+    [0, 420],
+    [null, null],
+  ]);
+  assert.deepEqual(readMatrix({ error: "Unauthorized" }, 1), [[null]]);
+});

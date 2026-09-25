@@ -29,3 +29,23 @@ export const reviseItinerary = async () => {
   plan.items[2] = { ...plan.items[2]!, title: "Okonomiyaki lunch", place: "Okonomimura", address: null, detail: null };
   return plan;
 };
+
+// Optimize: the same stops, reversed, as if measured and planned on real routes.
+export const optimizeItinerary = async (args: { data: { goals: string[]; items: { id: string; day_date: string | null; time_label: string | null }[] } }) => {
+  const w = window as unknown as { __optimizeCalls?: unknown[] };
+  (w.__optimizeCalls ??= []).push(args.data);
+  const items = [...args.data.items].reverse().map((item, position) => ({
+    id: item.id,
+    day_date: item.day_date,
+    time_label: item.time_label,
+    position,
+    reason: position === 0 ? "Timed to its opening hours." : null,
+  }));
+  return {
+    summary: "Tighter days, less doubling back.",
+    changes: "The shrine moves before lunch.",
+    items,
+    travel: { beforeSec: 7_800, afterSec: 4_500, mode: "walk" },
+    plannedDays: args.data.goals.includes("hours") ? 2 : 0,
+  };
+};

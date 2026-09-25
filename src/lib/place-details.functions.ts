@@ -1,13 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import {
-  geoapifyDetailsUrl,
-  geoapifyStaticMapUrl,
-  readPlaceDetails,
-  type PlaceFacts,
-} from "@/lib/geoapify";
-import { nameEchoes } from "@/lib/match-confidence";
+import { geoapifyStaticMapUrl, type PlaceFacts } from "@/lib/geoapify";
 
 /**
  * What a stop or a rec is like to visit — hours, website, phone, access —
@@ -21,9 +15,6 @@ import { nameEchoes } from "@/lib/match-confidence";
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
 const point = { lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) };
 
-/** Answers kept for the life of the server process: hours rarely change mid-trip. */
-const factsCache = new Map<string, PlaceFacts | null>();
-
 export type PlaceDetails = Omit<PlaceFacts, "names">;
 
 export const placeDetails = createServerFn({ method: "POST" })
@@ -35,27 +26,9 @@ export const placeDetails = createServerFn({ method: "POST" })
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
     if (provider.name !== "geoapify") return null;
-    const key = `${data.lat.toFixed(5)},${data.lon.toFixed(5)}`;
-    let facts = factsCache.get(key);
-    if (facts === undefined) {
-      try {
-        const res = await fetch(geoapifyDetailsUrl(provider.token, data.lat, data.lon), {
-          headers: { "user-agent": UA, accept: "application/json" },
-          signal: AbortSignal.timeout(6_000),
-        });
-        // A failure is not remembered: the next look tries again.
-        if (!res.ok) return null;
-        facts = readPlaceDetails(await res.json());
-        factsCache.set(key, facts);
-      } catch {
-        return null;
-      }
-    }
+    const { placeFactsFor } = await import("@/lib/place-facts.server");
+    const facts = await placeFactsFor(provider.token, data);
     if (!facts) return null;
-    // The place at these coordinates must be the one asked about. A pin on
-    // the café next door would otherwise lend it the wrong hours — shown with
-    // confidence, which is the one thing Béa must not do.
-    if (!facts.names.some((n) => nameEchoes(data.name, n))) return null;
     return {
       ...(facts.name ? { name: facts.name } : {}),
       ...(facts.openingHours ? { openingHours: facts.openingHours } : {}),

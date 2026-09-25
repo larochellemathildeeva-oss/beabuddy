@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { closedWarning, isOpenAt, parseOpeningHours } from "./opening-hours.ts";
+import { closedWarning, isOpenAt, openWindowsOn, parseOpeningHours } from "./opening-hours.ts";
 
 // 2026-10-07 is a Wednesday.
 const at = (day: number, hh: number, mm = 0) => new Date(2026, 9, 5 + day, hh, mm);
@@ -57,4 +57,22 @@ test("closedWarning speaks only when the hours say closed", () => {
   assert.equal(closedWarning("PH off", "2026-10-07", "10:00"), null, "unreadable hours");
   assert.equal(closedWarning("Mo-Fr 09:00-17:00", null, "10:00"), null, "no day");
   assert.equal(closedWarning("Mo-Fr 09:00-17:00", "2026-10-07", "Lunch"), null, "no clock time");
+});
+
+test("a day's open stretches: by weekday, closed days empty, unknown null", () => {
+  const hours = "Tu-Su 10:00-18:00; Mo off";
+  assert.deepEqual(openWindowsOn(hours, "2026-10-07"), [[600, 1080]]); // Wednesday
+  assert.deepEqual(openWindowsOn(hours, "2026-10-05"), []); // Monday
+  assert.equal(openWindowsOn("sunrise-sunset", "2026-10-07"), null);
+  assert.equal(openWindowsOn(hours, "next Tuesday"), null);
+  assert.equal(openWindowsOn(null, "2026-10-07"), null);
+});
+
+test("a day's open stretches: the evening before runs on into the small hours", () => {
+  // Open until 02:00 on Friday night: Saturday starts open.
+  assert.deepEqual(openWindowsOn("Fr 18:00-02:00; Sa 12:00-15:00", "2026-10-10"), [
+    [0, 120],
+    [720, 900],
+  ]);
+  assert.deepEqual(openWindowsOn("24/7", "2026-10-10"), [[0, 1440]]);
 });

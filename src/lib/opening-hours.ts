@@ -113,3 +113,35 @@ export function closedWarning(
   const open = isOpenAt(hours, new Date(y, mo - 1, d, h, mi));
   return open === false ? `Likely closed at ${time} on that day — check the hours.` : null;
 }
+
+/**
+ * The stretches of one day ("YYYY-MM-DD") the place is open, in minutes after
+ * that day's midnight: [] when it is closed all day, null when the hours
+ * can't be read or the day isn't a date. A range running past midnight
+ * reaches past 1440; the small hours left over from the evening before are
+ * included from 0, so a bar open until 02:00 is open at 01:00 too.
+ */
+export function openWindowsOn(
+  hours: string | null | undefined,
+  day: string | null | undefined,
+): [number, number][] | null {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const rules = parseOpeningHours(hours);
+  if (!rules) return null;
+  const [y, mo, d] = day.split("-").map(Number) as [number, number, number];
+  const date = new Date(y, mo - 1, d);
+  if (Number.isNaN(date.getTime())) return null;
+  const weekday = (date.getDay() + 6) % 7; // Monday 0
+  const rangesFor = (n: number): [number, number][] => {
+    let found: [number, number][] = [];
+    for (const rule of rules)
+      if (rule.days.has(n)) found = rule.ranges === "off" ? [] : rule.ranges;
+    return found;
+  };
+  const carried = rangesFor((weekday + 6) % 7)
+    .filter(([, b]) => b > 24 * 60)
+    .map(([, b]) => [0, b - 24 * 60] as [number, number]);
+  return [...carried, ...rangesFor(weekday).map(([a, b]) => [a, b] as [number, number])].sort(
+    (a, b) => a[0] - b[0],
+  );
+}

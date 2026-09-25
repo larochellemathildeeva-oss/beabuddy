@@ -665,6 +665,11 @@ export const OPTIMIZE_GOALS = [
     hint: "Same-day clusters, less backtracking.",
   },
   {
+    id: "hours",
+    label: "Open when you get there",
+    hint: "Each day ordered around opening hours and real travel times.",
+  },
+  {
     id: "rainy",
     label: "Rainy-day indoor",
     hint: "Museums, cafés and shops on one day.",
@@ -709,6 +714,7 @@ const OptimizeItemIn = z.object({
   address: z.string().max(240).nullable(),
   lat: z.number().nullable(),
   lon: z.number().nullable(),
+  planned_stay_minutes: z.number().int().min(1).max(44_640).nullish(),
 });
 
 const OptimizeCityIn = z.object({
@@ -744,13 +750,29 @@ const OptimizeSchema = z.object({
   items: z.array(OptimizeItemOut),
 });
 
-export type OptimizeItinerary = z.infer<typeof OptimizeSchema>;
+/** Time between stops within each day, before and after, from real routes. */
+export type OptimizeTravel = {
+  beforeSec: number;
+  afterSec: number;
+  mode: "walk" | "drive" | "mixed";
+};
+
+export type OptimizeItinerary = z.infer<typeof OptimizeSchema> & {
+  /** Present when travel times could be measured; the rearrangement is judged on them. */
+  travel?: OptimizeTravel | null;
+  /** How many days were put in order around opening hours. */
+  plannedDays?: number;
+  /** Today's share of route lookups was spent, so some of the trip was not measured. */
+  limited?: boolean;
+};
 export type OptimizeSourceItem = z.infer<typeof OptimizeItemIn>;
 export type OptimizeSourceCity = z.infer<typeof OptimizeCityIn>;
 
 const GOAL_PROMPT: Record<OptimizeGoalId, string> = {
   closest:
     "Cluster places that are near each other on the same day, in walking or short-transit order. Cut backtracking.",
+  hours:
+    "Put each stop on a day it is likely open — where hours are listed, use them. The order and times within each day are then fitted to opening hours and real travel times, so do not agonise over exact times.",
   rainy:
     "Cluster indoor, museum, café and shopping activities so they can sit on a wet day. Put outdoor and walking things together on a fair-weather day. You do not have a weather forecast — do not invent rain or sunshine.",
   "easy-morning":
@@ -775,6 +797,27 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       detail: stripEmbeddedMapsUrl(item.detail) || null,
     }));
     const byId = new Map(items.map((item) => [item.id, item]));
+
+    // Real travel times and opening hours, when Geoapify is configured. Any
+    // failure here leaves Optimize exactly as it was: the model, unmeasured.
+    const planHours = data.goals.includes("hours");
+    const geo = await import("@/lib/geo-provider.server")
+      .then((m) => m.geoProvider())
+      .catch(() => null);
+    const routes = await import("@/lib/route-optimize.server");
+    const { neighbourLines, planDays, travelTimeFrom, travelTotal } =
+      await import("@/lib/route-optimize");
+    const measureBy = Date.now() + 15_000;
+    const measured = geo
+      ? await routes.travelTables(geo, items, measureBy).catch(() => null)
+      : null;
+    const tables = measured?.tables ?? [];
+    const listed =
+      geo && planHours ? await routes.hoursFor(geo, items, measureBy).catch(() => null) : null;
+    const hours = listed?.hours ?? new Map<string, string>();
+    // Today's share of Geoapify credits ran out before everything was measured.
+    const limited = Boolean(measured?.limited || listed?.limited);
+    const nearest = neighbourLines(tables);
 
     const prompt = [
       "Rearrange this existing trip timeline. Do not add new stops and do not drop any stop.",
@@ -806,9 +849,12 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
           `${index + 1}. id=${item.id} | ${item.day_date ?? "no date"} ${item.time_label ?? ""} | ${item.kind} | ${item.title}${
             item.address ? ` | ${item.address}` : ""
           }${item.lat != null && item.lon != null ? ` | ${item.lat},${item.lon}` : ""}${
-            item.detail ? ` | ${item.detail}` : ""
-          }`,
+            hours.has(item.id) ? ` | hours: ${hours.get(item.id)}` : ""
+          }${item.detail ? ` | ${item.detail}` : ""}`,
       ),
+      nearest.length
+        ? `Real travel times between pinned stops, from a routing service — each stop's nearest few. Trust these over guesses from coordinates or names:\n${nearest.join("\n")}`
+        : "",
       "summary: one warm sentence on the new shape of the days.",
       "changes: two or three short sentences on what moved and why.",
       "reason: a few words per item, or null if it stayed put.",
@@ -850,10 +896,61 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
           reason: null,
         });
       }
+
+      // The model chose the days; each one is then put in its best order
+      // around opening hours, on the measured travel times (estimated where
+      // there are none). Days with fewer than two stops keep the model's order.
+      let plannedDays = 0;
+      if (planHours) {
+        const asStops = rearranged.map((row) => ({ ...byId.get(row.id)!, ...row }));
+        const outcomes = planDays(asStops, asStops, hours, travelTimeFrom(tables));
+        for (const [date, outcome] of outcomes) {
+          const slots = rearranged.flatMap((row, i) => (row.day_date === date ? [i] : []));
+          const rows = new Map(slots.map((i) => [rearranged[i]!.id, rearranged[i]!]));
+          if (outcome.order.length !== slots.length) continue;
+          outcome.order.forEach((next, k) => {
+            const row = rows.get(next.id);
+            if (!row) return;
+            const note = outcome.notes.get(next.id);
+            const retimed = next.time_label !== row.time_label;
+            rearranged[slots[k]!] = {
+              ...row,
+              time_label: next.time_label,
+              reason:
+                note ??
+                (retimed
+                  ? hours.has(next.id)
+                    ? "Timed to its opening hours."
+                    : "Reordered to cut travel between stops."
+                  : row.reason),
+            };
+          });
+          plannedDays += 1;
+        }
+        rearranged.forEach((row, i) => (row.position = i));
+      }
+
+      // Compared only like for like: a stop left alone on its day is one
+      // journey fewer, and would make the total look better than the plan is.
+      const before = travelTotal(tables, items);
+      const after = travelTotal(tables, rearranged);
+      const modes = new Set(tables.map((t) => t.mode));
+      const travel =
+        before.pairs > 0 && after.pairs === before.pairs
+          ? {
+              beforeSec: before.seconds,
+              afterSec: after.seconds,
+              mode: modes.size === 1 ? [...modes][0]! : ("mixed" as const),
+            }
+          : null;
+
       return {
         summary: result.output.summary,
         changes: result.output.changes,
         items: rearranged,
+        travel,
+        plannedDays,
+        limited,
       };
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {

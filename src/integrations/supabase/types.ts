@@ -969,6 +969,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      reserve_geo_credits: {
+        Args: { _credits: number; _limit: number }
+        Returns: boolean
+      }
       accept_trip_invite: {
         Args: { _code: string; _display_name?: string }
         Returns: string

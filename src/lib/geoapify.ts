@@ -500,3 +500,60 @@ export function geoapifyStaticMapUrl(
   }
   return `https://maps.geoapify.com/v1/staticmap?${params.toString()}`;
 }
+
+/** How Béa travels between stops, in Geoapify's words. */
+export type TravelMode = "walk" | "drive";
+
+type LonLat = [number, number];
+const lonLat = (p: { lat: number; lon: number }): LonLat => [
+  Number(p.lon.toFixed(6)),
+  Number(p.lat.toFixed(6)),
+];
+
+/**
+ * A request for travel times between every pair of `points` (Route Matrix).
+ *
+ * POST, because the points go in the body. Every point is both a source and
+ * a target, so the answer is square and `[i][j]` is i to j. Geoapify charges
+ * max(n, n) × min(n, 10) credits for it, which is why callers cap `points`.
+ */
+export function geoapifyMatrixRequest(
+  key: string,
+  mode: TravelMode,
+  points: readonly { lat: number; lon: number }[],
+): { url: string; body: string } {
+  const at = points.map((p) => ({ location: lonLat(p) }));
+  return {
+    url: `${GEOAPIFY_BASE}/v1/routematrix?apiKey=${encodeURIComponent(key)}`,
+    body: JSON.stringify({ mode, sources: at, targets: at }),
+  };
+}
+
+/**
+ * Seconds from each point to each other, or null where no route came back.
+ *
+ * Read by index from the entries themselves rather than by array position,
+ * and sized to `n` whatever arrived, so a short or shuffled answer cannot
+ * put one pair's time on another.
+ */
+export function readMatrix(json: unknown, n: number): (number | null)[][] {
+  const out: (number | null)[][] = Array.from({ length: n }, () =>
+    Array.from({ length: n }, () => null),
+  );
+  const rows = (json as { sources_to_targets?: unknown })?.sources_to_targets;
+  if (!Array.isArray(rows)) return out;
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    for (const cell of row) {
+      const c = cell as { time?: unknown; source_index?: unknown; target_index?: unknown } | null;
+      const i = c?.source_index;
+      const j = c?.target_index;
+      const t = c?.time;
+      if (typeof i !== "number" || typeof j !== "number" || i < 0 || j < 0 || i >= n || j >= n) {
+        continue;
+      }
+      if (typeof t === "number" && Number.isFinite(t) && t >= 0) out[i]![j] = t;
+    }
+  }
+  return out;
+}
