@@ -362,19 +362,30 @@ const fold = (value: string | null | undefined) =>
 
 /**
  * The stop a row is inside: the nearest earlier stop that day whose title
- * or place is the one it names ("Peace Memorial Museum" for "the museum's
- * east wing"), or -1. A name that matches nothing leaves the row on its own
- * rather than hanging it off a guess.
+ * is the one it names ("Peace Memorial Museum" for "the museum's east
+ * wing"), else whose place is; or -1. A name that matches nothing leaves the
+ * row on its own rather than hanging it off a guess.
+ *
+ * A row that is itself inside something is never a parent. The model gives
+ * each gallery the museum as its place ("Winged Victory", place "Louvre"),
+ * so matching on place alone made each gallery the parent of the next.
  */
 export function parentIndex(rows: readonly NestableRow[], i: number): number {
   const row = rows[i];
   const want = fold(row?.within);
   if (!row || want.length < 3) return -1;
+  const matches = (name: string | null | undefined) => {
+    const n = fold(name);
+    return n.length >= 3 && (n === want || n.includes(want) || want.includes(n));
+  };
+  let byPlace = -1;
   for (let j = i - 1; j >= 0 && sameDay(rows[j]!, row); j--) {
-    const names = [fold(rows[j]!.title), fold(rows[j]!.place)].filter((n) => n.length >= 3);
-    if (names.some((n) => n === want || n.includes(want) || want.includes(n))) return j;
+    const candidate = rows[j]!;
+    if (fold(candidate.within)) continue;
+    if (matches(candidate.title)) return j;
+    if (byPlace < 0 && matches(candidate.place)) byPlace = j;
   }
-  return -1;
+  return byPlace;
 }
 
 /**

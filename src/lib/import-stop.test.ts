@@ -309,3 +309,33 @@ test("a stop and the ones inside it are looked up together", async () => {
   ]);
   assert.deepEqual(placeBatches([], 8), []);
 });
+
+test("siblings that name their parent as their place are not each other's parent", async () => {
+  // What the model answers for "the Louvre: Mona Lisa, Winged Victory,
+  // Egyptian antiquities": each piece's place is the Louvre too.
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-05-02",
+    day_number: 1 as number | null,
+    ...extra,
+  });
+  const out = nestWithin([
+    row("Louvre", { time_label: "09:00", place: "Louvre" }),
+    row("Mona Lisa", { within: "Louvre", place: "Louvre" }),
+    row("Winged Victory of Samothrace", { within: "Louvre", place: "Louvre" }),
+    row("Egyptian antiquities", { within: "Louvre", place: "Louvre Museum" }),
+    row("Café Marly", { time_label: "13:00" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    ["Louvre", "Café Marly"],
+  );
+  assert.equal(
+    out[0]!.detail,
+    "Inside: Mona Lisa, Winged Victory of Samothrace, Egyptian antiquities",
+  );
+});
