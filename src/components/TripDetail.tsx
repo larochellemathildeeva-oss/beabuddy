@@ -580,6 +580,8 @@ export function TripDetail({
   const [savedOpen, setSavedOpen] = useState(false);
   /** "Add stop" chooser: a stop, a saved place, or another city. */
   const [addOpen, setAddOpen] = useState(false);
+  /** Bumped by "Another city or location" to open the add-city form. */
+  const [citySignal, setCitySignal] = useState(0);
   // Where "Add" from Saved places lands: the day in view, if it is one day.
   const addToDay = chosenDay !== ALL_DAYS && chosenDay !== "" ? chosenDay : null;
   const addToDayLabel = addToDay
@@ -1503,8 +1505,7 @@ export function TripDetail({
             type="button"
             onClick={() => {
               setAddOpen(false);
-              setSheetSection("cities");
-              setSettingsOpen(true);
+              setCitySignal((n) => n + 1);
             }}
             className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
           >
@@ -1518,6 +1519,8 @@ export function TripDetail({
           </button>
         </div>
       </Sheet>
+
+      <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly />
 
       <SavedPlacesSheet
         open={savedOpen}
