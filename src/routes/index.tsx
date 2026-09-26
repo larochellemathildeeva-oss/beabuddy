@@ -1,13 +1,25 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { formatTripLocation } from "@/lib/place-label";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
-import { HomeTripCard } from "@/components/HomeTripCard";
+import {
+  HomeLaterTrips,
+  HomeNextUp,
+  HomeSectionTitle,
+  HomeTripHero,
+} from "@/components/HomeTripCard";
+import { laterTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
+import { toLocalISODate } from "@/lib/trip-dates";
+import { HomeSaveTile } from "@/components/HomeSaveTile";
 import { ContentCard } from "@/components/ContentCard";
 import { NearHome } from "@/components/NearHome";
 import { HomeWeather } from "@/components/HomeWeather";
 import { useNearMe } from "@/hooks/useNearMe";
+import { useTrips } from "@/hooks/useTrips";
+import { useTripPhotos } from "@/hooks/useTripPhotos";
+import { useTripGlances } from "@/hooks/useTripGlances";
+import { greetingFor } from "@/lib/trip-glance";
+import { isUnderway } from "@/lib/trip-card";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -15,7 +27,6 @@ import { useHomeLayout } from "@/hooks/useHomeLayout";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { supabase } from "@/integrations/supabase/client";
-import { pinColorClass, pinLabel } from "@/data/atlas";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
@@ -103,6 +114,19 @@ function SignedInHome() {
   const scorePrefs = useScorePrefs();
   // One position for the whole of Home: the weather and Near share it.
   const near = useNearMe();
+  const trips = useTrips();
+  const { photos } = useTripPhotos(trips.uid);
+  const todayIso = toLocalISODate(new Date());
+  const trip = useMemo(() => pickActiveTrip(trips.trips, todayIso), [trips.trips, todayIso]);
+  const later = useMemo(
+    () => laterTrips(trips.trips, trip, todayIso),
+    [trips.trips, trip, todayIso],
+  );
+  const glanceIds = useMemo(
+    () => [trip?.id, ...later.map((t) => t.id)].filter((id): id is string => Boolean(id)),
+    [trip, later],
+  );
+  const { glances } = useTripGlances(glanceIds);
 
   useEffect(() => {
     if (!user) {
@@ -154,17 +178,68 @@ function SignedInHome() {
     navigate({ to: "/world" });
   };
 
-  return (
-    <AppShell
-      eyebrow={homeCity ? (homeCity.split(",")[0] ?? homeCity) : "Your travel vault"}
-      title={firstName ? `Hello, ${firstName}.` : "Welcome to Béa."}
-    >
-      <div className="space-y-6">
-        {/* Where you are and the weather there, then the trip happening now
-            or the next one. */}
-        {layout.weather && <HomeWeather near={near} />}
+  const now = new Date();
+  const today = now.toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const greeting = greetingFor(now.getHours());
+  const underway = trip ? isUnderway(trip.start_date, trip.end_date) : false;
+  const subtitle = !trip
+    ? homeCity
+      ? `Home in ${homeCity.split(",")[0]}. Where to next?`
+      : "Where to next?"
+    : underway
+      ? "You're in the middle of it."
+      : "Your next chapter is taking shape.";
+  const showTrip = layout.trip && trip && !trips.loading;
+  const showSave = layout.waiting && Boolean(topReco || vault.pins.length);
 
-        {layout.trip && <HomeTripCard />}
+  return (
+    <AppShell eyebrow={today} title={firstName ? `${greeting}, ${firstName}.` : `${greeting}.`}>
+      <div className="space-y-8">
+        <p className="-mt-3 text-[15px] text-muted-foreground">{subtitle}</p>
+
+        {showTrip && (
+          <HomeTripHero
+            trip={trip}
+            glance={glances[trip.id]}
+            photos={photos}
+            peopleCount={peopleOnTrip(trips.members, trip.id, trips.uid)}
+          />
+        )}
+
+        {(layout.weather || showSave) && (
+          <section className="rise">
+            <HomeSectionTitle
+              title="At a glance"
+              aside={
+                showTrip ? (
+                  <Link to="/trips/$tripId" params={{ tripId: trip.id }}>
+                    {trip.city?.split(",")[0]?.trim() || "Trip"} overview
+                  </Link>
+                ) : undefined
+              }
+            />
+            <div className="grid grid-cols-2 gap-3">
+              {layout.weather && <HomeWeather near={near} />}
+              {showSave && <HomeSaveTile pins={vault.pins} near={near} waiting={topReco} />}
+            </div>
+          </section>
+        )}
+
+        {showTrip && <HomeNextUp trip={trip} glance={glances[trip.id]} uid={trips.uid} />}
+
+        {layout.trip && (
+          <HomeLaterTrips
+            trips={later}
+            photos={photos}
+            glances={glances}
+            members={trips.members}
+            uid={trips.uid}
+          />
+        )}
 
         <NearHome pins={vault.pins} near={near} />
 
@@ -189,34 +264,6 @@ function SignedInHome() {
               </Link>
             </div>
             {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
-          </section>
-        )}
-
-        {layout.waiting && topReco && (
-          <section data-guide="home-waiting" className="rise">
-            <SectionHead title="Waiting for you" aside={`${vault.rows.length} saved`} />
-            <div className="card-soft overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center gap-2">
-                  <span className={`size-2 rounded-full ${pinColorClass["reco"]}`} />
-                  <span className="label-caps">{pinLabel["reco"]}</span>
-                </div>
-                <h2 className="mt-1 text-[22px] leading-tight">{topReco.name}</h2>
-                <p className="mt-0.5 text-[14.5px] text-muted-foreground">
-                  {formatTripLocation(topReco.city, topReco.country)}
-                  {topReco.recommended_by ? ` · saved by ${topReco.recommended_by}` : ""}
-                </p>
-                {topReco.notes && (
-                  <p className="mt-3 font-display text-[16.5px] leading-snug">“{topReco.notes}”</p>
-                )}
-                <Link
-                  to="/opportunities"
-                  className="mt-4 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
-                >
-                  See what's near you
-                </Link>
-              </div>
-            </div>
           </section>
         )}
 

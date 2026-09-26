@@ -37,6 +37,90 @@ export function tripHighlights<T extends HighlightRow>(
   return { flight, lodging };
 }
 
+const isFlight = (r: HighlightRow) =>
+  r.kind === "flight" || (r.kind === "transport" && FLIGHTY.test(r.title));
+const isStay = (r: HighlightRow) => r.kind === "hotel" || r.kind === "lodging";
+
+/**
+ * The flight and the stay worth showing today, one of each, for a trip with
+ * several.
+ *
+ * Flight: the next one not yet behind you — today's stays up all day. Before
+ * the trip that is the flight out; once the last has gone, there is none.
+ *
+ * Stay: the one you are sleeping in. Before the trip, or before the first
+ * check-in, that is the first; it moves to the next hotel only on that
+ * hotel's own day. Rows without a date keep plan order: with no dates at all
+ * both answers are simply the first.
+ */
+export function currentHighlights<T extends HighlightRow>(
+  rows: readonly T[],
+  today: string,
+): { flight: T | null; lodging: T | null } {
+  const flights = rows.filter(isFlight);
+  const dated = flights.filter((r) => r.day_date);
+  const flight =
+    dated.length > 0 ? (dated.find((r) => r.day_date! >= today) ?? null) : (flights[0] ?? null);
+
+  const stays = rows.filter(isStay);
+  let lodging: T | null = stays[0] ?? null;
+  for (const stay of stays) {
+    if (stay.day_date && stay.day_date <= today) lodging = stay;
+  }
+  return { flight, lodging };
+}
+
+type LegStop = { city: string; arrive_on: string | null; depart_on: string | null };
+
+/**
+ * For a trip through several cities: the city that matters today, and the
+ * flight and stay that belong to it.
+ *
+ * Before you arrive anywhere that is the first city ("First stop"); from a
+ * city's arrival day it is that city ("Now in"), and it moves on only when
+ * the next city's arrival day comes. The flight is the next one still ahead
+ * before you leave the city — the flight in, until you have landed; then the
+ * one out. The stay is the one checked into while you are there.
+ *
+ * Null for a one-city trip, or when no city has an arrival date, since then
+ * there is no telling which city is "now" — the card falls back to
+ * `currentHighlights`.
+ */
+export function currentLeg<T extends HighlightRow>(
+  stops: readonly LegStop[],
+  rows: readonly T[],
+  today: string,
+): { city: string; label: "First stop" | "Now in"; flight: T | null; lodging: T | null } | null {
+  const name = (c: string) => (c.split(",")[0] ?? "").trim();
+  const distinct = new Set(stops.map((s) => name(s.city).toLowerCase()).filter(Boolean));
+  if (distinct.size < 2 || !stops.some((s) => s.arrive_on)) return null;
+
+  let index = 0;
+  stops.forEach((s, i) => {
+    if (s.arrive_on && s.arrive_on <= today) index = i;
+  });
+  const leg = stops[index]!;
+  const arrived = Boolean(leg.arrive_on && leg.arrive_on <= today);
+  const until = leg.depart_on || stops[index + 1]?.arrive_on || null;
+
+  const flight =
+    rows.find(
+      (r) => isFlight(r) && r.day_date && r.day_date >= today && (!until || r.day_date <= until),
+    ) ?? null;
+
+  const stays = rows.filter(isStay);
+  const lodging = stays.some((r) => r.day_date)
+    ? (stays.find(
+        (r) =>
+          r.day_date &&
+          (!leg.arrive_on || r.day_date >= leg.arrive_on) &&
+          (!until || r.day_date < until),
+      ) ?? null)
+    : (stays[0] ?? null);
+
+  return { city: name(leg.city), label: arrived ? "Now in" : "First stop", flight, lodging };
+}
+
 /** "6 / 12 items" and the share packed, or null with nothing to pack yet. */
 export function packingReadiness(items: readonly { packed: boolean }[]): {
   packed: number;
@@ -76,4 +160,46 @@ export function laterHeading(starts: readonly (string | null)[], now = new Date(
     return `Later this ${here.season}`;
   if (dates.every((d) => d.getFullYear() === now.getFullYear())) return "Later this year";
   return "Coming up";
+}
+
+type DatedTrip = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  status?: string | null;
+};
+
+const byStart = (a: DatedTrip, b: DatedTrip) =>
+  (a.start_date ?? "").localeCompare(b.start_date ?? "");
+
+/** The trip happening now, otherwise the soonest one still to come. */
+export function pickActiveTrip<T extends DatedTrip>(trips: readonly T[], today: string): T | null {
+  const current = trips
+    .filter((t) => t.start_date && t.start_date <= today && (!t.end_date || t.end_date >= today))
+    .sort(byStart)[0];
+  if (current) return current;
+  const upcoming = trips.filter((t) => t.start_date && t.start_date > today).sort(byStart)[0];
+  if (upcoming) return upcoming;
+  return trips.find((t) => t.status === "in_progress" || t.status === "upcoming") ?? null;
+}
+
+/** Up to three trips after the active one, soonest first. */
+export function laterTrips<T extends DatedTrip>(
+  trips: readonly T[],
+  active: T | null,
+  today: string,
+): T[] {
+  return trips
+    .filter((t) => t.id !== active?.id && t.start_date && t.start_date > today)
+    .sort(byStart)
+    .slice(0, 3);
+}
+
+/** Everyone on a trip, you included. */
+export function peopleOnTrip(
+  members: readonly { trip_id: string; user_id: string }[],
+  tripId: string,
+  uid: string | null,
+): number {
+  return members.filter((m) => m.trip_id === tripId && m.user_id !== uid).length + 1;
 }
