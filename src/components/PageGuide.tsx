@@ -76,7 +76,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a city by hand",
-        body: "Add a place, on the globe, adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
+        body: "Add a place, just above the globe, adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
         selector: "[data-guide='add-city']",
       },
     ],
