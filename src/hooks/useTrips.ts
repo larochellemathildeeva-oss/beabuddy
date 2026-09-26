@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
 import { isMissingColumn } from "@/lib/bookings";
+import { insideNote, readInside, type InsideEntry } from "@/lib/inside-list";
 import {
   datesStatusOrDefault,
   isMissingDatesStatusColumn,
@@ -160,12 +162,20 @@ export type ItineraryRow = {
   booked?: boolean;
   booking_ref?: string | null;
   booking_details?: string | null;
+  /**
+   * The stop this one is inside (the Cenotaph in the park), and what to see
+   * inside this one. Absent until the nesting migration is applied.
+   */
+  parent_id?: string | null;
+  inside?: InsideEntry[];
 };
 
 const ITINERARY_COLUMNS =
   "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at, arrived_at, left_at, planned_stay_minutes";
 const BOOKING_COLUMN_NAMES = ["booked", "booking_ref", "booking_details"];
-const BOOKING_COLUMNS = BOOKING_COLUMN_NAMES.join(", ");
+const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
+/** Columns that arrive with migrations applied by hand, asked for only while they answer. */
+const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES];
 
 export function useTrips() {
   const [uid, setUid] = useState<string | null>(null);
@@ -407,6 +417,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   const channelRef = useRef<RealtimeChannel | null>(null);
   const tripIdRef = useRef(tripId);
   tripIdRef.current = tripId;
+  /** Whether the nesting columns answered the last read. */
+  const nestingReady = useRef(true);
 
   /**
    * Refresh the trip's rows.
@@ -431,15 +443,24 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         .eq("trip_id", tripId)
         .order("day_date", { ascending: true })
         .order("position", { ascending: true });
-    let { data, error } = await query(`${ITINERARY_COLUMNS}, ${BOOKING_COLUMNS}`);
-    // The booking columns arrive with a migration applied by hand. Until it
-    // runs, asking for them fails the whole read, and a failed read keeps
-    // an empty trip on screen — so ask again without them.
-    if (error && isMissingColumn(error, BOOKING_COLUMN_NAMES)) {
-      ({ data, error } = await query(ITINERARY_COLUMNS));
+    // The booking and nesting columns arrive with migrations applied by
+    // hand. Until one runs, asking for its columns fails the whole read, and
+    // a failed read keeps an empty trip on screen — so ask again without them.
+    let groups = OPTIONAL_COLUMN_GROUPS;
+    let { data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", "));
+    for (let tries = 0; error && tries < OPTIONAL_COLUMN_GROUPS.length; tries++) {
+      const missing = groups.find((group) => isMissingColumn(error, group));
+      if (!missing) break;
+      groups = groups.filter((group) => group !== missing);
+      ({ data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", ")));
     }
     if (error) return;
-    setItems((data ?? []) as unknown as ItineraryRow[]);
+    nestingReady.current = groups.includes(NESTING_COLUMN_NAMES);
+    setItems(
+      ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
+        "inside" in row ? { ...row, inside: readInside(row.inside) } : row,
+      ),
+    );
     const { data: inv, error: invError } = await supabase
       .from("trip_invites")
       .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
@@ -625,12 +646,39 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         planned_stay_minutes?: number;
         /** Booked in the plan it came from. */
         booked?: boolean;
+        /** What to see inside this stop. */
+        inside?: InsideEntry[];
+        /** The addition this one is inside, by its place in this list. */
+        parent_index?: number;
       }>,
     ) => {
       const id = tripIdRef.current;
       if (!id) throw new Error("Open a trip first");
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
+
+      // Nesting needs ids before the rows exist, so a stop can name the one
+      // it is inside in the same insert. Without the nesting columns the
+      // inside list goes into the note, as "Inside: …", and the link is let go.
+      const anyNesting = additions.some(
+        (item) => (item.inside?.length ?? 0) > 0 || item.parent_index != null,
+      );
+      const ids = additions.map(() => crypto.randomUUID());
+      const nestingFor = (item: (typeof additions)[number], withNesting: boolean) => {
+        const inside = item.inside ?? [];
+        if (withNesting) {
+          const parent =
+            item.parent_index != null && item.parent_index >= 0
+              ? ids[item.parent_index]
+              : undefined;
+          return {
+            ...(inside.length ? { inside: inside as unknown as Json } : {}),
+            ...(parent ? { parent_id: parent } : {}),
+          };
+        }
+        const note = insideNote(inside);
+        return note ? { detail: [item.detail, note].filter(Boolean).join(" · ") } : {};
+      };
 
       // The booked column only exists once its migration is applied by hand,
       // so it is sent only when something is booked, and a save that fails
@@ -652,21 +700,28 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         created_by: authorId,
         updated_by: authorId,
       });
-      const insertRows = (withBooked: boolean) =>
+      const insertRows = (withBooked: boolean, withNesting: boolean) =>
         supabase
           .from("itinerary_items")
           .insert(
             additions.map((item, index) => ({
               ...(withBooked ? { booked: item.booked === true } : {}),
               ...rowFor(item, index),
+              ...(anyNesting ? { id: ids[index]! } : {}),
+              ...nestingFor(item, withNesting),
             })),
           )
           // The ids come back so a bulk save can be undone in one go rather
           // than one Remove tap per row.
           .select("id");
-      let { data, error } = await insertRows(anyBooked);
-      if (error && anyBooked && isMissingColumn(error, ["booked"])) {
-        ({ data, error } = await insertRows(false));
+      let withBooked = anyBooked;
+      let withNesting = anyNesting && nestingReady.current;
+      let { data, error } = await insertRows(withBooked, withNesting);
+      for (let tries = 0; error && tries < 2; tries++) {
+        if (withBooked && isMissingColumn(error, ["booked"])) withBooked = false;
+        else if (withNesting && isMissingColumn(error, NESTING_COLUMN_NAMES)) withNesting = false;
+        else break;
+        ({ data, error } = await insertRows(withBooked, withNesting));
       }
       if (error) throw error;
       await load();
@@ -769,12 +824,19 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           | "booked"
           | "booking_ref"
           | "booking_details"
+          | "parent_id"
+          | "inside"
         >
       >,
     ) => {
+      const { inside, ...rest } = patch;
       const { error } = await supabase
         .from("itinerary_items")
-        .update({ ...patch, updated_by: me.id })
+        .update({
+          ...rest,
+          ...(inside ? { inside: inside as unknown as Json } : {}),
+          updated_by: me.id,
+        })
         .eq("id", id);
       if (error) throw error;
       await load();

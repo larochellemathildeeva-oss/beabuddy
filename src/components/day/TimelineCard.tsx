@@ -13,6 +13,14 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  addInside,
+  INSIDE_MAX,
+  nestPillLabel,
+  removeInside,
+  toggleInside,
+  type InsideEntry,
+} from "@/lib/inside-list";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
@@ -64,6 +72,9 @@ export function TimelineEntry({
   stray = false,
   foldInto,
   onFold,
+  parentTitle,
+  nestedStops = 0,
+  onInside,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -118,10 +129,23 @@ export function TimelineEntry({
    */
   foldInto?: string | undefined;
   onFold?: (() => void) | undefined;
+  /** The stop this one is inside: shown above the name, and the card indented under it. */
+  parentTitle?: string | undefined;
+  /** How many stops are inside this one, for its pill. */
+  nestedStops?: number;
+  /** Save what to see inside this stop. Absent until the nesting migration is applied. */
+  onInside?: ((next: InsideEntry[]) => void) | undefined;
 }) {
   const [kept, setKept] = useState(false);
   const [flipped, setFlipped] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  /** The pill's list, open on the front of the card. */
+  const [insideOpen, setInsideOpen] = useState(false);
+  const inside = item.inside ?? [];
+  // Editable only once the column exists: the row carries it when it does.
+  const canEditInside = Boolean(onInside) && item.inside !== undefined;
+  const pill = nestPillLabel(inside.length, nestedStops);
+  const insideDone = inside.filter((entry) => entry.done).length;
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
   const done = isDone(item);
@@ -211,60 +235,79 @@ export function TimelineEntry({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => flip(true)}
-            aria-expanded={false}
-            aria-label={`${rail ? `${rail}, ` : ""}${item.title}${where ? `, ${where}` : ""} — tap to edit`}
-            className="min-w-0 flex-1 text-left"
-          >
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              {showDay && item.day_date ? (
-                <span className="text-[10px] text-muted-foreground">{item.day_date}</span>
+          <div className="min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => flip(true)}
+              aria-expanded={false}
+              aria-label={`${rail ? `${rail}, ` : ""}${item.title}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
+              className="w-full min-w-0 text-left"
+            >
+              {parentTitle ? (
+                <span className="mb-0.5 block truncate text-[10px] font-bold uppercase tracking-wide text-primary">
+                  In {parentTitle}
+                </span>
               ) : null}
-              <span
-                className={`break-words text-sm font-bold leading-snug sm:text-base ${
-                  done ? "text-muted-foreground line-through" : ""
-                }`}
-              >
-                {item.title}
-              </span>
-              {current && (
-                <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
-                  Current
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {showDay && item.day_date ? (
+                  <span className="text-[10px] text-muted-foreground">{item.day_date}</span>
+                ) : null}
+                <span
+                  className={`break-words text-sm font-bold leading-snug sm:text-base ${
+                    done ? "text-muted-foreground line-through" : ""
+                  }`}
+                >
+                  {item.title}
                 </span>
-              )}
-              {done && (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nexttime/30 bg-nexttime/10 px-2 py-0.5 text-[10px] font-bold text-nexttime">
-                  <Check className="size-3" strokeWidth={3} aria-hidden />
-                  Completed
-                </span>
-              )}
-            </span>
-            {detail ? (
-              <span className="mt-0.5 line-clamp-2 block break-words text-xs leading-relaxed text-muted-foreground">
-                {detail}
-              </span>
-            ) : null}
-            {stray ? (
-              <span className="mt-1 block text-xs font-semibold text-destructive">
-                ⚠ Pinned far from the rest of this trip. Tap to check the place.
-              </span>
-            ) : null}
-            {(meta.length > 0 || booked) && (
-              <span className="mt-1 flex flex-wrap items-center gap-x-1.5 break-words text-xs text-muted-foreground">
-                {meta.join(" · ")}
-                {booked && (
-                  <span className="inline-flex items-center gap-1 font-semibold text-nexttime">
-                    {meta.length ? "· " : ""}
-                    <CheckCircle2 className="size-3" aria-hidden />
-                    Booked
-                    {item.booking_ref ? ` · ${item.booking_ref}` : ""}
+                {current && (
+                  <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
+                    Current
+                  </span>
+                )}
+                {done && (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-nexttime/30 bg-nexttime/10 px-2 py-0.5 text-[10px] font-bold text-nexttime">
+                    <Check className="size-3" strokeWidth={3} aria-hidden />
+                    Completed
                   </span>
                 )}
               </span>
+              {detail ? (
+                <span className="mt-0.5 line-clamp-2 block break-words text-xs leading-relaxed text-muted-foreground">
+                  {detail}
+                </span>
+              ) : null}
+              {stray ? (
+                <span className="mt-1 block text-xs font-semibold text-destructive">
+                  ⚠ Pinned far from the rest of this trip. Tap to check the place.
+                </span>
+              ) : null}
+              {(meta.length > 0 || booked) && (
+                <span className="mt-1 flex flex-wrap items-center gap-x-1.5 break-words text-xs text-muted-foreground">
+                  {meta.join(" · ")}
+                  {booked && (
+                    <span className="inline-flex items-center gap-1 font-semibold text-nexttime">
+                      {meta.length ? "· " : ""}
+                      <CheckCircle2 className="size-3" aria-hidden />
+                      Booked
+                      {item.booking_ref ? ` · ${item.booking_ref}` : ""}
+                    </span>
+                  )}
+                </span>
+              )}
+            </button>
+            {pill && (
+              <InsidePill
+                label={pill}
+                entries={inside}
+                doneCount={insideDone}
+                open={insideOpen}
+                onToggleOpen={() => setInsideOpen((o) => !o)}
+                {...(canEditInside && onInside
+                  ? { onTick: (index: number) => onInside(toggleInside(inside, index)) }
+                  : {})}
+              />
             )}
-          </button>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 pt-0.5">
           <div className="mr-1 flex items-center gap-0.5">
@@ -441,6 +484,7 @@ export function TimelineEntry({
           {...(center ? { center } : {})}
           onPick={(place) => onUpdate(placePatchForSavedRow(place))}
         />
+        {canEditInside && onInside && <InsideEditor entries={inside} onChange={onInside} />}
         {placed && (
           <a
             href={mapsPlaceUrl(item.title, item, item.address)}
@@ -535,7 +579,14 @@ export function TimelineEntry({
   );
 
   return (
-    <li className="relative min-w-0 list-none">
+    <li className={`relative min-w-0 list-none ${parentTitle ? "ml-6" : ""}`}>
+      {parentTitle ? (
+        // The thread from the stop this one is inside.
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-4 -top-2 h-[calc(1.75rem+0.5rem)] w-3 rounded-bl-lg border-b-2 border-l-2 border-primary/25"
+        />
+      ) : null}
       {back ? (
         backSide
       ) : (
@@ -562,6 +613,155 @@ export function TimelineEntry({
         />
       )}
     </li>
+  );
+}
+
+/**
+ * The pill on a card with things nested in it: "2 inside · 1 stop". With a
+ * list inside, tapping opens it on the card, and each entry can be ticked
+ * off during the visit. Stops inside are cards of their own below, so the
+ * pill only counts them.
+ */
+function InsidePill({
+  label,
+  entries,
+  doneCount,
+  open,
+  onToggleOpen,
+  onTick,
+}: {
+  label: string;
+  entries: readonly InsideEntry[];
+  doneCount: number;
+  open: boolean;
+  onToggleOpen: () => void;
+  onTick?: ((index: number) => void) | undefined;
+}) {
+  const pillClass =
+    "inline-flex min-h-7 items-center gap-1 rounded-full border border-primary/35 bg-primary/5 px-2.5 text-[11px] font-bold text-primary";
+  if (entries.length === 0) {
+    return (
+      <span className="mt-1.5 inline-block">
+        <span className={pillClass}>{label}</span>
+      </span>
+    );
+  }
+  return (
+    <div className="mt-1.5">
+      <button
+        type="button"
+        onClick={onToggleOpen}
+        aria-expanded={open}
+        className={`tap-44 ${pillClass}`}
+      >
+        {label}
+        {doneCount > 0 ? (
+          <span className="font-semibold text-nexttime">· {doneCount} seen</span>
+        ) : null}
+        {open ? (
+          <ChevronUp className="size-3" aria-hidden />
+        ) : (
+          <ChevronDown className="size-3" aria-hidden />
+        )}
+      </button>
+      {open && (
+        <ul className="mt-1.5 space-y-0.5 border-l-2 border-dashed border-primary/30 pl-2.5">
+          {entries.map((entry, index) => (
+            <li key={`${entry.title}-${index}`}>
+              <button
+                type="button"
+                onClick={() => onTick?.(index)}
+                disabled={!onTick}
+                aria-pressed={entry.done}
+                aria-label={`${entry.title}${entry.done ? ", seen" : ""}`}
+                className="flex min-h-9 w-full items-center gap-2 text-left text-[13px] disabled:cursor-default"
+              >
+                <span
+                  className={`grid size-4 shrink-0 place-items-center rounded-full border ${
+                    entry.done
+                      ? "border-nexttime bg-nexttime text-background"
+                      : "border-muted-foreground/60"
+                  }`}
+                >
+                  {entry.done ? <Check className="size-2.5" strokeWidth={3} aria-hidden /> : null}
+                </span>
+                <span className={entry.done ? "text-muted-foreground line-through" : ""}>
+                  {entry.title}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** The list inside a stop, on the back of its card: add and remove. */
+function InsideEditor({
+  entries,
+  onChange,
+}: {
+  entries: readonly InsideEntry[];
+  onChange: (next: InsideEntry[]) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const add = () => {
+    const next = addInside(entries, draft);
+    if (next.length !== entries.length) onChange(next);
+    setDraft("");
+  };
+  return (
+    <div className="w-full space-y-1">
+      <p className="text-[12px] text-muted-foreground">Inside this stop</p>
+      {entries.length > 0 && (
+        <ul className="space-y-0.5">
+          {entries.map((entry, index) => (
+            <li
+              key={`${entry.title}-${index}`}
+              className="flex items-center justify-between gap-2 rounded-lg bg-card px-2 py-1 text-[12.5px]"
+            >
+              <span className={entry.done ? "text-muted-foreground line-through" : ""}>
+                {entry.title}
+              </span>
+              <button
+                type="button"
+                onClick={() => onChange(removeInside(entries, index))}
+                aria-label={`Remove ${entry.title}`}
+                className="tap-44 text-muted-foreground hover:text-destructive"
+              >
+                <Trash2 className="size-3.5" aria-hidden />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {entries.length < INSIDE_MAX && (
+        <div className="flex gap-1.5">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                add();
+              }
+            }}
+            placeholder="Add something to see here"
+            aria-label="Add something to see inside this stop"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+          />
+          <button
+            type="button"
+            onClick={add}
+            disabled={!draft.trim()}
+            className="rounded-lg border border-border bg-card px-2.5 text-[12px] font-semibold disabled:opacity-50"
+          >
+            Add
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

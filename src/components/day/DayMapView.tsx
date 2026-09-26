@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CalendarDays,
   ChevronLeft,
@@ -98,6 +98,7 @@ export function DayMapView({
   // day's worth of stops costs nothing to walk.
   const stops = groups.flatMap((group) => group.items);
   const model = dayMapModel(stops);
+  const titles = new Map(stops.map((stop) => [stop.id, stop.title]));
   const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
   const [layout, setLayoutState] = useState<MapLayout>("split");
   const [fitSignal, setFitSignal] = useState(0);
@@ -159,52 +160,84 @@ export function DayMapView({
   );
 
   return (
-    <div className="space-y-3">
-      <LayoutSwitch value={layout} onChange={setLayout} />
+    <StopTitles.Provider value={titles}>
+      <div className="space-y-3">
+        <LayoutSwitch value={layout} onChange={setLayout} />
 
-      {layout === "split" && (
-        <div
-          className={`grid overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xs max-md:grid-rows-[minmax(0,45fr)_minmax(0,55fr)] md:grid-cols-[minmax(0,46fr)_minmax(0,54fr)] ${PANEL_HEIGHT}`}
-        >
-          <div className="order-2 min-h-0 overflow-y-auto overscroll-contain px-3.5 pb-6 pt-4 md:order-1 md:px-5">
-            <RailList
-              groups={groups}
-              area={area}
-              ordinals={ordinals}
-              selectedId={selectedId}
-              onSelect={pickFromList}
-            />
+        {layout === "split" && (
+          <div
+            className={`grid overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xs max-md:grid-rows-[minmax(0,45fr)_minmax(0,55fr)] md:grid-cols-[minmax(0,46fr)_minmax(0,54fr)] ${PANEL_HEIGHT}`}
+          >
+            <div className="order-2 min-h-0 overflow-y-auto overscroll-contain px-3.5 pb-6 pt-4 md:order-1 md:px-5">
+              <RailList
+                groups={groups}
+                area={area}
+                ordinals={ordinals}
+                selectedId={selectedId}
+                onSelect={pickFromList}
+              />
+            </div>
+            <div className="order-1 min-h-0 md:order-2">
+              <DayMap
+                pins={model.pins}
+                selectedId={selectedId}
+                onSelect={pickFromMap}
+                heightClass="h-full"
+                roundedClass="rounded-none"
+                fitSignal={fitSignal}
+                label={mapLabel}
+              >
+                {fitButton}
+                <Legend model={model} />
+              </DayMap>
+            </div>
           </div>
-          <div className="order-1 min-h-0 md:order-2">
-            <DayMap
-              pins={model.pins}
-              selectedId={selectedId}
-              onSelect={pickFromMap}
-              heightClass="h-full"
-              roundedClass="rounded-none"
-              fitSignal={fitSignal}
-              label={mapLabel}
-            >
-              {fitButton}
-              <Legend model={model} />
-            </DayMap>
-          </div>
-        </div>
-      )}
+        )}
 
-      {layout === "focus" && (
-        <FocusLayout
-          model={model}
-          stops={stops}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          onPick={pickFromMap}
-          mapLabel={mapLabel}
-        />
-      )}
+        {layout === "focus" && (
+          <FocusLayout
+            model={model}
+            stops={stops}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onPick={pickFromMap}
+            mapLabel={mapLabel}
+          />
+        )}
 
-      <MapFootnotes model={model} />
-    </div>
+        <MapFootnotes model={model} />
+      </div>
+    </StopTitles.Provider>
+  );
+}
+
+/** Every stop's title by id, so a card can name the stop it is inside. */
+const StopTitles = createContext<ReadonlyMap<string, string>>(new Map());
+
+/**
+ * What is nested, in the map's cards: the stop this one is inside, and what
+ * to see inside it, with how many are ticked off.
+ */
+function NestLines({ item }: { item: ItineraryRow }) {
+  const titles = useContext(StopTitles);
+  const parent = item.parent_id ? titles.get(item.parent_id) : undefined;
+  const inside = item.inside ?? [];
+  if (!parent && inside.length === 0) return null;
+  const seen = inside.filter((entry) => entry.done).length;
+  return (
+    <>
+      {parent ? (
+        <span className="mt-0.5 block text-[10.5px] font-bold uppercase tracking-wide text-primary">
+          In {parent}
+        </span>
+      ) : null}
+      {inside.length > 0 ? (
+        <span className="mt-0.5 block text-[12px] leading-snug text-muted-foreground">
+          Inside: {inside.map((entry) => entry.title).join(" · ")}
+          {seen > 0 ? ` (${seen} seen)` : ""}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -455,6 +488,7 @@ function RailStop({
             {address}
           </span>
         )}
+        <NestLines item={item} />
         <span className="mt-1 flex flex-wrap items-center gap-1.5">
           {item.planned_stay_minutes ? (
             <span className="rounded-full border border-border px-2 py-0.5 text-[10.5px] font-medium text-muted-foreground">
@@ -690,6 +724,9 @@ function FocusLayout({
                     {stop.address.trim()}
                   </p>
                 )}
+                <p className="leading-none">
+                  <NestLines item={stop} />
+                </p>
               </div>
             </div>
 

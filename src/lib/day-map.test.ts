@@ -122,3 +122,26 @@ test("Focus opens on the asked stop, then what is next today, then the first", a
   assert.equal(focusStart(pins, stops, { isToday: false, minutesNow: 600 }), "a");
   assert.equal(focusStart([], stops, at(9)), null);
 });
+
+test("a stop with a list inside carries its count; one inside another is nested", () => {
+  const park = {
+    ...cafe,
+    id: "park",
+    inside: [
+      { title: "Flame of Peace", done: false },
+      { title: "Peace Bell", done: true },
+    ],
+  };
+  const cenotaph = { ...museum, id: "cenotaph", parent_id: "park" };
+  const orphan = { ...museum, id: "orphan", parent_id: "elsewhere" };
+  const pins = dayMapPins([park, cenotaph, orphan]);
+  assert.deepEqual(
+    pins.map((p) => [p.id, p.insideCount, p.nested]),
+    [
+      ["park", 2, false],
+      ["cenotaph", 0, true],
+      ["orphan", 0, false],
+    ],
+    "a parent not on this map leaves the stop an ordinary pin",
+  );
+});

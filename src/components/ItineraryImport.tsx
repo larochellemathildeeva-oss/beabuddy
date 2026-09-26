@@ -71,6 +71,7 @@ import {
   type PinChoice,
 } from "@/lib/import-stop";
 import { stayLabel } from "@/lib/planned-stay";
+import { splitInsideNote, type InsideEntry } from "@/lib/inside-list";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -89,6 +90,10 @@ type NewItineraryItem = {
   lon?: number;
   planned_stay_minutes?: number;
   booked?: boolean;
+  /** What to see inside this stop, with no time of its own. */
+  inside?: InsideEntry[];
+  /** The stop in this same save that this one is inside, by position. */
+  parent_index?: number;
 };
 
 /** Stops placed per server call: a long plan in one call ran out of time and came back bare. */
@@ -568,9 +573,17 @@ function ImportPanel({
         datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
           ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
           : (dated ?? items);
-      const chosen = picked.flatMap((i) => {
+      // In plan order: ticking a row back on used to append it, so it was
+      // saved at the end of the day; and a stop's parent must be found by
+      // position in this same list.
+      const order = [...picked].sort((a, b) => a - b);
+      const chosen = order.flatMap((i) => {
         const it = rows[i];
         if (!it) return [];
+        // "Inside: …" the import wrote into the note becomes its own list.
+        const { detail: note, inside } = splitInsideNote(it.detail);
+        // Inside another stop that is being saved too: linked to it.
+        const parent = order.indexOf(parentIndex(rows, i));
         // The address the source gave, pulled out by the parse; the detail
         // line's first clause only when it gave none.
         const address = it.address?.trim() || placeHintFromDetail(it.detail);
@@ -589,10 +602,12 @@ function ImportPanel({
             ...(address ? { address } : {}),
             ...(stay ? { planned_stay_minutes: stay } : {}),
             ...(it.booked === true ? { booked: true } : {}),
-            ...(it.detail || (includeCosts && it.estimated_cost != null)
+            ...(inside.length ? { inside } : {}),
+            ...(parent >= 0 ? { parent_index: parent } : {}),
+            ...(note || (includeCosts && it.estimated_cost != null)
               ? {
                   detail: [
-                    it.detail,
+                    note,
                     includeCosts && it.estimated_cost != null
                       ? `Est. ${it.estimated_cost} ${it.currency ?? plan?.currency ?? currency}`
                       : "",

@@ -83,6 +83,7 @@ import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
 import { isTravelLeg, legTarget, routeCityOn, routeStopOn, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
+import type { InsideEntry } from "@/lib/inside-list";
 import {
   asPerspective,
   defaultPerspective,
@@ -386,6 +387,29 @@ export function TripDetail({
       : here
         ? null
         : tripCenter;
+  };
+  /**
+   * What a card needs to show nesting: the stop it is inside (same day only,
+   * so the indent sits under its parent), how many stops are inside it, and
+   * saving the list of what is inside it.
+   */
+  const itemsById = useMemo(() => new Map(board.items.map((i) => [i.id, i])), [board.items]);
+  const nestedCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of board.items) {
+      if (i.parent_id && itemsById.has(i.parent_id)) {
+        counts.set(i.parent_id, (counts.get(i.parent_id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [board.items, itemsById]);
+  const nestProps = (item: ItineraryRow) => {
+    const parent = item.parent_id ? itemsById.get(item.parent_id) : undefined;
+    return {
+      ...(parent && parent.day_date === item.day_date ? { parentTitle: parent.title } : {}),
+      nestedStops: nestedCounts.get(item.id) ?? 0,
+      onInside: (next: InsideEntry[]) => void board.updateItem(item.id, { inside: next }),
+    };
   };
   /** The search anchors for a stop on that day, as props. */
   const withNear = (day: string | null | undefined) => {
@@ -1190,6 +1214,7 @@ export function TripDetail({
                                           }
                                           onToggleDone={() => toggleDone(item)}
                                           {...withNear(item.day_date)}
+                                          {...nestProps(item)}
                                           onEdit={(field) => board.setEditing(field)}
                                           onUpdate={(patch) =>
                                             void board.updateItem(item.id, patch)
@@ -1230,6 +1255,7 @@ export function TripDetail({
                                           onToggleDone={() => toggleDone(item)}
                                           editing={editingTimeline}
                                           {...withNear(item.day_date)}
+                                          {...nestProps(item)}
                                           onEdit={(field) => board.setEditing(field)}
                                           onUpdate={(patch) =>
                                             void board.updateItem(item.id, patch)
@@ -1289,6 +1315,7 @@ export function TripDetail({
                             onToggleDone={() => toggleDone(item)}
                             editing={editingTimeline}
                             {...withNear(item.day_date)}
+                            {...nestProps(item)}
                             onEdit={(field) => board.setEditing(field)}
                             onUpdate={(patch) => void board.updateItem(item.id, patch)}
                             onRemove={() => void removeTimelineItem(item)}
