@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit",
     "preview:check": "node scripts/preview/check.mjs",
     "format": "prettier --write .",
+    "db:check": "node scripts/migration-check.mjs",
     "test": "node --experimental-strip-types --test src/lib/*.test.ts",
     "version:fix": "npm version patch --no-git-tag-version",
     "version:enhance": "npm version minor --no-git-tag-version",
