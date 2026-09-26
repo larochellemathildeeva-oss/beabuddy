@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   asDraftItems,
+  diffPackEdit,
   encodeSectionLabel,
   hydratePackItem,
   isMissingSectionColumn,
   normalizeSection,
   type PackDraftItem,
+  type PackEditItem,
 } from "@/lib/packing-sections";
 
 export type { PackDraftItem };
@@ -132,6 +134,7 @@ function itemInsertRows(
       list_id: listId,
       label: withSection ? label : encodeSectionLabel(section, label),
       quantity: item.quantity && item.quantity > 1 ? item.quantity : 1,
+      packed: item.packed ?? false,
       position: k,
       ...(withSection ? { section } : {}),
     };
@@ -207,10 +210,10 @@ export function usePacking(tripId?: string | null) {
   }, []);
 
   const addItem = useCallback(
-    async (listId: string, label: string, quantity = 1) => {
+    async (listId: string, label: string, section: string | null = null, quantity = 1) => {
       if (!uid) throw new Error("Sign in first");
       const position = items.filter((i) => i.list_id === listId).length;
-      const made = await insertDrafts(uid, listId, [{ label, quantity }], position);
+      const made = await insertDrafts(uid, listId, [{ label, section, quantity }], position);
       setItems((s) => [...s, ...toItemRows(made)]);
     },
     [uid, items],
@@ -238,6 +241,63 @@ export function usePacking(tripId?: string | null) {
     setItems((s) => s.map((x) => (x.list_id === listId ? { ...x, packed: false } : x)));
     await supabase.from("packing_items").update({ packed: false }).eq("list_id", listId);
   }, []);
+
+  /** Write an edited copy of a list back over the list itself. */
+  const saveEdits = useCallback(
+    async (listId: string, edited: PackEditItem[]) => {
+      if (!uid) throw new Error("Sign in first");
+      const saved = items.filter((i) => i.list_id === listId);
+      const diff = diffPackEdit(saved, edited);
+      if (diff.removed.length) {
+        const { error } = await supabase.from("packing_items").delete().in("id", diff.removed);
+        if (error) throw error;
+      }
+      for (const { id, patch } of diff.updated) {
+        const before = saved.find((i) => i.id === id);
+        const encoded = () => {
+          const { section, ...rest } = patch;
+          return {
+            ...rest,
+            label: encodeSectionLabel(
+              section !== undefined ? section : (before?.section ?? null),
+              patch.label ?? before?.label ?? "",
+            ),
+          };
+        };
+        const touchesSection = "section" in patch || "label" in patch;
+        const first = await supabase
+          .from("packing_items")
+          .update(sectionColumnAvailable === false && touchesSection ? encoded() : patch)
+          .eq("id", id);
+        if (!first.error) continue;
+        if (!markSectionUnavailable(first.error)) throw first.error;
+        const retry = await supabase.from("packing_items").update(encoded()).eq("id", id);
+        if (retry.error) throw retry.error;
+      }
+      for (const add of diff.added) {
+        await insertDrafts(uid, listId, [add], add.position);
+      }
+      await load();
+    },
+    [uid, items, load],
+  );
+
+  /** Save an edited list as a list of its own, leaving the original as it was. */
+  const saveAsNewPack = useCallback(
+    async (listId: string, name: string, edited: PackEditItem[]) => {
+      const source = packs.find((p) => p.id === listId);
+      const drafts = edited
+        .filter((i) => i.label.trim())
+        .map((i) => ({
+          label: i.label,
+          section: i.section,
+          quantity: i.quantity,
+          packed: i.packed,
+        }));
+      return createPack(name, source?.emoji ?? "🧳", drafts);
+    },
+    [packs, createPack],
+  );
 
   const duplicatePack = useCallback(
     async (listId: string) => {
@@ -293,6 +353,8 @@ export function usePacking(tripId?: string | null) {
     renamePack,
     deletePack,
     duplicatePack,
+    saveEdits,
+    saveAsNewPack,
     addItem,
     toggleItem,
     updateItem,
