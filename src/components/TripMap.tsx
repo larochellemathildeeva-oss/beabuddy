@@ -4,7 +4,7 @@ import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
 import { legLabels, tripMapPlan, type LegLabel, type MapStop } from "@/lib/trip-map";
-import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 const W = 720;
 const H = 420;
@@ -306,7 +306,7 @@ export function TripMap({
           are geocoded from OpenStreetMap however they got here. */}
       {!compact && (
         <p className="px-3 pb-2 text-[11.5px] text-muted-foreground">
-          {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+          {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} · {OVERTURE_ATTRIBUTION}
         </p>
       )}
     </div>

@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  distanceKm,
   estimatedSeconds,
+  labelAddress,
   pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -188,4 +190,21 @@ test("pickHit returns a town-only answer as untrusted, so the search goes on", (
 
 test("pickHit ignores answers outside the box", () => {
   assert.equal(pickHit([{ ...PARK, lat: 10 }], MA_BOX, PARK_STOP), null);
+});
+
+test("a found place's label is shortened to where it is", () => {
+  assert.equal(
+    labelAddress(
+      "Mercado Municipal, Rua Barão do Rio Branco, Centro, Barreiras, Microrregião de Barreiras, Mesorregião do Extremo Oeste Baiano, Bahia, Região Nordeste, 47800-000, Brasil",
+    ),
+    "Mercado Municipal, Rua Barão do Rio Branco, Centro, Barreiras",
+  );
+  assert.equal(labelAddress(""), null);
+  assert.equal(labelAddress(undefined), null);
+});
+
+test("distanceKm measures the Liberdade namesake as out of town", () => {
+  // Barreiras' centre, and the village market Google showed for the stop.
+  const km = distanceKm({ lat: -12.1439, lon: -44.9968 }, { lat: -11.961, lon: -45.0143 });
+  assert.ok(km > 15 && km < 25, String(km));
 });

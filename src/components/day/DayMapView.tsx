@@ -29,7 +29,7 @@ import {
 } from "@/lib/day-map";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { formatMetres } from "@/lib/geo";
-import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { stayLabel } from "@/lib/planned-stay";
 import { timeForRail } from "@/lib/timeline-kind";
 import { placed as hasPosition } from "@/lib/trip-map";
@@ -336,7 +336,7 @@ function MapFootnotes({ model }: { model: DayMapModel }) {
       {caption && <p className="text-[12px] leading-snug text-muted-foreground">{caption}</p>}
       {/* The credit ODbL asks for, next to the data it applies to. */}
       <p className="text-[10.5px] text-muted-foreground/80">
-        {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+        {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} · {OVERTURE_ATTRIBUTION}
       </p>
     </div>
   );

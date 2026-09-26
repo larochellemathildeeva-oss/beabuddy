@@ -8,6 +8,7 @@ import {
   mapsDirUrl,
   mapsPlaceUrl,
   placeHintFromDetail,
+  readsLikeProse,
   placeQueryCandidates,
   reuseKeyForStop,
   stopsForDirections,
@@ -232,4 +233,17 @@ test("an arrival, a label and a browse are stripped to the place", () => {
     placeQueryCandidates("Walk/browse Hondori Shopping Street").includes("Hondori Shopping Street"),
   );
   assert.ok(placeQueryCandidates("Lunch: Kakiya").includes("Kakiya"));
+});
+
+test("a sentence about the stop is not its address", () => {
+  // Barreiras: these were saved as addresses and searched for as places.
+  assert.equal(
+    placeHintFromDetail("Drive up for panoramic sunset views overlooking Barreiras"),
+    null,
+  );
+  assert.equal(placeHintFromDetail("Riverside lunch beside the Rio Grande"), null);
+  // A name with its small words is still a name.
+  assert.equal(placeHintFromDetail("Pão de Açúcar"), "Pão de Açúcar");
+  assert.equal(placeHintFromDetail("Musée d'Orsay"), "Musée d'Orsay");
+  assert.equal(readsLikeProse("清水寺"), false);
 });

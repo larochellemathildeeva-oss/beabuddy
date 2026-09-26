@@ -94,13 +94,26 @@ order:
    keyless, one request a second, and not really intended for systematic
    geocoding.
 
+**Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
+geocoder cannot find in its town — or finds only as a namesake out of town, or
+under another name — is looked up by name near the middle of town in
+Overture's place listings through the Open Places API (`open-places.ts`, pure
+and tested; `open-places.server.ts` holds the key). OpenStreetMap is thin
+outside big cities; Overture's listings are not, and are CDLA Permissive 2.0,
+so the pins may be saved and drawn on Béa's own map (Google Places may not be:
+its terms forbid its data on a non-Google map). A match must echo the stop's
+name, closed places are skipped, and the nearest to the middle of town wins.
+Only venues use it (`venues: true`), never a trip's cities. The free plan is
+10,000 calls a month and stops answering at the cap; a refusal pauses it for
+an hour. `OVERTURE_ATTRIBUTION` sits beside the other map credits.
+
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them
 `VITE_`. After changing anything here, check neither followed the code into
 the browser:
 
 ```
-npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN" .output/public/   # must print nothing
+npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY" .output/public/   # must print nothing
 ```
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
