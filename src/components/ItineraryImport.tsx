@@ -56,8 +56,18 @@ import {
   relativeDayCount,
   resolveDayDates,
 } from "@/lib/relative-days";
-import { geocodePlanStops, PLAN_LOOKUP_GAP_MS } from "@/lib/geocode-plan.functions";
-import { pinIsSaved, stayMinutesFrom, type PinChoice } from "@/lib/import-stop";
+import {
+  geocodePlanStops,
+  PLAN_LOOKUP_GAP_MS,
+  type PlacedStop,
+} from "@/lib/geocode-plan.functions";
+import {
+  pinIsSaved,
+  routeCityOn,
+  routeCountry,
+  stayMinutesFrom,
+  type PinChoice,
+} from "@/lib/import-stop";
 import { stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
@@ -78,6 +88,9 @@ type NewItineraryItem = {
   planned_stay_minutes?: number;
   booked?: boolean;
 };
+
+/** Stops placed per server call: a long plan in one call ran out of time and came back bare. */
+const PLACE_BATCH = 8;
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
@@ -166,6 +179,7 @@ export function ItineraryImport({
       {tab === "import" && (
         <ImportPanel
           existingItems={existingItems}
+          cities={cities}
           tripCity={tripCity}
           startDate={startDate}
           endDate={endDate}
@@ -192,6 +206,7 @@ export function ItineraryImport({
 
 function ImportPanel({
   existingItems,
+  cities,
   tripCity,
   startDate,
   endDate,
@@ -201,6 +216,8 @@ function ImportPanel({
   onApplyDates,
 }: {
   existingItems: OptimizeSourceItem[];
+  /** The trip's route, so each day's stops are looked up in that day's city. */
+  cities: OptimizeSourceCity[];
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
@@ -213,6 +230,15 @@ function ImportPanel({
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
+  /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
+  const routeLine = cities
+    .filter((c) => c.city.trim())
+    .map((c) => {
+      const dates = [c.arrive_on, c.depart_on].filter(Boolean).join(" – ");
+      return `${[c.city, c.country].filter(Boolean).join(", ")}${dates ? ` (${dates})` : ""}`;
+    })
+    .join("; ")
+    .slice(0, 600);
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
@@ -352,7 +378,7 @@ function ImportPanel({
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
       toast.success(ready.title, { description: ready.body });
-      void placeParsed(out.items);
+      void placeParsed(out.items, startDate || out.start_date || "");
     }
   };
 
@@ -371,6 +397,7 @@ function ImportPanel({
           pageUrl: mode === "import" && link ? link : null,
           text: (mode === "import" && link ? "" : text.trim()) || null,
           tripCity: tripCity || null,
+          route: routeLine || null,
           startDate: startDate || null,
           endDate: endDate || null,
           mode,
@@ -395,29 +422,46 @@ function ImportPanel({
    * be shown and argued with. Failure stays survivable: a row that cannot be
    * placed is saved exactly as before, without a point.
    */
-  const placeParsed = async (parsed: ParsedItineraryItem[]) => {
-    const area = tripCity?.trim() || "";
-    // A plan that names each stop's town can be placed without a trip city.
-    if ((!area && !parsed.some((item) => item.city?.trim())) || parsed.length === 0) return;
+  const placeParsed = async (parsed: ParsedItineraryItem[], start: string) => {
+    // A trip filed under one city, or none, can still be placed day by day
+    // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
+    // the whole of Japan.
+    const area = tripCity?.trim() || routeCountry(cities) || "";
+    const dated = start ? resolveDayDates(parsed, start) : parsed;
+    const stops = dated.map((item) => {
+      const dayArea = routeCityOn(cities, item.day_date);
+      return {
+        title: item.title,
+        detail: item.detail ?? null,
+        place: item.place ?? null,
+        address: item.address ?? null,
+        city: item.city ?? null,
+        ...(dayArea ? { area: dayArea } : {}),
+      };
+    });
+    const placeable = stops.some((stop) => stop.city?.trim() || stop.area);
+    if ((!area && !placeable) || parsed.length === 0) return;
     setPlacing({ done: 0, total: parsed.length });
     try {
-      const result = await geocodePlanStops({
-        data: {
-          stops: parsed.map((item) => ({
-            title: item.title,
-            detail: item.detail ?? null,
-            place: item.place ?? null,
-            address: item.address ?? null,
-            city: item.city ?? null,
-          })),
-          area,
-        },
-      });
+      // A few stops per call. One call for a whole plan ran past the
+      // lookup budget and the request's time, and a long plan came back
+      // with no pins at all — the save then went out empty-handed.
+      // A batch that fails keeps the pins found before it.
+      const placed: PlacedStop[] = [];
+      for (let from = 0; from < stops.length; from += PLACE_BATCH) {
+        const result = await geocodePlanStops({
+          data: { stops: stops.slice(from, from + PLACE_BATCH), area },
+        }).catch(() => null);
+        if (!result) break;
+        placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
+        setPlacing({ done: Math.min(from + PLACE_BATCH, stops.length), total: parsed.length });
+        if (result.throttled) break;
+      }
       const found: Record<
         number,
         { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
       > = {};
-      for (const hit of result.placed) {
+      for (const hit of placed) {
         const row = parsed[hit.index];
         if (!row) continue;
         // Scored against the stop's venue as well as its title: "Arrive
@@ -447,7 +491,6 @@ function ImportPanel({
         };
       }
       setPlacements(found);
-      setPlacing({ done: result.placed.length, total: parsed.length });
     } catch {
       // No pins is where this started; it is not a reason to lose the plan.
     } finally {
@@ -621,7 +664,7 @@ function ImportPanel({
     // old ones would land on whichever stop now sits in that place.
     setPlacements({});
     setPinChoices({});
-    if (out.items.length > 0) void placeParsed(out.items);
+    if (out.items.length > 0) void placeParsed(out.items, startDate || out.start_date || "");
   };
 
   const findAlternatives = async () => {
@@ -1053,12 +1096,17 @@ function ImportPanel({
               </p>
               <button
                 onClick={() => void addChosen()}
-                disabled={busy || picked.length === 0 || (datesDisagree && !dateChoice)}
+                // Saving before the stops are placed saved them with no pins.
+                disabled={
+                  busy || placing !== null || picked.length === 0 || (datesDisagree && !dateChoice)
+                }
                 className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {busy
-                  ? saveStatus || (placing ? "Placing your stops…" : "Saving your trip…")
-                  : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
+                {placing && !busy
+                  ? "Placing your stops…"
+                  : busy
+                    ? saveStatus || "Saving your trip…"
+                    : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
               </button>
               {/* The long wait gets a face. Everything else here is quick
                   enough that a button label carries it. */}

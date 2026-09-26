@@ -37,6 +37,8 @@ const ParseInput = z
     /** A link to the plan: a tour page, a blog itinerary, a calendar feed. */
     pageUrl: z.string().url().max(2_000).nullish(),
     tripCity: z.string().max(120).nullable(),
+    /** The trip's cities and their dates, so each stop's city can be named. */
+    route: z.string().max(600).nullish(),
     startDate: z.string().max(20).nullable(),
     endDate: z.string().max(20).nullable(),
     mode: z.enum(["import", "build"]),
@@ -125,6 +127,7 @@ const instructions = (
   currency: string | null,
   includeCosts: boolean,
   preferences: string,
+  route?: string | null,
 ) =>
   [
     mode === "build"
@@ -146,6 +149,9 @@ const instructions = (
     "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
+    route
+      ? `The trip's route, city by city with its dates: ${route}. Use it to set each stop's city by its day.`
+      : "",
     startDate
       ? `The trip starts on ${startDate}; use it to resolve wording like 'day 2', and for the year of a date the source gives without one. When the source names its own dates, keep them even if they disagree with the trip's — the traveller is asked which is right.`
       : "",
@@ -213,6 +219,7 @@ export async function runParse(
     data.currency,
     Boolean(data.includeCosts),
     preferenceText,
+    data.route ?? null,
   );
 
   // Files are only read for a plan the traveller already has.

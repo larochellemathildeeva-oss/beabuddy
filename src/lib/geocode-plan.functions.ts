@@ -35,6 +35,12 @@ const StopIn = z.object({
   address: z.string().max(300).nullish(),
   /** The stop's own town, when the plan names one; looked up instead of the trip's area. */
   city: z.string().max(120).nullish(),
+  /**
+   * Where the trip is on the stop's day ("Hiroshima, Japan"), from its route.
+   * Takes the place of the trip's area for this stop: a multi-city trip's
+   * home city is the wrong place for most of its days.
+   */
+  area: z.string().max(200).nullish(),
 });
 
 type StopInput = {
@@ -43,6 +49,7 @@ type StopInput = {
   place?: string | null;
   address?: string | null;
   city?: string | null;
+  area?: string | null;
 };
 
 const Input = z.object({
@@ -179,7 +186,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const placed: PlacedStop[] = [];
     // A trip with no area can still be placed stop by stop when the plan
     // names each stop's town; with neither, nothing is looked up.
-    if (!area && !data.stops.some((stop) => stop.city?.trim()))
+    if (!area && !data.stops.some((stop) => stop.city?.trim() || stop.area?.trim()))
       return { placed, lookedUp: 0, area: "" };
 
     // Which service answers, and how fast it lets us ask. Imported here
@@ -233,21 +240,24 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
     for (const [index, stop] of data.stops.entries()) {
       // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
-      // then the trip's area if the town cannot be found.
-      const own = stopArea(stop.city, area);
+      // then where the trip is that day, then the trip's area.
+      const dayArea = stop.area?.trim() || area;
+      const own = stopArea(stop.city, dayArea);
       let where = own;
       let box = own ? await boxFor(own) : null;
       if (box === "throttled") {
         throttled = true;
         break;
       }
-      if (!box && own !== area && area) {
-        where = area;
-        box = await boxFor(area);
-        if (box === "throttled") {
-          throttled = true;
-          break;
-        }
+      for (const fallback of [dayArea, area]) {
+        if (box || !fallback || fallback === where) continue;
+        where = fallback;
+        box = await boxFor(fallback);
+        if (box === "throttled") break;
+      }
+      if (box === "throttled") {
+        throttled = true;
+        break;
       }
       if (!box) continue;
 
@@ -290,7 +300,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       // ever looked for in the wrong city. Callers still check the match
       // before saving it (autoPinTrusted), and the stray-pin warning flags
       // anything far from the rest of the trip.
-      const country = countryOf(area);
+      const country = countryOf(dayArea) || countryOf(area);
       if (!landed && !throttled && country && country.toLowerCase() !== where.toLowerCase()) {
         const countryBox = await boxFor(country);
         if (countryBox === "throttled") {

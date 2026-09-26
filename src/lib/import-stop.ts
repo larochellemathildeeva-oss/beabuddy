@@ -118,16 +118,52 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
  * card on the timeline with "No place yet" — a stop that is really the gap
  * between two stops, which the paws between cards already are.
  *
- * Only movement *to* somewhere counts, written "to" or as an arrow
- * ("JR line Hiroshima → Miyajimaguchi"). "Arrive Hiroshima Station" is a place
- * with a time and stays; a booked flight or reservation is its own kind and
- * is never touched.
+ * Movement *to* somewhere counts, written "to" or as an arrow
+ * ("JR line Hiroshima → Miyajimaguchi", "Hiroshima Station → Peace Park"),
+ * and so does arriving ("Arrive Hiroshima Station"): its time is kept on the
+ * stop it leads to. A meal, a hotel, a flight or anything booked is somewhere
+ * to be and is never touched.
  */
 const MOVEMENT =
   /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*(?:\b(?:to|toward|towards|back|for)\b|→|->)/i;
 
 /** "Hibiya Line to Ginza": a named line, then where it goes. */
 const LINE_TO = /^(?:[\p{L}-]+\s+){1,2}line\s+(?:to|toward|towards)\b/iu;
+
+/**
+ * "Shin-Osaka Station → Hiroshima Station", "Hiroshima Station → Peace
+ * Memorial Park": two named ends and an arrow. A named route ahead of a colon
+ * ("World Heritage Sea Route: Peace Park → Miyajima") is a cruise or tour you
+ * take, and stays.
+ */
+const ARROW_ROUTE = /^([^:：]*?\S)\s*(?:→|->|⟶|➔|➜)\s*(\S.*)$/u;
+
+/** Somewhere you catch or leave a train, boat, bus or plane. */
+const HUB =
+  /\b(?:station|stn|pier|port|harbou?r|terminal|airport|bus stop|stop|platform|ferry)\b|駅|港|空港/i;
+
+/**
+ * An arrow row is a journey when it is written as transport, or when one of
+ * its ends is a station or pier — whatever kind the parse gave it. Plans
+ * written this way came back as sights, and each became a card with "No place
+ * yet". Between two sights ("Trevi Fountain → Spanish Steps") it is a stroll
+ * you do, and stays.
+ */
+function isArrowJourney(kind: string, title: string): boolean {
+  const m = title.match(ARROW_ROUTE);
+  if (!m) return false;
+  return kind === "transport" || HUB.test(m[1]!) || HUB.test(m[2]!);
+}
+
+/**
+ * "Arrive Hiroshima Station", "Arrive by 09:15 at Peace Park", "Arrival at
+ * the pier": the end of a journey, not somewhere to spend time. The place it
+ * names is the next stop, or the one after the next journey.
+ */
+const ARRIVAL = /^(?:arriv(?:e|al|ing)|get\s+(?:to|in)(?:to)?|reach)\b/i;
+
+/** Kinds that are somewhere to be, however their title is worded. */
+const NEVER_A_LEG = new Set(["meal", "lodging", "hotel", "flight", "reservation"]);
 
 export function isTravelLeg(row: {
   kind: string;
@@ -138,7 +174,55 @@ export function isTravelLeg(row: {
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
   const title = row.title.trim();
-  return row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title));
+  if (row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title))) return true;
+  if (NEVER_A_LEG.has(row.kind)) return false;
+  return isArrowJourney(row.kind, title) || ARRIVAL.test(title);
+}
+
+type RouteCity = {
+  city: string;
+  country?: string | null | undefined;
+  arrive_on?: string | null | undefined;
+  depart_on?: string | null | undefined;
+};
+
+/**
+ * Where the trip is on a given day, from its route: "Hiroshima, Japan" on
+ * Oct 7 of a Tokyo–Kyoto–Hiroshima trip. A stop is looked up there, not in
+ * the trip's home city, which on a multi-city trip is the wrong place for
+ * most of it.
+ *
+ * The city you are in on a date is the last one arrived at by then; on a
+ * travel day, the one arrived at that day. Null without a date or a route.
+ */
+export function routeCityOn(
+  cities: readonly RouteCity[],
+  date: string | null | undefined,
+): string | null {
+  if (!date || cities.length === 0) return null;
+  const label = (c: RouteCity) =>
+    [c.city.trim(), c.country?.trim()].filter(Boolean).join(", ") || null;
+  const dated = cities.filter((c) => c.city.trim() && c.arrive_on);
+  const here = dated
+    .filter((c) => c.arrive_on! <= date && (!c.depart_on || date <= c.depart_on))
+    .sort((a, b) => b.arrive_on!.localeCompare(a.arrive_on!))[0];
+  if (here) return label(here);
+  // Past the last departure, or no departures written: the latest arrival.
+  const before = dated
+    .filter((c) => c.arrive_on! <= date)
+    .sort((a, b) => b.arrive_on!.localeCompare(a.arrive_on!))[0];
+  if (before) return label(before);
+  // A one-city route with no dates is still where the trip is.
+  const named = cities.filter((c) => c.city.trim());
+  return named.length === 1 ? label(named[0]!) : null;
+}
+
+/** The country a route runs through, when it is only one: the area of last resort. */
+export function routeCountry(cities: readonly RouteCity[]): string | null {
+  const countries = new Set(
+    cities.map((c) => c.country?.trim()).filter((c): c is string => Boolean(c)),
+  );
+  return countries.size === 1 ? [...countries][0]! : null;
 }
 
 type FoldableRow = {

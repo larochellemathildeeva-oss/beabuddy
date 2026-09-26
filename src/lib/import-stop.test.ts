@@ -58,7 +58,7 @@ test("a doubtful pin is saved only when kept; any pin can be removed", () => {
   assert.equal(pinIsSaved("high", "drop"), false);
 });
 
-test("movement between stops is a travel leg; arrivals and bookings are not", async () => {
+test("movement between stops and arriving are travel legs; bookings are not", async () => {
   const { isTravelLeg } = await import("./import-stop.ts");
   const t = (title: string, kind = "transport") => isTravelLeg({ kind, title });
   assert.ok(t("Travel to Peace Memorial Park"));
@@ -75,7 +75,15 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
     !t("World Heritage Sea Route: Peace Park to Miyajima"),
     "a named, booked crossing stays",
   );
-  assert.ok(!t("Arrive Hiroshima Station"));
+  assert.ok(t("Arrive Hiroshima Station"), "arriving is the end of the journey");
+  assert.ok(t("Arrive Peace Memorial Park - Hiroshima", "sight"));
+  assert.ok(t("Arrive by 09:15 at Peace Park", "activity"));
+  assert.ok(t("Arrival at Miyajima pier", "note"));
+  assert.ok(!t("Arrive at the ryokan", "lodging"), "a place you sleep stays");
+  assert.ok(t("Shin-Osaka Station → Hiroshima Station"), "an arrow on a train, no verb");
+  assert.ok(t("Hiroshima Station → Peace Memorial Park", "sight"), "from a station, any kind");
+  assert.ok(!t("Trevi Fountain → Spanish Steps", "sight"), "a stroll between sights stays");
+  assert.ok(!t("Okonomimura → Hiroshima Station", "meal"), "a meal stays");
   assert.ok(!t("Motoyasubashi Pier ferry"));
   assert.ok(!t("Flight JL123 to Tokyo", "flight"));
   assert.ok(!t("Walk to the torii", "sight"), "only transport rows");
@@ -109,22 +117,17 @@ test("a travel leg becomes a note on the stop it leads to", async () => {
   ]);
   assert.deepEqual(
     out.map((r) => r.title),
-    [
-      "Arrive Hiroshima Station",
-      "Peace Memorial Museum",
-      "Itsukushima Shrine",
-      "Shinkansen to Kyoto",
-    ],
+    ["Peace Memorial Museum", "Itsukushima Shrine", "Shinkansen to Kyoto"],
+  );
+  assert.equal(
+    out[0]!.detail,
+    "Booked · Getting there: Arrive Hiroshima Station, 08:36 · Getting there: Travel to Peace Memorial Park, 09:00, Tram 2, 15 min",
   );
   assert.equal(
     out[1]!.detail,
-    "Booked · Getting there: Travel to Peace Memorial Park, 09:00, Tram 2, 15 min",
-  );
-  assert.equal(
-    out[2]!.detail,
     "Getting there: Take the ferry to Miyajima, 10:30 · Afterwards: Walk back to the hotel",
   );
-  assert.equal(out[3]!.detail, null, "a leg alone on its day stays");
+  assert.equal(out[2]!.detail, null, "a leg alone on its day stays");
 });
 
 test("a rough time keeps its time", () => {
@@ -198,4 +201,30 @@ test("a journey the model wrote into the stop and as its own line is noted once"
     two[0]!.detail,
     "Getting there: Tram 2 to the pier, 10:00 · Getting there: Take the ferry to Miyajima, 10:30",
   );
+});
+
+test("a stop is looked up in the city the trip is in that day", async () => {
+  const { routeCityOn, routeCountry } = await import("./import-stop.ts");
+  const route = [
+    { city: "Tokyo", country: "Japan", arrive_on: "2026-09-30", depart_on: "2026-10-03" },
+    { city: "Kyoto", country: "Japan", arrive_on: "2026-10-03", depart_on: "2026-10-06" },
+    { city: "Hiroshima", country: "Japan", arrive_on: "2026-10-06", depart_on: "2026-10-08" },
+    { city: "Osaka", country: "Japan", arrive_on: "2026-10-08", depart_on: null },
+  ];
+  assert.equal(routeCityOn(route, "2026-10-01"), "Tokyo, Japan");
+  assert.equal(
+    routeCityOn(route, "2026-10-03"),
+    "Kyoto, Japan",
+    "a travel day is where you arrive",
+  );
+  assert.equal(routeCityOn(route, "2026-10-07"), "Hiroshima, Japan");
+  assert.equal(routeCityOn(route, "2026-10-10"), "Osaka, Japan");
+  assert.equal(routeCityOn(route, "2026-09-01"), null, "before the trip, nowhere");
+  assert.equal(routeCityOn(route, null), null);
+  assert.equal(
+    routeCityOn([{ city: "Lisbon", country: "Portugal" }], "2026-10-01"),
+    "Lisbon, Portugal",
+  );
+  assert.equal(routeCountry(route), "Japan");
+  assert.equal(routeCountry([...route, { city: "Seoul", country: "South Korea" }]), null);
 });
