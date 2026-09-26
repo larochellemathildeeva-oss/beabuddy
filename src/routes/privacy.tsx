@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 
 export const Route = createFileRoute("/privacy")({
   staticData: { plane: "detail" },
@@ -187,7 +187,16 @@ function PrivacyPage() {
             contact that service directly. The small map under Near and the map of a trip's day load
             their picture tiles the same way: through Béa's server, from that map service.
           </p>
+          <p>
+            When a stop is not on that map, Béa's server looks its name up in Overture Maps' open
+            list of places, through the Open Places API, with only the stop's name and the middle of
+            its town — never who you are.
+          </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
+          <p>
+            {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
+            Permissive 2.0.
+          </p>
         </Section>
 
         <Section title="Your control">

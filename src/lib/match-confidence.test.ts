@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { nameEchoes, scoreMatch, tallyConfidence } from "./match-confidence.ts";
+import { autoPinTrusted, nameEchoes, scoreMatch, tallyConfidence } from "./match-confidence.ts";
 
 test("a venue that came back under its own name is trusted", () => {
   const { confidence } = scoreMatch({
@@ -181,4 +181,14 @@ test("a station named after its city still matches in English labels", () => {
     }).confidence,
     "high",
   );
+});
+
+test("a well-named find far outside the town is not pinned unasked", () => {
+  const hit = {
+    label: "Mercado Municipal, Liberdade, Barreiras",
+    category: "amenity",
+    kind: "marketplace",
+  };
+  assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, hit), true);
+  assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, { ...hit, farKm: 21 }), false);
 });

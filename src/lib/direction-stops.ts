@@ -179,8 +179,61 @@ export function placeHintFromDetail(detail?: string | null): string | null {
     return null;
   }
   if (/\b(including|flagships)\b/i.test(first)) return null;
+  if (readsLikeProse(first)) return null;
   if (startsLikeAName(first) && wordCount(first) <= 12) return first;
   return null;
+}
+
+/** Small words a place name may carry in lower case: "Pão de Açúcar", "Isle of Skye". */
+const NAME_JOINERS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "da",
+  "das",
+  "de",
+  "del",
+  "della",
+  "der",
+  "des",
+  "di",
+  "do",
+  "dos",
+  "du",
+  "e",
+  "el",
+  "et",
+  "la",
+  "las",
+  "le",
+  "les",
+  "lo",
+  "los",
+  "of",
+  "on",
+  "the",
+  "und",
+  "van",
+  "von",
+  "y",
+]);
+
+/**
+ * A sentence about the stop rather than the name of a place.
+ *
+ * Names are capitalised; a description is mostly not. "Drive up for panoramic
+ * sunset views overlooking Barreiras" was saved as the stop's address and
+ * searched for as a place, because it starts with a capital. Only lower-case
+ * letters count against it, so scripts without case are never prose here.
+ */
+export function readsLikeProse(text: string): boolean {
+  const words = text
+    .split(/[\s,;:/()]+/)
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+/u, ""))
+    .filter((word) => /^\p{L}/u.test(word) && !NAME_JOINERS.has(word.toLowerCase()));
+  const lower = words.filter((word) => /^\p{Ll}/u.test(word)).length;
+  return lower >= 2 && lower * 3 > words.length;
 }
 
 export function addressForStop(item: {

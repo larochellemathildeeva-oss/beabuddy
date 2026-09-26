@@ -176,17 +176,44 @@ export function strayStopIds<T extends { id: string; lat: number | null; lon: nu
     return sorted[Math.floor(sorted.length / 2)]!;
   };
   const mid = { lat: median(placed.map((p) => p.lat)), lon: median(placed.map((p) => p.lon)) };
-  const km = (p: { lat: number; lon: number }) => {
-    const r = Math.PI / 180;
-    const a =
-      Math.sin(((p.lat - mid.lat) * r) / 2) ** 2 +
-      Math.cos(mid.lat * r) * Math.cos(p.lat * r) * Math.sin(((p.lon - mid.lon) * r) / 2) ** 2;
-    return 12_742 * Math.asin(Math.sqrt(a));
-  };
+  const km = (p: { lat: number; lon: number }) => distanceKm(p, mid);
   const typical = median(placed.map(km));
   for (const p of placed) {
     const d = km(p);
     if (d > minKm && d > typical * 4) out.add(p.id);
   }
   return out;
+}
+
+/** Straight-line distance between two points, in km. */
+export function distanceKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const r = Math.PI / 180;
+  const h =
+    Math.sin(((a.lat - b.lat) * r) / 2) ** 2 +
+    Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((a.lon - b.lon) * r) / 2) ** 2;
+  return 12_742 * Math.asin(Math.sqrt(h));
+}
+
+/** Parts of a geocoder's label that say nothing a traveller reads. */
+const LABEL_NOISE =
+  /^(?:\d[\d\s-]*|.*\b(?:regi[aã]o|microrregi[aã]o|mesorregi[aã]o|region|metropolitana)\b.*)$/i;
+
+/**
+ * Where a found place is, short enough for the card: "Mercado Municipal,
+ * Rua Barão do Rio Branco, Centro, Barreiras" out of Nominatim's full
+ * chain of districts, regions, postcode and country.
+ *
+ * Saved as the stop's address when the plan gave none, so a pinned stop says
+ * where it was pinned — which is also how a wrong one gets noticed.
+ */
+export function labelAddress(label: string | null | undefined, parts = 4): string | null {
+  const kept = (label ?? "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part && !LABEL_NOISE.test(part))
+    .slice(0, parts);
+  return kept.length > 0 ? kept.join(", ") : null;
 }

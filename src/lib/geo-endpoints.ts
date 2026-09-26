@@ -268,6 +268,9 @@ export const OSM_ATTRIBUTION = "Places and routes © OpenStreetMap contributors"
 /** Geoapify's own credit, which its free plan asks for beside its results. */
 export const GEOAPIFY_ATTRIBUTION = "Powered by Geoapify";
 
+/** Stops the map misses are found in Overture's listings (CDLA Permissive 2.0). */
+export const OVERTURE_ATTRIBUTION = "Places © Overture Maps Foundation";
+
 /**
  * OSRM's profile names are not the same on both services.
  *

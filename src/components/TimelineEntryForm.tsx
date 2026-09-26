@@ -244,7 +244,7 @@ export function TimelineEntryForm({
        */
       if (typeof id === "string" && onUpdateEntry && !hadPoint && near?.trim()) {
         void geocodePlanStops({
-          data: { stops: [{ title: name, detail: hint || null }], area: near },
+          data: { stops: [{ title: name, detail: hint || null }], area: near, venues: true },
         })
           .then((found) => {
             const hit = found.placed[0];

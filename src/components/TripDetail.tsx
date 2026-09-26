@@ -63,7 +63,7 @@ import {
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
-import { strayStopIds } from "@/lib/geocode-plan";
+import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
 import { unroutedLegCopy } from "@/lib/timeline-directions";
@@ -81,7 +81,7 @@ import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { daysForMaps } from "@/lib/day-maps";
-import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
 import { isTravelLeg, legTarget, routeCityOn, routeStopOn, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
@@ -239,6 +239,9 @@ export function TripDetail({
    * can say where it is and not only sit on a map.
    */
   const triedPlacingRows = useRef<Set<string>>(new Set());
+  /** The rows as they are now, not as they were when a lookup began. */
+  const latestItems = useRef(board.items);
+  latestItems.current = board.items;
   useEffect(() => {
     if (!lookupArea) return;
     const pending = rowsToPlace(board.items, triedPlacingRows.current);
@@ -260,6 +263,7 @@ export function TripDetail({
               };
             }),
             area: lookupArea,
+            venues: true,
           },
         });
         if (cancelled) return;
@@ -268,7 +272,15 @@ export function TripDetail({
           // Saved only if it plausibly is this stop; a namesake stays
           // unplaced for the person to set, rather than pinned wrongly.
           if (!row || !autoPinTrusted({ title: row.title, address: row.address }, hit)) continue;
-          await board.updateItem(row.id, { lat: hit.lat, lon: hit.lon });
+          // Read now, not from the lookup's snapshot: an address typed
+          // while it ran is the person's, and is never replaced.
+          const current = latestItems.current.find((item) => item.id === row.id);
+          const where = (current ?? row).address?.trim() ? null : labelAddress(hit.label);
+          await board.updateItem(row.id, {
+            lat: hit.lat,
+            lon: hit.lon,
+            ...(where ? { address: where } : {}),
+          });
         }
         if (found.throttled) {
           const placedIds = new Set(found.placed.map((hit) => pending[hit.index]?.id));
@@ -1196,7 +1208,8 @@ export function TripDetail({
                               />
                               <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
                                 Stops numbered in order; the line joins them, it isn't the walking
-                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} ·{" "}
+                                {OVERTURE_ATTRIBUTION}
                               </p>
                             </details>
                           )}
