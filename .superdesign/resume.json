@@ -92,6 +92,46 @@
         "colorful": "9a7dbc8f-4690-4113-a184-31202edff142",
         "dark": "d8cfc0a3-6da0-4909-97ff-4604cc42d455"
       }
+    },
+    "/trips/$tripId#banners": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-banners-<theme>.html",
+      "themes": {
+        "calm": "0f029546-253e-411b-a76e-f13e75b519ff",
+        "colorful": "8fcc8a33-be5c-4949-aceb-ab7cf8702aaa",
+        "dark": "0bd01dfc-709c-4489-94c0-1a9a5fbca0d1"
+      }
+    },
+    "/trips/$tripId#overview": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-overview-<theme>.html",
+      "themes": {
+        "calm": "d8378f93-4461-4eb0-8fba-9489c81a958b",
+        "colorful": "8cfd2ba1-d4a4-46a8-aaa8-31048189c8e9",
+        "dark": "8da1ca08-efc0-4850-9a5c-8de29c4ac59d"
+      }
+    },
+    "/trips/$tripId#map": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-map-<theme>.html",
+      "themes": {
+        "calm": "391c2af0-a0f2-4837-a9bb-e3a8fe8032be",
+        "colorful": "57ca038f-1070-4e12-a9f9-9e74f30794c0",
+        "dark": "c7d43c1e-cacb-4a76-af0c-aba5bc6c18a5"
+      }
+    },
+    "/trips/$tripId#timeline": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-timeline-<theme>.html",
+      "themes": {
+        "calm": "9afb9438-5ed0-4899-96a3-eed8b08c833e",
+        "colorful": "289d4f7a-e019-4d6c-a4a8-1450e366bf80",
+        "dark": "c3bb3ee4-00d4-403a-a993-f5c08ee6c002"
+      }
     }
   }
 }
