@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, Clock, MapPin } from "lucide-react";
+import { ArrowRight, Clock, CloudRain, MapPin } from "lucide-react";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
+import { lookupRain } from "@/lib/weather.functions";
+import { rainLine, rainNotice, WEATHER_ATTRIBUTION, type RainForecast } from "@/lib/weather";
 import {
   arrivalWrites,
   clockMinutes,
@@ -116,6 +118,8 @@ export function NowPanel({
       <p className="text-[11px] font-semibold text-muted-foreground">
         {state.reached} of {state.total} {state.total === 1 ? "stop" : "stops"} reached
       </p>
+
+      {phase !== "done" && <RainAhead stops={dayStops} now={now} />}
 
       {phase === "at" && current && (
         // The prototype's dark "Current stop" card.
@@ -466,6 +470,65 @@ function useLiveLeg(
 }
 
 /** The current time, refreshed each minute; null until mounted. */
+/**
+ * A quiet word when rain is likely later in the day, where the day is.
+ *
+ * The place is the first pinned stop still ahead (or the first pinned stop
+ * of the day), and the forecast is asked once per place and day; the clock
+ * then moves the notice on as spells pass. Offline, or with no forecast for
+ * the day, it shows nothing — the plan never waits on the weather.
+ */
+function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) {
+  // 0,0 is a missing place, not the Gulf of Guinea.
+  const pinned = (s: ItineraryRow) =>
+    s.lat != null && s.lon != null && !(s.lat === 0 && s.lon === 0);
+  const spot = stops.find((s) => !s.arrived_at && pinned(s)) ?? stops.find(pinned);
+  const day = stops.find((s) => s.day_date)?.day_date ?? null;
+  const lat = spot?.lat ?? null;
+  const lon = spot?.lon ?? null;
+  const ask = useServerFn(lookupRain);
+  const [forecast, setForecast] = useState<RainForecast | null>(null);
+
+  useEffect(() => {
+    setForecast(null);
+    if (lat == null || lon == null || !day) return;
+    // A day already behind the phone's clock has no rain left to warn about.
+    if (day < toLocalISODate(new Date())) return;
+    let active = true;
+    ask({ data: { lat, lon, day } })
+      .then((f) => {
+        if (active) setForecast(f);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [ask, lat, lon, day]);
+
+  const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
+  if (!notice) return null;
+  return (
+    <p
+      role="status"
+      className="flex items-start gap-2 rounded-xl border border-border bg-elevated px-3 py-2 text-xs sm:text-sm"
+    >
+      <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+      <span className="min-w-0">
+        {rainLine(notice)}{" "}
+        <a
+          href="https://open-meteo.com/"
+          target="_blank"
+          rel="noreferrer"
+          title={WEATHER_ATTRIBUTION}
+          className="text-[10px] text-muted-foreground underline underline-offset-2 sm:text-xs"
+        >
+          Open-Meteo
+        </a>
+      </span>
+    </p>
+  );
+}
+
 function useMinuteClock(): Date | null {
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => {
