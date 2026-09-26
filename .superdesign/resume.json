@@ -132,6 +132,26 @@
         "colorful": "289d4f7a-e019-4d6c-a4a8-1450e366bf80",
         "dark": "c3bb3ee4-00d4-403a-a993-f5c08ee6c002"
       }
+    },
+    "/trips/$tripId#companion": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-companion-<theme>.html",
+      "themes": {
+        "calm": "71d98201-e2c5-445c-9718-1eb4e3257af5",
+        "colorful": "dfbae10c-3652-4fa9-bcbe-2728d7c8449a",
+        "dark": "605e0839-3531-47b6-b163-51c62b5d143f"
+      }
+    },
+    "/trips/$tripId#customize": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-customize-<theme>.html",
+      "themes": {
+        "calm": "6d359118-fd8f-47da-8894-8410e345b410",
+        "colorful": "e7ee6817-88dc-4cf3-866a-b5ebf5b0a75e",
+        "dark": "d80dcb7d-8438-496c-842a-792acd201e37"
+      }
     }
   }
 }
