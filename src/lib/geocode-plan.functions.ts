@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   areaBoxFrom,
+  boxAround,
   boxViewbox,
   inBox,
   planStopQueries,
@@ -41,6 +42,11 @@ const StopIn = z.object({
    * home city is the wrong place for most of its days.
    */
   area: z.string().max(200).nullish(),
+  /**
+   * The earlier stop in this same request that this one is inside (a
+   * monument in a park), by position. Looked up beside that stop's pin first.
+   */
+  within: z.number().int().min(0).nullish(),
 });
 
 type StopInput = {
@@ -50,6 +56,7 @@ type StopInput = {
   address?: string | null;
   city?: string | null;
   area?: string | null;
+  within?: number | null;
 };
 
 const Input = z.object({
@@ -76,7 +83,15 @@ export type PlacedStop = {
   kind?: string;
   /** Its other names (local, English, alternative), for the confidence check. */
   alsoNamed?: string[];
+  /**
+   * Not found on its own, so pinned where the stop it is inside is: the
+   * title of that stop. A gallery at its museum is close enough to walk to.
+   */
+  inside?: string;
 };
+
+/** How far from the stop it is inside a place is looked for, in km. */
+const INSIDE_KM = 2;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -268,7 +283,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inWhere,
         ).slice(0, QUERIES_PER_STOP);
         for (const query of queries) {
-          const key = query.toLowerCase();
+          // Per box: a miss beside the parent is not a miss across the city.
+          const key = `${query.toLowerCase()}|${boxViewbox(bounds)}`;
           if (cache.has(key)) {
             const hit = cache.get(key) ?? null;
             if (hit) {
@@ -294,6 +310,15 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         return false;
       };
 
+      // Inside an earlier stop that was found: beside it first. "Cenotaph,
+      // Hiroshima" alone could be any memorial in the city.
+      const parent =
+        stop.within != null && stop.within < index
+          ? placed.find((hit) => hit.index === stop.within && !hit.inside)
+          : undefined;
+      if (parent && (await tryIn(where, boxAround(parent, INSIDE_KM)))) continue;
+      if (throttled) break;
+
       const landed = await tryIn(where, box);
       // Not in its town: the trip's country, last. A stop saved without its
       // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
@@ -308,6 +333,17 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           break;
         }
         if (countryBox) await tryIn(country, countryBox);
+      }
+      // Still nowhere, but inside a stop that was found: pinned there.
+      const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;
+      if (parent && parentTitle && !throttled && !placed.some((hit) => hit.index === index)) {
+        placed.push({
+          index,
+          lat: parent.lat,
+          lon: parent.lon,
+          ...(parent.label ? { label: parent.label } : {}),
+          inside: parentTitle,
+        });
       }
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.

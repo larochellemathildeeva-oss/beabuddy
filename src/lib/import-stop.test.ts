@@ -228,3 +228,84 @@ test("a stop is looked up in the city the trip is in that day", async () => {
   assert.equal(routeCountry(route), "Japan");
   assert.equal(routeCountry([...route, { city: "Seoul", country: "South Korea" }]), null);
 });
+
+test("what is listed inside a place folds into it; a timed stop inside stays", async () => {
+  const { nestWithin, parentIndex } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-07",
+    day_number: null as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const rows = [
+    row("Peace Memorial Museum", { time_label: "09:30", detail: "Booked" }),
+    row("East building", { within: "Peace Memorial Museum" }),
+    row("Main building", { within: "peace memorial museum" }),
+    row("Cenotaph for the A-bomb Victims", { time_label: "10:45", within: "Peace Memorial Park" }),
+    row("Peace Memorial Park", { time_label: "10:30" }),
+    row("Children's Peace Monument", { time_label: "11:00", within: "Peace Memorial Park" }),
+    row("Flame of Peace", { within: "Peace Memorial Park" }),
+    row("Shukkei-en", { within: "Somewhere never named" }),
+  ];
+  assert.equal(parentIndex(rows, 1), 0);
+  assert.equal(parentIndex(rows, 3), -1, "a parent must come first");
+  const out = nestWithin(rows);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    [
+      "Peace Memorial Museum",
+      "Cenotaph for the A-bomb Victims",
+      "Peace Memorial Park",
+      "Children's Peace Monument",
+      "Shukkei-en",
+    ],
+  );
+  assert.equal(out[0]!.detail, "Booked · Inside: East building, Main building");
+  assert.equal(out[2]!.detail, "Inside: Flame of Peace");
+  assert.equal(out[3]!.within, "Peace Memorial Park", "timed, so a stop, looked up beside it");
+  assert.equal(out[1]!.within, null);
+  assert.equal(out[4]!.within, null, "a name that matches nothing is dropped");
+});
+
+test("a place inside another on a different day is not folded", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const out = nestWithin([
+    {
+      kind: "sight",
+      title: "Louvre",
+      detail: null,
+      time_label: "09:00",
+      day_date: "2026-05-01",
+      day_number: null,
+    },
+    {
+      kind: "sight",
+      title: "Winged Victory",
+      detail: null,
+      time_label: null,
+      day_date: "2026-05-02",
+      day_number: null,
+      within: "Louvre",
+    },
+  ]);
+  assert.equal(out.length, 2);
+});
+
+test("a stop and the ones inside it are looked up together", async () => {
+  const { placeBatches } = await import("./import-stop.ts");
+  assert.deepEqual(placeBatches([-1, -1, -1, -1, -1], 2), [
+    [0, 2],
+    [2, 4],
+    [4, 5],
+  ]);
+  // Rows 2 and 3 are inside row 1: the cut waits until after them.
+  assert.deepEqual(placeBatches([-1, -1, 1, 1, -1, -1], 2), [
+    [0, 4],
+    [4, 6],
+  ]);
+  assert.deepEqual(placeBatches([], 8), []);
+});

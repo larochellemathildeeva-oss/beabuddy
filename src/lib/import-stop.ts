@@ -341,3 +341,98 @@ export function withLegNote(
   const note = `${label}: ${what}`;
   return detail ? `${detail} · ${note}` : note;
 }
+
+type NestableRow = {
+  kind: string;
+  title: string;
+  detail: string | null;
+  place?: string | null | undefined;
+  time_label: string | null;
+  end_time?: string | null | undefined;
+  duration_minutes?: number | null | undefined;
+  day_date: string | null;
+  day_number: number | null;
+  booked?: boolean | null | undefined;
+  /** The title of the earlier stop this one is inside, as the parse wrote it. */
+  within?: string | null | undefined;
+};
+
+const fold = (value: string | null | undefined) =>
+  (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The stop a row is inside: the nearest earlier stop that day whose title
+ * or place is the one it names ("Peace Memorial Museum" for "the museum's
+ * east wing"), or -1. A name that matches nothing leaves the row on its own
+ * rather than hanging it off a guess.
+ */
+export function parentIndex(rows: readonly NestableRow[], i: number): number {
+  const row = rows[i];
+  const want = fold(row?.within);
+  if (!row || want.length < 3) return -1;
+  for (let j = i - 1; j >= 0 && sameDay(rows[j]!, row); j--) {
+    const names = [fold(rows[j]!.title), fold(rows[j]!.place)].filter((n) => n.length >= 3);
+    if (names.some((n) => n === want || n.includes(want) || want.includes(n))) return j;
+  }
+  return -1;
+}
+
+/**
+ * Things seen inside a place, folded into it when they are only a list.
+ *
+ * "Visit Peace Memorial Museum", then "East building: Hiroshima before the
+ * bomb", "Main building: personal effects": the plan names one visit and what
+ * to see during it. As stops, each took a card, a "Travelling to…" gap and a
+ * map search — for a room. Untimed, they become the visit's "Inside:" note.
+ *
+ * With a time of its own (the Cenotaph at 10:45, after the museum at 9:30),
+ * a place inside another stays a stop — it is when you are there — and keeps
+ * `within`, so it is looked up beside its parent rather than across the city.
+ * Booked rows always stay.
+ */
+export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
+  const out = rows.map((row) => ({ ...row }));
+  const drop = new Set<number>();
+  out.forEach((row, i) => {
+    const parent = parentIndex(out, i);
+    if (parent < 0 || drop.has(parent)) {
+      row.within = null;
+      return;
+    }
+    row.within = out[parent]!.title;
+    const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
+    if (ownTime || row.booked === true) return;
+    out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
+    drop.add(i);
+  });
+  return out.filter((_, i) => !drop.has(i));
+}
+
+/** "Inside: East building · Main building", one note however many are added. */
+export function withInsideNote(detail: string | null, title: string): string {
+  const notes = (detail ?? "").split(" · ").filter(Boolean);
+  const at = notes.findIndex((n) => n.startsWith("Inside: "));
+  if (at < 0) return [...notes, `Inside: ${title}`].join(" · ");
+  const listed = notes[at]!.slice("Inside: ".length).split(", ");
+  if (!listed.some((l) => fold(l) === fold(title))) listed.push(title);
+  notes[at] = `Inside: ${listed.join(", ")}`;
+  return notes.join(" · ");
+}
+
+/**
+ * Stops split into lookup batches of about `size`, never between a stop and
+ * the ones inside it: a child is looked up beside its parent's pin, which
+ * only the same request has. `parents[i]` is parentIndex, -1 for none.
+ */
+export function placeBatches(parents: readonly number[], size: number): [number, number][] {
+  const out: [number, number][] = [];
+  let start = 0;
+  for (let i = 1; i < parents.length; i++) {
+    if (i - start >= size && parents[i]! < start) {
+      out.push([start, i]);
+      start = i;
+    }
+  }
+  if (parents.length) out.push([start, parents.length]);
+  return out;
+}

@@ -15,7 +15,7 @@ import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
-import { foldTravelLegs, normalizeClock } from "@/lib/import-stop";
+import { foldTravelLegs, nestWithin, normalizeClock } from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
 
 /**
@@ -78,6 +78,12 @@ const ItemSchema = z.object({
   place: z.string().nullish(),
   address: z.string().nullish(),
   city: z.string().nullish(),
+  /**
+   * The title of an earlier item this one is inside: an exhibit of a museum,
+   * a monument in a park. Untimed, it becomes part of that visit; timed, it
+   * stays a stop and is looked up beside it.
+   */
+  within: z.string().nullish(),
   estimated_cost: z.number().nullable(),
   currency: z.string().nullable(),
   source: z.enum(["vault", "new"]).nullish(),
@@ -147,6 +153,8 @@ const instructions = (
       ? 'booked: true when the source marks the entry as booked, reserved, confirmed or ticketed ("BOOKED", "🎟️ booked", "✅", a confirmation number). false otherwise, including when it says no booking is needed.'
       : "booked: false.",
     "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
+    "within: when the source names a place and then lists things to see in or at it (a museum's galleries, the monuments of a park, the halls of a temple), give each of those its own item and set within to the title of that earlier item, exactly as you wrote it. Keep their times only when the source gives them. Null for everything else.",
+    'One item per thing to do. When one line joins different activities ("Visit Peace Memorial Museum / stroll along the Motoyasu River", "Museum, then lunch at Okonomimura"), return an item for each, in order; the line\'s time goes on the first, and the others get a time only when the source gives one. A list of places seen in one visit ("Peace Park / Atomic Bomb Dome / Cenotaph") stays one item.',
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
     route
@@ -261,23 +269,26 @@ export async function runParse(
     // Travel legs the model made anyway become notes on the stop they lead to.
     // Kinds normalised first, so the fold sees "transport" however it was
     // spelt; the times too, so a folded note carries a readable time.
-    items: foldTravelLegs(
-      out.items.slice(0, 60).map((i) => ({
-        ...i,
-        // A time the timeline cannot sort is worse than none.
-        time_label: normalizeClock(i.time_label),
-        end_time: normalizeClock(i.end_time),
-        kind: normaliseKind(i.kind),
-        // Only a plan the traveller already has can hold a booking; a plan
-        // Béa drafts never does, whatever the model said.
-        booked: data.mode === "import" && i.booked === true,
-        source:
-          i.source === "vault"
-            ? ("vault" as const)
-            : data.mode === "build"
-              ? ("new" as const)
-              : null,
-      })),
+    // Then what is listed inside a place joins that visit (nestWithin).
+    items: nestWithin(
+      foldTravelLegs(
+        out.items.slice(0, 60).map((i) => ({
+          ...i,
+          // A time the timeline cannot sort is worse than none.
+          time_label: normalizeClock(i.time_label),
+          end_time: normalizeClock(i.end_time),
+          kind: normaliseKind(i.kind),
+          // Only a plan the traveller already has can hold a booking; a plan
+          // Béa drafts never does, whatever the model said.
+          booked: data.mode === "import" && i.booked === true,
+          source:
+            i.source === "vault"
+              ? ("vault" as const)
+              : data.mode === "build"
+                ? ("new" as const)
+                : null,
+        })),
+      ),
     ),
   };
   return applyCostPolicy(parsed, Boolean(data.includeCosts));

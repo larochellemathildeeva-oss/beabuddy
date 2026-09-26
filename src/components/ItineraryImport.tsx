@@ -62,7 +62,9 @@ import {
   type PlacedStop,
 } from "@/lib/geocode-plan.functions";
 import {
+  parentIndex,
   pinIsSaved,
+  placeBatches,
   routeCityOn,
   routeCountry,
   stayMinutesFrom,
@@ -428,6 +430,8 @@ function ImportPanel({
     // the whole of Japan.
     const area = tripCity?.trim() || routeCountry(cities) || "";
     const dated = start ? resolveDayDates(parsed, start) : parsed;
+    // A monument inside a park is looked up beside the park's pin.
+    const parents = dated.map((_, i) => parentIndex(dated, i));
     const stops = dated.map((item) => {
       const dayArea = routeCityOn(cities, item.day_date);
       return {
@@ -448,13 +452,15 @@ function ImportPanel({
       // with no pins at all — the save then went out empty-handed.
       // A batch that fails keeps the pins found before it.
       const placed: PlacedStop[] = [];
-      for (let from = 0; from < stops.length; from += PLACE_BATCH) {
-        const result = await geocodePlanStops({
-          data: { stops: stops.slice(from, from + PLACE_BATCH), area },
-        }).catch(() => null);
+      for (const [from, to] of placeBatches(parents, PLACE_BATCH)) {
+        const batch = stops.slice(from, to).map((stop, k) => {
+          const parent = parents[from + k]!;
+          return parent >= from ? { ...stop, within: parent - from } : stop;
+        });
+        const result = await geocodePlanStops({ data: { stops: batch, area } }).catch(() => null);
         if (!result) break;
         placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
-        setPlacing({ done: Math.min(from + PLACE_BATCH, stops.length), total: parsed.length });
+        setPlacing({ done: to, total: parsed.length });
         if (result.throttled) break;
       }
       const found: Record<
@@ -479,9 +485,13 @@ function ImportPanel({
             }),
           );
         const rank = { high: 2, medium: 1, low: 0 } as const;
-        const { confidence, reason } = scored.reduce((best, next) =>
-          rank[next.confidence] > rank[best.confidence] ? next : best,
-        );
+        // Pinned at the stop it is inside: its name will not match that
+        // place's, and should not make it look like a wrong guess.
+        const { confidence, reason } = hit.inside
+          ? { confidence: "medium" as const, reason: `Pinned at ${hit.inside}, where it is` }
+          : scored.reduce((best, next) =>
+              rank[next.confidence] > rank[best.confidence] ? next : best,
+            );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,
@@ -1144,6 +1154,7 @@ function ImportPanel({
                     .join(" · ")}
                   {it.day_date || it.day_number || it.time_label ? " · " : ""}
                   {it.kind}
+                  {it.within ? ` · in ${it.within}` : ""}
                 </span>
                 <span className="block text-[14.5px] font-medium">
                   {it.title}
