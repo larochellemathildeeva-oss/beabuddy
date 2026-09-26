@@ -5,10 +5,11 @@ import { Globe } from "@/components/Globe";
 import {
   HomeLaterTrips,
   HomeNextUp,
+  HomePastTrips,
   HomeSectionTitle,
   HomeTripHero,
 } from "@/components/HomeTripCard";
-import { laterTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
+import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { HomeSaveTile } from "@/components/HomeSaveTile";
 import { ContentCard } from "@/components/ContentCard";
@@ -122,6 +123,7 @@ function SignedInHome() {
     () => laterTrips(trips.trips, trip, todayIso),
     [trips.trips, trip, todayIso],
   );
+  const past = useMemo(() => pastTrips(trips.trips, todayIso), [trips.trips, todayIso]);
   const glanceIds = useMemo(
     () => [trip?.id, ...later.map((t) => t.id)].filter((id): id is string => Boolean(id)),
     [trip, later],
@@ -212,16 +214,8 @@ function SignedInHome() {
 
         {(layout.weather || showSave) && (
           <section className="rise">
-            <HomeSectionTitle
-              title="At a glance"
-              aside={
-                showTrip ? (
-                  <Link to="/trips/$tripId" params={{ tripId: trip.id }}>
-                    {trip.city?.split(",")[0]?.trim() || "Trip"} overview
-                  </Link>
-                ) : undefined
-              }
-            />
+            {/* Where you are now; the trip itself is one tap away on its own card. */}
+            <HomeSectionTitle title="At a glance" />
             <div className="grid grid-cols-2 gap-3">
               {layout.weather && <HomeWeather near={near} />}
               {showSave && <HomeSaveTile pins={vault.pins} near={near} waiting={topReco} />}
@@ -281,6 +275,8 @@ function SignedInHome() {
             </div>
           </section>
         )}
+
+        {layout.trip && !trips.loading && <HomePastTrips trips={past} photos={photos} />}
       </div>
     </AppShell>
   );

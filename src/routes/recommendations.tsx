@@ -5,7 +5,21 @@ import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bookmark, Check, MapPinned, Plus, StickyNote, UserRound, X } from "lucide-react";
+import {
+  Bookmark,
+  Check,
+  ChevronDown,
+  Hand,
+  Inbox,
+  ListPlus,
+  LocateFixed,
+  MapPinned,
+  Plus,
+  Share2,
+  StickyNote,
+  UserRound,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
@@ -15,6 +29,8 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
   addPlaceholder,
   anyFilterWorthShowing,
+  categoryKey,
+  categoryOptions,
   kindFilterWorthShowing,
   placeFilterWorthShowing,
   searchWorthShowing,
@@ -131,6 +147,8 @@ function RecommendationsPage() {
   const [moreTags, setMoreTags] = useState(false);
   /** The other ways in, folded away until asked for. */
   const [moreWays, setMoreWays] = useState(false);
+  /** Send / Open a share, asked for from the "+" menu. */
+  const [shareAsk, setShareAsk] = useState<{ mode: "picking" | "opening"; n: number } | null>(null);
   /** What the one add field currently holds. */
   const [addText, setAddText] = useState("");
   const [locQuery, setLocQuery] = useState("");
@@ -221,9 +239,12 @@ function RecommendationsPage() {
   const venues = saved.filter((r) => !isCityLevelPlace(r));
   const views = venues.map(rowView);
   const places = ["All places", ...uniqueRecCities(saved)];
-  const categories = ["All", ...new Set(views.map((v) => v.category))];
+  // "cafe" and "Cafe" are one filter, not two.
+  const categories = ["All", ...categoryOptions(views.map((v) => v.category))];
   const inPlace = views.filter((v) => recMatchesPlace(v, placeFilter));
-  const inCategory = inPlace.filter((v) => category === "All" || v.category === category);
+  const inCategory = inPlace.filter(
+    (v) => category === "All" || categoryKey(v.category) === categoryKey(category),
+  );
   const filtered = query.trim()
     ? fuzzyRank(inCategory, query, (v) => [v.name, v.city, v.country, v.by, v.notes])
     : [...inCategory].sort((a, b) => {
@@ -490,79 +511,73 @@ function RecommendationsPage() {
   return (
     <AppShell eyebrow={`${views.length} saved`} title="Recommendation vault.">
       <div className="space-y-5">
-        {/* One field, whatever you have. A name gets looked up as you type; a
-            pasted link gets read. The five equal-weight buttons that used to
-            live here are folded into "Other ways" below, because four of them
-            are rare and the fifth was this. */}
+        {/* One field, whatever you have: a name is looked up as you type, a
+            pasted link gets read. Everything else — places from your trips,
+            where you are, by hand, a list, sending and opening shares — is
+            one tap away under the "+" beside it, so the page opens on one row. */}
         <section data-guide="reco-add">
-          <PlaceSearchInput
-            value={addText}
-            onChange={setAddText}
-            at={searchAt}
-            onLocate={locateForSearch}
-            onPick={(place) => {
-              setAddText("");
-              showDraft({ ...place, category: prettyPlaceCategory(place) });
-            }}
-            placeholder={addPlaceholder(views.length > 0)}
-            onSaveTyped={(text) => {
-              setAddText("");
-              const typed = draftFromTyped(text);
-              showDraft({
-                ...typed,
-                source: "Typed in",
-                url: recMapsUrl(typed),
-              });
-            }}
-            quickAdd={{
-              label: "Save",
-              busyLabel: "Saving…",
-              onAdd: async (place) => {
-                await quickSave(place);
-                setAddText("");
-              },
-            }}
-          />
-
-          {/* Out in the open rather than under "Other ways": the places you
-              went and loved are the likeliest recs you have. */}
-          <button
-            type="button"
-            onClick={() => {
-              setMode(mode === "trips" ? null : "trips");
-              setDraft(null);
-              setLocQuery("");
-              setLocResults(null);
-              setError(null);
-            }}
-            aria-expanded={mode === "trips"}
-            className={`mt-2 flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] font-medium transition-colors ${
-              mode === "trips" ? "border-primary bg-elevated" : "border-border bg-card"
-            }`}
-          >
-            <MapPinned className="size-4 shrink-0 text-primary" aria-hidden />
-            Add places you loved from your trips
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMoreWays((v) => !v)}
-            aria-expanded={moreWays}
-            className="mt-2 text-[12.5px] text-muted-foreground underline"
-          >
-            {moreWays ? "Fewer ways" : "Other ways to save"}
-          </button>
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <PlaceSearchInput
+                value={addText}
+                onChange={setAddText}
+                at={searchAt}
+                onLocate={locateForSearch}
+                onPick={(place) => {
+                  setAddText("");
+                  showDraft({ ...place, category: prettyPlaceCategory(place) });
+                }}
+                placeholder={addPlaceholder(views.length > 0)}
+                onSaveTyped={(text) => {
+                  setAddText("");
+                  const typed = draftFromTyped(text);
+                  showDraft({
+                    ...typed,
+                    source: "Typed in",
+                    url: recMapsUrl(typed),
+                  });
+                }}
+                quickAdd={{
+                  label: "Save",
+                  busyLabel: "Saving…",
+                  onAdd: async (place) => {
+                    await quickSave(place);
+                    setAddText("");
+                  },
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setMoreWays((v) => !v)}
+              aria-expanded={moreWays}
+              aria-controls="reco-add-menu"
+              aria-label={moreWays ? "Close other ways to add" : "Other ways to add and share"}
+              title="Other ways to add and share"
+              className={`grid size-[42px] shrink-0 place-items-center rounded-xl transition-colors ${
+                moreWays ? "bg-foreground text-background" : "bg-primary text-primary-foreground"
+              }`}
+            >
+              <Plus
+                className={`size-5 transition-transform ${moreWays ? "rotate-45" : ""}`}
+                aria-hidden
+              />
+            </button>
+          </div>
 
           {moreWays && (
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <div id="reco-add-menu" className="mt-2 grid grid-cols-2 gap-2">
               {(
                 [
-                  ["here", "I'm here now"],
-                  ["manual", "By hand"],
+                  ["trips", "From my trips", MapPinned],
+                  ["here", "I'm here now", LocateFixed],
+                  ["manual", "By hand", Hand],
+                  ["list", "Paste a list", ListPlus],
                 ] as const
-              ).map(([m, label]) => (
+              ).map(([m, label, Icon]) => (
                 <button
                   key={m}
+                  type="button"
                   onClick={() => {
                     setMode(mode === m ? null : m);
                     setTagsTouched(false);
@@ -573,28 +588,38 @@ function RecommendationsPage() {
                     setLocResults(null);
                     setError(null);
                     if (m === "here") handleHere();
+                    setMoreWays(false);
                   }}
-                  className={`rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
+                  aria-pressed={mode === m}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[14px] font-medium transition-colors ${
                     mode === m ? "border-primary bg-elevated" : "border-border bg-card"
                   }`}
                 >
+                  <Icon className="size-4 shrink-0 text-primary" aria-hidden />
                   {label}
                 </button>
               ))}
-              <button
-                onClick={() => {
-                  setMode(mode === "list" ? null : "list");
-                  setDraft(null);
-                  setLocQuery("");
-                  setLocResults(null);
-                  setError(null);
-                }}
-                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
-                  mode === "list" ? "border-primary bg-elevated" : "border-border bg-card"
-                }`}
-              >
-                Paste or upload a list
-              </button>
+              {(
+                [
+                  ["picking", "Send places", Share2],
+                  ["opening", "Open a share", Inbox],
+                ] as const
+              ).map(([m, label, Icon]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => {
+                    setShareAsk((prev) => ({ mode: m, n: (prev?.n ?? 0) + 1 }));
+                    setMode(null);
+                    setDraft(null);
+                    setMoreWays(false);
+                  }}
+                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[14px] font-medium"
+                >
+                  <Icon className="size-4 shrink-0 text-primary" aria-hidden />
+                  {label}
+                </button>
+              ))}
               <div className="col-span-2">
                 <NearbyMapPin
                   existing={venues
@@ -613,6 +638,17 @@ function RecommendationsPage() {
               </div>
             </div>
           )}
+
+          <div className="mt-2 empty:hidden">
+            <ShareRecos
+              rows={vault.rows}
+              uid={user?.id ?? null}
+              myName={myName}
+              onKept={vault.addMany}
+              request={shareAsk}
+              onClose={() => setShareAsk(null)}
+            />
+          </div>
           {mode === "here" && busy === "here" && (
             <p className="mt-3 text-[14.5px] text-muted-foreground">Finding where you are…</p>
           )}
@@ -979,27 +1015,23 @@ function RecommendationsPage() {
           )}
         </section>
 
-        <ShareRecos
-          rows={vault.rows}
-          uid={user?.id ?? null}
-          myName={myName}
-          onKept={vault.addMany}
-        />
-
         {(searchWorthShowing({ total: views.length }) ||
           anyFilterWorthShowing({
             total: views.length,
             places: places.length - 1,
             kinds: categories.length - 1,
           })) && (
-          <div className="space-y-2">
+          // One row: search, then City and Type as two compact menus rather
+          // than two rows of chips that ran off the side of the screen.
+          <div className="flex flex-wrap gap-2">
             {searchWorthShowing({ total: views.length }) && (
               <input
                 data-guide="reco-search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search places, cities, people — typos are fine"
-                className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
+                placeholder="Search places, cities, people"
+                aria-label="Search your saved places — typos are fine"
+                className="min-w-[12rem] flex-[2_1_14rem] rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
               />
             )}
             {placeFilterWorthShowing({
@@ -1007,42 +1039,28 @@ function RecommendationsPage() {
               places: places.length - 1,
               kinds: categories.length - 1,
             }) && (
-              <div data-guide="reco-places" className="flex gap-2 overflow-x-auto pb-1">
-                {places.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setPlaceFilter(c)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                      placeFilter === c
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
+              <FilterSelect
+                guide="reco-places"
+                label="City"
+                value={placeFilter}
+                all="All places"
+                options={places}
+                onChange={setPlaceFilter}
+              />
             )}
             {kindFilterWorthShowing({
               total: views.length,
               places: places.length - 1,
               kinds: categories.length - 1,
             }) && (
-              <div data-guide="reco-categories" className="flex gap-2 overflow-x-auto pb-1">
-                {categories.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setCategory(c)}
-                    className={`shrink-0 rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                      category === c
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
+              <FilterSelect
+                guide="reco-categories"
+                label="Type"
+                value={category}
+                all="All"
+                options={categories}
+                onChange={setCategory}
+              />
             )}
           </div>
         )}
@@ -1157,5 +1175,51 @@ function RecommendationsPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * A filter as a small native menu: "City: All" until you pick one, then the
+ * pick, highlighted so a narrowed list never looks like the whole vault.
+ */
+function FilterSelect({
+  guide,
+  label,
+  value,
+  all,
+  options,
+  onChange,
+}: {
+  guide: string;
+  label: string;
+  value: string;
+  all: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  const on = value !== all;
+  return (
+    <label
+      data-guide={guide}
+      className={`relative flex min-w-0 flex-1 items-center gap-1 rounded-full border px-3.5 py-2.5 text-[14px] sm:flex-none ${
+        on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
+      }`}
+    >
+      <span className={on ? "text-primary-foreground/80" : "text-muted-foreground"}>{label}:</span>
+      <span className="truncate font-semibold">{on ? value : "All"}</span>
+      <ChevronDown className="size-4 shrink-0 opacity-70" aria-hidden />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={`Filter by ${label.toLowerCase()}`}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
+      >
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o === all ? `All` : o}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

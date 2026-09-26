@@ -9,6 +9,8 @@ import {
   companionState,
   companionStops,
   leaveBy,
+  leaveCountdown,
+  liveSummary,
   leavingWrite,
   legBetween,
   liveLegKey,
@@ -262,4 +264,41 @@ test("halfway time needs two clock times, rounded to five minutes", () => {
   assert.equal(midpointTime("Lunch", "15:00"), "");
   assert.equal(midpointTime("15:00", "09:00"), "", "out of order");
   assert.equal(midpointTime(null, "09:00"), "");
+});
+
+test("leave countdown speaks up only in the last ten minutes", () => {
+  const at = (h: number, m: number) => new Date(2026, 8, 26, h, m);
+  assert.equal(leaveCountdown("14:31", at(14, 0)), null);
+  assert.equal(leaveCountdown("14:31", at(14, 21)), 10);
+  assert.equal(leaveCountdown("14:31", at(14, 31)), 0);
+  assert.equal(leaveCountdown("14:31", at(14, 40)), -9);
+  assert.equal(leaveCountdown("00:05", at(23, 58)), 7);
+  assert.equal(leaveCountdown("23:55", at(0, 10)), -15);
+  assert.equal(leaveCountdown("soon", at(14, 0)), null);
+});
+
+test("live summary: where you are in today, and nothing on other days", () => {
+  const day = (id: string, extra: Partial<CompanionStop> = {}) => ({
+    ...stop(id, extra),
+    day_date: "2026-09-26",
+  });
+  const items = [
+    day("a", { arrived_at: T("09:00"), left_at: T("10:00") }),
+    day("b", { arrived_at: T("10:30") }),
+    day("c"),
+    { ...stop("x"), day_date: "2026-09-27" },
+  ];
+  assert.deepEqual(liveSummary(items, "2026-09-26"), {
+    step: 2,
+    total: 3,
+    label: "Now",
+    title: "Stop b",
+  });
+  assert.deepEqual(liveSummary([day("a"), day("b")], "2026-09-26"), {
+    step: 1,
+    total: 2,
+    label: "Next",
+    title: "Stop a",
+  });
+  assert.equal(liveSummary(items, "2026-09-28"), null);
 });

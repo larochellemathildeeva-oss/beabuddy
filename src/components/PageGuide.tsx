@@ -76,7 +76,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a city by hand",
-        body: "Add a place, just above the globe, adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
+        body: "The round + on the globe adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
         selector: "[data-guide='add-city']",
       },
     ],
@@ -146,12 +146,12 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Filter by city",
-        body: "These chips are cities from your saved recs — not pins. Tap one to see every restaurant, hotel or spot there.",
+        body: "Pick a city from your saved recs to see every restaurant, hotel or spot there.",
         selector: "[data-guide='reco-places']",
       },
       {
         title: "Filter by kind",
-        body: "These chips filter by category — restaurants, bars, hotels, whatever you've been tagging.",
+        body: "Narrow to one category — restaurants, bars, hotels, whatever you've been tagging.",
         selector: "[data-guide='reco-categories']",
       },
       {
@@ -161,7 +161,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Ways to save something",
-        body: "Paste a link, search the web, pin where you are, type it in, or paste a list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
+        body: "Type a name or paste a link in the field. The + beside it holds the rest: places from your trips, where you are, by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
         selector: "[data-guide='reco-add']",
       },
       {
@@ -171,8 +171,8 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Share places with someone",
-        body: "Tick a few saved places and Béa makes a code you can send. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
-        selector: "[data-guide='reco-share']",
+        body: "Under the +, Send places lets you tick a few saved places and Béa makes a code you can send; Open a share takes in one sent to you. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
+        selector: "[data-guide='reco-add']",
       },
       {
         title: "Your vault",

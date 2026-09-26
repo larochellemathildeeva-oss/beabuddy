@@ -176,6 +176,47 @@ export function leaveBy(
 }
 
 /**
+ * One line for a trip card on a day of the trip: how far through today you
+ * are and where. Null when today has no stops to track.
+ */
+export function liveSummary<T extends CompanionStop & { day_date?: string | null }>(
+  items: readonly T[],
+  today: string,
+): { step: number; total: number; label: "Now" | "Next" | "Done"; title: string } | null {
+  const stops = companionStops(items.filter((i) => i.day_date === today));
+  if (stops.length === 0) return null;
+  const state = companionState(stops);
+  if (state.phase === "done") {
+    return { step: state.total, total: state.total, label: "Done", title: "That's the day" };
+  }
+  if (state.phase === "at" && state.current) {
+    return {
+      step: stops.indexOf(state.current) + 1,
+      total: state.total,
+      label: "Now",
+      title: state.current.title,
+    };
+  }
+  const next = state.next ?? stops[0]!;
+  return { step: stops.indexOf(next) + 1, total: state.total, label: "Next", title: next.title };
+}
+
+/**
+ * How close "Leave by" is, for today's plan: minutes still in hand, or null
+ * when it is more than `soonMinutes` away (the chip stays quiet). Zero or
+ * less means it is time to go. Times wrap at midnight, so 23:55 is five
+ * minutes before 00:00 rather than a day away.
+ */
+export function leaveCountdown(at: string, now: Date, soonMinutes = 10): number | null {
+  const due = clockMinutes(at);
+  if (due == null) return null;
+  let left = due - (now.getHours() * 60 + now.getMinutes());
+  if (left > 720) left -= 1440;
+  if (left < -720) left += 1440;
+  return left <= soonMinutes ? left : null;
+}
+
+/**
  * How long you have been somewhere. Silent without an arrival.
  */
 export function stayLine(stop: Pick<CompanionStop, "arrived_at">, now: Date): string | null {

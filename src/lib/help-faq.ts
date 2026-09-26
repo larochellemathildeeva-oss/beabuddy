@@ -59,11 +59,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I send my saved places to someone?",
-        a: "Yes. On Recs, Send lets you tick a few places and turns them into a code you can text or email. Whoever opens it keeps the ones they want, and each kept place arrives with your name on it.\n\nThey never see the rest of your vault — a share is a copy of exactly what you ticked, so editing or deleting a place later does not change a list someone already has. Your own notes stay private unless you tick Send my notes too. Codes last thirty days and you can stop one at any time.\n\nOpen a share is how you take in a list someone sent you. Anything already in your vault is flagged so you do not keep it twice.",
+        a: "Yes. On Recs, tap the + beside the add field: Send places lets you tick a few places and turns them into a code you can text or email. Whoever opens it keeps the ones they want, and each kept place arrives with your name on it.\n\nThey never see the rest of your vault — a share is a copy of exactly what you ticked, so editing or deleting a place later does not change a list someone already has. Your own notes stay private unless you tick Send my notes too. Codes last thirty days and you can stop one at any time.\n\nOpen a share is how you take in a list someone sent you. Anything already in your vault is flagged so you do not keep it twice.",
       },
       {
         q: "How do I save a place?",
-        a: "One field on Recs takes whatever you have. Type a name and Béa looks it up as you pause — tap Save on a suggestion to keep it straight away, or tap the row to fill in the note, category, who told you and the exact map spot first. Paste a link from Maps, Instagram or a blog and Béa reads it the same way.\n\nOther ways to save opens the rest: I'm here now, By hand, Paste or upload a list, and pinning somewhere nearby on a live map.",
+        a: "One field on Recs takes whatever you have. Type a name and Béa looks it up as you pause — tap Save on a suggestion to keep it straight away, or tap the row to fill in the note, category, who told you and the exact map spot first. Paste a link from Maps, Instagram or a blog and Béa reads it the same way.\n\nThe + beside it opens the rest: From my trips, I'm here now, By hand, Paste a list, sending and opening shares, and pinning somewhere nearby on a live map.",
       },
     ],
   },

@@ -15,6 +15,9 @@ export type GlanceItem = {
   detail: string | null;
   address: string | null;
   booked?: boolean;
+  /** The live tracker's taps, so a card can say where you are today. */
+  arrived_at?: string | null;
+  left_at?: string | null;
 };
 
 export type TripGlance = {
@@ -39,7 +42,7 @@ export type GlanceTodo = {
   position: number;
 };
 
-const COLS = "id, trip_id, day_date, time_label, title, kind, detail, address";
+const COLS = "id, trip_id, day_date, time_label, title, kind, detail, address, arrived_at, left_at";
 
 /** Kept after the first miss: the bookings migration is applied by hand. */
 let bookedColumn: boolean | null = null;
