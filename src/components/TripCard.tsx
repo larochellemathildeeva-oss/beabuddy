@@ -191,7 +191,7 @@ export function TripCard({
                     className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated"
                   >
                     <div
-                      className="h-full rounded-full bg-[#b89b78]"
+                      className="h-full rounded-full bg-primary"
                       style={{ width: `${Math.round(packing.ratio * 100)}%` }}
                     />
                   </div>

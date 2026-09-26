@@ -128,7 +128,7 @@ export function NowPanel({
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
               <span className="relative inline-flex size-2 rounded-full bg-primary" />
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[oklch(0.78_0.1_45)] sm:text-xs">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-inverse-accent sm:text-xs">
               Current stop
             </span>
             {timeForRail(current.time_label) && (

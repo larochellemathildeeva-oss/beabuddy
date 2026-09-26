@@ -140,7 +140,7 @@ export function DayRibbon({
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span
-                    className={`font-mono text-xs font-bold tabular-nums sm:text-sm ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
+                    className={`font-mono text-xs font-bold tabular-nums sm:text-sm ${here ? "text-inverse-accent" : "text-primary"}`}
                   >
                     {timeForRail(stop.time_label) || "–"}
                   </span>

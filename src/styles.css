@@ -44,6 +44,7 @@
   --color-tile-3: var(--tile-3);
   --color-tile-4: var(--tile-4);
   --color-tile-5: var(--tile-5);
+  --color-inverse-accent: var(--inverse-accent);
 
   /* Library requirement: consumers must load these fonts in their <head>:
      <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -96,6 +97,9 @@
   --tile-5: var(--card);
 
   /* The tab accent's lightness and chroma; the hue walks along the tab bar. */
+  /* Accent text on an inverted surface (bg-foreground), e.g. the Now card. */
+  --inverse-accent: oklch(0.8 0.06 60);
+
   --tab-l: 0.54;
   --tab-c: 0.07;
 
@@ -180,6 +184,8 @@
   --tile-4: oklch(0.925 0.035 295);
   --tile-5: oklch(0.965 0.06 95);
 
+  --inverse-accent: oklch(0.8 0.11 40);
+
   --tab-l: 0.6;
   --tab-c: 0.16;
 
@@ -222,6 +228,9 @@
   --tile-3: var(--primary-soft);
   --tile-4: var(--elevated);
   --tile-5: var(--card);
+
+  /* Dark inverts to an off-white card, so its accent text goes darker. */
+  --inverse-accent: oklch(0.5 0.06 60);
 
   --tab-l: 0.83;
   --tab-c: 0.045;
