@@ -89,14 +89,12 @@ export function HomeTripHero({
           peopleCount={peopleCount}
           viewTransitionName={`trip-photo-${trip.id}`}
           footer={
-            <div className="flex items-end justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-white/70">
-                  {ready.label}
-                </p>
-                <p className="mt-0.5 text-[15.5px] font-semibold leading-snug">{ready.line}</p>
-              </div>
-              <span className="flex shrink-0 items-center gap-1 text-[14.5px] font-semibold">
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-[14px] font-semibold leading-snug">
+                <span className="sr-only">{ready.label}: </span>
+                {ready.line}
+              </p>
+              <span className="flex shrink-0 items-center gap-1 text-[14px] font-semibold">
                 View itinerary
                 <ArrowUpRight
                   className="size-4.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
@@ -181,6 +179,42 @@ export function HomeNextUp({
         </span>
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       </Link>
+    </section>
+  );
+}
+
+/**
+ * Trips that ended in the last year, at the foot of Home: one thin bar each,
+ * so they are there to revisit without taking the page from what is next.
+ */
+export function HomePastTrips({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
+  if (trips.length === 0) return null;
+  return (
+    <section data-guide="home-past" className="rise">
+      <HomeSectionTitle title="Past trips" aside={<Link to="/trips">All trips</Link>} />
+      <div className="space-y-2">
+        {trips.map((t) => (
+          <Link
+            key={t.id}
+            to="/trips/$tripId"
+            params={{ tripId: t.id }}
+            viewTransition
+            className="block overflow-hidden rounded-2xl shadow-xs transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <TripBanner
+              variant="compact"
+              title={t.title}
+              city={t.city}
+              country={t.country}
+              cities={[]}
+              startDate={t.start_date}
+              endDate={t.end_date}
+              photo={pickTripPhoto(photos, { city: t.city, country: t.country, cities: [] })}
+              viewTransitionName={`trip-photo-${t.id}`}
+            />
+          </Link>
+        ))}
+      </div>
     </section>
   );
 }

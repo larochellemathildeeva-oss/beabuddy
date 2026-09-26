@@ -31,6 +31,9 @@ import { BEA_SIGNATURE, beaLine } from "@/lib/bea-voice";
 
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
+/** Which level of the map is showing: everything, or only one of the three counts. */
+type WorldView = "all" | "cities" | "provinces" | "countries";
+
 export const Route = createFileRoute("/world")({
   staticData: { plane: "tab" },
   head: () => ({
@@ -55,6 +58,7 @@ function WorldPage() {
   const [selected, setSelected] = useState<Pin | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [view, setView] = useState<WorldView>("all");
   const [statsEdit, setStatsEdit] = useState(false);
   /** The caveat about what the numbers count — asked for, not always on. */
   const [statsNote, setStatsNote] = useState(false);
@@ -87,6 +91,12 @@ function WorldPage() {
     for (const p of provinces) for (const key of p.cityKeys) map.set(key, p);
     return map;
   }, [provinces]);
+  const noCountries = useMemo(() => new Set<string>(), []);
+  const show = {
+    cities: view === "all" || view === "cities",
+    provinces: view === "all" || view === "provinces",
+    countries: view === "all" || view === "countries",
+  };
   const cityOf = (pin: Pin) => cities.find((c) => `city:${c.key}` === pin.id);
 
   // The Countries and Cities stats count the same places the globe draws:
@@ -165,45 +175,89 @@ function WorldPage() {
             </p>
           </div>
         ) : (
-          <p className="text-[13px] text-muted-foreground" aria-live="polite">
+          // The counts, large, and each one a filter: tap Cities and the
+          // globe and the list show only cities; tap it again for everything.
+          <div
+            role="group"
+            aria-label="Show on the map"
+            className={`grid gap-2 ${provinces.length > 0 ? "grid-cols-3" : "grid-cols-2"}`}
+          >
             {[
-              plural(cities.length, "city", "cities"),
+              { id: "cities" as const, n: cities.length, one: "City", many: "Cities" },
               provinces.length > 0
-                ? plural(provinces.length, "province or state", "provinces and states")
-                : "",
-              plural(byCountry.length, "country", "countries"),
+                ? {
+                    id: "provinces" as const,
+                    n: provinces.length,
+                    one: "Province / state",
+                    many: "Provinces & states",
+                  }
+                : null,
+              { id: "countries" as const, n: byCountry.length, one: "Country", many: "Countries" },
             ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+              .filter((s) => s !== null)
+              .map((stat) => {
+                const on = view === stat.id;
+                return (
+                  <button
+                    key={stat.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      const next = on ? "all" : stat.id;
+                      setView(next);
+                      // A city card with no city pin on the globe points at nothing.
+                      if (next !== "all" && next !== "cities") setSelected(null);
+                    }}
+                    className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
+                      on
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card hover:border-primary/40"
+                    }`}
+                  >
+                    <span className="block font-display text-[30px] leading-none tabular-nums">
+                      {stat.n}
+                    </span>
+                    <span
+                      className={`mt-1 block truncate text-[12px] font-semibold uppercase tracking-[0.08em] ${
+                        on ? "text-primary-foreground/85" : "text-muted-foreground"
+                      }`}
+                    >
+                      {stat.n === 1 ? stat.one : stat.many}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
         )}
 
-        {/* Adding a place: a small link above the globe, not a button on it —
-            on the globe it covered the map, and a bare "+" read as zoom. */}
-        <div className="-mb-3 flex justify-end">
+        <div data-guide="globe" className="relative">
+          {/* Adding a place: a filled round "+" in the corner opposite the
+              zoom buttons, in the brand colour so it does not read as zoom. */}
           <button
             type="button"
             data-guide="add-city"
             onClick={() => setAddOpen(true)}
+            aria-label="Add a city or country"
             title="Add a city or country"
-            className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[13px] font-semibold text-primary"
+            className="absolute left-3 top-3 z-10 grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-95"
           >
-            <Plus className="size-3.5" aria-hidden />
-            Add a place
+            <Plus className="size-5" aria-hidden />
           </button>
-        </div>
-
-        <div data-guide="globe" className="relative">
           <Globe
-            pins={globeCities}
-            regions={provinces}
-            visitedCountries={shadedCountries}
-            countryMarks={namedCountries}
+            pins={show.cities ? globeCities : []}
+            regions={show.provinces ? provinces : []}
+            // Cities and Provinces show only themselves: no whole countries
+            // shaded behind them, from the pins or from the list.
+            visitedCountries={show.countries ? shadedCountries : noCountries}
+            shadePinCountries={show.countries}
+            countryMarks={show.countries ? namedCountries : []}
             selectedId={selected?.id}
             onSelect={setSelected}
             onCountrySelect={(name) => {
               // A tap on a country opens one of your cities there, in any
-              // language the country was saved in.
+              // language the country was saved in — only while cities are on
+              // the globe, so it has a pin to spin to.
+              if (!show.cities) return;
               const key = countryKey(name);
               const match = globeCities.find((pin) => countryKey(pin.country) === key);
               if (match) setSelected(match);
@@ -245,44 +299,57 @@ function WorldPage() {
               hint="Pick a city and the globe spins to it"
               defaultOpen
             >
-              <ul className="space-y-3">
-                {byCountry.map((visit) => (
-                  <li key={visit.key} className="rounded-xl border border-border p-3">
-                    <p className="text-[15px] font-semibold">{visit.country}</p>
-                    {visit.provinces.length > 0 && (
-                      <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-                        {visit.provinces.map((p) => p.name).join(" · ")}
-                      </p>
-                    )}
-                    {visit.cities.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {visit.cities.map((city) => {
-                          const on = selected?.id === `city:${city.key}`;
-                          return (
-                            <button
-                              key={city.key}
-                              type="button"
-                              aria-pressed={on}
-                              onClick={() =>
-                                setSelected(
-                                  globeCities.find((pin) => pin.id === `city:${city.key}`) ?? null,
-                                )
-                              }
-                              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] ${
-                                on
-                                  ? "border-primary/40 bg-primary-soft font-semibold"
-                                  : "border-border bg-card"
-                              }`}
-                            >
-                              <span className="size-2 rounded-full bg-visited" aria-hidden />
-                              {city.city}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </li>
-                ))}
+              <ul
+                className={
+                  view === "countries" ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "space-y-3"
+                }
+              >
+                {byCountry
+                  .filter((visit) =>
+                    view === "provinces"
+                      ? visit.provinces.length > 0
+                      : view === "cities"
+                        ? visit.cities.length > 0
+                        : true,
+                  )
+                  .map((visit) => (
+                    <li key={visit.key} className="rounded-xl border border-border p-3">
+                      <p className="text-[15px] font-semibold">{visit.country}</p>
+                      {view !== "cities" && view !== "countries" && visit.provinces.length > 0 && (
+                        <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+                          {visit.provinces.map((p) => p.name).join(" · ")}
+                        </p>
+                      )}
+                      {show.cities && visit.cities.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {visit.cities.map((city) => {
+                            const on = selected?.id === `city:${city.key}`;
+                            return (
+                              <button
+                                key={city.key}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() =>
+                                  setSelected(
+                                    globeCities.find((pin) => pin.id === `city:${city.key}`) ??
+                                      null,
+                                  )
+                                }
+                                className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] ${
+                                  on
+                                    ? "border-primary/40 bg-primary-soft font-semibold"
+                                    : "border-border bg-card"
+                                }`}
+                              >
+                                <span className="size-2 rounded-full bg-visited" aria-hidden />
+                                {city.city}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </li>
+                  ))}
               </ul>
             </Section>
           </div>
