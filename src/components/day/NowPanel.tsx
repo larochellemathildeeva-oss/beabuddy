@@ -6,11 +6,13 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { timeForRail } from "@/lib/timeline-kind";
+import { toLocalISODate } from "@/lib/trip-dates";
 import {
   arrivalWrites,
   clockMinutes,
   companionState,
   leaveBy,
+  leaveCountdown,
   leavingWrite,
   legBetween,
   liveLegKey,
@@ -93,6 +95,18 @@ export function NowPanel({
           : null
       : null;
 
+  // The countdown only means something on today's plan, once the clock is known.
+  const isToday = Boolean(now && next?.day_date === toLocalISODate(now));
+  const countdown = isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now) : null;
+  const leaveLine = next ? (
+    <LeaveByLine
+      leave={leave}
+      dueLabel={timeForRail(next.time_label)}
+      countdown={countdown}
+      tone={phase === "at" ? "dark" : "light"}
+    />
+  ) : null;
+
   const later = next ? dayStops.slice(dayStops.indexOf(next) + 1).filter((s) => !s.arrived_at) : [];
   const [showAllLater, setShowAllLater] = useState(false);
   const laterShown = showAllLater ? later : later.slice(0, LATER_PREVIEW);
@@ -133,6 +147,8 @@ export function NowPanel({
             <p className="-mt-1.5 text-xs text-background/65 sm:text-sm">{current.address}</p>
           )}
           <StayLine stop={current} now={now} tone="dark" />
+          {/* When to set off belongs where you are standing, not on the next card. */}
+          {leaveLine && <div className="flex">{leaveLine}</div>}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -182,7 +198,7 @@ export function NowPanel({
               <ArrowRight className="size-3.5 text-primary" aria-hidden />
               {phase === "between" ? "On the way to" : phase === "at" ? "Up next stop" : "First up"}
             </p>
-            <LeaveByLine leave={leave} dueLabel={timeForRail(next.time_label)} />
+            {phase !== "at" && leaveLine}
           </div>
           <div>
             {timeForRail(next.time_label) && (
@@ -297,14 +313,43 @@ export function NowPanel({
   );
 }
 
-function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: string }) {
+function LeaveByLine({
+  leave,
+  dueLabel,
+  countdown = null,
+  tone = "light",
+}: {
+  leave: LeaveBy | null;
+  dueLabel: string;
+  /** Minutes left when leaving is ten minutes away or less; null otherwise. */
+  countdown?: number | null;
+  tone?: "light" | "dark";
+}) {
+  const chip =
+    tone === "dark" ? "border-primary/40 bg-primary/20" : "border-primary/25 bg-primary/10";
+  const aside = tone === "dark" ? "text-background/70" : "text-muted-foreground";
   if (leave?.kind === "time") {
     const how = leave.mode === "walking" ? "walk" : "drive";
+    // The last ten minutes: the chip fills in, so a glance is enough.
+    const urgent = countdown != null;
+    const label = !urgent
+      ? `Leave by ${leave.at}`
+      : countdown <= 0
+        ? "Time to leave"
+        : `Leave in ${countdown} min`;
     return (
-      <p className="flex max-w-full items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm">
-        <Clock className="size-3 shrink-0 text-primary" aria-hidden />
-        <span className="font-bold text-primary">Leave by {leave.at}</span>
-        <span className="text-[10px] text-muted-foreground sm:text-xs">
+      <p
+        role={urgent ? "status" : undefined}
+        className={`flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm ${
+          urgent ? "border-primary bg-primary text-primary-foreground" : chip
+        }`}
+      >
+        <Clock
+          className={`size-3 shrink-0 ${urgent ? "text-primary-foreground" : "text-primary"}`}
+          aria-hidden
+        />
+        <span className={`font-bold ${urgent ? "" : "text-primary"}`}>{label}</span>
+        <span className={`text-[10px] sm:text-xs ${urgent ? "text-primary-foreground/85" : aside}`}>
           ({leave.estimated ? "~" : ""}
           {leave.travelMinutes} min {how}
           <span className="sr-only"> for {dueLabel}</span>)
@@ -316,11 +361,13 @@ function LeaveByLine({ leave, dueLabel }: { leave: LeaveBy | null; dueLabel: str
   // next stop still has a time to be there by, which is what the chip is for.
   if (!dueLabel) return null;
   return (
-    <p className="flex max-w-full items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm">
+    <p
+      className={`flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs shadow-2xs sm:px-3 sm:text-sm ${chip}`}
+    >
       <Clock className="size-3 shrink-0 text-primary" aria-hidden />
       <span className="font-bold text-primary">Be there by {dueLabel}</span>
       {leave?.kind === "same-spot" && (
-        <span className="text-[10px] text-muted-foreground sm:text-xs">(same spot)</span>
+        <span className={`text-[10px] sm:text-xs ${aside}`}>(same spot)</span>
       )}
     </p>
   );

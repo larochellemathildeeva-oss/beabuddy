@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   addPlaceholder,
   anyFilterWorthShowing,
+  categoryKey,
+  categoryOptions,
   filterIsStale,
   kindFilterWorthShowing,
   placeFilterWorthShowing,
@@ -77,5 +79,16 @@ describe("filterIsStale", () => {
 
   it("never calls the All pill stale", () => {
     assert.equal(filterIsStale("All places", [], "All places"), false);
+  });
+});
+
+describe("categoryOptions", () => {
+  it("lists each category once, whatever its case", () => {
+    assert.deepEqual(categoryOptions(["cafe", "Cafe", "bar", " Pub ", null, "", "Bar"]), [
+      "Cafe",
+      "Bar",
+      "Pub",
+    ]);
+    assert.equal(categoryKey(" Cafe "), categoryKey("cafe"));
   });
 });

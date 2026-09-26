@@ -97,6 +97,7 @@ export function Globe({
   onCountrySelect,
   regions,
   visitedCountries,
+  shadePinCountries = true,
   countryMarks,
   className,
 }: {
@@ -113,6 +114,11 @@ export function Globe({
    * found, for cities saved without one.
    */
   visitedCountries?: ReadonlySet<string> | undefined;
+  /**
+   * False to shade only `visitedCountries`, not the countries the pins are
+   * in — the World tab's Cities and Provinces views show those alone.
+   */
+  shadePinCountries?: boolean | undefined;
   /**
    * Countries to name on the globe, with a ring marker: the World tab's
    * countries you have been to with no city dot of their own, whose shading
@@ -153,10 +159,10 @@ export function Globe({
   const rafInertia = useRef<number | null>(null);
 
   const visitedKeys = useMemo(() => {
-    const keys = visitedCountryKeySet(pins);
+    const keys = shadePinCountries ? visitedCountryKeySet(pins) : new Set<string>();
     for (const key of visitedCountries ?? []) keys.add(key);
     return keys;
-  }, [pins, visitedCountries]);
+  }, [pins, visitedCountries, shadePinCountries]);
 
   // Stable country ids — never Math.random() (that remounts paths every render).
   const countries = useMemo(

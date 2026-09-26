@@ -7,6 +7,7 @@ import {
   laterTrips,
   packingReadiness,
   peopleOnTrip,
+  pastTrips,
   pickActiveTrip,
   tripHighlights,
 } from "./home-trip.ts";
@@ -156,4 +157,38 @@ test("no leg for one city, or when no city has dates", () => {
     { city: "Kyoto", arrive_on: null, depart_on: null },
   ];
   assert.equal(currentLeg(undated, [], "2026-09-26"), null);
+});
+
+test("a finished trip is never the active one, even marked in progress", () => {
+  const trips = [
+    { id: "japan", start_date: "2026-09-07", end_date: "2026-09-07", status: "in_progress" },
+    { id: "undated", start_date: null, end_date: null, status: "upcoming" },
+  ];
+  assert.equal(pickActiveTrip(trips, "2026-09-26")?.id, "undated");
+  assert.equal(pickActiveTrip(trips.slice(0, 1), "2026-09-26"), null);
+});
+
+test("past trips: the last year, most recent first", () => {
+  const trip = (id: string, start_date: string | null, end_date: string | null) => ({
+    id,
+    start_date,
+    end_date,
+  });
+  const trips = [
+    trip("old", "2025-08-01", "2025-08-05"),
+    trip("spring", "2026-04-01", "2026-04-09"),
+    trip("japan", "2026-09-07", "2026-09-07"),
+    trip("now", "2026-09-24", "2026-09-30"),
+    trip("soon", "2026-10-07", null),
+    trip("undated", null, null),
+    trip("edge", "2025-09-20", "2025-09-26"),
+  ];
+  assert.deepEqual(
+    pastTrips(trips, "2026-09-26").map((t) => t.id),
+    ["japan", "spring", "edge"],
+  );
+  assert.deepEqual(
+    pastTrips(trips, "2026-09-26", 1).map((t) => t.id),
+    ["japan"],
+  );
 });

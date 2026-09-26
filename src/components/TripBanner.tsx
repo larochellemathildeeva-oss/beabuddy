@@ -135,7 +135,7 @@ export function TripBanner({
     .join(" · ");
   const people = peopleCount && peopleCount > 1 ? peopleCount : 0;
 
-  const height = kind === "hero" ? "min-h-[300px]" : kind === "compact" ? "h-[68px]" : "h-[172px]";
+  const height = kind === "hero" ? "min-h-[210px]" : kind === "compact" ? "h-[68px]" : "h-[132px]";
   const rounded = kind === "hero" ? "rounded-[28px] shadow-lg" : "";
 
   return (
@@ -196,14 +196,14 @@ export function TripBanner({
           </div>
 
           {kind === "hero" ? (
-            <div className="relative flex min-h-[300px] flex-col justify-end p-5 pt-16">
-              <p className="break-words font-display text-[42px] leading-[1.02]">{title}</p>
-              <p className="mt-1.5 text-[14.5px] text-white/85">
+            <div className="relative flex min-h-[210px] flex-col justify-end p-4 pt-12">
+              <p className="break-words font-display text-[32px] leading-[1.02]">{title}</p>
+              <p className="mt-1 text-[14px] text-white/85">
                 {[dates, routeLine(cities) || city?.split(",")[0] || where]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
-              {footer ? <div className="mt-4 border-t border-white/25 pt-3.5">{footer}</div> : null}
+              {footer ? <div className="mt-3 border-t border-white/25 pt-3">{footer}</div> : null}
             </div>
           ) : (
             <div className="absolute inset-x-0 bottom-0 p-3.5">
@@ -213,7 +213,7 @@ export function TripBanner({
                 {[where, dates].filter(Boolean).join(" · ")}
               </p>
               <div className="flex items-end gap-3">
-                <p className="mt-0.5 line-clamp-2 min-w-0 flex-1 break-words font-display text-[24px] uppercase leading-[1.02] tracking-[0.01em] sm:text-[28px]">
+                <p className="mt-0.5 line-clamp-2 min-w-0 flex-1 break-words font-display text-[21px] leading-[1.05] sm:text-[23px]">
                   {title}
                 </p>
                 {corner ? (

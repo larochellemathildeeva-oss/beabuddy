@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatTripLocation } from "@/lib/place-label";
 import { Check, Copy, Inbox, Share2 } from "lucide-react";
 import { claimSharedList, readSharedList, useRecoShares } from "@/hooks/useRecoShares";
@@ -32,12 +32,23 @@ export function ShareRecos({
   uid,
   myName,
   onKept,
+  request,
+  onClose,
 }: {
   rows: RecoRowDB[];
   uid: string | null;
   myName: string;
   onKept: (recos: NewReco[]) => Promise<void>;
+  /**
+   * Opened from somewhere else, such as the Recs "+" menu: no header row of
+   * its own, and nothing on screen until asked. `n` changes on every ask, so
+   * asking again after closing opens it again.
+   */
+  request?: { mode: "picking" | "opening"; n: number } | null;
+  /** Called when a requested share is closed. */
+  onClose?: () => void;
 }) {
+  const bare = request !== undefined;
   const s = useRecoShares(uid);
   const [mode, setMode] = useState<Mode>("idle");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
@@ -71,6 +82,19 @@ export function ShareRecos({
     if (!query.trim()) return rows;
     return fuzzyRank(rows, query, (r) => [r.name, r.city ?? "", r.country ?? "", r.notes ?? ""]);
   }, [rows, query]);
+
+  useEffect(() => {
+    if (!request) return;
+    reset();
+    setMode(request.mode);
+    // Only a new ask reopens it; reset is recreated every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request?.n]);
+
+  const close = () => {
+    reset();
+    onClose?.();
+  };
 
   const reset = () => {
     setMode("idle");
@@ -166,6 +190,7 @@ export function ShareRecos({
   };
 
   if (s.unavailable) {
+    if (bare && !request) return null;
     return (
       <section className="surface border border-border/50 p-3.5">
         <p className="font-display text-[16.5px] leading-tight">Share places</p>
@@ -173,47 +198,78 @@ export function ShareRecos({
           Not switched on for this database yet — the <code>reco_shares</code> migration still needs
           to be run.
         </p>
+        {bare && (
+          <button
+            type="button"
+            onClick={close}
+            className="mt-2 rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] font-semibold"
+          >
+            Close
+          </button>
+        )}
       </section>
     );
   }
 
   const live = s.shares.filter((share) => !share.revoked_at);
 
+  if (bare && mode === "idle") {
+    return kept ? <p className="text-[13px] text-primary">{kept}</p> : null;
+  }
+
   return (
-    <section data-guide="reco-share">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="label-caps">Share places</p>
-        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+    <section data-guide="reco-share" className={bare ? "card-soft p-3.5" : undefined}>
+      {bare ? (
+        <div className="flex items-center justify-between gap-2">
+          <p className="label-caps">
+            {mode === "opening" ? "Open a share" : mode === "sent" ? "Sent" : "Send places"}
+          </p>
+          {/* Not while a share is being made or kept: its answer would land
+              in a panel already closed, and open it again. */}
           <button
             type="button"
-            onClick={() => {
-              if (mode === "picking") reset();
-              else {
-                reset();
-                setMode("picking");
-              }
-            }}
-            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
+            onClick={close}
+            disabled={busy}
+            className="rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] font-semibold disabled:opacity-50"
           >
-            <Share2 className="size-3.5" aria-hidden />
-            {mode === "picking" ? "Cancel" : "Send"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (mode === "opening") reset();
-              else {
-                reset();
-                setMode("opening");
-              }
-            }}
-            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
-          >
-            <Inbox className="size-3.5" aria-hidden />
-            {mode === "opening" ? "Cancel" : "Open a share"}
+            {mode === "sent" ? "Done" : "Cancel"}
           </button>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="label-caps">Share places</p>
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (mode === "picking") reset();
+                else {
+                  reset();
+                  setMode("picking");
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
+            >
+              <Share2 className="size-3.5" aria-hidden />
+              {mode === "picking" ? "Cancel" : "Send"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (mode === "opening") reset();
+                else {
+                  reset();
+                  setMode("opening");
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[13px] font-semibold"
+            >
+              <Inbox className="size-3.5" aria-hidden />
+              {mode === "opening" ? "Cancel" : "Open a share"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {kept && mode === "idle" && <p className="mt-3 text-[13px] text-primary">{kept}</p>}
 
@@ -423,7 +479,7 @@ export function ShareRecos({
       {error && <p className="mt-2 text-[12.5px] text-destructive">{error}</p>}
 
       {/* ---- Shares you've sent ---- */}
-      {mode === "idle" && live.length > 0 && (
+      {(bare ? mode === "picking" : mode === "idle") && live.length > 0 && (
         <ul className="mt-3 divide-y divide-border/60 border-t border-border/60">
           {live.slice(0, 5).map((share) => (
             <li key={share.id} className="flex items-center gap-2 py-2.5">

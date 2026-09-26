@@ -62,3 +62,23 @@ export function filterIsStale(selected: string, available: string[], allLabel: s
   if (selected === allLabel) return false;
   return !available.includes(selected);
 }
+
+/** One spelling per category, whatever the case: "cafe" and "Cafe" are one filter. */
+export function categoryKey(category: string | null | undefined): string {
+  return (category ?? "").trim().toLowerCase();
+}
+
+/**
+ * The categories to filter by, each once, in the order first seen and
+ * capitalised, so "cafe, Cafe, bar" reads "Cafe, Bar".
+ */
+export function categoryOptions(categories: readonly (string | null | undefined)[]): string[] {
+  const labels = new Map<string, string>();
+  for (const raw of categories) {
+    const label = (raw ?? "").trim();
+    const key = categoryKey(label);
+    if (!key) continue;
+    if (!labels.has(key)) labels.set(key, label.charAt(0).toUpperCase() + label.slice(1));
+  }
+  return [...labels.values()];
+}

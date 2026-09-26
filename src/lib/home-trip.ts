@@ -172,7 +172,20 @@ type DatedTrip = {
 const byStart = (a: DatedTrip, b: DatedTrip) =>
   (a.start_date ?? "").localeCompare(b.start_date ?? "");
 
-/** The trip happening now, otherwise the soonest one still to come. */
+/** The last day of a trip: its end, else its start. */
+const lastDay = (t: DatedTrip) => t.end_date || t.start_date || "";
+
+/** A trip whose last day is behind you, whatever its status still says. */
+export function isPastTrip(t: DatedTrip, today: string): boolean {
+  const last = lastDay(t);
+  return Boolean(last) && last < today;
+}
+
+/**
+ * The trip happening now, otherwise the soonest one still to come. A trip
+ * that has ended is never it, even one still marked in progress: it belongs
+ * with the past trips at the bottom of Home.
+ */
 export function pickActiveTrip<T extends DatedTrip>(trips: readonly T[], today: string): T | null {
   const current = trips
     .filter((t) => t.start_date && t.start_date <= today && (!t.end_date || t.end_date >= today))
@@ -180,7 +193,24 @@ export function pickActiveTrip<T extends DatedTrip>(trips: readonly T[], today: 
   if (current) return current;
   const upcoming = trips.filter((t) => t.start_date && t.start_date > today).sort(byStart)[0];
   if (upcoming) return upcoming;
-  return trips.find((t) => t.status === "in_progress" || t.status === "upcoming") ?? null;
+  return (
+    trips.find(
+      (t) => (t.status === "in_progress" || t.status === "upcoming") && !isPastTrip(t, today),
+    ) ?? null
+  );
+}
+
+/**
+ * Trips that ended in the last year, most recent first, for the foot of
+ * Home. Older ones stay on the Trips tab.
+ */
+export function pastTrips<T extends DatedTrip>(trips: readonly T[], today: string, limit = 4): T[] {
+  const [y, m, d] = today.split("-");
+  const yearAgo = `${Number(y) - 1}-${m}-${d}`;
+  return trips
+    .filter((t) => isPastTrip(t, today) && lastDay(t) >= yearAgo)
+    .sort((a, b) => lastDay(b).localeCompare(lastDay(a)))
+    .slice(0, limit);
 }
 
 /** Up to three trips after the active one, soonest first. */

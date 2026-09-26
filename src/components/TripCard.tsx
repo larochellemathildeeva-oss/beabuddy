@@ -12,7 +12,17 @@ import { timeForRail } from "@/lib/timeline-kind";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { dueLine } from "@/lib/trip-glance";
-import { currentLeg } from "@/lib/home-trip";
+import { currentLeg, isPastTrip } from "@/lib/home-trip";
+import { liveSummary } from "@/lib/companion";
+
+/** "Sep 7": the day a flight leaves, when it has one. */
+function flightDay(day: string | null): string {
+  if (!day) return "";
+  return new Date(`${day}T00:00:00`).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
 
 /** The trip's own description, first line only, or Béa's line about it. */
 function quoteFor(trip: TripRow, stopCount: number, planned: number | null): string {
@@ -89,8 +99,13 @@ export function TripCard({
   });
   const stopCount = glance?.stops ?? 0;
 
+  const today = toLocalISODate(new Date());
   // Several cities: the one that matters today, with its own flight and stay.
-  const leg = glance ? currentLeg(cities.stops, glance.items, toLocalISODate(new Date())) : null;
+  const leg = glance ? currentLeg(cities.stops, glance.items, today) : null;
+  // On a day of the trip: the live tracker's progress, one tap from the card.
+  const live = glance ? liveSummary(glance.items, today) : null;
+  // Before the trip starts, a missing flight is worth a nudge; after, it is not.
+  const notStarted = !isPastTrip(trip, today) && !(trip.start_date && trip.start_date <= today);
   const flight = leg ? leg.flight : glance?.flight;
   const lodging = leg ? leg.lodging : glance?.lodging;
   const packing = glance?.packing;
@@ -126,14 +141,37 @@ export function TripCard({
               {leg.label} · <span className="normal-case tracking-normal">{leg.city}</span>
             </p>
           ) : null}
+          {live ? (
+            <div className="mb-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-[13.5px]">
+              <span className="relative flex size-2 shrink-0" aria-hidden>
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
+                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+              </span>
+              <span className="shrink-0 font-semibold text-primary">
+                Live · Stop {live.step} of {live.total}
+              </span>
+              <span className="min-w-0 truncate">
+                <span className="text-muted-foreground">{live.label}: </span>
+                {live.title}
+              </span>
+            </div>
+          ) : null}
           {flight || lodging || packing || first || todo ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-5 gap-y-3.5">
               {flight ? (
                 <Fact
-                  label="Transit"
+                  label={notStarted ? "First flight" : "Next flight"}
                   title={[flight.title, timeForRail(flight.time_label)].filter(Boolean).join(" · ")}
-                  note={stripEmbeddedMapsUrl(flight.detail) || flight.address || ""}
+                  note={
+                    [flightDay(flight.day_date), stripEmbeddedMapsUrl(flight.detail)]
+                      .filter(Boolean)
+                      .join(" · ") ||
+                    flight.address ||
+                    ""
+                  }
                 />
+              ) : notStarted && !leg ? (
+                <Fact label="First flight" title="None saved yet" note="Add it to the itinerary" />
               ) : null}
               {lodging ? (
                 <Fact
@@ -143,11 +181,7 @@ export function TripCard({
                 />
               ) : null}
               {packing ? (
-                <Fact
-                  label="Packing"
-                  aside={`${packing.packed}/${packing.total}`}
-                  note={first && !leg ? `First: ${first.title}` : ""}
-                >
+                <Fact label="Packing" aside={`${packing.packed}/${packing.total}`}>
                   <div
                     role="progressbar"
                     aria-label="Packed"

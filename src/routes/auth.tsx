@@ -54,7 +54,7 @@ function AuthPage() {
   const consented = agreeTerms && agreeDisclaimer;
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/profile" });
+    if (!loading && user) navigate({ to: "/" });
   }, [loading, user, navigate]);
 
   const submit = async (e: React.FormEvent) => {
@@ -115,7 +115,8 @@ function AuthPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/profile`,
+        // The same address the email link uses, so both land on Home.
+        redirectTo: window.location.origin,
         // Spread rather than pass undefined: exactOptionalPropertyTypes rejects
         // an explicit undefined for an optional property.
         ...(askEveryTime ? { queryParams: { prompt: "select_account" } } : {}),
