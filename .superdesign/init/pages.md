@@ -1,6 +1,6 @@
 # Pages — component dependency trees
 
-Local UI imports only (.tsx/.css/.png), traced recursively. `(seen)` = already listed above in the same tree. Every page renders inside `AppShell` (see layouts.md).
+Local UI imports only (.tsx/.css/.png), traced recursively. `(seen)` = already listed above in the same tree. Every page renders inside `AppShell` (see layouts.md) except `/auth`, `/forgot-password` and `/reset-password`, which draw their own standalone layout.
 
 ## / (Home)
 Entry: src/routes/index.tsx (293 lines)
