@@ -11,6 +11,7 @@ import { beaTripNote } from "@/lib/trip-note";
 import { timeForRail } from "@/lib/timeline-kind";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { toLocalISODate } from "@/lib/trip-dates";
+import { dueLine } from "@/lib/trip-glance";
 
 /** The trip's own description, first line only, or Béa's line about it. */
 function quoteFor(trip: TripRow, stopCount: number, planned: number | null): string {
@@ -91,6 +92,8 @@ export function TripCard({
   const lodging = glance?.lodging;
   const packing = glance?.packing;
   const first = glance?.firstStop;
+  const todo = glance?.todos.next;
+  const openTodos = glance?.todos.open ?? 0;
   const quote = quoteFor(trip, cities.stops.length, glance ? glance.items.length : null);
 
   return (
@@ -115,7 +118,7 @@ export function TripCard({
       />
       {detail ? (
         <div className="px-4 pb-3.5 pt-3.5">
-          {flight || lodging || packing || first ? (
+          {flight || lodging || packing || first || todo ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-5 gap-y-3.5">
               {flight ? (
                 <Fact
@@ -153,6 +156,14 @@ export function TripCard({
                 </Fact>
               ) : first ? (
                 <Fact label="First stop" title={first.title} note={first.day_date ?? ""} />
+              ) : null}
+              {todo ? (
+                <Fact
+                  label="To do"
+                  aside={openTodos > 1 ? `${openTodos} open` : ""}
+                  title={todo.title}
+                  note={dueLine(todo.due_on) || (openTodos > 1 ? `and ${openTodos - 1} more` : "")}
+                />
               ) : null}
             </div>
           ) : (

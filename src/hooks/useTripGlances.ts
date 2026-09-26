@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
 import { packingReadiness, tripHighlights } from "@/lib/home-trip";
-import { firstStop, plansConfirmed } from "@/lib/trip-glance";
+import { firstStop, nextTodo, plansConfirmed } from "@/lib/trip-glance";
 
 export type GlanceItem = {
   id: string;
@@ -23,6 +23,17 @@ export type TripGlance = {
   firstStop: GlanceItem | null;
   packing: ReturnType<typeof packingReadiness>;
   plans: ReturnType<typeof plansConfirmed>;
+  /** Open to-dos on the trip, and the one due soonest. */
+  todos: { open: number; next: GlanceTodo | null };
+};
+
+export type GlanceTodo = {
+  id: string;
+  trip_id: string;
+  title: string;
+  due_on: string | null;
+  done: boolean;
+  position: number;
 };
 
 const COLS = "id, trip_id, day_date, time_label, title, kind, detail, address";
@@ -52,16 +63,17 @@ async function selectItems(ids: string[]): Promise<GlanceItem[]> {
 }
 
 /**
- * The flight out, the stay, how packed and how booked — for every trip card on
+ * The flight out, the stay, how packed, how booked and what is left to do — for every trip card on
  * a screen at once.
  *
- * Three queries for the whole list rather than three per card: a hook per
- * card is how a list of ten trips turns into thirty requests.
+ * Four queries for the whole list rather than four per card: a hook per
+ * card is how a list of ten trips turns into forty requests.
  */
 export function useTripGlances(tripIds: readonly string[]) {
   const key = [...tripIds].sort().join(",");
   const [items, setItems] = useState<GlanceItem[]>([]);
   const [packed, setPacked] = useState<{ trip_id: string; packed: boolean }[]>([]);
+  const [todos, setTodos] = useState<GlanceTodo[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -69,14 +81,21 @@ export function useTripGlances(tripIds: readonly string[]) {
     if (ids.length === 0) {
       setItems([]);
       setPacked([]);
+      setTodos([]);
       setLoaded(true);
       return;
     }
     let active = true;
     void (async () => {
-      const [rows, lists] = await Promise.all([
+      const [rows, lists, todoRows] = await Promise.all([
         selectItems(ids),
         supabase.from("packing_lists").select("id, trip_id").in("trip_id", ids),
+        // An error (the to-do migration not applied yet) just means no to-dos.
+        supabase
+          .from("trip_todos")
+          .select("id, trip_id, title, due_on, done, position")
+          .in("trip_id", ids)
+          .eq("done", false),
       ]);
       const listTrip = new Map<string, string>();
       for (const l of lists.data ?? []) if (l.trip_id) listTrip.set(l.id, l.trip_id);
@@ -94,6 +113,7 @@ export function useTripGlances(tripIds: readonly string[]) {
       if (!active) return;
       setItems(rows);
       setPacked(packing);
+      setTodos(todoRows.error ? [] : ((todoRows.data ?? []) as GlanceTodo[]));
       setLoaded(true);
     })();
     return () => {
@@ -113,10 +133,14 @@ export function useTripGlances(tripIds: readonly string[]) {
         firstStop: firstStop(mine),
         packing: packingReadiness(packed.filter((p) => p.trip_id === id)),
         plans: plansConfirmed(mine),
+        todos: (() => {
+          const open = todos.filter((t) => t.trip_id === id && !t.done);
+          return { open: open.length, next: nextTodo(open) };
+        })(),
       };
     }
     return out;
-  }, [key, items, packed]);
+  }, [key, items, packed, todos]);
 
   return { glances, loaded };
 }
