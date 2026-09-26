@@ -1,355 +1,223 @@
-import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { BedDouble, CalendarDays, ChevronRight, Plane } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useTrips, type TripRow } from "@/hooks/useTrips";
-import { formatTripLocation } from "@/lib/place-label";
-import { tripCompanionsLine } from "@/lib/trip-copy";
-import { tripDateLine, tripLengthLabel, tripMonogram } from "@/lib/trip-card";
+import { ArrowUpRight, CalendarClock, ChevronRight, Ticket } from "lucide-react";
+import { TripBanner } from "@/components/TripBanner";
+import { TripCard } from "@/components/TripCard";
+import type { TripRow, MemberRow } from "@/hooks/useTrips";
+import type { TripPhotoRow } from "@/hooks/useTripPhotos";
+import type { TripGlance } from "@/hooks/useTripGlances";
+import { useTripStops } from "@/hooks/useTripStops";
+import { useTripTodos } from "@/hooks/useTripTodos";
+import { laterHeading, peopleOnTrip } from "@/lib/home-trip";
+import { pickTripPhoto } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
-import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
-import { laterHeading, packingReadiness, tripHighlights } from "@/lib/home-trip";
+import { toLocalISODate } from "@/lib/trip-dates";
+import { dueLine, nextOnPlan, nextTodo } from "@/lib/trip-glance";
 
-type NextItem = {
-  id: string;
-  day_date: string | null;
-  time_label: string | null;
-  title: string;
-  kind: string;
-  detail: string | null;
-  address: string | null;
-};
-
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+function todayIso() {
+  return toLocalISODate(new Date());
 }
 
-function daysBetween(iso: string) {
-  const target = new Date(`${iso}T00:00:00`);
-  return Math.round((target.getTime() - startOfToday().getTime()) / 86_400_000);
+/** A serif heading with one quiet link beside it, as on Home. */
+export function HomeSectionTitle({ title, aside }: { title: string; aside?: ReactNode }) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      {aside ? <div className="shrink-0 text-[14px] text-primary">{aside}</div> : null}
+    </div>
+  );
 }
 
-/** The trip happening now, otherwise the soonest one still to come. */
-export function pickActiveTrip(trips: TripRow[]): TripRow | null {
-  const today = startOfToday().toISOString().slice(0, 10);
-  const current = trips
-    .filter((t) => t.start_date && t.start_date <= today && (!t.end_date || t.end_date >= today))
-    .sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""))[0];
-  if (current) return current;
-  const upcoming = trips
-    .filter((t) => t.start_date && t.start_date > today)
-    .sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""))[0];
-  if (upcoming) return upcoming;
-  return trips.find((t) => t.status === "in_progress" || t.status === "upcoming") ?? null;
-}
-
-/** The trips after the active one, soonest first. */
-function laterTrips(trips: TripRow[], active: TripRow | null): TripRow[] {
-  const today = startOfToday().toISOString().slice(0, 10);
-  return trips
-    .filter((t) => t.id !== active?.id && t.start_date && t.start_date > today)
-    .sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""))
-    .slice(0, 3);
-}
-
-/** "Open LA Itinerary": the trip's short name, or its city, never a sentence. */
-function shortName(trip: TripRow): string {
-  const first = trip.title.split(/\s[·|–-]\s/)[0]?.trim() ?? "";
-  if (first && first.length <= 18) return first;
-  return trip.city?.split(",")[0]?.trim() || "trip";
-}
-
-/** "LA" for "LA · Coastal Sun & Art"; otherwise the trip's first letter. */
-function monogram(trip: TripRow): string {
-  const short = shortName(trip);
-  return /^[\p{Lu}\d]{2,3}$/u.test(short) ? short : tripMonogram(trip.title, trip.city);
+/** What the hero says under the title: how booked, else how packed, else how planned. */
+function readiness(glance: TripGlance | undefined): { label: string; line: string } {
+  if (glance?.plans) {
+    const { confirmed, total } = glance.plans;
+    return {
+      label: confirmed === total ? "Ready to go" : "Getting ready",
+      line: `${confirmed} of ${total} ${total === 1 ? "plan" : "plans"} confirmed`,
+    };
+  }
+  if (glance?.packing) {
+    return {
+      label: "Packing",
+      line: `${glance.packing.packed} of ${glance.packing.total} packed`,
+    };
+  }
+  const n = glance?.stops ?? 0;
+  if (n > 0) return { label: "The plan", line: `${n} ${n === 1 ? "stop" : "stops"} planned` };
+  return { label: "Just started", line: "Nothing planned yet" };
 }
 
 /**
- * Home's "Your next trip", as in the prototype: when and with whom, where and
- * how much is planned, the flight out and where you are staying when the plan
- * has them, how packed you are, and a way straight into the itinerary. The
- * trips after it sit underneath, each one tap from its own page.
+ * Home's current trip, as a picture: your own photo of the place (or a
+ * painted dusk), how soon, who is coming, and how ready it is.
  */
-export function HomeTripCard() {
-  const { trips, loading, members, uid } = useTrips();
-  const trip = useMemo(() => pickActiveTrip(trips), [trips]);
-  const later = useMemo(() => laterTrips(trips, trip), [trips, trip]);
-  const [items, setItems] = useState<NextItem[]>([]);
-  const [packing, setPacking] = useState<{ packed: boolean }[]>([]);
-  const [stopCounts, setStopCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    if (!trip) {
-      setItems([]);
-      setPacking([]);
-      return;
-    }
-    let active = true;
-    void (async () => {
-      const { data } = await supabase
-        .from("itinerary_items")
-        .select("id, day_date, time_label, title, kind, detail, address")
-        .eq("trip_id", trip.id)
-        .order("day_date", { ascending: true })
-        .order("position", { ascending: true });
-      if (!active) return;
-      setItems((data ?? []) as NextItem[]);
-
-      // How packed: every list made for this trip, counted together.
-      const { data: lists } = await supabase
-        .from("packing_lists")
-        .select("id")
-        .eq("trip_id", trip.id);
-      const ids = (lists ?? []).map((l) => l.id);
-      if (!active) return;
-      if (ids.length === 0) {
-        setPacking([]);
-        return;
-      }
-      const { data: packed } = await supabase
-        .from("packing_items")
-        .select("packed")
-        .in("list_id", ids);
-      if (active) setPacking((packed ?? []).map((p) => ({ packed: Boolean(p.packed) })));
-    })();
-    return () => {
-      active = false;
-    };
-  }, [trip]);
-
-  // How many stops each later trip has planned, for its one line.
-  useEffect(() => {
-    if (later.length === 0) {
-      setStopCounts({});
-      return;
-    }
-    let active = true;
-    void supabase
-      .from("itinerary_items")
-      .select("trip_id")
-      .in(
-        "trip_id",
-        later.map((t) => t.id),
-      )
-      .then(({ data }) => {
-        if (!active) return;
-        const counts: Record<string, number> = {};
-        for (const row of data ?? []) counts[row.trip_id] = (counts[row.trip_id] ?? 0) + 1;
-        setStopCounts(counts);
-      });
-    return () => {
-      active = false;
-    };
-  }, [later]);
-
-  if (loading || !trip) return null;
-
-  const started = trip.start_date ? daysBetween(trip.start_date) <= 0 : false;
-  const countdown = trip.start_date ? daysBetween(trip.start_date) : null;
-  const daysLeft = trip.end_date ? daysBetween(trip.end_date) : null;
-
-  const status = started
-    ? daysLeft != null && daysLeft >= 0
-      ? daysLeft === 0
-        ? "Last day"
-        : `${daysLeft} day${daysLeft > 1 ? "s" : ""} to go`
-      : "Happening now"
-    : countdown != null
-      ? countdown === 0
-        ? "Leaving today"
-        : countdown === 1
-          ? "Leaving tomorrow"
-          : `Leaving in ${countdown} days`
-      : "Coming up";
-
-  const companions = tripCompanionsLine(
-    members.filter((m) => m.trip_id === trip.id),
-    uid,
-  );
-  const whenLine = [
-    trip.start_date || trip.end_date ? tripDateLine(trip.start_date, trip.end_date) : "",
-    companions,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const planned = [
-    tripLengthLabel(trip.start_date, trip.end_date),
-    items.length ? `${items.length} scheduled ${items.length === 1 ? "stop" : "stops"}` : "",
-  ]
-    .filter(Boolean)
-    .join(", ");
-  const whereLine = [
-    formatTripLocation(trip.city, trip.country) || "Destination to be decided",
-    planned,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-  const { flight, lodging } = tripHighlights(items);
-  const ready = packingReadiness(packing);
-  const tiles = [
-    flight && {
-      key: "flight",
-      icon: Plane,
-      label: "Flight out",
-      title: [flight.title, timeForRail(flight.time_label)].filter(Boolean).join(" · "),
-      note: stripEmbeddedMapsUrl(flight.detail) || flight.day_date || "",
-    },
-    lodging && {
-      key: "lodging",
-      icon: BedDouble,
-      label: "Lodging",
-      title: lodging.title,
-      note: stripEmbeddedMapsUrl(lodging.detail) || lodging.address || "",
-    },
-  ].filter(Boolean) as {
-    key: string;
-    icon: typeof Plane;
-    label: string;
-    title: string;
-    note: string;
-  }[];
+export function HomeTripHero({
+  trip,
+  glance,
+  photos,
+  peopleCount,
+}: {
+  trip: TripRow;
+  glance: TripGlance | undefined;
+  photos: TripPhotoRow[];
+  peopleCount: number;
+}) {
+  const stops = useTripStops(trip.id, null);
+  const cities = stops.stops.map((s) => s.city);
+  const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities });
+  const ready = readiness(glance);
 
   return (
-    <section data-guide="home-trip" className="rise space-y-5">
-      <div>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="label-caps text-foreground">
-            {started ? "Your trip right now" : "Your next trip"}
-          </p>
-          <span className="rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs font-semibold text-primary">
-            {status}
-          </span>
-        </div>
-
-        <div className="card-soft p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              {whenLine && (
-                <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                  <CalendarDays className="size-4 shrink-0 text-primary" aria-hidden />
-                  <span className="truncate">{whenLine}</span>
+    <section data-guide="home-trip" className="rise">
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        viewTransition
+        className="group block rounded-[28px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <TripBanner
+          variant="hero"
+          title={trip.title}
+          city={trip.city}
+          country={trip.country}
+          cities={cities}
+          startDate={trip.start_date}
+          endDate={trip.end_date}
+          tentative={trip.dates_status === "tentative"}
+          photo={photo}
+          peopleCount={peopleCount}
+          viewTransitionName={`trip-photo-${trip.id}`}
+          footer={
+            <div className="flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-white/70">
+                  {ready.label}
                 </p>
-              )}
-              <h2 className="mt-1 break-words font-display text-[26px] leading-tight">
-                {trip.title}
-              </h2>
-              <p className="mt-1 text-[14px] text-muted-foreground">{whereLine}</p>
-            </div>
-            <span
-              aria-hidden
-              className="grid size-14 shrink-0 place-items-center rounded-2xl border border-border bg-elevated font-display text-[24px]"
-            >
-              {monogram(trip)}
-            </span>
-          </div>
-
-          {tiles.length > 0 && (
-            <div
-              className={`mt-4 grid gap-2.5 ${tiles.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
-            >
-              {tiles.map(({ key, icon: Icon, label, title, note }) => (
-                <div key={key} className="min-w-0 rounded-2xl border border-border bg-elevated p-3">
-                  <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-muted-foreground">
-                    <Icon className="size-4 text-primary" aria-hidden />
-                    {label}
-                  </p>
-                  <p className="mt-1 break-words text-[14.5px] font-semibold leading-snug">
-                    {title}
-                  </p>
-                  {note && (
-                    <p className="mt-0.5 line-clamp-2 break-words text-[12.5px] text-muted-foreground">
-                      {note}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {ready && (
-            <div className="mt-4">
-              <div className="flex items-baseline justify-between">
-                <p className="text-[14px] font-semibold">Packing readiness</p>
-                <p className="text-[13.5px] font-bold tabular-nums text-primary">
-                  {ready.packed} / {ready.total} items
-                </p>
+                <p className="mt-0.5 text-[15.5px] font-semibold leading-snug">{ready.line}</p>
               </div>
-              <div
-                role="progressbar"
-                aria-label="Packing readiness"
-                aria-valuemin={0}
-                aria-valuemax={ready.total}
-                aria-valuenow={ready.packed}
-                className="mt-2 h-2 overflow-hidden rounded-full bg-elevated"
-              >
-                <div
-                  className="h-full rounded-full bg-nexttime transition-[width] duration-500"
-                  style={{ width: `${Math.round(ready.ratio * 100)}%` }}
+              <span className="flex shrink-0 items-center gap-1 text-[14.5px] font-semibold">
+                View itinerary
+                <ArrowUpRight
+                  className="size-4.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden
                 />
-              </div>
+              </span>
             </div>
-          )}
+          }
+        />
+      </Link>
+    </section>
+  );
+}
 
-          <Link
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            className="mt-4 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-2xs transition-all active:scale-95"
-          >
-            Open {shortName(trip)} itinerary
-            <ChevronRight className="size-4" aria-hidden />
-          </Link>
-        </div>
+/**
+ * "Next up": the one to-do worth doing today, or, with none, the next thing
+ * on the plan. Hidden when there is neither.
+ */
+export function HomeNextUp({
+  trip,
+  glance,
+  uid,
+}: {
+  trip: TripRow;
+  glance: TripGlance | undefined;
+  uid: string | null;
+}) {
+  const { todos } = useTripTodos(trip.id, uid);
+  const open = todos.filter((t) => !t.done);
+  const todo = nextTodo(todos);
+  const planned = todo ? null : nextOnPlan(glance?.items ?? [], todayIso());
+
+  if (!todo && !planned) return null;
+
+  const eyebrow = todo ? "One thing for today" : "Next on the plan";
+  const title = todo ? todo.title : planned!.title;
+  const note = todo
+    ? dueLine(todo.due_on) || todo.notes || trip.title
+    : [
+        planned!.day_date
+          ? new Date(`${planned!.day_date}T00:00:00`).toLocaleDateString(undefined, {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            })
+          : "",
+        timeForRail(planned!.time_label),
+      ]
+        .filter(Boolean)
+        .join(" · ");
+  const Icon = todo ? Ticket : CalendarClock;
+
+  return (
+    <section data-guide="home-next" className="rise">
+      <HomeSectionTitle
+        title="Next up"
+        aside={
+          open.length > 0 ? `${open.length} ${open.length === 1 ? "task" : "tasks"}` : undefined
+        }
+      />
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-xs transition-shadow hover:shadow-sm"
+      >
+        <span
+          aria-hidden
+          className="grid size-14 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
+        >
+          <Icon className="size-6" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {eyebrow}
+          </span>
+          <span className="mt-0.5 line-clamp-2 block text-[17px] font-medium leading-snug">
+            {title}
+          </span>
+          {note ? (
+            <span className="block truncate text-[13.5px] text-muted-foreground">{note}</span>
+          ) : null}
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
+    </section>
+  );
+}
+
+/** The trips after the current one, as banners, each one tap from its page. */
+export function HomeLaterTrips({
+  trips,
+  photos,
+  glances,
+  members,
+  uid,
+}: {
+  trips: TripRow[];
+  photos: TripPhotoRow[];
+  glances: Record<string, TripGlance>;
+  members: MemberRow[];
+  uid: string | null;
+}) {
+  if (trips.length === 0) return null;
+  return (
+    <section className="rise">
+      <HomeSectionTitle
+        title={laterHeading(trips.map((t) => t.start_date))}
+        aside={<Link to="/trips">All trips</Link>}
+      />
+      <div className="space-y-3">
+        {trips.map((t) => (
+          <TripCard
+            key={t.id}
+            trip={t}
+            photos={photos}
+            glance={glances[t.id]}
+            peopleCount={peopleOnTrip(members, t.id, uid)}
+            detail={false}
+          />
+        ))}
       </div>
-
-      {later.length > 0 && (
-        <div>
-          <p className="label-caps mb-3 text-foreground">
-            {laterHeading(later.map((t) => t.start_date))}
-          </p>
-          <ul className="space-y-2">
-            {later.map((t) => {
-              const count = stopCounts[t.id] ?? 0;
-              const line = [
-                tripDateLine(t.start_date, t.end_date),
-                tripLengthLabel(t.start_date, t.end_date),
-                count
-                  ? `${count} ${count === 1 ? "stop" : "stops"} planned`
-                  : "Nothing planned yet",
-              ]
-                .filter(Boolean)
-                .join(" · ");
-              return (
-                <li key={t.id}>
-                  <Link
-                    to="/trips/$tripId"
-                    params={{ tripId: t.id }}
-                    className="card-soft flex items-center gap-3 p-3.5"
-                  >
-                    <span
-                      aria-hidden
-                      className="grid size-10 shrink-0 place-items-center rounded-xl border border-border bg-elevated font-display text-[18px]"
-                    >
-                      {monogram(t)}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-display text-[18px] leading-tight">
-                        {t.title}
-                      </span>
-                      <span className="block truncate text-[12.5px] text-muted-foreground">
-                        {line}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-[13px] font-semibold text-primary">Plan →</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
     </section>
   );
 }

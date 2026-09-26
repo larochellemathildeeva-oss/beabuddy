@@ -5,20 +5,19 @@ import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { TripBanner } from "@/components/TripBanner";
+import { TripCard } from "@/components/TripCard";
+import { useTripGlances } from "@/hooks/useTripGlances";
+import { peopleOnTrip } from "@/lib/home-trip";
 import { TripListSkeleton } from "@/components/Skeletons";
-import { useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
-import { pickTripPhoto } from "@/lib/trip-card";
+import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { useAuth } from "@/hooks/useAuth";
-import { useTrips, type TripRow } from "@/hooks/useTrips";
-import { useTripStops } from "@/hooks/useTripStops";
-import { beaTripNote } from "@/lib/trip-note";
+import { useTrips } from "@/hooks/useTrips";
 import { usePacking } from "@/hooks/usePacking";
 import { locationFromParsedPlace } from "@/lib/place-label";
-import { tripCompanionsLine, tripStillEditableNote } from "@/lib/trip-copy";
+import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
-import { toLocalISODate, type DatesStatus } from "@/lib/trip-dates";
+import { type DatesStatus } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -76,6 +75,7 @@ function TripsPage() {
     user?.email?.split("@")[0] ??
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
+  const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
 
   return (
     <AppShell eyebrow="Trip folders" title="Everything, already filed.">
@@ -267,14 +267,12 @@ function TripsPage() {
             <div data-guide="trip-list" className="space-y-3">
               {t.loading && t.trips.length === 0 && <TripListSkeleton />}
               {t.trips.map((trip) => (
-                <TripListCard
+                <TripCard
                   key={trip.id}
                   trip={trip}
                   photos={photos}
-                  companionsLine={tripCompanionsLine(
-                    t.members.filter((m) => m.trip_id === trip.id),
-                    t.uid,
-                  )}
+                  glance={glances[trip.id]}
+                  peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
                 />
               ))}
               {t.trips.length === 0 && !t.loading && (
@@ -313,78 +311,5 @@ function TripsPage() {
         </section>
       </div>
     </AppShell>
-  );
-}
-
-/**
- * A trip in the list: its photograph, and the way in.
- *
- * The card carries the same `view-transition-name` as the banner on the trip's
- * own page, so tapping it hands the photograph to the destination rather than
- * cutting. `viewTransition` on the Link is what asks the browser to do it; on
- * a browser that does not support same-document transitions this degrades to
- * the ordinary navigation with no fallback code needed.
- */
-function TripListCard({
-  trip,
-  photos,
-  companionsLine,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  companionsLine: string;
-}) {
-  const cities = useTripStops(trip.id, null);
-  const banner = pickTripPhoto(photos, {
-    city: trip.city,
-    country: trip.country,
-    cities: cities.stops.map((stop) => stop.city),
-  });
-
-  return (
-    <Link
-      to="/trips/$tripId"
-      params={{ tripId: trip.id }}
-      viewTransition
-      className="card-soft block overflow-hidden"
-    >
-      <TripBanner
-        title={trip.title}
-        city={trip.city}
-        country={trip.country}
-        cities={cities.stops.map((stop) => stop.city)}
-        startDate={trip.start_date}
-        endDate={trip.end_date}
-        tentative={trip.dates_status === "tentative"}
-        photo={banner}
-        companions={companionsLine}
-        stops={cities.stops.map((stop) => ({
-          title: stop.place_name || stop.city,
-          ...(stop.lat != null ? { lat: stop.lat } : {}),
-          ...(stop.lon != null ? { lon: stop.lon } : {}),
-        }))}
-        note={beaTripNote(
-          {
-            startDate: trip.start_date,
-            endDate: trip.end_date,
-            stopCount: cities.stops.length,
-            plannedCount: null,
-          },
-          toLocalISODate(new Date()),
-        )}
-        viewTransitionName={`trip-photo-${trip.id}`}
-      />
-      <div className="flex items-center gap-2 p-3 text-[12.5px] text-muted-foreground">
-        <span className="truncate">
-          {[
-            cities.stops.length ? `${cities.stops.length} stops` : "",
-            trip.budget_enabled ? "Budget on" : "",
-          ]
-            .filter(Boolean)
-            .join(" · ") || "Open to plan it"}
-        </span>
-        <span className="ml-auto shrink-0 font-semibold text-foreground">Open</span>
-      </div>
-    </Link>
   );
 }
