@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   describeWeather,
   formatTemp,
+  rainDayMayBeAhead,
   rainLine,
   rainNotice,
   rainUrl,
@@ -151,4 +152,24 @@ test("rainNotice covers a later trip day, and leaves open a spell into the eveni
     rainNotice(day("2026-10-05", chances), "2026-10-05", new Date("2026-10-06T08:00:00Z")),
     null,
   );
+});
+
+test("a trip day is still asked for while its place may be on it, whatever the phone's date", () => {
+  // 01:00 on the 4th in Tokyo is 16:00 on the 3rd UTC: Lisbon is still on the 3rd.
+  const now = new Date("2026-10-03T16:00:00Z");
+  assert.equal(rainDayMayBeAhead("2026-10-03", now), true);
+  assert.equal(rainDayMayBeAhead("2026-10-04", now), true);
+  // At UTC−12 it is 04:00 on the 3rd, so the 2nd is over everywhere.
+  assert.equal(rainDayMayBeAhead("2026-10-02", now), false);
+  // Just after midnight UTC, somewhere west is still on yesterday.
+  assert.equal(rainDayMayBeAhead("2026-10-02", new Date("2026-10-03T00:30:00Z")), true);
+  // And the place's clock then decides: Lisbon (UTC+1) at 17:00 on the 3rd
+  // still has its evening shower ahead, though a phone in Tokyo reads the 4th.
+  const chances = [...dry];
+  chances[20] = 80;
+  assert.deepEqual(rainNotice(day("2026-10-03", chances, 3600), "2026-10-03", now), {
+    from: "20:00",
+    until: "21:00",
+    chance: 80,
+  });
 });

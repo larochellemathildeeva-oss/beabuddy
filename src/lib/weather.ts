@@ -192,6 +192,18 @@ export function rainNotice(forecast: RainForecast, day: string, now: Date): Rain
   };
 }
 
+/**
+ * Whether `day` may still be under way somewhere, so its forecast is worth
+ * asking for. The phone's own date is no guide: a phone in Tokyo is on
+ * tomorrow while Lisbon is still on today. Clocks run from UTC−12, so a day
+ * is over everywhere once it is before the UTC date twelve hours ago;
+ * `rainNotice` then judges it on the place's own clock.
+ */
+export function rainDayMayBeAhead(day: string, now: Date): boolean {
+  const earliest = new Date(now.getTime() - 12 * 3600 * 1000).toISOString().slice(0, 10);
+  return day >= earliest;
+}
+
 /** "Rain likely from 16:00 to 19:00 (80%). Worth packing a layer." */
 export function rainLine(notice: RainNotice): string {
   const when = notice.until ? `from ${notice.from} to ${notice.until}` : `from ${notice.from}`;

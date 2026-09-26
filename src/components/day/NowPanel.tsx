@@ -8,7 +8,13 @@ import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { lookupRain } from "@/lib/weather.functions";
-import { rainLine, rainNotice, WEATHER_ATTRIBUTION, type RainForecast } from "@/lib/weather";
+import {
+  rainDayMayBeAhead,
+  rainLine,
+  rainNotice,
+  WEATHER_ATTRIBUTION,
+  type RainForecast,
+} from "@/lib/weather";
 import {
   arrivalWrites,
   clockMinutes,
@@ -492,8 +498,9 @@ function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) 
   useEffect(() => {
     setForecast(null);
     if (lat == null || lon == null || !day) return;
-    // A day already behind the phone's clock has no rain left to warn about.
-    if (day < toLocalISODate(new Date())) return;
+    // A day over everywhere has no rain left to warn about. Not the phone's
+    // date: the stop may be in a time zone still on that day.
+    if (!rainDayMayBeAhead(day, new Date())) return;
     let active = true;
     ask({ data: { lat, lon, day } })
       .then((f) => {
