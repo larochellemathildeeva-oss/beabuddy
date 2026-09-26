@@ -81,7 +81,7 @@ import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { daysForMaps } from "@/lib/day-maps";
-import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
 import { isTravelLeg, legTarget, routeCityOn, routeStopOn, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
@@ -263,6 +263,7 @@ export function TripDetail({
               };
             }),
             area: lookupArea,
+            venues: true,
           },
         });
         if (cancelled) return;
@@ -1207,7 +1208,8 @@ export function TripDetail({
                               />
                               <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
                                 Stops numbered in order; the line joins them, it isn't the walking
-                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}
+                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} ·{" "}
+                                {OVERTURE_ATTRIBUTION}
                               </p>
                             </details>
                           )}

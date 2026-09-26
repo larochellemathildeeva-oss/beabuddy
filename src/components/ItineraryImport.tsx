@@ -482,9 +482,9 @@ function ImportPanel({
           const parent = parents[from + k]!;
           return parent >= from ? { ...stop, within: parent - from } : stop;
         });
-        const result = await geocodePlanStops({ data: { stops: batch, area, recent } }).catch(
-          () => null,
-        );
+        const result = await geocodePlanStops({
+          data: { stops: batch, area, recent, venues: true },
+        }).catch(() => null);
         if (!current()) return;
         if (!result) break;
         recent = result.sent ?? [];

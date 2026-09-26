@@ -13,6 +13,9 @@ import {
   type AreaBox,
 } from "@/lib/geocode-plan";
 import { stopArea } from "@/lib/import-stop";
+import { autoPinTrusted } from "@/lib/match-confidence";
+import { looksLikeStreetAddress, placeQueryCandidates } from "@/lib/direction-stops";
+import { pickOpenPlace, type OpenPlace } from "@/lib/open-places";
 import {
   classifyGeoStatus,
   nextDelayMs,
@@ -69,6 +72,12 @@ const Input = z.object({
    * and the per-minute cap — carries across batches instead of restarting.
    */
   recent: z.array(z.number()).max(200).nullish(),
+  /**
+   * Look venues up in Overture's listings (Open Places API) when the map
+   * misses them. Off for a trip's cities: "Hiroshima" searched near Kyoto
+   * would find a restaurant of that name, not the city.
+   */
+  venues: z.boolean().nullish(),
 });
 
 /**
@@ -102,6 +111,8 @@ export type PlacedStop = {
    * village there is inside it; callers do not pin these unasked.
    */
   farKm?: number;
+  /** Found in Overture's listings rather than on the map: its place id there. */
+  overtureId?: string;
 };
 
 /** How far from the stop it is inside a place is looked for, in km. */
@@ -232,10 +243,40 @@ function countryOf(area: string): string {
   return parts.length > 1 ? parts[parts.length - 1]! : "";
 }
 
+/** At most this many Overture searches per stop: its name, then its title. */
+const OVERTURE_QUERIES = 2;
+
+/** The stop in Overture's listings near `centre`, or nothing that only looks like it. */
+async function askOverture(
+  search: (query: string, near: { lat: number; lon: number }) => Promise<OpenPlace[]>,
+  stop: { title: string; place?: string | null | undefined; address?: string | null | undefined },
+  centre: { lat: number; lon: number },
+): Promise<OpenPlace | null> {
+  const names = [
+    stop.title,
+    stop.place ?? "",
+    stop.address && looksLikeStreetAddress(stop.address) ? stop.address : "",
+  ].filter((name) => name.trim());
+  const queries = [
+    ...(stop.place?.trim() ? placeQueryCandidates(stop.place, null) : []),
+    ...placeQueryCandidates(stop.title, null),
+  ].filter((query, i, all) => all.findIndex((q) => q.toLowerCase() === query.toLowerCase()) === i);
+  for (const query of queries.slice(0, OVERTURE_QUERIES)) {
+    const found = pickOpenPlace(await search(query, centre), names, centre);
+    if (found) return found;
+  }
+  return null;
+}
+
 export const geocodePlanStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: StopInput[]; area?: string | null; recent?: number[] | null }) =>
-    Input.parse(input),
+  .inputValidator(
+    (input: {
+      stops: StopInput[];
+      area?: string | null;
+      recent?: number[] | null;
+      venues?: boolean | null;
+    }) => Input.parse(input),
   )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
@@ -250,6 +291,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     // bundle, and the token must not go with it.
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
+    const overture = data.venues ? await import("@/lib/open-places.server") : null;
 
     const cache = new Map<string, GeoHit | null>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
@@ -388,7 +430,35 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (throttled) break;
 
-      const landed = await tryIn(where, box, null);
+      let landed = await tryIn(where, box, null);
+
+      // The map missed it, or found something that is not it (a namesake out
+      // of town, another name): Overture's listings, near the middle of town.
+      // OpenStreetMap is thin outside big cities; they are not.
+      if (overture?.openPlacesReady() && centre && !throttled) {
+        const mine = placed.findIndex((hit) => hit.index === index);
+        const hit = mine >= 0 ? placed[mine] : undefined;
+        const names = {
+          title: stop.title,
+          place: stop.place ?? null,
+          address: stop.address ?? null,
+        };
+        if (!hit || hit.farKm || !autoPinTrusted(names, hit)) {
+          const found = await askOverture(overture.searchOpenPlaces, stop, centre);
+          if (found) {
+            if (mine >= 0) placed.splice(mine, 1);
+            placed.push({
+              index,
+              lat: found.lat,
+              lon: found.lon,
+              label: found.label,
+              alsoNamed: [found.name],
+              overtureId: found.id,
+            });
+            landed = true;
+          }
+        }
+      }
       // Not in its town: the trip's country, last. A stop saved without its
       // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
       // ever looked for in the wrong city. Callers still check the match
