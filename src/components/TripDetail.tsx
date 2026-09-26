@@ -717,10 +717,12 @@ export function TripDetail({
             setSettingsOpen(true);
             setSheetSection(null);
           }}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+          // A gear alone, so the whole row fits one line on a phone.
+          title="Trip settings"
+          aria-label="Trip settings"
+          className="inline-flex shrink-0 items-center rounded-xl border border-border bg-elevated p-1.5 shadow-2xs transition-all active:scale-95"
         >
-          <Settings className="size-3.5 text-primary" aria-hidden />
-          Settings
+          <Settings className="size-4 text-primary" aria-hidden />
         </button>
         <button
           data-guide="add-stop"
