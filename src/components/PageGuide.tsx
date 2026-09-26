@@ -116,7 +116,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a stop quickly",
-        body: "Add stop puts a place on the itinerary, in the Timeline Editor. Saved pulls one out of your recommendation vault instead, keeping its address and map pin. The trip's cities are under Settings → Cities on this trip.",
+        body: "Add stop offers three ways in: a stop on the itinerary, in the Timeline Editor; a place from Saved, keeping its address and map pin; or another city or location on the trip's route.",
         selector: "[data-guide='add-stop']",
       },
       {

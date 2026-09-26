@@ -578,6 +578,8 @@ export function TripDetail({
    * rather than all of them after the first anchor.
    */
   const [savedOpen, setSavedOpen] = useState(false);
+  /** "Add stop" chooser: a stop, a saved place, or another city. */
+  const [addOpen, setAddOpen] = useState(false);
   // Where "Add" from Saved places lands: the day in view, if it is one day.
   const addToDay = chosenDay !== ALL_DAYS && chosenDay !== "" ? chosenDay : null;
   const addToDayLabel = addToDay
@@ -686,8 +688,9 @@ export function TripDetail({
       {tripNote ? (
         <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
       ) : null}
-      {/* The prototype's labelled action pills, in place of bare icons. */}
-      <div className="flex flex-wrap items-center gap-1.5 px-3 py-2">
+      {/* The prototype's labelled action pills, on one line: the row scrolls
+          sideways rather than wrapping on a narrow phone. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
         <button
           data-guide="bea-plan"
           title="Let Béa plan this trip"
@@ -695,7 +698,7 @@ export function TripDetail({
             setPlannerTab("import");
             setPlannerOpen(true);
           }}
-          className="inline-flex items-center gap-1 rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
         >
           <img src={logo} alt="" className="size-5 object-contain" />
           Plan with Béa
@@ -704,7 +707,7 @@ export function TripDetail({
           data-guide="trip-prep"
           title="To-dos and packing for this trip"
           onClick={() => setPrepSignal((n) => n + 1)}
-          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
           <ListChecks className="size-3.5 text-primary" aria-hidden />
           To do
@@ -714,36 +717,23 @@ export function TripDetail({
             setSettingsOpen(true);
             setSheetSection(null);
           }}
-          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+          // A gear alone, so the whole row fits one line on a phone.
+          title="Trip settings"
+          aria-label="Trip settings"
+          className="inline-flex shrink-0 items-center rounded-xl border border-border bg-elevated p-1.5 shadow-2xs transition-all active:scale-95"
         >
-          <Settings className="size-3.5 text-primary" aria-hidden />
-          Settings
-        </button>
-        <button
-          type="button"
-          onClick={() => setSavedOpen(true)}
-          className="inline-flex items-center gap-1 rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
-        >
-          <Bookmark className="size-3.5 text-primary" aria-hidden />
-          Saved
+          <Settings className="size-4 text-primary" aria-hidden />
         </button>
         <button
           data-guide="add-stop"
-          title="Add a stop to this trip's itinerary"
-          onClick={() => {
-            // A stop on the itinerary, in the Timeline Editor. The trip's
-            // cities are added in Settings → Cities on this trip.
-            setPerspective("timeline");
-            setTimelineOpen(true);
-            setAddDay("");
-            setAddingTimeline(true);
-          }}
-          className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
+          title="Add a stop, a saved place or a city"
+          onClick={() => setAddOpen(true)}
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
         >
           <Plus className="size-3.5" aria-hidden />
           Add stop
         </button>
-        <span className="ml-auto truncate pl-1 text-[11px] text-muted-foreground">
+        <span className="ml-auto hidden shrink-0 pl-1 text-[11px] text-muted-foreground sm:inline">
           {[
             board.items.length ? `${board.items.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
@@ -1471,6 +1461,63 @@ export function TripDetail({
           openSignal={prepSignal}
         />
       </div>
+
+      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to this trip" width="sm">
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setPerspective("timeline");
+              setTimelineOpen(true);
+              setAddDay("");
+              setAddingTimeline(true);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <Plus className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">A stop on the itinerary</span>
+              <span className="block text-[12px] text-muted-foreground">
+                A place, meal or activity, in the Timeline Editor.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setSavedOpen(true);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <Bookmark className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">From Saved</span>
+              <span className="block text-[12px] text-muted-foreground">
+                A place you kept, with its address and map pin.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setSheetSection("cities");
+              setSettingsOpen(true);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">Another city or location</span>
+              <span className="block text-[12px] text-muted-foreground">
+                Add a city to the trip's route.
+              </span>
+            </span>
+          </button>
+        </div>
+      </Sheet>
 
       <SavedPlacesSheet
         open={savedOpen}

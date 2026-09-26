@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -18,6 +18,13 @@ import { locationFromParsedPlace } from "@/lib/place-label";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { type DatesStatus } from "@/lib/trip-dates";
+import {
+  EMPTY_CITY,
+  citiesToStops,
+  cityOutsideTrip,
+  tripDatesFromCities,
+  type CityDraft,
+} from "@/lib/trip-cities";
 
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
@@ -61,9 +68,22 @@ function TripsPage() {
     end_date: "",
     dates_status: "tentative" as DatesStatus,
   });
+  /** One place, or several cities each with its own dates. */
+  const [multiCity, setMultiCity] = useState(false);
+  const [cities, setCities] = useState<CityDraft[]>([EMPTY_CITY, EMPTY_CITY]);
+  const setCity = (index: number, patch: Partial<CityDraft>) =>
+    setCities((list) => list.map((city, i) => (i === index ? { ...city, ...patch } : city)));
+  // With several cities, blank trip dates come from the cities' own.
+  const cityDates = tripDatesFromCities(cities);
+  const tripStart = multiCity ? form.start_date || cityDates.start : form.start_date;
+  const tripEnd = multiCity ? form.end_date || cityDates.end : form.end_date;
+  const firstCity = cities.find((city) => city.city.trim());
   // A trip should not need a name before Béa will keep anything — "Lisbon,
   // sometime in March" is a trip. The city and dates suggest one.
-  const suggestedName = suggestedTripTitle(form.city, form.start_date);
+  const suggestedName = suggestedTripTitle(
+    multiCity ? (firstCity?.city ?? "") : form.city,
+    tripStart,
+  );
   const [withBudget, setWithBudget] = useState(false);
   const packing = usePacking(null);
   const [packTemplateId, setPackTemplateId] = useState("");
@@ -129,31 +149,134 @@ function TripsPage() {
                     you like.
                   </p>
                 )}
-                <PlaceSearchInput
-                  value={form.city}
-                  onChange={(v) => setForm({ ...form, city: v })}
-                  onPick={(p) => {
-                    const loc = locationFromParsedPlace(p);
-                    setForm({
-                      ...form,
-                      city: loc.city,
-                      country: loc.country || form.country,
-                    });
-                  }}
-                  placeholder="Starting city — search it"
-                  areas
-                />
-                <p className="px-1 text-[12px] text-muted-foreground">
-                  Going to more than one country? Open the trip after creating it and add each stop
-                  — including layovers.
-                </p>
+                <div
+                  role="radiogroup"
+                  aria-label="Where is this trip going?"
+                  className="flex gap-1 rounded-xl bg-elevated p-1"
+                >
+                  {(
+                    [
+                      [false, "One place"],
+                      [true, "Several cities"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      role="radio"
+                      aria-checked={multiCity === value}
+                      onClick={() => setMultiCity(value)}
+                      className={`flex-1 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold ${
+                        multiCity === value
+                          ? "bg-card text-foreground shadow-2xs"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {!multiCity && (
+                  <PlaceSearchInput
+                    value={form.city}
+                    onChange={(v) => setForm({ ...form, city: v })}
+                    onPick={(p) => {
+                      const loc = locationFromParsedPlace(p);
+                      setForm({
+                        ...form,
+                        city: loc.city,
+                        country: loc.country || form.country,
+                      });
+                    }}
+                    placeholder="Where to — search it"
+                    areas
+                  />
+                )}
                 <DateRangeField
                   start={form.start_date}
                   end={form.end_date}
                   onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
                   datesStatus={form.dates_status}
                   onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+                  placeholder={
+                    multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
+                  }
                 />
+                {multiCity && (
+                  <div className="space-y-2">
+                    <p className="px-1 text-[12px] text-muted-foreground">
+                      Each city in order, with the days you're there. Add layovers too.
+                    </p>
+                    {cities.map((city, index) => (
+                      <div
+                        key={index}
+                        className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <PlaceSearchInput
+                              value={city.city}
+                              onChange={(v) =>
+                                setCity(index, { city: v, lat: undefined, lon: undefined })
+                              }
+                              onPick={(p) => {
+                                const loc = locationFromParsedPlace(p);
+                                setCity(index, {
+                                  city: loc.city,
+                                  country: loc.country,
+                                  lat: p.lat,
+                                  lon: p.lon,
+                                });
+                              }}
+                              placeholder={`City ${index + 1} — search it`}
+                              areas
+                            />
+                          </div>
+                          {cities.length > 1 && (
+                            <button
+                              type="button"
+                              aria-label={`Remove city ${index + 1}`}
+                              onClick={() =>
+                                setCities((list) => list.filter((_, i) => i !== index))
+                              }
+                              className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                            >
+                              <X className="size-4" aria-hidden />
+                            </button>
+                          )}
+                        </div>
+                        <DateRangeField
+                          start={city.start}
+                          end={city.end}
+                          onChange={(start, end) => setCity(index, { start, end })}
+                          title={
+                            city.city.trim()
+                              ? `Dates in ${city.city.split(",")[0]}`
+                              : "Dates in this city"
+                          }
+                          placeholder="Dates in this city"
+                          month={cities[index - 1]?.end || form.start_date || undefined}
+                        />
+                        {cityOutsideTrip(city, form.start_date, form.end_date) && (
+                          <p className="px-1 text-[12px] font-medium text-destructive">
+                            These dates fall outside the trip's.
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCities((list) => [...list, EMPTY_CITY])}
+                      className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      Add another city
+                    </button>
+                  </div>
+                )}
                 {form.start_date && form.end_date && form.end_date < form.start_date && (
                   <p className="px-1 text-[13px] font-medium text-destructive">
                     End date can't be earlier than the start date.
@@ -199,6 +322,15 @@ function TripsPage() {
                     try {
                       const id = await t.createTrip({
                         ...form,
+                        ...(multiCity
+                          ? {
+                              city: firstCity?.city ?? "",
+                              country: firstCity?.country ?? "",
+                              stops: citiesToStops(cities),
+                            }
+                          : {}),
+                        start_date: tripStart,
+                        end_date: tripEnd,
                         title: form.title.trim() || suggestedName,
                         budget_enabled: withBudget,
                       });
@@ -217,6 +349,8 @@ function TripsPage() {
                         end_date: "",
                         dates_status: "tentative",
                       });
+                      setMultiCity(false);
+                      setCities([EMPTY_CITY, EMPTY_CITY]);
                       setWithBudget(false);
                       setCreating(false);
                     } catch (e) {

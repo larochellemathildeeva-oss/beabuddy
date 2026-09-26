@@ -8,6 +8,7 @@ import {
   toLocalISODate,
   type DatesStatus,
 } from "@/lib/trip-dates";
+import { rangeTap } from "@/lib/trip-cities";
 
 export function DateRangeField({
   start,
@@ -16,6 +17,8 @@ export function DateRangeField({
   datesStatus,
   onDatesStatusChange,
   placeholder = "Dates",
+  title = "Trip dates",
+  month,
   className = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[15px]",
 }: {
   start: string;
@@ -24,9 +27,29 @@ export function DateRangeField({
   datesStatus?: DatesStatus;
   onDatesStatusChange?: (status: DatesStatus) => void;
   placeholder?: string;
+  /** The calendar's heading. */
+  title?: string;
+  /** The month to open on when nothing is picked yet, as YYYY-MM-DD. */
+  month?: string | undefined;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * The start of a range still waiting for its end. The calendar stays open
+   * until the second tap: react-day-picker reports the first tap as a whole
+   * one-day range, which used to close it before the end could be picked.
+   */
+  const [pending, setPending] = useState<string | null>(null);
+  const openPicker = () => {
+    setPending(null);
+    setOpen(true);
+  };
+  // Closed after one tap: a one-day range rather than a start with no end.
+  const close = () => {
+    if (pending) onChange(pending, pending);
+    setPending(null);
+    setOpen(false);
+  };
   const titleId = useId();
   const label = formatDateRangeLabel(start, end);
   const selected: DateRange = {
@@ -37,17 +60,17 @@ export function DateRangeField({
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  });
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openPicker}
         aria-haspopup="dialog"
         aria-expanded={open}
         className={`${className} flex items-center gap-2`}
@@ -63,7 +86,7 @@ export function DateRangeField({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
-          onClick={() => setOpen(false)}
+          onClick={close}
           className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
         >
           <div
@@ -71,21 +94,27 @@ export function DateRangeField({
             className="w-full max-w-sm rounded-t-3xl border border-border bg-card p-4 sm:rounded-2xl"
           >
             <p id={titleId} className="px-1 font-display text-[19px] leading-snug">
-              Trip dates
+              {title}
             </p>
             <p className="mb-2 px-1 text-[13px] text-muted-foreground">
-              Tap the start, then the finish.
+              {pending ? "Now tap the last day." : "Tap the first day, then the last."}
             </p>
             <Calendar
               mode="range"
-              selected={selected}
-              defaultMonth={selected.from ?? new Date()}
+              selected={pending ? { from: parseLocalDate(pending), to: undefined } : selected}
+              defaultMonth={
+                selected.from ?? (month ? parseLocalDate(month) : undefined) ?? new Date()
+              }
               numberOfMonths={1}
-              onSelect={(range) => {
-                const nextStart = range?.from ? toLocalISODate(range.from) : "";
-                const nextEnd = range?.to ? toLocalISODate(range.to) : "";
-                onChange(nextStart, nextEnd);
-                if (range?.from && range.to) setOpen(false);
+              onSelect={(_range, day) => {
+                const tap = rangeTap(pending, toLocalISODate(day));
+                onChange(tap.start, tap.end);
+                if (tap.done) {
+                  setPending(null);
+                  setOpen(false);
+                } else {
+                  setPending(tap.start);
+                }
               }}
               className="mx-auto rounded-xl"
             />
@@ -94,6 +123,7 @@ export function DateRangeField({
                 type="button"
                 onClick={() => {
                   onChange("", "");
+                  setPending(null);
                   setOpen(false);
                 }}
                 className="flex-1 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
@@ -102,7 +132,7 @@ export function DateRangeField({
               </button>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={close}
                 className="flex-1 rounded-xl bg-primary px-3 py-2 text-[14.5px] font-semibold text-primary-foreground"
               >
                 Done

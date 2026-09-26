@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
@@ -10,6 +11,7 @@ import {
   isMissingDatesStatusColumn,
   type DatesStatus,
 } from "@/lib/trip-dates";
+import type { NewStop } from "@/hooks/useTripStops";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
@@ -233,6 +235,8 @@ export function useTrips() {
       end_date?: string;
       dates_status?: DatesStatus;
       budget_enabled?: boolean;
+      /** A trip to several cities: each one, in order, as a trip stop. */
+      stops?: NewStop[];
     }) => {
       const ownerId = await liveUserId(uid);
       const row = {
@@ -246,6 +250,28 @@ export function useTrips() {
         budget_enabled: t.budget_enabled ?? false,
       };
       const created = await insertTrip(row);
+      if (t.stops?.length) {
+        const { error } = await supabase.from("trip_stops").insert(
+          t.stops.map((stop, position) => ({
+            trip_id: created.id,
+            kind: stop.kind ?? "destination",
+            city: stop.city,
+            country: stop.country || null,
+            lat: stop.lat ?? null,
+            lon: stop.lon ?? null,
+            arrive_on: stop.arrive_on || null,
+            depart_on: stop.depart_on || null,
+            position,
+            created_by: ownerId,
+          })),
+        );
+        // The trip is made either way, so open it and say what is missing
+        // rather than report the whole trip as failed.
+        if (error)
+          toast.error(
+            "The trip is made, but its cities didn't save. Add them in Settings → Cities on this trip.",
+          );
+      }
       await load();
       return created.id;
     },
