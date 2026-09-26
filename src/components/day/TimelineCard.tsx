@@ -57,6 +57,7 @@ export function TimelineEntry({
   tripStart,
   tripEnd,
   onKeep,
+  kept: alreadyKept = false,
   onToggleDone,
   showSwipeHint = false,
   onLocate,
@@ -101,6 +102,8 @@ export function TimelineEntry({
   tripEnd?: string | null | undefined;
   /** Save this stop to the vault, so a good find outlives the trip. */
   onKeep?: ((item: ItineraryRow) => Promise<void>) | undefined;
+  /** Already in the vault, so the save shows as done from the start. */
+  kept?: boolean;
   /** Mark done (arrived and left), or back to not done. */
   onToggleDone: () => void;
   /** The swipe hint line; shown on the first card of a day, not all of them. */
@@ -119,7 +122,8 @@ export function TimelineEntry({
   foldInto?: string | undefined;
   onFold?: (() => void) | undefined;
 }) {
-  const [kept, setKept] = useState(false);
+  const [keptHere, setKept] = useState(false);
+  const kept = keptHere || alreadyKept;
   const [flipped, setFlipped] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   const booked = isBooked(item);

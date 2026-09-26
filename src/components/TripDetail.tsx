@@ -19,7 +19,7 @@ import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
-import { timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
+import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
@@ -27,7 +27,9 @@ import { TripPrep } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
-import { toNewReco } from "@/lib/captured-place";
+import type { PlaceLike } from "@/lib/captured-place";
+import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
+import { supabase } from "@/integrations/supabase/client";
 import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
@@ -277,30 +279,56 @@ export function TripDetail({
   // built from this exact stop list. They used to be indexed in blindly, so a
   // city-to-city download showed up underneath timeline entries.
   /**
+   * What is already in the vault, for the Save on each card. Null until it
+   * has loaded: an unknown vault is not an empty one, so a save made before
+   * then (or after the read failed) checks for itself.
+   */
+  const [vaultPlaces, setVaultPlaces] = useState<PlaceLike[] | null>(null);
+  const loadVaultPlaces = async (): Promise<PlaceLike[]> => {
+    const { data, error } = await supabase.from("recommendations").select("name, city, lat, lon");
+    if (error) throw new Error("Couldn't check your saved places. Try again in a moment.");
+    return data ?? [];
+  };
+  useEffect(() => {
+    let cancelled = false;
+    loadVaultPlaces().then(
+      (places) => {
+        if (!cancelled) setVaultPlaces(places);
+      },
+      () => {
+        /* stays unknown; a save reads it again */
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const isKept = (item: ItineraryRow) =>
+    vaultPlaces ? isAlreadyKept(item, trip, vaultPlaces) : false;
+  // A second tap while the first save is still in flight must not file a copy.
+  const keeping = useRef<Set<string>>(new Set());
+  /**
    * Keep a timeline stop in the vault. A place worth going to on this trip is
    * a place worth remembering after it — that is the whole premise, and the
    * timeline had no way to get anything back out.
    */
   const keepItemAsReco = async (item: ItineraryRow) => {
-    await addRecommendationOnce(
-      toNewReco(
-        {
-          name: item.title,
-          ...(item.address ? { address: item.address } : {}),
-          ...(trip.city ? { city: trip.city } : {}),
-          ...(trip.country ? { country: trip.country } : {}),
-          ...(item.lat != null ? { lat: item.lat } : {}),
-          ...(item.lon != null ? { lon: item.lon } : {}),
-          source: `Trip: ${trip.title}`,
-        },
-        {
-          // By glyph, so a row stored as "dinner" or "hotel" files itself
-          // correctly rather than landing in the catch-all.
-          category: vaultCategory(timelineGlyph(item)),
-          ...(item.detail ? { notes: item.detail } : {}),
-        },
-      ),
-    );
+    if (keeping.current.has(item.id)) return;
+    keeping.current.add(item.id);
+    try {
+      const vault = vaultPlaces ?? (await loadVaultPlaces());
+      // Already there, perhaps from another trip or the Recs tab: say so
+      // rather than filing a second copy.
+      if (isAlreadyKept(item, trip, vault)) {
+        setVaultPlaces(vault);
+      } else {
+        const reco = keeperToReco(item, trip);
+        await addRecommendationOnce(reco);
+        setVaultPlaces((prev) => [...(prev ?? vault), reco]);
+      }
+    } finally {
+      keeping.current.delete(item.id);
+    }
     const line = beaLine("recs.saved");
     toast.success(line.title, { description: line.body });
   };
@@ -1168,6 +1196,7 @@ export function TripDetail({
                                           tripStart={trip.start_date}
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
+                                          kept={isKept(item)}
                                           stray={strayIds.has(item.id)}
                                           {...foldProps(item)}
                                         />
@@ -1214,6 +1243,7 @@ export function TripDetail({
                                           tripStart={trip.start_date}
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
+                                          kept={isKept(item)}
                                           stray={strayIds.has(item.id)}
                                           {...foldProps(item)}
                                         />
@@ -1270,6 +1300,7 @@ export function TripDetail({
                             tripStart={trip.start_date}
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
+                            kept={isKept(item)}
                             stray={strayIds.has(item.id)}
                             {...foldProps(item)}
                           />
