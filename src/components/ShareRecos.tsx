@@ -224,10 +224,13 @@ export function ShareRecos({
           <p className="label-caps">
             {mode === "opening" ? "Open a share" : mode === "sent" ? "Sent" : "Send places"}
           </p>
+          {/* Not while a share is being made or kept: its answer would land
+              in a panel already closed, and open it again. */}
           <button
             type="button"
             onClick={close}
-            className="rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] font-semibold"
+            disabled={busy}
+            className="rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] font-semibold disabled:opacity-50"
           >
             {mode === "sent" ? "Done" : "Cancel"}
           </button>

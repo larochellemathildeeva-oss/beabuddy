@@ -204,16 +204,16 @@ export function liveSummary<T extends CompanionStop & { day_date?: string | null
 /**
  * How close "Leave by" is, for today's plan: minutes still in hand, or null
  * when it is more than `soonMinutes` away (the chip stays quiet). Zero or
- * less means it is time to go. Times wrap at midnight, so 23:55 is five
- * minutes before 00:00 rather than a day away.
+ * less means it is time to go. The caller has already checked the stop is
+ * on today's plan, so this is the same day: no wrapping at midnight, which
+ * made a 23:55 departure look overdue at 00:10. Once it is more than two
+ * hours past, it goes quiet rather than nag.
  */
 export function leaveCountdown(at: string, now: Date, soonMinutes = 10): number | null {
   const due = clockMinutes(at);
   if (due == null) return null;
-  let left = due - (now.getHours() * 60 + now.getMinutes());
-  if (left > 720) left -= 1440;
-  if (left < -720) left += 1440;
-  return left <= soonMinutes ? left : null;
+  const left = due - (now.getHours() * 60 + now.getMinutes());
+  return left <= soonMinutes && left >= -120 ? left : null;
 }
 
 /**

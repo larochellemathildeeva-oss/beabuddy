@@ -202,7 +202,12 @@ function WorldPage() {
                     key={stat.id}
                     type="button"
                     aria-pressed={on}
-                    onClick={() => setView(on ? "all" : stat.id)}
+                    onClick={() => {
+                      const next = on ? "all" : stat.id;
+                      setView(next);
+                      // A city card with no city pin on the globe points at nothing.
+                      if (next !== "all" && next !== "cities") setSelected(null);
+                    }}
                     className={`rounded-2xl border px-3 py-2.5 text-left transition-colors ${
                       on
                         ? "border-primary bg-primary text-primary-foreground"
@@ -241,15 +246,18 @@ function WorldPage() {
           <Globe
             pins={show.cities ? globeCities : []}
             regions={show.provinces ? provinces : []}
-            visitedCountries={
-              show.countries || view === "provinces" ? shadedCountries : noCountries
-            }
+            // Cities and Provinces show only themselves: no whole countries
+            // shaded behind them, from the pins or from the list.
+            visitedCountries={show.countries ? shadedCountries : noCountries}
+            shadePinCountries={show.countries}
             countryMarks={show.countries ? namedCountries : []}
             selectedId={selected?.id}
             onSelect={setSelected}
             onCountrySelect={(name) => {
               // A tap on a country opens one of your cities there, in any
-              // language the country was saved in.
+              // language the country was saved in — only while cities are on
+              // the globe, so it has a pin to spin to.
+              if (!show.cities) return;
               const key = countryKey(name);
               const match = globeCities.find((pin) => countryKey(pin.country) === key);
               if (match) setSelected(match);

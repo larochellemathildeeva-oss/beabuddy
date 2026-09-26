@@ -272,8 +272,10 @@ test("leave countdown speaks up only in the last ten minutes", () => {
   assert.equal(leaveCountdown("14:31", at(14, 21)), 10);
   assert.equal(leaveCountdown("14:31", at(14, 31)), 0);
   assert.equal(leaveCountdown("14:31", at(14, 40)), -9);
-  assert.equal(leaveCountdown("00:05", at(23, 58)), 7);
-  assert.equal(leaveCountdown("23:55", at(0, 10)), -15);
+  // Same day: a late departure seen just after midnight is hours away.
+  assert.equal(leaveCountdown("23:55", at(0, 10)), null);
+  assert.equal(leaveCountdown("00:05", at(23, 58)), null);
+  assert.equal(leaveCountdown("09:00", at(14, 0)), null);
   assert.equal(leaveCountdown("soon", at(14, 0)), null);
 });
 
