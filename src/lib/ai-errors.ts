@@ -88,8 +88,23 @@ export function isRateLimited(error: unknown): boolean {
   );
 }
 
+/**
+ * The Google project has run out of paid credits. Every model bills the same
+ * project, so stepping down the ladder only repeats the refusal.
+ */
+export function isBillingExhausted(error: unknown): boolean {
+  const text = messageOf(error).toLowerCase();
+  return (
+    text.includes("prepayment credits") ||
+    text.includes("credits are depleted") ||
+    text.includes("billing#prepay") ||
+    text.includes("billing account")
+  );
+}
+
 /** True when trying a weaker / alternate model is worth it. */
 export function shouldFallToNextModel(error: unknown): boolean {
+  if (isBillingExhausted(error)) return false;
   return isOverloaded(error) || isRateLimited(error) || isRetiredModel(error);
 }
 
@@ -189,6 +204,11 @@ export function isNetworkFailure(error: unknown): boolean {
  * "Load failed" never lands in the itinerary import UI.
  */
 export function aiFailure(error: unknown): Error {
+  if (isBillingExhausted(error)) {
+    return new Error(
+      "Béa's AI reader is paused for now, so she can't read plans or photos. Try again later — or ask whoever runs the app to top up its AI credits.",
+    );
+  }
   if (isOverloaded(error)) {
     return new Error("Béa's planner is busy right now. Give it a minute and try again.");
   }
