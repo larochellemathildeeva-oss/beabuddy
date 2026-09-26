@@ -5,6 +5,7 @@ import {
   areaBoxFrom,
   boxAround,
   boxViewbox,
+  distanceKm,
   inBox,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -94,10 +95,32 @@ export type PlacedStop = {
    * title of that stop. A gallery at its museum is close enough to walk to.
    */
   inside?: string;
+  /**
+   * How far it is from the middle of the town it was looked up in, in km,
+   * when that is further than a stop in town usually is. A municipality's
+   * box can run tens of kilometres into the countryside, and a namesake in a
+   * village there is inside it; callers do not pin these unasked.
+   */
+  farKm?: number;
 };
 
 /** How far from the stop it is inside a place is looked for, in km. */
 const INSIDE_KM = 2;
+
+/**
+ * Further than this from the middle of the stop's town, a find is flagged
+ * rather than pinned. Most of a city's sights are well inside it; an
+ * airport, which often is not, is exempt.
+ */
+const TOWN_KM = 15;
+
+function isAirport(hit: GeoHit): boolean {
+  return (
+    hit.category === "aeroway" ||
+    hit.kind === "aerodrome" ||
+    /airport|aeroporto|aeropuerto|a[ée]roport/i.test(hit.label ?? "")
+  );
+}
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -160,23 +183,33 @@ async function lookup(
  * treats the box as a hint would otherwise still hand back a namesake in the
  * next province.
  */
-async function geocode(provider: GeoProvider, query: string, box: AreaBox): Promise<GeoResult> {
-  const hits = await lookup(provider, query, { limit: 3, box });
+async function geocode(
+  provider: GeoProvider,
+  query: string,
+  box: AreaBox,
+  near: { lat: number; lon: number } | null,
+): Promise<GeoResult> {
+  const hits = await lookup(provider, query, { limit: near ? 5 : 3, box });
   if (hits === "throttled") return "throttled";
+  const found: GeoHit[] = [];
   for (const hit of hits) {
     const lat = Number(hit.lat);
     const lon = Number(hit.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon) || !inBox(box, lat, lon)) continue;
-    return {
+    found.push({
       lat,
       lon,
       ...(hit.display_name ? { label: hit.display_name } : {}),
       ...(hit.class ? { category: hit.class } : {}),
       ...(hit.type ? { kind: hit.type } : {}),
       ...(hit.namedetails ? { alsoNamed: Object.values(hit.namedetails) } : {}),
-    };
+    });
   }
-  return null;
+  // Namesakes: "Mercado Municipal, Barreiras" is also the market of a
+  // village twenty kilometres out, inside the same municipality. The one
+  // nearest the middle of town is the one a visitor means.
+  if (near) found.sort((a, b) => distanceKm(a, near) - distanceKm(b, near));
+  return found[0] ?? null;
 }
 
 /**
@@ -250,6 +283,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     // Each area once, for its box. No box, no placing: an unbounded lookup
     // is how a Montreal stop landed at a water park near Quebec City.
     const boxes = new Map<string, AreaBox | null>();
+    /** The middle of each area, as the geocoder gave it, for the nearest namesake. */
+    const centres = new Map<string, { lat: number; lon: number }>();
     const boxFor = async (where: string): Promise<AreaBox | null | "throttled"> => {
       const key = where.toLowerCase();
       if (boxes.has(key)) return boxes.get(key) ?? null;
@@ -259,6 +294,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       const found = areaBoxFrom(hits[0]?.boundingbox);
       const box = found ? widenBox(found) : null;
       boxes.set(key, box);
+      const lat = Number(hits[0]?.lat);
+      const lon = Number(hits[0]?.lon);
+      if (box && Number.isFinite(lat) && Number.isFinite(lon)) centres.set(key, { lat, lon });
       return box;
     };
 
@@ -284,9 +322,15 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         break;
       }
       if (!box) continue;
+      /** The middle of the stop's town, which every find is measured from. */
+      const centre = centres.get(where.toLowerCase()) ?? null;
 
       /** The stop's queries inside one area; true once one of them lands. */
-      const tryIn = async (inWhere: string, bounds: AreaBox): Promise<boolean> => {
+      const tryIn = async (
+        inWhere: string,
+        bounds: AreaBox,
+        near: { lat: number; lon: number } | null,
+      ): Promise<boolean> => {
         const queries = planStopQueries(
           { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
           inWhere,
@@ -297,13 +341,13 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           if (cache.has(key)) {
             const hit = cache.get(key) ?? null;
             if (hit) {
-              placed.push({ index, ...hit });
+              placed.push({ index, ...hit, ...farFrom(hit) });
               return true;
             }
             continue;
           }
           if (!(await takeTurn())) return false;
-          const found = await geocode(provider, query, bounds);
+          const found = await geocode(provider, query, bounds, near ?? centre);
           if (found === "throttled") {
             // Asking harder will not help, and recording these as misses would
             // mark real places unfindable for the rest of the session.
@@ -312,7 +356,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           }
           cache.set(key, found);
           if (found) {
-            placed.push({ index, ...found });
+            placed.push({ index, ...found, ...farFrom(found) });
             return true;
           }
         }
@@ -321,14 +365,27 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
       // Inside an earlier stop that was found: beside it first. "Cenotaph,
       // Hiroshima" alone could be any memorial in the city.
+      /** Measured from the town, unless it was found beside the stop it is inside. */
+      let besideParent = false;
+      const farFrom = (hit: GeoHit): { farKm?: number } => {
+        if (besideParent || !centre || isAirport(hit)) return {};
+        const km = distanceKm(hit, centre);
+        return km > TOWN_KM ? { farKm: Math.round(km) } : {};
+      };
+
       const parent =
         stop.within != null && stop.within < index
           ? placed.find((hit) => hit.index === stop.within && !hit.inside)
           : undefined;
-      if (parent && (await tryIn(where, boxAround(parent, INSIDE_KM)))) continue;
+      if (parent) {
+        besideParent = true;
+        const beside = await tryIn(where, boxAround(parent, INSIDE_KM), parent);
+        besideParent = false;
+        if (beside) continue;
+      }
       if (throttled) break;
 
-      const landed = await tryIn(where, box);
+      const landed = await tryIn(where, box, null);
       // Not in its town: the trip's country, last. A stop saved without its
       // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
       // ever looked for in the wrong city. Callers still check the match
@@ -341,7 +398,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           throttled = true;
           break;
         }
-        if (countryBox) await tryIn(country, countryBox);
+        if (countryBox) await tryIn(country, countryBox, null);
       }
       // Still nowhere, but inside a stop that was found: pinned there.
       const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;

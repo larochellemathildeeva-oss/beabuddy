@@ -38,7 +38,7 @@ import { pdfProblem, pdfProblemMessage } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary, looksLikeIcs } from "@/lib/itinerary-ics";
 import { pastedLink } from "@/lib/itinerary-link";
 import { placeHintFromDetail } from "@/lib/direction-stops";
-import { estimatedSeconds } from "@/lib/geocode-plan";
+import { estimatedSeconds, labelAddress } from "@/lib/geocode-plan";
 import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
 import {
@@ -516,11 +516,18 @@ function ImportPanel({
         const rank = { high: 2, medium: 1, low: 0 } as const;
         // Pinned at the stop it is inside: its name will not match that
         // place's, and should not make it look like a wrong guess.
+        // Right name, wrong village: a namesake well outside the town is
+        // shown for checking and not pinned unless the person keeps it.
         const { confidence, reason } = hit.inside
           ? { confidence: "medium" as const, reason: `Pinned at ${hit.inside}, where it is` }
-          : scored.reduce((best, next) =>
-              rank[next.confidence] > rank[best.confidence] ? next : best,
-            );
+          : hit.farKm
+            ? {
+                confidence: "low" as const,
+                reason: `This is ${hit.farKm} km from the middle of town — maybe a namesake.`,
+              }
+            : scored.reduce((best, next) =>
+                rank[next.confidence] > rank[best.confidence] ? next : best,
+              );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,
@@ -629,12 +636,15 @@ function ImportPanel({
         const parent = order.indexOf(parentIndex(rows, i));
         // The address the source gave, pulled out by the parse; the detail
         // line's first clause only when it gave none.
-        const address = it.address?.trim() || placeHintFromDetail(it.detail);
-        const stay = stayMinutesFrom(it);
         // Already found, at review time, and already shown to the person
         // saving it — and only if it was trusted or kept. No second round of
         // lookups on the way out.
         const found = savedPin(i);
+        // With no address of its own, where it was found: a pinned stop
+        // that says "No place yet" hides a wrong pin as well as a right one.
+        const address =
+          it.address?.trim() || placeHintFromDetail(it.detail) || labelAddress(found?.label);
+        const stay = stayMinutesFrom(it);
         return [
           {
             ...(found ? { lat: found.lat, lon: found.lon } : {}),

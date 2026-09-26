@@ -242,8 +242,10 @@ export function autoPinTrusted(
     address?: string | null | undefined;
     place?: string | null | undefined;
   },
-  hit: Omit<MatchEvidence, "title">,
+  hit: Omit<MatchEvidence, "title"> & { farKm?: number | undefined },
 ): boolean {
+  // Well outside the stop's town: a namesake, however well the name matches.
+  if (hit.farKm) return false;
   const street = stop.address && looksLikeStreetAddress(stop.address) ? stop.address : null;
   const names = [stop.title, stop.place, street].filter((name): name is string =>
     Boolean(name && name.trim()),

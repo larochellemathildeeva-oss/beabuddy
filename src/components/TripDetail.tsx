@@ -63,7 +63,7 @@ import {
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
-import { strayStopIds } from "@/lib/geocode-plan";
+import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
 import { unroutedLegCopy } from "@/lib/timeline-directions";
@@ -268,7 +268,12 @@ export function TripDetail({
           // Saved only if it plausibly is this stop; a namesake stays
           // unplaced for the person to set, rather than pinned wrongly.
           if (!row || !autoPinTrusted({ title: row.title, address: row.address }, hit)) continue;
-          await board.updateItem(row.id, { lat: hit.lat, lon: hit.lon });
+          const where = row.address?.trim() ? null : labelAddress(hit.label);
+          await board.updateItem(row.id, {
+            lat: hit.lat,
+            lon: hit.lon,
+            ...(where ? { address: where } : {}),
+          });
         }
         if (found.throttled) {
           const placedIds = new Set(found.placed.map((hit) => pending[hit.index]?.id));
