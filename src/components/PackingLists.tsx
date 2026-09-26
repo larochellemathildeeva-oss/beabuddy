@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Image as ImageIcon } from "lucide-react";
 import { Sheet } from "@/components/Sheet";
+import { PackingListView } from "@/components/PackingListView";
 import { usePacking } from "@/hooks/usePacking";
 import { aiFailure } from "@/lib/ai-errors";
 import { downscaleImage } from "@/lib/image";
-import { groupPackItems } from "@/lib/packing-sections";
+import { groupPackItems, guessSection } from "@/lib/packing-sections";
 import { parsePackingList, type ParsedPackingList } from "@/lib/packing.functions";
 
 function TripAttachForm({
@@ -125,7 +126,6 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
   const [activeId, setActiveId] = useState("");
   const [newPack, setNewPack] = useState("");
   const [starter, setStarter] = useState("");
-  const [itemDraft, setItemDraft] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -184,8 +184,6 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
   const activeItems = p.items
     .filter((i) => i.list_id === activeId)
     .sort((a, b) => a.position - b.position);
-  const done = activeItems.filter((i) => i.packed).length;
-  const pct = activeItems.length ? Math.round((done / activeItems.length) * 100) : 0;
 
   return !p.signedIn ? (
     <p className="p-6 text-center text-[14.5px] text-muted-foreground">
@@ -354,7 +352,10 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
                     quantity: item.quantity ?? 1,
                   }))
                 : starter
-                  ? (STARTERS[starter] ?? [])
+                  ? (STARTERS[starter] ?? []).map((label) => ({
+                      label,
+                      section: guessSection(label),
+                    }))
                   : [];
               const id = await p.createPack(name, emoji, items);
               setActiveId(id);
@@ -381,105 +382,32 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
 
       {active && (
         <>
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[13px] text-muted-foreground">
-              {done} of {activeItems.length} packed
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => void p.resetPack(active.id)}
-                className="text-[12px] text-muted-foreground underline"
-              >
-                Uncheck all
-              </button>
-              <button
-                onClick={() => void p.duplicatePack(active.id)}
-                className="text-[12px] text-muted-foreground underline"
-              >
-                Duplicate
-              </button>
-              <button
-                onClick={() => void p.deletePack(active.id)}
-                className="text-[12px] text-muted-foreground underline"
-              >
-                Delete pack
-              </button>
-            </div>
-          </div>
-          <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-elevated">
-            <div
-              className="h-full rounded-full bg-primary transition-all"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-
-          <div className="space-y-3">
-            {groupPackItems(activeItems).map((group) => (
-              <div key={group.section ?? "__none"}>
-                {group.section && (
-                  <p className="label-caps mb-1 text-muted-foreground">{group.section}</p>
-                )}
-                <ul className="space-y-1">
-                  {group.items.map((item) => (
-                    <li key={item.id} className="flex items-center gap-2 rounded-xl px-1 py-1.5">
-                      <input
-                        id={`pack-${item.id}`}
-                        type="checkbox"
-                        checked={item.packed}
-                        onChange={(e) => void p.toggleItem(item.id, e.target.checked)}
-                        className="size-5"
-                      />
-                      <label
-                        htmlFor={`pack-${item.id}`}
-                        className={`flex-1 text-[15px] ${
-                          item.packed ? "text-muted-foreground line-through" : ""
-                        }`}
-                      >
-                        {item.label}
-                        {item.quantity > 1 ? ` ×${item.quantity}` : ""}
-                      </label>
-                      <button
-                        onClick={() => void p.removeItem(item.id)}
-                        aria-label={`Remove ${item.label}`}
-                        className="px-1 text-[13px] text-muted-foreground"
-                      >
-                        ✕
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-            {activeItems.length === 0 && (
-              <p className="py-4 text-center text-[13px] text-muted-foreground">
-                Nothing in this pack yet.
-              </p>
-            )}
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!itemDraft.trim()) return;
-              void p.addItem(active.id, itemDraft.trim());
-              setItemDraft("");
-            }}
-            className="mt-3 flex gap-2"
-          >
-            <input
-              value={itemDraft}
-              onChange={(e) => setItemDraft(e.target.value)}
-              placeholder="Add an item"
-              className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-            />
+          <div className="mb-2 flex items-center justify-end gap-3">
             <button
-              type="submit"
-              disabled={!itemDraft.trim()}
-              className="rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+              onClick={() => void p.resetPack(active.id)}
+              className="text-[12px] text-muted-foreground underline"
             >
-              Add
+              Uncheck all
             </button>
-          </form>
+            <button
+              onClick={() => void p.duplicatePack(active.id)}
+              className="text-[12px] text-muted-foreground underline"
+            >
+              Duplicate
+            </button>
+            <button
+              onClick={() => void p.deletePack(active.id)}
+              className="text-[12px] text-muted-foreground underline"
+            >
+              Delete pack
+            </button>
+          </div>
+          <PackingListView
+            pack={active}
+            rows={activeItems}
+            actions={p}
+            onSavedAsNew={(id) => setActiveId(id)}
+          />
         </>
       )}
     </div>
