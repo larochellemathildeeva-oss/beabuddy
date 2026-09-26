@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { pinColorClass, pinLabel } from "@/data/atlas";
 import type { NewReco, RecoRowDB } from "@/hooks/useRecommendations";
 import { beaLine } from "@/lib/bea-voice";
+import { partitionNew } from "@/lib/captured-place";
 import { tripDateLine } from "@/lib/trip-card";
 import { toLocalISODate } from "@/lib/trip-dates";
 import {
@@ -18,6 +19,10 @@ import {
 const pinChoices: KeeperPinType[] = ["reco", "visited", "nexttime", "wishlist"];
 
 const TRIP_COLS = "id, title, city, country, start_date, end_date";
+/** Rows per request, under the API's default cap so a full page means "ask again". */
+const PAGE = 500;
+/** Trip ids per request, to keep the query string a sensible length. */
+const TRIP_BATCH = 100;
 const ITEM_COLS =
   "id, trip_id, kind, title, detail, address, lat, lon, day_date, position, arrived_at, left_at";
 
@@ -52,23 +57,33 @@ export function TripPlacesImport({
     let cancelled = false;
     void (async () => {
       try {
-        const { data: tripRows, error: tripError } = await supabase
-          .from("trips")
-          .select(TRIP_COLS)
-          .order("start_date", { ascending: false });
-        if (tripError) throw tripError;
-        const found = (tripRows ?? []) as KeeperTrip[];
-        let rows: KeeperItem[] = [];
-        if (found.length) {
-          const { data: itemRows, error: itemError } = await supabase
-            .from("itinerary_items")
-            .select(ITEM_COLS)
-            .in(
-              "trip_id",
-              found.map((t) => t.id),
-            );
-          if (itemError) throw itemError;
-          rows = (itemRows ?? []) as KeeperItem[];
+        // Paged, because a project returns at most a set number of rows per
+        // request and a long travel history is exactly who this is for.
+        const found: KeeperTrip[] = [];
+        for (let from = 0; ; from += PAGE) {
+          const { data, error: tripError } = await supabase
+            .from("trips")
+            .select(TRIP_COLS)
+            .order("id")
+            .range(from, from + PAGE - 1);
+          if (tripError) throw tripError;
+          found.push(...((data ?? []) as KeeperTrip[]));
+          if ((data ?? []).length < PAGE || cancelled) break;
+        }
+        const rows: KeeperItem[] = [];
+        for (let i = 0; i < found.length && !cancelled; i += TRIP_BATCH) {
+          const ids = found.slice(i, i + TRIP_BATCH).map((t) => t.id);
+          for (let from = 0; ; from += PAGE) {
+            const { data, error: itemError } = await supabase
+              .from("itinerary_items")
+              .select(ITEM_COLS)
+              .in("trip_id", ids)
+              .order("id")
+              .range(from, from + PAGE - 1);
+            if (itemError) throw itemError;
+            rows.push(...((data ?? []) as KeeperItem[]));
+            if ((data ?? []).length < PAGE || cancelled) break;
+          }
         }
         if (cancelled) return;
         setTrips(found);
@@ -100,18 +115,22 @@ export function TripPlacesImport({
       return next;
     });
 
-  const selection = groups.flatMap((group) =>
-    group.places
-      .filter((place) => !place.saved && picked.has(place.item.id))
-      .map((place) => ({ place, trip: group.trip })),
-  );
+  // The same venue can be on two trips; picked on both, it is saved once.
+  const selection = partitionNew(
+    vault,
+    groups.flatMap((group) =>
+      group.places
+        .filter((place) => !place.saved && picked.has(place.item.id))
+        .map((place) => keeperToReco(place.item, group.trip, pinType)),
+    ),
+  ).fresh;
 
   const save = async () => {
     if (selection.length === 0) return;
     setSaving(true);
     setError(null);
     try {
-      await onAddMany(selection.map(({ place, trip }) => keeperToReco(place.item, trip, pinType)));
+      await onAddMany(selection);
       setPicked(new Set());
       const line = beaLine("recs.saved");
       toast.success(line.title, { description: line.body });

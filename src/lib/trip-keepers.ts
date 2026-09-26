@@ -61,6 +61,23 @@ function asPlace(item: KeeperItem, trip: KeeperTrip): PlaceLike {
   };
 }
 
+/** Meal words in a title, for a row whose stored kind does not say. */
+const MEAL_TITLE = /\b(breakfast|brunch|lunch|dinner|restaurant|caf[eé]|bar|drinks|tasting)\b/i;
+
+/**
+ * The vault category for a row, by glyph.
+ *
+ * A booked table comes in from a calendar as "reservation", which the glyph
+ * table reads as an activity (a reservation can as well be a show), so the
+ * title decides whether it was a meal.
+ */
+export function keeperCategory(item: Pick<KeeperItem, "kind" | "title">): string {
+  if (item.kind.trim().toLowerCase() === "reservation" && MEAL_TITLE.test(item.title)) {
+    return vaultCategory("meal");
+  }
+  return vaultCategory(timelineGlyph(item));
+}
+
 /** What a kept timeline row is saved as. The trip is where it was found. */
 export function keeperToReco(item: KeeperItem, trip: KeeperTrip, pinType?: KeeperPinType) {
   return {
@@ -77,7 +94,7 @@ export function keeperToReco(item: KeeperItem, trip: KeeperTrip, pinType?: Keepe
       {
         // By glyph, so a row stored as "dinner" or "hotel" files itself
         // correctly rather than landing in the catch-all.
-        category: vaultCategory(timelineGlyph(item)),
+        category: keeperCategory(item),
         ...(item.detail?.trim() ? { notes: item.detail.trim() } : {}),
       },
     ),

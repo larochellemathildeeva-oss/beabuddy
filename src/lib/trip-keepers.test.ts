@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   isAlreadyKept,
   isKeepable,
+  keeperCategory,
   keeperGroups,
   keeperToReco,
   type KeeperItem,
@@ -121,4 +122,11 @@ test("keeperGroups leaves out trips with nothing to keep", () => {
     "2026-09-26",
   );
   assert.deepEqual(groups, []);
+});
+
+test("keeperCategory: a booked table is a restaurant, other bookings are places", () => {
+  assert.equal(keeperCategory({ kind: "reservation", title: "Dinner at Belcanto" }), "Restaurant");
+  assert.equal(keeperCategory({ kind: "reservation", title: "Fado show" }), "Place");
+  assert.equal(keeperCategory({ kind: "hotel", title: "Memmo Alfama" }), "Stay");
+  assert.equal(keeperCategory({ kind: "museum", title: "Gulbenkian" }), "Sight");
 });

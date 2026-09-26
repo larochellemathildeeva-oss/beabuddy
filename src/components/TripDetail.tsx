@@ -279,31 +279,55 @@ export function TripDetail({
   // built from this exact stop list. They used to be indexed in blindly, so a
   // city-to-city download showed up underneath timeline entries.
   /**
-   * Keep a timeline stop in the vault. A place worth going to on this trip is
-   * a place worth remembering after it — that is the whole premise, and the
-   * timeline had no way to get anything back out.
+   * What is already in the vault, for the Save on each card. Null until it
+   * has loaded: an unknown vault is not an empty one, so a save made before
+   * then (or after the read failed) checks for itself.
    */
-  const [vaultPlaces, setVaultPlaces] = useState<PlaceLike[]>([]);
+  const [vaultPlaces, setVaultPlaces] = useState<PlaceLike[] | null>(null);
+  const loadVaultPlaces = async (): Promise<PlaceLike[]> => {
+    const { data, error } = await supabase.from("recommendations").select("name, city, lat, lon");
+    if (error) throw new Error("Couldn't check your saved places. Try again in a moment.");
+    return data ?? [];
+  };
   useEffect(() => {
     let cancelled = false;
-    void supabase
-      .from("recommendations")
-      .select("name, city, lat, lon")
-      .then(({ data }) => {
-        if (!cancelled && data) setVaultPlaces(data);
-      });
+    loadVaultPlaces().then(
+      (places) => {
+        if (!cancelled) setVaultPlaces(places);
+      },
+      () => {
+        /* stays unknown; a save reads it again */
+      },
+    );
     return () => {
       cancelled = true;
     };
   }, []);
-  const isKept = (item: ItineraryRow) => isAlreadyKept(item, trip, vaultPlaces);
+  const isKept = (item: ItineraryRow) =>
+    vaultPlaces ? isAlreadyKept(item, trip, vaultPlaces) : false;
+  // A second tap while the first save is still in flight must not file a copy.
+  const keeping = useRef<Set<string>>(new Set());
+  /**
+   * Keep a timeline stop in the vault. A place worth going to on this trip is
+   * a place worth remembering after it — that is the whole premise, and the
+   * timeline had no way to get anything back out.
+   */
   const keepItemAsReco = async (item: ItineraryRow) => {
-    // Already there, perhaps from another trip or the Recs tab: say so rather
-    // than filing a second copy.
-    if (!isKept(item)) {
-      const reco = keeperToReco(item, trip);
-      await addRecommendationOnce(reco);
-      setVaultPlaces((prev) => [...prev, reco]);
+    if (keeping.current.has(item.id)) return;
+    keeping.current.add(item.id);
+    try {
+      const vault = vaultPlaces ?? (await loadVaultPlaces());
+      // Already there, perhaps from another trip or the Recs tab: say so
+      // rather than filing a second copy.
+      if (isAlreadyKept(item, trip, vault)) {
+        setVaultPlaces(vault);
+      } else {
+        const reco = keeperToReco(item, trip);
+        await addRecommendationOnce(reco);
+        setVaultPlaces((prev) => [...(prev ?? vault), reco]);
+      }
+    } finally {
+      keeping.current.delete(item.id);
     }
     const line = beaLine("recs.saved");
     toast.success(line.title, { description: line.body });
