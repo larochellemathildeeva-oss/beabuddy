@@ -5,7 +5,12 @@ import { Link2, Plus, Search } from "lucide-react";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { hitsSpanCountries } from "@/lib/place-search-near";
-import { parsePlaceLink, searchPlaces, type ParsedPlace } from "@/lib/places.functions";
+import {
+  parsePlaceLink,
+  searchPlaces,
+  suggestPlaces,
+  type ParsedPlace,
+} from "@/lib/places.functions";
 import { PLACE_LOOKUP_GAP_MS } from "@/lib/world-countries";
 
 /** Long enough that a name is worth looking up, short enough to feel live. */
@@ -64,7 +69,50 @@ export function PlaceSearchInput({
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
+  const suggest = useServerFn(suggestPlaces);
   const [hits, setHits] = useState<ParsedPlace[]>([]);
+  /** Close spellings offered when a search finds nothing: "Did you mean Miyajima?" */
+  const [suggested, setSuggested] = useState<{ key: string; places: ParsedPlace[] }>({
+    key: "",
+    places: [],
+  });
+  /** The query suggestions were last asked for, so an empty answer is asked once. */
+  const suggestedFor = useRef("");
+
+  /**
+   * After an empty answer, look for close spellings. Once per query: the
+   * type-ahead and the Search button can both come back empty for it.
+   */
+  const offerSuggestions = async (q: string) => {
+    const key = suggestionKey(q);
+    if (q.length < 4 || suggestedFor.current === key) return;
+    suggestedFor.current = key;
+    try {
+      const res = await suggest({
+        data: {
+          query: q,
+          ...(near ? { near } : {}),
+          ...(at ? { at } : {}),
+          ...(center ? { center } : {}),
+          ...(areas ? { areas: true } : {}),
+        },
+      });
+      // Kept with the search it answers; shown only while that is still the
+      // search (below), so a late answer never offers old spellings for new text.
+      setSuggested({ key, places: res });
+    } catch {
+      // Nothing to suggest is what the empty search already said.
+    }
+  };
+  /** The search a suggestion answers: the words and where they were looked for. */
+  const suggestionKey = (q: string) =>
+    JSON.stringify([q, near ?? "", at ?? null, center ?? null, areas]);
+  const suggestions =
+    suggested.key && suggested.key === suggestionKey(value.trim()) ? suggested.places : [];
+  const setSuggestions = (places: ParsedPlace[]) =>
+    setSuggested((cur) =>
+      places.length === 0 && cur.places.length === 0 ? cur : { key: "", places },
+    );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   /** Bumped on pick/clear so type-ahead does not immediately re-open. */
@@ -106,7 +154,9 @@ export function PlaceSearchInput({
         },
       });
       setHits(res);
+      setSuggestions([]);
       if (res.length === 0) {
+        void offerSuggestions(q);
         // Say which of the two happened. "No match" while Béa was looking at
         // the whole world reads as "this place does not exist", and the fix
         // is one tap away rather than a rephrasing.
@@ -136,6 +186,7 @@ export function PlaceSearchInput({
     const q = value.trim();
     if (q.length < TYPE_AHEAD_MIN) {
       setHits([]);
+      setSuggestions([]);
       setErr("");
       return;
     }
@@ -155,10 +206,12 @@ export function PlaceSearchInput({
         });
         if (cancelled) return;
         setHits(res);
+        setSuggestions([]);
         // Type-ahead used to go quiet on an empty answer, so a search that
         // needed "near me" looked like the box was broken — no list, no
         // message, no button. Say so the same way the Search tap does.
         if (res.length === 0) {
+          void offerSuggestions(q);
           setErr(
             at || near
               ? "No match on the map — you can still type it in."
@@ -175,6 +228,9 @@ export function PlaceSearchInput({
       cancelled = true;
       clearTimeout(timer);
     };
+    // offerSuggestions reads the same props; listing it would re-run the
+    // lookup on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, near, at, center, areas, typeAhead, search]);
 
   /**
@@ -197,6 +253,7 @@ export function PlaceSearchInput({
     settled.current = place.name;
     onPick(place);
     setHits([]);
+    setSuggestions([]);
     setErr("");
   };
 
@@ -238,6 +295,28 @@ export function PlaceSearchInput({
         </button>
       </div>
       {err && <p className="text-[12px] text-muted-foreground">{err}</p>}
+      {hits.length === 0 && suggestions.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[12px] text-muted-foreground">Did you mean</span>
+          {suggestions.map((place, i) => {
+            const line = placeSuggestionLines(place);
+            return (
+              <button
+                key={`${place.name}-${i}`}
+                type="button"
+                onClick={() => choose(place)}
+                title={line.subtitle ?? line.title}
+                className="rounded-full border border-primary/50 px-2.5 py-1 text-[12.5px] font-semibold text-primary"
+              >
+                {place.name}
+                {place.city && place.city !== place.name ? (
+                  <span className="font-normal text-muted-foreground"> · {place.city}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {/* Offered on every answer while Béa does not know where you are. It
           used to wait for an empty list or one spanning countries, and so
           hid itself for "subway" when both answers were in Quebec — just not

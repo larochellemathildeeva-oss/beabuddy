@@ -57,6 +57,12 @@ export function StopPeek({
       </div>
       <h3 className="mt-0.5 break-words font-display text-[21px] leading-tight">{stop.title}</h3>
       {detail ? <p className="mt-1 text-[13.5px] text-muted-foreground">{detail}</p> : null}
+      {stop.inside && stop.inside.length > 0 ? (
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Inside:{" "}
+          {stop.inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
+        </p>
+      ) : null}
       {where.length > 0 && (
         <p className="mt-1 text-[12.5px] text-muted-foreground">{where.join(" · ")}</p>
       )}

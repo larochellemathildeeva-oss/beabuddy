@@ -118,10 +118,12 @@ export type Database = {
           day_date: string | null
           detail: string | null
           id: string
+          inside: Json
           kind: string
           lat: number | null
           left_at: string | null
           lon: number | null
+          parent_id: string | null
           planned_stay_minutes: number | null
           position: number
           time_label: string | null
@@ -141,10 +143,12 @@ export type Database = {
           day_date?: string | null
           detail?: string | null
           id?: string
+          inside?: Json
           kind?: string
           lat?: number | null
           left_at?: string | null
           lon?: number | null
+          parent_id?: string | null
           planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null
@@ -164,10 +168,12 @@ export type Database = {
           day_date?: string | null
           detail?: string | null
           id?: string
+          inside?: Json
           kind?: string
           lat?: number | null
           left_at?: string | null
           lon?: number | null
+          parent_id?: string | null
           planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null
@@ -177,6 +183,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "itinerary_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "itinerary_items_trip_id_fkey"
             columns: ["trip_id"]

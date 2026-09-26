@@ -83,8 +83,9 @@ import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { daysForMaps } from "@/lib/day-maps";
 import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
-import { isTravelLeg, legTarget, withLegNote } from "@/lib/import-stop";
+import { isTravelLeg, legTarget, routeCityOn, routeStopOn, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
+import type { InsideEntry } from "@/lib/inside-list";
 import {
   asPerspective,
   defaultPerspective,
@@ -154,6 +155,13 @@ export function TripDetail({
     stops: cities.stops,
   });
   const directionArea = lookupArea || undefined;
+  /**
+   * Where to look a stop up: the city the route has you in that day, then
+   * the trip's area. A multi-city trip used to search every stop around its
+   * first city, so a Miyajima stop on Oct 7 was looked for near Tokyo.
+   */
+  const nearOn = (day: string | null | undefined): string | undefined =>
+    routeCityOn(cities.stops, day) || directionArea;
 
   /**
    * Put the trip's stops on the map, once, in the background.
@@ -242,11 +250,15 @@ export function TripDetail({
       try {
         const found = await geocodePlanStops({
           data: {
-            stops: pending.map((row) => ({
-              title: row.title,
-              detail: row.address ?? null,
-              address: row.address ?? null,
-            })),
+            stops: pending.map((row) => {
+              const area = routeCityOn(cities.stops, row.day_date);
+              return {
+                title: row.title,
+                detail: row.address ?? null,
+                address: row.address ?? null,
+                ...(area ? { area } : {}),
+              };
+            }),
             area: lookupArea,
           },
         });
@@ -395,6 +407,47 @@ export function TripDetail({
     };
     return { lat: median(placed.map((p) => p.lat)), lon: median(placed.map((p) => p.lon)) };
   }, [board.items]);
+  /** The middle of that day's city when the route has it pinned, else the trip's. */
+  const centerOn = (day: string | null | undefined) => {
+    const here = routeStopOn(cities.stops, day);
+    return here && here.lat != null && here.lon != null
+      ? { lat: here.lat, lon: here.lon }
+      : here
+        ? null
+        : tripCenter;
+  };
+  /**
+   * What a card needs to show nesting: the stop it is inside (same day only,
+   * so the indent sits under its parent), how many stops are inside it, and
+   * saving the list of what is inside it.
+   */
+  const itemsById = useMemo(() => new Map(board.items.map((i) => [i.id, i])), [board.items]);
+  const nestedCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of board.items) {
+      if (i.parent_id && itemsById.has(i.parent_id)) {
+        counts.set(i.parent_id, (counts.get(i.parent_id) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }, [board.items, itemsById]);
+  const nestProps = (item: ItineraryRow) => {
+    const onInside = (next: InsideEntry[]) => void board.updateItem(item.id, { inside: next });
+    // Flat, by choice: every stop on its own line, what is inside as a note.
+    if (!view.prefs.nesting) return { flat: true, onInside };
+    const parent = item.parent_id ? itemsById.get(item.parent_id) : undefined;
+    return {
+      ...(parent && parent.day_date === item.day_date ? { parentTitle: parent.title } : {}),
+      nestedStops: nestedCounts.get(item.id) ?? 0,
+      onInside,
+    };
+  };
+  /** The search anchors for a stop on that day, as props. */
+  const withNear = (day: string | null | undefined) => {
+    const near = nearOn(day);
+    const center = centerOn(day);
+    return { ...(near ? { near } : {}), ...(center ? { center } : {}) };
+  };
   // Pins far from the rest of the trip, saved before lookups were bounded to
   // the trip's area: flagged on their cards so they get checked.
   const strayIds = useMemo(() => strayStopIds(board.items), [board.items]);
@@ -882,6 +935,7 @@ export function TripDetail({
                 key={`${chosenDay}:${mapFocus ?? ""}`}
                 focusId={mapFocus}
                 groups={shownGroups}
+                nesting={view.prefs.nesting}
                 area={formatTripLocation(trip.city, trip.country)}
                 todayKey={todayKey}
                 ordinals={Object.fromEntries(
@@ -1186,8 +1240,8 @@ export function TripDetail({
                                             board.updateItem(item.id, patch)
                                           }
                                           onToggleDone={() => toggleDone(item)}
-                                          {...(directionArea ? { near: directionArea } : {})}
-                                          {...(tripCenter ? { center: tripCenter } : {})}
+                                          {...withNear(item.day_date)}
+                                          {...nestProps(item)}
                                           onEdit={(field) => board.setEditing(field)}
                                           onUpdate={(patch) =>
                                             void board.updateItem(item.id, patch)
@@ -1228,8 +1282,8 @@ export function TripDetail({
                                           }
                                           onToggleDone={() => toggleDone(item)}
                                           editing={editingTimeline}
-                                          {...(directionArea ? { near: directionArea } : {})}
-                                          {...(tripCenter ? { center: tripCenter } : {})}
+                                          {...withNear(item.day_date)}
+                                          {...nestProps(item)}
                                           onEdit={(field) => board.setEditing(field)}
                                           onUpdate={(patch) =>
                                             void board.updateItem(item.id, patch)
@@ -1289,8 +1343,8 @@ export function TripDetail({
                             onSaveBooking={(patch) => board.updateItem(item.id, patch)}
                             onToggleDone={() => toggleDone(item)}
                             editing={editingTimeline}
-                            {...(directionArea ? { near: directionArea } : {})}
-                            {...(tripCenter ? { center: tripCenter } : {})}
+                            {...withNear(item.day_date)}
+                            {...nestProps(item)}
                             onEdit={(field) => board.setEditing(field)}
                             onUpdate={(patch) => void board.updateItem(item.id, patch)}
                             onRemove={() => void removeTimelineItem(item)}
@@ -1347,8 +1401,7 @@ export function TripDetail({
                     tripEnd={trip.end_date}
                     {...(addDay ? { openDay: addDay } : {})}
                     {...(addBetween?.time ? { openTime: addBetween.time } : {})}
-                    {...(directionArea ? { near: directionArea } : {})}
-                    {...(tripCenter ? { center: tripCenter } : {})}
+                    {...withNear(addDay || null)}
                     existing={board.items.map((item) => ({
                       title: item.title,
                       address: item.address,

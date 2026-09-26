@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   areaBoxFrom,
+  boxAround,
   boxViewbox,
   inBox,
   planStopQueries,
@@ -35,6 +36,17 @@ const StopIn = z.object({
   address: z.string().max(300).nullish(),
   /** The stop's own town, when the plan names one; looked up instead of the trip's area. */
   city: z.string().max(120).nullish(),
+  /**
+   * Where the trip is on the stop's day ("Hiroshima, Japan"), from its route.
+   * Takes the place of the trip's area for this stop: a multi-city trip's
+   * home city is the wrong place for most of its days.
+   */
+  area: z.string().max(200).nullish(),
+  /**
+   * The earlier stop in this same request that this one is inside (a
+   * monument in a park), by position. Looked up beside that stop's pin first.
+   */
+  within: z.number().int().min(0).nullish(),
 });
 
 type StopInput = {
@@ -43,11 +55,19 @@ type StopInput = {
   place?: string | null;
   address?: string | null;
   city?: string | null;
+  area?: string | null;
+  within?: number | null;
 };
 
 const Input = z.object({
   stops: z.array(StopIn).max(60),
   area: z.string().max(200).nullish(),
+  /**
+   * When the caller's previous batch made its requests (this server's
+   * clock, as that call returned them), so the provider's pace — the gap
+   * and the per-minute cap — carries across batches instead of restarting.
+   */
+  recent: z.array(z.number()).max(200).nullish(),
 });
 
 /**
@@ -69,7 +89,15 @@ export type PlacedStop = {
   kind?: string;
   /** Its other names (local, English, alternative), for the confidence check. */
   alsoNamed?: string[];
+  /**
+   * Not found on its own, so pinned where the stop it is inside is: the
+   * title of that stop. A gallery at its museum is close enough to walk to.
+   */
+  inside?: string;
 };
+
+/** How far from the stop it is inside a place is looked for, in km. */
+const INSIDE_KM = 2;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -173,13 +201,15 @@ function countryOf(area: string): string {
 
 export const geocodePlanStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: StopInput[]; area?: string | null }) => Input.parse(input))
+  .inputValidator((input: { stops: StopInput[]; area?: string | null; recent?: number[] | null }) =>
+    Input.parse(input),
+  )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const placed: PlacedStop[] = [];
     // A trip with no area can still be placed stop by stop when the plan
     // names each stop's town; with neither, nothing is looked up.
-    if (!area && !data.stops.some((stop) => stop.city?.trim()))
+    if (!area && !data.stops.some((stop) => stop.city?.trim() || stop.area?.trim()))
       return { placed, lookedUp: 0, area: "" };
 
     // Which service answers, and how fast it lets us ask. Imported here
@@ -190,12 +220,13 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
     const cache = new Map<string, GeoHit | null>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
-    const sent: number[] = [];
+    // Only the last minute matters to either cap.
+    const sent: number[] = (data.recent ?? []).filter((t) => Date.now() - t < 60_000);
     let throttled = false;
     const deadline = Date.now() + WALL_MS;
     let budget = LOOKUP_BUDGET;
     let lookedUp = 0;
-    let first = true;
+    let first = sent.length === 0;
 
     /** Waits its turn, then counts the request. False when out of time or budget. */
     const takeTurn = async (): Promise<boolean> => {
@@ -233,21 +264,24 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
     for (const [index, stop] of data.stops.entries()) {
       // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
-      // then the trip's area if the town cannot be found.
-      const own = stopArea(stop.city, area);
+      // then where the trip is that day, then the trip's area.
+      const dayArea = stop.area?.trim() || area;
+      const own = stopArea(stop.city, dayArea);
       let where = own;
       let box = own ? await boxFor(own) : null;
       if (box === "throttled") {
         throttled = true;
         break;
       }
-      if (!box && own !== area && area) {
-        where = area;
-        box = await boxFor(area);
-        if (box === "throttled") {
-          throttled = true;
-          break;
-        }
+      for (const fallback of [dayArea, area]) {
+        if (box || !fallback || fallback === where) continue;
+        where = fallback;
+        box = await boxFor(fallback);
+        if (box === "throttled") break;
+      }
+      if (box === "throttled") {
+        throttled = true;
+        break;
       }
       if (!box) continue;
 
@@ -258,7 +292,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inWhere,
         ).slice(0, QUERIES_PER_STOP);
         for (const query of queries) {
-          const key = query.toLowerCase();
+          // Per box: a miss beside the parent is not a miss across the city.
+          const key = `${query.toLowerCase()}|${boxViewbox(bounds)}`;
           if (cache.has(key)) {
             const hit = cache.get(key) ?? null;
             if (hit) {
@@ -284,13 +319,22 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         return false;
       };
 
+      // Inside an earlier stop that was found: beside it first. "Cenotaph,
+      // Hiroshima" alone could be any memorial in the city.
+      const parent =
+        stop.within != null && stop.within < index
+          ? placed.find((hit) => hit.index === stop.within && !hit.inside)
+          : undefined;
+      if (parent && (await tryIn(where, boxAround(parent, INSIDE_KM)))) continue;
+      if (throttled) break;
+
       const landed = await tryIn(where, box);
       // Not in its town: the trip's country, last. A stop saved without its
       // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
       // ever looked for in the wrong city. Callers still check the match
       // before saving it (autoPinTrusted), and the stray-pin warning flags
       // anything far from the rest of the trip.
-      const country = countryOf(area);
+      const country = countryOf(dayArea) || countryOf(area);
       if (!landed && !throttled && country && country.toLowerCase() !== where.toLowerCase()) {
         const countryBox = await boxFor(country);
         if (countryBox === "throttled") {
@@ -299,10 +343,21 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         }
         if (countryBox) await tryIn(country, countryBox);
       }
+      // Still nowhere, but inside a stop that was found: pinned there.
+      const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;
+      if (parent && parentTitle && !throttled && !placed.some((hit) => hit.index === index)) {
+        placed.push({
+          index,
+          lat: parent.lat,
+          lon: parent.lon,
+          ...(parent.label ? { label: parent.label } : {}),
+          inside: parentTitle,
+        });
+      }
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.
       if (throttled) break;
     }
 
-    return { placed, lookedUp, area, throttled };
+    return { placed, lookedUp, area, throttled, sent: sent.slice(-120) };
   });

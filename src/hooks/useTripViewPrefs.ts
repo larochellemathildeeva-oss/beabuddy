@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
  * there is a conditional render, not a setting. Kept on this device, the
  * same way the Home layout is.
  */
-export type TripViewKey = "ribbon" | "journey" | "walkTimes";
+export type TripViewKey = "ribbon" | "journey" | "walkTimes" | "nesting";
 
 export type TripViewPrefs = Record<TripViewKey, boolean>;
 
@@ -25,9 +25,19 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
     label: "Walk times",
     hint: "The walk or drive between stops on the Day tab, with directions.",
   },
+  {
+    key: "nesting",
+    label: "Nested stops",
+    hint: "Stops inside another tucked under it, and a pill for what to see inside. Off: every stop on its own line.",
+  },
 ];
 
-export const DEFAULT_TRIP_VIEW: TripViewPrefs = { ribbon: true, journey: true, walkTimes: true };
+export const DEFAULT_TRIP_VIEW: TripViewPrefs = {
+  ribbon: true,
+  journey: true,
+  walkTimes: true,
+  nesting: true,
+};
 
 const keyFor = (userId: string | undefined) => `bea-trip-view-${userId ?? "anon"}`;
 

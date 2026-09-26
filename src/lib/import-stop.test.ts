@@ -58,7 +58,7 @@ test("a doubtful pin is saved only when kept; any pin can be removed", () => {
   assert.equal(pinIsSaved("high", "drop"), false);
 });
 
-test("movement between stops is a travel leg; arrivals and bookings are not", async () => {
+test("movement between stops and arriving are travel legs; bookings are not", async () => {
   const { isTravelLeg } = await import("./import-stop.ts");
   const t = (title: string, kind = "transport") => isTravelLeg({ kind, title });
   assert.ok(t("Travel to Peace Memorial Park"));
@@ -75,7 +75,15 @@ test("movement between stops is a travel leg; arrivals and bookings are not", as
     !t("World Heritage Sea Route: Peace Park to Miyajima"),
     "a named, booked crossing stays",
   );
-  assert.ok(!t("Arrive Hiroshima Station"));
+  assert.ok(t("Arrive Hiroshima Station"), "arriving is the end of the journey");
+  assert.ok(t("Arrive Peace Memorial Park - Hiroshima", "sight"));
+  assert.ok(t("Arrive by 09:15 at Peace Park", "activity"));
+  assert.ok(t("Arrival at Miyajima pier", "note"));
+  assert.ok(!t("Arrive at the ryokan", "lodging"), "a place you sleep stays");
+  assert.ok(t("Shin-Osaka Station → Hiroshima Station"), "an arrow on a train, no verb");
+  assert.ok(t("Hiroshima Station → Peace Memorial Park", "sight"), "from a station, any kind");
+  assert.ok(!t("Trevi Fountain → Spanish Steps", "sight"), "a stroll between sights stays");
+  assert.ok(!t("Okonomimura → Hiroshima Station", "meal"), "a meal stays");
   assert.ok(!t("Motoyasubashi Pier ferry"));
   assert.ok(!t("Flight JL123 to Tokyo", "flight"));
   assert.ok(!t("Walk to the torii", "sight"), "only transport rows");
@@ -109,22 +117,17 @@ test("a travel leg becomes a note on the stop it leads to", async () => {
   ]);
   assert.deepEqual(
     out.map((r) => r.title),
-    [
-      "Arrive Hiroshima Station",
-      "Peace Memorial Museum",
-      "Itsukushima Shrine",
-      "Shinkansen to Kyoto",
-    ],
+    ["Peace Memorial Museum", "Itsukushima Shrine", "Shinkansen to Kyoto"],
+  );
+  assert.equal(
+    out[0]!.detail,
+    "Booked · Getting there: Arrive Hiroshima Station, 08:36 · Getting there: Travel to Peace Memorial Park, 09:00, Tram 2, 15 min",
   );
   assert.equal(
     out[1]!.detail,
-    "Booked · Getting there: Travel to Peace Memorial Park, 09:00, Tram 2, 15 min",
-  );
-  assert.equal(
-    out[2]!.detail,
     "Getting there: Take the ferry to Miyajima, 10:30 · Afterwards: Walk back to the hotel",
   );
-  assert.equal(out[3]!.detail, null, "a leg alone on its day stays");
+  assert.equal(out[2]!.detail, null, "a leg alone on its day stays");
 });
 
 test("a rough time keeps its time", () => {
@@ -197,5 +200,142 @@ test("a journey the model wrote into the stop and as its own line is noted once"
   assert.equal(
     two[0]!.detail,
     "Getting there: Tram 2 to the pier, 10:00 · Getting there: Take the ferry to Miyajima, 10:30",
+  );
+});
+
+test("a stop is looked up in the city the trip is in that day", async () => {
+  const { routeCityOn, routeCountry } = await import("./import-stop.ts");
+  const route = [
+    { city: "Tokyo", country: "Japan", arrive_on: "2026-09-30", depart_on: "2026-10-03" },
+    { city: "Kyoto", country: "Japan", arrive_on: "2026-10-03", depart_on: "2026-10-06" },
+    { city: "Hiroshima", country: "Japan", arrive_on: "2026-10-06", depart_on: "2026-10-08" },
+    { city: "Osaka", country: "Japan", arrive_on: "2026-10-08", depart_on: null },
+  ];
+  assert.equal(routeCityOn(route, "2026-10-01"), "Tokyo, Japan");
+  assert.equal(
+    routeCityOn(route, "2026-10-03"),
+    "Kyoto, Japan",
+    "a travel day is where you arrive",
+  );
+  assert.equal(routeCityOn(route, "2026-10-07"), "Hiroshima, Japan");
+  assert.equal(routeCityOn(route, "2026-10-10"), "Osaka, Japan");
+  assert.equal(routeCityOn(route, "2026-09-01"), null, "before the trip, nowhere");
+  assert.equal(routeCityOn(route, null), null);
+  assert.equal(
+    routeCityOn([{ city: "Lisbon", country: "Portugal" }], "2026-10-01"),
+    "Lisbon, Portugal",
+  );
+  assert.equal(routeCountry(route), "Japan");
+  assert.equal(routeCountry([...route, { city: "Seoul", country: "South Korea" }]), null);
+});
+
+test("what is listed inside a place folds into it; a timed stop inside stays", async () => {
+  const { nestWithin, parentIndex } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-07",
+    day_number: null as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const rows = [
+    row("Peace Memorial Museum", { time_label: "09:30", detail: "Booked" }),
+    row("East building", { within: "Peace Memorial Museum" }),
+    row("Main building", { within: "peace memorial museum" }),
+    row("Cenotaph for the A-bomb Victims", { time_label: "10:45", within: "Peace Memorial Park" }),
+    row("Peace Memorial Park", { time_label: "10:30" }),
+    row("Children's Peace Monument", { time_label: "11:00", within: "Peace Memorial Park" }),
+    row("Flame of Peace", { within: "Peace Memorial Park" }),
+    row("Shukkei-en", { within: "Somewhere never named" }),
+  ];
+  assert.equal(parentIndex(rows, 1), 0);
+  assert.equal(parentIndex(rows, 3), -1, "a parent must come first");
+  const out = nestWithin(rows);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    [
+      "Peace Memorial Museum",
+      "Cenotaph for the A-bomb Victims",
+      "Peace Memorial Park",
+      "Children's Peace Monument",
+      "Shukkei-en",
+    ],
+  );
+  assert.equal(out[0]!.detail, "Booked · Inside: East building, Main building");
+  assert.equal(out[2]!.detail, "Inside: Flame of Peace");
+  assert.equal(out[3]!.within, "Peace Memorial Park", "timed, so a stop, looked up beside it");
+  assert.equal(out[1]!.within, null);
+  assert.equal(out[4]!.within, null, "a name that matches nothing is dropped");
+});
+
+test("a place inside another on a different day is not folded", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const out = nestWithin([
+    {
+      kind: "sight",
+      title: "Louvre",
+      detail: null,
+      time_label: "09:00",
+      day_date: "2026-05-01",
+      day_number: null,
+    },
+    {
+      kind: "sight",
+      title: "Winged Victory",
+      detail: null,
+      time_label: null,
+      day_date: "2026-05-02",
+      day_number: null,
+      within: "Louvre",
+    },
+  ]);
+  assert.equal(out.length, 2);
+});
+
+test("a stop and the ones inside it are looked up together", async () => {
+  const { placeBatches } = await import("./import-stop.ts");
+  assert.deepEqual(placeBatches([-1, -1, -1, -1, -1], 2), [
+    [0, 2],
+    [2, 4],
+    [4, 5],
+  ]);
+  // Rows 2 and 3 are inside row 1: the cut waits until after them.
+  assert.deepEqual(placeBatches([-1, -1, 1, 1, -1, -1], 2), [
+    [0, 4],
+    [4, 6],
+  ]);
+  assert.deepEqual(placeBatches([], 8), []);
+});
+
+test("siblings that name their parent as their place are not each other's parent", async () => {
+  // What the model answers for "the Louvre: Mona Lisa, Winged Victory,
+  // Egyptian antiquities": each piece's place is the Louvre too.
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-05-02",
+    day_number: 1 as number | null,
+    ...extra,
+  });
+  const out = nestWithin([
+    row("Louvre", { time_label: "09:00", place: "Louvre" }),
+    row("Mona Lisa", { within: "Louvre", place: "Louvre" }),
+    row("Winged Victory of Samothrace", { within: "Louvre", place: "Louvre" }),
+    row("Egyptian antiquities", { within: "Louvre", place: "Louvre Museum" }),
+    row("Café Marly", { time_label: "13:00" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    ["Louvre", "Café Marly"],
+  );
+  assert.equal(
+    out[0]!.detail,
+    "Inside: Mona Lisa, Winged Victory of Samothrace, Egyptian antiquities",
   );
 });

@@ -794,6 +794,39 @@
     0 0 0 3px #fff,
     0 4px 12px rgb(68 61 54 / 0.3);
 }
+/* Inside another stop: a smaller ring beside its parent, numbered like its card. */
+.journal-pin--nested {
+  width: 20px;
+  height: 20px;
+  margin: 7px;
+  background: #fff;
+  color: var(--journal-accent);
+  font-size: 9.5px;
+  box-shadow:
+    0 0 0 2.5px var(--journal-accent),
+    0 2px 5px rgb(68 61 54 / 0.2);
+}
+.journal-pin--nested.journal-pin--on {
+  width: 26px;
+  height: 26px;
+  margin: 4px;
+  font-size: 11px;
+}
+/* "+2": what is listed inside the stop, on its card. */
+.journal-pin-badge {
+  position: absolute;
+  left: 24px;
+  top: -3px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--journal-ink);
+  color: #fff;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
 @media (prefers-reduced-motion: reduce) {
   .journal-pin {
     transition: none;

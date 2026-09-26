@@ -56,9 +56,22 @@ import {
   relativeDayCount,
   resolveDayDates,
 } from "@/lib/relative-days";
-import { geocodePlanStops, PLAN_LOOKUP_GAP_MS } from "@/lib/geocode-plan.functions";
-import { pinIsSaved, stayMinutesFrom, type PinChoice } from "@/lib/import-stop";
+import {
+  geocodePlanStops,
+  PLAN_LOOKUP_GAP_MS,
+  type PlacedStop,
+} from "@/lib/geocode-plan.functions";
+import {
+  parentIndex,
+  pinIsSaved,
+  placeBatches,
+  routeCityOn,
+  routeCountry,
+  stayMinutesFrom,
+  type PinChoice,
+} from "@/lib/import-stop";
 import { stayLabel } from "@/lib/planned-stay";
+import { splitInsideNote, type InsideEntry } from "@/lib/inside-list";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -77,7 +90,14 @@ type NewItineraryItem = {
   lon?: number;
   planned_stay_minutes?: number;
   booked?: boolean;
+  /** What to see inside this stop, with no time of its own. */
+  inside?: InsideEntry[];
+  /** The stop in this same save that this one is inside, by position. */
+  parent_index?: number;
 };
+
+/** Stops placed per server call: a long plan in one call ran out of time and came back bare. */
+const PLACE_BATCH = 8;
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
@@ -166,6 +186,7 @@ export function ItineraryImport({
       {tab === "import" && (
         <ImportPanel
           existingItems={existingItems}
+          cities={cities}
           tripCity={tripCity}
           startDate={startDate}
           endDate={endDate}
@@ -192,6 +213,7 @@ export function ItineraryImport({
 
 function ImportPanel({
   existingItems,
+  cities,
   tripCity,
   startDate,
   endDate,
@@ -201,6 +223,8 @@ function ImportPanel({
   onApplyDates,
 }: {
   existingItems: OptimizeSourceItem[];
+  /** The trip's route, so each day's stops are looked up in that day's city. */
+  cities: OptimizeSourceCity[];
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
@@ -213,6 +237,15 @@ function ImportPanel({
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
+  /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
+  const routeLine = cities
+    .filter((c) => c.city.trim())
+    .map((c) => {
+      const dates = [c.arrive_on, c.depart_on].filter(Boolean).join(" – ");
+      return `${[c.city, c.country].filter(Boolean).join(", ")}${dates ? ` (${dates})` : ""}`;
+    })
+    .join("; ")
+    .slice(0, 600);
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
@@ -328,6 +361,10 @@ function ImportPanel({
       { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
     >
   >({});
+  /** Bumped by every placing run and every new plan; only the newest run writes. */
+  const placeGen = useRef(0);
+  /** A new plan, parsed or revised: always placed afresh. */
+  const [planVersion, setPlanVersion] = useState(0);
   /** Pins the person kept or removed at review, by row. */
   const [pinChoices, setPinChoices] = useState<Record<number, PinChoice>>({});
   const savedPin = (i: number) => {
@@ -349,10 +386,14 @@ function ImportPanel({
     setPlacements({});
     setPinChoices({});
     setDateChoice(null);
+    // Placing starts from the effect below, on the rows as they will be
+    // saved; a run for the plan before this one stops where it is.
+    placeGen.current += 1;
+    setPlacing(null);
+    setPlanVersion((v) => v + 1);
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
       toast.success(ready.title, { description: ready.body });
-      void placeParsed(out.items);
     }
   };
 
@@ -371,6 +412,7 @@ function ImportPanel({
           pageUrl: mode === "import" && link ? link : null,
           text: (mode === "import" && link ? "" : text.trim()) || null,
           tripCity: tripCity || null,
+          route: routeLine || null,
           startDate: startDate || null,
           endDate: endDate || null,
           mode,
@@ -395,30 +437,66 @@ function ImportPanel({
    * be shown and argued with. Failure stays survivable: a row that cannot be
    * placed is saved exactly as before, without a point.
    */
-  const placeParsed = async (parsed: ParsedItineraryItem[]) => {
-    const area = tripCity?.trim() || "";
-    // A plan that names each stop's town can be placed without a trip city.
-    if ((!area && !parsed.some((item) => item.city?.trim())) || parsed.length === 0) return;
-    setPlacing({ done: 0, total: parsed.length });
+  const placeParsed = async (dated: ParsedItineraryItem[]) => {
+    // Only the newest run writes: a revision renumbers the rows, and pins
+    // from the plan before it would land on whichever stop now has the number.
+    const gen = ++placeGen.current;
+    const current = () => gen === placeGen.current;
+    setPlacements({});
+    // A trip filed under one city, or none, can still be placed day by day
+    // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
+    // the whole of Japan.
+    const area = tripCity?.trim() || routeCountry(cities) || "";
+    // A monument inside a park is looked up beside the park's pin.
+    const parents = dated.map((_, i) => parentIndex(dated, i));
+    const stops = dated.map((item) => {
+      const dayArea = routeCityOn(cities, item.day_date);
+      return {
+        title: item.title,
+        detail: item.detail ?? null,
+        place: item.place ?? null,
+        address: item.address ?? null,
+        city: item.city ?? null,
+        ...(dayArea ? { area: dayArea } : {}),
+      };
+    });
+    const placeable = stops.some((stop) => stop.city?.trim() || stop.area);
+    if ((!area && !placeable) || dated.length === 0) {
+      setPlacing(null);
+      return;
+    }
+    const total = dated.length;
+    setPlacing({ done: 0, total });
     try {
-      const result = await geocodePlanStops({
-        data: {
-          stops: parsed.map((item) => ({
-            title: item.title,
-            detail: item.detail ?? null,
-            place: item.place ?? null,
-            address: item.address ?? null,
-            city: item.city ?? null,
-          })),
-          area,
-        },
-      });
+      // A few stops per call. One call for a whole plan ran past the
+      // lookup budget and the request's time, and a long plan came back
+      // with no pins at all — the save then went out empty-handed.
+      // A batch that fails keeps the pins found before it.
+      const placed: PlacedStop[] = [];
+      // The provider's pace carries from one batch to the next.
+      let recent: number[] = [];
+      for (const [from, to] of placeBatches(parents, PLACE_BATCH)) {
+        if (!current()) return;
+        const batch = stops.slice(from, to).map((stop, k) => {
+          const parent = parents[from + k]!;
+          return parent >= from ? { ...stop, within: parent - from } : stop;
+        });
+        const result = await geocodePlanStops({ data: { stops: batch, area, recent } }).catch(
+          () => null,
+        );
+        if (!current()) return;
+        if (!result) break;
+        recent = result.sent ?? [];
+        placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
+        setPlacing({ done: to, total });
+        if (result.throttled) break;
+      }
       const found: Record<
         number,
         { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
       > = {};
-      for (const hit of result.placed) {
-        const row = parsed[hit.index];
+      for (const hit of placed) {
+        const row = dated[hit.index];
         if (!row) continue;
         // Scored against the stop's venue as well as its title: "Arrive
         // Hiroshima Station" is about the station, and the lookup was made by
@@ -435,9 +513,13 @@ function ImportPanel({
             }),
           );
         const rank = { high: 2, medium: 1, low: 0 } as const;
-        const { confidence, reason } = scored.reduce((best, next) =>
-          rank[next.confidence] > rank[best.confidence] ? next : best,
-        );
+        // Pinned at the stop it is inside: its name will not match that
+        // place's, and should not make it look like a wrong guess.
+        const { confidence, reason } = hit.inside
+          ? { confidence: "medium" as const, reason: `Pinned at ${hit.inside}, where it is` }
+          : scored.reduce((best, next) =>
+              rank[next.confidence] > rank[best.confidence] ? next : best,
+            );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,
@@ -446,12 +528,11 @@ function ImportPanel({
           reason,
         };
       }
-      setPlacements(found);
-      setPlacing({ done: result.placed.length, total: parsed.length });
+      if (current()) setPlacements(found);
     } catch {
       // No pins is where this started; it is not a reason to lose the plan.
     } finally {
-      setPlacing(null);
+      if (current()) setPlacing(null);
     }
   };
 
@@ -504,20 +585,47 @@ function ImportPanel({
       ? dayLabel(range.start)
       : `${dayLabel(range.start)} – ${dayLabel(range.end)}`;
 
+  // The rows as they will be saved. "Keep the trip's dates": the whole plan
+  // slides onto the trip's first day, each row by the same number of days.
+  const savedRows = items
+    ? datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
+      ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
+      : (dated ?? items)
+    : null;
+  /**
+   * Stops are placed on the rows as saved, in the city each one's day is in.
+   * A Day 1 date given later, or keeping the trip's dates, can move a row
+   * to another city on the route, so placing runs again when — and only
+   * when — that changes; a new plan always runs it.
+   */
+  const placeKey =
+    savedRows && savedRows.length > 0
+      ? `${planVersion}|${savedRows.map((row) => routeCityOn(cities, row.day_date) ?? "").join("|")}`
+      : "";
+  useEffect(() => {
+    if (!placeKey || !savedRows) return;
+    void placeParsed(savedRows);
+    // placeKey stands for savedRows: it changes exactly when placing would.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeKey]);
+
   const addChosen = async () => {
     if (!items) return;
     setBusy(true);
     setError(null);
     try {
-      // "Keep the trip's dates": the whole plan slides onto the trip's first
-      // day, each row by the same number of days.
-      const rows =
-        datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
-          ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
-          : (dated ?? items);
-      const chosen = picked.flatMap((i) => {
+      const rows = savedRows ?? items;
+      // In plan order: ticking a row back on used to append it, so it was
+      // saved at the end of the day; and a stop's parent must be found by
+      // position in this same list.
+      const order = [...picked].sort((a, b) => a - b);
+      const chosen = order.flatMap((i) => {
         const it = rows[i];
         if (!it) return [];
+        // "Inside: …" the import wrote into the note becomes its own list.
+        const { detail: note, inside } = splitInsideNote(it.detail);
+        // Inside another stop that is being saved too: linked to it.
+        const parent = order.indexOf(parentIndex(rows, i));
         // The address the source gave, pulled out by the parse; the detail
         // line's first clause only when it gave none.
         const address = it.address?.trim() || placeHintFromDetail(it.detail);
@@ -536,10 +644,12 @@ function ImportPanel({
             ...(address ? { address } : {}),
             ...(stay ? { planned_stay_minutes: stay } : {}),
             ...(it.booked === true ? { booked: true } : {}),
-            ...(it.detail || (includeCosts && it.estimated_cost != null)
+            ...(inside.length ? { inside } : {}),
+            ...(parent >= 0 ? { parent_index: parent } : {}),
+            ...(note || (includeCosts && it.estimated_cost != null)
               ? {
                   detail: [
-                    it.detail,
+                    note,
                     includeCosts && it.estimated_cost != null
                       ? `Est. ${it.estimated_cost} ${it.currency ?? plan?.currency ?? currency}`
                       : "",
@@ -621,7 +731,9 @@ function ImportPanel({
     // old ones would land on whichever stop now sits in that place.
     setPlacements({});
     setPinChoices({});
-    if (out.items.length > 0) void placeParsed(out.items);
+    placeGen.current += 1;
+    setPlacing(null);
+    setPlanVersion((v) => v + 1);
   };
 
   const findAlternatives = async () => {
@@ -1053,12 +1165,17 @@ function ImportPanel({
               </p>
               <button
                 onClick={() => void addChosen()}
-                disabled={busy || picked.length === 0 || (datesDisagree && !dateChoice)}
+                // Saving before the stops are placed saved them with no pins.
+                disabled={
+                  busy || placing !== null || picked.length === 0 || (datesDisagree && !dateChoice)
+                }
                 className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
               >
-                {busy
-                  ? saveStatus || (placing ? "Placing your stops…" : "Saving your trip…")
-                  : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
+                {placing && !busy
+                  ? "Placing your stops…"
+                  : busy
+                    ? saveStatus || "Saving your trip…"
+                    : `Save ${picked.length} stops${includeCosts && plan?.costs.length ? " + costs" : ""}`}
               </button>
               {/* The long wait gets a face. Everything else here is quick
                   enough that a button label carries it. */}
@@ -1096,6 +1213,7 @@ function ImportPanel({
                     .join(" · ")}
                   {it.day_date || it.day_number || it.time_label ? " · " : ""}
                   {it.kind}
+                  {it.within ? ` · in ${it.within}` : ""}
                 </span>
                 <span className="block text-[14.5px] font-medium">
                   {it.title}

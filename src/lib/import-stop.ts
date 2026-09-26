@@ -118,16 +118,52 @@ export function pinIsSaved(confidence: Confidence, choice: PinChoice | undefined
  * card on the timeline with "No place yet" — a stop that is really the gap
  * between two stops, which the paws between cards already are.
  *
- * Only movement *to* somewhere counts, written "to" or as an arrow
- * ("JR line Hiroshima → Miyajimaguchi"). "Arrive Hiroshima Station" is a place
- * with a time and stays; a booked flight or reservation is its own kind and
- * is never touched.
+ * Movement *to* somewhere counts, written "to" or as an arrow
+ * ("JR line Hiroshima → Miyajimaguchi", "Hiroshima Station → Peace Park"),
+ * and so does arriving ("Arrive Hiroshima Station"): its time is kept on the
+ * stop it leads to. A meal, a hotel, a flight or anything booked is somewhere
+ * to be and is never touched.
  */
 const MOVEMENT =
   /^(?:travel|walk|stroll|head|go|drive|ride|cycle|bike|return|transfer|move|make your way|get|hop|catch|take|board|bus|train|tram|metro|subway|taxi|cab|uber|ferry|boat|shinkansen|jr|monorail|streetcar|start|set off|leave|depart|continue|proceed|cross)\b.*(?:\b(?:to|toward|towards|back|for)\b|→|->)/i;
 
 /** "Hibiya Line to Ginza": a named line, then where it goes. */
 const LINE_TO = /^(?:[\p{L}-]+\s+){1,2}line\s+(?:to|toward|towards)\b/iu;
+
+/**
+ * "Shin-Osaka Station → Hiroshima Station", "Hiroshima Station → Peace
+ * Memorial Park": two named ends and an arrow. A named route ahead of a colon
+ * ("World Heritage Sea Route: Peace Park → Miyajima") is a cruise or tour you
+ * take, and stays.
+ */
+const ARROW_ROUTE = /^([^:：]*?\S)\s*(?:→|->|⟶|➔|➜)\s*(\S.*)$/u;
+
+/** Somewhere you catch or leave a train, boat, bus or plane. */
+const HUB =
+  /\b(?:station|stn|pier|port|harbou?r|terminal|airport|bus stop|stop|platform|ferry)\b|駅|港|空港/i;
+
+/**
+ * An arrow row is a journey when it is written as transport, or when one of
+ * its ends is a station or pier — whatever kind the parse gave it. Plans
+ * written this way came back as sights, and each became a card with "No place
+ * yet". Between two sights ("Trevi Fountain → Spanish Steps") it is a stroll
+ * you do, and stays.
+ */
+function isArrowJourney(kind: string, title: string): boolean {
+  const m = title.match(ARROW_ROUTE);
+  if (!m) return false;
+  return kind === "transport" || HUB.test(m[1]!) || HUB.test(m[2]!);
+}
+
+/**
+ * "Arrive Hiroshima Station", "Arrive by 09:15 at Peace Park", "Arrival at
+ * the pier": the end of a journey, not somewhere to spend time. The place it
+ * names is the next stop, or the one after the next journey.
+ */
+const ARRIVAL = /^(?:arriv(?:e|al|ing)|get\s+(?:to|in)(?:to)?|reach)\b/i;
+
+/** Kinds that are somewhere to be, however their title is worded. */
+const NEVER_A_LEG = new Set(["meal", "lodging", "hotel", "flight", "reservation"]);
 
 export function isTravelLeg(row: {
   kind: string;
@@ -138,7 +174,61 @@ export function isTravelLeg(row: {
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
   const title = row.title.trim();
-  return row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title));
+  if (row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title))) return true;
+  if (NEVER_A_LEG.has(row.kind)) return false;
+  return isArrowJourney(row.kind, title) || ARRIVAL.test(title);
+}
+
+type RouteCity = {
+  city: string;
+  country?: string | null | undefined;
+  arrive_on?: string | null | undefined;
+  depart_on?: string | null | undefined;
+};
+
+/**
+ * Where the trip is on a given day, from its route: "Hiroshima, Japan" on
+ * Oct 7 of a Tokyo–Kyoto–Hiroshima trip. A stop is looked up there, not in
+ * the trip's home city, which on a multi-city trip is the wrong place for
+ * most of it.
+ *
+ * The city you are in on a date is the last one arrived at by then; on a
+ * travel day, the one arrived at that day. Null without a date or a route.
+ */
+export function routeCityOn(
+  cities: readonly RouteCity[],
+  date: string | null | undefined,
+): string | null {
+  const here = routeStopOn(cities, date);
+  return here ? [here.city.trim(), here.country?.trim()].filter(Boolean).join(", ") : null;
+}
+
+/** The route stop itself, for its pin as well as its name. */
+export function routeStopOn<T extends RouteCity>(
+  cities: readonly T[],
+  date: string | null | undefined,
+): T | null {
+  if (!date || cities.length === 0) return null;
+  const latestFirst = (a: T, b: T) => b.arrive_on!.localeCompare(a.arrive_on!);
+  const dated = cities.filter((c) => c.city.trim() && c.arrive_on);
+  const here = dated
+    .filter((c) => c.arrive_on! <= date && (!c.depart_on || date <= c.depart_on))
+    .sort(latestFirst)[0];
+  if (here) return here;
+  // Past the last departure, or no departures written: the latest arrival.
+  const before = dated.filter((c) => c.arrive_on! <= date).sort(latestFirst)[0];
+  if (before) return before;
+  // A one-city route with no dates is still where the trip is.
+  const named = cities.filter((c) => c.city.trim());
+  return named.length === 1 ? named[0]! : null;
+}
+
+/** The country a route runs through, when it is only one: the area of last resort. */
+export function routeCountry(cities: readonly RouteCity[]): string | null {
+  const countries = new Set(
+    cities.map((c) => c.country?.trim()).filter((c): c is string => Boolean(c)),
+  );
+  return countries.size === 1 ? [...countries][0]! : null;
 }
 
 type FoldableRow = {
@@ -250,4 +340,110 @@ export function withLegNote(
   const what = [leg.title, leg.time_label, leg.detail].filter(Boolean).join(", ");
   const note = `${label}: ${what}`;
   return detail ? `${detail} · ${note}` : note;
+}
+
+type NestableRow = {
+  kind: string;
+  title: string;
+  detail: string | null;
+  place?: string | null | undefined;
+  time_label: string | null;
+  end_time?: string | null | undefined;
+  duration_minutes?: number | null | undefined;
+  day_date: string | null;
+  day_number: number | null;
+  booked?: boolean | null | undefined;
+  /** The title of the earlier stop this one is inside, as the parse wrote it. */
+  within?: string | null | undefined;
+};
+
+const fold = (value: string | null | undefined) =>
+  (value ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+
+/**
+ * The stop a row is inside: the nearest earlier stop that day whose title
+ * is the one it names ("Peace Memorial Museum" for "the museum's east
+ * wing"), else whose place is; or -1. A name that matches nothing leaves the
+ * row on its own rather than hanging it off a guess.
+ *
+ * A row that is itself inside something is never a parent. The model gives
+ * each gallery the museum as its place ("Winged Victory", place "Louvre"),
+ * so matching on place alone made each gallery the parent of the next.
+ */
+export function parentIndex(rows: readonly NestableRow[], i: number): number {
+  const row = rows[i];
+  const want = fold(row?.within);
+  if (!row || want.length < 3) return -1;
+  const matches = (name: string | null | undefined) => {
+    const n = fold(name);
+    return n.length >= 3 && (n === want || n.includes(want) || want.includes(n));
+  };
+  let byPlace = -1;
+  for (let j = i - 1; j >= 0 && sameDay(rows[j]!, row); j--) {
+    const candidate = rows[j]!;
+    if (fold(candidate.within)) continue;
+    if (matches(candidate.title)) return j;
+    if (byPlace < 0 && matches(candidate.place)) byPlace = j;
+  }
+  return byPlace;
+}
+
+/**
+ * Things seen inside a place, folded into it when they are only a list.
+ *
+ * "Visit Peace Memorial Museum", then "East building: Hiroshima before the
+ * bomb", "Main building: personal effects": the plan names one visit and what
+ * to see during it. As stops, each took a card, a "Travelling to…" gap and a
+ * map search — for a room. Untimed, they become the visit's "Inside:" note.
+ *
+ * With a time of its own (the Cenotaph at 10:45, after the museum at 9:30),
+ * a place inside another stays a stop — it is when you are there — and keeps
+ * `within`, so it is looked up beside its parent rather than across the city.
+ * Booked rows always stay.
+ */
+export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
+  const out = rows.map((row) => ({ ...row }));
+  const drop = new Set<number>();
+  out.forEach((row, i) => {
+    const parent = parentIndex(out, i);
+    if (parent < 0 || drop.has(parent)) {
+      row.within = null;
+      return;
+    }
+    row.within = out[parent]!.title;
+    const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
+    if (ownTime || row.booked === true) return;
+    out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
+    drop.add(i);
+  });
+  return out.filter((_, i) => !drop.has(i));
+}
+
+/** "Inside: East building · Main building", one note however many are added. */
+export function withInsideNote(detail: string | null, title: string): string {
+  const notes = (detail ?? "").split(" · ").filter(Boolean);
+  const at = notes.findIndex((n) => n.startsWith("Inside: "));
+  if (at < 0) return [...notes, `Inside: ${title}`].join(" · ");
+  const listed = notes[at]!.slice("Inside: ".length).split(", ");
+  if (!listed.some((l) => fold(l) === fold(title))) listed.push(title);
+  notes[at] = `Inside: ${listed.join(", ")}`;
+  return notes.join(" · ");
+}
+
+/**
+ * Stops split into lookup batches of about `size`, never between a stop and
+ * the ones inside it: a child is looked up beside its parent's pin, which
+ * only the same request has. `parents[i]` is parentIndex, -1 for none.
+ */
+export function placeBatches(parents: readonly number[], size: number): [number, number][] {
+  const out: [number, number][] = [];
+  let start = 0;
+  for (let i = 1; i < parents.length; i++) {
+    if (i - start >= size && parents[i]! < start) {
+      out.push([start, i]);
+      start = i;
+    }
+  }
+  if (parents.length) out.push([start, parents.length]);
+  return out;
 }

@@ -353,3 +353,27 @@ test("a town named exactly as typed beats a restaurant found by a spelling varia
   assert.deepEqual(exactPlaceHits([restaurant], "kyoto"), []);
   assert.deepEqual(exactPlaceHits([kyoto], "subway"), []);
 });
+
+test("an island inside a town keeps its own name, with the town under it", () => {
+  const miyajima: NominatimHitLike = {
+    lat: "34.2786",
+    lon: "132.3151",
+    name: "Miyajima",
+    display_name: "Miyajima, Hatsukaichi, Hiroshima Prefecture, Japan",
+    class: "place",
+    type: "island",
+    address: {
+      place: "Miyajima",
+      city: "Hatsukaichi",
+      state: "Hiroshima Prefecture",
+      country: "Japan",
+      country_code: "jp",
+    },
+  };
+  const place = placeFromNominatim(miyajima);
+  assert.equal(place.name, "Miyajima");
+  assert.equal(place.city, "Hatsukaichi");
+  const lines = placeSuggestionLines(place);
+  assert.equal(lines.title, "Miyajima");
+  assert.equal(lines.subtitle, "Hatsukaichi, Hiroshima Prefecture, Japan");
+});

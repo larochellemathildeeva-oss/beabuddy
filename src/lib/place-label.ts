@@ -182,6 +182,31 @@ export function isLocalityHit(hit: NominatimHitLike): boolean {
   );
 }
 
+/** Places that sit inside a town rather than being one: an island, a district, a village. */
+const WITHIN_LOCALITY_TYPES = new Set([
+  "island",
+  "islet",
+  "suburb",
+  "neighbourhood",
+  "quarter",
+  "village",
+  "hamlet",
+  "isolated_dwelling",
+]);
+
+/**
+ * A place with a name of its own inside the town it is filed under: Miyajima,
+ * an island in Hatsukaichi. Named by its town, it came back as "Hatsukaichi,
+ * Japan" — the right pin under a name nobody searched for, which reads as
+ * no result at all.
+ */
+function withinLocality(hit: NominatimHitLike, local: string | undefined): boolean {
+  const own = hitOwnName(hit);
+  if (!own || !local || isAdminJunkName(hit)) return false;
+  if (foldAccents(own) === foldAccents(local)) return false;
+  return WITHIN_LOCALITY_TYPES.has(kindOf(hit)) || WITHIN_LOCALITY_TYPES.has(hit.type ?? "");
+}
+
 function isAdminJunkName(hit: NominatimHitLike): boolean {
   return isJunkLabel(hit.name) || isJunkLabel(hit.display_name?.split(",")[0]);
 }
@@ -312,7 +337,11 @@ export function placeFromNominatim(hit: NominatimHitLike): {
   // that is how a real, in-stock Subway read as a search that found nothing
   // but "Montreal."
   const rawName = hitOwnName(hit) || local || line || "Saved place";
-  const name = isLocalityHit(hit) ? local || rawName : rawName || local || "Saved place";
+  const name = isLocalityHit(hit)
+    ? withinLocality(hit, local)
+      ? rawName
+      : local || rawName
+    : rawName || local || "Saved place";
   const city = local ?? (isLocalityHit(hit) ? name : undefined);
   const country = addressField(address, "country");
   return {

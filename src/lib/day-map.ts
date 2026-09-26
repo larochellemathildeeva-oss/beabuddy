@@ -56,6 +56,10 @@ export type DayMapPin = {
   lat: number;
   lon: number;
   tone: PinTone;
+  /** How many things to see inside this stop: the "+2" on its pin. */
+  insideCount: number;
+  /** Inside another stop drawn on this map: a smaller ring pin beside it. */
+  nested: boolean;
 };
 
 type DayStop = {
@@ -64,10 +68,17 @@ type DayStop = {
   kind?: string | null | undefined;
   lat?: number | null | undefined;
   lon?: number | null | undefined;
+  parent_id?: string | null | undefined;
+  inside?: readonly unknown[] | null | undefined;
 };
 
-export function dayMapPins(stops: readonly DayStop[]): DayMapPin[] {
+/** `nesting: false` is the flat view: every stop an ordinary pin. */
+export function dayMapPins(
+  stops: readonly DayStop[],
+  { nesting = true }: { nesting?: boolean } = {},
+): DayMapPin[] {
   const pins: DayMapPin[] = [];
+  const shown = new Set(nesting ? stops.map((stop) => stop.id) : []);
   stops.forEach((stop, i) => {
     if (!placed(stop)) return;
     pins.push({
@@ -77,6 +88,8 @@ export function dayMapPins(stops: readonly DayStop[]): DayMapPin[] {
       lat: stop.lat,
       lon: stop.lon,
       tone: pinTone(stop),
+      insideCount: nesting ? (stop.inside?.length ?? 0) : 0,
+      nested: Boolean(stop.parent_id && shown.has(stop.parent_id)),
     });
   });
   return pins;
@@ -89,8 +102,11 @@ export type DayMapModel = {
   unplaced: number;
 };
 
-export function dayMapModel(stops: readonly DayStop[]): DayMapModel {
-  const pins = dayMapPins(stops);
+export function dayMapModel(
+  stops: readonly DayStop[],
+  options: { nesting?: boolean } = {},
+): DayMapModel {
+  const pins = dayMapPins(stops, options);
   return { plan: tripMapPlan(stops), pins, unplaced: stops.length - pins.length };
 }
 

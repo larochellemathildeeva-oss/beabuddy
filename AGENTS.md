@@ -34,6 +34,13 @@ Migrations live in `supabase/migrations/` and are **applied by hand**, not by
 the deploy. Writing a migration does not change the live database — say so
 plainly rather than reporting a schema fix as done.
 
+To see which migrations the live database is missing, run `npm run db:check`
+and paste the query it prints into the Supabase SQL editor. Each row names a
+migration (or part of one) the database does not match; no rows means every
+migration is in. It replays the folder in order — tables, columns, functions,
+triggers, policies, indexes, constraints, grants and revokes — so a new
+migration is covered as soon as it is written.
+
 **Every migration that creates a table in `public` grants it explicitly**, in
 the same file. From 2026-10-30 Supabase no longer grants new tables to the API
 roles automatically, so a table without grants is unreachable on any database

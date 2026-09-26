@@ -25,8 +25,13 @@ function prefersReducedMotion(): boolean {
  * Warm terracotta discs, numbered. The chosen one is larger and deeper, and
  * that is all it does — no bounce, no pulse, nothing that says "GPS".
  */
-function pinClass(selected: boolean, tone: PinTone): string {
-  return `journal-pin journal-pin--${tone}${selected ? " journal-pin--on" : ""} grid place-items-center rounded-full font-semibold tabular-nums`;
+function pinClass(selected: boolean, tone: PinTone, nested = false): string {
+  return `journal-pin journal-pin--${tone}${nested ? " journal-pin--nested" : ""}${selected ? " journal-pin--on" : ""} grid place-items-center rounded-full font-semibold tabular-nums`;
+}
+
+/** "+2": things to see inside the stop, listed on its card. */
+function insideBadge(count: number): string {
+  return count > 0 ? `<span class="journal-pin-badge">+${count}</span>` : "";
 }
 
 /** The chosen place's name beside its pin, set like a caption in a guide. */
@@ -146,7 +151,10 @@ export function DayMap({
   const shape = pins.map((p) => `${p.id}@${p.lat},${p.lon}`).join("|");
   // Everything a pin draws, so a renamed or renumbered stop is redrawn too.
   const drawn = pins
-    .map((p) => `${p.id}@${p.lat},${p.lon}#${p.number}:${p.title}:${p.tone}`)
+    .map(
+      (p) =>
+        `${p.id}@${p.lat},${p.lon}#${p.number}:${p.title}:${p.tone}:${p.insideCount}:${p.nested}`,
+    )
     .join("|");
 
   const markers = useRef(new Map<string, Leaflet.Marker>());
@@ -218,12 +226,12 @@ export function DayMap({
           iconAnchor: [17, 17],
           // The number is an integer this file made, but escape it anyway:
           // this string becomes markup.
-          html: `<span class="${pinClass(false, pin.tone)}">${escapeHtml(String(pin.number))}</span>`,
+          html: `<span class="${pinClass(false, pin.tone, pin.nested)}">${escapeHtml(String(pin.number))}</span>${insideBadge(pin.insideCount)}`,
         }),
         // Leaflet sets these as properties, not markup, so a title with
         // angle brackets stays text.
-        title: `${pin.number}. ${pin.title}`,
-        alt: `${pin.number}. ${pin.title}`,
+        title: `${pin.number}. ${pin.title}${pin.insideCount ? `, ${pin.insideCount} inside` : ""}`,
+        alt: `${pin.number}. ${pin.title}${pin.insideCount ? `, ${pin.insideCount} inside` : ""}`,
         keyboard: true,
         riseOnHover: true,
       })
@@ -256,8 +264,8 @@ export function DayMap({
     for (const [id, marker] of markers.current) {
       const on = id === selectedId;
       const face = marker.getElement()?.firstElementChild;
-      const tone = pins.find((p) => p.id === id)?.tone ?? "sight";
-      if (face) face.className = pinClass(on, tone);
+      const drawnPin = pins.find((p) => p.id === id);
+      if (face) face.className = pinClass(on, drawnPin?.tone ?? "sight", drawnPin?.nested);
       marker.setZIndexOffset(on ? 1000 : 0);
     }
     // Only the chosen place is named on the map; the rest are numbers that

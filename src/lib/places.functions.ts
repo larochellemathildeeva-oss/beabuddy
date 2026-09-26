@@ -16,6 +16,7 @@ import { haversine } from "@/lib/geo";
 import { geoapifyPlacesToElements, geoapifyPlacesUrl } from "@/lib/geoapify";
 import { dropBareAreas, widerQueries } from "@/lib/place-search-near";
 import { placeQueryParts } from "@/lib/place-query";
+import { closeSuggestions, suggestionPrefixes } from "@/lib/place-suggest";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -769,6 +770,51 @@ export const searchPlaces = createServerFn({ method: "POST" })
   });
 
 /** Pull a place out of a pasted link: title, address, category and coordinates. */
+/**
+ * "Did you mean…": places close to a name that found nothing.
+ *
+ * Asked for only after a search came back empty, and only where the provider
+ * has autocomplete (Geoapify, LocationIQ), which matches the start of a word:
+ * "Miyajma" finds nothing, "Miyaj" finds Miyajima. At most SUGGESTION_TRIES
+ * requests, stopping at the first that offers something close. Empty, never an
+ * error: the search already said it found nothing.
+ */
+export const suggestPlaces = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        query: z.string().min(4).max(200),
+        near: z.string().max(200).nullish(),
+        /** Where the person is: suggestions are held to around them, as the search was. */
+        at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+        center: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+        /** Choosing a destination: towns and countries only, as the search was. */
+        areas: z.boolean().nullish(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }): Promise<ParsedPlace[]> => {
+    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const pace: Pace = { provider: geoProvider(), sent: [] };
+    // Held to around you when the search was; otherwise leaned towards the
+    // trip, not held to it: the right spelling may be a day trip away.
+    const area = data.at
+      ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
+      : data.center
+        ? { viewbox: viewboxAround(data.center.lat, data.center.lon), bounded: false }
+        : undefined;
+    for (const prefix of suggestionPrefixes(data.query)) {
+      const hits = await autocompleteHits(data.near ? `${prefix}, ${data.near}` : prefix, pace, {
+        areas: Boolean(data.areas),
+        ...(area ? { area } : {}),
+      });
+      const close = closeSuggestions(hits.map(hitToPlace), data.query);
+      if (close.length) return close;
+    }
+    return [];
+  });
+
 export const parsePlaceLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => normalizePlaceLinkInput(data))
