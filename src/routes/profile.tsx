@@ -28,7 +28,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
-import { applyDark, readDark } from "@/lib/theme";
+import { ThemePicker } from "@/components/ThemePicker";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
 import { safeStorage } from "@/lib/tour-state";
@@ -58,7 +58,6 @@ function ProfilePage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const t = useTrips();
-  const [dark, setDark] = useState(false);
   const [interests, setInterests] = useState<string[]>([]);
   const [offlineTripIds, setOfflineTripIds] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState("");
@@ -67,10 +66,6 @@ function ProfilePage() {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
-
-  useEffect(() => {
-    setDark(readDark());
-  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -264,31 +259,7 @@ function ProfilePage() {
 
             <CustomizeHome variant="row" />
 
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3">
-              <div>
-                <p className="text-[14.5px] font-medium">{dark ? "Dark" : "Light"} mode</p>
-                <p className="text-[12.5px] text-muted-foreground">
-                  Warm cream by day, black and light grey by night.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !dark;
-                  applyDark(next);
-                  setDark(next);
-                }}
-                aria-label="Toggle dark mode"
-                className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                  dark ? "bg-primary" : "bg-muted"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 size-5 rounded-full bg-card transition-all ${
-                    dark ? "left-6" : "left-1"
-                  }`}
-                />
-              </button>
-            </div>
+            <ThemePicker />
 
             <div
               data-guide="replay-tour"

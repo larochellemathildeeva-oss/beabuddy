@@ -42,6 +42,7 @@ describe("clearLocalUserData", () => {
     store.set("bea.directions.trip-a", "{}");
     store.set("bea.trips.open", "trip-a");
     store.set("bea-dark", "yes");
+    store.set("bea-theme", "colorful");
     store.set("bea-tour-seen", "1");
 
     const { clearLocalUserData } = await import("./clear-local-user-data.ts");
@@ -55,6 +56,7 @@ describe("clearLocalUserData", () => {
     assert.equal(store.has("bea.directions.trip-a"), false);
     assert.equal(store.has("bea.trips.open"), false);
     assert.equal(store.get("bea-dark"), "yes");
+    assert.equal(store.get("bea-theme"), "colorful");
     assert.equal(store.get("bea-tour-seen"), "1");
   });
 });

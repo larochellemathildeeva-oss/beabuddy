@@ -39,6 +39,11 @@
   --color-reco: var(--reco);
   --color-elevated: var(--elevated);
   --color-primary-soft: var(--primary-soft);
+  --color-tile-1: var(--tile-1);
+  --color-tile-2: var(--tile-2);
+  --color-tile-3: var(--tile-3);
+  --color-tile-4: var(--tile-4);
+  --color-tile-5: var(--tile-5);
 
   /* Library requirement: consumers must load these fonts in their <head>:
      <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,51 +53,63 @@
   --font-display: "Instrument Serif", ui-serif, Georgia, serif;
 }
 
-:root {
+:root,
+[data-theme="calm"] {
   --radius: 1.02rem;
 
-  /* Warm editorial cream / clay.
+  /* Calm — the default. White and cream on light beige; a soft sand accent.
      Cards sit *lighter* than the ground so depth comes from surface, not from
      a border on every element. */
-  --background: oklch(0.963 0.016 76);
-  --foreground: oklch(0.245 0.024 52);
-  --card: oklch(0.998 0.004 88);
-  --card-foreground: oklch(0.245 0.024 52);
-  --elevated: oklch(0.938 0.02 74);
-  --popover: oklch(0.995 0.005 86);
-  --popover-foreground: oklch(0.245 0.024 52);
-  --primary: oklch(0.535 0.162 39);
-  --primary-foreground: oklch(0.99 0.008 86);
+  --background: oklch(0.982 0.007 80);
+  --foreground: oklch(0.31 0.017 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.31 0.017 60);
+  --elevated: oklch(0.945 0.017 76);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.31 0.017 60);
+  --primary: oklch(0.54 0.075 50);
+  --primary-foreground: oklch(0.995 0.003 85);
   /* A tint of the primary, for selected chips and quiet highlights. */
-  --primary-soft: oklch(0.535 0.162 39 / 0.11);
-  --secondary: oklch(0.932 0.019 76);
-  --secondary-foreground: oklch(0.33 0.03 52);
-  --muted: oklch(0.932 0.017 78);
-  --muted-foreground: oklch(0.515 0.029 56);
-  --accent: oklch(0.9 0.035 70);
-  --accent-foreground: oklch(0.3 0.03 52);
+  --primary-soft: oklch(0.54 0.075 50 / 0.12);
+  --secondary: oklch(0.945 0.017 76);
+  --secondary-foreground: oklch(0.36 0.02 60);
+  --muted: oklch(0.95 0.012 78);
+  --muted-foreground: oklch(0.53 0.02 62);
+  --accent: oklch(0.93 0.02 72);
+  --accent-foreground: oklch(0.33 0.02 60);
   --destructive: oklch(0.55 0.185 27);
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.917 0.014 74);
-  --input: oklch(0.917 0.014 74);
-  --ring: oklch(0.535 0.162 39);
+  --border: oklch(0.915 0.017 78);
+  --input: oklch(0.915 0.017 78);
+  --ring: oklch(0.54 0.075 50);
 
   --visited: oklch(0.55 0.135 249);
   --nexttime: oklch(0.56 0.12 158);
-  --wishlist: oklch(0.71 0.135 84);
+  --wishlist: oklch(0.66 0.135 84);
   --reco: oklch(0.545 0.155 305);
 
+  /* Tile fills. Calm and Dark keep them quiet; Colorful turns them pastel. */
+  --tile-1: var(--card);
+  --tile-2: var(--card);
+  --tile-3: var(--primary-soft);
+  --tile-4: var(--elevated);
+  --tile-5: var(--card);
+
+  /* The tab accent's lightness and chroma; the hue walks along the tab bar. */
+  --tab-l: 0.54;
+  --tab-c: 0.07;
+
   /* Diffuse and low-contrast: modern depth is soft, not a hard drop shadow. */
-  --shadow-xs: 0 1px 2px oklch(0.3 0.03 55 / 0.05);
-  --shadow-sm: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 3px 8px -4px oklch(0.3 0.03 55 / 0.1);
-  --shadow-md: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 10px 24px -14px oklch(0.3 0.03 55 / 0.28);
-  --shadow-lg: 0 2px 4px oklch(0.3 0.03 55 / 0.04), 0 24px 48px -24px oklch(0.3 0.03 55 / 0.34);
-  --shadow-primary: 0 10px 26px -12px oklch(0.535 0.162 39 / 0.55);
+  --shadow-xs: 0 1px 2px oklch(0.3 0.02 60 / 0.04);
+  --shadow-sm: 0 1px 2px oklch(0.3 0.02 60 / 0.03), 0 3px 8px -4px oklch(0.3 0.02 60 / 0.08);
+  --shadow-md: 0 1px 2px oklch(0.3 0.02 60 / 0.03), 0 10px 22px -14px oklch(0.3 0.02 60 / 0.22);
+  --shadow-lg: 0 2px 4px oklch(0.3 0.02 60 / 0.04), 0 24px 48px -24px oklch(0.3 0.02 60 / 0.3);
+  --shadow-primary: 0 10px 24px -14px oklch(0.54 0.075 50 / 0.55);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.625 0.155 50), oklch(0.485 0.16 30));
+  --gradient-clay: linear-gradient(142deg, oklch(0.6 0.075 55), oklch(0.5 0.075 45));
   /* Barely-there warmth so the page is not a flat fill. */
-  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 78 / 0.85), transparent 70%);
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(1 0.006 80 / 0.9), transparent 70%);
 
   /**
    * Motion is configured where colour is configured — one place, not forty
@@ -129,46 +146,95 @@
   --ease-spring: var(--ease-confirm);
 }
 
+/* Colorful — soft pastels and a coral accent, on warm white. */
+[data-theme="colorful"] {
+  --background: oklch(0.989 0.009 75);
+  --foreground: oklch(0.28 0.035 320);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.28 0.035 320);
+  --elevated: oklch(0.965 0.02 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.28 0.035 320);
+  --primary: oklch(0.58 0.17 35);
+  --primary-foreground: oklch(0.995 0.003 85);
+  --primary-soft: oklch(0.58 0.17 35 / 0.13);
+  --secondary: oklch(0.96 0.025 55);
+  --secondary-foreground: oklch(0.32 0.035 320);
+  --muted: oklch(0.965 0.015 60);
+  --muted-foreground: oklch(0.5 0.035 320);
+  --accent: oklch(0.93 0.045 50);
+  --accent-foreground: oklch(0.3 0.035 320);
+  --border: oklch(0.925 0.02 55);
+  --input: oklch(0.925 0.02 55);
+  --ring: oklch(0.58 0.17 35);
+
+  --visited: oklch(0.58 0.14 249);
+  --nexttime: oklch(0.58 0.13 158);
+  --wishlist: oklch(0.68 0.15 84);
+  --reco: oklch(0.58 0.16 305);
+
+  /* Peach, sky, mint, lavender, butter. */
+  --tile-1: oklch(0.93 0.04 50);
+  --tile-2: oklch(0.94 0.03 240);
+  --tile-3: oklch(0.945 0.035 160);
+  --tile-4: oklch(0.925 0.035 295);
+  --tile-5: oklch(0.965 0.06 95);
+
+  --tab-l: 0.6;
+  --tab-c: 0.16;
+
+  --shadow-primary: 0 10px 26px -12px oklch(0.58 0.17 35 / 0.5);
+  --gradient-clay: linear-gradient(142deg, oklch(0.68 0.16 42), oklch(0.56 0.17 32));
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 70 / 0.9), transparent 70%);
+}
+
+/* Dark — near-black with off-white text and a warm beige accent. */
 .dark {
-  /* Warm charcoal, not black — and the clay survives, so the brand is still
-     the brand after dark. It used to go fully desaturated, which turned every
-     primary button grey. */
-  --background: oklch(0.182 0.014 56);
-  --foreground: oklch(0.948 0.008 76);
-  --card: oklch(0.228 0.016 58);
-  --card-foreground: oklch(0.948 0.008 76);
-  --elevated: oklch(0.272 0.017 60);
-  --popover: oklch(0.238 0.016 58);
-  --popover-foreground: oklch(0.948 0.008 76);
-  --primary: oklch(0.715 0.158 45);
-  --primary-foreground: oklch(0.17 0.025 44);
-  --primary-soft: oklch(0.715 0.158 45 / 0.18);
-  --secondary: oklch(0.262 0.014 60);
-  --secondary-foreground: oklch(0.93 0.01 74);
-  --muted: oklch(0.262 0.014 60);
-  --muted-foreground: oklch(0.715 0.018 66);
-  --accent: oklch(0.3 0.017 60);
-  --accent-foreground: oklch(0.94 0.01 74);
+  --background: oklch(0.165 0.004 60);
+  --foreground: oklch(0.955 0.01 75);
+  --card: oklch(0.21 0.005 60);
+  --card-foreground: oklch(0.955 0.01 75);
+  --elevated: oklch(0.24 0.006 60);
+  --popover: oklch(0.225 0.005 60);
+  --popover-foreground: oklch(0.955 0.01 75);
+  --primary: oklch(0.83 0.045 75);
+  --primary-foreground: oklch(0.2 0.01 60);
+  --primary-soft: oklch(0.83 0.045 75 / 0.14);
+  --secondary: oklch(0.24 0.006 60);
+  --secondary-foreground: oklch(0.93 0.01 75);
+  --muted: oklch(0.24 0.006 60);
+  --muted-foreground: oklch(0.71 0.018 70);
+  --accent: oklch(0.27 0.008 60);
+  --accent-foreground: oklch(0.94 0.01 75);
   --destructive: oklch(0.65 0.175 27);
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.335 0.016 58);
-  --input: oklch(0.335 0.016 58);
-  --ring: oklch(0.715 0.158 45);
+  --border: oklch(0.3 0.008 60);
+  --input: oklch(0.3 0.008 60);
+  --ring: oklch(0.83 0.045 75);
 
   --visited: oklch(0.7 0.135 249);
   --nexttime: oklch(0.72 0.13 158);
   --wishlist: oklch(0.82 0.13 86);
   --reco: oklch(0.72 0.135 305);
 
+  --tile-1: var(--card);
+  --tile-2: var(--card);
+  --tile-3: var(--primary-soft);
+  --tile-4: var(--elevated);
+  --tile-5: var(--card);
+
+  --tab-l: 0.83;
+  --tab-c: 0.045;
+
   --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.3);
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
   --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
   --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 10px 28px -12px oklch(0.715 0.158 45 / 0.5);
+  --shadow-primary: 0 10px 28px -12px oklch(0.83 0.045 75 / 0.35);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.755 0.15 50), oklch(0.61 0.162 32));
-  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.32 0.03 52 / 0.55), transparent 70%);
+  --gradient-clay: linear-gradient(142deg, oklch(0.87 0.045 78), oklch(0.78 0.05 70));
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
 
   color-scheme: dark;
 }
@@ -308,14 +374,11 @@
    every tab would come out the same colour. */
 [data-tab] {
   --tab-hue: 39;
-  --tab-accent: oklch(0.535 0.155 var(--tab-hue));
+  --tab-accent: oklch(var(--tab-l) var(--tab-c) var(--tab-hue));
 }
 
-.dark [data-tab] {
-  /* Same chroma, lifted lightness — the dark palette's primary sits at 0.715,
-     and an accent that did not follow would read as muddy after dark. */
-  --tab-accent: oklch(0.715 0.152 var(--tab-hue));
-}
+/* Lightness and chroma come from the theme (--tab-l, --tab-c), so Dark and
+   Colorful need no override of their own here. */
 
 /* The band runs upward from the brand's 39°, in even steps, in tab order — so
    the accent walks along the bar with you.
