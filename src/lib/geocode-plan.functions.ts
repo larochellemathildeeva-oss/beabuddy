@@ -7,6 +7,7 @@ import {
   boxViewbox,
   distanceKm,
   inBox,
+  pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
   widenBox,
@@ -145,7 +146,7 @@ type GeoHit = {
   kind?: string;
   alsoNamed?: string[];
 };
-type GeoResult = GeoHit | null | "throttled";
+type GeoResult = GeoHit[] | "throttled";
 
 type RawHit = {
   lat: string;
@@ -218,9 +219,10 @@ async function geocode(
   }
   // Namesakes: "Mercado Municipal, Barreiras" is also the market of a
   // village twenty kilometres out, inside the same municipality. The one
-  // nearest the middle of town is the one a visitor means.
+  // nearest the middle of town is the one a visitor means. All of them come
+  // back, nearest first: which one is the stop is decided per stop (pickHit).
   if (near) found.sort((a, b) => distanceKm(a, near) - distanceKm(b, near));
-  return found[0] ?? null;
+  return found;
 }
 
 /**
@@ -293,7 +295,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const provider = geoProvider();
     const overture = data.venues ? await import("@/lib/open-places.server") : null;
 
-    const cache = new Map<string, GeoHit | null>();
+    // Every answer, not the chosen one: which answer is the stop depends on
+    // the stop, and two stops can ask the same thing.
+    const cache = new Map<string, GeoHit[]>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     // Only the last minute matters to either cap.
     const sent: number[] = (data.recent ?? []).filter((t) => Date.now() - t < 60_000);
@@ -367,7 +371,11 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       /** The middle of the stop's town, which every find is measured from. */
       const centre = centres.get(where.toLowerCase()) ?? null;
 
-      /** The stop's queries inside one area; true once one of them lands. */
+      // An answer that is probably not the stop (the town, for a park the
+      // geocoder could not find). Kept only if nothing better turns up.
+      const doubtful: GeoHit[] = [];
+
+      /** The stop's queries inside one area; true once one of them lands on the stop. */
       const tryIn = async (
         inWhere: string,
         bounds: AreaBox,
@@ -383,27 +391,25 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           // nearest to another searching the same country box.
           const from = near ?? centre;
           const key = `${query.toLowerCase()}|${boxViewbox(bounds)}|${from ? `${from.lat.toFixed(3)},${from.lon.toFixed(3)}` : ""}`;
-          if (cache.has(key)) {
-            const hit = cache.get(key) ?? null;
-            if (hit) {
-              placed.push({ index, ...hit, ...farFrom(hit) });
-              return true;
+          let hits = cache.get(key);
+          if (!hits) {
+            if (!(await takeTurn())) return false;
+            const found = await geocode(provider, query, bounds, near ?? centre);
+            if (found === "throttled") {
+              // Asking harder will not help, and recording these as misses would
+              // mark real places unfindable for the rest of the session.
+              throttled = true;
+              return false;
             }
-            continue;
+            cache.set(key, found);
+            hits = found;
           }
-          if (!(await takeTurn())) return false;
-          const found = await geocode(provider, query, bounds, near ?? centre);
-          if (found === "throttled") {
-            // Asking harder will not help, and recording these as misses would
-            // mark real places unfindable for the rest of the session.
-            throttled = true;
-            return false;
-          }
-          cache.set(key, found);
-          if (found) {
-            placed.push({ index, ...found, ...farFrom(found) });
+          const picked = pickHit(hits, bounds, stop);
+          if (picked?.trusted) {
+            placed.push({ index, ...picked.hit, ...farFrom(picked.hit) });
             return true;
           }
+          if (picked) doubtful.push({ ...picked.hit, ...farFrom(picked.hit) });
         }
         return false;
       };
@@ -484,6 +490,11 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inside: parentTitle,
         });
       }
+      // Nothing better than the doubtful answer: returned as before, so the
+      // review can say what was found and let the person keep it.
+      const fallback = doubtful[0];
+      if (fallback && !placed.some((hit) => hit.index === index))
+        placed.push({ index, ...fallback });
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.
       if (throttled) break;
