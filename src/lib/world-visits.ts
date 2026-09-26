@@ -383,3 +383,31 @@ export function provinceFilesFor(
     )
     .map((entry) => entry.a3);
 }
+
+export type CountryMark = { key: string; name: string; lat: number; lon: number };
+
+/**
+ * Where to name a country on the globe: every country you have been to that
+ * has no city dot of its own — one added by hand as "Iceland", say. Its
+ * shading alone was too quiet to find, especially a small country, so it
+ * gets a marker and its name at the point it was saved with.
+ */
+export function countryMarks(
+  pins: readonly Pin[],
+  visits: readonly CountryVisits[],
+): CountryMark[] {
+  const marks: CountryMark[] = [];
+  for (const visit of visits) {
+    if (visit.cities.length > 0) continue;
+    const pin = pins.find(
+      (p) =>
+        isVisitedPin(p) &&
+        countryKey(pinCountry(p)) === visit.key &&
+        Number.isFinite(p.lat) &&
+        Number.isFinite(p.lon) &&
+        !(p.lat === 0 && p.lon === 0),
+    );
+    if (pin) marks.push({ key: visit.key, name: visit.country, lat: pin.lat, lon: pin.lon });
+  }
+  return marks;
+}

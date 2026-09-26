@@ -97,6 +97,7 @@ export function Globe({
   onCountrySelect,
   regions,
   visitedCountries,
+  countryMarks,
   className,
 }: {
   pins: Pin[];
@@ -112,6 +113,12 @@ export function Globe({
    * found, for cities saved without one.
    */
   visitedCountries?: ReadonlySet<string> | undefined;
+  /**
+   * Countries to name on the globe, with a ring marker: the World tab's
+   * countries you have been to with no city dot of their own, whose shading
+   * alone was too quiet to find.
+   */
+  countryMarks?: { key: string; name: string; lat: number; lon: number }[] | undefined;
   selectedId?: string | null | undefined;
   onSelect?: ((pin: Pin) => void) | undefined;
   onCountrySelect?: ((countryName: string) => void) | undefined;
@@ -217,6 +224,41 @@ export function Globe({
     const byId = new Map(projected.map((point) => [point.pin.id, point]));
     return placed.map((label) => byId.get(label.id)!).filter(Boolean);
   }, [projected, zoom]);
+
+  // Country names go right of their ring, or left when a city's name is
+  // already there, or not at all — the ring still marks the country.
+  const countryLabels = useMemo(() => {
+    type Box = { x0: number; x1: number; y0: number; y1: number };
+    const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+    const taken: Box[] = cityLabels.map(({ pin, x, y }) => ({
+      x0: x + 7,
+      x1: x + 7 + pin.city.length * 6,
+      y0: y - 15,
+      y1: y - 2,
+    }));
+    return (countryMarks ?? [])
+      .map((mark) => {
+        const p = projection([mark.lon, mark.lat]);
+        if (!p || !clipTest(mark.lon, mark.lat)) return null;
+        const [x, y] = p;
+        const width = mark.name.length * 6.2;
+        const right: Box = { x0: x + 6, x1: x + 6 + width, y0: y - 5, y1: y + 6 };
+        const left: Box = { x0: x - 6 - width, x1: x - 6, y0: y - 5, y1: y + 6 };
+        const side = !taken.some((t) => overlaps(t, right))
+          ? "right"
+          : !taken.some((t) => overlaps(t, left))
+            ? "left"
+            : null;
+        if (side) taken.push(side === "right" ? right : left);
+        return { mark, x, y, side };
+      })
+      .filter(Boolean) as {
+      mark: { key: string; name: string };
+      x: number;
+      y: number;
+      side: "right" | "left" | null;
+    }[];
+  }, [countryMarks, projection, clipTest, cityLabels]);
 
   const flushRotation = () => {
     rafDrag.current = null;
@@ -526,6 +568,33 @@ export function Globe({
               </g>
             );
           })}
+          {/* Countries with no city of their own: a ring, not a dot, and the
+              name in small capitals, so it never reads as a city. */}
+          {countryLabels.map(({ mark, x, y, side }) => (
+            <g key={`country-${mark.key}`} className="pointer-events-none">
+              <circle
+                cx={x}
+                cy={y}
+                r={3.4}
+                fill="var(--card)"
+                stroke="var(--visited)"
+                strokeWidth={1.6}
+              />
+              {side && (
+                <text
+                  x={side === "right" ? x + 6 : x - 6}
+                  y={y + 3.5}
+                  textAnchor={side === "right" ? "start" : "end"}
+                  className="fill-foreground text-[8.5px] font-semibold uppercase tracking-[0.08em]"
+                  stroke="var(--card)"
+                  strokeWidth={2.5}
+                  paintOrder="stroke"
+                >
+                  {mark.name}
+                </text>
+              )}
+            </g>
+          ))}
           {cityLabels.map(({ pin, x, y }) => (
             <text
               key={`city-${pin.city}-${pin.id}`}
