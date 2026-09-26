@@ -19,7 +19,7 @@ import { Section, SectionAction } from "@/components/Section";
 import { TripBanner } from "@/components/TripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import { pickTripPhoto } from "@/lib/trip-card";
-import { timelineGlyph, vaultCategory } from "@/lib/timeline-kind";
+import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
@@ -27,7 +27,9 @@ import { TripPrep } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
-import { toNewReco } from "@/lib/captured-place";
+import type { PlaceLike } from "@/lib/captured-place";
+import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
+import { supabase } from "@/integrations/supabase/client";
 import { ItineraryImport } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
@@ -281,26 +283,28 @@ export function TripDetail({
    * a place worth remembering after it — that is the whole premise, and the
    * timeline had no way to get anything back out.
    */
+  const [vaultPlaces, setVaultPlaces] = useState<PlaceLike[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void supabase
+      .from("recommendations")
+      .select("name, city, lat, lon")
+      .then(({ data }) => {
+        if (!cancelled && data) setVaultPlaces(data);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const isKept = (item: ItineraryRow) => isAlreadyKept(item, trip, vaultPlaces);
   const keepItemAsReco = async (item: ItineraryRow) => {
-    await addRecommendationOnce(
-      toNewReco(
-        {
-          name: item.title,
-          ...(item.address ? { address: item.address } : {}),
-          ...(trip.city ? { city: trip.city } : {}),
-          ...(trip.country ? { country: trip.country } : {}),
-          ...(item.lat != null ? { lat: item.lat } : {}),
-          ...(item.lon != null ? { lon: item.lon } : {}),
-          source: `Trip: ${trip.title}`,
-        },
-        {
-          // By glyph, so a row stored as "dinner" or "hotel" files itself
-          // correctly rather than landing in the catch-all.
-          category: vaultCategory(timelineGlyph(item)),
-          ...(item.detail ? { notes: item.detail } : {}),
-        },
-      ),
-    );
+    // Already there, perhaps from another trip or the Recs tab: say so rather
+    // than filing a second copy.
+    if (!isKept(item)) {
+      const reco = keeperToReco(item, trip);
+      await addRecommendationOnce(reco);
+      setVaultPlaces((prev) => [...prev, reco]);
+    }
     const line = beaLine("recs.saved");
     toast.success(line.title, { description: line.body });
   };
@@ -1173,6 +1177,7 @@ export function TripDetail({
                                           tripStart={trip.start_date}
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
+                                          kept={isKept(item)}
                                           stray={strayIds.has(item.id)}
                                           {...foldProps(item)}
                                         />
@@ -1219,6 +1224,7 @@ export function TripDetail({
                                           tripStart={trip.start_date}
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
+                                          kept={isKept(item)}
                                           stray={strayIds.has(item.id)}
                                           {...foldProps(item)}
                                         />
@@ -1275,6 +1281,7 @@ export function TripDetail({
                             tripStart={trip.start_date}
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
+                            kept={isKept(item)}
                             stray={strayIds.has(item.id)}
                             {...foldProps(item)}
                           />

@@ -9,6 +9,7 @@ import { Bookmark, Check, Plus, StickyNote, UserRound, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
+import { TripPlacesImport } from "@/components/TripPlacesImport";
 import { ShareRecos } from "@/components/ShareRecos";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
@@ -118,7 +119,9 @@ function RecommendationsPage() {
   const [query, setQuery] = useState("");
   const [placeFilter, setPlaceFilter] = useState("All places");
   const [category, setCategory] = useState("All");
-  const [mode, setMode] = useState<"link" | "search" | "here" | "manual" | "list" | null>(null);
+  const [mode, setMode] = useState<"link" | "search" | "here" | "manual" | "list" | "trips" | null>(
+    null,
+  );
   const [link, setLink] = useState("");
   const [term, setTerm] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -572,6 +575,20 @@ function RecommendationsPage() {
               >
                 Paste or upload a list
               </button>
+              <button
+                onClick={() => {
+                  setMode(mode === "trips" ? null : "trips");
+                  setDraft(null);
+                  setLocQuery("");
+                  setLocResults(null);
+                  setError(null);
+                }}
+                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
+                  mode === "trips" ? "border-primary bg-elevated" : "border-border bg-card"
+                }`}
+              >
+                From your trips — places you loved
+              </button>
               <div className="col-span-2">
                 <NearbyMapPin
                   existing={venues
@@ -602,6 +619,15 @@ function RecommendationsPage() {
                 setMode(null);
                 setError(null);
               }}
+            />
+          )}
+
+          {mode === "trips" && (
+            <TripPlacesImport
+              signedIn={vault.signedIn}
+              vault={vault.rows}
+              onAddMany={vault.addMany}
+              onSaved={() => setMode(null)}
             />
           )}
 
