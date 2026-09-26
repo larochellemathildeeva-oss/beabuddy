@@ -192,6 +192,15 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
           areaish ? words.every((w) => name.includes(w)) : words.some((w) => name.includes(w)),
         );
 
+  // A street named after the place ("Rua Rio de Ondas" for the Rio de
+  // Ondas bathing spot) echoes the name perfectly and is somewhere else.
+  // Only a stop that is itself a street may be answered by one.
+  if (category === "highway" && !namesAStreet(evidence.title)) {
+    return {
+      confidence: "low",
+      reason: "This is a street named after it, not the place itself.",
+    };
+  }
   if (areaish && !echoes) {
     return {
       confidence: "low",
@@ -205,6 +214,23 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/**
+ * A name that is a street, by where its street word sits: first in the
+ * languages that put it first ("Rua Augusta", "R. Augusta", "Rue de Rivoli",
+ * "Calle Mayor"), last in those that put it last ("Granville Street",
+ * "Omotesando-dori"). A word in the middle is part of a venue's name:
+ * "Park Avenue Hotel" and "Abbey Road Studios" are not streets.
+ */
+const STREET_FIRST =
+  /^(?:rua|r\.|avenida|av\.?|avda\.?|travessa|estrada|rodovia|alameda|rue|boulevard|bd|calle|carrer|via|viale|corso)(?=\s)/;
+const STREET_LAST =
+  /(?:^|[\s-])(?:street|st\.?|road|rd\.?|avenue|ave\.?|boulevard|blvd\.?|lane|ln\.?|drive|dr\.?|way|highway|dori|tori)$|(?:strasse|straße)$/;
+
+function namesAStreet(title: string): boolean {
+  const name = foldAccents(title.toLowerCase()).replace(/\s+/g, " ").trim();
+  return looksLikeStreetAddress(name) || STREET_FIRST.test(name) || STREET_LAST.test(name);
 }
 
 /** Counts for the line that says how the batch went. */

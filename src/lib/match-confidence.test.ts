@@ -192,3 +192,59 @@ test("a well-named find far outside the town is not pinned unasked", () => {
   assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, hit), true);
   assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, { ...hit, farKm: 21 }), false);
 });
+
+test("a street named after a place is not the place", () => {
+  // Barreiras: "Rio de Ondas", the bathing spot, was pinned on Rua Rio de Ondas.
+  const street = {
+    label: "Rua Rio de Ondas, Vila Dulce, Barreiras",
+    category: "highway",
+    kind: "residential",
+  };
+  assert.equal(scoreMatch({ title: "Rio de Ondas", ...street }).confidence, "low");
+  assert.equal(autoPinTrusted({ title: "Rio de Ondas" }, street), false);
+  // A stop that is a street may still land on one.
+  assert.equal(scoreMatch({ title: "Rua Rio de Ondas", ...street }).confidence, "high");
+  assert.equal(
+    scoreMatch({
+      title: "Granville Street",
+      label: "Granville Street, Vancouver",
+      category: "highway",
+      kind: "primary",
+    }).confidence,
+    "high",
+  );
+  // German runs the street word into the name.
+  assert.equal(
+    scoreMatch({
+      title: "Friedrichstraße",
+      label: "Friedrichstraße, Berlin",
+      category: "highway",
+      kind: "secondary",
+    }).confidence,
+    "high",
+  );
+  // Written short, as Portuguese streets often are.
+  assert.equal(
+    scoreMatch({
+      title: "R. Augusta",
+      label: "Rua Augusta, Lisboa",
+      category: "highway",
+      kind: "pedestrian",
+    }).confidence,
+    "high",
+  );
+});
+
+test("a venue named after its street is not the street", () => {
+  for (const [title, label] of [
+    ["Park Avenue Hotel", "Park Avenue, New York"],
+    ["Abbey Road Studios", "Abbey Road, London"],
+    ["Café da Rua Augusta", "Rua Augusta, Lisboa"],
+  ] as const) {
+    assert.equal(
+      scoreMatch({ title, label, category: "highway", kind: "residential" }).confidence,
+      "low",
+      title,
+    );
+  }
+});
