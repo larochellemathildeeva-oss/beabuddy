@@ -5,7 +5,7 @@ import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Bookmark, Check, Plus, StickyNote, UserRound, X } from "lucide-react";
+import { Bookmark, Check, MapPinned, Plus, StickyNote, UserRound, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
@@ -524,6 +524,26 @@ function RecommendationsPage() {
             }}
           />
 
+          {/* Out in the open rather than under "Other ways": the places you
+              went and loved are the likeliest recs you have. */}
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "trips" ? null : "trips");
+              setDraft(null);
+              setLocQuery("");
+              setLocResults(null);
+              setError(null);
+            }}
+            aria-expanded={mode === "trips"}
+            className={`mt-2 flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] font-medium transition-colors ${
+              mode === "trips" ? "border-primary bg-elevated" : "border-border bg-card"
+            }`}
+          >
+            <MapPinned className="size-4 shrink-0 text-primary" aria-hidden />
+            Add places you loved from your trips
+          </button>
+
           <button
             type="button"
             onClick={() => setMoreWays((v) => !v)}
@@ -574,20 +594,6 @@ function RecommendationsPage() {
                 }`}
               >
                 Paste or upload a list
-              </button>
-              <button
-                onClick={() => {
-                  setMode(mode === "trips" ? null : "trips");
-                  setDraft(null);
-                  setLocQuery("");
-                  setLocResults(null);
-                  setError(null);
-                }}
-                className={`col-span-2 rounded-xl border px-3 py-2.5 text-left text-[14.5px] transition-colors ${
-                  mode === "trips" ? "border-primary bg-elevated" : "border-border bg-card"
-                }`}
-              >
-                From your trips — places you loved
               </button>
               <div className="col-span-2">
                 <NearbyMapPin
