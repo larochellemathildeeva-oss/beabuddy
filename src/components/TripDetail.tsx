@@ -80,6 +80,8 @@ import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
 import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
+import { useOfflineMap } from "@/hooks/useOfflineMap";
+import { prettyMegabytes } from "@/lib/vector-tiles";
 import { daysForMaps } from "@/lib/day-maps";
 import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
@@ -140,6 +142,7 @@ export function TripDetail({
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
   const dayMaps = useOfflineDayMaps(activeId);
+  const offlineMap = useOfflineMap(activeId);
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
   /**
@@ -1447,7 +1450,13 @@ export function TripDetail({
                 const kept = dir.keep(result, stops);
                 // A picture of each day's map goes with the directions, so the
                 // day can be followed with no signal at all.
-                if (kept) void dayMaps.save(daysForMaps(board.items));
+                // And, where the day map is drawn from vector tiles, the map
+                // itself around each day's stops, so it still pans and zooms.
+                if (kept) {
+                  const days = daysForMaps(board.items);
+                  void dayMaps.save(days);
+                  void offlineMap.save(days);
+                }
                 return kept;
               }}
               onLegs={setLiveLegs}
@@ -1797,10 +1806,30 @@ export function TripDetail({
                     </p>
                   )}
                   {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
+                  {offlineMap.progress && (
+                    <p className="text-[12px] text-muted-foreground">
+                      Saving the trip's map
+                      {offlineMap.progress.total > 0
+                        ? ` (${Math.round((offlineMap.progress.done / offlineMap.progress.total) * 100)}%)`
+                        : ""}
+                      …
+                    </p>
+                  )}
+                  {!offlineMap.busy && offlineMap.saved && (
+                    <p className="text-[12px] text-muted-foreground">
+                      The map around each day's stops is saved on this phone (
+                      {prettyMegabytes(offlineMap.saved.bytes)}), so it still pans and zooms with no
+                      signal.
+                    </p>
+                  )}
+                  {offlineMap.error && (
+                    <p className="text-[12px] text-destructive">{offlineMap.error}</p>
+                  )}
                   <button
                     onClick={() => {
                       dir.clear();
                       dayMaps.clear();
+                      offlineMap.clear();
                     }}
                     className="text-[12px] text-muted-foreground underline"
                   >
