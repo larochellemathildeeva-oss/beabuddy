@@ -432,11 +432,14 @@ export function TripDetail({
     return counts;
   }, [board.items, itemsById]);
   const nestProps = (item: ItineraryRow) => {
+    const onInside = (next: InsideEntry[]) => void board.updateItem(item.id, { inside: next });
+    // Flat, by choice: every stop on its own line, what is inside as a note.
+    if (!view.prefs.nesting) return { flat: true, onInside };
     const parent = item.parent_id ? itemsById.get(item.parent_id) : undefined;
     return {
       ...(parent && parent.day_date === item.day_date ? { parentTitle: parent.title } : {}),
       nestedStops: nestedCounts.get(item.id) ?? 0,
-      onInside: (next: InsideEntry[]) => void board.updateItem(item.id, { inside: next }),
+      onInside,
     };
   };
   /** The search anchors for a stop on that day, as props. */
@@ -932,6 +935,7 @@ export function TripDetail({
                 key={`${chosenDay}:${mapFocus ?? ""}`}
                 focusId={mapFocus}
                 groups={shownGroups}
+                nesting={view.prefs.nesting}
                 area={formatTripLocation(trip.city, trip.country)}
                 todayKey={todayKey}
                 ordinals={Object.fromEntries(

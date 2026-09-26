@@ -72,9 +72,13 @@ type DayStop = {
   inside?: readonly unknown[] | null | undefined;
 };
 
-export function dayMapPins(stops: readonly DayStop[]): DayMapPin[] {
+/** `nesting: false` is the flat view: every stop an ordinary pin. */
+export function dayMapPins(
+  stops: readonly DayStop[],
+  { nesting = true }: { nesting?: boolean } = {},
+): DayMapPin[] {
   const pins: DayMapPin[] = [];
-  const shown = new Set(stops.map((stop) => stop.id));
+  const shown = new Set(nesting ? stops.map((stop) => stop.id) : []);
   stops.forEach((stop, i) => {
     if (!placed(stop)) return;
     pins.push({
@@ -84,7 +88,7 @@ export function dayMapPins(stops: readonly DayStop[]): DayMapPin[] {
       lat: stop.lat,
       lon: stop.lon,
       tone: pinTone(stop),
-      insideCount: stop.inside?.length ?? 0,
+      insideCount: nesting ? (stop.inside?.length ?? 0) : 0,
       nested: Boolean(stop.parent_id && shown.has(stop.parent_id)),
     });
   });
@@ -98,8 +102,11 @@ export type DayMapModel = {
   unplaced: number;
 };
 
-export function dayMapModel(stops: readonly DayStop[]): DayMapModel {
-  const pins = dayMapPins(stops);
+export function dayMapModel(
+  stops: readonly DayStop[],
+  options: { nesting?: boolean } = {},
+): DayMapModel {
+  const pins = dayMapPins(stops, options);
   return { plan: tripMapPlan(stops), pins, unplaced: stops.length - pins.length };
 }
 

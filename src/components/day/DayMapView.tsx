@@ -84,8 +84,11 @@ export function DayMapView({
   focusId,
   todayKey,
   ordinals,
+  nesting = true,
 }: {
   groups: TimelineDayGroup<ItineraryRow>[];
+  /** Off: the flat view — ordinary pins, and no "In …" on the cards. */
+  nesting?: boolean;
   area: string;
   /** A stop to open on, from "Locate on map" in the Timeline. */
   focusId?: string | null | undefined;
@@ -97,8 +100,9 @@ export function DayMapView({
   // Recomputed each render: `groups` is rebuilt upstream every time, and a
   // day's worth of stops costs nothing to walk.
   const stops = groups.flatMap((group) => group.items);
-  const model = dayMapModel(stops);
-  const titles = new Map(stops.map((stop) => [stop.id, stop.title]));
+  const model = dayMapModel(stops, { nesting });
+  // Flat: no stop is named as inside another.
+  const titles = new Map(nesting ? stops.map((stop) => [stop.id, stop.title]) : []);
   const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
   const [layout, setLayoutState] = useState<MapLayout>("split");
   const [fitSignal, setFitSignal] = useState(0);

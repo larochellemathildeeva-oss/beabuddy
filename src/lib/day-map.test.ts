@@ -145,3 +145,15 @@ test("a stop with a list inside carries its count; one inside another is nested"
     "a parent not on this map leaves the stop an ordinary pin",
   );
 });
+
+test("the flat view draws every stop as an ordinary pin", () => {
+  const park = { ...cafe, id: "park", inside: [{ title: "Peace Bell", done: false }] };
+  const cenotaph = { ...museum, id: "cenotaph", parent_id: "park" };
+  assert.deepEqual(
+    dayMapPins([park, cenotaph], { nesting: false }).map((p) => [p.id, p.insideCount, p.nested]),
+    [
+      ["park", 0, false],
+      ["cenotaph", 0, false],
+    ],
+  );
+});

@@ -76,6 +76,7 @@ export function TimelineEntry({
   parentTitle,
   nestedStops = 0,
   onInside,
+  flat = false,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -138,6 +139,8 @@ export function TimelineEntry({
   nestedStops?: number;
   /** Save what to see inside this stop. Absent until the nesting migration is applied. */
   onInside?: ((next: InsideEntry[]) => void) | undefined;
+  /** The flat view: what is inside is a plain line, not a pill. */
+  flat?: boolean;
 }) {
   const [keptHere, setKept] = useState(false);
   const kept = keptHere || alreadyKept;
@@ -148,7 +151,7 @@ export function TimelineEntry({
   const inside = item.inside ?? [];
   // Editable only once the column exists: the row carries it when it does.
   const canEditInside = Boolean(onInside) && item.inside !== undefined;
-  const pill = nestPillLabel(inside.length, nestedStops);
+  const pill = flat ? null : nestPillLabel(inside.length, nestedStops);
   const insideDone = inside.filter((entry) => entry.done).length;
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
@@ -278,6 +281,12 @@ export function TimelineEntry({
               {detail ? (
                 <span className="mt-0.5 line-clamp-2 block break-words text-xs leading-relaxed text-muted-foreground">
                   {detail}
+                </span>
+              ) : null}
+              {flat && inside.length > 0 ? (
+                <span className="mt-0.5 line-clamp-2 block break-words text-xs leading-relaxed text-muted-foreground">
+                  Inside:{" "}
+                  {inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
                 </span>
               ) : null}
               {stray ? (
