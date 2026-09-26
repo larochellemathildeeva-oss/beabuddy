@@ -198,6 +198,15 @@ export function ShareRecos({
           Not switched on for this database yet — the <code>reco_shares</code> migration still needs
           to be run.
         </p>
+        {bare && (
+          <button
+            type="button"
+            onClick={close}
+            className="mt-2 rounded-lg border border-border bg-card px-2.5 py-1 text-[12.5px] font-semibold"
+          >
+            Close
+          </button>
+        )}
       </section>
     );
   }
