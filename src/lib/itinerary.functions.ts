@@ -13,6 +13,7 @@ import { computeItineraryMetrics, formatPlanForCompare } from "@/lib/itinerary-m
 import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
+import type { SearchGrounding } from "@/lib/search-grounding";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
 import { foldTravelLegs, nestWithin, normalizeClock } from "@/lib/import-stop";
@@ -112,7 +113,10 @@ const ParsedSchema = z.object({
   items: z.array(ItemSchema),
 });
 
-export type ParsedItinerary = z.infer<typeof ParsedSchema>;
+/** `grounding`: what Béa checked on the web for this plan, shown with it. */
+export type ParsedItinerary = z.infer<typeof ParsedSchema> & {
+  grounding?: SearchGrounding | null;
+};
 export type ParsedItineraryItem = z.infer<typeof ItemSchema>;
 
 /** Prefer withGemini so a rate-limit can fall through to GEMINI_FALLBACK_MODEL. */
@@ -362,6 +366,35 @@ function finishBuild(
 }
 
 /**
+ * Béa's preferences and vault, plus what the web says about this place and
+ * these dates — fetched side by side. Only a plan Béa drafts checks the web.
+ */
+async function loadPlanExtra(
+  context: PlanContext,
+  data: {
+    tripCity: string | null;
+    route?: string | null | undefined;
+    startDate: string | null;
+    endDate: string | null;
+  },
+  mode: "import" | "build",
+) {
+  const [base, web] = await Promise.all([
+    loadBuildExtra(context, data.tripCity, mode),
+    mode === "build"
+      ? import("@/lib/web-check.server").then(({ webCheck }) =>
+          webCheck(data.tripCity || data.route, data.startDate, data.endDate),
+        )
+      : null,
+  ]);
+  return {
+    ...base,
+    extra: web ? `${base.extra}\n\n${web.note}` : base.extra,
+    grounding: web?.grounding ?? null,
+  };
+}
+
+/**
  * Open a pasted link and say what it holds. The fetch is the guarded one
  * place links use: https only, public addresses only, re-checked each hop.
  */
@@ -421,15 +454,15 @@ export const parseItinerary = createServerFn({ method: "POST" })
         text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
       };
     }
-    const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
+    const { extra, recosForTag, tagVaultItems, grounding } = await loadPlanExtra(
       context,
-      data.tripCity,
+      data,
       data.mode,
     );
     try {
       return await withGemini(async (model) => {
         const parsed = await runParse(model, data, extra);
-        return finishBuild(parsed, data.mode, recosForTag, tagVaultItems);
+        return { ...finishBuild(parsed, data.mode, recosForTag, tagVaultItems), grounding };
       });
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
@@ -490,9 +523,9 @@ export const reviseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReviseInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
-    const { extra, recosForTag, tagVaultItems } = await loadBuildExtra(
+    const { extra, recosForTag, tagVaultItems, grounding } = await loadPlanExtra(
       context,
-      data.tripCity,
+      data,
       "build",
     );
 
@@ -523,7 +556,7 @@ export const reviseItinerary = createServerFn({ method: "POST" })
             },
             extra,
           );
-          return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+          return { ...finishBuild(parsed, "build", recosForTag, tagVaultItems), grounding };
         });
       } catch (error) {
         if (NoObjectGeneratedError.isInstance(error)) {
@@ -598,7 +631,7 @@ export const reviseItinerary = createServerFn({ method: "POST" })
           },
           data.includeCosts,
         );
-        return finishBuild(parsed, "build", recosForTag, tagVaultItems);
+        return { ...finishBuild(parsed, "build", recosForTag, tagVaultItems), grounding };
       });
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {

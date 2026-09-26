@@ -107,6 +107,19 @@ OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and
 `GEOAPIFY_ATTRIBUTION` beside it on the maps, as Geoapify's free plan asks.
 
+## Web check before planning
+
+When Béa drafts or reworks a plan (Build, Rebuild, Alternatives), it first
+runs a short **Grounding with Google Search** call (`web-check.server.ts`):
+events, closures and strikes at the destination on the trip's dates, at most
+`WEB_CHECK_MAX_SEARCHES` searches, cached six hours per place and dates. Only
+the place and dates are searched, never the traveller's notes. A long planning
+prompt with search switched on rarely searches, which is why it is a call of
+its own. Google bills each search, and its terms ask that a grounded answer is
+shown with its Search Suggestions, unaltered, and its sources:
+`SearchGroundingNote` does that under the plan. `GEMINI_SEARCH_GROUNDING=off`
+turns it off. A failed check never stops the plan.
+
 ## World globe data
 
 The World tab shades provinces and states from `public/geo/admin1/` — one

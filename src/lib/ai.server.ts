@@ -1,6 +1,7 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { wrapLanguageModel } from "ai";
+import { wrapLanguageModel, type ToolSet } from "ai";
 import { flattenGeminiPromptFiles } from "@/lib/ai-image";
+import { searchGroundingOn } from "@/lib/search-grounding";
 import {
   AI_CALL,
   aiFailure,
@@ -80,6 +81,20 @@ export function getFallbackModel() {
   const chain = geminiModelChain();
   const next = chain[1];
   return next ? modelForId(next) : null;
+}
+
+/**
+ * Grounding with Google Search, for the calls that suggest places: Gemini may
+ * check the web for current hours, closures and events. Billed per search, so
+ * GEMINI_SEARCH_GROUNDING=off turns it off without a code change. Spread
+ * into generateText's options.
+ */
+export function searchTools() {
+  if (!searchGroundingOn(process.env["GEMINI_SEARCH_GROUNDING"])) return {};
+  // @ai-sdk/google 3 types its tools for the previous AI SDK; the shape the
+  // SDK reads at run time ({ type: "provider", id, args }) is the same.
+  const tools = { google_search: google().tools.googleSearch({}) } as unknown as ToolSet;
+  return { tools };
 }
 
 /** Judgment jobs: think more, and return a thought summary the UI can show. */

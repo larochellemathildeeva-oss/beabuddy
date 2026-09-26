@@ -1,5 +1,6 @@
 import { Sheet } from "@/components/Sheet";
 import { BeaRunning } from "@/components/BeaRunning";
+import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -1072,6 +1073,7 @@ function ImportPanel({
       {items && (
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
           {summary && <p className="text-[13px] text-muted-foreground">{summary}</p>}
+          {plan?.grounding && <SearchGroundingNote grounding={plan.grounding} />}
           {includeCosts && plan?.estimated_total != null && (
             <p className="text-[14.5px] font-semibold">
               Estimated trip total: {plan.estimated_total.toLocaleString()} {plan.currency}

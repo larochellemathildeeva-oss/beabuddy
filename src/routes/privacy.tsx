@@ -159,6 +159,12 @@ function PrivacyPage() {
             suggestions fit you.
           </p>
           <p>
+            When Béa drafts or reworks a trip, it may first ask Gemini to search Google for events,
+            closures and strikes in the trip&apos;s destination on its dates. Only the destination
+            and dates are searched — not your notes or preferences — and the searches and their
+            sources are shown with the plan.
+          </p>
+          <p>
             This content is used only to generate your result; it is not sold and not used for
             advertising by Béa. The AI provider may process or retain prompts under their own policy
             — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories are
