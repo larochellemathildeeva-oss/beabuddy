@@ -1,26 +1,66 @@
+import type { ReactNode } from "react";
+import { Users } from "lucide-react";
 import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
-import { TripMap } from "@/components/TripMap";
-import {
-  countdownLabel,
-  fallbackTint,
-  isUnderway,
-  photoCreditLine,
-  tripDateLine,
-  tripLengthLabel,
-  tripMonogram,
-  tripPlacesLine,
-} from "@/lib/trip-card";
+import { photoCreditLine, tripDateLine, tripPlacesLine } from "@/lib/trip-card";
+import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/trip-glance";
 
 /**
- * The top of a trip card: your own photo of the place, the title over it, and
- * how soon it is.
+ * The evening scene behind a trip that has no photograph yet.
  *
- * The photo is the point. Other travel apps put stock destination photography
- * here; Béa has something better sitting in photo_memories, so a trip to Kyoto
- * shows the Kyoto you already saw. Somewhere new gets a quiet tint instead —
- * quiet on purpose, because it is a placeholder waiting for a photograph, not
- * a colour swatch asking to be looked at.
+ * The photo is still the point — a trip to Kyoto shows the Kyoto you already
+ * saw. Somewhere new gets a painted dusk instead: sky, a low sun and three
+ * ridges of hills, chosen from the trip's name so it keeps its picture. It is
+ * drawn inline, so it costs no request and no provider.
+ */
+function Scene({ seed }: { seed: string }) {
+  const s = bannerScene(seed);
+  const id = `scene-${seed.replace(/[^\w-]/g, "").slice(0, 24) || "bea"}`;
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 400 160"
+      preserveAspectRatio="xMidYMid slice"
+      className="absolute inset-0 size-full"
+    >
+      <defs>
+        <linearGradient id={`${id}-sky`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={s.sky[0]} />
+          <stop offset="1" stopColor={s.sky[1]} />
+        </linearGradient>
+        <radialGradient id={`${id}-glow`}>
+          <stop offset="0" stopColor={s.sun} stopOpacity="0.35" />
+          <stop offset="1" stopColor={s.sun} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <rect width="400" height="160" fill={`url(#${id}-sky)`} />
+      <circle cx={s.sunX} cy={s.sunY} r={s.sunR * 2.1} fill={`url(#${id}-glow)`} />
+      <circle cx={s.sunX} cy={s.sunY} r={s.sunR} fill={s.sun} opacity="0.85" />
+      {s.birds ? (
+        <path
+          d={`M${s.sunX + s.sunR + 18},34 q4,-4 8,0 q4,-4 8,0`}
+          fill="none"
+          stroke={s.hills[2]}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+        />
+      ) : null}
+      <path d={s.paths[0]} fill={s.hills[0]} />
+      <path d={s.paths[1]} fill={s.hills[1]} />
+      <path d={s.paths[2]} fill={s.hills[2]} />
+    </svg>
+  );
+}
+
+type Variant = "card" | "hero" | "compact";
+
+/**
+ * The top of a trip card: your own photo of the place (or a painted dusk),
+ * how soon it is, where and when, and the title.
+ *
+ * Three sizes share one look. `card` is the trips list and Home's later trips;
+ * `hero` is Home's current trip, with room for a footer; `compact` is the thin
+ * bar pinned to the top of the trip page.
  */
 export function TripBanner({
   title,
@@ -32,9 +72,11 @@ export function TripBanner({
   tentative,
   photo,
   companions,
-  stops = [],
-  note,
+  stopCount,
+  peopleCount,
+  footer,
   viewTransitionName,
+  variant,
   compact = false,
 }: {
   title: string;
@@ -45,166 +87,153 @@ export function TripBanner({
   endDate?: string | null;
   tentative?: boolean;
   photo: TripPhotoRow | null;
+  /** "with Sam & Ana" — shown on the compact bar, where there is no chip. */
   companions?: string;
+  /** Planned stops, for the "17 stops · 3D" corner. */
+  stopCount?: number;
+  /** Everyone on the trip, you included. The chip shows from two. */
+  peopleCount?: number;
+  /** Hero only: what sits under the title, over the picture. */
+  footer?: ReactNode;
   /**
-   * The trip's stops, for the map that stands in for a photograph. Passing
-   * none simply falls back to the monogram, as before.
-   */
-  stops?: { title: string; lat?: number | null | undefined; lon?: number | null | undefined }[];
-  /** Béa's line about this trip, when she has one worth saying. */
-  note?: string | null;
-  /**
-   * Names this banner for a cross-document-free view transition. The card in
-   * the list and the page it opens pass the same name, and the browser tweens
-   * the photograph between them instead of cutting.
-   *
-   * It must be unique within the document: two banners sharing a name silently
-   * disables the transition for both, which is why it is keyed by trip id and
-   * never by anything a second trip could also be.
+   * Names this banner for a view transition. The card in the list and the
+   * page it opens pass the same name, and the browser tweens the picture
+   * between them instead of cutting. It must be unique within the document,
+   * which is why it is keyed by trip id.
    */
   viewTransitionName?: string | undefined;
-  /**
-   * The thin bar pinned to the top of the trip page: title, one line of where
-   * and when, and the countdown. No note, map or credit, because it stays on
-   * screen the whole time and every pixel of it is taken from the itinerary.
-   */
+  variant?: Variant;
+  /** Kept for the trip page: the same as `variant="compact"`. */
   compact?: boolean;
 }) {
+  const kind: Variant = variant ?? (compact ? "compact" : "card");
   const url = useSignedPhoto(photo?.storage_path ?? null);
-  const tint = fallbackTint(title || city || "Béa");
-  const soon = countdownLabel(startDate);
-  const now = isUnderway(startDate, endDate);
+
   // formatTripLocation, not a plain join: the city field often already ends
   // in the country ("Kyoto, Kyoto Prefecture, Japan"), which read "Japan, Japan".
-  const where = tripPlacesLine(cities, formatTripLocation(city, country));
-  const length = tripLengthLabel(startDate, endDate);
+  // Only the city's own name: "Los Angeles, California, United States" left
+  // no room for the dates on a phone.
+  const where = formatTripLocation(city?.split(",")[0], country) || tripPlacesLine(cities);
+  const dates = startDate || endDate ? tripDateLine(startDate, endDate) : "";
+  const pill =
+    kind === "hero"
+      ? heroPill(startDate, endDate, tentative)
+      : bannerPill(startDate, endDate, tentative);
+  const corner = [
+    stopCount ? `${stopCount} ${stopCount === 1 ? "stop" : "stops"}` : "",
+    daysShort(startDate, endDate),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const people = peopleCount && peopleCount > 1 ? peopleCount : 0;
 
-  // Three short lines beat one long one: at phone width a single joined line
-  // truncated the dates away, which is the part the card exists to tell you.
-  const placeLine = [where, length].filter(Boolean).join(" · ");
-  const whenLine = [tripDateLine(startDate, endDate), companions].filter(Boolean).join(" · ");
-
-  const height = compact ? "h-[68px]" : "h-[136px]";
-  const pad = compact ? "px-3 py-2" : "p-3.5";
-  const titleSize = compact ? "text-[18px]" : "text-[21px]";
-  // Compact joins the two lines: a bar with three lines is not thin.
-  const lines = compact
-    ? [[placeLine, whenLine].filter(Boolean).join(" · ")]
-    : [placeLine, whenLine];
-  const shownNote = compact ? null : note;
-
-  const pill = now ? "Underway" : soon ? soon : tentative ? "Tentative" : "";
-  // Only worth drawing a map when there is something on it.
-  const hasPlacedStop =
-    !compact && stops.some((stop) => typeof stop.lat === "number" && typeof stop.lon === "number");
-
-  if (!url) {
-    return (
-      <div
-        className={`relative ${height} w-full overflow-hidden`}
-        style={{
-          backgroundImage: `linear-gradient(150deg, ${tint.from}, ${tint.to})`,
-          ...(viewTransitionName ? { viewTransitionName } : {}),
-        }}
-      >
-        {/**
-         * A photograph if there is one, the trip's own shape if not, and only
-         * then a letter.
-         *
-         * The monogram was the largest thing on the card and said the least —
-         * one character of the title, in the most valuable space there is. A
-         * map of the actual stops says where you are going, costs no request
-         * and no provider, and is drawn from the same bundled topology the
-         * globe uses. It stays faint: this is a backdrop, not the subject.
-         */}
-        {hasPlacedStop ? (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute right-2 top-1/2 w-[44%] -translate-y-1/2 opacity-30"
-          >
-            <TripMap stops={stops} compact />
-          </span>
-        ) : compact ? null : (
-          <span
-            aria-hidden
-            className="absolute right-3 top-1 font-display text-[92px] leading-none text-foreground/10"
-          >
-            {tripMonogram(title, city)}
-          </span>
-        )}
-        <div className={`absolute inset-x-0 bottom-0 flex items-end gap-2 ${pad}`}>
-          <div className="min-w-0 flex-1">
-            <p className={`truncate font-display ${titleSize} leading-tight`}>{title}</p>
-            {lines.map((line, i) =>
-              line ? (
-                <p
-                  key={i}
-                  className={`truncate text-[12.5px] ${i === 0 ? "text-foreground/70" : "text-foreground/60"}`}
-                >
-                  {line}
-                </p>
-              ) : null,
-            )}
-            {shownNote ? (
-              <p className="mt-1 line-clamp-2 text-[12.5px] text-foreground/75">{shownNote}</p>
-            ) : null}
-          </div>
-          {pill ? (
-            <span className="shrink-0 rounded-full border border-foreground/25 bg-card/70 px-2.5 py-1 text-[11.5px] font-semibold">
-              {pill}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
+  const height = kind === "hero" ? "min-h-[300px]" : kind === "compact" ? "h-[68px]" : "h-[172px]";
+  const rounded = kind === "hero" ? "rounded-[28px] shadow-lg" : "";
 
   return (
     <div
-      className={`relative ${height} w-full overflow-hidden`}
+      className={`relative w-full overflow-hidden bg-[#2a2026] text-white ${height} ${rounded}`}
       style={viewTransitionName ? { viewTransitionName } : undefined}
     >
-      {/* eager, not lazy: a transition cannot tween an image the browser has
-          not decoded yet, and it would land as a grey box that fills in after. */}
-      <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
-      {/* Dark at the bottom only, so the title stays legible over any
-          photograph while the top of the picture stays the picture. */}
+      {url ? (
+        // eager, not lazy: a transition cannot tween an image the browser has
+        // not decoded yet, and it would land as a grey box that fills in after.
+        <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : (
+        <Scene seed={title || city || "Béa"} />
+      )}
+      {/* Dark at the bottom, so white type holds over any picture while the
+          top of it stays the picture. */}
       <span
         aria-hidden
         className="absolute inset-0"
         style={{
           backgroundImage:
-            "linear-gradient(to top, rgba(23,16,12,0.80), rgba(23,16,12,0.28) 45%, rgba(23,16,12,0.02) 78%)",
+            kind === "hero"
+              ? "linear-gradient(to top, rgba(18,12,10,0.88), rgba(18,12,10,0.45) 45%, rgba(18,12,10,0.05) 75%)"
+              : "linear-gradient(to top, rgba(18,12,10,0.82), rgba(18,12,10,0.25) 55%, rgba(18,12,10,0) 85%)",
         }}
       />
-      <div className={`absolute inset-x-0 bottom-0 flex items-end gap-2 ${pad}`}>
-        <div className="min-w-0 flex-1">
-          <p className={`truncate font-display ${titleSize} leading-tight text-white`}>{title}</p>
-          {lines.map((line, i) =>
-            line ? (
-              <p
-                key={i}
-                className={`truncate text-[12.5px] ${i === 0 ? "text-white/80" : "text-white/70"}`}
-              >
-                {line}
-              </p>
-            ) : null,
-          )}
-          {shownNote ? (
-            <p className="mt-1 line-clamp-2 text-[12.5px] text-white/80">{shownNote}</p>
-          ) : null}
+
+      {kind === "compact" ? (
+        <div className="absolute inset-0 flex items-center gap-3 px-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-[19px] leading-tight">{title}</p>
+            <p className="truncate text-[12px] text-white/75">
+              {[where, dates, companions].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          {pill ? <Pill text={pill} /> : null}
         </div>
-        {pill ? (
-          <span className="shrink-0 rounded-full bg-white/85 px-2.5 py-1 text-[11.5px] font-semibold text-foreground">
-            {pill}
-          </span>
-        ) : null}
-      </div>
-      {photo && !compact ? (
-        <span className="absolute right-2.5 top-2.5 rounded-full bg-black/25 px-2 py-0.5 text-[10.5px] text-white/85">
-          {photoCreditLine(photo)}
-        </span>
-      ) : null}
+      ) : (
+        <>
+          <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3.5">
+            {pill ? <Pill text={pill} light={kind === "hero"} /> : <span />}
+            <div className="flex items-center gap-1.5">
+              {photo && kind === "card" ? (
+                <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10.5px] text-white/85">
+                  {photoCreditLine(photo)}
+                </span>
+              ) : null}
+              {people ? (
+                <span
+                  aria-label={`${people} people on this trip`}
+                  className="flex items-center gap-1 rounded-full border border-white/15 bg-white/20 px-2.5 py-1 text-[12.5px] font-semibold backdrop-blur-sm"
+                >
+                  <Users className="size-3.5" aria-hidden />
+                  {people}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          {kind === "hero" ? (
+            <div className="relative flex min-h-[300px] flex-col justify-end p-5 pt-16">
+              <p className="break-words font-display text-[42px] leading-[1.02]">{title}</p>
+              <p className="mt-1.5 text-[14.5px] text-white/85">
+                {[dates, routeLine(cities) || city?.split(",")[0] || where]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+              {footer ? <div className="mt-4 border-t border-white/25 pt-3.5">{footer}</div> : null}
+            </div>
+          ) : (
+            <div className="absolute inset-x-0 bottom-0 p-3.5">
+              {/* Full width: squeezed beside the corner, the dates were the
+                  part that truncated away on a phone. */}
+              <p className="truncate text-[12.5px] text-white/80">
+                {[where, dates].filter(Boolean).join(" · ")}
+              </p>
+              <div className="flex items-end gap-3">
+                <p className="mt-0.5 line-clamp-2 min-w-0 flex-1 break-words font-display text-[24px] uppercase leading-[1.02] tracking-[0.01em] sm:text-[28px]">
+                  {title}
+                </p>
+                {corner ? (
+                  <span className="shrink-0 pb-0.5 font-mono text-[12px] tracking-wider text-white/80">
+                    {corner}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
+  );
+}
+
+function Pill({ text, light = false }: { text: string; light?: boolean }) {
+  if (light) {
+    return (
+      <span className="rounded-full bg-white px-3 py-1 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2a2026]">
+        {text}
+      </span>
+    );
+  }
+  return (
+    <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
+      <span aria-hidden className="size-1.5 rounded-full bg-[#c9a877]" />
+      {text}
+    </span>
   );
 }

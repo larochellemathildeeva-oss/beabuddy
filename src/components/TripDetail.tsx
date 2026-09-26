@@ -596,11 +596,6 @@ export function TripDetail({
           tentative={trip.dates_status === "tentative"}
           photo={banner}
           companions={companionsLine}
-          stops={cities.stops.map((stop) => ({
-            title: stop.place_name || stop.city,
-            ...(stop.lat != null ? { lat: stop.lat } : {}),
-            ...(stop.lon != null ? { lon: stop.lon } : {}),
-          }))}
           // The same name as the card in the list, so the browser tweens the one
           // photograph between them instead of cutting.
           viewTransitionName={`trip-photo-${trip.id}`}

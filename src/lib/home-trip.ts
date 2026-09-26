@@ -77,3 +77,45 @@ export function laterHeading(starts: readonly (string | null)[], now = new Date(
   if (dates.every((d) => d.getFullYear() === now.getFullYear())) return "Later this year";
   return "Coming up";
 }
+
+type DatedTrip = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  status?: string | null;
+};
+
+const byStart = (a: DatedTrip, b: DatedTrip) =>
+  (a.start_date ?? "").localeCompare(b.start_date ?? "");
+
+/** The trip happening now, otherwise the soonest one still to come. */
+export function pickActiveTrip<T extends DatedTrip>(trips: readonly T[], today: string): T | null {
+  const current = trips
+    .filter((t) => t.start_date && t.start_date <= today && (!t.end_date || t.end_date >= today))
+    .sort(byStart)[0];
+  if (current) return current;
+  const upcoming = trips.filter((t) => t.start_date && t.start_date > today).sort(byStart)[0];
+  if (upcoming) return upcoming;
+  return trips.find((t) => t.status === "in_progress" || t.status === "upcoming") ?? null;
+}
+
+/** Up to three trips after the active one, soonest first. */
+export function laterTrips<T extends DatedTrip>(
+  trips: readonly T[],
+  active: T | null,
+  today: string,
+): T[] {
+  return trips
+    .filter((t) => t.id !== active?.id && t.start_date && t.start_date > today)
+    .sort(byStart)
+    .slice(0, 3);
+}
+
+/** Everyone on a trip, you included. */
+export function peopleOnTrip(
+  members: readonly { trip_id: string; user_id: string }[],
+  tripId: string,
+  uid: string | null,
+): number {
+  return members.filter((m) => m.trip_id === tripId && m.user_id !== uid).length + 1;
+}

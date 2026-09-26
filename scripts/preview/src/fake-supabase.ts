@@ -80,21 +80,42 @@ const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString(
 const homeDb: Record<string, Row[]> = {
   trips: [
     { id: "la", title: "LA · Coastal Sun & Art", city: "Los Angeles, California", country: "United States", start_date: inDays(2), end_date: inDays(3), dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(900) },
-    { id: "t1", title: "JQAPALA A · Hiroshima & Miyajima", city: "Hiroshima", country: "Japan", start_date: "2026-10-07", end_date: "2026-10-09", dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(800) },
+    { id: "t1", title: "JQAPALA A", city: "Hiroshima", country: "Japan", start_date: inDays(11), end_date: inDays(12), dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(800), notes: "Shrine ferries, coastal okonomiyaki stalls & serene Miyajima deer." },
+    { id: "t2", title: "Lisbon", city: "Lisbon", country: "Portugal", start_date: inDays(40), end_date: inDays(45), dates_status: "tentative", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(700) },
   ],
-  trip_members: [{ id: "m1", trip_id: "la", user_id: "me", role: "owner", display_name: "Mattie" }],
+  trip_members: [
+    { id: "m1", trip_id: "la", user_id: "me", role: "owner", display_name: "Mattie" },
+    { id: "m2", trip_id: "la", user_id: "sam", role: "member", display_name: "Sam" },
+    { id: "m3", trip_id: "la", user_id: "ana", role: "member", display_name: "Ana" },
+  ],
+  trip_todos: [
+    { id: "td1", trip_id: "la", title: "Reserve the Getty timed entry", notes: null, due_on: inDays(1), done: false, done_at: null, done_by: null, assigned_to: null, position: 0 },
+    { id: "td2", trip_id: "la", title: "Print boarding passes", notes: null, due_on: null, done: false, done_at: null, done_by: null, assigned_to: null, position: 1 },
+  ],
+  recommendations: [
+    { id: "rec1", user_id: "me", name: "Old Wharf Bar", city: "Montréal", country: "Canada", address: null, category: "Cocktails", notes: null, recommended_by: "Kenji", source: null, url: null, lat: 45.5, lon: -73.56, visited: false, pin_type: "reco", created_at: ago(9000) },
+  ],
   itinerary_items: [
-    { id: "la1", trip_id: "la", day_date: inDays(2), time_label: "08:15", kind: "flight", title: "AC 781", detail: "YUL → LAX (Non-stop)", address: null, lat: null, lon: null, position: 0 },
+    { id: "la1", trip_id: "la", day_date: inDays(2), time_label: "08:15", kind: "flight", title: "AC 781", detail: "YUL → LAX (Non-stop)", address: null, lat: null, lon: null, position: 0, booked: true },
     { id: "la2", trip_id: "la", day_date: inDays(2), time_label: "15:00", kind: "hotel", title: "The Line Hotel", detail: "Koreatown · Conf #LA-882", address: "3515 Wilshire Blvd", lat: null, lon: null, position: 1 },
     { id: "la3", trip_id: "la", day_date: inDays(2), time_label: "18:00", kind: "meal", title: "Dinner at Guelaguetza", detail: null, address: null, lat: null, lon: null, position: 2 },
     { id: "la4", trip_id: "la", day_date: inDays(3), time_label: "10:00", kind: "sight", title: "The Broad", detail: null, address: null, lat: null, lon: null, position: 3 },
     { id: "la5", trip_id: "la", day_date: inDays(3), time_label: "16:00", kind: "sight", title: "Venice Beach", detail: null, address: null, lat: null, lon: null, position: 4 },
+    { id: "h1", trip_id: "t1", day_date: inDays(11), time_label: "07:30", kind: "flight", title: "JL 251", detail: "HND → HIJ (Morning departure)", address: null, lat: null, lon: null, position: 0, booked: true },
+    { id: "h2", trip_id: "t1", day_date: inDays(11), time_label: "15:00", kind: "hotel", title: "Iwaso Ryokan & Shrine Inn", detail: "Miyajima Island", address: null, lat: null, lon: null, position: 1 },
+    { id: "h3", trip_id: "t1", day_date: inDays(11), time_label: "10:00", kind: "sight", title: "Hiroshima Peace Memorial Park", detail: null, address: null, lat: null, lon: null, position: 2 },
   ],
-  packing_lists: [{ id: "pl1", trip_id: "la", name: "LA", emoji: null }],
-  packing_items: Array.from({ length: 12 }, (_, i) => ({ id: `pi${i}`, list_id: "pl1", label: `Item ${i + 1}`, packed: i < 6, position: i })),
+  packing_lists: [
+    { id: "pl1", trip_id: "la", name: "LA", emoji: null },
+    { id: "pl2", trip_id: "t1", name: "Japan", emoji: null },
+  ],
+  packing_items: [
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `pi${i}`, list_id: "pl1", label: `Item ${i + 1}`, packed: i < 8, position: i })),
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `pj${i}`, list_id: "pl2", label: `Item ${i + 1}`, packed: i < 7, position: i })),
+  ],
 };
 
-export const db: Record<string, Row[]> = sample === "home" ? homeDb : {
+export const db: Record<string, Row[]> = sample === "home" || sample === "home-trips" ? homeDb : {
   itinerary_items: items(),
   recommendations: [
     { id: "rec1", user_id: "me", name: "Okonomiyaki at Nagata-ya", city: "Hiroshima", country: "Japan", address: "1-7-19 Otemachi", category: "Food", notes: null, recommended_by: "Kenji", source: null, url: null, lat: 34.3948, lon: 132.4547, visited: false, pin_type: "reco", created_at: ago(9000) },
