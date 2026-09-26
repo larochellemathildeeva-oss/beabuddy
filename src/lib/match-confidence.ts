@@ -192,6 +192,15 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
           areaish ? words.every((w) => name.includes(w)) : words.some((w) => name.includes(w)),
         );
 
+  // A street named after the place ("Rua Rio de Ondas" for the Rio de
+  // Ondas bathing spot) echoes the name perfectly and is somewhere else.
+  // Only a stop that is itself a street may be answered by one.
+  if (category === "highway" && !namesAStreet(evidence.title)) {
+    return {
+      confidence: "low",
+      reason: "This is a street named after it, not the place itself.",
+    };
+  }
   if (areaish && !echoes) {
     return {
       confidence: "low",
@@ -205,6 +214,14 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/** Words that make a name a street, in the languages Béa's trips are in. */
+const STREET_WORDS =
+  /\b(?:rua|r\.|avenida|av\.?|travessa|estrada|rodovia|alameda|rue|boulevard|bd|calle|avda|carrer|via|viale|corso|strasse|straße|street|st|road|rd|avenue|ave|blvd|lane|ln|drive|dr|way|highway|dori|dōri|tōri|-dori|-dōri)\b/i;
+
+function namesAStreet(title: string): boolean {
+  return looksLikeStreetAddress(title) || STREET_WORDS.test(foldAccents(title.toLowerCase()));
 }
 
 /** Counts for the line that says how the batch went. */

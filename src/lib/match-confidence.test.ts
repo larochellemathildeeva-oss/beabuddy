@@ -192,3 +192,25 @@ test("a well-named find far outside the town is not pinned unasked", () => {
   assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, hit), true);
   assert.equal(autoPinTrusted({ title: "Mercado Municipal" }, { ...hit, farKm: 21 }), false);
 });
+
+test("a street named after a place is not the place", () => {
+  // Barreiras: "Rio de Ondas", the bathing spot, was pinned on Rua Rio de Ondas.
+  const street = {
+    label: "Rua Rio de Ondas, Vila Dulce, Barreiras",
+    category: "highway",
+    kind: "residential",
+  };
+  assert.equal(scoreMatch({ title: "Rio de Ondas", ...street }).confidence, "low");
+  assert.equal(autoPinTrusted({ title: "Rio de Ondas" }, street), false);
+  // A stop that is a street may still land on one.
+  assert.equal(scoreMatch({ title: "Rua Rio de Ondas", ...street }).confidence, "high");
+  assert.equal(
+    scoreMatch({
+      title: "Granville Street",
+      label: "Granville Street, Vancouver",
+      category: "highway",
+      kind: "primary",
+    }).confidence,
+    "high",
+  );
+});
