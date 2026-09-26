@@ -127,3 +127,58 @@ test("a place labelled in its own script matches through its other names", () =>
     "low",
   );
 });
+
+test("a town in a shop's name does not match every place in that town", async () => {
+  const { autoPinTrusted } = await import("./match-confidence.ts");
+  const stop = { title: "Fujiiya Miyajima Main Store", address: "Hatsukaichi, Japan" };
+  // The island's town answering for the shop: not saved.
+  assert.equal(
+    autoPinTrusted(stop, {
+      label: "Miyajimacho, Hatsukaichi, Hiroshima Prefecture, Japan",
+      category: "place",
+      kind: "suburb",
+    }),
+    false,
+  );
+  // Another shop on the island, which shares only the island's name.
+  assert.equal(
+    autoPinTrusted(stop, {
+      label: "Miyajima Omotesando Shop, Miyajimacho, Hatsukaichi, Japan",
+      category: "shop",
+      kind: "gift",
+    }),
+    false,
+  );
+  // The right shop.
+  assert.equal(
+    autoPinTrusted(stop, {
+      label: "Fujiiya, 1129 Miyajimacho, Hatsukaichi, Japan",
+      category: "shop",
+      kind: "confectionery",
+    }),
+    true,
+  );
+});
+
+test("a town given as the address does not vouch for whatever is in it", async () => {
+  const { autoPinTrusted } = await import("./match-confidence.ts");
+  assert.equal(
+    autoPinTrusted(
+      { title: "Fujiiya", address: "Hatsukaichi, Japan" },
+      { label: "Hatsukaichi Station, Hatsukaichi, Japan", category: "railway", kind: "station" },
+    ),
+    false,
+  );
+});
+
+test("a station named after its city still matches in English labels", () => {
+  assert.equal(
+    scoreMatch({
+      title: "Arrive Hiroshima Station",
+      label: "Hiroshima Station, Matsubaracho, Minami Ward, Hiroshima, Japan",
+      category: "railway",
+      kind: "station",
+    }).confidence,
+    "high",
+  );
+});

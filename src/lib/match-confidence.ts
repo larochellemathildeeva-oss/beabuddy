@@ -20,6 +20,7 @@
  * wrong pins did.
  */
 
+import { looksLikeStreetAddress } from "./direction-stops.ts";
 import { foldAccents } from "./fuzzy.ts";
 
 export type Confidence = "high" | "medium" | "low";
@@ -93,6 +94,19 @@ const NOISE = new Set([
   "lunch",
   "dinner",
   "breakfast",
+  // A shop's own words for itself, shared by every shop.
+  "main",
+  "store",
+  "shop",
+  "branch",
+  "honten",
+  // What the timeline says you do there, not what the place is called.
+  "arrive",
+  "arrival",
+  "depart",
+  "departure",
+  "visit",
+  "explore",
 ]);
 
 function meaningfulWords(text: string): string[] {
@@ -119,6 +133,36 @@ export function nameEchoes(title: string, label: string): boolean {
 }
 
 /**
+ * The name of what the geocoder found, without where it is.
+ *
+ * A label is the place's name followed by its address: "Kakiya, 539
+ * Miyajimacho, Hatsukaichi". Checking the stop's name against the whole of it
+ * meant any word of the stop that is also a place — "Miyajima" in "Fujiiya
+ * Miyajima Main Store" — matched every result on the island, and a shop was
+ * saved at the middle of Miyajimacho. A label that starts with a house number
+ * is an address, with no name of its own.
+ */
+export function hitName(label: string): string {
+  const first = label.split(",")[0]?.trim() ?? "";
+  return /^\d/.test(first) ? "" : first;
+}
+
+/**
+ * The words of the stop that could tell this place from its neighbours.
+ *
+ * A word that appears in the label's address ("miyajima" beside
+ * "Miyajimacho, Hatsukaichi") is where the place is, and every place there
+ * shares it. When the stop's name is nothing but such words ("Hiroshima
+ * Station"), they are all it has, so they are kept.
+ */
+function identityWords(title: string, label: string): string[] {
+  const asked = meaningfulWords(title);
+  const where = foldAccents(label.split(",").slice(1).join(",").toLowerCase());
+  const own = asked.filter((word) => !where.includes(word));
+  return own.length > 0 ? own : asked;
+}
+
+/**
  * The tier, and why — the reason is shown, because "Béa is unsure" without a
  * cause is just an apology.
  */
@@ -132,9 +176,21 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   }
 
   const areaish = AREA_TYPES.has(kind) || category === "boundary";
-  const echoes =
-    nameEchoes(evidence.title, label) ||
-    (evidence.alsoNamed ?? []).some((name) => name.trim() && nameEchoes(evidence.title, name));
+  const names = [hitName(label), ...(evidence.alsoNamed ?? [])]
+    .map((name) => foldAccents(name.trim().toLowerCase()))
+    .filter(Boolean);
+  const words = identityWords(evidence.title, label);
+  // A street address is matched against the whole label, which is where the
+  // street is; a name only against the place's own names.
+  const echoes = looksLikeStreetAddress(evidence.title)
+    ? nameEchoes(evidence.title, label)
+    : words.length === 0
+      ? names.some((name) => nameEchoes(evidence.title, name))
+      : // A whole area answering for a venue has to be the whole of what was
+        // asked: "Miyajimacho" for "Fujiiya Miyajima" is the island, not the shop.
+        names.some((name) =>
+          areaish ? words.every((w) => name.includes(w)) : words.some((w) => name.includes(w)),
+        );
 
   if (areaish && !echoes) {
     return {
@@ -176,6 +232,9 @@ export function tallyConfidence(list: readonly Confidence[]): {
  * A lookup may have been made by the stop's address or venue rather than its
  * title ("Lunch by the water" found at "310 Rue de la Commune"), so the name
  * found is checked against each of them; any one that echoes is enough.
+ *
+ * The address counts only when it is a street address. "Hatsukaichi, Japan"
+ * is a town, and every place in the town has it in its label.
  */
 export function autoPinTrusted(
   stop: {
@@ -185,7 +244,8 @@ export function autoPinTrusted(
   },
   hit: Omit<MatchEvidence, "title">,
 ): boolean {
-  const names = [stop.title, stop.place, stop.address].filter((name): name is string =>
+  const street = stop.address && looksLikeStreetAddress(stop.address) ? stop.address : null;
+  const names = [stop.title, stop.place, street].filter((name): name is string =>
     Boolean(name && name.trim()),
   );
   return names.some((title) => scoreMatch({ ...hit, title }).confidence !== "low");
