@@ -34,7 +34,16 @@ export function TripBudgetSwitch({ trip, onUpdate }: { trip: TripRow; onUpdate: 
  * one keystroke at a time would rename it for everyone on it one keystroke
  * at a time. The draft starts from the trip each time the form appears.
  */
-export function TripDetailsForm({ trip, onUpdate }: { trip: TripRow; onUpdate: OnUpdate }) {
+export function TripDetailsForm({
+  trip,
+  onUpdate,
+  onSaved,
+}: {
+  trip: TripRow;
+  onUpdate: OnUpdate;
+  /** After a save goes through — to close the sheet the form sits in. */
+  onSaved?: (() => void) | undefined;
+}) {
   const [form, setForm] = useState({
     title: trip.title,
     city: formatTripLocation(trip.city, trip.country),
@@ -45,6 +54,11 @@ export function TripDetailsForm({ trip, onUpdate }: { trip: TripRow; onUpdate: O
     status: trip.status,
   });
   const backwards = Boolean(form.start_date && form.end_date && form.end_date < form.start_date);
+  // The button used to await the save with nothing either side of it: a
+  // failure was an unhandled rejection and a success changed nothing on
+  // screen, so both looked like a button that does nothing.
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   return (
     <div className="space-y-2">
@@ -97,22 +111,48 @@ export function TripDetailsForm({ trip, onUpdate }: { trip: TripRow; onUpdate: O
         ))}
       </div>
       <button
-        disabled={!form.title.trim() || backwards}
+        disabled={busy || !form.title.trim() || backwards}
         onClick={async () => {
-          await onUpdate({
-            title: form.title.trim(),
-            city: form.city,
-            country: form.country,
-            start_date: form.start_date,
-            end_date: form.end_date,
-            dates_status: form.dates_status,
-            status: form.status,
-          } as Partial<TripRow>);
+          setBusy(true);
+          setMessage(null);
+          try {
+            await onUpdate({
+              title: form.title.trim(),
+              city: form.city,
+              country: form.country,
+              start_date: form.start_date,
+              end_date: form.end_date,
+              dates_status: form.dates_status,
+              status: form.status,
+            } as Partial<TripRow>);
+            setMessage({ ok: true, text: "Saved." });
+            onSaved?.();
+          } catch (e) {
+            const text =
+              e instanceof Error
+                ? e.message
+                : typeof e === "object" && e && "message" in e
+                  ? String((e as { message: unknown }).message)
+                  : "";
+            setMessage({ ok: false, text: text ? `Couldn't save: ${text}` : "Couldn't save." });
+          } finally {
+            setBusy(false);
+          }
         }}
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
-        Save changes
+        {busy ? "Saving…" : "Save changes"}
       </button>
+      {message && (
+        <p
+          role={message.ok ? "status" : "alert"}
+          className={`px-1 text-[13px] font-medium ${
+            message.ok ? "text-muted-foreground" : "text-destructive"
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
     </div>
   );
 }

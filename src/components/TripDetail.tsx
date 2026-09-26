@@ -1850,7 +1850,11 @@ export function TripDetail({
           </button>
           {sheetSection === "edit" && (
             <div className="rounded-xl bg-elevated p-3">
-              <TripDetailsForm trip={trip} onUpdate={onUpdate} />
+              <TripDetailsForm
+                trip={trip}
+                onUpdate={onUpdate}
+                onSaved={() => setSettingsOpen(false)}
+              />
             </div>
           )}
 
