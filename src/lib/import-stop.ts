@@ -199,22 +199,28 @@ export function routeCityOn(
   cities: readonly RouteCity[],
   date: string | null | undefined,
 ): string | null {
+  const here = routeStopOn(cities, date);
+  return here ? [here.city.trim(), here.country?.trim()].filter(Boolean).join(", ") : null;
+}
+
+/** The route stop itself, for its pin as well as its name. */
+export function routeStopOn<T extends RouteCity>(
+  cities: readonly T[],
+  date: string | null | undefined,
+): T | null {
   if (!date || cities.length === 0) return null;
-  const label = (c: RouteCity) =>
-    [c.city.trim(), c.country?.trim()].filter(Boolean).join(", ") || null;
+  const latestFirst = (a: T, b: T) => b.arrive_on!.localeCompare(a.arrive_on!);
   const dated = cities.filter((c) => c.city.trim() && c.arrive_on);
   const here = dated
     .filter((c) => c.arrive_on! <= date && (!c.depart_on || date <= c.depart_on))
-    .sort((a, b) => b.arrive_on!.localeCompare(a.arrive_on!))[0];
-  if (here) return label(here);
+    .sort(latestFirst)[0];
+  if (here) return here;
   // Past the last departure, or no departures written: the latest arrival.
-  const before = dated
-    .filter((c) => c.arrive_on! <= date)
-    .sort((a, b) => b.arrive_on!.localeCompare(a.arrive_on!))[0];
-  if (before) return label(before);
+  const before = dated.filter((c) => c.arrive_on! <= date).sort(latestFirst)[0];
+  if (before) return before;
   // A one-city route with no dates is still where the trip is.
   const named = cities.filter((c) => c.city.trim());
-  return named.length === 1 ? label(named[0]!) : null;
+  return named.length === 1 ? named[0]! : null;
 }
 
 /** The country a route runs through, when it is only one: the area of last resort. */

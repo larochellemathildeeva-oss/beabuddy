@@ -66,10 +66,10 @@ export type PlaceableRow = {
   lon?: number | null | undefined;
 };
 
-export function rowsToPlace(
-  rows: readonly PlaceableRow[],
+export function rowsToPlace<T extends PlaceableRow>(
+  rows: readonly T[],
   tried: ReadonlySet<string>,
-): PlaceableRow[] {
+): T[] {
   return rows
     .filter(
       (row) =>
