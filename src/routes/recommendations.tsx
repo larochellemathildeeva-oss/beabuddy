@@ -46,7 +46,12 @@ import {
   toNewReco,
 } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";
-import { isCityLevelPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
+import {
+  isCityLevelPlace,
+  isCountryLevelPlace,
+  recMatchesPlace,
+  uniqueRecCities,
+} from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -1055,8 +1060,11 @@ function RecommendationsPage() {
                                 Open in Maps ↗
                               </a>
                               {/* Hours on request: one lookup per card tapped,
-                                  not one per card listed. */}
-                              <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
+                                  not one per card listed. A country or a city
+                                  has no opening hours, so it gets no button. */}
+                              {!isCountryLevelPlace(row) && !isCityLevelPlace(row) && (
+                                <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
+                              )}
                             </div>
                           );
                         })()}
