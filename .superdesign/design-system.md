@@ -40,3 +40,12 @@ lucide-react, 1.7 stroke (2.3 when active), 16–19px.
 
 ## Motion
 tap 120ms, shift 200ms, move 320ms, arrive 420ms; ease-standard cubic-bezier(.32,.72,0,1); a small overshoot (.34,1.4,.5,1) only for "that worked" moments. Screens slide/fade in by plane (tab vs detail).
+
+## Approved direction (redesign, Sept 2026)
+Approved by the owner as the overall style — "a good start", not final screens.
+- **Three user-selectable themes:** Calm (white, cream, light beige), Colorful (soft pastels, coral accent), Dark (near-black with off-white and beige). Picked on the You page.
+- **Layout:** "Tiles" — rounded tiles and cards, serif display titles, calm spacing. Trip pages use thin lines and small dots; accent color only marks "now".
+- **Colorful keeps its pastels** (peach, sky, mint, lavender, butter surfaces); Calm and Dark stay quiet. Same shapes across all three.
+- **Maps stay neutral in every theme** (beige in Calm, grey in Colorful, dark in Dark); only the route and pins carry color.
+- **Keep:** the "Day by day" itinerary overview.
+- **Hard rules for building it:** keep the app's existing icons, and keep every existing function on every page. The mockups omit some of both; they are a style reference, not a feature list.
