@@ -118,10 +118,11 @@ export function NearbyPlaces({
           <div className="mt-3 rounded-xl border border-border bg-elevated p-3">
             <p className="text-[14.5px] font-semibold">Before Béa asks for your location</p>
             <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
-              Your position is used only on this device, right now, to measure how far you are from
-              places you've saved. It is never sent to Béa's servers, never stored as a history of
-              where you've been, and never shared with anyone. You can stop sharing at any time —
-              see the privacy policy for the full picture.
+              Your position is used on this device, right now, to measure how far you are from
+              places you've saved. To show the weather and the name of the place you're in, a
+              position rounded to about a kilometre is passed through Béa's server to a weather
+              service and a map service; it is not stored as a history of where you've been. You can
+              stop sharing at any time — see the privacy policy for the full picture.
             </p>
             <p className="label-caps mt-3">Share my location for…</p>
             <div className="mt-2 grid grid-cols-2 gap-2">

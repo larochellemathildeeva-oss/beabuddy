@@ -124,11 +124,18 @@ function PrivacyPage() {
             discover places you've already saved nearby.
           </p>
           <p>
-            Béa asks for your location only when you open Near or save a place with “I'm here now”.
-            Before the first request you're told exactly what it's used for and you choose how long
-            to share it for — just this once, an hour, the rest of the day, or until you turn it
-            off. Your position is used on the spot to measure distances and is not stored as a
-            history of where you have been. You can stop sharing at any time from the Near screen.
+            Béa asks for your location only when you open Near, ask for the weather on Home, or save
+            a place with “I'm here now”. Before the first request you're told exactly what it's used
+            for and you choose how long to share it for — just this once, an hour, the rest of the
+            day, or until you turn it off. Your position is used on the spot to measure distances
+            and is not stored as a history of where you have been. You can stop sharing at any time
+            from the Near screen.
+          </p>
+          <p>
+            Home can also show the weather where you are. For that, your position is rounded to
+            about a kilometre and passed through Béa&apos;s server to Open-Meteo, a weather service,
+            and to our map provider to name the place you&apos;re in. It is used to answer that one
+            request and is not stored by Béa.
           </p>
         </Section>
 
