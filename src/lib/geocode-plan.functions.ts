@@ -5,7 +5,7 @@ import {
   areaBoxFrom,
   boxAround,
   boxViewbox,
-  inBox,
+  pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
   widenBox,
@@ -111,7 +111,7 @@ type GeoHit = {
   kind?: string;
   alsoNamed?: string[];
 };
-type GeoResult = GeoHit | null | "throttled";
+type GeoResult = GeoHit[] | "throttled";
 
 type RawHit = {
   lat: string;
@@ -163,20 +163,14 @@ async function lookup(
 async function geocode(provider: GeoProvider, query: string, box: AreaBox): Promise<GeoResult> {
   const hits = await lookup(provider, query, { limit: 3, box });
   if (hits === "throttled") return "throttled";
-  for (const hit of hits) {
-    const lat = Number(hit.lat);
-    const lon = Number(hit.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lon) || !inBox(box, lat, lon)) continue;
-    return {
-      lat,
-      lon,
-      ...(hit.display_name ? { label: hit.display_name } : {}),
-      ...(hit.class ? { category: hit.class } : {}),
-      ...(hit.type ? { kind: hit.type } : {}),
-      ...(hit.namedetails ? { alsoNamed: Object.values(hit.namedetails) } : {}),
-    };
-  }
-  return null;
+  return hits.map((hit) => ({
+    lat: Number(hit.lat),
+    lon: Number(hit.lon),
+    ...(hit.display_name ? { label: hit.display_name } : {}),
+    ...(hit.class ? { category: hit.class } : {}),
+    ...(hit.type ? { kind: hit.type } : {}),
+    ...(hit.namedetails ? { alsoNamed: Object.values(hit.namedetails) } : {}),
+  }));
 }
 
 /**
@@ -218,7 +212,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
 
-    const cache = new Map<string, GeoHit | null>();
+    // Every answer, not the chosen one: which answer is the stop depends on
+    // the stop, and two stops can ask the same thing.
+    const cache = new Map<string, GeoHit[]>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     // Only the last minute matters to either cap.
     const sent: number[] = (data.recent ?? []).filter((t) => Date.now() - t < 60_000);
@@ -285,7 +281,11 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (!box) continue;
 
-      /** The stop's queries inside one area; true once one of them lands. */
+      // An answer that is probably not the stop (the town, for a park the
+      // geocoder could not find). Kept only if nothing better turns up.
+      const doubtful: GeoHit[] = [];
+
+      /** The stop's queries inside one area; true once one of them lands on the stop. */
       const tryIn = async (inWhere: string, bounds: AreaBox): Promise<boolean> => {
         const queries = planStopQueries(
           { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
@@ -294,27 +294,25 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         for (const query of queries) {
           // Per box: a miss beside the parent is not a miss across the city.
           const key = `${query.toLowerCase()}|${boxViewbox(bounds)}`;
-          if (cache.has(key)) {
-            const hit = cache.get(key) ?? null;
-            if (hit) {
-              placed.push({ index, ...hit });
-              return true;
+          let hits = cache.get(key);
+          if (!hits) {
+            if (!(await takeTurn())) return false;
+            const found = await geocode(provider, query, bounds);
+            if (found === "throttled") {
+              // Asking harder will not help, and recording these as misses would
+              // mark real places unfindable for the rest of the session.
+              throttled = true;
+              return false;
             }
-            continue;
+            cache.set(key, found);
+            hits = found;
           }
-          if (!(await takeTurn())) return false;
-          const found = await geocode(provider, query, bounds);
-          if (found === "throttled") {
-            // Asking harder will not help, and recording these as misses would
-            // mark real places unfindable for the rest of the session.
-            throttled = true;
-            return false;
-          }
-          cache.set(key, found);
-          if (found) {
-            placed.push({ index, ...found });
+          const picked = pickHit(hits, bounds, stop);
+          if (picked?.trusted) {
+            placed.push({ index, ...picked.hit });
             return true;
           }
+          if (picked) doubtful.push(picked.hit);
         }
         return false;
       };
@@ -329,7 +327,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       if (throttled) break;
 
       const landed = await tryIn(where, box);
-      // Not in its town: the trip's country, last. A stop saved without its
+      // Not in its town — or only the town itself came back: the trip's
+      // country, last. A stop saved without its
       // town (a Hiroshima day on a trip filed under Kyoto) is otherwise only
       // ever looked for in the wrong city. Callers still check the match
       // before saving it (autoPinTrusted), and the stray-pin warning flags
@@ -345,7 +344,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       // Still nowhere, but inside a stop that was found: pinned there.
       const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;
-      if (parent && parentTitle && !throttled && !placed.some((hit) => hit.index === index)) {
+      const unplaced = () => !placed.some((hit) => hit.index === index);
+      if (parent && parentTitle && !throttled && unplaced()) {
         placed.push({
           index,
           lat: parent.lat,
@@ -354,6 +354,10 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inside: parentTitle,
         });
       }
+      // Nothing better than the doubtful answer: returned as before, so the
+      // review can say what was found and let the person keep it.
+      const fallback = doubtful[0];
+      if (fallback && unplaced()) placed.push({ index, ...fallback });
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.
       if (throttled) break;

@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   estimatedSeconds,
+  pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
   stopsNeedingLocation,
@@ -151,4 +152,40 @@ test("boxAround is about 45 km each way", async () => {
     box.east - box.west > box.north - box.south,
     "wider in longitude away from the equator",
   );
+});
+
+const MA_BOX = { south: -3.2, north: -2.3, west: -43.4, east: -42.5 };
+const PARK_STOP = {
+  title: "Lençóis Maranhenses National Park 4x4 Tour",
+  place: "Lençóis Maranhenses National Park",
+};
+const TOWN = {
+  lat: -2.75,
+  lon: -42.83,
+  label: "Barreirinhas, MA, Brazil",
+  category: "place",
+  kind: "city",
+};
+const PARK = {
+  lat: -2.53,
+  lon: -43.12,
+  label: "Lençóis Maranhenses National Park, Barreirinhas, MA, Brazil",
+  category: "leisure",
+  kind: "nature_reserve",
+};
+
+test("pickHit prefers the place itself over the town the geocoder fell back to", () => {
+  const picked = pickHit([TOWN, PARK], MA_BOX, PARK_STOP);
+  assert.equal(picked?.trusted, true);
+  assert.equal(picked?.hit, PARK);
+});
+
+test("pickHit returns a town-only answer as untrusted, so the search goes on", () => {
+  const picked = pickHit([TOWN], MA_BOX, PARK_STOP);
+  assert.equal(picked?.trusted, false);
+  assert.equal(picked?.hit, TOWN);
+});
+
+test("pickHit ignores answers outside the box", () => {
+  assert.equal(pickHit([{ ...PARK, lat: 10 }], MA_BOX, PARK_STOP), null);
 });

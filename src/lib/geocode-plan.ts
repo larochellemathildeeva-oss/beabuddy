@@ -19,6 +19,7 @@ import {
   placeHintFromDetail,
   placeQueryCandidates,
 } from "./direction-stops.ts";
+import { autoPinTrusted } from "./match-confidence.ts";
 
 export type PlanStop = {
   title: string;
@@ -152,6 +153,43 @@ export function boxViewbox(box: AreaBox): string {
 
 export function inBox(box: AreaBox, lat: number, lon: number): boolean {
   return lat >= box.south && lat <= box.north && lon >= box.west && lon <= box.east;
+}
+
+/** One answer from the geocoder, as the plan lookup reads it. */
+export type CandidateHit = {
+  lat: number;
+  lon: number;
+  label?: string;
+  category?: string;
+  kind?: string;
+  alsoNamed?: string[];
+};
+
+/**
+ * The answer worth keeping from one lookup, and whether it can be trusted.
+ *
+ * A geocoder that cannot find a venue often answers with the town instead
+ * ("Lençóis Maranhenses National Park, Barreirinhas" → Barreirinhas). Taking
+ * the first answer meant that fallback ended the search: it was then judged
+ * a whole area, not pinned, and the stop's other queries never ran. So the
+ * first answer that plausibly is the stop wins; failing that, the first one
+ * inside the box is returned untrusted, for the caller to keep looking.
+ */
+export function pickHit(
+  hits: readonly CandidateHit[],
+  box: AreaBox,
+  stop: {
+    title: string;
+    place?: string | null | undefined;
+    address?: string | null | undefined;
+  },
+): { hit: CandidateHit; trusted: boolean } | null {
+  const inside = hits.filter(
+    (hit) => Number.isFinite(hit.lat) && Number.isFinite(hit.lon) && inBox(box, hit.lat, hit.lon),
+  );
+  const trusted = inside.find((hit) => autoPinTrusted(stop, hit));
+  if (trusted) return { hit: trusted, trusted: true };
+  return inside[0] ? { hit: inside[0], trusted: false } : null;
 }
 
 /**
