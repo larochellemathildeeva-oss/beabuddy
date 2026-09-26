@@ -70,6 +70,7 @@ export function TripStops({
   tripId,
   uid,
   openSignal,
+  formOnly = false,
 }: {
   tripId: string;
   uid: string | null;
@@ -79,6 +80,8 @@ export function TripStops({
    * the same shape the to-do and packing buttons use.
    */
   openSignal?: number | undefined;
+  /** Render only the "Add a stop" sheet, for opening from the trip page. */
+  formOnly?: boolean;
 }) {
   const s = useTripStops(tripId, uid);
   const { removeWithUndo } = useUndo();
@@ -183,6 +186,62 @@ export function TripStops({
       setBusy(false);
     }
   };
+
+  const addSheet = (
+    <>
+      {/**
+       * Adding opens over the page rather than inside this section.
+       *
+       * The pin icon sits in the trip's action row at the top of the screen
+       * and this section is most of a screen below it, so opening the form
+       * here meant tapping the button and watching nothing happen — the form
+       * was real, just out of sight. Editing an existing stop stays inline,
+       * because there the form appears directly under the row you tapped.
+       */}
+      <Sheet open={adding && !editingId} onClose={close} title="Add a stop" width="sm">
+        {/* A place you already saved is the fastest way to add a stop, so it
+            sits inside this form as a shortcut rather than behind its own
+            button and banner somewhere else on the page. */}
+        <button
+          type="button"
+          onClick={() => setPickingSaved((v) => !v)}
+          aria-expanded={pickingSaved}
+          className={`mb-3 rounded-full border px-3 py-1.5 text-[13px] font-semibold ${
+            pickingSaved ? "border-primary bg-primary/10" : "border-border"
+          }`}
+        >
+          {pickingSaved ? "Type it instead" : "Add one you saved"}
+        </button>
+
+        {pickingSaved && (
+          <div className="mb-3">
+            <SavedPlacePicker
+              alreadyHere={s.stops.map((stop) => ({
+                name: stop.place_name || stop.city,
+                city: stop.city,
+                ...(stop.lat != null ? { lat: stop.lat } : {}),
+                ...(stop.lon != null ? { lon: stop.lon } : {}),
+              }))}
+              onPick={addSaved}
+              onClose={() => setPickingSaved(false)}
+            />
+          </div>
+        )}
+
+        <StopDraftForm
+          draft={draft}
+          setDraft={setDraft}
+          error={error}
+          busy={busy}
+          submitLabel="Add stop"
+          onSubmit={save}
+          onCancel={close}
+        />
+      </Sheet>
+    </>
+  );
+
+  if (formOnly) return addSheet;
 
   return (
     <Section
@@ -305,55 +364,7 @@ export function TripStops({
         </ol>
       )}
 
-      {/**
-       * Adding opens over the page rather than inside this section.
-       *
-       * The pin icon sits in the trip's action row at the top of the screen
-       * and this section is most of a screen below it, so opening the form
-       * here meant tapping the button and watching nothing happen — the form
-       * was real, just out of sight. Editing an existing stop stays inline,
-       * because there the form appears directly under the row you tapped.
-       */}
-      <Sheet open={adding && !editingId} onClose={close} title="Add a stop" width="sm">
-        {/* A place you already saved is the fastest way to add a stop, so it
-            sits inside this form as a shortcut rather than behind its own
-            button and banner somewhere else on the page. */}
-        <button
-          type="button"
-          onClick={() => setPickingSaved((v) => !v)}
-          aria-expanded={pickingSaved}
-          className={`mb-3 rounded-full border px-3 py-1.5 text-[13px] font-semibold ${
-            pickingSaved ? "border-primary bg-primary/10" : "border-border"
-          }`}
-        >
-          {pickingSaved ? "Type it instead" : "Add one you saved"}
-        </button>
-
-        {pickingSaved && (
-          <div className="mb-3">
-            <SavedPlacePicker
-              alreadyHere={s.stops.map((stop) => ({
-                name: stop.place_name || stop.city,
-                city: stop.city,
-                ...(stop.lat != null ? { lat: stop.lat } : {}),
-                ...(stop.lon != null ? { lon: stop.lon } : {}),
-              }))}
-              onPick={addSaved}
-              onClose={() => setPickingSaved(false)}
-            />
-          </div>
-        )}
-
-        <StopDraftForm
-          draft={draft}
-          setDraft={setDraft}
-          error={error}
-          busy={busy}
-          submitLabel="Add stop"
-          onSubmit={save}
-          onCancel={close}
-        />
-      </Sheet>
+      {addSheet}
     </Section>
   );
 }
