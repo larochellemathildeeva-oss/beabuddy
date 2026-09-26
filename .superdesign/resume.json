@@ -1,7 +1,12 @@
 {
   "version": 1,
   "projectId": "477b4701-2a14-4f83-ace5-8b4fc2840e6d",
-  "brandAssets": { "logo": { "assetKey": "src-assets-bea-logo.png", "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/477b4701-2a14-4f83-ace5-8b4fc2840e6d/brand-assets/src-assets-bea-logo.png/bea-logo.png" } },
+  "brandAssets": {
+    "logo": {
+      "assetKey": "src-assets-bea-logo.png",
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/477b4701-2a14-4f83-ace5-8b4fc2840e6d/brand-assets/src-assets-bea-logo.png/bea-logo.png"
+    }
+  },
   "targets": {
     "/": {
       "baselineDraftId": "05f26954-4e96-47e2-b064-4963eec70361",
@@ -13,7 +18,24 @@
       },
       "model": "gemini-3.1-pro",
       "device": "mobile",
-      "contextFiles": [".superdesign/design-system.md", ".superdesign/init/theme.md:1:45", "src/components/AppShell.tsx:186", "src/components/PageHeader.tsx", "src/routes/index.tsx:201:292", "src/components/HomeTripCard.tsx", "src/components/TripBanner.tsx", "src/components/TripCard.tsx", "src/components/HomeSaveTile.tsx", "src/components/HomeWeather.tsx", "src/components/NearHome.tsx", "src/components/NearbyPlaces.tsx"]
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/init/theme.md:1:45",
+        "src/components/AppShell.tsx:186",
+        "src/components/PageHeader.tsx",
+        "src/routes/index.tsx:201:292",
+        "src/components/HomeTripCard.tsx",
+        "src/components/TripBanner.tsx",
+        "src/components/TripCard.tsx",
+        "src/components/HomeSaveTile.tsx",
+        "src/components/HomeWeather.tsx",
+        "src/components/NearHome.tsx",
+        "src/components/NearbyPlaces.tsx"
+      ],
+      "layouts": {
+        "editorial_calm": "6038d010-1417-4216-b93e-08186c1c1173",
+        "tiles_calm": "3a44051c-f96e-4313-9964-439a8f45e42e"
+      }
     }
   }
 }
