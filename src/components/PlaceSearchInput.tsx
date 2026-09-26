@@ -72,7 +72,10 @@ export function PlaceSearchInput({
   const suggest = useServerFn(suggestPlaces);
   const [hits, setHits] = useState<ParsedPlace[]>([]);
   /** Close spellings offered when a search finds nothing: "Did you mean Miyajima?" */
-  const [suggestions, setSuggestions] = useState<ParsedPlace[]>([]);
+  const [suggested, setSuggested] = useState<{ key: string; places: ParsedPlace[] }>({
+    key: "",
+    places: [],
+  });
   /** The query suggestions were last asked for, so an empty answer is asked once. */
   const suggestedFor = useRef("");
 
@@ -80,18 +83,36 @@ export function PlaceSearchInput({
    * After an empty answer, look for close spellings. Once per query: the
    * type-ahead and the Search button can both come back empty for it.
    */
-  const offerSuggestions = async (q: string, isCurrent: () => boolean = () => true) => {
-    if (q.length < 4 || suggestedFor.current === q) return;
-    suggestedFor.current = q;
+  const offerSuggestions = async (q: string) => {
+    const key = suggestionKey(q);
+    if (q.length < 4 || suggestedFor.current === key) return;
+    suggestedFor.current = key;
     try {
       const res = await suggest({
-        data: { query: q, ...(near ? { near } : {}), ...(center ? { center } : {}) },
+        data: {
+          query: q,
+          ...(near ? { near } : {}),
+          ...(at ? { at } : {}),
+          ...(center ? { center } : {}),
+          ...(areas ? { areas: true } : {}),
+        },
       });
-      if (isCurrent()) setSuggestions(res);
+      // Kept with the search it answers; shown only while that is still the
+      // search (below), so a late answer never offers old spellings for new text.
+      setSuggested({ key, places: res });
     } catch {
       // Nothing to suggest is what the empty search already said.
     }
   };
+  /** The search a suggestion answers: the words and where they were looked for. */
+  const suggestionKey = (q: string) =>
+    JSON.stringify([q, near ?? "", at ?? null, center ?? null, areas]);
+  const suggestions =
+    suggested.key && suggested.key === suggestionKey(value.trim()) ? suggested.places : [];
+  const setSuggestions = (places: ParsedPlace[]) =>
+    setSuggested((cur) =>
+      places.length === 0 && cur.places.length === 0 ? cur : { key: "", places },
+    );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   /** Bumped on pick/clear so type-ahead does not immediately re-open. */
@@ -190,7 +211,7 @@ export function PlaceSearchInput({
         // needed "near me" looked like the box was broken — no list, no
         // message, no button. Say so the same way the Search tap does.
         if (res.length === 0) {
-          void offerSuggestions(q, () => !cancelled);
+          void offerSuggestions(q);
           setErr(
             at || near
               ? "No match on the map — you can still type it in."

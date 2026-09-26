@@ -62,6 +62,12 @@ type StopInput = {
 const Input = z.object({
   stops: z.array(StopIn).max(60),
   area: z.string().max(200).nullish(),
+  /**
+   * When the caller's previous batch made its requests (this server's
+   * clock, as that call returned them), so the provider's pace — the gap
+   * and the per-minute cap — carries across batches instead of restarting.
+   */
+  recent: z.array(z.number()).max(200).nullish(),
 });
 
 /**
@@ -195,7 +201,9 @@ function countryOf(area: string): string {
 
 export const geocodePlanStops = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: StopInput[]; area?: string | null }) => Input.parse(input))
+  .inputValidator((input: { stops: StopInput[]; area?: string | null; recent?: number[] | null }) =>
+    Input.parse(input),
+  )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
     const placed: PlacedStop[] = [];
@@ -212,12 +220,13 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
     const cache = new Map<string, GeoHit | null>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
-    const sent: number[] = [];
+    // Only the last minute matters to either cap.
+    const sent: number[] = (data.recent ?? []).filter((t) => Date.now() - t < 60_000);
     let throttled = false;
     const deadline = Date.now() + WALL_MS;
     let budget = LOOKUP_BUDGET;
     let lookedUp = 0;
-    let first = true;
+    let first = sent.length === 0;
 
     /** Waits its turn, then counts the request. False when out of time or budget. */
     const takeTurn = async (): Promise<boolean> => {
@@ -350,5 +359,5 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       if (throttled) break;
     }
 
-    return { placed, lookedUp, area, throttled };
+    return { placed, lookedUp, area, throttled, sent: sent.slice(-120) };
   });

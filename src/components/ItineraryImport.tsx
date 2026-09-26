@@ -361,6 +361,10 @@ function ImportPanel({
       { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
     >
   >({});
+  /** Bumped by every placing run and every new plan; only the newest run writes. */
+  const placeGen = useRef(0);
+  /** A new plan, parsed or revised: always placed afresh. */
+  const [planVersion, setPlanVersion] = useState(0);
   /** Pins the person kept or removed at review, by row. */
   const [pinChoices, setPinChoices] = useState<Record<number, PinChoice>>({});
   const savedPin = (i: number) => {
@@ -382,10 +386,14 @@ function ImportPanel({
     setPlacements({});
     setPinChoices({});
     setDateChoice(null);
+    // Placing starts from the effect below, on the rows as they will be
+    // saved; a run for the plan before this one stops where it is.
+    placeGen.current += 1;
+    setPlacing(null);
+    setPlanVersion((v) => v + 1);
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
       toast.success(ready.title, { description: ready.body });
-      void placeParsed(out.items, startDate || out.start_date || "");
     }
   };
 
@@ -429,12 +437,16 @@ function ImportPanel({
    * be shown and argued with. Failure stays survivable: a row that cannot be
    * placed is saved exactly as before, without a point.
    */
-  const placeParsed = async (parsed: ParsedItineraryItem[], start: string) => {
+  const placeParsed = async (dated: ParsedItineraryItem[]) => {
+    // Only the newest run writes: a revision renumbers the rows, and pins
+    // from the plan before it would land on whichever stop now has the number.
+    const gen = ++placeGen.current;
+    const current = () => gen === placeGen.current;
+    setPlacements({});
     // A trip filed under one city, or none, can still be placed day by day
     // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
     // the whole of Japan.
     const area = tripCity?.trim() || routeCountry(cities) || "";
-    const dated = start ? resolveDayDates(parsed, start) : parsed;
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
     const stops = dated.map((item) => {
@@ -449,23 +461,34 @@ function ImportPanel({
       };
     });
     const placeable = stops.some((stop) => stop.city?.trim() || stop.area);
-    if ((!area && !placeable) || parsed.length === 0) return;
-    setPlacing({ done: 0, total: parsed.length });
+    if ((!area && !placeable) || dated.length === 0) {
+      setPlacing(null);
+      return;
+    }
+    const total = dated.length;
+    setPlacing({ done: 0, total });
     try {
       // A few stops per call. One call for a whole plan ran past the
       // lookup budget and the request's time, and a long plan came back
       // with no pins at all — the save then went out empty-handed.
       // A batch that fails keeps the pins found before it.
       const placed: PlacedStop[] = [];
+      // The provider's pace carries from one batch to the next.
+      let recent: number[] = [];
       for (const [from, to] of placeBatches(parents, PLACE_BATCH)) {
+        if (!current()) return;
         const batch = stops.slice(from, to).map((stop, k) => {
           const parent = parents[from + k]!;
           return parent >= from ? { ...stop, within: parent - from } : stop;
         });
-        const result = await geocodePlanStops({ data: { stops: batch, area } }).catch(() => null);
+        const result = await geocodePlanStops({ data: { stops: batch, area, recent } }).catch(
+          () => null,
+        );
+        if (!current()) return;
         if (!result) break;
+        recent = result.sent ?? [];
         placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
-        setPlacing({ done: to, total: parsed.length });
+        setPlacing({ done: to, total });
         if (result.throttled) break;
       }
       const found: Record<
@@ -473,7 +496,7 @@ function ImportPanel({
         { lat: number; lon: number; label?: string; confidence: Confidence; reason: string }
       > = {};
       for (const hit of placed) {
-        const row = parsed[hit.index];
+        const row = dated[hit.index];
         if (!row) continue;
         // Scored against the stop's venue as well as its title: "Arrive
         // Hiroshima Station" is about the station, and the lookup was made by
@@ -505,11 +528,11 @@ function ImportPanel({
           reason,
         };
       }
-      setPlacements(found);
+      if (current()) setPlacements(found);
     } catch {
       // No pins is where this started; it is not a reason to lose the plan.
     } finally {
-      setPlacing(null);
+      if (current()) setPlacing(null);
     }
   };
 
@@ -562,17 +585,36 @@ function ImportPanel({
       ? dayLabel(range.start)
       : `${dayLabel(range.start)} – ${dayLabel(range.end)}`;
 
+  // The rows as they will be saved. "Keep the trip's dates": the whole plan
+  // slides onto the trip's first day, each row by the same number of days.
+  const savedRows = items
+    ? datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
+      ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
+      : (dated ?? items)
+    : null;
+  /**
+   * Stops are placed on the rows as saved, in the city each one's day is in.
+   * A Day 1 date given later, or keeping the trip's dates, can move a row
+   * to another city on the route, so placing runs again when — and only
+   * when — that changes; a new plan always runs it.
+   */
+  const placeKey =
+    savedRows && savedRows.length > 0
+      ? `${planVersion}|${savedRows.map((row) => routeCityOn(cities, row.day_date) ?? "").join("|")}`
+      : "";
+  useEffect(() => {
+    if (!placeKey || !savedRows) return;
+    void placeParsed(savedRows);
+    // placeKey stands for savedRows: it changes exactly when placing would.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placeKey]);
+
   const addChosen = async () => {
     if (!items) return;
     setBusy(true);
     setError(null);
     try {
-      // "Keep the trip's dates": the whole plan slides onto the trip's first
-      // day, each row by the same number of days.
-      const rows =
-        datesDisagree && dateChoice === "keep-trip" && datedRange && startDate
-          ? shiftPlanDates(dated ?? items, daysBetween(datedRange.start, startDate))
-          : (dated ?? items);
+      const rows = savedRows ?? items;
       // In plan order: ticking a row back on used to append it, so it was
       // saved at the end of the day; and a stop's parent must be found by
       // position in this same list.
@@ -689,7 +731,9 @@ function ImportPanel({
     // old ones would land on whichever stop now sits in that place.
     setPlacements({});
     setPinChoices({});
-    if (out.items.length > 0) void placeParsed(out.items, startDate || out.start_date || "");
+    placeGen.current += 1;
+    setPlacing(null);
+    setPlanVersion((v) => v + 1);
   };
 
   const findAlternatives = async () => {

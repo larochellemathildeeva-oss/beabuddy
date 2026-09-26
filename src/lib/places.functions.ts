@@ -786,21 +786,27 @@ export const suggestPlaces = createServerFn({ method: "POST" })
       .object({
         query: z.string().min(4).max(200),
         near: z.string().max(200).nullish(),
+        /** Where the person is: suggestions are held to around them, as the search was. */
+        at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
         center: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+        /** Choosing a destination: towns and countries only, as the search was. */
+        areas: z.boolean().nullish(),
       })
       .parse(data),
   )
   .handler(async ({ data }): Promise<ParsedPlace[]> => {
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const pace: Pace = { provider: geoProvider(), sent: [] };
-    // Leaned towards the trip, not held to it: the right spelling may be a
-    // day trip away.
-    const area = data.center
-      ? { viewbox: viewboxAround(data.center.lat, data.center.lon), bounded: false }
-      : undefined;
+    // Held to around you when the search was; otherwise leaned towards the
+    // trip, not held to it: the right spelling may be a day trip away.
+    const area = data.at
+      ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
+      : data.center
+        ? { viewbox: viewboxAround(data.center.lat, data.center.lon), bounded: false }
+        : undefined;
     for (const prefix of suggestionPrefixes(data.query)) {
       const hits = await autocompleteHits(data.near ? `${prefix}, ${data.near}` : prefix, pace, {
-        areas: false,
+        areas: Boolean(data.areas),
         ...(area ? { area } : {}),
       });
       const close = closeSuggestions(hits.map(hitToPlace), data.query);
