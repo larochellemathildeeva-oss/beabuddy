@@ -10,7 +10,7 @@
   "targets": {
     "/": {
       "baselineDraftId": "05f26954-4e96-47e2-b064-4963eec70361",
-      "activeDraftId": "05f26954-4e96-47e2-b064-4963eec70361",
+      "activeDraftId": "3a44051c-f96e-4313-9964-439a8f45e42e",
       "branches": {
         "calm": "ce6bb5d9-8534-4589-bd11-3cfc92b4b4c5",
         "colorful": "f042150f-0005-4fb2-b710-baaacf33d73d",
@@ -35,6 +35,12 @@
       "layouts": {
         "editorial_calm": "6038d010-1417-4216-b93e-08186c1c1173",
         "tiles_calm": "3a44051c-f96e-4313-9964-439a8f45e42e"
+      },
+      "selectedLayout": "tiles",
+      "tiles": {
+        "calm": "3a44051c-f96e-4313-9964-439a8f45e42e",
+        "colorful": "5e34196d-25db-40cb-a6bf-58fb48790ae6",
+        "dark": "268eb6a4-c5a3-4879-9fe5-2920d92a2d71"
       }
     }
   }
