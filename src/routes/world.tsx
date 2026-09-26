@@ -178,22 +178,22 @@ function WorldPage() {
           </p>
         )}
 
-        <div data-guide="globe" className="relative">
-          {/* The only way to add a place on this tab. It sits on the globe
-              because that is what you are adding to, and because a full-width
-              panel at the foot of the page was a section nobody scrolled to.
-              Top left and labelled: a bare "+" at top right sat on the zoom
-              buttons and read as one more of them. */}
+        {/* Adding a place: a small link above the globe, not a button on it —
+            on the globe it covered the map, and a bare "+" read as zoom. */}
+        <div className="-mb-3 flex justify-end">
           <button
             type="button"
             data-guide="add-city"
             onClick={() => setAddOpen(true)}
             title="Add a city or country"
-            className="absolute left-3 top-3 z-10 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13.5px] font-semibold text-foreground shadow-md"
+            className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[13px] font-semibold text-primary"
           >
-            <Plus className="size-4" aria-hidden />
+            <Plus className="size-3.5" aria-hidden />
             Add a place
           </button>
+        </div>
+
+        <div data-guide="globe" className="relative">
           <Globe
             pins={globeCities}
             regions={provinces}
