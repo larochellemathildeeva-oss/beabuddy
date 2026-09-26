@@ -160,10 +160,11 @@ function SignedInHome() {
       title={firstName ? `Hello, ${firstName}.` : "Welcome to Béa."}
     >
       <div className="space-y-6">
-        {/* The trip happening now, or the next one, always leads. */}
-        {layout.trip && <HomeTripCard />}
-
+        {/* Where you are and the weather there, then the trip happening now
+            or the next one. */}
         {layout.weather && <HomeWeather near={near} />}
+
+        {layout.trip && <HomeTripCard />}
 
         <NearHome pins={vault.pins} near={near} />
 
