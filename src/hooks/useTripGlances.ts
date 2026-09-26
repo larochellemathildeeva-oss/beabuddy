@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
-import { packingReadiness, tripHighlights } from "@/lib/home-trip";
-import { firstStop, nextTodo, plansConfirmed } from "@/lib/trip-glance";
+import { currentHighlights, packingReadiness } from "@/lib/home-trip";
+import { toLocalISODate } from "@/lib/trip-dates";
+import { firstStop, nextTodo, plansConfirmed, stopCount } from "@/lib/trip-glance";
 
 export type GlanceItem = {
   id: string;
@@ -21,6 +22,8 @@ export type TripGlance = {
   flight: GlanceItem | null;
   lodging: GlanceItem | null;
   firstStop: GlanceItem | null;
+  /** Places to see, leaving out travel, beds and notes. */
+  stops: number;
   packing: ReturnType<typeof packingReadiness>;
   plans: ReturnType<typeof plansConfirmed>;
   /** Open to-dos on the trip, and the one due soonest. */
@@ -122,15 +125,17 @@ export function useTripGlances(tripIds: readonly string[]) {
   }, [key]);
 
   const glances = useMemo(() => {
+    const today = toLocalISODate(new Date());
     const out: Record<string, TripGlance> = {};
     for (const id of key ? key.split(",") : []) {
       const mine = items.filter((i) => i.trip_id === id);
-      const { flight, lodging } = tripHighlights(mine);
+      const { flight, lodging } = currentHighlights(mine, today);
       out[id] = {
         items: mine,
         flight,
         lodging,
         firstStop: firstStop(mine),
+        stops: stopCount(mine),
         packing: packingReadiness(packed.filter((p) => p.trip_id === id)),
         plans: plansConfirmed(mine),
         todos: (() => {

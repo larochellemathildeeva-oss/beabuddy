@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   laterHeading,
+  currentHighlights,
+  currentLeg,
   laterTrips,
   packingReadiness,
   peopleOnTrip,
@@ -85,4 +87,73 @@ test("people on a trip count you once", () => {
   ];
   assert.equal(peopleOnTrip(members, "a", "me"), 3);
   assert.equal(peopleOnTrip(members, "c", "me"), 1);
+});
+
+const dated = (kind: string, title: string, day_date: string) => ({
+  kind,
+  title,
+  detail: null,
+  time_label: null,
+  day_date,
+});
+
+test("with several flights and hotels, the next flight and tonight's stay", () => {
+  const rows = [
+    dated("flight", "Out", "2026-10-07"),
+    dated("hotel", "Tokyo hotel", "2026-10-07"),
+    dated("transport", "NH 12 to Osaka", "2026-10-10"),
+    dated("hotel", "Kyoto inn", "2026-10-10"),
+    dated("flight", "Home", "2026-10-14"),
+  ];
+  const at = (today: string) => {
+    const { flight, lodging } = currentHighlights(rows, today);
+    return [flight?.title ?? null, lodging?.title ?? null];
+  };
+  assert.deepEqual(at("2026-09-26"), ["Out", "Tokyo hotel"]);
+  assert.deepEqual(at("2026-10-07"), ["Out", "Tokyo hotel"]);
+  assert.deepEqual(at("2026-10-08"), ["NH 12 to Osaka", "Tokyo hotel"]);
+  assert.deepEqual(at("2026-10-10"), ["NH 12 to Osaka", "Kyoto inn"]);
+  assert.deepEqual(at("2026-10-12"), ["Home", "Kyoto inn"]);
+  assert.deepEqual(at("2026-10-15"), [null, "Kyoto inn"]);
+});
+
+test("undated flights and stays keep plan order", () => {
+  const rows = [row("hotel", "First inn"), row("flight", "Out"), row("hotel", "Second inn")];
+  const { flight, lodging } = currentHighlights(rows, "2026-10-01");
+  assert.equal(flight?.title, "Out");
+  assert.equal(lodging?.title, "First inn");
+});
+
+test("a trip through several cities shows the city that matters today", () => {
+  const stops = [
+    { city: "Tokyo, Japan", arrive_on: "2026-10-07", depart_on: "2026-10-10" },
+    { city: "Kyoto", arrive_on: "2026-10-10", depart_on: "2026-10-14" },
+  ];
+  const rows = [
+    dated("flight", "Out", "2026-10-07"),
+    dated("hotel", "Tokyo hotel", "2026-10-07"),
+    dated("flight", "To Kyoto", "2026-10-10"),
+    dated("hotel", "Kyoto inn", "2026-10-10"),
+    dated("flight", "Home", "2026-10-14"),
+  ];
+  const at = (today: string) => {
+    const leg = currentLeg(stops, rows, today)!;
+    return [leg.label, leg.city, leg.flight?.title ?? null, leg.lodging?.title ?? null];
+  };
+  assert.deepEqual(at("2026-09-26"), ["First stop", "Tokyo", "Out", "Tokyo hotel"]);
+  assert.deepEqual(at("2026-10-08"), ["Now in", "Tokyo", "To Kyoto", "Tokyo hotel"]);
+  assert.deepEqual(at("2026-10-11"), ["Now in", "Kyoto", "Home", "Kyoto inn"]);
+});
+
+test("no leg for one city, or when no city has dates", () => {
+  const one = [
+    { city: "Lisbon", arrive_on: "2026-10-01", depart_on: null },
+    { city: "Lisbon, Portugal", arrive_on: "2026-10-03", depart_on: null },
+  ];
+  assert.equal(currentLeg(one, [], "2026-09-26"), null);
+  const undated = [
+    { city: "Tokyo", arrive_on: null, depart_on: null },
+    { city: "Kyoto", arrive_on: null, depart_on: null },
+  ];
+  assert.equal(currentLeg(undated, [], "2026-09-26"), null);
 });

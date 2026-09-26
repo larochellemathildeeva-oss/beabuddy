@@ -12,6 +12,7 @@ import {
   nextTodo,
   plansConfirmed,
   routeLine,
+  stopCount,
   walkMinutes,
 } from "./trip-glance.ts";
 
@@ -120,4 +121,9 @@ test("a trip keeps its painted scene, and trips differ", () => {
   }
   assert.ok(a.sunR >= 34 && a.sunR <= 64);
   assert.ok(bannerScene("").sky.length === 2);
+});
+
+test("stops count places to see, not travel, beds or notes", () => {
+  const kinds = ["flight", "hotel", "sight", "meal", "transport", "lodging", "note", "reservation"];
+  assert.equal(stopCount(kinds.map((kind) => ({ kind }))), 3);
 });

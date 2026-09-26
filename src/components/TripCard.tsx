@@ -12,6 +12,7 @@ import { timeForRail } from "@/lib/timeline-kind";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { dueLine } from "@/lib/trip-glance";
+import { currentLeg } from "@/lib/home-trip";
 
 /** The trip's own description, first line only, or Béa's line about it. */
 function quoteFor(trip: TripRow, stopCount: number, planned: number | null): string {
@@ -86,10 +87,12 @@ export function TripCard({
     country: trip.country,
     cities: cityNames,
   });
-  const stopCount = glance?.items.length ?? 0;
+  const stopCount = glance?.stops ?? 0;
 
-  const flight = glance?.flight;
-  const lodging = glance?.lodging;
+  // Several cities: the one that matters today, with its own flight and stay.
+  const leg = glance ? currentLeg(cities.stops, glance.items, toLocalISODate(new Date())) : null;
+  const flight = leg ? leg.flight : glance?.flight;
+  const lodging = leg ? leg.lodging : glance?.lodging;
   const packing = glance?.packing;
   const first = glance?.firstStop;
   const todo = glance?.todos.next;
@@ -118,6 +121,11 @@ export function TripCard({
       />
       {detail ? (
         <div className="px-4 pb-3.5 pt-3.5">
+          {leg ? (
+            <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-primary">
+              {leg.label} · <span className="normal-case tracking-normal">{leg.city}</span>
+            </p>
+          ) : null}
           {flight || lodging || packing || first || todo ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-5 gap-y-3.5">
               {flight ? (
@@ -138,7 +146,7 @@ export function TripCard({
                 <Fact
                   label="Packing"
                   aside={`${packing.packed}/${packing.total}`}
-                  note={first ? `First: ${first.title}` : ""}
+                  note={first && !leg ? `First: ${first.title}` : ""}
                 >
                   <div
                     role="progressbar"

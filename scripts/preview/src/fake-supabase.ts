@@ -105,6 +105,10 @@ const homeDb: Record<string, Row[]> = {
     { id: "h2", trip_id: "t1", day_date: inDays(11), time_label: "15:00", kind: "hotel", title: "Iwaso Ryokan & Shrine Inn", detail: "Miyajima Island", address: null, lat: null, lon: null, position: 1 },
     { id: "h3", trip_id: "t1", day_date: inDays(11), time_label: "10:00", kind: "sight", title: "Hiroshima Peace Memorial Park", detail: null, address: null, lat: null, lon: null, position: 2 },
   ],
+  trip_stops: [
+    { id: "s1", trip_id: "t1", kind: "city", city: "Hiroshima", country: "Japan", place_name: null, address: null, lat: 34.39, lon: 132.45, arrive_on: inDays(11), depart_on: inDays(12), notes: null, position: 0 },
+    { id: "s2", trip_id: "t1", kind: "city", city: "Miyajima", country: "Japan", place_name: null, address: null, lat: 34.29, lon: 132.32, arrive_on: inDays(12), depart_on: inDays(12), notes: null, position: 1 },
+  ],
   packing_lists: [
     { id: "pl1", trip_id: "la", name: "LA", emoji: null },
     { id: "pl2", trip_id: "t1", name: "Japan", emoji: null },
@@ -148,7 +152,9 @@ function q(table: string) {
   for (const m of ["select", "order", "limit", "in", "neq", "gte", "lte", "is", "not", "or", "filter", "match", "range", "ilike", "contains"]) b[m] = chain;
   b.eq = (k: string, v: unknown) => {
     filters.push([k, v]);
-    if (op === "select" && k !== "trip_id" && k !== "user_id") rows = rows.filter((x) => x[k] === v);
+    // The home samples hold several trips, so they filter by trip too.
+    if (op === "select" && (k !== "trip_id" || sample.startsWith("home")) && k !== "user_id")
+      rows = rows.filter((x) => x[k] === v);
     return b;
   };
   b.insert = (p: unknown) => ((op = "insert"), (payload = p), b);

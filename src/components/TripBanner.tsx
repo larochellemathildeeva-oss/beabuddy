@@ -113,7 +113,15 @@ export function TripBanner({
   // in the country ("Kyoto, Kyoto Prefecture, Japan"), which read "Japan, Japan".
   // Only the city's own name: "Los Angeles, California, United States" left
   // no room for the dates on a phone.
-  const where = formatTripLocation(city?.split(",")[0], country) || tripPlacesLine(cities);
+  // With several cities, name them ("Tokyo & Kyoto", "Tokyo and 2 more");
+  // with one, the city and its country.
+  const distinct = new Set(
+    cities.map((c) => (c.split(",")[0] ?? "").trim().toLowerCase()).filter(Boolean),
+  );
+  const where =
+    distinct.size > 1
+      ? tripPlacesLine(cities.map((c) => (c.split(",")[0] ?? "").trim()))
+      : formatTripLocation(city?.split(",")[0], country) || tripPlacesLine(cities);
   const dates = startDate || endDate ? tripDateLine(startDate, endDate) : "";
   const pill =
     kind === "hero"

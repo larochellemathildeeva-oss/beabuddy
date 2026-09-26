@@ -98,6 +98,15 @@ export function plansConfirmed(
   return { confirmed: plans.filter((i) => i.booked === true).length, total: plans.length };
 }
 
+/**
+ * Places on the plan, for "5 stops": everything you would go and see, not the
+ * flights, trains, beds or notes that get you there.
+ */
+export function stopCount(items: readonly { kind: string }[]): number {
+  return items.filter((i) => !["flight", "hotel", "lodging", "transport", "note"].includes(i.kind))
+    .length;
+}
+
 /** The first thing on the plan you would go and see, past the travel and the bed. */
 export function firstStop<T extends { kind: string; title: string }>(
   items: readonly T[],

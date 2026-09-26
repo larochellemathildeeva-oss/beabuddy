@@ -43,7 +43,7 @@ function readiness(glance: TripGlance | undefined): { label: string; line: strin
       line: `${glance.packing.packed} of ${glance.packing.total} packed`,
     };
   }
-  const n = glance?.items.length ?? 0;
+  const n = glance?.stops ?? 0;
   if (n > 0) return { label: "The plan", line: `${n} ${n === 1 ? "stop" : "stops"} planned` };
   return { label: "Just started", line: "Nothing planned yet" };
 }
