@@ -337,7 +337,10 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         ).slice(0, QUERIES_PER_STOP);
         for (const query of queries) {
           // Per box: a miss beside the parent is not a miss across the city.
-          const key = `${query.toLowerCase()}|${boxViewbox(bounds)}`;
+          // And per centre: the nearest namesake to one town is not the
+          // nearest to another searching the same country box.
+          const from = near ?? centre;
+          const key = `${query.toLowerCase()}|${boxViewbox(bounds)}|${from ? `${from.lat.toFixed(3)},${from.lon.toFixed(3)}` : ""}`;
           if (cache.has(key)) {
             const hit = cache.get(key) ?? null;
             if (hit) {

@@ -239,6 +239,9 @@ export function TripDetail({
    * can say where it is and not only sit on a map.
    */
   const triedPlacingRows = useRef<Set<string>>(new Set());
+  /** The rows as they are now, not as they were when a lookup began. */
+  const latestItems = useRef(board.items);
+  latestItems.current = board.items;
   useEffect(() => {
     if (!lookupArea) return;
     const pending = rowsToPlace(board.items, triedPlacingRows.current);
@@ -268,7 +271,10 @@ export function TripDetail({
           // Saved only if it plausibly is this stop; a namesake stays
           // unplaced for the person to set, rather than pinned wrongly.
           if (!row || !autoPinTrusted({ title: row.title, address: row.address }, hit)) continue;
-          const where = row.address?.trim() ? null : labelAddress(hit.label);
+          // Read now, not from the lookup's snapshot: an address typed
+          // while it ran is the person's, and is never replaced.
+          const current = latestItems.current.find((item) => item.id === row.id);
+          const where = (current ?? row).address?.trim() ? null : labelAddress(hit.label);
           await board.updateItem(row.id, {
             lat: hit.lat,
             lon: hit.lon,
