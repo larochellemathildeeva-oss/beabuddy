@@ -42,6 +42,56 @@
         "colorful": "5e34196d-25db-40cb-a6bf-58fb48790ae6",
         "dark": "268eb6a4-c5a3-4879-9fe5-2920d92a2d71"
       }
+    },
+    "/world": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/world-<theme>.html",
+      "themes": {
+        "calm": "4c8432d1-c0c3-4e24-81c7-b7082f76b168",
+        "colorful": "4ff3ae42-74c2-445f-8296-b73ab74af0bc",
+        "dark": "2649a252-8ede-41c2-a6f4-d99775c9cdf9"
+      }
+    },
+    "/trips": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trips-<theme>.html",
+      "themes": {
+        "calm": "16522e64-5087-47d8-a648-d50a8b1414b6",
+        "colorful": "a41574f0-8d7f-4173-96a8-e53acf472397",
+        "dark": "ec7fb69b-d796-4cfd-8b09-0fd732a68962"
+      }
+    },
+    "/trips/$tripId": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/detail-<theme>.html",
+      "themes": {
+        "calm": "58720c40-e3fd-4348-a7b7-834f4dd1340c",
+        "colorful": "a817e692-8ff2-45c1-9308-e532882d3fda",
+        "dark": "6bf13872-79d8-4b66-ad02-bc4483e4ee67"
+      }
+    },
+    "/recommendations": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/recs-<theme>.html",
+      "themes": {
+        "calm": "e999e69e-3922-4a4e-aeef-3f99ca38d6b7",
+        "colorful": "9cedfb26-3efb-489e-9fe2-06117f940c18",
+        "dark": "660eaa56-e533-45af-9495-b978eaaaf360"
+      }
+    },
+    "/profile": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/you-<theme>.html",
+      "themes": {
+        "calm": "67b75a5f-6971-4619-9137-692e71a1a881",
+        "colorful": "9a7dbc8f-4690-4113-a184-31202edff142",
+        "dark": "d8cfc0a3-6da0-4909-97ff-4604cc42d455"
+      }
     }
   }
 }
