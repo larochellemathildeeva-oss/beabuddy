@@ -6,8 +6,8 @@ export type HomeSectionKey = "trip" | "weather" | "waiting" | "future";
 export type HomeLayout = Record<HomeSectionKey, boolean>;
 
 export const HOME_SECTIONS: { key: HomeSectionKey; label: string; hint: string }[] = [
-  { key: "trip", label: "Current trip", hint: "Your current or next trip, at the top of Home." },
   { key: "weather", label: "Weather", hint: "Where you are and the weather there." },
+  { key: "trip", label: "Current trip", hint: "Your current or next trip." },
   { key: "waiting", label: "Waiting for you", hint: "Your most recent saved recommendation." },
   { key: "future", label: "Future me note", hint: "The newest note you left for yourself." },
 ];
