@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clearOfflineMap,
   readSavedMap,
@@ -16,13 +16,22 @@ import {
  * pressed, and only where the day map is drawn from vector tiles; elsewhere
  * the pictures are what there is. The browser may clear it without saying,
  * so on opening the trip the note is checked against what is really there.
+ *
+ * A save answers only the trip it was started for: switching trips, or
+ * deleting the map, while one is under way leaves this screen alone.
  */
 export function useOfflineMap(tripId: string | null) {
   const [saved, setSaved] = useState<SavedMap | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState("");
+  // Bumped on every trip change, delete and new save; an answer from an
+  // older one is dropped.
+  const run = useRef(0);
 
   useEffect(() => {
+    const mine = ++run.current;
+    setProgress(null);
+    setError("");
     if (!tripId) {
       setSaved(null);
       return;
@@ -32,7 +41,7 @@ export function useOfflineMap(tripId: string | null) {
     if (!note) return;
     let active = true;
     void savedMapStillThere(tripId).then((there) => {
-      if (!active || there) return;
+      if (!active || run.current !== mine || there) return;
       // Cleared by the browser: say so rather than promise a map that is gone.
       void clearOfflineMap(tripId);
       setSaved(null);
@@ -46,20 +55,25 @@ export function useOfflineMap(tripId: string | null) {
   const save = useCallback(
     async (days: readonly { points: readonly { lat: number; lon: number }[] }[]) => {
       if (!tripId || days.length === 0) return;
-      if (!(await vectorMapAvailable())) return;
+      const mine = ++run.current;
+      if (!(await vectorMapAvailable()) || run.current !== mine) return;
       setError("");
       setProgress({ done: 0, total: 0 });
       try {
         const kept = await saveOfflineMap(
           tripId,
           days.map((d) => d.points),
-          (done, total) => setProgress({ done, total }),
+          (done, total) => {
+            if (run.current === mine) setProgress({ done, total });
+          },
         );
-        setSaved(kept);
+        if (run.current === mine && kept) setSaved(kept);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Couldn't save the map.");
+        if (run.current === mine) {
+          setError(e instanceof Error ? e.message : "Couldn't save the map.");
+        }
       } finally {
-        setProgress(null);
+        if (run.current === mine) setProgress(null);
       }
     },
     [tripId],
@@ -67,8 +81,10 @@ export function useOfflineMap(tripId: string | null) {
 
   const clear = useCallback(() => {
     if (!tripId) return;
+    run.current++;
     void clearOfflineMap(tripId);
     setSaved(null);
+    setProgress(null);
     setError("");
   }, [tripId]);
 

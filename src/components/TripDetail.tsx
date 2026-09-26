@@ -1453,9 +1453,10 @@ export function TripDetail({
                 // And, where the day map is drawn from vector tiles, the map
                 // itself around each day's stops, so it still pans and zooms.
                 if (kept) {
-                  const days = daysForMaps(board.items);
-                  void dayMaps.save(days);
-                  void offlineMap.save(days);
+                  void dayMaps.save(daysForMaps(board.items));
+                  // Every day, not only the pictures' first three weeks: the
+                  // tile plan has its own cap.
+                  void offlineMap.save(daysForMaps(board.items, Infinity));
                 }
                 return kept;
               }}

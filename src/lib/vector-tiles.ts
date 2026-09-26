@@ -138,7 +138,14 @@ export function tileFor(lat: number, lon: number, z: number): { x: number; y: nu
   return { x: Math.min(span - 1, Math.max(0, x)), y: Math.min(span - 1, Math.max(0, y)) };
 }
 
-/** A box around some pins, with `padKm` of streets around the outermost. */
+/**
+ * A box around some pins, with `padKm` of streets around the outermost.
+ *
+ * Stops either side of the date line (Fiji, Chukotka, the Aleutians) are a
+ * few kilometres apart, not the width of the world: when the pins span more
+ * than half the globe the western ones are counted past 180°, so `east` can
+ * exceed 180 and `tilesInBox` wraps it round.
+ */
 export function boxAround(
   pins: readonly { lat: number; lon: number }[],
   padKm: number,
@@ -148,7 +155,10 @@ export function boxAround(
   );
   if (!real.length) return null;
   const lats = real.map((p) => p.lat);
-  const lons = real.map((p) => p.lon);
+  let lons = real.map((p) => p.lon);
+  if (Math.max(...lons) - Math.min(...lons) > 180) {
+    lons = lons.map((lon) => (lon < 0 ? lon + 360 : lon));
+  }
   const south = Math.min(...lats);
   const north = Math.max(...lats);
   const padLat = padKm / 111;
@@ -157,24 +167,45 @@ export function boxAround(
   return {
     south: Math.max(-85, south - padLat),
     north: Math.min(85, north + padLat),
-    west: Math.max(-180, Math.min(...lons) - padLon),
-    east: Math.min(180, Math.max(...lons) + padLon),
+    west: Math.min(...lons) - padLon,
+    east: Math.max(...lons) + padLon,
   };
 }
 
-/** Every tile at zoom `z` that touches the box. */
+/**
+ * Every tile at zoom `z` that touches the box. Columns past either edge of
+ * the world wrap round to the other side, so a box across the date line
+ * keeps both of its halves.
+ */
 export function tilesInBox(box: Box, z: number): TileCoords[] {
-  const a = tileFor(box.north, box.west, z);
-  const b = tileFor(box.south, box.east, z);
+  const span = 2 ** z;
+  const top = tileFor(box.north, 0, z).y;
+  const bottom = tileFor(box.south, 0, z).y;
+  let first = Math.floor(((box.west + 180) / 360) * span);
+  // The column the east edge falls in; an edge exactly on a boundary is the
+  // tile to its left, not the next one.
+  let last = Math.ceil(((box.east + 180) / 360) * span) - 1;
+  if (last < first) last = first;
+  if (last - first + 1 >= span) {
+    first = 0;
+    last = span - 1;
+  }
   const out: TileCoords[] = [];
-  for (let x = a.x; x <= b.x; x++) for (let y = a.y; y <= b.y; y++) out.push({ z, x, y });
+  for (let col = first; col <= last; col++) {
+    const x = ((col % span) + span) % span;
+    for (let y = top; y <= bottom; y++) out.push({ z, x, y });
+  }
   return out;
 }
 
 /** Streets around each day's stops: enough to find the way between them. */
 export const OFFLINE_PAD_KM = 2;
-/** The lowest zoom kept: a city and what surrounds it. */
-export const OFFLINE_ZOOM_MIN = 8;
+/**
+ * The lowest zoom kept, as low as the day map lets anyone zoom out. Below a
+ * city's own zoom the area is a tile or two, so this costs almost nothing,
+ * and zooming out with no signal still shows where the day is.
+ */
+export const OFFLINE_ZOOM_MIN = 1;
 /**
  * At most this many tiles per trip. Each costs Geoapify a quarter credit, so
  * this is 150 credits at worst; an ordinary city trip needs well under half.

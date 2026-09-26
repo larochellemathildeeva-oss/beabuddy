@@ -143,3 +143,35 @@ test("prettyMegabytes says how much room a map takes", () => {
   assert.equal(prettyMegabytes(1.84 * 1024 * 1024), "1.8 MB");
   assert.equal(prettyMegabytes(23.6 * 1024 * 1024), "24 MB");
 });
+
+test("a day across the date line keeps a few tiles either side, not the world", () => {
+  // Taveuni, Fiji: stops a few kilometres apart, either side of 180°.
+  const day = [
+    { lat: -16.79, lon: 179.98 },
+    { lat: -16.82, lon: -179.97 },
+  ];
+  const box = boxAround(day, 2)!;
+  assert.ok(box.east - box.west < 1, `${box.west}..${box.east}`);
+  const z14 = tilesInBox(box, 14);
+  assert.ok(z14.length > 0 && z14.length <= 30, String(z14.length));
+  const xs = z14.map((t) => t.x);
+  assert.ok(xs.includes(0) && xs.includes(2 ** 14 - 1), "both halves");
+  const plan = offlineTilePlan([day]);
+  assert.ok(plan.length > 0 && plan.some((t) => t.z === 14));
+});
+
+test("every zoom the day map allows is kept, so zooming out offline still shows the day", () => {
+  const plan = offlineTilePlan([[{ lat: 38.7075, lon: -9.1364 }]]);
+  for (let z = 0; z <= 14; z++)
+    assert.ok(
+      plan.some((t) => t.z === z),
+      `zoom ${z}`,
+    );
+});
+
+test("a box edge exactly on a tile boundary does not pull in the next column", () => {
+  assert.deepEqual(
+    tilesInBox({ south: 1, west: 1, north: 2, east: 180 }, 1).map((t) => t.x),
+    [1],
+  );
+});

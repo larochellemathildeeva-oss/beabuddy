@@ -7,7 +7,7 @@ import { curvedLeg } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
 import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { journalStyle } from "@/lib/journal-style";
-import { registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
+import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
 
 const OSM_CREDIT =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
@@ -112,6 +112,7 @@ export function DayMap({
   useEffect(() => {
     let cancelled = false;
     let observer: ResizeObserver | null = null;
+    let stopWatching: (() => void) | null = null;
 
     void import("leaflet").then((mod) => {
       const L = (mod as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet);
@@ -134,6 +135,12 @@ export function DayMap({
       // "Keep offline" saves — and the image tiles otherwise: no Geoapify
       // key, no WebGL, or a server that is not answering. The pins do not
       // wait for either; they are Leaflet's, above whichever base is drawn.
+      const imageTiles = () =>
+        L.tileLayer(TILE_URL_TEMPLATE, {
+          minZoom: TILE_ZOOM_MIN,
+          maxZoom: TILE_ZOOM_MAX,
+          attribution: OSM_CREDIT,
+        }).addTo(m);
       void vectorMapAvailable().then(async (vector) => {
         if (cancelled) return;
         if (vector) {
@@ -144,20 +151,31 @@ export function DayMap({
             ]);
             if (cancelled || map.current !== m) return;
             registerBeaProtocols(maplibregl);
-            new MaplibreGL({ style: journalStyle(), attributionControl: false }).addTo(m);
-            m.attributionControl.addAttribution(`${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`);
+            const base = new MaplibreGL({ style: journalStyle(), attributionControl: false }).addTo(
+              m,
+            );
+            const credit = `${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`;
+            m.attributionControl.addAttribution(credit);
             setVector(true);
+            // The server started refusing tiles or fonts after the first
+            // check passed: put the image tiles back, once, rather than
+            // leave squares or labels missing.
+            stopWatching = onVectorTrouble(() => {
+              stopWatching?.();
+              stopWatching = null;
+              if (cancelled || map.current !== m) return;
+              m.removeLayer(base);
+              m.attributionControl.removeAttribution(credit);
+              imageTiles();
+              setVector(false);
+            });
             return;
           } catch (error) {
             console.error(error);
             if (cancelled || map.current !== m) return;
           }
         }
-        L.tileLayer(TILE_URL_TEMPLATE, {
-          minZoom: TILE_ZOOM_MIN,
-          maxZoom: TILE_ZOOM_MAX,
-          attribution: OSM_CREDIT,
-        }).addTo(m);
+        imageTiles();
       });
 
       // The frame can change size without the window doing so — a tab
@@ -172,6 +190,7 @@ export function DayMap({
 
     return () => {
       cancelled = true;
+      stopWatching?.();
       observer?.disconnect();
       map.current?.remove();
       map.current = null;
