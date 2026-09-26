@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   aiFailure,
+  isBillingExhausted,
   isDailyQuota,
   isNetworkFailure,
   isOverloaded,
@@ -171,4 +172,24 @@ test("runModelChain steps down when Google refuses a retired model id", async ()
   });
   assert.equal(result, "ok:live");
   assert.deepEqual(tried, ["dead", "live"]);
+});
+
+test("depleted prepayment credits get plain copy and no model step-down", async () => {
+  const depleted = new Error(
+    "Your prepayment credits are depleted. Please go to AI Studio at https://ai.studio/projects to manage your project and billing. Learn more at https://ai.google.dev/gemini-api/docs/billing#prepay.",
+  );
+  assert.equal(isBillingExhausted(depleted), true);
+  assert.equal(shouldFallToNextModel(depleted), false);
+  assert.equal(isBillingExhausted(new Error("You exceeded your current quota")), false);
+  const message = aiFailure(depleted).message;
+  assert.match(message, /top up its AI credits/);
+  assert.doesNotMatch(message, /ai\.studio|https?:/);
+  let calls = 0;
+  await assert.rejects(
+    runModelChain(["a", "b"], async () => {
+      calls++;
+      throw depleted;
+    }),
+  );
+  assert.equal(calls, 1);
 });
