@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Pin } from "@/data/atlas";
 import { NearbyPlaces } from "@/components/NearbyPlaces";
-import { useNearMe } from "@/hooks/useNearMe";
+import type { useNearMe } from "@/hooks/useNearMe";
 import { formatMetres } from "@/lib/near";
 import { nearHomeView } from "@/lib/near-home";
 
@@ -18,8 +18,7 @@ import { nearHomeView } from "@/lib/near-home";
  * Collapsed by default: the nearest few, and the working tools a tap away.
  * Home stays a landing screen.
  */
-export function NearHome({ pins }: { pins: Pin[] }) {
-  const near = useNearMe();
+export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof useNearMe> }) {
   const [expanded, setExpanded] = useState(false);
 
   const view = nearHomeView({

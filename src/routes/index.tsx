@@ -6,6 +6,8 @@ import { Globe } from "@/components/Globe";
 import { HomeTripCard } from "@/components/HomeTripCard";
 import { ContentCard } from "@/components/ContentCard";
 import { NearHome } from "@/components/NearHome";
+import { HomeWeather } from "@/components/HomeWeather";
+import { useNearMe } from "@/hooks/useNearMe";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -99,6 +101,8 @@ function SignedInHome() {
   const vault = useRecommendations();
   const notes = useFutureNotes();
   const scorePrefs = useScorePrefs();
+  // One position for the whole of Home: the weather and Near share it.
+  const near = useNearMe();
 
   useEffect(() => {
     if (!user) {
@@ -156,9 +160,12 @@ function SignedInHome() {
       title={firstName ? `Hello, ${firstName}.` : "Welcome to Béa."}
     >
       <div className="space-y-6">
-        <NearHome pins={vault.pins} />
-
+        {/* The trip happening now, or the next one, always leads. */}
         {layout.trip && <HomeTripCard />}
+
+        {layout.weather && <HomeWeather near={near} />}
+
+        <NearHome pins={vault.pins} near={near} />
 
         {showSamplePrompt && (
           <section data-guide="home-empty" className="rise card-soft p-4">
