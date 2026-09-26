@@ -213,4 +213,38 @@ test("a street named after a place is not the place", () => {
     }).confidence,
     "high",
   );
+  // German runs the street word into the name.
+  assert.equal(
+    scoreMatch({
+      title: "Friedrichstraße",
+      label: "Friedrichstraße, Berlin",
+      category: "highway",
+      kind: "secondary",
+    }).confidence,
+    "high",
+  );
+  // Written short, as Portuguese streets often are.
+  assert.equal(
+    scoreMatch({
+      title: "R. Augusta",
+      label: "Rua Augusta, Lisboa",
+      category: "highway",
+      kind: "pedestrian",
+    }).confidence,
+    "high",
+  );
+});
+
+test("a venue named after its street is not the street", () => {
+  for (const [title, label] of [
+    ["Park Avenue Hotel", "Park Avenue, New York"],
+    ["Abbey Road Studios", "Abbey Road, London"],
+    ["Café da Rua Augusta", "Rua Augusta, Lisboa"],
+  ] as const) {
+    assert.equal(
+      scoreMatch({ title, label, category: "highway", kind: "residential" }).confidence,
+      "low",
+      title,
+    );
+  }
 });

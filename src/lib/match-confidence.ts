@@ -216,12 +216,21 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   return { confidence: "high", reason: "" };
 }
 
-/** Words that make a name a street, in the languages Béa's trips are in. */
-const STREET_WORDS =
-  /\b(?:rua|r\.|avenida|av\.?|travessa|estrada|rodovia|alameda|rue|boulevard|bd|calle|avda|carrer|via|viale|corso|strasse|straße|street|st|road|rd|avenue|ave|blvd|lane|ln|drive|dr|way|highway|dori|dōri|tōri|-dori|-dōri)\b/i;
+/**
+ * A name that is a street, by where its street word sits: first in the
+ * languages that put it first ("Rua Augusta", "R. Augusta", "Rue de Rivoli",
+ * "Calle Mayor"), last in those that put it last ("Granville Street",
+ * "Omotesando-dori"). A word in the middle is part of a venue's name:
+ * "Park Avenue Hotel" and "Abbey Road Studios" are not streets.
+ */
+const STREET_FIRST =
+  /^(?:rua|r\.|avenida|av\.?|avda\.?|travessa|estrada|rodovia|alameda|rue|boulevard|bd|calle|carrer|via|viale|corso)(?=\s)/;
+const STREET_LAST =
+  /(?:^|[\s-])(?:street|st\.?|road|rd\.?|avenue|ave\.?|boulevard|blvd\.?|lane|ln\.?|drive|dr\.?|way|highway|dori|tori)$|(?:strasse|straße)$/;
 
 function namesAStreet(title: string): boolean {
-  return looksLikeStreetAddress(title) || STREET_WORDS.test(foldAccents(title.toLowerCase()));
+  const name = foldAccents(title.toLowerCase()).replace(/\s+/g, " ").trim();
+  return looksLikeStreetAddress(name) || STREET_FIRST.test(name) || STREET_LAST.test(name);
 }
 
 /** Counts for the line that says how the batch went. */
