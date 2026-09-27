@@ -117,10 +117,36 @@ export function protocolToPath(url: string): string | null {
  */
 export const OFFLINE_GLYPH_STARTS = [0, 256, 768, 1024, 8192] as const;
 
-export function offlineGlyphPaths(): string[] {
-  return VECTOR_FONTS.flatMap((font) =>
-    OFFLINE_GLYPH_STARTS.map((start) => glyphPath({ font, start })),
-  );
+const ARABIC = [1536, 64256, 64512, 64768, 65024];
+/**
+ * Labels ask for the traveller's language first, so a saved map keeps that
+ * script's blocks too: without them its labels would vanish offline rather
+ * than fall back to Latin. Arabic is also kept in the joined letter forms the
+ * right-to-left plugin draws it with.
+ */
+export const LANGUAGE_GLYPH_STARTS: Readonly<Record<string, readonly number[]>> = {
+  ar: ARABIC,
+  fa: ARABIC,
+  ur: ARABIC,
+  ps: ARABIC,
+  he: [1280, 64256],
+  yi: [1280, 64256],
+  hy: [1280, 64256],
+  ka: [4096],
+  hi: [2304],
+  mr: [2304],
+  ne: [2304],
+  bn: [2304],
+  th: [3584],
+  lo: [3584],
+};
+
+/** `lang` as `labelLanguage` gives it; the day map's labels ask for it first. */
+export function offlineGlyphPaths(lang?: string): string[] {
+  const starts = [
+    ...new Set([...OFFLINE_GLYPH_STARTS, ...(LANGUAGE_GLYPH_STARTS[lang ?? ""] ?? [])]),
+  ];
+  return VECTOR_FONTS.flatMap((font) => starts.map((start) => glyphPath({ font, start })));
 }
 
 // ---------------------------------------------------------------------------

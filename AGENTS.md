@@ -111,7 +111,8 @@ confirms them against the real thing.
 Labels ask for the browser's language first (`name:fr`, `name:ja` …), then
 Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 `@mapbox/mapbox-gl-rtl-text` (`rtl-text.ts`), served from Béa's own build and
-fetched only when such a label is drawn.
+fetched only when such a label is drawn. A saved map keeps the fonts for the
+traveller's own script as well (`LANGUAGE_GLYPH_STARTS`).
 
 **Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
