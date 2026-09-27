@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, PlayCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { DemoVideo } from "@/components/DemoVideo";
+import { helpVideos, type ConfiguredVideo } from "@/lib/demo-video";
 import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME, type Faq } from "@/lib/help-faq";
 
 export const Route = createFileRoute("/help")({
@@ -61,6 +63,44 @@ function Item({ q, a }: Faq) {
   );
 }
 
+/**
+ * Short films, one feature each, for when you forgot how one thing works.
+ * Only the ones this deploy has are listed; with none, the section is absent
+ * rather than a heading over nothing.
+ */
+function Videos() {
+  const videos = helpVideos();
+  const [playing, setPlaying] = useState<ConfiguredVideo | null>(null);
+  if (!videos.length) return null;
+
+  return (
+    <section>
+      <p className="label-caps mb-2 text-foreground">Watch how it's done</p>
+      <div className="card-soft overflow-hidden">
+        {videos.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => setPlaying(v)}
+            className="flex w-full items-start gap-3 border-b border-border/70 px-4 py-3 text-left last:border-0"
+          >
+            <PlayCircle className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-[15px] font-medium">{v.title}</span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                {v.blurb} {v.length}.
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {playing ? (
+        <DemoVideo source={playing.source} title={playing.title} onClose={() => setPlaying(null)} />
+      ) : null}
+    </section>
+  );
+}
+
 function HelpPage() {
   return (
     <AppShell publicPage eyebrow="Help" title="Welcome to Béa">
@@ -70,6 +110,8 @@ function HelpPage() {
           <p className="text-[15px] font-medium text-foreground">{HELP_WELCOME.lead}</p>
           <Answer text={HELP_WELCOME.body} padded={false} />
         </section>
+
+        <Videos />
 
         {HELP_FAQ_GROUPS.map((g) => (
           <section key={g.title}>

@@ -11,7 +11,16 @@ import type { DemoVideoSource } from "@/lib/demo-video";
  * `controls` and starts on the poster frame; an embed is left to its own
  * player.
  */
-export function DemoVideo({ source, onClose }: { source: DemoVideoSource; onClose: () => void }) {
+export function DemoVideo({
+  source,
+  onClose,
+  title = "How Béa works",
+}: {
+  source: DemoVideoSource;
+  onClose: () => void;
+  /** Which film this is — the welcome film unless a Help clip says otherwise. */
+  title?: string;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -26,17 +35,17 @@ export function DemoVideo({ source, onClose }: { source: DemoVideoSource; onClos
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4"
       onClick={onClose}
     >
       <div
         role="dialog"
-        aria-label="How Béa works"
+        aria-label={title}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-3xl"
       >
         <div className="mb-2 flex items-center justify-between gap-3">
-          <p className="text-[13px] font-semibold text-white/90">How Béa works</p>
+          <p className="text-[13px] font-semibold text-white/90">{title}</p>
           <button
             type="button"
             onClick={onClose}
@@ -59,7 +68,7 @@ export function DemoVideo({ source, onClose }: { source: DemoVideoSource; onClos
           ) : (
             <iframe
               src={source.src}
-              title="How Béa works"
+              title={title}
               allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
               className="aspect-video w-full border-0"

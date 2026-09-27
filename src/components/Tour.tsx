@@ -20,7 +20,7 @@ import {
   type SpotlightBox,
 } from "./SpotlightOverlay";
 import { DemoVideo } from "@/components/DemoVideo";
-import { configuredDemoVideo } from "@/lib/demo-video";
+import { configuredVideo } from "@/lib/demo-video";
 
 const TOUR_EVENT = "bea-tour-start";
 /** Wait for route paint + data (seed/trips) before treating a target as missing. */
@@ -93,7 +93,8 @@ export function Tour({
   const [watching, setWatching] = useState(false);
   // Null on a deploy with no VITE_DEMO_VIDEO_URL, and then the written walk
   // stays exactly as it was — an unset variable is never a dead button.
-  const demoVideo = configuredDemoVideo();
+  const welcome = configuredVideo("welcome");
+  const demoVideo = welcome?.source ?? null;
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const steps = mode ? tourSteps(mode) : EMPTY_STEPS;
@@ -302,7 +303,7 @@ export function Tour({
                   Watch how Béa works
                 </span>
                 <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  Remember → choose → plan → opportunity → story. About ninety seconds.
+                  {welcome?.blurb} {welcome?.length}.
                 </span>
               </button>
             ) : (
@@ -370,6 +371,24 @@ export function Tour({
         <>
           <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
           <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step!.body}</p>
+          {/* The welcome film, offered on the first card and nowhere after it.
+              Never started for them: a new account opening onto a film that
+              talks is the thing people close fastest. */}
+          {i === 0 && welcome ? (
+            <button
+              type="button"
+              onClick={() => setWatching(true)}
+              className="mt-2.5 flex w-full items-center gap-2 rounded-xl border border-border px-3.5 py-2.5 text-left text-[14px] font-semibold"
+            >
+              <PlayCircle className="size-4 shrink-0 text-primary" aria-hidden />
+              <span>
+                Watch the film first
+                <span className="block text-[12.5px] font-normal text-muted-foreground">
+                  {welcome.length}. Or tap Next to walk the real screens.
+                </span>
+              </span>
+            </button>
+          ) : null}
           {blocked && (
             <p className="mt-1.5 text-[12px] italic text-muted-foreground">
               This screen opens once you're signed in — for now, picture it here.
@@ -437,6 +456,9 @@ export function Tour({
       <SpotlightOverlay box={step?.selector ? box : null} onDismiss={dismissSoft}>
         {sheet}
       </SpotlightOverlay>
+      {watching && demoVideo ? (
+        <DemoVideo source={demoVideo} onClose={() => setWatching(false)} />
+      ) : null}
     </div>,
     document.body,
   );

@@ -1,6 +1,13 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { demoVideoSource } from "./demo-video.ts";
+import {
+  configuredDemoVideo,
+  configuredVideo,
+  configuredVideos,
+  DEMO_VIDEOS,
+  demoVideoSource,
+  helpVideos,
+} from "./demo-video.ts";
 
 describe("demoVideoSource", () => {
   it("has no video when nothing is configured", () => {
@@ -68,5 +75,66 @@ describe("demoVideoSource", () => {
   it("refuses nonsense", () => {
     assert.equal(demoVideoSource("not a url at all"), null);
     assert.equal(demoVideoSource("javascript:alert(1)"), null);
+  });
+});
+
+describe("the film catalogue", () => {
+  it("gives every film its own id and its own variable", () => {
+    const ids = DEMO_VIDEOS.map((v) => v.id);
+    const keys = DEMO_VIDEOS.map((v) => v.envKey);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(new Set(keys).size, keys.length);
+    for (const v of DEMO_VIDEOS) {
+      assert.match(v.envKey, /^VITE_[A-Z_]+_URL$/, `${v.id} would not reach the browser`);
+      assert.ok(v.title.trim() && v.blurb.trim() && v.length.trim(), `${v.id} is missing copy`);
+    }
+  });
+
+  it("keeps the welcome film on the variable deploys already set", () => {
+    assert.equal(DEMO_VIDEOS.find((v) => v.id === "welcome")?.envKey, "VITE_DEMO_VIDEO_URL");
+  });
+
+  it("never says Béa in the first person or calls her a planner", () => {
+    for (const v of DEMO_VIDEOS) {
+      // "I'm here", "Future Me" and "Help me choose" are names of buttons, not Béa talking.
+      const copy = `${v.title} ${v.blurb}`.replace(/I'm here|Future Me|Help me choose/g, "");
+      assert.doesNotMatch(copy, /\b(I|I'm|I've|me|my)\b/i, `${v.id}: "${copy}"`);
+      assert.doesNotMatch(copy, /AI travel planner/i, v.id);
+    }
+  });
+
+  it("has nothing to show on a deploy with nothing set", () => {
+    assert.deepEqual(configuredVideos({}), []);
+    assert.equal(configuredDemoVideo({}), null);
+    assert.deepEqual(helpVideos({}), []);
+  });
+
+  it("shows only the films that are set and playable, in catalogue order", () => {
+    const env = {
+      VITE_CLIP_NEAR_URL: "/clips/near.mp4",
+      VITE_CLIP_SAVE_URL: "https://youtu.be/dQw4w9WgXcQ",
+      VITE_CLIP_PLAN_URL: "https://example.com/not-a-video",
+    };
+    assert.deepEqual(
+      configuredVideos(env).map((v) => v.id),
+      ["save", "near"],
+    );
+  });
+
+  it("finds the welcome film where it always was", () => {
+    const env = { VITE_DEMO_VIDEO_URL: "/welcome.mp4" };
+    assert.deepEqual(configuredDemoVideo(env), { kind: "file", src: "/welcome.mp4" });
+    assert.equal(configuredVideo("welcome", env)?.title, "Watch how Béa works");
+  });
+
+  it("keeps the welcome film out of Help's list", () => {
+    const env = {
+      VITE_DEMO_VIDEO_URL: "/welcome.mp4",
+      VITE_WALKTHROUGH_VIDEO_URL: "/walkthrough.mp4",
+    };
+    assert.deepEqual(
+      helpVideos(env).map((v) => v.id),
+      ["walkthrough"],
+    );
   });
 });

@@ -401,8 +401,9 @@ With it set, **Take the tour again** (You → replay) offers "Watch how Béa
 works" in place of the written walk. Leave it unset and the walk stays exactly
 as it is, so an unconfigured deploy never shows a dead button.
 
-The landing page's **How Béa works** button is the other obvious home for it
-and is not wired up yet.
+The **How Béa works** page shows it too. The in-app welcome film, the
+walkthrough and the Help clips are planned in `DEMO_VIDEOS.md`, each with its
+own variable.
 
 ## Production notes
 
