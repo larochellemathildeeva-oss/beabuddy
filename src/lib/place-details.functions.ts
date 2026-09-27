@@ -2,10 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { geoapifyStaticMapUrl, type PlaceFacts } from "@/lib/geoapify";
+import type { PlacePhoto } from "@/lib/wikimedia";
 
 /**
- * What a stop or a rec is like to visit — hours, website, phone, access —
- * and a picture of a day's map for offline, both from Geoapify.
+ * What a stop or a rec is like to visit — hours, website, phone, access,
+ * from Geoapify, and a photo from Wikimedia Commons when the place names one
+ * — and a picture of a day's map for offline.
  *
  * The key is read on the server only (geo-provider.server.ts, imported
  * lazily): this file ships to the browser. Without Geoapify configured both
@@ -15,7 +17,7 @@ import { geoapifyStaticMapUrl, type PlaceFacts } from "@/lib/geoapify";
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
 const point = { lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) };
 
-export type PlaceDetails = Omit<PlaceFacts, "names">;
+export type PlaceDetails = Omit<PlaceFacts, "names" | "commons"> & { photo?: PlacePhoto };
 
 export const placeDetails = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -29,12 +31,18 @@ export const placeDetails = createServerFn({ method: "POST" })
     const { placeFactsFor } = await import("@/lib/place-facts.server");
     const facts = await placeFactsFor(provider.token, data);
     if (!facts) return null;
+    let photo: PlacePhoto | null = null;
+    if (facts.commons) {
+      const { commonsPhotoFor } = await import("@/lib/wikimedia.server");
+      photo = await commonsPhotoFor(facts.commons);
+    }
     return {
       ...(facts.name ? { name: facts.name } : {}),
       ...(facts.openingHours ? { openingHours: facts.openingHours } : {}),
       ...(facts.website ? { website: facts.website } : {}),
       ...(facts.phone ? { phone: facts.phone } : {}),
       ...(facts.wheelchair ? { wheelchair: facts.wheelchair } : {}),
+      ...(photo ? { photo } : {}),
     };
   });
 
