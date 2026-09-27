@@ -91,7 +91,7 @@ export function StopCard({
       </span>
 
       <span
-        // The same terracotta disc as the pin it matches on the map.
+        // The same accent disc as the pin it matches on the map.
         className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors ${
           selected
             ? "bg-primary text-primary-foreground shadow-sm"

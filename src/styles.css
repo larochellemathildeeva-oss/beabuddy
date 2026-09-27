@@ -86,10 +86,10 @@
   --elevated: #efe8dc;
   --popover: #ffffff;
   --popover-foreground: #28231f;
-  --primary: #a9583d;
+  --primary: #7a6552;
   --primary-foreground: #ffffff;
   /* A tint of the primary, for selected chips and quiet highlights. */
-  --primary-soft: rgb(169 88 61 / 0.12);
+  --primary-soft: rgb(122 101 82 / 0.12);
   --secondary: #efe8dc;
   --secondary-foreground: #28231f;
   --muted: #f0eae0;
@@ -100,7 +100,7 @@
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #ddd3c7;
   --input: #ddd3c7;
-  --ring: #a9583d;
+  --ring: #7a6552;
 
   --visited: oklch(0.55 0.135 249);
   --nexttime: oklch(0.56 0.12 158);
@@ -118,18 +118,18 @@
   /* Accent text on an inverted surface (bg-foreground), e.g. the Now card. */
   --inverse-accent: oklch(0.8 0.06 60);
 
-  --tab-l: 0.54;
-  --tab-c: 0.07;
+  --tab-l: 0.5;
+  --tab-c: 0.03;
 
   /* Diffuse and low-contrast: modern depth is soft, not a hard drop shadow. */
   --shadow-xs: 0 1px 2px oklch(0.3 0.02 60 / 0.04);
   --shadow-sm: 0 2px 12px rgb(30 26 23 / 0.19);
   --shadow-md: 0 2px 12px rgb(30 26 23 / 0.19);
   --shadow-lg: 0 6px 24px rgb(30 26 23 / 0.22);
-  --shadow-primary: 0 6px 18px -8px rgb(169 88 61 / 0.5);
+  --shadow-primary: 0 6px 18px -8px rgb(122 101 82 / 0.45);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, #b5654a, #a9583d);
+  --gradient-clay: linear-gradient(142deg, #8a7560, #7a6552);
   /* Barely-there warmth so the page is not a flat fill. */
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(1 0.006 80 / 0.9), transparent 70%);
 
@@ -169,7 +169,7 @@
 }
 
 /* Colorful — the master's pastels (peach, sky, mint, butter, blush) on a warm
-   white, with a terracotta accent. Lavender is left out: no purple wash. */
+   white. The accent alternates between the pastels, one per tab (below). */
 [data-theme="colorful"] {
   --background: #fff9f3;
   --foreground: #29252a;
@@ -178,9 +178,9 @@
   --elevated: #f6eee8;
   --popover: #ffffff;
   --popover-foreground: #29252a;
-  --primary: #b55b45;
+  --primary: #2f7bb0;
   --primary-foreground: #ffffff;
-  --primary-soft: rgb(181 91 69 / 0.12);
+  --primary-soft: rgb(47 123 176 / 0.13);
   --secondary: #f6eee8;
   --secondary-foreground: #29252a;
   --muted: #f7f0ea;
@@ -189,7 +189,7 @@
   --accent-foreground: #29252a;
   --border: #e7dde2;
   --input: #e7dde2;
-  --ring: #b55b45;
+  --ring: #2f7bb0;
 
   --visited: oklch(0.56 0.14 249);
   --nexttime: oklch(0.56 0.12 175);
@@ -209,14 +209,14 @@
   --tab-l: 0.56;
   --tab-c: 0.14;
 
-  --shadow-primary: 0 6px 18px -8px rgb(181 91 69 / 0.45);
-  --gradient-clay: linear-gradient(142deg, #c06a52, #b55b45);
+  --shadow-primary: 0 6px 18px -8px rgb(47 123 176 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2f7bb0 88%, white), #2f7bb0);
   --page-wash: none;
   --success: #5e806b;
   --warning: #b9833e;
 }
 
-/* Dark — near-black with off-white text and a warm terracotta accent. */
+/* Dark — near-black with off-white text and a warm beige accent. */
 .dark {
   --background: #171513;
   --foreground: #f6f0e8;
@@ -225,9 +225,9 @@
   --elevated: #2b2723;
   --popover: #2b2723;
   --popover-foreground: #f6f0e8;
-  --primary: #d98261;
+  --primary: #c9a27e;
   --primary-foreground: #171513;
-  --primary-soft: rgb(217 130 97 / 0.16);
+  --primary-soft: rgb(201 162 126 / 0.16);
   --secondary: #2b2723;
   --secondary-foreground: #f6f0e8;
   --muted: #2b2723;
@@ -238,7 +238,7 @@
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #3a342f;
   --input: #3a342f;
-  --ring: #d98261;
+  --ring: #c9a27e;
 
   --visited: oklch(0.7 0.135 249);
   --nexttime: oklch(0.72 0.13 158);
@@ -261,10 +261,10 @@
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
   --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
   --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 6px 18px -8px rgb(217 130 97 / 0.4);
+  --shadow-primary: 0 6px 18px -8px rgb(201 162 126 / 0.35);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, #e08f70, #d98261);
+  --gradient-clay: linear-gradient(142deg, #d4ad88, #b88d68);
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
 
   --success: #86a78b;
@@ -413,15 +413,9 @@
 /* Lightness and chroma come from the theme (--tab-l, --tab-c), so Dark and
    Colorful need no override of their own here. */
 
-/* The band runs upward from the brand's 39°, in even steps, in tab order — so
-   the accent walks along the bar with you.
- *
- * Upward on purpose: below 39° the warm terracotta turns rosy within twenty
- * degrees and stops reading as the same colour family, while above it the hue
- * travels terracotta → amber → gold and stays unmistakably Béa. Forty degrees
- * is the whole range; wider and the tabs read as five apps rather than one
- * app wearing five hats, which is the failure this is meant to fix.
- */
+/* Calm walks a quiet taupe band (low chroma, so the tabs differ by warmth,
+   not by colour); Dark walks the beige band. Colorful sets its own pastel
+   accent per tab below. */
 [data-tab="home"] {
   --tab-hue: 39;
 }
@@ -437,21 +431,49 @@
 [data-tab="you"] {
   --tab-hue: 79;
 }
-/* Colorful walks the cool pastels instead of the warm band. */
+/* Colorful: the accent alternates between the pastels — each tab takes one,
+   deepened enough to read as text and to carry white on a button (blush,
+   sky, mint, lavender, butter; no terracotta). The whole tab's primary follows it, so its
+   buttons, links and active chips match the tab bar. */
 [data-theme="colorful"] [data-tab="home"] {
-  --tab-hue: 292;
+  --tab-accent: #c24a67;
+  --primary: #c24a67;
+  --ring: #c24a67;
+  --primary-soft: rgb(194 74 103 / 0.13);
+  --shadow-primary: 0 6px 18px -8px rgb(194 74 103 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #c24a67 88%, white), #c24a67);
 }
 [data-theme="colorful"] [data-tab="world"] {
-  --tab-hue: 250;
+  --tab-accent: #2f7bb0;
+  --primary: #2f7bb0;
+  --ring: #2f7bb0;
+  --primary-soft: rgb(47 123 176 / 0.13);
+  --shadow-primary: 0 6px 18px -8px rgb(47 123 176 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2f7bb0 88%, white), #2f7bb0);
 }
 [data-theme="colorful"] [data-tab="trips"] {
-  --tab-hue: 215;
+  --tab-accent: #2a7f52;
+  --primary: #2a7f52;
+  --ring: #2a7f52;
+  --primary-soft: rgb(42 127 82 / 0.13);
+  --shadow-primary: 0 6px 18px -8px rgb(42 127 82 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2a7f52 88%, white), #2a7f52);
 }
 [data-theme="colorful"] [data-tab="recs"] {
-  --tab-hue: 180;
+  --tab-accent: #7a5aa8;
+  --primary: #7a5aa8;
+  --ring: #7a5aa8;
+  --primary-soft: rgb(122 90 168 / 0.13);
+  --shadow-primary: 0 6px 18px -8px rgb(122 90 168 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #7a5aa8 88%, white), #7a5aa8);
 }
 [data-theme="colorful"] [data-tab="you"] {
-  --tab-hue: 320;
+  --tab-accent: #9a6a10;
+  --primary: #9a6a10;
+  --ring: #9a6a10;
+  --primary-soft: rgb(154 106 16 / 0.13);
+  --shadow-primary: 0 6px 18px -8px rgb(154 106 16 / 0.45);
+  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #9a6a10 88%, white), #9a6a10);
 }
 
 /** The moving tab pill and the rule under the header, and nowhere else. */
@@ -953,7 +975,7 @@
   --journal-water: #dcebf2;
   --journal-park: #dce6d3;
   --journal-ink: #443d36;
-  --journal-accent: #d96b43;
+  --journal-accent: var(--color-primary);
   background: var(--journal-paper);
   box-shadow:
     0 0 0 1px rgb(68 61 54 / 0.07),

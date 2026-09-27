@@ -118,7 +118,7 @@ export function HomeTripHero({
             ) : null}
           </span>
           {tags.when ? (
-            <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#b0413b]">
+            <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-primary">
               {tags.when}
             </span>
           ) : null}

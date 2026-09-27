@@ -56,3 +56,7 @@
   owner's Google credits. Reuse `public/places/` and `public/banners/`.
 - ChatGPT's single-file prototype (pasted in chat) is the layout and flow
   blueprint for the remaining screens; colours stay from the token file.
+- **No terracotta anywhere** (owner dislikes it). Calm: warm taupe #7a6552.
+  Dark: beige #c9a27e. Colorful: the accent alternates by tab between
+  deepened pastels — Home blush, World sky, Trips mint, Recs lavender,
+  You butter.
