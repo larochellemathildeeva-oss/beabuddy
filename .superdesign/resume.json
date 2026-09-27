@@ -246,5 +246,17 @@
     "colorful": "a00f05c6-735e-4edb-96ea-2d1c35eaa848",
     "dark": "0c2b5be1-63b4-4203-bcf2-76f25000314f",
     "status": "awaiting approval"
+  },
+  "planner_v1": {
+    "plan_calm": "bf75ecc3-def0-473d-b654-7859cfd92451",
+    "plan_colorful": "42a971bf-9d3f-4811-9ca5-5d37ea0d89f8",
+    "plan_dark": "8366fb9e-8781-4081-ab66-783814f0fce5",
+    "optimize_calm": "8888a1b8-ce7f-41b2-9345-6ab17bf06a26",
+    "optimize_colorful": "7a593f19-637a-46ae-a587-aa7ba8cc1b99",
+    "optimize_dark": "8ba839a6-7151-44c2-9231-0bd2daff2487",
+    "compare_calm": "3ed42604-6340-47d7-9b97-b2d521dcb2b0",
+    "compare_colorful": "cdccad1b-b613-4872-8e14-0fc6a1886691",
+    "compare_dark": "bd40a0a5-ec0d-4f10-80bd-ee05a3801900",
+    "status": "awaiting approval"
   }
 }
