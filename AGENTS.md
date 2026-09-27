@@ -94,6 +94,21 @@ order:
    keyless, one request a second, and not really intended for systematic
    geocoding.
 
+**The day map and its offline copy.** With a Geoapify key the day map
+(`DayMap.tsx`) draws OpenMapTiles vector tiles in Béa's journal palette
+(`journal-style.ts`), through `/api/vtile` and `/api/glyphs` in `server.ts`,
+using MapLibre inside Leaflet (`@maplibre/maplibre-gl-leaflet`); the pins and
+everything else stay Leaflet's. Paths are parsed in `vector-tiles.ts` (pure,
+tested). Without a key, without WebGL, or when the server does not answer, it
+draws the `/api/tile` image tiles as before — a 404 from `/api/vtile` is how
+it knows, and it also checks a label font answers. "Keep offline" on saved
+directions also saves the tiles around each day's stops (`offlineTilePlan`, at
+most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
+per trip (`offline-map.ts`). There is no service worker, so this helps an open
+day map when the signal drops, not opening Béa with none. The Geoapify URLs
+were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
+confirms them against the real thing.
+
 **Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
 under another name — is looked up by name near the middle of town in

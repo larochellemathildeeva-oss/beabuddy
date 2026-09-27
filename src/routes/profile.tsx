@@ -344,7 +344,9 @@ function ProfilePage() {
           </p>
           <p className="mt-2 text-[13px] text-muted-foreground">
             What is kept locally: open a trip → settings → Saved directions. That stores the walk or
-            drive steps here, so they cost nothing to open again once you have them.
+            drive steps here, so they cost nothing to open again once you have them — and, where
+            this phone can draw it, the map around each day's stops, so a day map that is already
+            open keeps panning and zooming when the signal drops.
           </p>
           {offlineTrips.length > 0 ? (
             <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
