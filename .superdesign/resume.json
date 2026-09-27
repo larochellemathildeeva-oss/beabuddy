@@ -258,5 +258,14 @@
     "compare_colorful": "cdccad1b-b613-4872-8e14-0fc6a1886691",
     "compare_dark": "bd40a0a5-ec0d-4f10-80bd-ee05a3801900",
     "status": "awaiting approval"
+  },
+  "prep_v1": {
+    "todo_calm": "c6d265a7-879d-40bd-8400-4e2506517fd4",
+    "todo_colorful": "1c68370d-20eb-4779-b846-52663cf1b968",
+    "todo_dark": "0a3fca5a-018f-4db1-b02c-49cefb699513",
+    "packing_calm": "c0304f23-aa2d-419c-aafb-383fac3c214f",
+    "packing_colorful": "b9a47ded-80e9-411f-88e4-98270ba7cc5e",
+    "packing_dark": "68a1a4b6-508a-4059-ab2c-a4b71001fad5",
+    "status": "awaiting approval"
   }
 }
