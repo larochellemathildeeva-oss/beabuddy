@@ -15,9 +15,12 @@ function usePlaceFacts(
   enabled: boolean,
 ) {
   const ask = useServerFn(placeDetails);
-  const [facts, setFacts] = useState<PlaceDetails | null | undefined>(undefined);
+  // Kept with the place it answers, so a card moving on to the next stop
+  // never shows the last stop's hours or photo while the new ones load.
+  const [answer, setAnswer] = useState<{ key: string; facts: PlaceDetails | null } | null>(null);
   const placed = lat != null && lon != null && (lat !== 0 || lon !== 0);
   const key = placed ? `${name}@${lat!.toFixed(5)},${lon!.toFixed(5)}` : "";
+  const facts = answer && answer.key === key ? answer.facts : undefined;
   useEffect(() => {
     if (!enabled || !key) return;
     let live = true;
@@ -27,7 +30,7 @@ function usePlaceFacts(
       cache.set(key, pending);
     }
     void pending.then((f) => {
-      if (live) setFacts(f);
+      if (live) setAnswer({ key, facts: f });
     });
     return () => {
       live = false;
@@ -133,7 +136,7 @@ export function PlaceFacts({
 
   return (
     <div className={`space-y-1 text-[12px] ${muted}`}>
-      {facts.photo && <CommonsPhoto photo={facts.photo} />}
+      {facts.photo && <CommonsPhoto key={facts.photo.url} photo={facts.photo} />}
       {facts.openingHours && (
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <Clock className="size-3 shrink-0" aria-hidden />

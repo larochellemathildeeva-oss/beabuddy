@@ -15,7 +15,7 @@ import {
  */
 
 const UA = "BeaTravelApp/1.0 (https://github.com/larochellemathildeeva-oss/beabuddy)";
-const cache = new Map<string, PlacePhoto | null>();
+const cache = new Map<string, Promise<PlacePhoto | null>>();
 const CACHE_MAX = 2_000;
 
 async function getJson(url: string): Promise<unknown> {
@@ -27,18 +27,22 @@ async function getJson(url: string): Promise<unknown> {
   return res.json();
 }
 
-export async function commonsPhotoFor(ref: CommonsRef): Promise<PlacePhoto | null> {
+export function commonsPhotoFor(ref: CommonsRef): Promise<PlacePhoto | null> {
   const key = "file" in ref ? `f:${ref.file}` : `q:${ref.wikidata}`;
   const cached = cache.get(key);
-  if (cached !== undefined) return cached;
-  try {
-    const file =
-      "file" in ref ? ref.file : readWikidataImage(await getJson(wikidataImageUrl(ref.wikidata)));
-    const photo = file ? readCommonsImage(await getJson(commonsImageInfoUrl(file))) : null;
-    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
-    cache.set(key, photo);
-    return photo;
-  } catch {
+  if (cached) return cached;
+  // The promise is kept while it runs, so cards asking at once share one lookup.
+  const pending = lookup(ref).catch(() => {
+    cache.delete(key);
     return null;
-  }
+  });
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
+  cache.set(key, pending);
+  return pending;
+}
+
+async function lookup(ref: CommonsRef): Promise<PlacePhoto | null> {
+  const file =
+    "file" in ref ? ref.file : readWikidataImage(await getJson(wikidataImageUrl(ref.wikidata)));
+  return file ? readCommonsImage(await getJson(commonsImageInfoUrl(file))) : null;
 }

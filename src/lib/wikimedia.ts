@@ -24,8 +24,8 @@ export type PlacePhoto = {
   height?: number;
   /** The file's page on Commons, where its full credit and licence live. */
   page: string;
-  author?: string;
-  license?: string;
+  author: string;
+  license: string;
 };
 
 export type CommonsRef = { file: string } | { wikidata: string };
@@ -43,7 +43,13 @@ export function commonsFileName(value: unknown): string | null {
       return null;
     }
     if (!/(^|\.)wikimedia\.org$|(^|\.)wikipedia\.org$/i.test(url.hostname)) return null;
-    const m = /\/wiki\/(?:File|Image):(.+)$/i.exec(url.pathname);
+    // The file's page, Special:FilePath, or the image itself on upload.wikimedia.org
+    // (/wikipedia/commons/a/ab/Name.jpg, or its /thumb/…/640px-Name.jpg).
+    const m =
+      /\/wiki\/(?:File|Image|Special:FilePath)[:/](.+)$/i.exec(url.pathname) ??
+      (url.hostname === "upload.wikimedia.org"
+        ? /^\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/]+)/i.exec(url.pathname)
+        : null);
     if (!m?.[1]) return null;
     try {
       v = decodeURIComponent(m[1]);
@@ -132,8 +138,9 @@ const plain = (v: unknown, max: number): string | undefined => {
 
 /**
  * The photo in a Commons imageinfo answer, or null when the file is missing,
- * is not on upload.wikimedia.org, or carries restrictions beyond its licence
- * (trademarks, personality rights) that Béa cannot honour by crediting it.
+ * is not on upload.wikimedia.org, has no author or licence to credit, or
+ * carries restrictions beyond its licence (trademarks, personality rights)
+ * that Béa cannot honour by crediting it.
  */
 export function readCommonsImage(json: unknown): PlacePhoto | null {
   const pages = (json as { query?: { pages?: unknown } })?.query?.pages;
@@ -155,18 +162,18 @@ export function readCommonsImage(json: unknown): PlacePhoto | null {
   if (plain(meta["Restrictions"]?.value, 200)) return null;
   const author = plain(meta["Artist"]?.value, 120);
   const license = plain(meta["LicenseShortName"]?.value, 60);
+  if (!author || !license) return null;
   return {
     url: thumb.toString(),
     ...(typeof info.thumbwidth === "number" ? { width: info.thumbwidth } : {}),
     ...(typeof info.thumbheight === "number" ? { height: info.thumbheight } : {}),
     page: described.toString(),
-    ...(author ? { author } : {}),
-    ...(license ? { license } : {}),
+    author,
+    license,
   };
 }
 
 /** "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons" */
 export function photoCredit(photo: Pick<PlacePhoto, "author" | "license">): string {
-  const who = photo.author ? `Photo: ${photo.author}` : "Photo";
-  return [who, photo.license, "Wikimedia Commons"].filter(Boolean).join(" · ");
+  return `Photo: ${photo.author} · ${photo.license} · Wikimedia Commons`;
 }

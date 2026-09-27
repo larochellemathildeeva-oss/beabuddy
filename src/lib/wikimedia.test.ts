@@ -18,6 +18,24 @@ test("a Commons file is read however a mapper wrote it", () => {
     commonsFileName("https://commons.wikimedia.org/wiki/File:Caf%C3%A9_de_Flore.jpg"),
     "Café de Flore.jpg",
   );
+  assert.equal(
+    commonsFileName("https://upload.wikimedia.org/wikipedia/commons/a/ab/Pont_Neuf.jpg"),
+    "Pont Neuf.jpg",
+  );
+  assert.equal(
+    commonsFileName(
+      "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Pont_Neuf.jpg/640px-Pont_Neuf.jpg",
+    ),
+    "Pont Neuf.jpg",
+  );
+  assert.equal(
+    commonsFileName("https://commons.wikimedia.org/wiki/Special:FilePath/Pont_Neuf.jpg"),
+    "Pont Neuf.jpg",
+  );
+  assert.equal(
+    commonsFileName("https://upload.wikimedia.org/wikipedia/en/a/ab/Local_only.jpg"),
+    null,
+  );
   assert.equal(commonsFileName("Category:Pont Neuf"), null);
   assert.equal(commonsFileName("https://example.com/wiki/File:Pont.jpg"), null);
   assert.equal(commonsFileName("https://example.com/pont.jpg"), null);
@@ -91,10 +109,11 @@ test("a Commons answer gives the thumbnail, its page and a plain-text credit", (
   assert.equal(photo?.width, 640);
   assert.equal(photo?.page, "https://commons.wikimedia.org/wiki/File:Pont_Neuf.jpg");
   assert.equal(photoCredit(photo!), "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons");
-  assert.equal(photoCredit({}), "Photo · Wikimedia Commons");
 });
 
-test("missing, restricted or off-site files are not shown", () => {
+test("missing, uncredited, restricted or off-site files are not shown", () => {
+  assert.equal(readCommonsImage(info({ LicenseShortName: { value: "CC BY 4.0" } })), null);
+  assert.equal(readCommonsImage(info({ Artist: { value: "Jane" } })), null);
   assert.equal(readCommonsImage({ query: { pages: [{ missing: true }] } }), null);
   assert.equal(readCommonsImage(info({ Restrictions: { value: "trademarked" } })), null);
   assert.equal(readCommonsImage(info({}, { thumburl: "https://example.com/a.jpg" })), null);
