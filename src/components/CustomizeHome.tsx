@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings2 } from "lucide-react";
+import { Settings2 } from "@/components/icons";
 import {
   Sheet,
   SheetContent,

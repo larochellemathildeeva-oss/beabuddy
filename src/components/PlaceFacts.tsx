@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Accessibility, Clock, Globe, Phone } from "lucide-react";
+import { Accessibility, Clock, Globe, Phone } from "@/components/icons";
 import { placeDetails, type PlaceDetails } from "@/lib/place-details.functions";
 import { closedWarning, isOpenAt } from "@/lib/opening-hours";
 import { photoCredit, type PlacePhoto } from "@/lib/wikimedia";

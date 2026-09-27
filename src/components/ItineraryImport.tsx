@@ -13,7 +13,7 @@ import {
   ListOrdered,
   Sparkles,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   compareItineraries,
   optimizeItinerary,
@@ -78,6 +78,7 @@ import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
 
@@ -392,7 +393,7 @@ function ImportPanel({
     setPlanVersion((v) => v + 1);
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
-      toast.success(ready.title, { description: ready.body });
+      toast.success(ready.title, { description: beaCheer("itinerary") ?? ready.body });
     }
   };
 
@@ -722,7 +723,7 @@ function ImportPanel({
           undo: () => onRemoveItems(insertedIds),
         });
       } else {
-        toast.success(done.title, { description: done.body });
+        toast.success(done.title, { description: beaCheer("route") ?? done.body });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save those. Try again.");
@@ -1057,7 +1058,7 @@ function ImportPanel({
       </button>
       {busy && (
         <div className="mt-2">
-          <BeaRunning moment="plan.working" />
+          <BeaRunning moment="plan.working" action={mode === "build" ? "run" : "think"} />
         </div>
       )}
       {mode === "import" && !hasFiles && text.trim().length < 10 && (
@@ -1192,6 +1193,7 @@ function ImportPanel({
               {placing && (
                 <div className="mt-2">
                   <BeaRunning
+                    status="Placing your stops…"
                     done={placing.done}
                     total={placing.total}
                     estimate={estimatedSeconds(placing.total, PLAN_LOOKUP_GAP_MS)}
@@ -1322,6 +1324,7 @@ function ImportPanel({
               >
                 {busy ? "Béa is working…" : "Rebuild my trip"}
               </button>
+              {busy && <BeaRunning moment="plan.working" action="run" />}
             </div>
           )}
         </div>
@@ -1495,7 +1498,7 @@ function OptimizePanel({
       await onApplySchedule(plan.items);
       setSaved(true);
       const done = beaLine("plan.complete");
-      toast.success(done.title, { description: done.body });
+      toast.success(done.title, { description: beaCheer("route") ?? done.body });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
     } finally {
@@ -1561,6 +1564,7 @@ function OptimizePanel({
           >
             {busy && !plan ? "Béa is rearranging…" : "Ask Béa to rearrange"}
           </button>
+          {busy && !plan && <BeaRunning moment="choose.working" status="Rearranging the days" />}
         </>
       )}
 
@@ -1721,6 +1725,7 @@ function ComparePanel() {
             ? "Compare side by side"
             : "Paste both plans first"}
       </button>
+      {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
 

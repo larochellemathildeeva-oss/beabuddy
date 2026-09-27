@@ -1,0 +1,187 @@
+{
+  "version": "2.0",
+  "settingLocation": {
+    "preferred": "Profile → Béa → Personality",
+    "fallback": "Profile → Settings → Béa → Personality"
+  },
+  "defaultPreset": "balanced",
+  "userSelectable": true,
+  "customizable": true,
+  "sliderModel": {
+    "type": "independent_intensity",
+    "range": [
+      0,
+      100
+    ],
+    "step": 5,
+    "normalizeInternally": true,
+    "description": "Users set each trait from 0–100%. Values do not need to add up to 100. At runtime, non-zero values are normalized into effective selection weights.",
+    "zeroAllFallback": "helpful"
+  },
+  "traits": {
+    "helpful": {
+      "displayName": "Helpful",
+      "description": "Clear, useful and practical.",
+      "examples": [
+        "Béa is checking which option actually makes sense.",
+        "Béa is narrowing down the strongest options."
+      ]
+    },
+    "funny": {
+      "displayName": "Funny",
+      "description": "Dog puns, self-deprecation, tiny-leg humor and playful absurdity.",
+      "examples": [
+        "This requires some serious paw-cessing.",
+        "Tiny legs. Big itinerary energy."
+      ]
+    },
+    "sassy": {
+      "displayName": "Sassy",
+      "description": "Dry and mildly judgmental about routes, options or situations — never the user.",
+      "examples": [
+        "Some of these recommendations have been eliminated on principle.",
+        "Béa is comparing the options. Some have disappointed her."
+      ]
+    },
+    "encouraging": {
+      "displayName": "Encouraging",
+      "description": "Warm, supportive and upbeat without becoming overly cheery.",
+      "examples": [
+        "Almost there. Paws crossed.",
+        "The good stuff is coming together."
+      ]
+    },
+    "curious": {
+      "displayName": "Curious",
+      "description": "Inquisitive, detail-oriented and easily intrigued by unusual places or little discoveries.",
+      "examples": [
+        "Béa found a side street and now has questions.",
+        "There is something interesting over there. Béa would like to investigate."
+      ]
+    },
+    "adventurous": {
+      "displayName": "Adventurous",
+      "description": "Excited by detours, hidden gems and trying something less obvious.",
+      "examples": [
+        "The sensible option is good. The weird little place down the street is interesting.",
+        "Béa has spotted a detour. Naturally, she wants to know where it goes."
+      ]
+    },
+    "dramatic": {
+      "displayName": "Dramatic",
+      "description": "Theatrical overreaction for comedic effect.",
+      "examples": [
+        "Three transfers. Béa has seen enough.",
+        "A seven-minute delay. Civilization may never recover."
+      ]
+    },
+    "chill": {
+      "displayName": "Chill",
+      "description": "Relaxed, understated and low-key.",
+      "examples": [
+        "It’ll work out. Probably. Béa is not concerned.",
+        "Béa is checking. No need for theatrics. Yet."
+      ]
+    }
+  },
+  "presets": {
+    "balanced": {
+      "displayName": "Balanced",
+      "description": "The default Béa: useful, funny, a little sassy, occasionally encouraging.",
+      "intensities": {
+        "helpful": 35,
+        "funny": 35,
+        "sassy": 20,
+        "encouraging": 10,
+        "curious": 0,
+        "adventurous": 0,
+        "dramatic": 0,
+        "chill": 0
+      }
+    },
+    "helpful": {
+      "displayName": "Helpful",
+      "description": "Clear and practical with very little personality commentary.",
+      "intensities": {
+        "helpful": 85,
+        "funny": 5,
+        "sassy": 0,
+        "encouraging": 10,
+        "curious": 0,
+        "adventurous": 0,
+        "dramatic": 0,
+        "chill": 0
+      }
+    },
+    "funny": {
+      "displayName": "Funny",
+      "description": "More jokes, dog logic and self-deprecation.",
+      "intensities": {
+        "helpful": 15,
+        "funny": 70,
+        "sassy": 10,
+        "encouraging": 5,
+        "curious": 0,
+        "adventurous": 0,
+        "dramatic": 0,
+        "chill": 0
+      }
+    },
+    "sassy": {
+      "displayName": "Sassy",
+      "description": "Dry, sarcastic Béa with enough helpfulness to stay useful.",
+      "intensities": {
+        "helpful": 10,
+        "funny": 30,
+        "sassy": 55,
+        "encouraging": 5,
+        "curious": 0,
+        "adventurous": 0,
+        "dramatic": 0,
+        "chill": 0
+      }
+    },
+    "minimal": {
+      "displayName": "Minimal",
+      "description": "Mostly direct status language.",
+      "intensities": {
+        "helpful": 95,
+        "funny": 0,
+        "sassy": 0,
+        "encouraging": 5,
+        "curious": 0,
+        "adventurous": 0,
+        "dramatic": 0,
+        "chill": 0
+      }
+    }
+  },
+  "quirks": {
+    "description": "These are recurring Béa motifs, not user-controlled personality sliders. They may appear occasionally across compatible tones.",
+    "items": [
+      "tiny legs",
+      "tennis balls",
+      "bones",
+      "sniffing",
+      "digging",
+      "maps",
+      "snacks",
+      "naps",
+      "questionable stamina",
+      "French bulldog stubbornness"
+    ],
+    "frequencyRule": "Use quirks sparingly; avoid repeating the same motif within the last 5 Béa comments."
+  },
+  "selectionRules": [
+    "Determine the task/action context first: run, dig, think, ball, bone, empty state, etc.",
+    "Use the user's selected preset or custom intensities.",
+    "Normalize non-zero slider values into effective probabilities at runtime.",
+    "Choose a trait according to normalized weights, then choose a compatible line for the current action/state.",
+    "Avoid repeating any of the last 5 shown lines.",
+    "Avoid repeating the same recurring quirk within the last 5 Béa comments.",
+    "Do not rotate loading copy more often than every 4.2 seconds.",
+    "Ball and bone are rare Easter eggs, not normal loading behavior.",
+    "Sassy and Dramatic comments may tease the situation, route, result or Béa herself; never insult the user.",
+    "Errors, payments, security, destructive actions and safety-critical information always use clear non-joking copy."
+  ]
+}

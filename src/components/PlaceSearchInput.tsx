@@ -1,7 +1,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
-import { Link2, Plus, Search } from "lucide-react";
+import { Link2, Plus, Search } from "@/components/icons";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { hitsSpanCountries } from "@/lib/place-search-near";

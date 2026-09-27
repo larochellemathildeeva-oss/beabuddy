@@ -1,0 +1,220 @@
+{
+  "version": "1.0",
+  "title": "Béa loading animation assets",
+  "universal_heading": "Béa is working on it…",
+  "asset_size_px": [
+    256,
+    256
+  ],
+  "background": "transparent",
+  "notes": [
+    "Use the existing app logo/header; animation assets are character-only.",
+    "Render Béa small on mobile; recommended visible character height is about 44–60 px.",
+    "Do not show fake percentage progress.",
+    "Respect Reduce Motion with the supplied static fallback frame."
+  ],
+  "actions": {
+    "run": {
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "durations_ms": [
+        105,
+        105,
+        105,
+        105,
+        105,
+        105
+      ],
+      "behavior": "loop",
+      "recommended_for": [
+        "Generate itinerary",
+        "Directions / route calculation",
+        "Rerouting",
+        "Long travel-time calculation"
+      ],
+      "default_quote": "Béa is going as fast as she can. She just has very small legs.",
+      "webp": "bea-run.webp",
+      "apng": "bea-run.apng",
+      "gif_preview": "bea-run-preview.gif",
+      "frames": [
+        "frames/frame_00.png",
+        "frames/frame_01.png",
+        "frames/frame_02.png",
+        "frames/frame_03.png",
+        "frames/frame_04.png",
+        "frames/frame_05.png"
+      ],
+      "static_fallback": "bea-run-static.png"
+    },
+    "dig": {
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "durations_ms": [
+        420,
+        130,
+        130,
+        150,
+        150,
+        360,
+        150,
+        150,
+        130,
+        130
+      ],
+      "behavior": "loop",
+      "recommended_for": [
+        "Recommendation search",
+        "Nearby search",
+        "Deep discovery",
+        "Finding hidden gems"
+      ],
+      "default_quote": "Béa is digging for the good stuff.",
+      "webp": "bea-dig.webp",
+      "apng": "bea-dig.apng",
+      "gif_preview": "bea-dig-preview.gif",
+      "frames": [
+        "frames/frame_00.png",
+        "frames/frame_01.png",
+        "frames/frame_02.png",
+        "frames/frame_03.png",
+        "frames/frame_04.png",
+        "frames/frame_05.png"
+      ],
+      "static_fallback": "bea-dig-static.png"
+    },
+    "ball": {
+      "sequence": [
+        5,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "durations_ms": [
+        550,
+        420,
+        230,
+        180,
+        180,
+        520,
+        650
+      ],
+      "behavior": "one_shot_hold_or_occasional_loop",
+      "recommended_for": [
+        "Occasional Easter egg during longer loads"
+      ],
+      "default_quote": "Important update: ball.",
+      "webp": "bea-ball.webp",
+      "apng": "bea-ball.apng",
+      "gif_preview": "bea-ball-preview.gif",
+      "frames": [
+        "frames/frame_00.png",
+        "frames/frame_01.png",
+        "frames/frame_02.png",
+        "frames/frame_03.png",
+        "frames/frame_04.png",
+        "frames/frame_05.png"
+      ],
+      "static_fallback": "bea-ball-static.png"
+    },
+    "bone": {
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "durations_ms": [
+        240,
+        220,
+        220,
+        260,
+        400,
+        850
+      ],
+      "behavior": "one_shot_hold_or_occasional_loop",
+      "recommended_for": [
+        "Occasional Easter egg during discovery/search"
+      ],
+      "default_quote": "Béa found something. Unfortunately, it’s a bone.",
+      "webp": "bea-bone.webp",
+      "apng": "bea-bone.apng",
+      "gif_preview": "bea-bone-preview.gif",
+      "frames": [
+        "frames/frame_00.png",
+        "frames/frame_01.png",
+        "frames/frame_02.png",
+        "frames/frame_03.png",
+        "frames/frame_04.png",
+        "frames/frame_05.png"
+      ],
+      "static_fallback": "bea-bone-static.png"
+    },
+    "think": {
+      "sequence": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        4,
+        3,
+        2,
+        1
+      ],
+      "durations_ms": [
+        260,
+        160,
+        220,
+        260,
+        220,
+        300,
+        220,
+        260,
+        220,
+        160
+      ],
+      "behavior": "loop",
+      "recommended_for": [
+        "Compare itineraries",
+        "Optimize trip",
+        "Parse/import plans",
+        "Budget/packing suggestions"
+      ],
+      "default_quote": "Thinking very hard. Please respect the ear angle.",
+      "webp": "bea-think.webp",
+      "apng": "bea-think.apng",
+      "gif_preview": "bea-think-preview.gif",
+      "frames": [
+        "frames/frame_00.png",
+        "frames/frame_01.png",
+        "frames/frame_02.png",
+        "frames/frame_03.png",
+        "frames/frame_04.png",
+        "frames/frame_05.png"
+      ],
+      "static_fallback": "bea-think-static.png"
+    }
+  }
+}

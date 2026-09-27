@@ -1,20 +1,24 @@
 import type { ReactNode } from "react";
-import { Users } from "lucide-react";
+import { CalendarDays, MapPin, Users } from "@/components/icons";
 import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { photoCreditLine, tripDateLine, tripPlacesLine } from "@/lib/trip-card";
 import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/trip-glance";
+import { useThemeName } from "@/hooks/useThemeName";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 
 /**
- * The evening scene behind a trip that has no photograph yet.
+ * The painted scene behind a trip that has no photograph yet.
  *
  * The photo is still the point — a trip to Kyoto shows the Kyoto you already
- * saw. Somewhere new gets a painted dusk instead: sky, a low sun and three
- * ridges of hills, chosen from the trip's name so it keeps its picture. It is
- * drawn inline, so it costs no request and no provider.
+ * saw. Somewhere new gets a painted landscape instead: sky, a low sun and three
+ * ridges of hills, chosen from the trip's name so it keeps its picture, in the
+ * colours of the theme you picked. It is drawn inline, so it costs no request
+ * and no provider.
  */
 function Scene({ seed }: { seed: string }) {
-  const s = bannerScene(seed);
+  const theme = useThemeName();
+  const s = bannerScene(seed, theme);
   const id = `scene-${seed.replace(/[^\w-]/g, "").slice(0, 24) || "bea"}`;
   return (
     <svg
@@ -52,15 +56,16 @@ function Scene({ seed }: { seed: string }) {
   );
 }
 
-type Variant = "card" | "hero" | "compact";
+type Variant = "card" | "hero" | "compact" | "feature";
 
 /**
  * The top of a trip card: your own photo of the place (or a painted dusk),
  * how soon it is, where and when, and the title.
  *
- * Three sizes share one look. `card` is the trips list and Home's later trips;
- * `hero` is Home's current trip, with room for a footer; `compact` is the thin
- * bar pinned to the top of the trip page.
+ * Four sizes share one look. `feature` is the trips list: tall, with an
+ * illustration of the kind of place in place of the painted hills; `card` is
+ * Home's later trips; `hero` is Home's current trip, with room for a footer;
+ * `compact` is the thin bar pinned to the top of the trip page and a past trip.
  */
 export function TripBanner({
   title,
@@ -108,6 +113,11 @@ export function TripBanner({
 }) {
   const kind: Variant = variant ?? (compact ? "compact" : "card");
   const url = useSignedPhoto(photo?.storage_path ?? null);
+  const theme = useThemeName();
+  const art =
+    kind === "feature"
+      ? bannerArtUrl(bannerSceneFor([title, ...cities, city, country], title || city || ""))
+      : null;
 
   // formatTripLocation, not a plain join: the city field often already ends
   // in the country ("Kyoto, Kyoto Prefecture, Japan"), which read "Japan, Japan".
@@ -135,7 +145,14 @@ export function TripBanner({
     .join(" · ");
   const people = peopleCount && peopleCount > 1 ? peopleCount : 0;
 
-  const height = kind === "hero" ? "min-h-[210px]" : kind === "compact" ? "h-[68px]" : "h-[132px]";
+  const height =
+    kind === "hero"
+      ? "min-h-[210px]"
+      : kind === "compact"
+        ? "h-[68px]"
+        : kind === "feature"
+          ? "h-[228px]"
+          : "h-[132px]";
   const rounded = kind === "hero" ? "rounded-[28px] shadow-lg" : "";
 
   return (
@@ -147,19 +164,31 @@ export function TripBanner({
         // eager, not lazy: a transition cannot tween an image the browser has
         // not decoded yet, and it would land as a grey box that fills in after.
         <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : art ? (
+        <img
+          src={art}
+          alt=""
+          decoding="async"
+          className="absolute inset-0 size-full object-cover"
+        />
       ) : (
         <Scene seed={title || city || "Béa"} />
       )}
       {/* Dark at the bottom, so white type holds over any picture while the
-          top of it stays the picture. */}
+          top of it stays the picture. A painted scene is light and even, so it
+          needs far less: just enough under the words. */}
       <span
         aria-hidden
         className="absolute inset-0"
         style={{
           backgroundImage:
-            kind === "hero"
-              ? "linear-gradient(to top, rgba(18,12,10,0.88), rgba(18,12,10,0.45) 45%, rgba(18,12,10,0.05) 75%)"
-              : "linear-gradient(to top, rgba(18,12,10,0.82), rgba(18,12,10,0.25) 55%, rgba(18,12,10,0) 85%)",
+            art && !url
+              ? "linear-gradient(to top, rgba(18,12,10,0.62), rgba(18,12,10,0.2) 45%, rgba(18,12,10,0) 70%)"
+              : !url
+                ? "linear-gradient(to top, rgba(18,12,10,0.5), rgba(18,12,10,0.12) 50%, rgba(18,12,10,0) 75%)"
+                : kind === "hero"
+                  ? "linear-gradient(to top, rgba(18,12,10,0.88), rgba(18,12,10,0.45) 45%, rgba(18,12,10,0.05) 75%)"
+                  : "linear-gradient(to top, rgba(18,12,10,0.82), rgba(18,12,10,0.25) 55%, rgba(18,12,10,0) 85%)",
         }}
       />
 
@@ -178,7 +207,7 @@ export function TripBanner({
           <div className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-2 p-3.5">
             {pill ? <Pill text={pill} light={kind === "hero"} /> : <span />}
             <div className="flex items-center gap-1.5">
-              {photo && kind === "card" ? (
+              {photo && (kind === "card" || kind === "feature") ? (
                 <span className="rounded-full bg-black/30 px-2 py-0.5 text-[10.5px] text-white/85">
                   {photoCreditLine(photo)}
                 </span>
@@ -204,6 +233,26 @@ export function TripBanner({
                   .join(" · ")}
               </p>
               {footer ? <div className="mt-3 border-t border-white/25 pt-3">{footer}</div> : null}
+            </div>
+          ) : kind === "feature" ? (
+            <div className="absolute inset-x-0 bottom-0 p-4 pb-8">
+              <p className="line-clamp-2 break-words font-display text-[34px] leading-[1.02]">
+                {title}
+              </p>
+              {dates || corner ? (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[14px] text-white/90">
+                  <CalendarDays className="size-4 shrink-0" aria-hidden />
+                  <span className="truncate">{[dates, corner].filter(Boolean).join(" · ")}</span>
+                </p>
+              ) : null}
+              {where || cities.length ? (
+                <p className="mt-0.5 flex items-center gap-1.5 text-[14px] text-white/90">
+                  <MapPin className="size-4 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {formatTripLocation(routeLine(cities) || city?.split(",")[0], country) || where}
+                  </span>
+                </p>
+              ) : null}
             </div>
           ) : (
             <div className="absolute inset-x-0 bottom-0 p-3.5">

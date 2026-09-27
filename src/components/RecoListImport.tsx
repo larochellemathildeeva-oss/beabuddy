@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, ImageIcon } from "lucide-react";
+import { Camera, ImageIcon } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
 import type { NewReco } from "@/hooks/useRecommendations";
 import { aiFailure } from "@/lib/ai-errors";

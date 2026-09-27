@@ -3,24 +3,20 @@ import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import {
-  HomeLaterTrips,
-  HomeNextUp,
-  HomePastTrips,
-  HomeSectionTitle,
+  HomeBeforeTrip,
+  HomeShortcuts,
   HomeTripHero,
+  HomeYourTrips,
 } from "@/components/HomeTripCard";
 import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { HomeSaveTile } from "@/components/HomeSaveTile";
-import { ContentCard } from "@/components/ContentCard";
 import { NearHome } from "@/components/NearHome";
-import { HomeWeather } from "@/components/HomeWeather";
+import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
 import { useNearMe } from "@/hooks/useNearMe";
 import { useTrips } from "@/hooks/useTrips";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { greetingFor } from "@/lib/trip-glance";
-import { isUnderway } from "@/lib/trip-card";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -187,58 +183,39 @@ function SignedInHome() {
     month: "long",
   });
   const greeting = greetingFor(now.getHours());
-  const underway = trip ? isUnderway(trip.start_date, trip.end_date) : false;
-  const subtitle = !trip
-    ? homeCity
-      ? `Home in ${homeCity.split(",")[0]}. Where to next?`
-      : "Where to next?"
-    : underway
-      ? "You're in the middle of it."
-      : "Your next chapter is taking shape.";
   const showTrip = layout.trip && trip && !trips.loading;
-  const showSave = layout.waiting && Boolean(topReco || vault.pins.length);
+  const showSave = layout.waiting && Boolean(topReco);
+  // The others, next ones first, then the ones you're back from.
+  const others = [...later, ...past.filter((t) => t.id !== trip?.id)];
 
   return (
-    <AppShell eyebrow={today} title={firstName ? `${greeting}, ${firstName}.` : `${greeting}.`}>
-      <div className="space-y-8">
-        <p className="-mt-3 text-[15px] text-muted-foreground">{subtitle}</p>
-
+    <AppShell
+      eyebrow={today}
+      title={firstName ? `${greeting}, ${firstName}` : greeting}
+      headerAction={layout.weather ? <HomeWeather near={near} /> : undefined}
+      actionBesideEyebrow
+    >
+      <div className="space-y-5">
         {showTrip && (
           <HomeTripHero
             trip={trip}
-            glance={glances[trip.id]}
             photos={photos}
             peopleCount={peopleOnTrip(trips.members, trip.id, trips.uid)}
           />
         )}
 
-        {(layout.weather || showSave) && (
-          <section className="rise">
-            {/* Where you are now; the trip itself is one tap away on its own card. */}
-            <HomeSectionTitle title="At a glance" />
-            <div className="grid grid-cols-2 gap-3">
-              {layout.weather && <HomeWeather near={near} />}
-              {showSave && <HomeSaveTile pins={vault.pins} near={near} waiting={topReco} />}
-            </div>
-          </section>
-        )}
+        {showTrip && <HomeBeforeTrip trip={trip} glance={glances[trip.id]} />}
 
-        {showTrip && <HomeNextUp trip={trip} glance={glances[trip.id]} uid={trips.uid} />}
+        {showTrip && <HomeShortcuts trip={trip} glance={glances[trip.id]} />}
 
-        {layout.trip && (
-          <HomeLaterTrips
-            trips={later}
-            photos={photos}
-            glances={glances}
-            members={trips.members}
-            uid={trips.uid}
-          />
-        )}
+        <div className="pt-2">
+          <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
+        </div>
 
-        <NearHome pins={vault.pins} near={near} />
+        {layout.trip && !trips.loading && <HomeYourTrips trips={others} photos={photos} />}
 
         {showSamplePrompt && (
-          <section data-guide="home-empty" className="rise card-soft p-4">
+          <section data-guide="home-empty" className="rise plain-card p-5">
             <p className="font-display text-[20px] leading-snug">{beaLine("empty.home").title}</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">{beaLine("empty.home").body}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -264,7 +241,7 @@ function SignedInHome() {
         {layout.future && topNote && (
           <section data-guide="home-future" className="rise">
             <SectionHead title={`Future me · ${topNote.city}`} aside="Surfaces on revisit" />
-            <div className="card-soft p-4">
+            <div className="plain-card p-4">
               <div className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-reco" />
                 <span className="label-caps">
@@ -276,7 +253,7 @@ function SignedInHome() {
           </section>
         )}
 
-        {layout.trip && !trips.loading && <HomePastTrips trips={past} photos={photos} />}
+        {layout.weather && near.consent && near.state === "ok" && <WeatherCredit />}
       </div>
     </AppShell>
   );
@@ -285,7 +262,7 @@ function SignedInHome() {
 function SectionHead({ title, aside }: { title: string; aside?: string }) {
   return (
     <div className="mb-3 flex items-baseline justify-between">
-      <p className="label-caps text-foreground">{title}</p>
+      <h2 className="font-display text-[27px] leading-none">{title}</h2>
       {aside && <span className="text-[12px] text-muted-foreground">{aside}</span>}
     </div>
   );

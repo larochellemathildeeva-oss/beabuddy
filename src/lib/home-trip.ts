@@ -236,6 +236,36 @@ export function pastTrips<T extends DatedTrip>(trips: readonly T[], today: strin
     .slice(0, limit);
 }
 
+/**
+ * The Trips tab's two lists: trips still ahead or under way, in the order
+ * they came, and every trip that has ended, most recent first.
+ */
+export function splitTrips<T extends DatedTrip>(
+  trips: readonly T[],
+  today: string,
+): { mine: T[]; past: T[] } {
+  const mine: T[] = [];
+  const past: T[] = [];
+  for (const t of trips) (isPastTrip(t, today) ? past : mine).push(t);
+  past.sort((a, b) => lastDay(b).localeCompare(lastDay(a)));
+  return { mine, past };
+}
+
+/**
+ * The master's four Trips tabs. Drafts are trips with no dates yet; Upcoming
+ * is everything dated and not over (under way included), soonest first; Past
+ * is every ended trip, most recent first; All is the three together.
+ */
+export function tripTabs<T extends DatedTrip>(
+  trips: readonly T[],
+  today: string,
+): { upcoming: T[]; past: T[]; drafts: T[]; all: T[] } {
+  const { mine, past } = splitTrips(trips, today);
+  const drafts = mine.filter((t) => !t.start_date);
+  const upcoming = mine.filter((t) => t.start_date).sort(byStart);
+  return { upcoming, past, drafts, all: [...upcoming, ...drafts, ...past] };
+}
+
 /** Up to three trips after the active one, soonest first. */
 export function laterTrips<T extends DatedTrip>(
   trips: readonly T[],

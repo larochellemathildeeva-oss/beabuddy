@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { formatTripLocation } from "@/lib/place-label";
-import { Bookmark } from "lucide-react";
+import { Bookmark } from "@/components/icons";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { capturedFromReco, findDuplicate, type CapturedPlace } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";

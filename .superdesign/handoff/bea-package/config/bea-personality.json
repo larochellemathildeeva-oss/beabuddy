@@ -1,0 +1,225 @@
+{
+  "version": "1.0",
+  "defaultPreset": "balanced",
+  "userSelectable": true,
+  "presets": {
+    "balanced": {
+      "displayName": "Balanced",
+      "description": "Helpful first, with Béa's dry humor mixed in.",
+      "weights": {
+        "helpful": 0.35,
+        "funny": 0.35,
+        "sassy": 0.2,
+        "encouraging": 0.1
+      }
+    },
+    "helpful": {
+      "displayName": "Helpful",
+      "description": "Clear, useful and calm, with very light personality.",
+      "weights": {
+        "helpful": 0.85,
+        "encouraging": 0.1,
+        "funny": 0.05,
+        "sassy": 0.0
+      }
+    },
+    "funny": {
+      "displayName": "Funny",
+      "description": "Dog puns, self-deprecation and playful comments.",
+      "weights": {
+        "funny": 0.7,
+        "helpful": 0.15,
+        "sassy": 0.1,
+        "encouraging": 0.05
+      }
+    },
+    "sassy": {
+      "displayName": "Sassy",
+      "description": "Dry, sarcastic and mildly judgmental about the situation — never the user.",
+      "weights": {
+        "sassy": 0.55,
+        "funny": 0.3,
+        "helpful": 0.1,
+        "encouraging": 0.05
+      }
+    },
+    "quiet": {
+      "displayName": "Minimal",
+      "description": "Mostly status text, with almost no jokes.",
+      "weights": {
+        "helpful": 0.95,
+        "encouraging": 0.05,
+        "funny": 0.0,
+        "sassy": 0.0
+      }
+    }
+  },
+  "toneRules": {
+    "helpful": "Give useful, reassuring status language. Avoid filler.",
+    "funny": "Use dog puns, tiny-leg jokes, self-deprecation and playful absurdity.",
+    "sassy": "Use dry sarcasm about results, maps, options or Béa herself. Never insult or shame the user.",
+    "encouraging": "Keep it warm and positive without sounding overly enthusiastic."
+  },
+  "selectionRules": [
+    "Select from the current action's prompt bank first.",
+    "Then sample a tone according to the user's selected personality weights.",
+    "Avoid repeating any of the last 5 shown lines.",
+    "Do not change the line more often than every 4.2 seconds.",
+    "For errors, destructive actions, payments or safety-critical states, do not use jokes.",
+    "Ball and bone lines are Easter eggs and should remain uncommon even in Funny mode."
+  ],
+  "promptBanks": {
+    "helpful": {
+      "generic": [
+        "Béa is working through the details.",
+        "Béa is checking everything before she sends it your way.",
+        "Béa is putting the pieces together.",
+        "Béa is narrowing things down.",
+        "Béa is checking the best options."
+      ],
+      "run": [
+        "Béa is building the route.",
+        "Béa is working out the timing.",
+        "Béa is checking how everything fits together.",
+        "Béa is calculating the best way through."
+      ],
+      "dig": [
+        "Béa is looking for the strongest recommendations.",
+        "Béa is searching beyond the obvious options.",
+        "Béa is narrowing down the good stuff.",
+        "Béa is checking what is actually worth your time."
+      ],
+      "think": [
+        "Béa is comparing the options.",
+        "Béa is checking the trade-offs.",
+        "Béa is optimizing the plan.",
+        "Béa is making sure the pieces work together."
+      ]
+    },
+    "funny": {
+      "generic": [
+        "Béa is going as fast as she can. She just has very small legs.",
+        "Working like a dog. Finally, an accurate job description.",
+        "This requires some serious paw-cessing.",
+        "Complex calculations are happening. Also some panting.",
+        "Béa would like it noted that she is doing her best."
+      ],
+      "run": [
+        "Tiny legs. Big itinerary energy.",
+        "Fetching the answer. Please allow for leg length.",
+        "Béa has entered serious business mode. It looks suspiciously like waddling.",
+        "Béa is making excellent time, according to Béa."
+      ],
+      "dig": [
+        "Béa is digging for the good stuff.",
+        "Digging deep. Please ignore the landscaping damage.",
+        "Digging for the good stuff. Found dirt. Progress.",
+        "No stone unturned. No flower bed respected."
+      ],
+      "think": [
+        "Thinking very hard. Please respect the ear angle.",
+        "Processing. Very tiny processor.",
+        "Pawsing briefly to think.",
+        "Serious thoughts. Extremely unserious ears."
+      ],
+      "ball": [
+        "Important update: ball.",
+        "Béa was calculating. Then there was a ball.",
+        "A brief strategic fetch break.",
+        "Ball retrieved. Dignity pending."
+      ],
+      "bone": [
+        "Béa found something. Unfortunately, it’s a bone.",
+        "A solid find. Completely irrelevant.",
+        "The evidence is delicious.",
+        "Excellent discovery. Wrong department."
+      ]
+    },
+    "sassy": {
+      "generic": [
+        "Béa is checking the options. Some have already been judged.",
+        "There is a sensible answer in here somewhere. Allegedly.",
+        "Béa is sorting through the chaos you call options.",
+        "One of these will make sense eventually."
+      ],
+      "run": [
+        "Béa is taking the scenic route through the calculations.",
+        "Routing now. Apparently roads enjoy being complicated.",
+        "Béa is moving quickly. The map is not cooperating."
+      ],
+      "dig": [
+        "Béa is sniffing out the least questionable option.",
+        "Béa is digging past the aggressively average choices.",
+        "Some recommendations were rejected on principle.",
+        "Béa checked the obvious options. We can do better."
+      ],
+      "think": [
+        "Béa is comparing the options. Some have disappointed her.",
+        "One of these plans makes sense. This is taking longer than expected.",
+        "Béa is reviewing the evidence with unnecessary intensity.",
+        "The options have been assembled. The judging has begun."
+      ]
+    },
+    "encouraging": {
+      "generic": [
+        "Almost there. Paws crossed.",
+        "Béa is on it.",
+        "The good stuff is coming together.",
+        "Nearly there — Béa is finishing the last details."
+      ]
+    }
+  },
+  "emptyStateBanks": {
+    "helpful": {
+      "noTrips": [
+        "No trips yet. Start one whenever you're ready.",
+        "Your trip list is empty for now.",
+        "Nothing planned yet. Béa can help you build the first one."
+      ],
+      "noSavedRecommendations": [
+        "No saved recommendations yet.",
+        "Nothing saved here yet. Explore recommendations to get started.",
+        "Your saved recommendations will show up here."
+      ],
+      "noResults": [
+        "Béa couldn't find a match this time.",
+        "No results matched those filters.",
+        "Nothing turned up. Try widening the search."
+      ]
+    },
+    "funny": {
+      "noTrips": [
+        "No trips yet. Béa is trying not to take it personally.",
+        "It’s a little empty in here. Suspiciously peaceful.",
+        "No adventures saved yet. Béa has concerns."
+      ],
+      "noSavedRecommendations": [
+        "Nothing saved yet. Bold strategy.",
+        "No recs saved. Just vibes.",
+        "This section is aggressively empty."
+      ],
+      "noResults": [
+        "Béa couldn’t find anything. Rude.",
+        "No matches. Béa sniffed thoroughly.",
+        "Nothing turned up. Not even a mildly questionable option."
+      ]
+    },
+    "sassy": {
+      "noTrips": [
+        "No trips. Béa assumes this is temporary.",
+        "An empty trip list. Very minimalist of you.",
+        "Nothing planned yet. Béa expected more drama."
+      ],
+      "noSavedRecommendations": [
+        "Nothing saved. Béa has reviewed the evidence: there is none.",
+        "No saved recommendations. We are starting from an impressively blank slate.",
+        "This list has committed fully to emptiness."
+      ],
+      "noResults": [
+        "Béa searched. The universe declined to cooperate.",
+        "No results. Even Béa cannot negotiate with reality.",
+        "Nothing matched. The filters may have gotten ambitious."
+      ]
+    }
+  }
+}

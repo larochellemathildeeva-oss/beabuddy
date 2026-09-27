@@ -88,7 +88,7 @@ function DayTab({
       <span className="min-w-0">
         <span
           className={`block text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${
-            selected ? "text-[oklch(0.78_0.1_45)]" : "text-muted-foreground"
+            selected ? "text-inverse-accent" : "text-muted-foreground"
           }`}
         >
           {ordinal}

@@ -8,6 +8,7 @@ import {
   firstStop,
   greetingFor,
   heroPill,
+  heroTags,
   nextOnPlan,
   nextTodo,
   plansConfirmed,
@@ -33,6 +34,30 @@ test("the hero pill says how many days, or which day it is", () => {
   assert.equal(heroPill("2026-09-24", "2026-09-30", false, now), "Underway · Day 3 of 7");
   assert.equal(heroPill("2026-09-20", "2026-09-22", false, now), "Just back");
   assert.equal(heroPill(null, null, false, now), "Planning");
+});
+
+test("the master hero's two pills: what kind of moment, and when", () => {
+  assert.deepEqual(heroTags("2026-10-08", "2026-10-18", false, now), {
+    label: "Upcoming trip",
+    when: "In 12 days",
+  });
+  assert.deepEqual(heroTags("2026-09-27", null, false, now), {
+    label: "Upcoming trip",
+    when: "Tomorrow",
+  });
+  assert.deepEqual(heroTags("2026-09-24", "2026-09-30", false, now), {
+    label: "On the trip",
+    when: "Day 3 of 7",
+  });
+  assert.deepEqual(heroTags("2026-10-08", null, true, now), {
+    label: "Tentative dates",
+    when: "In 12 days",
+  });
+  assert.deepEqual(heroTags(null, null, false, now), { label: "Planning", when: "" });
+  assert.deepEqual(heroTags("2026-09-20", "2026-09-22", false, now), {
+    label: "Just back",
+    when: "",
+  });
 });
 
 test("length, route and greeting", () => {
@@ -121,6 +146,17 @@ test("a trip keeps its painted scene, and trips differ", () => {
   }
   assert.ok(a.sunR >= 34 && a.sunR <= 64);
   assert.ok(bannerScene("").sky.length === 2);
+});
+
+test("painted banners take the theme's colours but keep their hills", () => {
+  const calm = bannerScene("Hiroshima", "calm");
+  const colorful = bannerScene("Hiroshima", "colorful");
+  const dark = bannerScene("Hiroshima", "dark");
+  assert.deepEqual(calm.paths, colorful.paths);
+  assert.deepEqual(calm.paths, dark.paths);
+  assert.notEqual(calm.sky[0], colorful.sky[0]);
+  assert.notEqual(colorful.sky[0], dark.sky[0]);
+  assert.deepEqual(bannerScene("Hiroshima"), calm);
 });
 
 test("stops count places to see, not travel, beds or notes", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Bookmark, Check, Trash2 } from "lucide-react";
+import { Bookmark, Check, Trash2 } from "@/components/icons";
 import { COMPLETE_PX, lockAxis, swipeOutcome, TRAY_PX } from "@/lib/swipe";
 
 /**

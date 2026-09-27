@@ -30,7 +30,7 @@ function prefersReducedMotion(): boolean {
 }
 
 /**
- * Warm terracotta discs, numbered. The chosen one is larger and deeper, and
+ * Discs in the theme accent, numbered. The chosen one is larger and deeper, and
  * that is all it does — no bounce, no pulse, nothing that says "GPS".
  */
 function pinClass(selected: boolean, tone: PinTone, nested = false): string {

@@ -1,29 +1,29 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
   Check,
-  Clock,
   Download,
   MapPin,
   ChevronDown,
+  ChevronRight,
+  Route,
   ListChecks,
+  MoreHorizontal,
   Pencil,
   Plus,
-  Settings,
-} from "lucide-react";
+} from "@/components/icons";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
-import { Section, SectionAction } from "@/components/Section";
-import { TripBanner } from "@/components/TripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { pickTripPhoto } from "@/lib/trip-card";
+import { tripDateLine } from "@/lib/trip-card";
+import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
-import { TripPrep } from "@/components/TripPrep";
+import { TripPrep, type PrepTab } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -41,7 +41,17 @@ import { usePacking } from "@/hooks/usePacking";
 import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
 import { formatTripLocation } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
-import { DaySelector } from "@/components/DaySelector";
+import { DayCards } from "@/components/day/DayCards";
+import { CompanionBanner } from "@/components/day/CompanionBanner";
+import {
+  TripMenuSheet,
+  type BookingTile,
+  type TripMenuSection,
+} from "@/components/day/TripMenuSheet";
+import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { bookingKind } from "@/lib/trip-overview";
+import { isBooked } from "@/lib/bookings";
 import {
   ALL_DAYS,
   dayChips,
@@ -53,13 +63,7 @@ import {
 import { canMove } from "@/lib/timeline-order";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
-import {
-  dayShapeLine,
-  dayTightnessNote,
-  minutesUntilLabel,
-  nextUp,
-  nowDivider,
-} from "@/lib/day-shape";
+import { dayTightnessNote, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
 import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
@@ -76,7 +80,13 @@ import { DayRibbon } from "@/components/day/DayRibbon";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { NowPanel } from "@/components/day/NowPanel";
-import { companionStops, isDone, toggleDoneWrite } from "@/lib/companion";
+import {
+  companionState,
+  companionStops,
+  isDone,
+  midpointTime,
+  toggleDoneWrite,
+} from "@/lib/companion";
 import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
@@ -107,7 +117,6 @@ import {
  */
 export function TripDetail({
   trip,
-  photos,
   members,
   companionsLine,
   me,
@@ -117,9 +126,11 @@ export function TripDetail({
   onDelete,
   onLeave,
   onRemoveMember,
+  openPrep,
 }: {
   trip: TripRow;
-  photos: TripPhotoRow[];
+  /** Kept for callers; the trip page no longer shows a banner photo. */
+  photos?: TripPhotoRow[];
   members: MemberRow[];
   companionsLine: string;
   me: { id: string | null; name: string };
@@ -129,6 +140,8 @@ export function TripDetail({
   onDelete: () => Promise<void>;
   onLeave: () => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
+  /** Open the to-do or packing sheet on arrival (Home's shortcuts). */
+  openPrep?: PrepTab | undefined;
 }) {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
@@ -493,12 +506,14 @@ export function TripDetail({
     savedTravel.get(directionKey(from.day_date, to.title));
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sheetSection, setSheetSection] = useState<
-    "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | null
-  >(null);
+  const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
+  /** Open the to-do or packing sheet on a given tab (arrival link, Overview). */
+  const [prepAsk, setPrepAsk] = useState<{ tab: PrepTab; n: number } | null>(() =>
+    openPrep ? { tab: openPrep, n: 1 } : null,
+  );
   /** The member about to lose access, or null. Named, so the sheet can say who. */
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -513,6 +528,8 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
+  /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
+  const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
   /**
    * The clock, for the line that says where you are in today.
    *
@@ -675,12 +692,52 @@ export function TripDetail({
     hasFlights: board.items.some((item) => timelineGlyph(item) === "transport"),
   };
 
-  // The trip's own photo, out of the one list loaded for the whole page.
-  const banner = pickTripPhoto(photos, {
-    city: trip.city,
-    country: trip.country,
-    cities: cities.stops.map((stop) => stop.city),
-  });
+  const chips = dayChips(timelineGroups, todayKey);
+  const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
+  const datedDayCount = chips.filter((chip) => chip.key).length;
+  const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
+  const companionPlace =
+    (companionDay?.key ? routeCityOn(cities.stops, companionDay.key) : "")?.split(",")[0]?.trim() ||
+    trip.city?.split(",")[0]?.trim() ||
+    trip.title;
+  const companionDateLine = companionDay?.key
+    ? new Date(`${companionDay.key}T00:00:00`).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+  const cityNames = cities.stops.map((stop) => stop.city);
+  const tripArt = bannerArtUrl(
+    bannerSceneFor(
+      [trip.title, ...cityNames, trip.city, trip.country],
+      trip.title || trip.city || "",
+    ),
+  );
+  const companionArt = bannerArtUrl(
+    bannerSceneFor(
+      [companionPlace, trip.title, ...cityNames, trip.city, trip.country],
+      companionPlace || trip.title || "",
+    ),
+  );
+  /** Booked stops by kind, for the trip menu's Flights, Hotels, Transport and Activities. */
+  const bookingCounts: Record<BookingTile, number> = {
+    flight: 0,
+    stay: 0,
+    transport: 0,
+    activity: 0,
+  };
+  for (const item of stopItems) {
+    const kind = isBooked(item) ? bookingKind(item) : null;
+    if (kind) bookingCounts[kind] += 1;
+  }
+  /** "+ Add a stop between" on a connector: the form opens at the time between them. */
+  const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
+    insertAnchor.current = null;
+    setAddBetween({ afterId: item.id, time: midpointTime(item.time_label, next.time_label) });
+    setAddDay(item.day_date ?? "");
+    setAddingTimeline(true);
+  };
 
   const tripNote = beaTripNote(
     {
@@ -697,24 +754,41 @@ export function TripDetail({
     // not hidden: hidden makes this the scroll box and the pinned banner would
     // never stick.
     <article className="overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card">
-      {/* Pinned: where and when stay on screen while the itinerary scrolls. */}
-      <div className="sticky top-0 z-30 shadow-sm">
-        <TripBanner
-          compact
-          title={trip.title}
-          city={trip.city}
-          country={trip.country}
-          cities={cities.stops.map((stop) => stop.city)}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-          tentative={trip.dates_status === "tentative"}
-          photo={banner}
-          companions={companionsLine}
-          // The same name as the card in the list, so the browser tweens the one
-          // photograph between them instead of cutting.
-          viewTransitionName={`trip-photo-${trip.id}`}
-        />
-      </div>
+      {/* The master's trip header: the name large, where and when under it,
+          and the trip menu. The same view-transition name as the card that
+          opened it, so the move reads as one object. */}
+      <header
+        className="flex items-start justify-between gap-3 px-4 pt-3"
+        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
+      >
+        <div className="min-w-0">
+          <h1 className="break-words font-display text-[40px] leading-[1.02]">{trip.title}</h1>
+          <p className="mt-1 text-[14.5px] text-muted-foreground">
+            {[
+              formatTripLocation(trip.city?.split(",")[0], trip.country),
+              tripDateLine(trip.start_date, trip.end_date),
+              trip.dates_status === "tentative" ? "tentative" : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          {companionsLine ? (
+            <p className="text-[13px] text-muted-foreground">{companionsLine}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSettingsOpen(true);
+            setSheetSection(null);
+          }}
+          title="Trip menu"
+          aria-label="Trip menu"
+          className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
+      </header>
       {/* Béa's line scrolls away with the page; only the bar above stays. */}
       {tripNote ? (
         <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
@@ -744,18 +818,6 @@ export function TripDetail({
           To do
         </button>
         <button
-          onClick={() => {
-            setSettingsOpen(true);
-            setSheetSection(null);
-          }}
-          // A gear alone, so the whole row fits one line on a phone.
-          title="Trip settings"
-          aria-label="Trip settings"
-          className="inline-flex shrink-0 items-center rounded-xl border border-border bg-elevated p-1.5 shadow-2xs transition-all active:scale-95"
-        >
-          <Settings className="size-4 text-primary" aria-hidden />
-        </button>
-        <button
           data-guide="add-stop"
           title="Add a stop, a saved place or a city"
           onClick={() => setAddOpen(true)}
@@ -775,7 +837,10 @@ export function TripDetail({
       </div>
 
       <div className="section-stagger border-t border-border px-3 pb-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5">
+        <div
+          hidden={others.length === 0}
+          className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5"
+        >
           <div className="flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
             <p className="text-[11.5px] text-muted-foreground">
@@ -799,88 +864,92 @@ export function TripDetail({
           </div>
         </div>
 
-        {/* One day strip for Now, Map and Day (by day), as in the prototype:
-            the chosen day in charcoal, and the optimiser beside it. */}
+        {/* The master's segmented control, holding Béa's four views, with
+            the chosen one filled in the theme accent. */}
+        <nav
+          role="tablist"
+          aria-label="How to look at this trip"
+          className="mb-3 flex items-center gap-1 rounded-full bg-elevated p-1"
+        >
+          {TRIP_PERSPECTIVES.map((p) => {
+            const on = p.id === perspective;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={on}
+                aria-label={p.label}
+                onClick={() => setPerspective(p.id)}
+                className={`min-h-10 flex-1 whitespace-nowrap rounded-full px-2 text-center text-[14px] transition-colors sm:text-[15px] ${
+                  on
+                    ? "bg-primary font-semibold text-primary-foreground shadow-sm"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {/* The master's short label on a phone. */}
+                {"shortLabel" in p ? (
+                  <>
+                    <span className="hidden sm:inline">{p.label}</span>
+                    <span className="sm:hidden">{p.shortLabel}</span>
+                  </>
+                ) : (
+                  p.label
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* One day row for Companion, Map and the Timeline by day: arrows
+            either side of the day cards, the chosen day filled. */}
         {stopItems.length > 0 &&
+          offerDays &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              {offerDays && (
-                <div className="w-full min-w-0">
-                  <DaySelector
-                    chips={dayChips(timelineGroups, todayKey)}
-                    value={chosenDay}
-                    onChange={setDayChoice}
-                  />
-                </div>
-              )}
+            <div className="mb-3">
+              <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
+        {activePerspective.hint && perspective !== "companion" ? (
+          <p className="mb-3 px-0.5 text-[12px] text-muted-foreground">{activePerspective.hint}</p>
+        ) : null}
 
-        {/* The prototype's segmented control, holding Béa's four views. */}
-        <div className="mb-1.5 flex items-center gap-1.5">
-          <nav
-            role="tablist"
-            aria-label="How to look at this trip"
-            className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border bg-elevated p-1 sm:flex-initial"
-          >
-            {TRIP_PERSPECTIVES.map((p) => {
-              const on = p.id === perspective;
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={on}
-                  aria-label={p.label}
-                  onClick={() => setPerspective(p.id)}
-                  className={`flex-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-center text-xs transition-all sm:flex-initial sm:px-3 ${
-                    on
-                      ? "bg-card font-bold text-foreground shadow-xs ring-1 ring-primary/20"
-                      : "font-semibold text-muted-foreground"
-                  }`}
-                >
-                  {/* The prototype's short label on a phone. */}
-                  {"shortLabel" in p ? (
-                    <>
-                      <span className="hidden sm:inline">{p.label}</span>
-                      <span className="sm:hidden">{p.shortLabel}</span>
-                    </>
-                  ) : (
-                    p.label
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-        {activePerspective.hint ? (
-          <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
-        ) : (
-          <div className="mb-3" />
+        {perspective === "overview" && (
+          <TripOverview
+            tripId={trip.id}
+            items={stopItems}
+            cities={cities.stops.map((stop) => stop.city)}
+            groups={timelineGroups}
+            onOpenTimeline={(dayKey) => {
+              if (dayKey !== undefined) setDayChoice(dayKey);
+              setPerspective("timeline");
+            }}
+            onOpenMap={(dayKey) => {
+              if (dayKey) setDayChoice(dayKey);
+              setPerspective("map");
+            }}
+            onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+          />
         )}
 
         {perspective === "companion" && (
           <div className="space-y-3">
-            {nowStops.length > 0 ? (
+            {nowStops.length > 0 && companionDay ? (
               <>
-                {/* The prototype's order: the ribbon, then the tracker. Both
-                    can be tapped to look at a stop without moving Now. */}
+                <CompanionBanner
+                  art={companionArt}
+                  kicker={companionOrdinal ? `${companionOrdinal} of ${datedDayCount}` : ""}
+                  place={companionPlace}
+                  dateLine={companionDateLine}
+                  reached={companionState(nowStops).reached}
+                  total={nowStops.length}
+                />
                 {view.prefs.ribbon && (
                   <DayRibbon
                     stops={nowStops}
-                    dayLabel={
-                      dayChips(timelineGroups, todayKey).find((c) => c.key === companionDay?.key)
-                        ?.ordinal
-                    }
-                    selectedId={peekStop?.id ?? null}
-                    onSelect={setPeekId}
-                  />
-                )}
-                {view.prefs.journey && (
-                  <JourneyTracker
-                    stops={nowStops}
+                    dayLabel={companionOrdinal || undefined}
                     selectedId={peekStop?.id ?? null}
                     onSelect={setPeekId}
                   />
@@ -897,17 +966,35 @@ export function TripDetail({
                   />
                 )}
                 <NowPanel
-                  key={companionDay?.key ?? ""}
+                  key={companionDay.key}
                   dayStops={nowStops}
                   tripStops={companionStops(board.items)}
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
                   onProgress={board.setProgress}
+                  onLook={(id) => {
+                    setPeekId(id);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  progress={
+                    view.prefs.journey ? (
+                      <JourneyTracker
+                        stops={nowStops}
+                        selectedId={peekStop?.id ?? null}
+                        onSelect={setPeekId}
+                      />
+                    ) : null
+                  }
                 />
               </>
             ) : (
-              <div className="card-soft space-y-2 p-4">
-                <p className="font-display text-[19px] leading-snug">
+              <div className="plain-card space-y-2 p-4">
+                <img
+                  src="/bea/bea-think-static.png"
+                  alt=""
+                  className="size-16 rounded-full border border-border object-cover"
+                />
+                <p className="font-display text-[24px] leading-tight">
                   {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
                 </p>
                 <p className="text-[14px] text-muted-foreground">
@@ -915,22 +1002,21 @@ export function TripDetail({
                     ? "Add stops in the Timeline Editor, or let Béa draft the days from a plan you already have."
                     : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
                 </p>
-                {/* The days right here, so the prompt is never a dead end: the
-                    strip above scrolls sideways and is easy to miss. */}
+                {/* The days right here, so the prompt is never a dead end. */}
                 {stopItems.length > 0 && (
                   <div
                     role="group"
                     aria-label="Day to follow"
                     className="flex flex-wrap gap-1.5 pt-1"
                   >
-                    {dayChips(timelineGroups, todayKey)
+                    {chips
                       .filter((chip) => chip.count > 0)
                       .map((chip) => (
                         <button
                           key={chip.key || "undated"}
                           type="button"
                           onClick={() => setDayChoice(chip.key)}
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-elevated px-3 text-[13px] font-semibold"
+                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13px] font-semibold"
                         >
                           {chip.ordinal ? (
                             <span className="text-primary">{chip.ordinal}</span>
@@ -959,9 +1045,8 @@ export function TripDetail({
                 nesting={view.prefs.nesting}
                 area={formatTripLocation(trip.city, trip.country)}
                 todayKey={todayKey}
-                ordinals={Object.fromEntries(
-                  dayChips(timelineGroups, todayKey).map((chip) => [chip.key, chip.ordinal]),
-                )}
+                ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
+                legFor={travelInto}
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole
@@ -978,515 +1063,449 @@ export function TripDetail({
             progress survives a tab switch and the action row's buttons can
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
-          {stopItems.length > 0 && (
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-2xs">
-              <div className="min-w-0">
-                <p className="text-xs font-bold">All Scheduled Stops</p>
-                <p className="text-[10px] text-muted-foreground">
-                  {stopItems.length} {stopItems.length === 1 ? "stop" : "stops"} scheduled
-                  {doneCount > 0 ? ` · ${doneCount} visited` : ""}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {/* Every stop, or only the ones still ahead. A stop swiped done
-                  leaves the second list; Undo on its toast brings it back. */}
-                <div
-                  role="group"
-                  aria-label="Which stops to show"
-                  className="flex gap-0.5 rounded-xl border border-border bg-elevated p-0.5"
+          <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
+            {editingTimeline && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
+                <p className="text-[13px] font-semibold text-primary">Editing every stop at once</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingTimeline(false)}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-primary px-3 text-[13px] font-semibold text-primary-foreground"
                 >
-                  {(
-                    [
-                      [false, "All"],
-                      [true, `Not visited (${stopItems.length - doneCount})`],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={String(value)}
-                      type="button"
-                      aria-pressed={hideDone === value}
-                      onClick={() => setHideDone(value)}
-                      className={`rounded-lg px-2.5 py-1 text-[11px] transition-all ${
-                        hideDone === value
-                          ? "border border-border bg-card font-bold text-foreground shadow-2xs"
-                          : "border border-transparent font-semibold text-muted-foreground"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {timelineByDay && (
-                  <div
-                    role="group"
-                    aria-label="How to list the stops"
-                    className="flex gap-0.5 rounded-xl border border-border bg-elevated p-0.5"
-                  >
-                    {(
-                      [
-                        [false, "Timeline"],
-                        [true, "Neighbourhood"],
-                      ] as const
-                    ).map(([value, label]) => (
-                      <button
-                        key={label}
-                        type="button"
-                        aria-pressed={byArea === value}
-                        onClick={() => setByArea(value)}
-                        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] transition-all ${
-                          byArea === value
-                            ? "border border-border bg-card font-bold text-foreground shadow-2xs"
-                            : "border border-transparent font-semibold text-muted-foreground"
-                        }`}
-                      >
-                        {value ? (
-                          <MapPin className="size-3" aria-hidden />
-                        ) : (
-                          <Clock className="size-3" aria-hidden />
-                        )}
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <span className="w-full text-[10.5px] text-muted-foreground">
-                Tap a stop to edit it · the card between stops has the way there
-              </span>
-            </div>
-          )}
-          <Section
-            guide="trip-timeline"
-            title="Your itinerary"
-            hint={
-              stopItems.length === 0
-                ? "Activities, meals, transport and notes."
-                : `${stopItems.length} entr${stopItems.length === 1 ? "y" : "ies"}`
-            }
-            open={timelineOpen}
-            onToggle={() => setTimelineOpen((v) => !v)}
-            actions={
-              <>
-                <SectionAction
-                  onClick={() => {
-                    setAddDay("");
-                    setTimelineOpen(true);
-                    setAddingTimeline(!addingTimeline);
-                  }}
-                >
-                  {addingTimeline ? "Cancel" : "Add"}
-                </SectionAction>
-                {stopItems.length > 0 && (
-                  <SectionAction
-                    icon
-                    pressed={editingTimeline}
-                    label={editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
-                    onClick={() => {
-                      setTimelineOpen(true);
-                      setEditingTimeline((v) => !v);
-                    }}
-                  >
-                    {editingTimeline ? (
-                      <Check className="size-4" aria-hidden />
-                    ) : (
-                      <Pencil className="size-4" aria-hidden />
-                    )}
-                  </SectionAction>
-                )}
-                {stopItems.length >= 2 && (
-                  <SectionAction
-                    guide="optimize-trip"
-                    onClick={() => {
-                      setPlannerTab("optimize");
-                      setPlannerOpen(true);
-                    }}
-                  >
-                    Optimize
-                  </SectionAction>
-                )}
-              </>
-            }
-          >
-            {timelineOpen && (
-              <div className="space-y-3">
-                {stopItems.length > 0 && (
-                  <div
-                    role="group"
-                    aria-label="Timeline layout"
-                    className="flex gap-1.5 rounded-xl border border-border bg-elevated p-1"
-                  >
-                    {(
-                      [
-                        ["list", "All entries"],
-                        ["day", "By day"],
-                      ] as const
-                    ).map(([mode, label]) => {
-                      const active = mode === "day" ? timelineByDay : !timelineByDay;
-                      return (
-                        <button
-                          key={mode}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setTimelineByDay(mode === "day")}
-                          className={`flex-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold ${
-                            active ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                          }`}
-                        >
-                          {label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {stopItems.length === 0 ? null : timelineByDay ? (
-                  <div className="space-y-3">
-                    {shownGroups.map((group) => {
-                      const dayOpen = !collapsedDays[group.key];
-                      const isToday = group.key === todayKey;
-                      const divider = isToday ? nowDivider(group.items, minutesNow) : null;
-                      const coming = isToday ? nextUp(group.items, minutesNow) : null;
-                      const untilNext = minutesUntilLabel(coming, minutesNow);
-                      // Both read the day as written: one says where the clock
-                      // and the distances disagree, the other says which stops
-                      // are close enough that their order stops mattering.
-                      const tight = dayTightnessNote(group.items);
-                      const runLabels = runLabelsByIndex(walkableRuns(group.items));
-                      return (
-                        <div key={group.key || "undated"} className="min-w-0">
-                          <div className="flex items-center gap-1 pr-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCollapsedDays((prev) => ({
-                                  ...prev,
-                                  [group.key]: !prev[group.key],
-                                }))
-                              }
-                              aria-expanded={dayOpen}
-                              className="flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-2 text-left"
-                            >
-                              <span className="min-w-0">
-                                <span className="block text-sm font-bold leading-tight">
-                                  {group.label}
-                                </span>
-                                <span className="block text-[12.5px] text-muted-foreground">
-                                  {/* What the day is made of, not just how big it
-                                      is: eighteen museums and eighteen meals are
-                                      not the same Tuesday. */}
-                                  {dayShapeLine(group.items) ||
-                                    `${group.items.length} ${group.items.length === 1 ? "thing" : "things"}`}
-                                </span>
-                                {coming && (
-                                  <span className="mt-0.5 block text-[12.5px] font-semibold text-primary">
-                                    Next: {coming.title}
-                                    {untilNext ? ` · ${untilNext}` : ""}
-                                  </span>
-                                )}
-                                {/* Two numbers the plan already carries, put
-                                    next to each other. Never a verdict on the
-                                    day — the reader draws that themselves. */}
-                                {tight && (
-                                  <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
-                                    {tight}
-                                  </span>
-                                )}
-                              </span>
-                              <ChevronDown
-                                className={`size-3.5 shrink-0 text-muted-foreground transition-transform ${
-                                  dayOpen ? "" : "-rotate-90"
-                                }`}
-                                aria-hidden
-                              />
-                            </button>
-                            {group.key && (
-                              <button
-                                type="button"
-                                aria-label={`Add something to ${group.label}`}
-                                onClick={() => {
-                                  setAddDay(group.key);
-                                  setAddingTimeline(true);
-                                }}
-                                className="tap-44 grid size-7 shrink-0 place-items-center rounded-lg border border-border bg-card"
-                              >
-                                <Plus className="size-3.5" aria-hidden />
-                              </button>
-                            )}
-                          </div>
-                          {dayOpen && dayMaps.maps[group.key] && (
-                            <details className="mb-2 rounded-xl border border-border bg-card p-2 shadow-2xs">
-                              <summary className="cursor-pointer px-1 text-xs font-semibold">
-                                Map of the day · saved on this phone
-                              </summary>
-                              <img
-                                src={dayMaps.maps[group.key]}
-                                alt={`Map of ${group.label}, stops numbered in order`}
-                                className="mt-2 w-full rounded-lg"
-                              />
-                              <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
-                                Stops numbered in order; the line joins them, it isn't the walking
-                                route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} ·{" "}
-                                {OVERTURE_ATTRIBUTION}
-                              </p>
-                            </details>
-                          )}
-                          {dayOpen && (
-                            <ol className="relative mb-2 min-w-0 space-y-2 overflow-x-hidden py-1">
-                              {hidingDone && group.items.every(isDone) && (
-                                <li className="list-none px-2 py-2 text-[13px] text-muted-foreground">
-                                  ✓ Every stop on this day is visited.
-                                </li>
-                              )}
-                              {byArea && !editingTimeline
-                                ? groupByArea(
-                                    group.items.filter((item) => !(hidingDone && isDone(item))),
-                                  ).map((area) => (
-                                    <Fragment key={area.area}>
-                                      <li className="flex list-none items-center gap-1.5 px-1 pt-1 text-[12.5px] font-semibold text-muted-foreground">
-                                        <MapPin className="size-3.5 text-primary" aria-hidden />
-                                        <span>
-                                          {area.area}
-                                          <span className="font-normal">
-                                            {` · ${area.items.length} ${area.items.length === 1 ? "stop" : "stops"}`}
-                                          </span>
-                                        </span>
-                                      </li>
-                                      {area.items.map((item) => (
-                                        <TimelineEntry
-                                          key={item.id}
-                                          item={item}
-                                          showDay={false}
-                                          number={group.items.indexOf(item) + 1}
-                                          onLocate={() => locate(item)}
-                                          onSaveBooking={(patch) =>
-                                            board.updateItem(item.id, patch)
-                                          }
-                                          onToggleDone={() => toggleDone(item)}
-                                          {...withNear(item.day_date)}
-                                          {...nestProps(item)}
-                                          onEdit={(field) => board.setEditing(field)}
-                                          onUpdate={(patch) =>
-                                            void board.updateItem(item.id, patch)
-                                          }
-                                          onRemove={() => void removeTimelineItem(item)}
-                                          tripStart={trip.start_date}
-                                          tripEnd={trip.end_date}
-                                          onKeep={keepItemAsReco}
-                                          kept={isKept(item)}
-                                          stray={strayIds.has(item.id)}
-                                          {...foldProps(item)}
-                                        />
-                                      ))}
-                                    </Fragment>
-                                  ))
-                                : group.items.map((item, dayIndex) =>
-                                    hidingDone && isDone(item) ? null : (
-                                      <Fragment key={item.id}>
-                                        {divider === dayIndex && <NowLine />}
-                                        {/* A run of stops close enough together to be
-                                      one decision rather than several. A label,
-                                      not a container: the rows underneath are
-                                      unchanged, and still reorder one at a
-                                      time. */}
-                                        {runLabels.has(dayIndex) && (
-                                          <li className="-mb-1 list-none pt-1 text-[12px] text-muted-foreground">
-                                            {runLabels.get(dayIndex)}
-                                          </li>
-                                        )}
-                                        <TimelineEntry
-                                          item={item}
-                                          showDay={false}
-                                          number={dayIndex + 1}
-                                          showSwipeHint={dayIndex === 0}
-                                          onLocate={() => locate(item)}
-                                          onSaveBooking={(patch) =>
-                                            board.updateItem(item.id, patch)
-                                          }
-                                          onToggleDone={() => toggleDone(item)}
-                                          editing={editingTimeline}
-                                          {...withNear(item.day_date)}
-                                          {...nestProps(item)}
-                                          onEdit={(field) => board.setEditing(field)}
-                                          onUpdate={(patch) =>
-                                            void board.updateItem(item.id, patch)
-                                          }
-                                          onRemove={() => void removeTimelineItem(item)}
-                                          onMove={(direction) =>
-                                            void board.moveItem(item.id, direction)
-                                          }
-                                          canMoveUp={canMove(stopItems, item.id, -1)}
-                                          canMoveDown={canMove(stopItems, item.id, 1)}
-                                          tripStart={trip.start_date}
-                                          tripEnd={trip.end_date}
-                                          onKeep={keepItemAsReco}
-                                          kept={isKept(item)}
-                                          stray={strayIds.has(item.id)}
-                                          {...foldProps(item)}
-                                        />
-                                        {(() => {
-                                          // The next stop on the list as shown, so
-                                          // the paw never points at a hidden one.
-                                          const next = group.items
-                                            .slice(dayIndex + 1)
-                                            .find((n) => !(hidingDone && isDone(n)));
-                                          if (!next || editingTimeline) return null;
-                                          const leg = travelInto(item, next);
-                                          return (
-                                            <TravelConnector
-                                              from={item}
-                                              to={next}
-                                              leg={leg}
-                                              area={directionArea ?? ""}
-                                              showTime={view.prefs.walkTimes}
-                                            />
-                                          );
-                                        })()}
-                                      </Fragment>
-                                    ),
-                                  )}
-                              {divider === group.items.length && <NowLine done />}
-                            </ol>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
-                    {stopItems.map((item, i) =>
-                      hidingDone && isDone(item) ? null : (
-                        <Fragment key={item.id}>
-                          <TimelineEntry
-                            item={item}
-                            showDay
-                            number={i + 1}
-                            showSwipeHint={i === 0}
-                            onLocate={() => locate(item)}
-                            onSaveBooking={(patch) => board.updateItem(item.id, patch)}
-                            onToggleDone={() => toggleDone(item)}
-                            editing={editingTimeline}
-                            {...withNear(item.day_date)}
-                            {...nestProps(item)}
-                            onEdit={(field) => board.setEditing(field)}
-                            onUpdate={(patch) => void board.updateItem(item.id, patch)}
-                            onRemove={() => void removeTimelineItem(item)}
-                            onMove={(direction) => void board.moveItem(item.id, direction)}
-                            canMoveUp={canMove(stopItems, item.id, -1)}
-                            canMoveDown={canMove(stopItems, item.id, 1)}
-                            tripStart={trip.start_date}
-                            tripEnd={trip.end_date}
-                            onKeep={keepItemAsReco}
-                            kept={isKept(item)}
-                            stray={strayIds.has(item.id)}
-                            {...foldProps(item)}
-                          />
-                          {(() => {
-                            const next = stopItems
-                              .slice(i + 1)
-                              .find((n) => !(hidingDone && isDone(n)));
-                            if (!next || editingTimeline) return null;
-                            return (
-                              <TravelConnector
-                                from={item}
-                                to={next}
-                                leg={travelInto(item, next)}
-                                area={directionArea ?? ""}
-                                showTime={view.prefs.walkTimes}
-                              />
-                            );
-                          })()}
-                        </Fragment>
-                      ),
-                    )}
-                  </ol>
-                )}
-
-                {/**
-                 * Adding opens over the page, not under the list.
-                 *
-                 * This form used to render after every entry on the timeline, so
-                 * on a trip with a day's worth of stops the Add button scrolled
-                 * a form into existence somewhere below the fold. Over the page
-                 * it arrives where you are looking, with the fields in reach.
-                 */}
-                <Sheet
-                  open={addingTimeline}
-                  onClose={() => {
-                    setAddingTimeline(false);
-                    setAddDay("");
-                    setAddBetween(null);
-                  }}
-                  title={addBetween ? "Add a stop between" : "Add to the timeline"}
-                >
-                  <TimelineEntryForm
-                    tripStart={trip.start_date}
-                    tripEnd={trip.end_date}
-                    {...(addDay ? { openDay: addDay } : {})}
-                    {...(addBetween?.time ? { openTime: addBetween.time } : {})}
-                    {...withNear(addDay || null)}
-                    existing={board.items.map((item) => ({
-                      title: item.title,
-                      address: item.address,
-                      lat: item.lat,
-                      lon: item.lon,
-                    }))}
-                    onAdd={
-                      addBetween
-                        ? async (entry) => {
-                            const id = await board.insertItemAfter(
-                              insertAnchor.current ?? addBetween.afterId,
-                              entry,
-                            );
-                            if (id) insertAnchor.current = id;
-                            return id;
-                          }
-                        : board.addItem
-                    }
-                    onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
-                    onDone={() => {
-                      setAddingTimeline(false);
-                      setAddDay("");
-                      setAddBetween(null);
-                    }}
-                  />
-                </Sheet>
+                  <Check className="size-4" aria-hidden />
+                  Done editing
+                </button>
               </div>
             )}
 
-            {/* Directions live with the stops they join rather than in a section
-                of their own: this is the control strip, and each leg draws under
-                the entry it leaves from. */}
-            <ItineraryDirections
-              stops={directionStops}
-              existingTitles={board.items.map((i) => i.title)}
-              onAddToTimeline={board.upsertItems}
-              onKeepOffline={(result, stops) => {
-                const kept = dir.keep(result, stops);
-                // A picture of each day's map goes with the directions, so the
-                // day can be followed with no signal at all.
-                // And, where the day map is drawn from vector tiles, the map
-                // itself around each day's stops, so it still pans and zooms.
-                if (kept) {
-                  void dayMaps.save(daysForMaps(stopItems));
-                  // Every day, not only the pictures' first three weeks: the
-                  // tile plan has its own cap.
-                  void offlineMap.save(daysForMaps(stopItems, Infinity));
-                }
-                return kept;
+            {stopItems.length === 0 ? (
+              <>
+                <TimelineHead
+                  title="Your itinerary"
+                  line="Activities, meals, transport and notes."
+                  onAdd={() => {
+                    setAddDay("");
+                    setAddingTimeline(true);
+                  }}
+                  addLabel="Add to the timeline"
+                />
+                <p className="px-1 py-4 text-[14px] text-muted-foreground">
+                  Nothing planned yet. Add a stop, or let Béa draft the days from a plan you already
+                  have.
+                </p>
+              </>
+            ) : timelineByDay ? (
+              <div className="space-y-6">
+                {shownGroups.map((group) => {
+                  const dayOpen = !collapsedDays[group.key];
+                  const isToday = group.key === todayKey;
+                  const divider = isToday ? nowDivider(group.items, minutesNow) : null;
+                  const coming = isToday ? nextUp(group.items, minutesNow) : null;
+                  const untilNext = minutesUntilLabel(coming, minutesNow);
+                  // Both read the day as written: one says where the clock
+                  // and the distances disagree, the other says which stops
+                  // are close enough that their order stops mattering.
+                  const tight = dayTightnessNote(group.items);
+                  const runLabels = runLabelsByIndex(walkableRuns(group.items));
+                  const visited = group.items.filter(isDone).length;
+                  const length = dayLengthLabel(group.items, travelInto);
+                  return (
+                    <section key={group.key || "undated"} className="min-w-0">
+                      <TimelineHead
+                        title={dayTitle(group.key, ordinalFor(group.key), group.label)}
+                        line={[
+                          `${group.items.length} ${group.items.length === 1 ? "stop" : "stops"}`,
+                          length,
+                          visited ? `${visited} visited` : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                        open={dayOpen}
+                        onToggle={() =>
+                          setCollapsedDays((prev) => ({ ...prev, [group.key]: !prev[group.key] }))
+                        }
+                        onAdd={() => {
+                          setAddDay(group.key);
+                          setAddingTimeline(true);
+                        }}
+                        addLabel={`Add something to ${group.label}`}
+                        onMore={() => setTimelineMenuOpen(true)}
+                      >
+                        {coming && (
+                          <span className="mt-1 block text-[12.5px] font-semibold text-primary">
+                            Next: {coming.title}
+                            {untilNext ? ` · ${untilNext}` : ""}
+                          </span>
+                        )}
+                        {/* Two numbers the plan already carries, put next to
+                            each other. Never a verdict on the day. */}
+                        {tight && (
+                          <span className="mt-1 block text-[12.5px] text-muted-foreground">
+                            {tight}
+                          </span>
+                        )}
+                      </TimelineHead>
+                      {dayOpen && dayMaps.maps[group.key] && (
+                        <details className="mb-2 rounded-2xl bg-elevated p-2">
+                          <summary className="cursor-pointer px-1 text-[13px] font-semibold">
+                            Map of the day · saved on this phone
+                          </summary>
+                          <img
+                            src={dayMaps.maps[group.key]}
+                            alt={`Map of ${group.label}, stops numbered in order`}
+                            className="mt-2 w-full rounded-xl"
+                          />
+                          <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
+                            Stops numbered in order; the line joins them, it isn't the walking
+                            route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} ·{" "}
+                            {OVERTURE_ATTRIBUTION}
+                          </p>
+                        </details>
+                      )}
+                      {dayOpen && (
+                        <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
+                          <RailLine />
+                          {hidingDone && group.items.every(isDone) && (
+                            <li className="list-none py-2 pl-[5.25rem] text-[13px] text-muted-foreground">
+                              ✓ Every stop on this day is visited.
+                            </li>
+                          )}
+                          {byArea && !editingTimeline
+                            ? groupByArea(
+                                group.items.filter((item) => !(hidingDone && isDone(item))),
+                              ).map((area) => (
+                                <Fragment key={area.area}>
+                                  <li className="relative z-10 flex list-none items-center gap-1.5 pl-[5.25rem] pt-2 text-[12.5px] font-semibold text-muted-foreground">
+                                    <MapPin className="size-3.5 text-primary" aria-hidden />
+                                    <span>
+                                      {area.area}
+                                      <span className="font-normal">
+                                        {` · ${area.items.length} ${area.items.length === 1 ? "stop" : "stops"}`}
+                                      </span>
+                                    </span>
+                                  </li>
+                                  {area.items.map((item) => (
+                                    <TimelineEntry
+                                      key={item.id}
+                                      item={item}
+                                      showDay={false}
+                                      number={group.items.indexOf(item) + 1}
+                                      onLocate={() => locate(item)}
+                                      onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      onToggleDone={() => toggleDone(item)}
+                                      {...withNear(item.day_date)}
+                                      {...nestProps(item)}
+                                      onEdit={(field) => board.setEditing(field)}
+                                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                      onRemove={() => void removeTimelineItem(item)}
+                                      tripStart={trip.start_date}
+                                      tripEnd={trip.end_date}
+                                      onKeep={keepItemAsReco}
+                                      kept={isKept(item)}
+                                      stray={strayIds.has(item.id)}
+                                      {...foldProps(item)}
+                                    />
+                                  ))}
+                                </Fragment>
+                              ))
+                            : group.items.map((item, dayIndex) =>
+                                hidingDone && isDone(item) ? null : (
+                                  <Fragment key={item.id}>
+                                    {divider === dayIndex && <NowLine />}
+                                    {/* A run of stops close enough together to
+                                        be one decision rather than several. A
+                                        label, not a container. */}
+                                    {runLabels.has(dayIndex) && (
+                                      <li className="relative z-10 list-none pl-[5.25rem] pt-1 text-[12px] text-muted-foreground">
+                                        {runLabels.get(dayIndex)}
+                                      </li>
+                                    )}
+                                    <TimelineEntry
+                                      item={item}
+                                      showDay={false}
+                                      number={dayIndex + 1}
+                                      showSwipeHint={dayIndex === 0}
+                                      onLocate={() => locate(item)}
+                                      onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      onToggleDone={() => toggleDone(item)}
+                                      editing={editingTimeline}
+                                      {...withNear(item.day_date)}
+                                      {...nestProps(item)}
+                                      onEdit={(field) => board.setEditing(field)}
+                                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                      onRemove={() => void removeTimelineItem(item)}
+                                      onMove={(direction) =>
+                                        void board.moveItem(item.id, direction)
+                                      }
+                                      canMoveUp={canMove(stopItems, item.id, -1)}
+                                      canMoveDown={canMove(stopItems, item.id, 1)}
+                                      tripStart={trip.start_date}
+                                      tripEnd={trip.end_date}
+                                      onKeep={keepItemAsReco}
+                                      kept={isKept(item)}
+                                      stray={strayIds.has(item.id)}
+                                      {...foldProps(item)}
+                                    />
+                                    {(() => {
+                                      // The next stop on the list as shown, so
+                                      // the connector never points at a hidden one.
+                                      const next = group.items
+                                        .slice(dayIndex + 1)
+                                        .find((n) => !(hidingDone && isDone(n)));
+                                      if (!next || editingTimeline) return null;
+                                      return (
+                                        <TravelConnector
+                                          from={item}
+                                          to={next}
+                                          leg={travelInto(item, next)}
+                                          area={directionArea ?? ""}
+                                          showTime={view.prefs.walkTimes}
+                                          onAddBetween={() => openAddBetween(item, next)}
+                                        />
+                                      );
+                                    })()}
+                                  </Fragment>
+                                ),
+                              )}
+                          {divider === group.items.length && <NowLine done />}
+                        </ol>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                <TimelineHead
+                  title="All entries"
+                  line={[
+                    `${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"}`,
+                    doneCount ? `${doneCount} visited` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  onAdd={() => {
+                    setAddDay("");
+                    setAddingTimeline(true);
+                  }}
+                  addLabel="Add to the timeline"
+                  onMore={() => setTimelineMenuOpen(true)}
+                />
+                <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
+                  <RailLine />
+                  {stopItems.map((item, i) =>
+                    hidingDone && isDone(item) ? null : (
+                      <Fragment key={item.id}>
+                        <TimelineEntry
+                          item={item}
+                          showDay
+                          number={i + 1}
+                          showSwipeHint={i === 0}
+                          onLocate={() => locate(item)}
+                          onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                          onToggleDone={() => toggleDone(item)}
+                          editing={editingTimeline}
+                          {...withNear(item.day_date)}
+                          {...nestProps(item)}
+                          onEdit={(field) => board.setEditing(field)}
+                          onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                          onRemove={() => void removeTimelineItem(item)}
+                          onMove={(direction) => void board.moveItem(item.id, direction)}
+                          canMoveUp={canMove(stopItems, item.id, -1)}
+                          canMoveDown={canMove(stopItems, item.id, 1)}
+                          tripStart={trip.start_date}
+                          tripEnd={trip.end_date}
+                          onKeep={keepItemAsReco}
+                          kept={isKept(item)}
+                          stray={strayIds.has(item.id)}
+                          {...foldProps(item)}
+                        />
+                        {(() => {
+                          const next = stopItems
+                            .slice(i + 1)
+                            .find((n) => !(hidingDone && isDone(n)));
+                          if (!next || editingTimeline) return null;
+                          return (
+                            <TravelConnector
+                              from={item}
+                              to={next}
+                              leg={travelInto(item, next)}
+                              area={directionArea ?? ""}
+                              showTime={view.prefs.walkTimes}
+                              onAddBetween={() => openAddBetween(item, next)}
+                            />
+                          );
+                        })()}
+                      </Fragment>
+                    ),
+                  )}
+                </ol>
+              </>
+            )}
+
+            {/* Directions live with the stops they join rather than in a
+                section of their own: this is the control strip, and each leg
+                draws under the entry it leaves from. */}
+            <div className="mt-3">
+              <ItineraryDirections
+                stops={directionStops}
+                existingTitles={board.items.map((i) => i.title)}
+                onAddToTimeline={board.upsertItems}
+                onKeepOffline={(result, stops) => {
+                  const kept = dir.keep(result, stops);
+                  // A picture of each day's map goes with the directions, so
+                  // the day can be followed with no signal at all; and, where
+                  // the day map is drawn from vector tiles, the map itself
+                  // around each day's stops, so it still pans and zooms.
+                  if (kept) {
+                    void dayMaps.save(daysForMaps(stopItems));
+                    // Every day, not only the pictures' first three weeks:
+                    // the tile plan has its own cap.
+                    void offlineMap.save(daysForMaps(stopItems, Infinity));
+                  }
+                  return kept;
+                }}
+                onLegs={setLiveLegs}
+                onPlaced={(placed) => {
+                  // The router already found these. Keep them, so the map can
+                  // draw the trip and the next Refresh does not pay again.
+                  for (const stop of placed) {
+                    void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+                  }
+                }}
+                {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+                {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+                {...(directionArea ? { area: directionArea } : {})}
+              />
+            </div>
+          </div>
+
+          {/**
+           * Adding opens over the page, not under the list, so the form
+           * arrives where you are looking, with the fields in reach.
+           */}
+          <Sheet
+            open={addingTimeline}
+            onClose={() => {
+              setAddingTimeline(false);
+              setAddDay("");
+              setAddBetween(null);
+            }}
+            title={addBetween ? "Add a stop between" : "Add to the timeline"}
+          >
+            <TimelineEntryForm
+              tripStart={trip.start_date}
+              tripEnd={trip.end_date}
+              {...(addDay ? { openDay: addDay } : {})}
+              {...(addBetween?.time ? { openTime: addBetween.time } : {})}
+              {...withNear(addDay || null)}
+              existing={board.items.map((item) => ({
+                title: item.title,
+                address: item.address,
+                lat: item.lat,
+                lon: item.lon,
+              }))}
+              onAdd={
+                addBetween
+                  ? async (entry) => {
+                      const id = await board.insertItemAfter(
+                        insertAnchor.current ?? addBetween.afterId,
+                        entry,
+                      );
+                      if (id) insertAnchor.current = id;
+                      return id;
+                    }
+                  : board.addItem
+              }
+              onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
+              onDone={() => {
+                setAddingTimeline(false);
+                setAddDay("");
+                setAddBetween(null);
               }}
-              onLegs={setLiveLegs}
-              onPlaced={(placed) => {
-                // The router already found these. Keep them, so the map can draw
-                // the trip and the next Refresh does not pay for the same lookups.
-                for (const stop of placed) {
-                  void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
-                }
-              }}
-              {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
-              {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
-              {...(directionArea ? { area: directionArea } : {})}
             />
-          </Section>
+          </Sheet>
+
+          {/* The list's own ⋯: which stops, in which order, and the tools. */}
+          <Sheet
+            open={timelineMenuOpen}
+            onClose={() => setTimelineMenuOpen(false)}
+            title="Timeline"
+            hint={`${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"} scheduled${
+              doneCount > 0 ? ` · ${doneCount} visited` : ""
+            }`}
+            width="sm"
+          >
+            <div className="space-y-4">
+              <MenuChoice
+                label="Show"
+                value={hideDone}
+                onChange={setHideDone}
+                options={[
+                  [false, "All"],
+                  [true, `Not visited (${stopItems.length - doneCount})`],
+                ]}
+              />
+              <MenuChoice
+                label="List"
+                value={timelineByDay}
+                onChange={setTimelineByDay}
+                options={[
+                  [false, "All entries"],
+                  [true, "By day"],
+                ]}
+              />
+              {timelineByDay && (
+                <MenuChoice
+                  label="Order"
+                  value={byArea}
+                  onChange={setByArea}
+                  options={[
+                    [false, "Timeline"],
+                    [true, "Neighbourhood"],
+                  ]}
+                />
+              )}
+              <div className="grid gap-2">
+                {stopItems.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={editingTimeline}
+                    onClick={() => {
+                      setEditingTimeline((v) => !v);
+                      setTimelineMenuOpen(false);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    {editingTimeline ? (
+                      <Check className="size-4 text-primary" aria-hidden />
+                    ) : (
+                      <Pencil className="size-4 text-primary" aria-hidden />
+                    )}
+                    {editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                  </button>
+                )}
+                {stopItems.length >= 2 && (
+                  <button
+                    type="button"
+                    data-guide="optimize-trip"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setPlannerTab("optimize");
+                      setPlannerOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <Route className="size-4 text-primary" aria-hidden />
+                    Optimize the order
+                  </button>
+                )}
+              </div>
+              <p className="text-[12px] text-muted-foreground">
+                Tap a stop to edit it · the card between stops has the way there.
+              </p>
+            </div>
+          </Sheet>
         </div>
 
         {/* A sheet, opened by the "To do" button from any tab. */}
@@ -1497,7 +1516,9 @@ export function TripDetail({
           hasLodging={tripWide.hasLodging}
           hasFlights={tripWide.hasFlights}
           tripStart={trip.start_date}
+          tripEnd={trip.end_date}
           openSignal={prepSignal}
+          openTab={prepAsk}
         />
       </div>
 
@@ -1648,283 +1669,378 @@ export function TripDetail({
         }}
       />
 
-      <Sheet
+      <TripMenuSheet
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         title={trip.title}
-        width="sm"
-      >
-        <div className="space-y-1">
-          <button
-            onClick={() => setSheetSection(sheetSection === "invite" ? null : "invite")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Invite a friend
-          </button>
-          {sheetSection === "invite" && (
-            <div className="rounded-xl bg-elevated p-3">
-              <TripPeople
-                trip={trip}
-                meId={me.id}
-                members={members}
-                invites={board.invites}
-                onInvite={onInvite}
-                onRevokeInvite={onRevokeInvite}
-                onRemoveMember={onRemoveMember}
-                onLeave={onLeave}
-                onChanged={board.reload}
-                onLeft={() => setSettingsOpen(false)}
-              />
-            </div>
-          )}
-
-          <button
-            onClick={() => setSheetSection(sheetSection === "packing" ? null : "packing")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Attach a packing list
-          </button>
-          {sheetSection === "packing" && (
-            <div className="rounded-xl bg-elevated p-3">
-              {templates.packs.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">
-                  No saved lists yet — create one under Profile → Create packing lists.
-                </p>
-              ) : (
-                <>
-                  <p className="text-[12px] text-muted-foreground">
-                    You get a copy — ticking things off only affects this trip.
-                  </p>
-                  <select
-                    value={packTemplateId}
-                    onChange={(e) => {
-                      setPackTemplateId(e.target.value);
-                      setPackMsg("");
-                    }}
-                    className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                  >
-                    <option value="">Choose a list…</option>
-                    {templates.packs.map((pk) => (
-                      <option key={pk.id} value={pk.id}>
-                        {pk.emoji} {pk.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    disabled={!packTemplateId}
-                    onClick={async () => {
-                      if (!packTemplateId) return;
-                      await templates.attachToTrip(packTemplateId, trip.id);
-                      setPackTemplateId("");
-                      setPackMsg("List attached — open the trip to tick items off.");
-                    }}
-                    className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    Attach a copy to this trip
-                  </button>
-                  {packMsg && <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>}
-                </>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={() => setSheetSection(sheetSection === "offline" ? null : "offline")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Saved directions
-            {dir.saved && (
-              <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                {savedAgoLabel(dir.saved.savedAt)}
-                {savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""}
-              </span>
-            )}
-          </button>
-          {sheetSection === "offline" && (
-            <div className="rounded-xl bg-elevated p-3">
-              <p className="text-[12px] text-muted-foreground">
-                Download the walk or drive between stops and Béa keeps the steps on this phone, so
-                you never work them out twice. Béa still needs a connection to open, so this is not
-                a no-signal map yet. Adding directions to the timeline saves the summary only.
-              </p>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                {cities.stops.length >= 2
-                  ? `Covers your ${cities.stops.length} cities, in order.`
-                  : "Covers the timeline stops that have a place on the map."}{" "}
-                You can also keep the legs from “Directions between stops” on the trip itself.
-              </p>
-              <button
-                disabled={dir.busy || routeStops.length < 2}
-                onClick={() => void dir.download(routeStops, directionArea)}
-                className="mt-2 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
-              </button>
-              {routeStops.length < 2 && (
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Add at least two cities to this trip first (or two timeline entries with places).
-                </p>
-              )}
-              {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Your stops have changed since this was saved — refresh to bring it up to date.
-                </p>
-              )}
-              {dir.error && <p className="mt-2 text-[12px] text-destructive">{dir.error}</p>}
-              {dir.saved && (
-                <div className="mt-3 space-y-2">
-                  {dir.saved.legs.map((l, i) => (
-                    <details key={i} className="rounded-xl bg-elevated px-3 py-2">
-                      <summary className="cursor-pointer text-[14.5px] font-medium">
-                        {l.from} → {l.to}
-                        <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                          {l.distance > 0
-                            ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
-                            : unroutedLegCopy(l)}
-                        </span>
-                      </summary>
-                      <ol className="mt-2 space-y-1">
-                        {l.steps.map((s, k) => (
-                          <li key={k} className="text-[13px] text-muted-foreground">
-                            {s.instruction}
-                            {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
-                          </li>
-                        ))}
-                      </ol>
-                      <a
-                        href={l.mapUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-block text-[13px] font-semibold text-primary"
-                      >
-                        Open in maps (needs service)
-                      </a>
-                    </details>
-                  ))}
-                  {dir.saved.unresolved.length > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      Couldn't find on the map: {dir.saved.unresolved.join(", ")}
-                    </p>
-                  )}
-                  {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
-                    <p className="text-[12px] text-muted-foreground">
-                      Later stretches open in maps — Béa stops looking after a long list.
-                    </p>
-                  )}
-                  {dayMaps.busy && (
-                    <p className="text-[12px] text-muted-foreground">Saving a map of each day…</p>
-                  )}
-                  {!dayMaps.busy && Object.keys(dayMaps.maps).length > 0 && (
-                    <p className="text-[12px] text-muted-foreground">
-                      {Object.keys(dayMaps.maps).length} day{" "}
-                      {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a
-                      day in the Timeline Editor to see it offline.
-                    </p>
-                  )}
-                  {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
-                  {offlineMap.progress && (
-                    <p className="text-[12px] text-muted-foreground">
-                      Saving the trip's map
-                      {offlineMap.progress.total > 0
-                        ? ` (${Math.round((offlineMap.progress.done / offlineMap.progress.total) * 100)}%)`
-                        : ""}
-                      …
-                    </p>
-                  )}
-                  {!offlineMap.busy && offlineMap.saved && (
-                    <p className="text-[12px] text-muted-foreground">
-                      The map around each day's stops is saved on this phone (
-                      {prettyMegabytes(offlineMap.saved.bytes)}), so it still pans and zooms with no
-                      signal.
-                    </p>
-                  )}
-                  {offlineMap.error && (
-                    <p className="text-[12px] text-destructive">{offlineMap.error}</p>
-                  )}
-                  <button
-                    onClick={() => {
-                      dir.clear();
-                      dayMaps.clear();
-                      offlineMap.clear();
-                    }}
-                    className="text-[12px] text-muted-foreground underline"
-                  >
-                    Delete saved directions
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={() => setSheetSection(sheetSection === "budget" ? null : "budget")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Budget Options
-          </button>
-          {sheetSection === "budget" && (
-            <div className="space-y-2 rounded-xl bg-elevated p-3">
-              <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
-              {trip.budget_enabled && <TripBudget tripId={trip.id} />}
-            </div>
-          )}
-
-          {/* The trip's cities, in order — the route the trip map draws. */}
-          <button
-            onClick={() => setSheetSection(sheetSection === "cities" ? null : "cities")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Cities on this trip
-            {cities.stops.length > 0 && (
-              <span className="ml-2 text-[12px] font-normal text-muted-foreground">
-                {cities.stops.length}
-              </span>
-            )}
-          </button>
-          {sheetSection === "cities" && (
-            <div className="rounded-xl bg-elevated p-3">
-              <TripStops tripId={trip.id} uid={me.id} />
-            </div>
-          )}
-
-          {/* What the trip page shows: the switches that sat beside the tabs. */}
-          <button
-            onClick={() => setSheetSection(sheetSection === "customize" ? null : "customize")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Customize this page
-          </button>
-          {sheetSection === "customize" && (
-            <div className="rounded-xl bg-elevated px-3 py-1">
-              <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
-            </div>
-          )}
-
-          <button
-            onClick={() => setSheetSection(sheetSection === "edit" ? null : "edit")}
-            className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold hover:bg-elevated"
-          >
-            Trip Options
-          </button>
-          {sheetSection === "edit" && (
-            <div className="rounded-xl bg-elevated p-3">
-              <TripDetailsForm
-                trip={trip}
-                onUpdate={onUpdate}
-                onSaved={() => setSettingsOpen(false)}
-              />
-            </div>
-          )}
-
-          {/* Only the owner can delete (the "Owner deletes trips" policy). For
-              anyone else the delete matched no rows, said nothing, and sent
-              them to the trip list as if it had worked; they leave instead. */}
-          {me.id === trip.owner_id && (
+        subtitle={[
+          formatTripLocation(trip.city?.split(",")[0], trip.country),
+          tripDateLine(trip.start_date, trip.end_date),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        art={tripArt}
+        section={sheetSection}
+        onSection={setSheetSection}
+        people={members.map((m) => m.display_name || "Traveller")}
+        bookings={bookingCounts}
+        onBookings={() => {
+          setSettingsOpen(false);
+          setTimelineByDay(true);
+          setDayChoice(ALL_DAYS);
+          setPerspective("timeline");
+        }}
+        citiesCount={cities.stops.length}
+        offlineNote={
+          dir.saved
+            ? `${savedAgoLabel(dir.saved.savedAt)}${
+                savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""
+              }`
+            : ""
+        }
+        budgetOn={Boolean(trip.budget_enabled)}
+        footer={
+          // Only the owner can delete (the "Owner deletes trips" policy). For
+          // anyone else the delete matched no rows, said nothing, and sent
+          // them to the trip list as if it had worked; they leave instead,
+          // from Invite and people.
+          me.id === trip.owner_id ? (
             <TripDeleteButton onDelete={onDelete} onConfirmed={() => setSettingsOpen(false)} />
-          )}
-        </div>
-      </Sheet>
+          ) : null
+        }
+      >
+        {sheetSection === "invite" && (
+          <TripPeople
+            trip={trip}
+            meId={me.id}
+            members={members}
+            invites={board.invites}
+            onInvite={onInvite}
+            onRevokeInvite={onRevokeInvite}
+            onRemoveMember={onRemoveMember}
+            onLeave={onLeave}
+            onChanged={board.reload}
+            onLeft={() => setSettingsOpen(false)}
+          />
+        )}
+
+        {sheetSection === "packing" && (
+          <div className="plain-card p-3.5">
+            {templates.packs.length === 0 ? (
+              <p className="text-[13.5px] text-muted-foreground">
+                No saved lists yet — create one under Profile → Create packing lists.
+              </p>
+            ) : (
+              <>
+                <p className="text-[13px] text-muted-foreground">
+                  You get a copy — ticking things off only affects this trip.
+                </p>
+                <select
+                  value={packTemplateId}
+                  onChange={(e) => {
+                    setPackTemplateId(e.target.value);
+                    setPackMsg("");
+                  }}
+                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px]"
+                >
+                  <option value="">Choose a list…</option>
+                  {templates.packs.map((pk) => (
+                    <option key={pk.id} value={pk.id}>
+                      {pk.emoji} {pk.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={!packTemplateId}
+                  onClick={async () => {
+                    if (!packTemplateId) return;
+                    await templates.attachToTrip(packTemplateId, trip.id);
+                    setPackTemplateId("");
+                    setPackMsg("List attached — open the trip to tick items off.");
+                  }}
+                  className="btn-primary mt-3 w-full disabled:opacity-50"
+                >
+                  Attach a copy to this trip
+                </button>
+                {packMsg && <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>}
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsOpen(false);
+                setPrepAsk((cur) => ({ tab: "packing", n: (cur?.n ?? 0) + 1 }));
+              }}
+              className="mt-3 inline-flex min-h-9 items-center gap-1 text-[13px] font-semibold text-primary"
+            >
+              Open this trip's packing
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
+
+        {sheetSection === "offline" && (
+          <div className="plain-card p-3.5">
+            <p className="text-[13px] text-muted-foreground">
+              Download the walk or drive between stops and Béa keeps the steps on this phone, so you
+              never work them out twice. Béa still needs a connection to open, so this is not a
+              no-signal map yet. Adding directions to the timeline saves the summary only.
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {cities.stops.length >= 2
+                ? `Covers your ${cities.stops.length} cities, in order.`
+                : "Covers the timeline stops that have a place on the map."}{" "}
+              You can also keep the legs from “Directions between stops” on the trip itself.
+            </p>
+            <button
+              disabled={dir.busy || routeStops.length < 2}
+              onClick={() => void dir.download(routeStops, directionArea)}
+              className="btn-primary mt-3 w-full disabled:opacity-50"
+            >
+              {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
+            </button>
+            {routeStops.length < 2 && (
+              <p className="mt-2 text-[12.5px] text-muted-foreground">
+                Add at least two cities to this trip first (or two timeline entries with places).
+              </p>
+            )}
+            {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
+              <p className="mt-2 text-[12.5px] text-muted-foreground">
+                Your stops have changed since this was saved — refresh to bring it up to date.
+              </p>
+            )}
+            {dir.error && <p className="mt-2 text-[12.5px] text-destructive">{dir.error}</p>}
+            {dir.saved && (
+              <div className="mt-3 space-y-2">
+                {dir.saved.legs.map((l, i) => (
+                  <details key={i} className="rounded-xl bg-elevated px-3 py-2">
+                    <summary className="cursor-pointer text-[14.5px] font-medium">
+                      {l.from} → {l.to}
+                      <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                        {l.distance > 0
+                          ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                          : unroutedLegCopy(l)}
+                      </span>
+                    </summary>
+                    <ol className="mt-2 space-y-1">
+                      {l.steps.map((s, k) => (
+                        <li key={k} className="text-[13px] text-muted-foreground">
+                          {s.instruction}
+                          {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                    <a
+                      href={l.mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-[13px] font-semibold text-primary"
+                    >
+                      Open in maps (needs service)
+                    </a>
+                  </details>
+                ))}
+                {dir.saved.unresolved.length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Couldn't find on the map: {dir.saved.unresolved.join(", ")}
+                  </p>
+                )}
+                {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Later stretches open in maps — Béa stops looking after a long list.
+                  </p>
+                )}
+                {dayMaps.busy && (
+                  <p className="text-[12px] text-muted-foreground">Saving a map of each day…</p>
+                )}
+                {!dayMaps.busy && Object.keys(dayMaps.maps).length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    {Object.keys(dayMaps.maps).length} day{" "}
+                    {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a day
+                    in the Timeline Editor to see it offline.
+                  </p>
+                )}
+                {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
+                {offlineMap.progress && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Saving the trip's map
+                    {offlineMap.progress.total > 0
+                      ? ` (${Math.round((offlineMap.progress.done / offlineMap.progress.total) * 100)}%)`
+                      : ""}
+                    …
+                  </p>
+                )}
+                {!offlineMap.busy && offlineMap.saved && (
+                  <p className="text-[12px] text-muted-foreground">
+                    The map around each day's stops is saved on this phone (
+                    {prettyMegabytes(offlineMap.saved.bytes)}), so it still pans and zooms with no
+                    signal.
+                  </p>
+                )}
+                {offlineMap.error && (
+                  <p className="text-[12px] text-destructive">{offlineMap.error}</p>
+                )}
+                <button
+                  onClick={() => {
+                    dir.clear();
+                    dayMaps.clear();
+                    offlineMap.clear();
+                  }}
+                  className="text-[12.5px] text-muted-foreground underline"
+                >
+                  Delete saved directions
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {sheetSection === "budget" && (
+          <div className="space-y-2">
+            <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
+            {trip.budget_enabled && <TripBudget tripId={trip.id} />}
+          </div>
+        )}
+
+        {/* The trip's cities, in order — the route the trip map draws. */}
+        {sheetSection === "cities" && <TripStops tripId={trip.id} uid={me.id} />}
+
+        {sheetSection === "customize" && (
+          <div className="plain-card px-3.5 py-1">
+            <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
+          </div>
+        )}
+
+        {sheetSection === "edit" && (
+          <TripDetailsForm trip={trip} onUpdate={onUpdate} onSaved={() => setSettingsOpen(false)} />
+        )}
+      </TripMenuSheet>
     </article>
+  );
+}
+
+/** The dashed line the day's numbered discs sit on. */
+function RailLine() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-6 left-[calc(4.125rem-1px)] top-6 border-l-2 border-dashed border-primary/35"
+    />
+  );
+}
+
+/**
+ * The Timeline's heading: "Day 1 · Thu, Oct 1" in the serif with the day's
+ * size under it, a round + to add to that day, and ⋯ for the list's options.
+ * Tapping the title folds the day away.
+ */
+function TimelineHead({
+  title,
+  line,
+  open = true,
+  onToggle,
+  onAdd,
+  addLabel,
+  onMore,
+  children,
+}: {
+  title: string;
+  line: string;
+  open?: boolean;
+  onToggle?: () => void;
+  onAdd: () => void;
+  addLabel: string;
+  onMore?: () => void;
+  children?: ReactNode;
+}) {
+  const heading = (
+    <>
+      <span className="flex items-center gap-1.5">
+        <span className="block font-display text-[27px] leading-none">{title}</span>
+        {onToggle ? (
+          <ChevronDown
+            className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
+            aria-hidden
+          />
+        ) : null}
+      </span>
+      <span className="mt-1 block text-[13.5px] text-muted-foreground">{line}</span>
+      {children}
+    </>
+  );
+  return (
+    <div className="mb-2 flex items-start justify-between gap-2 border-b border-border pb-3">
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="min-w-0 flex-1 text-left"
+        >
+          {heading}
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">{heading}</div>
+      )}
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={addLabel}
+        title={addLabel}
+        className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
+      >
+        <Plus className="size-6" aria-hidden />
+      </button>
+      {onMore ? (
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label="Timeline options"
+          title="Timeline options"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** One row of choices in the Timeline's ⋯ sheet. */
+function MenuChoice({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+  options: readonly (readonly [boolean, string])[];
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <div role="group" aria-label={label} className="flex gap-1 rounded-full bg-elevated p-1">
+        {options.map(([v, text]) => (
+          <button
+            key={text}
+            type="button"
+            aria-pressed={value === v}
+            onClick={() => onChange(v)}
+            className={`min-h-9 flex-1 rounded-full px-3 text-[13px] transition-colors ${
+              value === v
+                ? "bg-primary font-semibold text-primary-foreground"
+                : "text-muted-foreground"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

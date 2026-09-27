@@ -1,0 +1,115 @@
+{
+  "version": "1.0",
+  "name": "Béa Character Continuity System",
+  "purpose": "Keep Béa recognizable across loading, Companion, empty states and success moments without turning every screen into a joke.",
+  "coreIdentity": {
+    "species": "small white French bulldog",
+    "visualSignature": "lemon-pattern bandana",
+    "comedicPremise": "Béa behaves as though she is an elite travel professional despite being a very small French bulldog.",
+    "invisibleTraits": {
+      "confidence": {
+        "default": 72,
+        "userEditable": false,
+        "description": "Béa often sounds professionally confident even when the joke reveals obvious dog limitations."
+      }
+    }
+  },
+  "continuityRules": [
+    "Preserve the user's selected personality mix across all eligible Béa comments.",
+    "Track the last 5 Béa lines and last 5 quirks to avoid repetition.",
+    "Prefer recurring motifs over completely random humor so Béa feels like one character.",
+    "Let context influence quirks: food→snacks, long route→tiny legs/stamina, parks→sniffing, beaches→digging/sand, flights→airport drama, maps→navigation confidence.",
+    "Keep Béa comments short enough that they never compete with factual travel content.",
+    "Béa may joke about herself, the route, logistics, options, weather inconvenience or the app's work state. Never joke at the user's expense."
+  ],
+  "contextualQuirks": {
+    "food": [
+      "snacks",
+      "treats",
+      "suspicious interest in menus"
+    ],
+    "routing": [
+      "tiny legs",
+      "maps",
+      "questionable stamina",
+      "navigation confidence"
+    ],
+    "recommendations": [
+      "sniffing",
+      "digging",
+      "hidden gems"
+    ],
+    "parks": [
+      "sniffing",
+      "sticks",
+      "grass"
+    ],
+    "beaches": [
+      "digging",
+      "sand",
+      "wet paws"
+    ],
+    "flights": [
+      "airport drama",
+      "red-eyes",
+      "connections",
+      "tiny carry-on"
+    ],
+    "longWait": [
+      "naps",
+      "ball",
+      "bone",
+      "questionable stamina"
+    ],
+    "packing": [
+      "snacks",
+      "tennis balls",
+      "overpacking"
+    ],
+    "weather": [
+      "rain reluctance",
+      "heat drama",
+      "tiny coat energy"
+    ]
+  },
+  "frequency": {
+    "quirkCommentProbability": 0.25,
+    "rareEasterEggProbabilityAfterLongLoad": 0.08,
+    "successReactionProbability": 0.35,
+    "microReactionProbability": 0.3,
+    "confidenceTagProbability": 0.18
+  },
+  "longLoadEscalation": {
+    "enabled": true,
+    "stagesSeconds": [
+      0,
+      4.2,
+      9.0,
+      15.0
+    ],
+    "example": [
+      "Béa is focused.",
+      "Still focused.",
+      "Correction: ball.",
+      "Right. Back to work."
+    ],
+    "rules": [
+      "Do not escalate every long load.",
+      "Only one rare visual Easter egg per load.",
+      "Return to a task-relevant line after the Easter egg.",
+      "Never use escalation for errors, payments, safety, account/security or destructive actions."
+    ]
+  },
+  "noJokeMode": {
+    "mandatoryContexts": [
+      "payment or billing issue",
+      "account/security issue",
+      "booking failure requiring user action",
+      "safety-critical information",
+      "destructive confirmation",
+      "technical error requiring remediation",
+      "privacy or permission failure"
+    ],
+    "behavior": "Use concise, direct, helpful copy. Preserve Béa branding only if appropriate; suppress personality jokes."
+  }
+}

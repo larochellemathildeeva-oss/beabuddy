@@ -1,31 +1,37 @@
-import { useEffect, useState } from "react";
-import { MapPin } from "lucide-react";
-import logo from "@/assets/bea-logo.png";
-import { beaMomentPool, type BeaMoment } from "@/lib/bea-voice";
+import { BeaLoader } from "@/components/BeaLoader";
+import type { BeaWork } from "@/lib/bea-personality";
+import type { BeaMoment } from "@/lib/bea-voice";
 
-/** Long enough to read, short enough that a long wait still changes. */
-const LINE_MS = 4_200;
+/** What Béa is doing in each of these waits, and so how she is drawn. */
+const WORK: Partial<Record<BeaMoment, BeaWork>> = {
+  "plan.working": "run",
+  "plan.locating": "run",
+  "choose.working": "think",
+  "photos.working": "think",
+};
 
 /**
- * Béa running on the spot, for a wait worth explaining.
+ * A wait worth explaining: "Béa is working on it…", her animation for the
+ * work, a line in the traveller's chosen personality, and — when the work can
+ * count — the real progress, never a fake creeping bar.
  *
  * Placing a planned trip is a queue of one-a-second lookups, so it can run
- * half a minute — the one wait in this app long enough to read a sentence
- * twice. A spinner would say only that something is happening. This says who
- * is doing it and why it takes a while, which is the difference between
- * waiting and wondering whether it has hung.
- *
- * The line rotates so a long wait does not stare back with the same sentence,
- * and the progress count is real rather than a fake creeping bar.
+ * half a minute: the count and the rough estimate say it has not hung.
  */
 export function BeaRunning({
   moment = "plan.locating",
+  action,
+  status,
   done,
   total,
   estimate,
 }: {
-  /** Which wait this is — she says different things depending. */
+  /** Which wait this is. */
   moment?: BeaMoment;
+  /** Overrides the animation the moment would pick. */
+  action?: BeaWork;
+  /** The real step, when there is one. */
+  status?: string;
   /** Stops placed so far. */
   done?: number;
   /** Stops to place in all. */
@@ -33,67 +39,19 @@ export function BeaRunning({
   /** Rough seconds remaining, shown once and not counted down. */
   estimate?: number;
 }) {
-  const pool = beaMomentPool(moment);
-  const [index, setIndex] = useState(0);
-
-  /**
-   * Start somewhere random, then walk the pool in order.
-   *
-   * Random every tick would repeat lines back to back, which reads as a glitch
-   * rather than variety. A random entry point and a steady walk means two
-   * waits rarely open the same way, and a long one never repeats until it has
-   * shown you everything.
-   *
-   * Seeded after mount rather than in the initial state so the server and the
-   * first client render cannot disagree about which line it is.
-   */
-  useEffect(() => {
-    setIndex(Math.floor(Math.random() * pool.length));
-  }, [pool.length, moment]);
-
-  useEffect(() => {
-    if (pool.length < 2) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % pool.length), LINE_MS);
-    return () => clearInterval(id);
-  }, [pool.length]);
-
-  const line = pool[index % pool.length]!;
   const counted = typeof done === "number" && typeof total === "number" && total > 0;
-
   return (
-    <div className="rounded-xl bg-elevated p-3" role="status" aria-live="polite" aria-busy="true">
-      <div className="flex items-center gap-3">
-        <span className="relative grid size-12 shrink-0 place-items-end justify-items-center">
-          <img src={logo} alt="" className="bea-run size-10 rounded-full object-contain" />
-          {/* A pin lands beside her now and then: she keeps finding things. */}
-          <MapPin className="bea-pin absolute -right-0.5 top-0 size-3.5 text-primary" aria-hidden />
-          {/* Dust off her back feet, one mote trailing the other. */}
-          <span
-            className="bea-dust absolute bottom-[3px] left-1.5 size-1 rounded-full"
-            aria-hidden
-          />
-          <span
-            className="bea-dust absolute bottom-[5px] left-3 size-[3px] rounded-full"
-            style={{ animationDelay: "0.21s" }}
-            aria-hidden
-          />
-          <span className="bea-track absolute inset-x-0 bottom-0 h-[3px]" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14.5px] font-semibold leading-tight">{line.title}</p>
-          <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{line.body}</p>
-        </div>
-      </div>
-
+    <div className="rounded-2xl bg-elevated px-3 pb-3">
+      <BeaLoader active action={action ?? WORK[moment] ?? "think"} status={status} compact />
       {counted && (
         <>
-          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-card">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-card">
             <div
               className="h-full rounded-full bg-primary transition-all duration-(--t-shift) ease-(--ease-standard)"
               style={{ width: `${Math.round((done! / total!) * 100)}%` }}
             />
           </div>
-          <p className="mt-1.5 text-[12px] text-muted-foreground">
+          <p className="mt-1.5 text-center text-[12px] text-muted-foreground">
             {done} of {total} placed
             {estimate && estimate > 0 && done! < total! ? ` · about ${estimate}s in all` : ""}
           </p>

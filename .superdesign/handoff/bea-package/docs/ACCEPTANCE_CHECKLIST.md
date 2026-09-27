@@ -1,0 +1,22 @@
+# Acceptance checklist
+
+- [ ] One reusable loader component controls all Béa work states
+- [ ] Heading is exactly “Béa is working on it…”
+- [ ] No task-specific subtitle
+- [ ] No extra Béa icon next to quote
+- [ ] Four loading dots are animated
+- [ ] No fake progress percentage
+- [ ] Run used for itinerary/routing
+- [ ] Dig used for recommendations/discovery
+- [ ] Think used for compare/optimize/import
+- [ ] Ball/bone are occasional only
+- [ ] Loader waits ~300 ms before appearing
+- [ ] Loader remains visible ~650 ms once shown
+- [ ] Quote rotates after ~4.2 s, not constantly
+- [ ] Reduce Motion uses static frame
+- [ ] Dark mode uses dark-beige accent, not terracotta
+- [ ] Map/Timeline functional views are not cluttered with mascot
+- [ ] Destructive actions do not use playful Béa loader
+- [ ] Existing theme and typography tokens are reused
+- [ ] Error states show real errors
+- [ ] Tested on smallest supported mobile viewport

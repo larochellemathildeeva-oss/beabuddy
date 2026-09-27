@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, PlayCircle, X } from "lucide-react";
+import { BookOpen, PlayCircle, X } from "@/components/icons";
 import { useAuth } from "@/hooks/useAuth";
 import { type TourMode, tourSteps } from "@/lib/tour";
 import {
