@@ -247,3 +247,21 @@ test("a sentence about the stop is not its address", () => {
   assert.equal(placeHintFromDetail("Musée d'Orsay"), "Musée d'Orsay");
   assert.equal(readsLikeProse("清水寺"), false);
 });
+
+test("stopsForDirections goes out and back on a day trip", () => {
+  const stops = stopsForDirections(
+    [
+      { city: "Kyoto", arrive_on: "2026-10-01", lat: 35.01, lon: 135.77 },
+      { kind: "daytrip", city: "Hiroshima", arrive_on: "2026-10-04", lat: 34.39, lon: 132.46 },
+    ],
+    [],
+  );
+  assert.deepEqual(
+    stops.map((s) => [s.title, s.day_date]),
+    [
+      ["Kyoto", "2026-10-01"],
+      ["Hiroshima", "2026-10-04"],
+      ["Kyoto", "2026-10-04"],
+    ],
+  );
+});

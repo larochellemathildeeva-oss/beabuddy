@@ -6,6 +6,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { useAuth } from "@/hooks/useAuth";
 import { tripCompanionsLine } from "@/lib/trip-copy";
 import { TripDetailSkeleton } from "@/components/Skeletons";
+import { clearOfflineMap } from "@/lib/offline-map";
 
 export const Route = createFileRoute("/trips_/$tripId")({
   staticData: { plane: "detail" },
@@ -86,10 +87,14 @@ function TripPage() {
         // rather than the thing you just asked for.
         onDelete={async () => {
           await t.deleteTrip(trip.id);
+          // Its map on this phone goes with it: there is no trip left to
+          // delete it from.
+          void clearOfflineMap(trip.id);
           await navigate({ to: "/trips" });
         }}
         onLeave={async () => {
           await t.leaveTrip(trip.id);
+          void clearOfflineMap(trip.id);
           await navigate({ to: "/trips" });
         }}
         onRemoveMember={(userId) => t.removeTripMember(trip.id, userId)}

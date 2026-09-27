@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { isSavedDirectionItem } from "@/lib/direction-stops";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
 import { currentHighlights, packingReadiness } from "@/lib/home-trip";
@@ -117,7 +118,8 @@ export function useTripGlances(tripIds: readonly string[]) {
         }));
       }
       if (!active) return;
-      setItems(rows);
+      // Saved walks and drives are travel between stops, not stops to count.
+      setItems(rows.filter((row) => !isSavedDirectionItem(row)));
       setPacked(packing);
       setTodos(todoRows.error ? [] : ((todoRows.data ?? []) as GlanceTodo[]));
       setLoaded(true);

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { isSavedDirectionItem } from "@/lib/direction-stops";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,7 +92,8 @@ function CalendarPage() {
         )
         .order("day_date", { ascending: true })
         .order("position", { ascending: true });
-      setItems((data ?? []) as ItineraryRow[]);
+      // Saved walks and drives are travel between stops, not entries of their own.
+      setItems(((data ?? []) as ItineraryRow[]).filter((row) => !isSavedDirectionItem(row)));
     };
     void run();
   }, [trips]);

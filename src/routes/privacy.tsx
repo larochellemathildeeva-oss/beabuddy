@@ -137,6 +137,17 @@ function PrivacyPage() {
             and to our map provider to name the place you&apos;re in. It is used to answer that one
             request and is not stored by Béa.
           </p>
+          <p>
+            Companion can warn you when rain is likely later on a trip day. For that, the position
+            of one of the day&apos;s stops, rounded to about a kilometre, and the day&apos;s date
+            are passed through Béa&apos;s server to Open-Meteo. Your own position is not used.
+          </p>
+          <p>
+            When you keep a trip&apos;s directions on this phone, the map around each day&apos;s
+            stops may be saved with them, in this browser&apos;s storage. The map is fetched through
+            Béa&apos;s server from our map provider, which sees the area, not who asked. Deleting
+            the saved directions, or erasing your account, removes it.
+          </p>
         </Section>
 
         <Section title="Trips and collaboration">
