@@ -228,5 +228,11 @@
     "colorful": "2f471b70-0092-47d7-97c3-de4133e8b3c7",
     "dark": "06ac8737-7620-42f9-8506-fb559d63d310",
     "status": "awaiting approval"
+  },
+  "map_split_v1": {
+    "calm": "4b02f203-e2de-4c4d-bf54-c20826dc7872",
+    "colorful": "63a93f26-2e52-45b0-9593-3a28bbef683c",
+    "dark": "e7f1931c-77c1-4d96-9197-d1833bf535ae",
+    "status": "awaiting approval"
   }
 }
