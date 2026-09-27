@@ -43,7 +43,7 @@
         "dark": "268eb6a4-c5a3-4879-9fe5-2920d92a2d71"
       },
       "v2": {
-        "status": "awaiting review",
+        "status": "built",
         "checklist": ".superdesign/checklists/home.md",
         "html": ".superdesign/tmp/home2-<frame>-<theme>.html",
         "frames": {
@@ -83,6 +83,28 @@
         "calm": "16522e64-5087-47d8-a648-d50a8b1414b6",
         "colorful": "a41574f0-8d7f-4173-96a8-e53acf472397",
         "dark": "ec7fb69b-d796-4cfd-8b09-0fd732a68962"
+      },
+      "v2": {
+        "status": "awaiting review",
+        "checklist": ".superdesign/checklists/trips.md",
+        "html": ".superdesign/tmp/trips2-<frame>-<theme>.html",
+        "frames": {
+          "main": {
+            "calm": "0020c34f-7622-4a62-af4a-9b0420cb57c7",
+            "colorful": "4a738c90-dc2f-47ab-8da0-f8ad5c0f2cde",
+            "dark": "cf224eb3-24fa-4f71-8184-aedd257b97d3"
+          },
+          "new": {
+            "calm": "4ec04042-6fff-468b-ba53-9f466e67d8a3",
+            "colorful": "c4d83161-d881-4963-9b59-fcca53950864",
+            "dark": "bdce064b-50d1-4b73-bd5d-55352ad9e1e6"
+          },
+          "join": {
+            "calm": "7cc2c4d9-488a-48bc-b633-1753b25fa623",
+            "colorful": "97d570d2-5967-448b-82cf-fa9336a4cfad",
+            "dark": "2597110c-2519-4240-b473-570357351bf7"
+          }
+        }
       }
     },
     "/trips/$tripId": {
