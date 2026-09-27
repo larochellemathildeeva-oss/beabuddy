@@ -219,7 +219,7 @@ function Row({
       to="/trips/$tripId"
       params={{ tripId: to.tripId }}
       search={to.prep ? { prep: to.prep } : {}}
-      className="rise tile-card-1 flex items-center gap-3 px-4 py-3 transition-shadow hover:shadow-md"
+      className="rise plain-card flex items-center gap-3 px-4 py-3 transition-shadow hover:shadow-md"
     >
       <span className="shrink-0 text-primary">{icon}</span>
       <span className="min-w-0 flex-1">

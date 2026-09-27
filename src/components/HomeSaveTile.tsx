@@ -27,7 +27,7 @@ export function HomeSaveTile({
     <Link
       to="/recommendations"
       data-guide="home-waiting"
-      className="rise tile-card-4 flex gap-3 p-2.5 transition-shadow hover:shadow-md"
+      className="rise plain-card flex gap-3 p-2.5 transition-shadow hover:shadow-md"
     >
       <img
         src={art}

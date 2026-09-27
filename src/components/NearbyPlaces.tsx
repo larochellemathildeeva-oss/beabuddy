@@ -83,7 +83,7 @@ export function NearbyPlaces({
 
   if (collapsed && consentReady && !consent && !explaining) {
     return (
-      <div data-guide="location-card" className="tile-card-2 flex items-center gap-3 p-4">
+      <div data-guide="location-card" className="plain-card flex items-center gap-3 p-4">
         <MapPin className="size-6 shrink-0 text-primary" aria-hidden />
         <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-muted-foreground">
           Share where you are and Béa will show which saved places are within reach.
@@ -356,7 +356,7 @@ function HomePlaceCard({
 }) {
   const art = placeArtUrl(placeArtFor({ category: pin.category, name: pin.name }));
   return (
-    <article className="rise tile-card-4 flex gap-3 p-2.5">
+    <article className="rise plain-card flex gap-3 p-2.5">
       <img
         src={art}
         alt=""

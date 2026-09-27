@@ -198,11 +198,11 @@
 
   /* Peach, sky, mint, butter, blush — different enough that neighbouring
      boxes read as different colours, which is the point of Colorful. */
-  --tile-1: #f7d8c9;
-  --tile-2: #dceaf4;
-  --tile-3: #dcecdd;
-  --tile-4: #f4e7b9;
-  --tile-5: #f4dce2;
+  --tile-1: color-mix(in oklch, #e6ddf3 62%, white);
+  --tile-2: color-mix(in oklch, #dceaf4 62%, white);
+  --tile-3: color-mix(in oklch, #dcecdd 62%, white);
+  --tile-4: color-mix(in oklch, #f4e7b9 62%, white);
+  --tile-5: color-mix(in oklch, #f4dce2 62%, white);
 
   --inverse-accent: oklch(0.83 0.1 295);
 
@@ -509,7 +509,7 @@
 
 /**
  * A card that is a quiet white card in Calm and Dark and turns pastel in
- * Colorful: tile-card-1 peach, -2 sky, -3 mint, -4 butter, -5 blush.
+ * Colorful: tile-card-1 lavender, -2 sky, -3 mint, -4 butter, -5 blush (light).
  * Plain CSS rather than @utility so the Colorful rules sit beside the base;
  * in the components layer so utilities on the element still win.
  */
@@ -544,6 +544,35 @@
   [data-theme="colorful"] .tile-card-5 {
     background-color: var(--tile-5);
   }
+
+  /* A big card or list: plain in every theme, Colorful included — in the
+     master, pastels are for small tiles, never for whole sections. */
+  .plain-card {
+    background-color: var(--color-card);
+    border: 1px solid color-mix(in oklch, var(--color-border) 55%, transparent);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Numbered things (stops, steps) take a different accent each in Colorful,
+     cycling seq-1..5; the theme accent in Calm and Dark. */
+  :is(.seq-1, .seq-2, .seq-3, .seq-4, .seq-5) {
+    background-color: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+  :is(.seq-text-1, .seq-text-2, .seq-text-3, .seq-text-4, .seq-text-5) {
+    color: var(--color-primary);
+  }
+  [data-theme="colorful"] .seq-1 { background-color: #c24a67; color: #fff; }
+  [data-theme="colorful"] .seq-2 { background-color: #2f7bb0; color: #fff; }
+  [data-theme="colorful"] .seq-3 { background-color: #2a7f52; color: #fff; }
+  [data-theme="colorful"] .seq-4 { background-color: #7a5aa8; color: #fff; }
+  [data-theme="colorful"] .seq-5 { background-color: #a8730f; color: #fff; }
+  [data-theme="colorful"] .seq-text-1 { color: #c24a67; }
+  [data-theme="colorful"] .seq-text-2 { color: #2f7bb0; }
+  [data-theme="colorful"] .seq-text-3 { color: #2a7f52; }
+  [data-theme="colorful"] .seq-text-4 { color: #7a5aa8; }
+  [data-theme="colorful"] .seq-text-5 { color: #a8730f; }
 
   /* The painted pictures are shared by every theme, as in the master; Dark
      takes the glare off them. */

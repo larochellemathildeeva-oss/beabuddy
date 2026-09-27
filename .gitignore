@@ -40,3 +40,4 @@ dist-ssr
 scripts/preview/out
 scripts/places-bench/out
 .superdesign/tmp/
+.claude/worktrees/

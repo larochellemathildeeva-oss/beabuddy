@@ -112,7 +112,7 @@ export function TripOverview({
 
   return (
     <div className="space-y-6">
-      <div className="tile-card-1 flex divide-x divide-border py-3">
+      <div className="plain-card flex divide-x divide-border py-3">
         <Stat icon={CalendarDays} value={dates} label={names.length ? names[0]! : "Trip"} />
         <Stat
           icon={MapPin}
@@ -167,11 +167,11 @@ export function TripOverview({
           }
         />
         {groups.length === 0 ? (
-          <p className="tile-card-4 p-4 text-[14px] text-muted-foreground">
+          <p className="plain-card p-4 text-[14px] text-muted-foreground">
             Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have.
           </p>
         ) : (
-          <div className="tile-card-1 divide-y divide-border overflow-hidden">
+          <div className="plain-card divide-y divide-border overflow-hidden">
             {groups.map((group) =>
               group.items.map((item) => {
                 n += 1;
@@ -193,7 +193,9 @@ export function TripOverview({
                     onClick={() => onOpenTimeline(group.key)}
                     className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
                   >
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary text-[12.5px] font-bold text-primary-foreground">
+                    <span
+                      className={`seq-${((n - 1) % 5) + 1} grid size-7 shrink-0 place-items-center rounded-full text-[12.5px] font-bold`}
+                    >
                       {n}
                     </span>
                     <img

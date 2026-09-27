@@ -215,7 +215,7 @@ function SignedInHome() {
         {layout.trip && !trips.loading && <HomeYourTrips trips={others} photos={photos} />}
 
         {showSamplePrompt && (
-          <section data-guide="home-empty" className="rise tile-card-1 p-5">
+          <section data-guide="home-empty" className="rise plain-card p-5">
             <p className="font-display text-[20px] leading-snug">{beaLine("empty.home").title}</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">{beaLine("empty.home").body}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -241,7 +241,7 @@ function SignedInHome() {
         {layout.future && topNote && (
           <section data-guide="home-future" className="rise">
             <SectionHead title={`Future me · ${topNote.city}`} aside="Surfaces on revisit" />
-            <div className="tile-card-5 p-4">
+            <div className="plain-card p-4">
               <div className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-reco" />
                 <span className="label-caps">

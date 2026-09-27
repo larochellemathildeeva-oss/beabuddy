@@ -151,7 +151,7 @@ export function TripCard({
       to="/trips/$tripId"
       params={{ tripId: trip.id }}
       viewTransition
-      className="tile-card-1 group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
+      className="plain-card group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
     >
       <div className="flex">
         <div
