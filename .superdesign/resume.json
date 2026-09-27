@@ -214,5 +214,13 @@
         "dark": "d80dcb7d-8438-496c-842a-792acd201e37"
       }
     }
+  },
+  "drafts": {},
+  "companion_v1": {
+    "source": "ChatGPT draft, adapted",
+    "calm": "56b8fbc8-f078-4115-b44c-d26396d721e2",
+    "colorful": "2c3c36e8-92af-4cf7-8142-e71139c07202",
+    "dark": "cdf20a67-7216-40c9-b847-64ea557e9675",
+    "status": "awaiting approval"
   }
 }
