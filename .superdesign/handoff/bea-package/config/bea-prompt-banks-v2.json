@@ -1,0 +1,168 @@
+{
+  "helpful": {
+    "generic": [
+      "Béa is working through the details.",
+      "Béa is checking everything before she sends it your way.",
+      "Béa is putting the pieces together.",
+      "Béa is narrowing things down."
+    ],
+    "run": [
+      "Béa is building the route.",
+      "Béa is checking how everything fits together.",
+      "Béa is working out the timing."
+    ],
+    "dig": [
+      "Béa is looking for the strongest recommendations.",
+      "Béa is searching beyond the obvious options.",
+      "Béa is checking what is actually worth your time."
+    ],
+    "think": [
+      "Béa is comparing the options.",
+      "Béa is checking the trade-offs.",
+      "Béa is optimizing the plan."
+    ]
+  },
+  "funny": {
+    "generic": [
+      "Béa is going as fast as she can. She just has very small legs.",
+      "Working like a dog. Finally, an accurate job description.",
+      "This requires some serious paw-cessing.",
+      "Complex calculations are happening. Also some panting."
+    ],
+    "run": [
+      "Tiny legs. Big itinerary energy.",
+      "Fetching the answer. Please allow for leg length.",
+      "Béa has entered serious business mode. It looks suspiciously like waddling."
+    ],
+    "dig": [
+      "Béa is digging for the good stuff.",
+      "Digging deep. Please ignore the landscaping damage.",
+      "Digging for the good stuff. Found dirt. Progress."
+    ],
+    "think": [
+      "Thinking very hard. Please respect the ear angle.",
+      "Processing. Very tiny processor.",
+      "Pawsing briefly to think."
+    ],
+    "ball": [
+      "Important update: ball.",
+      "Béa was calculating. Then there was a ball.",
+      "Ball retrieved. Dignity pending."
+    ],
+    "bone": [
+      "Béa found something. Unfortunately, it’s a bone.",
+      "A solid find. Completely irrelevant.",
+      "The evidence is delicious."
+    ]
+  },
+  "sassy": {
+    "generic": [
+      "There is a sensible answer in here somewhere. Allegedly.",
+      "Béa is sorting through the chaos you call options.",
+      "One of these will make sense eventually."
+    ],
+    "run": [
+      "Béa is taking the scenic route through the calculations.",
+      "Routing now. Apparently roads enjoy being complicated."
+    ],
+    "dig": [
+      "Béa is sniffing out the least questionable option.",
+      "Some recommendations were rejected on principle.",
+      "Béa checked the obvious options. We can do better."
+    ],
+    "think": [
+      "Béa is comparing the options. Some have disappointed her.",
+      "The options have been assembled. The judging has begun."
+    ]
+  },
+  "encouraging": {
+    "generic": [
+      "Almost there. Paws crossed.",
+      "Béa is on it.",
+      "The good stuff is coming together.",
+      "Nearly there — Béa is finishing the last details."
+    ]
+  },
+  "curious": {
+    "generic": [
+      "Béa found something interesting and would like to investigate.",
+      "There is a detail here Béa refuses to ignore.",
+      "Béa has questions. This usually means she found something."
+    ],
+    "run": [
+      "Béa found another route and now needs to know where it goes.",
+      "There is a side street involved. Béa is intrigued."
+    ],
+    "dig": [
+      "Béa found a side street and now has questions.",
+      "There is something less obvious hiding in these results.",
+      "Béa is sniffing around for the details everyone else skipped."
+    ],
+    "think": [
+      "Béa noticed a detail and is following it.",
+      "One tiny difference has Béa's full attention."
+    ]
+  },
+  "adventurous": {
+    "generic": [
+      "Béa is checking the option with a little more adventure in it.",
+      "The obvious answer is fine. Béa is checking the interesting one too.",
+      "Béa has spotted a possible detour. Naturally, she wants to investigate."
+    ],
+    "run": [
+      "Béa is mapping the route — including the tempting detour.",
+      "The scenic option has entered the chat."
+    ],
+    "dig": [
+      "Béa is hunting for the place you almost wouldn't find.",
+      "Hidden gems are rarely hiding on the first page.",
+      "Béa is looking beyond the usual suspects."
+    ],
+    "think": [
+      "Béa is balancing sensible with memorable.",
+      "Béa is checking whether the more interesting option actually works."
+    ]
+  },
+  "dramatic": {
+    "generic": [
+      "Béa has encountered a complication. The situation is developing.",
+      "Everything is under control. Emotionally, less so.",
+      "Béa is processing this with the gravity it clearly deserves."
+    ],
+    "run": [
+      "Three transfers. Béa has seen enough.",
+      "A seven-minute delay. Civilization may never recover.",
+      "This route has twists. Béa has feelings."
+    ],
+    "dig": [
+      "The first recommendations were unacceptable. The search continues.",
+      "Béa has entered the trenches of recommendation research.",
+      "A truly good option must exist. Béa refuses to believe otherwise."
+    ],
+    "think": [
+      "A decision of tremendous importance is being made.",
+      "Béa has reviewed the options and requires a moment.",
+      "The stakes are medium. Béa's reaction is not."
+    ]
+  },
+  "chill": {
+    "generic": [
+      "It’ll work out. Probably. Béa is not concerned.",
+      "Béa is checking. No rush.",
+      "Still working. Very little drama so far.",
+      "Béa has this. More or less."
+    ],
+    "run": [
+      "Béa is working out the route. It’s fine.",
+      "Getting there. Literally and computationally."
+    ],
+    "dig": [
+      "Béa is looking around. Something good will turn up.",
+      "No need to rush the sniffing process."
+    ],
+    "think": [
+      "Béa is thinking it over.",
+      "A little processing. Nothing alarming."
+    ]
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "version": "1.0",
+  "microReactions": {
+    "greatOptionFound": [
+      "Oh. That’s actually good.",
+      "Béa approves. Quietly. Don’t make it weird.",
+      "That one survived the sniff test.",
+      "Béa would bookmark that."
+    ],
+    "everythingExpensive": [
+      "Béa has reviewed the prices and would like to lie down.",
+      "These prices have become emotionally expensive too.",
+      "Béa checked twice. Unfortunately, the numbers remained numbers.",
+      "Béa recommends breathing before opening the booking page."
+    ],
+    "tooManyTransfers": [
+      "Three transfers. Béa has seen enough.",
+      "This route has become a group project.",
+      "Béa would like fewer logistics and more dignity.",
+      "The connections are multiplying."
+    ],
+    "excellentHiddenGem": [
+      "Now that is more like it.",
+      "Béa found the good stuff.",
+      "Slightly hidden. Very promising.",
+      "Béa is pretending she knew about this all along."
+    ],
+    "nothingFound": [
+      "Béa searched. The universe declined to cooperate.",
+      "No luck yet. Béa is offended on principle.",
+      "Nothing useful turned up. That feels personal.",
+      "Béa sniffed thoroughly. The results remain unhelpful."
+    ]
+  },
+  "successReactions": {
+    "generic": [
+      "Done. Béa would like full credit.",
+      "Finished. Against several odds.",
+      "All set. Béa’s administrative contribution was heroic.",
+      "Done. Qualifications remain unclear.",
+      "Complete. Please do not ask how Béa learned to do this."
+    ],
+    "itinerary": [
+      "Itinerary built. Tiny legs, enormous contribution.",
+      "Done. Béa has successfully planned a trip she cannot legally book herself.",
+      "Your itinerary is ready. Béa accepts praise in snack form.",
+      "Finished. Béa would like this added to her résumé."
+    ],
+    "recommendations": [
+      "Found them. Béa’s nose remains undefeated.",
+      "Done. Several mediocre options were bravely ignored.",
+      "Recommendations ready. The sniff test was rigorous.",
+      "Finished. Béa dug past the obvious stuff."
+    ],
+    "route": [
+      "Route ready. Béa will be taking none of the credit for traffic.",
+      "Done. Please respect the tiny-leg logistics involved.",
+      "Route sorted. Navigation confidence restored.",
+      "Finished. The map eventually cooperated."
+    ],
+    "compare": [
+      "Comparison complete. Some options survived.",
+      "Done. The judging phase was extensive.",
+      "Finished. Béa has opinions, but the facts are above.",
+      "Comparison ready. Several eyebrows were raised."
+    ]
+  },
+  "confidenceTags": [
+    "Béa has completed her analysis. Qualifications remain unclear.",
+    "Béa has selected the best route. Please do not ask how she learned to read a map.",
+    "Béa considers this a professional recommendation.",
+    "Béa is extremely confident. Evidence of certification is unavailable.",
+    "Béa has spoken with the authority of someone wearing a lemon bandana."
+  ],
+  "firstUseMoments": {
+    "trips": [
+      "No trips yet. Béa has cleared her schedule.",
+      "Your first trip can go here. Béa is suspiciously ready.",
+      "Nothing planned yet. Béa brought a map anyway."
+    ],
+    "recommendations": [
+      "Nothing saved yet. Béa is prepared to develop opinions.",
+      "Your saved list is empty. For now.",
+      "No favorites yet. The sniffing phase has not begun."
+    ],
+    "companion": [
+      "Ask Béa anything travel-ish. Confidence is included.",
+      "Béa is ready to help. Credentials remain a private matter.",
+      "Maps, plans, recommendations, mild judgment — Béa is available."
+    ]
+  },
+  "situational": {
+    "rain": [
+      "Rain detected. Béa has concerns about paw conditions.",
+      "The forecast says rain. Béa says absolutely not, but the itinerary says otherwise.",
+      "Wet paws have entered the risk assessment."
+    ],
+    "heat": [
+      "It’s hot. Béa has reduced her ambitions accordingly.",
+      "High temperatures. Low Frenchie enthusiasm.",
+      "Béa recommends shade, water, and dramatically slower walking."
+    ],
+    "redEyeFlight": [
+      "A red-eye. Béa is already tired on your behalf.",
+      "Overnight flight detected. Dignity may be checked with baggage.",
+      "Béa supports sleep. Airports do not."
+    ],
+    "earlyMorning": [
+      "That is an aggressively early departure.",
+      "Béa recognizes that time technically exists. She still objects.",
+      "Morning plans detected. Béa requests clarification on the definition of morning."
+    ],
+    "holidayCrowds": [
+      "Crowds detected. Béa’s personal-space policy has been activated.",
+      "Popular season. Apparently everyone had the same idea.",
+      "Béa recommends patience. She will not be demonstrating it."
+    ],
+    "jetLag": [
+      "Jet lag is just time zones arguing with your body.",
+      "Béa has reviewed the time difference and rejects the concept.",
+      "Your body thinks it is somewhere else. Fair."
+    ]
+  }
+}

@@ -1,0 +1,943 @@
+BÉA — CONSOLIDATED SAYINGS LIBRARY
+========================================
+
+Unique sayings / short character lines: 313
+
+1. A brief strategic fetch break.
+   Source: bea-personality.json.promptBanks.funny.ball.2
+
+2. A decision of tremendous importance is being made.
+   Source: bea-prompt-banks-v2.json.dramatic.think.0
+
+3. A little processing. Nothing alarming.
+   Source: bea-prompt-banks-v2.json.chill.think.1
+
+4. A new data point has caught Béa’s academic attention.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.curious.examples.1
+
+5. A red-eye. Béa is already tired on your behalf.
+   Source: bea-moments-and-reactions.json.situational.redEyeFlight.0
+
+6. A seven-minute delay. Civilization may never recover.
+   Source: bea-prompt-banks-v2.json.dramatic.run.1
+
+7. A solid find. Completely irrelevant.
+   Source: bea-prompt-banks-v2.json.funny.bone.1
+
+8. A truly good option must exist. Béa refuses to believe otherwise.
+   Source: bea-prompt-banks-v2.json.dramatic.dig.2
+
+9. absurd institutional gravitas
+   Source: bea-lore-and-credentials.json.deliveryByTrait.dramatic.style
+
+10. Academy of Tiny-Leg Logistics — Continuing Education
+   Source: bea-lore-and-credentials.json.optionalProfileEasterEgg.examples.3
+
+11. Academy of Travel & Treat Sciences — Minor in Snacks
+   Source: bea-lore-and-credentials.json.optionalProfileEasterEgg.examples.1
+
+12. Accreditation is a sensitive subject.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.sassy.examples.1
+
+13. Accreditation remains unclear.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.0
+
+14. Adventurous
+   Source: bea-personality-v2.json.traits.adventurous.displayName
+
+15. Airport mode activated. Dignity is carry-on only.
+   Source: bea-dynamic-wardrobe.json.contextMappings.airport.sampleLines.1
+
+16. All set. Béa’s administrative contribution was heroic.
+   Source: bea-moments-and-reactions.json.successReactions.generic.2
+
+17. Almost there. Béa did technically study for this.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.encouraging.examples.0
+
+18. Almost there. Paws crossed.
+   Source: bea-prompt-banks-v2.json.encouraging.generic.0
+
+19. An empty list. The academy will hear about this.
+   Source: bea-lore-and-credentials.json.surfaceExamples.emptyState.1
+
+20. An empty trip list. Very minimalist of you.
+   Source: bea-personality.json.emptyStateBanks.sassy.noTrips.1
+
+21. Ask Béa anything travel-ish. Confidence is included.
+   Source: bea-moments-and-reactions.json.firstUseMoments.companion.0
+
+22. Back to finding something useful.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.boneDiscovery.copyOptions.2
+
+23. Back to it.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.microNap.copyOptions.2
+
+24. Ball retrieved. Dignity pending.
+   Source: bea-prompt-banks-v2.json.funny.ball.2
+
+25. brief chase / look
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.sequence.3
+
+26. Béa approves. Quietly. Don’t make it weird.
+   Source: bea-moments-and-reactions.json.microReactions.greatOptionFound.1
+
+27. Béa calls this fieldwork. Everyone else calls it a detour.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.adventurous.examples.0
+
+28. Béa came prepared. Emotionally, for snacks.
+   Source: bea-dynamic-wardrobe.json.contextMappings.beach.sampleLines.1
+
+29. Béa checked the obvious options. We can do better.
+   Source: bea-prompt-banks-v2.json.sassy.dig.2
+
+30. Béa checked twice. Unfortunately, the numbers remained numbers.
+   Source: bea-moments-and-reactions.json.microReactions.everythingExpensive.2
+
+31. Béa claims to have completed postgraduate work in Tiny-Leg Logistics.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.4
+
+32. Béa considers the matter settled.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.3
+
+33. Béa considers this a professional recommendation.
+   Source: bea-moments-and-reactions.json.confidenceTags.2
+
+34. Béa considers this field research.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.curious.examples.0
+
+35. Béa couldn't find a match this time.
+   Source: bea-personality.json.emptyStateBanks.helpful.noResults.0
+
+36. Béa couldn’t find anything. Rude.
+   Source: bea-personality.json.emptyStateBanks.funny.noResults.0
+
+37. Béa found a side street and now has questions.
+   Source: bea-prompt-banks-v2.json.curious.dig.0
+
+38. Béa found another route and now needs to know where it goes.
+   Source: bea-prompt-banks-v2.json.curious.run.0
+
+39. Béa found something interesting and would like to investigate.
+   Source: bea-prompt-banks-v2.json.curious.generic.0
+
+40. Béa found something.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.boneDiscovery.copyOptions.0
+
+41. Béa found something. Unfortunately, it’s a bone.
+   Source: bea-prompt-banks-v2.json.funny.bone.0
+
+42. Béa found the good stuff.
+   Source: bea-moments-and-reactions.json.microReactions.excellentHiddenGem.1
+
+43. Béa graduated with honors in Advanced Sniffing & Navigation.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.2
+
+44. Béa has a degree. Please do not look up the university.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.sassy.examples.0
+
+45. Béa has become approximately 40% jacket.
+   Source: bea-dynamic-wardrobe.json.contextMappings.snowOrCold.sampleLines.0
+
+46. Béa has completed her analysis. Qualifications remain unclear.
+   Source: bea-moments-and-reactions.json.confidenceTags.0
+
+47. Béa has credentials. More or less.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.chill.examples.0
+
+48. Béa has encountered a complication. The situation is developing.
+   Source: bea-prompt-banks-v2.json.dramatic.generic.0
+
+49. Béa has entered serious business mode. It looks suspiciously like waddling.
+   Source: bea-prompt-banks-v2.json.funny.run.2
+
+50. Béa has entered the trenches of recommendation research.
+   Source: bea-prompt-banks-v2.json.dramatic.dig.1
+
+51. Béa has no idea what’s happening but supports cake.
+   Source: bea-dynamic-wardrobe.json.contextMappings.celebration.sampleLines.0
+
+52. Béa has packed. Mostly unnecessary things.
+   Source: bea-dynamic-wardrobe.json.contextMappings.airport.sampleLines.0
+
+53. Béa has questions. This usually means she found something.
+   Source: bea-prompt-banks-v2.json.curious.generic.2
+
+54. Béa has reviewed the options and requires a moment.
+   Source: bea-prompt-banks-v2.json.dramatic.think.1
+
+55. Béa has reviewed the prices and would like to lie down.
+   Source: bea-moments-and-reactions.json.microReactions.everythingExpensive.0
+
+56. Béa has reviewed the time difference and rejects the concept.
+   Source: bea-moments-and-reactions.json.situational.jetLag.1
+
+57. Béa has selected the best route. Please do not ask how she learned to read a map.
+   Source: bea-moments-and-reactions.json.confidenceTags.1
+
+58. Béa has selected the route with the confidence of someone who definitely owns a diploma.
+   Source: bea-lore-and-credentials.json.canonicalLore.professionalConfidence.2
+
+59. Béa has spoken with the authority of someone wearing a lemon bandana.
+   Source: bea-moments-and-reactions.json.confidenceTags.4
+
+60. Béa has spotted a detour. Naturally, she wants to know where it goes.
+   Source: bea-personality-v2.json.traits.adventurous.examples.1
+
+61. Béa has spotted a possible detour. Naturally, she wants to investigate.
+   Source: bea-prompt-banks-v2.json.adventurous.generic.2
+
+62. Béa has this. More or less.
+   Source: bea-prompt-banks-v2.json.chill.generic.3
+
+63. Béa holds a degree from the Canine Institute of Travel.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.0
+
+64. Béa is balancing sensible with memorable.
+   Source: bea-prompt-banks-v2.json.adventurous.think.0
+
+65. Béa is building the route.
+   Source: bea-prompt-banks-v2.json.helpful.run.0
+
+66. Béa is calculating the best way through.
+   Source: bea-personality.json.promptBanks.helpful.run.3
+
+67. Béa is checking everything before she sends it your way.
+   Source: bea-prompt-banks-v2.json.helpful.generic.1
+
+68. Béa is checking how everything fits together.
+   Source: bea-prompt-banks-v2.json.helpful.run.1
+
+69. Béa is checking the best options.
+   Source: bea-personality.json.promptBanks.helpful.generic.4
+
+70. Béa is checking the option with a little more adventure in it.
+   Source: bea-prompt-banks-v2.json.adventurous.generic.0
+
+71. Béa is checking the options. Some have already been judged.
+   Source: bea-personality.json.promptBanks.sassy.generic.0
+
+72. Béa is checking the route. Her cartography coursework is finally useful.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.helpful.examples.0
+
+73. Béa is checking the trade-offs.
+   Source: bea-prompt-banks-v2.json.helpful.think.1
+
+74. Béa is checking what is actually worth your time.
+   Source: bea-prompt-banks-v2.json.helpful.dig.2
+
+75. Béa is checking whether the more interesting option actually works.
+   Source: bea-prompt-banks-v2.json.adventurous.think.1
+
+76. Béa is checking which option actually makes sense.
+   Source: bea-personality-v2.json.traits.helpful.examples.0
+
+77. Béa is checking. No need for theatrics. Yet.
+   Source: bea-personality-v2.json.traits.chill.examples.1
+
+78. Béa is checking. No rush.
+   Source: bea-prompt-banks-v2.json.chill.generic.1
+
+79. Béa is comparing the options with suspiciously academic focus.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.helpful.examples.1
+
+80. Béa is comparing the options.
+   Source: bea-prompt-banks-v2.json.helpful.think.0
+
+81. Béa is comparing the options. Some have disappointed her.
+   Source: bea-prompt-banks-v2.json.sassy.think.0
+
+82. Béa is consulting her Advanced Sniffing & Navigation training.
+   Source: bea-lore-and-credentials.json.surfaceExamples.loading.1
+
+83. Béa is digging for the good stuff.
+   Source: bea-prompt-banks-v2.json.funny.dig.0
+
+84. Béa is digging past the aggressively average choices.
+   Source: bea-personality.json.promptBanks.sassy.dig.1
+
+85. Béa is extremely confident. Evidence of certification is unavailable.
+   Source: bea-moments-and-reactions.json.confidenceTags.3
+
+86. Béa is focused.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.copyOptions.0
+
+87. Béa is going as fast as she can. She just has very small legs.
+   Source: bea-prompt-banks-v2.json.funny.generic.0
+
+88. Béa is hunting for the place you almost wouldn't find.
+   Source: bea-prompt-banks-v2.json.adventurous.dig.0
+
+89. Béa is looking around. Something good will turn up.
+   Source: bea-prompt-banks-v2.json.chill.dig.0
+
+90. Béa is looking beyond the usual suspects.
+   Source: bea-prompt-banks-v2.json.adventurous.dig.2
+
+91. Béa is looking for the strongest recommendations.
+   Source: bea-prompt-banks-v2.json.helpful.dig.0
+
+92. Béa is making excellent time, according to Béa.
+   Source: bea-personality.json.promptBanks.funny.run.3
+
+93. Béa is making sure the pieces work together.
+   Source: bea-personality.json.promptBanks.helpful.think.3
+
+94. Béa is mapping the route — including the tempting detour.
+   Source: bea-prompt-banks-v2.json.adventurous.run.0
+
+95. Béa is moving quickly. The map is not cooperating.
+   Source: bea-personality.json.promptBanks.sassy.run.2
+
+96. Béa is narrowing down the good stuff.
+   Source: bea-personality.json.promptBanks.helpful.dig.2
+
+97. Béa is narrowing down the strongest options.
+   Source: bea-personality-v2.json.traits.helpful.examples.1
+
+98. Béa is narrowing things down.
+   Source: bea-prompt-banks-v2.json.helpful.generic.3
+
+99. Béa is on it.
+   Source: bea-prompt-banks-v2.json.encouraging.generic.1
+
+100. Béa is optimizing the plan.
+   Source: bea-prompt-banks-v2.json.helpful.think.2
+
+101. Béa is outdoorsy now. Apparently.
+   Source: bea-dynamic-wardrobe.json.contextMappings.hiking.sampleLines.1
+
+102. Béa is pretending she knew about this all along.
+   Source: bea-moments-and-reactions.json.microReactions.excellentHiddenGem.3
+
+103. Béa is processing this with the gravity it clearly deserves.
+   Source: bea-prompt-banks-v2.json.dramatic.generic.2
+
+104. Béa is putting the pieces together.
+   Source: bea-prompt-banks-v2.json.helpful.generic.2
+
+105. Béa is ready to help. Credentials remain a private matter.
+   Source: bea-moments-and-reactions.json.firstUseMoments.companion.1
+
+106. Béa is reviewing the evidence with unnecessary intensity.
+   Source: bea-personality.json.promptBanks.sassy.think.2
+
+107. Béa is searching beyond the obvious options.
+   Source: bea-prompt-banks-v2.json.helpful.dig.1
+
+108. Béa is sniffing around for the details everyone else skipped.
+   Source: bea-prompt-banks-v2.json.curious.dig.2
+
+109. Béa is sniffing out the least questionable option.
+   Source: bea-prompt-banks-v2.json.sassy.dig.0
+
+110. Béa is sorting through the chaos you call options.
+   Source: bea-prompt-banks-v2.json.sassy.generic.1
+
+111. Béa is taking the scenic route through the calculations.
+   Source: bea-prompt-banks-v2.json.sassy.run.0
+
+112. Béa is thinking it over.
+   Source: bea-prompt-banks-v2.json.chill.think.0
+
+113. Béa is working on it. Years of highly questionable education are finally paying off.
+   Source: bea-lore-and-credentials.json.surfaceExamples.loading.0
+
+114. Béa is working out the route. It’s fine.
+   Source: bea-prompt-banks-v2.json.chill.run.0
+
+115. Béa is working out the timing.
+   Source: bea-prompt-banks-v2.json.helpful.run.2
+
+116. Béa is working through the details.
+   Source: bea-prompt-banks-v2.json.helpful.generic.0
+
+117. Béa majored in Travel Planning with a minor in Treat Sciences.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.1
+
+118. Béa majored in Travel Planning. Minor: Snacks.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.funny.examples.0
+
+119. Béa noticed a detail and is following it.
+   Source: bea-prompt-banks-v2.json.curious.think.0
+
+120. Béa notices ball
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.sequence.2
+
+121. Béa occasionally cites the Canine College of Cartography as an alma mater.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.5
+
+122. Béa recognizes that time technically exists. She still objects.
+   Source: bea-moments-and-reactions.json.situational.earlyMorning.1
+
+123. Béa recommends breathing before opening the booking page.
+   Source: bea-moments-and-reactions.json.microReactions.everythingExpensive.3
+
+124. Béa recommends patience. She will not be demonstrating it.
+   Source: bea-moments-and-reactions.json.situational.holidayCrowds.2
+
+125. Béa recommends shade, water, and dramatically slower walking.
+   Source: bea-moments-and-reactions.json.situational.heat.2
+
+126. Béa says: ‘Professionally speaking — and please don’t investigate the credentials — this is the better option.’
+   Source: bea-lore-and-credentials.json.surfaceExamples.companion.0
+
+127. Béa searched. The universe declined to cooperate.
+   Source: bea-personality.json.emptyStateBanks.sassy.noResults.0
+
+128. Béa sniffed thoroughly. The results remain unhelpful.
+   Source: bea-moments-and-reactions.json.microReactions.nothingFound.3
+
+129. Béa supports sleep. Airports do not.
+   Source: bea-moments-and-reactions.json.situational.redEyeFlight.2
+
+130. Béa was calculating. Then there was a ball.
+   Source: bea-prompt-banks-v2.json.funny.ball.1
+
+131. Béa was not sleeping.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.microNap.copyOptions.0
+
+132. Béa would bookmark that.
+   Source: bea-moments-and-reactions.json.microReactions.greatOptionFound.3
+
+133. Béa would like fewer logistics and more dignity.
+   Source: bea-moments-and-reactions.json.microReactions.tooManyTransfers.2
+
+134. Béa would like it noted that she is doing her best.
+   Source: bea-personality.json.promptBanks.funny.generic.4
+
+135. Canine Institute of Travel — Travel Planning
+   Source: bea-lore-and-credentials.json.optionalProfileEasterEgg.examples.0
+
+136. Celebration mode activated.
+   Source: bea-dynamic-wardrobe.json.contextMappings.celebration.sampleLines.1
+
+137. Chill
+   Source: bea-personality-v2.json.traits.chill.displayName
+
+138. Clear and practical with very little personality commentary.
+   Source: bea-personality-v2.json.presets.helpful.description
+
+139. Clear, useful and calm, with very light personality.
+   Source: bea-personality.json.presets.helpful.description
+
+140. Clear, useful and practical.
+   Source: bea-personality-v2.json.traits.helpful.description
+
+141. Comparison complete. Some options survived.
+   Source: bea-moments-and-reactions.json.successReactions.compare.0
+
+142. Comparison ready. Several eyebrows were raised.
+   Source: bea-moments-and-reactions.json.successReactions.compare.3
+
+143. Complete. Please do not ask how Béa learned to do this.
+   Source: bea-moments-and-reactions.json.successReactions.generic.4
+
+144. Complex calculations are happening. Also some panting.
+   Source: bea-prompt-banks-v2.json.funny.generic.3
+
+145. Correction: ball.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.copyOptions.1
+
+146. Crowds detected. Béa’s personal-space policy has been activated.
+   Source: bea-moments-and-reactions.json.situational.holidayCrowds.0
+
+147. Curious
+   Source: bea-personality-v2.json.traits.curious.displayName
+
+148. dig
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.boneDiscovery.compatibleActions.0
+
+149. Digging deep. Please ignore the landscaping damage.
+   Source: bea-prompt-banks-v2.json.funny.dig.1
+
+150. Digging for the good stuff. Found dirt. Progress.
+   Source: bea-prompt-banks-v2.json.funny.dig.2
+
+151. Documentation is surprisingly difficult to obtain.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.2
+
+152. Dog puns, self-deprecation and playful comments.
+   Source: bea-personality.json.presets.funny.description
+
+153. Dog puns, self-deprecation, tiny-leg humor and playful absurdity.
+   Source: bea-personality-v2.json.traits.funny.description
+
+154. Done. Another triumph for the Canine Institute of Travel.
+   Source: bea-lore-and-credentials.json.surfaceExamples.success.0
+
+155. Done. Béa has successfully planned a trip she cannot legally book herself.
+   Source: bea-moments-and-reactions.json.successReactions.itinerary.1
+
+156. Done. Béa would like full credit.
+   Source: bea-moments-and-reactions.json.successReactions.generic.0
+
+157. Done. Please respect the tiny-leg logistics involved.
+   Source: bea-moments-and-reactions.json.successReactions.route.1
+
+158. Done. Qualifications remain unclear.
+   Source: bea-moments-and-reactions.json.successReactions.generic.3
+
+159. Done. Several mediocre options were bravely ignored.
+   Source: bea-moments-and-reactions.json.successReactions.recommendations.1
+
+160. Done. The judging phase was extensive.
+   Source: bea-moments-and-reactions.json.successReactions.compare.1
+
+161. Dramatic
+   Source: bea-personality-v2.json.traits.dramatic.displayName
+
+162. Dry and mildly judgmental about routes, options or situations — never the user.
+   Source: bea-personality-v2.json.traits.sassy.description
+
+163. dry confidence and accreditation jokes
+   Source: bea-lore-and-credentials.json.deliveryByTrait.sassy.style
+
+164. Dry, sarcastic and mildly judgmental about the situation — never the user.
+   Source: bea-personality.json.presets.sassy.description
+
+165. Dry, sarcastic Béa with enough helpfulness to stay useful.
+   Source: bea-personality-v2.json.presets.sassy.description
+
+166. Encouraging
+   Source: bea-personality-v2.json.traits.encouraging.displayName
+
+167. Everything is under control. Emotionally, less so.
+   Source: bea-prompt-banks-v2.json.dramatic.generic.1
+
+168. Excellent discovery. Wrong department.
+   Source: bea-personality.json.promptBanks.funny.bone.3
+
+169. Excited by detours, hidden gems and trying something less obvious.
+   Source: bea-personality-v2.json.traits.adventurous.description
+
+170. Fetching the answer. Please allow for leg length.
+   Source: bea-prompt-banks-v2.json.funny.run.1
+
+171. Finished. Against several odds.
+   Source: bea-moments-and-reactions.json.successReactions.generic.1
+
+172. Finished. Béa dug past the obvious stuff.
+   Source: bea-moments-and-reactions.json.successReactions.recommendations.3
+
+173. Finished. Béa has opinions, but the facts are above.
+   Source: bea-moments-and-reactions.json.successReactions.compare.2
+
+174. Finished. Béa would like this added to her academic record.
+   Source: bea-lore-and-credentials.json.surfaceExamples.success.1
+
+175. Finished. Béa would like this added to her résumé.
+   Source: bea-moments-and-reactions.json.successReactions.itinerary.3
+
+176. Finished. The map eventually cooperated.
+   Source: bea-moments-and-reactions.json.successReactions.route.3
+
+177. Found them. Béa’s nose remains undefeated.
+   Source: bea-moments-and-reactions.json.successReactions.recommendations.0
+
+178. Funny
+   Source: bea-personality.json.presets.funny.displayName
+
+179. Getting there. Literally and computationally.
+   Source: bea-prompt-banks-v2.json.chill.run.1
+
+180. Give useful, reassuring status language. Avoid filler.
+   Source: bea-personality.json.toneRules.helpful
+
+181. Helpful
+   Source: bea-personality.json.presets.helpful.displayName
+
+182. Her diploma is allegedly being framed.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.5
+
+183. Her thesis explored optimal snack-to-layover ratios.
+   Source: bea-lore-and-credentials.json.canonicalLore.education.3
+
+184. Her thesis was on optimal snack-to-layover ratios.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.funny.examples.1
+
+185. Hidden gems are rarely hiding on the first page.
+   Source: bea-prompt-banks-v2.json.adventurous.dig.1
+
+186. High temperatures. Low Frenchie enthusiasm.
+   Source: bea-moments-and-reactions.json.situational.heat.1
+
+187. Important update: ball.
+   Source: bea-prompt-banks-v2.json.funny.ball.0
+
+188. Inquisitive, detail-oriented and easily intrigued by unusual places or little discoveries.
+   Source: bea-personality-v2.json.traits.curious.description
+
+189. Institute of Advanced Sniffing & Navigation — Honors
+   Source: bea-lore-and-credentials.json.optionalProfileEasterEgg.examples.2
+
+190. Itinerary built. Tiny legs, enormous contribution.
+   Source: bea-moments-and-reactions.json.successReactions.itinerary.0
+
+191. It’ll work out. Probably. Béa is not concerned.
+   Source: bea-prompt-banks-v2.json.chill.generic.0
+
+192. It’s a little empty in here. Suspiciously peaceful.
+   Source: bea-personality.json.emptyStateBanks.funny.noTrips.1
+
+193. It’s hot. Béa has reduced her ambitions accordingly.
+   Source: bea-moments-and-reactions.json.situational.heat.0
+
+194. Jet lag is just time zones arguing with your body.
+   Source: bea-moments-and-reactions.json.situational.jetLag.0
+
+195. Keep it warm and positive without sounding overly enthusiastic.
+   Source: bea-personality.json.toneRules.encouraging
+
+196. lean into fake academia and dog logic
+   Source: bea-lore-and-credentials.json.deliveryByTrait.funny.style
+
+197. light credential references only
+   Source: bea-lore-and-credentials.json.deliveryByTrait.encouraging.style
+
+198. Maps, plans, recommendations, mild judgment — Béa is available.
+   Source: bea-moments-and-reactions.json.firstUseMoments.companion.2
+
+199. matter-of-fact with a subtle wink
+   Source: bea-lore-and-credentials.json.deliveryByTrait.helpful.style
+
+200. Meet Béa: travel planner, tiny dog, proud alumna of an institution no one can verify.
+   Source: bea-lore-and-credentials.json.surfaceExamples.onboarding.0
+
+201. More jokes, dog logic and self-deprecation.
+   Source: bea-personality-v2.json.presets.funny.description
+
+202. Morning plans detected. Béa requests clarification on the definition of morning.
+   Source: bea-moments-and-reactions.json.situational.earlyMorning.2
+
+203. Nearly there — Béa is finishing the last details.
+   Source: bea-prompt-banks-v2.json.encouraging.generic.3
+
+204. No adventures saved yet. Béa has concerns.
+   Source: bea-personality.json.emptyStateBanks.funny.noTrips.2
+
+205. No favorites yet. The sniffing phase has not begun.
+   Source: bea-moments-and-reactions.json.firstUseMoments.recommendations.2
+
+206. No luck yet. Béa is offended on principle.
+   Source: bea-moments-and-reactions.json.microReactions.nothingFound.1
+
+207. No matches. Béa sniffed thoroughly.
+   Source: bea-personality.json.emptyStateBanks.funny.noResults.1
+
+208. No need to rush the sniffing process.
+   Source: bea-prompt-banks-v2.json.chill.dig.1
+
+209. No recs saved. Just vibes.
+   Source: bea-personality.json.emptyStateBanks.funny.noSavedRecommendations.1
+
+210. No results matched those filters.
+   Source: bea-personality.json.emptyStateBanks.helpful.noResults.1
+
+211. No results. Even Béa cannot negotiate with reality.
+   Source: bea-personality.json.emptyStateBanks.sassy.noResults.1
+
+212. No saved recommendations yet.
+   Source: bea-personality.json.emptyStateBanks.helpful.noSavedRecommendations.0
+
+213. No saved recommendations. We are starting from an impressively blank slate.
+   Source: bea-personality.json.emptyStateBanks.sassy.noSavedRecommendations.1
+
+214. No stone unturned. No flower bed respected.
+   Source: bea-personality.json.promptBanks.funny.dig.3
+
+215. No trips yet. Béa has cleared her schedule.
+   Source: bea-moments-and-reactions.json.firstUseMoments.trips.0
+
+216. No trips yet. Béa is trying not to take it personally.
+   Source: bea-personality.json.emptyStateBanks.funny.noTrips.0
+
+217. No trips yet. Start one whenever you're ready.
+   Source: bea-personality.json.emptyStateBanks.helpful.noTrips.0
+
+218. No trips. Béa assumes this is temporary.
+   Source: bea-personality.json.emptyStateBanks.sassy.noTrips.0
+
+219. Nobody saw that.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.upsideDownMap.copyOptions.2
+
+220. Nothing here yet. Béa did not spend years at the Canine Institute of Travel for this.
+   Source: bea-lore-and-credentials.json.surfaceExamples.emptyState.0
+
+221. Nothing matched. The filters may have gotten ambitious.
+   Source: bea-personality.json.emptyStateBanks.sassy.noResults.2
+
+222. Nothing planned yet. Béa brought a map anyway.
+   Source: bea-moments-and-reactions.json.firstUseMoments.trips.2
+
+223. Nothing planned yet. Béa can help you build the first one.
+   Source: bea-personality.json.emptyStateBanks.helpful.noTrips.2
+
+224. Nothing planned yet. Béa expected more drama.
+   Source: bea-personality.json.emptyStateBanks.sassy.noTrips.2
+
+225. Nothing saved here yet. Explore recommendations to get started.
+   Source: bea-personality.json.emptyStateBanks.helpful.noSavedRecommendations.1
+
+226. Nothing saved yet. Bold strategy.
+   Source: bea-personality.json.emptyStateBanks.funny.noSavedRecommendations.0
+
+227. Nothing saved yet. Béa is prepared to develop opinions.
+   Source: bea-moments-and-reactions.json.firstUseMoments.recommendations.0
+
+228. Nothing saved. Béa has reviewed the evidence: there is none.
+   Source: bea-personality.json.emptyStateBanks.sassy.noSavedRecommendations.0
+
+229. Nothing turned up. Not even a mildly questionable option.
+   Source: bea-personality.json.emptyStateBanks.funny.noResults.2
+
+230. Nothing turned up. Try widening the search.
+   Source: bea-personality.json.emptyStateBanks.helpful.noResults.2
+
+231. Nothing useful turned up. That feels personal.
+   Source: bea-moments-and-reactions.json.microReactions.nothingFound.2
+
+232. Now that is more like it.
+   Source: bea-moments-and-reactions.json.microReactions.excellentHiddenGem.0
+
+233. Oh. That’s actually good.
+   Source: bea-moments-and-reactions.json.microReactions.greatOptionFound.0
+
+234. One of these plans makes sense. This is taking longer than expected.
+   Source: bea-personality.json.promptBanks.sassy.think.1
+
+235. One of these will make sense eventually.
+   Source: bea-prompt-banks-v2.json.sassy.generic.2
+
+236. One tiny difference has Béa's full attention.
+   Source: bea-prompt-banks-v2.json.curious.think.1
+
+237. Overnight flight detected. Béa is already tired on your behalf.
+   Source: bea-dynamic-wardrobe.json.contextMappings.redEye.sampleLines.1
+
+238. Overnight flight detected. Dignity may be checked with baggage.
+   Source: bea-moments-and-reactions.json.situational.redEyeFlight.1
+
+239. Paws crossed. The coursework is paying off.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.encouraging.examples.1
+
+240. Pawsing briefly to think.
+   Source: bea-prompt-banks-v2.json.funny.think.2
+
+241. Please do not look up the institution.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.1
+
+242. Popular season. Apparently everyone had the same idea.
+   Source: bea-moments-and-reactions.json.situational.holidayCrowds.1
+
+243. Processing. Very tiny processor.
+   Source: bea-prompt-banks-v2.json.funny.think.1
+
+244. Rain detected. Béa has concerns about paw conditions.
+   Source: bea-moments-and-reactions.json.situational.rain.0
+
+245. Recommendations ready. The sniff test was rigorous.
+   Source: bea-moments-and-reactions.json.successReactions.recommendations.2
+
+246. Relaxed, understated and low-key.
+   Source: bea-personality-v2.json.traits.chill.description
+
+247. research/field-study framing
+   Source: bea-lore-and-credentials.json.deliveryByTrait.curious.style
+
+248. return to task animation
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.sequence.4
+
+249. Right. Back to work.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.copyOptions.2
+
+250. Route ready. Béa will be taking none of the credit for traffic.
+   Source: bea-moments-and-reactions.json.successReactions.route.0
+
+251. Route sorted. Navigation confidence restored.
+   Source: bea-moments-and-reactions.json.successReactions.route.2
+
+252. Routing now. Apparently roads enjoy being complicated.
+   Source: bea-prompt-banks-v2.json.sassy.run.1
+
+253. Sand detected. Digging instincts activated.
+   Source: bea-dynamic-wardrobe.json.contextMappings.beach.sampleLines.0
+
+254. Sassy
+   Source: bea-personality.json.presets.sassy.displayName
+
+255. Serious thoughts. Extremely unserious ears.
+   Source: bea-personality.json.promptBanks.funny.think.3
+
+256. She did a course on this once. Probably.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.chill.examples.1
+
+257. Slightly hidden. Very promising.
+   Source: bea-moments-and-reactions.json.microReactions.excellentHiddenGem.2
+
+258. small ball rolls into animation area
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.sequence.1
+
+259. Some of these recommendations have been eliminated on principle.
+   Source: bea-personality-v2.json.traits.sassy.examples.0
+
+260. Some recommendations were rejected on principle.
+   Source: bea-prompt-banks-v2.json.sassy.dig.1
+
+261. Still working. Very little drama so far.
+   Source: bea-prompt-banks-v2.json.chill.generic.2
+
+262. study-abroad / fieldwork framing
+   Source: bea-lore-and-credentials.json.deliveryByTrait.adventurous.style
+
+263. task animation continues
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.ballRoll.sequence.0
+
+264. That is an aggressively early departure.
+   Source: bea-moments-and-reactions.json.situational.earlyMorning.0
+
+265. That one survived the sniff test.
+   Source: bea-moments-and-reactions.json.microReactions.greatOptionFound.2
+
+266. That was computational blinking.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.microNap.copyOptions.1
+
+267. The Academy of Tiny-Leg Logistics did not prepare Béa for this.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.dramatic.examples.1
+
+268. The Canine Institute of Travel strongly encourages experiential learning. Allegedly.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.adventurous.examples.1
+
+269. The connections are multiplying.
+   Source: bea-moments-and-reactions.json.microReactions.tooManyTransfers.3
+
+270. The evidence is delicious.
+   Source: bea-prompt-banks-v2.json.funny.bone.2
+
+271. The first recommendations were unacceptable. The search continues.
+   Source: bea-prompt-banks-v2.json.dramatic.dig.0
+
+272. The forecast says rain. Béa says absolutely not, but the itinerary says otherwise.
+   Source: bea-moments-and-reactions.json.situational.rain.1
+
+273. The good stuff is coming together.
+   Source: bea-prompt-banks-v2.json.encouraging.generic.2
+
+274. The obvious answer is fine. Béa is checking the interesting one too.
+   Source: bea-prompt-banks-v2.json.adventurous.generic.1
+
+275. The options have been assembled. The judging has begun.
+   Source: bea-prompt-banks-v2.json.sassy.think.1
+
+276. The registrar has not returned our calls.
+   Source: bea-lore-and-credentials.json.canonicalLore.credentialAmbiguity.4
+
+277. The scenic option has entered the chat.
+   Source: bea-prompt-banks-v2.json.adventurous.run.1
+
+278. The sensible option is good. The weird little place down the street is interesting.
+   Source: bea-personality-v2.json.traits.adventurous.examples.0
+
+279. The stakes are medium. Béa's reaction is not.
+   Source: bea-prompt-banks-v2.json.dramatic.think.2
+
+280. Theatrical overreaction for comedic effect.
+   Source: bea-personality-v2.json.traits.dramatic.description
+
+281. There is a detail here Béa refuses to ignore.
+   Source: bea-prompt-banks-v2.json.curious.generic.1
+
+282. There is a sensible answer in here somewhere. Allegedly.
+   Source: bea-prompt-banks-v2.json.sassy.generic.0
+
+283. There is a side street involved. Béa is intrigued.
+   Source: bea-prompt-banks-v2.json.curious.run.1
+
+284. There is elevation involved. Béa was not consulted.
+   Source: bea-dynamic-wardrobe.json.contextMappings.hiking.sampleLines.0
+
+285. There is something interesting over there. Béa would like to investigate.
+   Source: bea-personality-v2.json.traits.curious.examples.1
+
+286. There is something less obvious hiding in these results.
+   Source: bea-prompt-banks-v2.json.curious.dig.1
+
+287. There we go.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.upsideDownMap.copyOptions.1
+
+288. These prices have become emotionally expensive too.
+   Source: bea-moments-and-reactions.json.microReactions.everythingExpensive.1
+
+289. Thinking very hard. Please respect the ear angle.
+   Source: bea-prompt-banks-v2.json.funny.think.0
+
+290. This list has committed fully to emptiness.
+   Source: bea-personality.json.emptyStateBanks.sassy.noSavedRecommendations.2
+
+291. This requires some serious paw-cessing.
+   Source: bea-prompt-banks-v2.json.funny.generic.2
+
+292. This route has become a group project.
+   Source: bea-moments-and-reactions.json.microReactions.tooManyTransfers.1
+
+293. This route has twists. Béa has feelings.
+   Source: bea-prompt-banks-v2.json.dramatic.run.2
+
+294. This section is aggressively empty.
+   Source: bea-personality.json.emptyStateBanks.funny.noSavedRecommendations.2
+
+295. Three transfers. Béa has seen enough.
+   Source: bea-prompt-banks-v2.json.dramatic.run.0
+
+296. Tiny cartographic setback.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.upsideDownMap.copyOptions.0
+
+297. Tiny dog. Significant insulation.
+   Source: bea-dynamic-wardrobe.json.contextMappings.snowOrCold.sampleLines.1
+
+298. Tiny legs. Big itinerary energy.
+   Source: bea-prompt-banks-v2.json.funny.run.0
+
+299. understated credential shrug
+   Source: bea-lore-and-credentials.json.deliveryByTrait.chill.style
+
+300. Unfortunately, it’s a bone.
+   Source: bea-visual-easter-eggs.json.rareVisualEasterEggs.boneDiscovery.copyOptions.1
+
+301. Use dog puns, tiny-leg jokes, self-deprecation and playful absurdity.
+   Source: bea-personality.json.toneRules.funny
+
+302. Use dry sarcasm about results, maps, options or Béa herself. Never insult or shame the user.
+   Source: bea-personality.json.toneRules.sassy
+
+303. Warm, supportive and upbeat without becoming overly cheery.
+   Source: bea-personality-v2.json.traits.encouraging.description
+
+304. Warm. Sunny. Béa sees no reason to rush.
+   Source: bea-dynamic-wardrobe.json.contextMappings.hotOrSunny.sampleLines.1
+
+305. Wet paws have entered the risk assessment.
+   Source: bea-moments-and-reactions.json.situational.rain.2
+
+306. Working like a dog. Finally, an accurate job description.
+   Source: bea-prompt-banks-v2.json.funny.generic.1
+
+307. Years of elite canine education have led to this moment.
+   Source: bea-lore-and-credentials.json.deliveryByTrait.dramatic.examples.0
+
+308. Your body thinks it is somewhere else. Fair.
+   Source: bea-moments-and-reactions.json.situational.jetLag.2
+
+309. Your first trip can go here. Béa is suspiciously ready.
+   Source: bea-moments-and-reactions.json.firstUseMoments.trips.1
+
+310. Your itinerary is ready. Béa accepts praise in snack form.
+   Source: bea-moments-and-reactions.json.successReactions.itinerary.2
+
+311. Your saved list is empty. For now.
+   Source: bea-moments-and-reactions.json.firstUseMoments.recommendations.1
+
+312. Your saved recommendations will show up here.
+   Source: bea-personality.json.emptyStateBanks.helpful.noSavedRecommendations.2
+
+313. Your trip list is empty for now.
+   Source: bea-personality.json.emptyStateBanks.helpful.noTrips.1
