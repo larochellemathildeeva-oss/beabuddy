@@ -240,5 +240,11 @@
     "colorful": "8ff2595c-1fe0-4a45-8d18-50c7900507f4",
     "dark": "dfe5b842-237d-4320-b3ad-41aa34d8d347",
     "status": "awaiting approval"
+  },
+  "trip_menu_v1": {
+    "calm": "4464c206-b4de-40c6-b4a8-4b092625de25",
+    "colorful": "a00f05c6-735e-4edb-96ea-2d1c35eaa848",
+    "dark": "0c2b5be1-63b4-4203-bcf2-76f25000314f",
+    "status": "awaiting approval"
   }
 }
