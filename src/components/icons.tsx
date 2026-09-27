@@ -105,6 +105,13 @@ import {
   Users as PhUsers,
   Wallet as PhWallet,
   X as PhX,
+  Lock as PhLock,
+  LockOpen as PhLockOpen,
+  Fingerprint as PhFingerprint,
+  UploadSimple as PhUploadSimple,
+  FolderOpen as PhFolderOpen,
+  FilePdf as PhFilePdf,
+  LinkBreak as PhLinkBreak,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -237,3 +244,10 @@ export const RouteIcon = Route;
 export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;
 export const ChevronRightIcon = ChevronRight;
+export const Lock = icon(PhLock, "Lock");
+export const LockOpen = icon(PhLockOpen, "LockOpen");
+export const Fingerprint = icon(PhFingerprint, "Fingerprint");
+export const Upload = icon(PhUploadSimple, "Upload");
+export const FolderOpen = icon(PhFolderOpen, "FolderOpen");
+export const FilePdf = icon(PhFilePdf, "FilePdf");
+export const Unlink = icon(PhLinkBreak, "Unlink");
