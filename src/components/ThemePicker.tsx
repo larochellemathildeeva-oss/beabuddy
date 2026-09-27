@@ -4,7 +4,7 @@ import { applyTheme, readTheme, THEMES, type ThemeName } from "@/lib/theme";
 
 const LABELS: Record<ThemeName, { name: string; hint: string }> = {
   calm: { name: "Calm", hint: "White, cream and light beige" },
-  colorful: { name: "Colorful", hint: "Cheerful pastels: lilac, blue, teal" },
+  colorful: { name: "Colorful", hint: "Mixed pastels: lilac, cyan, teal, pink" },
   dark: { name: "Dark", hint: "Black with white and beige" },
 };
 

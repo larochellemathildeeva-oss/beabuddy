@@ -178,12 +178,13 @@
   --wishlist: oklch(0.66 0.15 84);
   --reco: oklch(0.56 0.16 320);
 
-  /* Lilac, sky, teal, cyan, periwinkle. */
-  --tile-1: oklch(0.93 0.04 300);
-  --tile-2: oklch(0.94 0.035 240);
-  --tile-3: oklch(0.94 0.045 175);
-  --tile-4: oklch(0.94 0.04 210);
-  --tile-5: oklch(0.93 0.04 270);
+  /* Lilac, sky, teal, cyan, pink — different enough that neighbouring
+     boxes read as different colours, which is the point of Colorful. */
+  --tile-1: oklch(0.9 0.065 300);
+  --tile-2: oklch(0.91 0.06 245);
+  --tile-3: oklch(0.91 0.07 175);
+  --tile-4: oklch(0.92 0.065 210);
+  --tile-5: oklch(0.91 0.06 340);
 
   --inverse-accent: oklch(0.83 0.1 295);
 

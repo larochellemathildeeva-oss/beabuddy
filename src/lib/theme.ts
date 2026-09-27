@@ -2,7 +2,7 @@
  * Béa's three looks, picked on the You page and kept on this device.
  *
  *   calm     — white, cream and light beige (the default)
- *   colorful — soft pastels with a coral accent
+ *   colorful — cheerful pastels (lilac, sky, teal, cyan, pink) with a violet accent
  *   dark     — near-black with off-white and beige
  *
  * The choice lands on `<html>` twice: as `data-theme`, which selects the

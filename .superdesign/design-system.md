@@ -45,7 +45,7 @@ tap 120ms, shift 200ms, move 320ms, arrive 420ms; ease-standard cubic-bezier(.32
 Approved by the owner as the overall style — "a good start", not final screens.
 - **Three user-selectable themes:** Calm (white, cream, light beige), Colorful (cheerful cool pastels — lilac, blue, cyan, teal — with a violet accent; no orange), Dark (near-black with off-white and beige). Picked on the You page.
 - **Layout:** "Tiles" — rounded tiles and cards, serif display titles, calm spacing. Trip pages use thin lines and small dots; accent color only marks "now".
-- **Colorful keeps its pastels** (lilac, sky, teal, cyan, periwinkle surfaces); Calm and Dark stay quiet. Same shapes across all three.
+- **Colorful mixes its pastels on every page**: neighbouring cards and boxes each take a different colour (lilac, sky, teal, cyan, pink) — never one hue over the whole page. Calm and Dark stay quiet. Same shapes across all three.
 - **Maps stay neutral in every theme** (beige in Calm, grey in Colorful, dark in Dark); only the route and pins carry color.
 - **Keep:** the "Day by day" itinerary overview.
 - **Hard rules for building it:** keep the app's existing icons, and keep every existing function on every page. The mockups omit some of both; they are a style reference, not a feature list.
