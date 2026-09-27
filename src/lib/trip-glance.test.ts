@@ -123,6 +123,17 @@ test("a trip keeps its painted scene, and trips differ", () => {
   assert.ok(bannerScene("").sky.length === 2);
 });
 
+test("Béa sits on some painted banners, always the same ones", () => {
+  const seeds = Array.from({ length: 60 }, (_, i) => `Trip ${i}`);
+  const withBea = seeds.filter((s) => bannerScene(s).bea);
+  assert.ok(withBea.length > 10 && withBea.length < 40, `${withBea.length} of 60`);
+  for (const s of withBea) {
+    const bea = bannerScene(s).bea!;
+    assert.deepEqual(bea, bannerScene(s).bea);
+    assert.ok(bea.x >= 300 && bea.x <= 350);
+  }
+});
+
 test("stops count places to see, not travel, beds or notes", () => {
   const kinds = ["flight", "hotel", "sight", "meal", "transport", "lodging", "note", "reservation"];
   assert.equal(stopCount(kinds.map((kind) => ({ kind }))), 3);

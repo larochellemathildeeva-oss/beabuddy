@@ -13,6 +13,28 @@ import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/t
  * ridges of hills, chosen from the trip's name so it keeps its picture. It is
  * drawn inline, so it costs no request and no provider.
  */
+/**
+ * Béa, a small French bulldog in her bandana, sitting on the hills —
+ * a silhouette in the near hill's colour, bandana in coral.
+ */
+function Bea({ x, flip, ink }: { x: number; flip: boolean; ink: string }) {
+  return (
+    <g transform={`translate(${x} 106) scale(${flip ? -1.5 : 1.5} 1.5)`} opacity="0.92">
+      {/* body, sitting, chunky */}
+      <path d="M-11,0 C-13,-10 -9,-17 0,-17.5 C9,-17 13,-10 11,0 Z" fill={ink} />
+      {/* wide, flat bulldog head */}
+      <ellipse cx="0" cy="-22.5" rx="10" ry="7" fill={ink} />
+      {/* rounded bat ears, set wide */}
+      <path
+        d="M-8.5,-26 C-13,-33 -10,-36 -4.5,-28.5 Z M8.5,-26 C13,-33 10,-36 4.5,-28.5 Z"
+        fill={ink}
+      />
+      {/* bandana */}
+      <path d="M-8,-16.5 L8,-16.5 L0,-9 Z" fill="#e0573a" />
+    </g>
+  );
+}
+
 function Scene({ seed }: { seed: string }) {
   const s = bannerScene(seed);
   const id = `scene-${seed.replace(/[^\w-]/g, "").slice(0, 24) || "bea"}`;
@@ -48,6 +70,7 @@ function Scene({ seed }: { seed: string }) {
       <path d={s.paths[0]} fill={s.hills[0]} />
       <path d={s.paths[1]} fill={s.hills[1]} />
       <path d={s.paths[2]} fill={s.hills[2]} />
+      {s.bea ? <Bea x={s.bea.x} flip={s.bea.flip} ink={s.hills[2]} /> : null}
     </svg>
   );
 }
@@ -151,13 +174,15 @@ export function TripBanner({
         <Scene seed={title || city || "Béa"} />
       )}
       {/* Dark at the bottom, so white type holds over any picture while the
-          top of it stays the picture. */}
+          top of it stays the picture. A painted scene is light and even, so it
+          needs far less: just enough under the words. */}
       <span
         aria-hidden
         className="absolute inset-0"
         style={{
-          backgroundImage:
-            kind === "hero"
+          backgroundImage: !url
+            ? "linear-gradient(to top, rgba(18,12,10,0.5), rgba(18,12,10,0.12) 50%, rgba(18,12,10,0) 75%)"
+            : kind === "hero"
               ? "linear-gradient(to top, rgba(18,12,10,0.88), rgba(18,12,10,0.45) 45%, rgba(18,12,10,0.05) 75%)"
               : "linear-gradient(to top, rgba(18,12,10,0.82), rgba(18,12,10,0.25) 55%, rgba(18,12,10,0) 85%)",
         }}

@@ -189,19 +189,25 @@ export type BannerScene = {
   /** SVG path data for each hill, far to near, in a 400 × 160 box. */
   paths: [string, string, string];
   birds: boolean;
+  /**
+   * Béa herself, sitting on a hill on the right, on some banners and not
+   * others — clear of the title and dates, which sit bottom-left. `x` is
+   * where her paws are, in the same 400 × 160 box.
+   */
+  bea: { x: number; flip: boolean } | null;
 };
 
 /**
- * Dusk palettes in Béa's warm band — plum, wine, umber, ink, olive. Dark on
- * purpose: the title is white and sits straight on top, and a painted
- * placeholder should read as evening light rather than a colour swatch.
+ * Daylight palettes — peach, sage, lavender, sky, butter. Light skies, with
+ * the near hill deep enough that the white title still holds on top of it
+ * (the banner adds a soft shade along the bottom as well).
  */
 const PALETTES: { sky: [string, string]; sun: string; hills: [string, string, string] }[] = [
-  { sky: ["#4d3d45", "#6d5a5e"], sun: "#c9a877", hills: ["#4a3a44", "#312935", "#1e1a24"] },
-  { sky: ["#6e3a40", "#8f5b5a"], sun: "#d9ceb6", hills: ["#5c2e36", "#3f2229", "#27161b"] },
-  { sky: ["#5e4232", "#8a6446"], sun: "#e3c48f", hills: ["#4f3627", "#36251b", "#221711"] },
-  { sky: ["#2d3144", "#4a4659"], sun: "#e8dcc0", hills: ["#2c2d3c", "#1e202c", "#13141c"] },
-  { sky: ["#4f4c3c", "#716a50"], sun: "#dcc58d", hills: ["#3f3d2f", "#2c2b21", "#1b1a14"] },
+  { sky: ["#f6c9a8", "#fbe7d3"], sun: "#f08a5d", hills: ["#d9a48a", "#b97c66", "#8f5a4a"] },
+  { sky: ["#cfe3da", "#eef5ef"], sun: "#fff1c9", hills: ["#9dc2b2", "#6e9c88", "#4a7363"] },
+  { sky: ["#d9d1ee", "#f1ecf8"], sun: "#ffe0b8", hills: ["#ada1cf", "#8577ae", "#5e528a"] },
+  { sky: ["#bbd8ee", "#e6f1f9"], sun: "#fff3c4", hills: ["#93b9d6", "#6690b3", "#456e8f"] },
+  { sky: ["#f5dfa6", "#fbf1d2"], sun: "#f3a75a", hills: ["#d7b06c", "#b38a4a", "#86652f"] },
 ];
 
 function hash(seed: string): number {
@@ -263,5 +269,8 @@ export function bannerScene(seed: string): BannerScene {
       ridge(rand, 152, 26, 3 + Math.floor(rand() * 3)),
     ],
     birds: rand() > 0.45,
+    // About four banners in ten. Drawn last so the rest of the scene is the
+    // same with or without her.
+    bea: rand() < 0.4 ? { x: r1(300 + rand() * 50), flip: rand() > 0.5 } : null,
   };
 }
