@@ -203,6 +203,12 @@ function PrivacyPage() {
             list of places, through the Open Places API, with only the stop's name and the middle of
             its town — never who you are.
           </p>
+          <p>
+            When a place on the map names a photograph of itself on Wikimedia Commons, Béa&apos;s
+            server asks Commons for it, and your device then loads that one picture straight from
+            Wikimedia, which sees your device&apos;s address as any website would. Each photo is
+            shown with its author and licence.
+          </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
           <p>
             {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
