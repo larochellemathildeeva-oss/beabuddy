@@ -30,6 +30,7 @@ import { Route as AuthenticatedMemoriesRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedPhotosRouteImport } from './routes/_authenticated/photos'
 import { Route as AuthenticatedStoryRouteImport } from './routes/_authenticated/story'
 import { Route as ProfileBeaRouteImport } from './routes/profile_.bea'
+import { Route as ProfileDocumentsRouteImport } from './routes/profile_.documents'
 import { Route as TripsTripIdRouteImport } from './routes/trips_.$tripId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -136,6 +137,11 @@ const ProfileBeaRoute = ProfileBeaRouteImport.update({
   path: '/profile/bea',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileDocumentsRoute = ProfileDocumentsRouteImport.update({
+  id: '/profile_/documents',
+  path: '/profile/documents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TripsTripIdRoute = TripsTripIdRouteImport.update({
   id: '/trips_/$tripId',
   path: '/trips/$tripId',
@@ -163,6 +169,7 @@ export interface FileRoutesByFullPath {
   '/photos': typeof AuthenticatedPhotosRoute
   '/story': typeof AuthenticatedStoryRoute
   '/profile/bea': typeof ProfileBeaRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/trips/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRoutesByTo {
@@ -186,6 +193,7 @@ export interface FileRoutesByTo {
   '/photos': typeof AuthenticatedPhotosRoute
   '/story': typeof AuthenticatedStoryRoute
   '/profile/bea': typeof ProfileBeaRoute
+  '/profile/documents': typeof ProfileDocumentsRoute
   '/trips/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRoutesById {
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/_authenticated/photos': typeof AuthenticatedPhotosRoute
   '/_authenticated/story': typeof AuthenticatedStoryRoute
   '/profile_/bea': typeof ProfileBeaRoute
+  '/profile_/documents': typeof ProfileDocumentsRoute
   '/trips_/$tripId': typeof TripsTripIdRoute
 }
 export interface FileRouteTypes {
@@ -236,6 +245,7 @@ export interface FileRouteTypes {
     | '/photos'
     | '/story'
     | '/profile/bea'
+    | '/profile/documents'
     | '/trips/$tripId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '/photos'
     | '/story'
     | '/profile/bea'
+    | '/profile/documents'
     | '/trips/$tripId'
   id:
     | '__root__'
@@ -283,6 +294,7 @@ export interface FileRouteTypes {
     | '/_authenticated/photos'
     | '/_authenticated/story'
     | '/profile_/bea'
+    | '/profile_/documents'
     | '/trips_/$tripId'
   fileRoutesById: FileRoutesById
 }
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   TripsRoute: typeof TripsRoute
   WorldRoute: typeof WorldRoute
   ProfileBeaRoute: typeof ProfileBeaRoute
+  ProfileDocumentsRoute: typeof ProfileDocumentsRoute
   TripsTripIdRoute: typeof TripsTripIdRoute
 }
 
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileBeaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile_/documents': {
+      id: '/profile_/documents'
+      path: '/profile/documents'
+      fullPath: '/profile/documents'
+      preLoaderRoute: typeof ProfileDocumentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trips_/$tripId': {
       id: '/trips_/$tripId'
       path: '/trips/$tripId'
@@ -501,6 +521,7 @@ const rootRouteChildren: RootRouteChildren = {
   TripsRoute: TripsRoute,
   WorldRoute: WorldRoute,
   ProfileBeaRoute: ProfileBeaRoute,
+  ProfileDocumentsRoute: ProfileDocumentsRoute,
   TripsTripIdRoute: TripsTripIdRoute,
 }
 export const routeTree = rootRouteImport

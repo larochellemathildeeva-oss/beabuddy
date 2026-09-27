@@ -120,6 +120,12 @@ import {
   MaskHappy as PhMaskHappy,
   Coffee as PhCoffee,
   ChartBar as PhChartBar,
+  LockOpen as PhLockOpen,
+  Fingerprint as PhFingerprint,
+  UploadSimple as PhUploadSimple,
+  FolderOpen as PhFolderOpen,
+  FilePdf as PhFilePdf,
+  LinkBreak as PhLinkBreak,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -269,3 +275,9 @@ export const Mountain = icon(PhMountains, "Mountain");
 export const Drama = icon(PhMaskHappy, "Drama");
 export const Coffee = icon(PhCoffee, "Coffee");
 export const BarChart3 = icon(PhChartBar, "BarChart3");
+export const LockOpen = icon(PhLockOpen, "LockOpen");
+export const Fingerprint = icon(PhFingerprint, "Fingerprint");
+export const Upload = icon(PhUploadSimple, "Upload");
+export const FolderOpen = icon(PhFolderOpen, "FolderOpen");
+export const FilePdf = icon(PhFilePdf, "FilePdf");
+export const Unlink = icon(PhLinkBreak, "Unlink");

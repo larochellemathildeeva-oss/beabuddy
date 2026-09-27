@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, ChevronRight, Plus, X } from "@/components/icons";
+import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
-import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripCard } from "@/components/TripCard";
@@ -632,13 +631,25 @@ function TripsPage() {
           </div>
         )}
 
-        <section id="documents" data-guide="document-vault" className="scroll-mt-4">
-          <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-display text-[27px] leading-none">Trip documents</h2>
-            <span className="text-[12px] text-muted-foreground">Encrypted on this device</span>
-          </div>
-          <DocumentVault />
-        </section>
+        {/* The vault moved into Trip documents (its Protected section). */}
+        {t.signedIn ? (
+          <Link
+            to="/profile/documents"
+            data-guide="document-vault"
+            className="plain-card flex items-center gap-3 p-4"
+          >
+            <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full text-primary">
+              <FileText className="size-5" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[22px] leading-tight">Trip documents</span>
+              <span className="block text-[13px] text-muted-foreground">
+                Bookings, confirmations, tickets — and Protected files
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
+        ) : null}
       </div>
     </AppShell>
   );

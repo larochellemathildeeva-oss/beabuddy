@@ -136,8 +136,7 @@ export function TripOverview({
             />
           ))}
           <Link
-            to="/trips"
-            hash="documents"
+            to="/profile/documents"
             className="tile-card-3 flex min-h-[92px] w-[132px] shrink-0 snap-start flex-col justify-between p-3"
           >
             <FileText className="size-6 text-primary" aria-hidden />

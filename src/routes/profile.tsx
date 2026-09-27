@@ -304,8 +304,6 @@ function ProfilePage() {
               tone={4}
               title="Trip documents"
               hint="Bookings, confirmations and trip files"
-              // Its own page is being built alongside this one; a plain link
-              // so the route table does not have to know about it yet.
               href="/profile/documents"
             />
           </div>

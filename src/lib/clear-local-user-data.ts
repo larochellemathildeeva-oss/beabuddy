@@ -1,6 +1,7 @@
 import { sampleCtaDismissKey } from "./auto-seed.ts";
 import { clearAllOfflineMaps, OFFLINE_MAP_KEY_PREFIX } from "./offline-map.ts";
 import { clearStoredVaultKeys } from "./vaultCrypto.ts";
+import { passkeyStorageKey } from "./vault-passkey.ts";
 
 /** Same prefix as `DIRECTIONS_KEY_PREFIX` in useOfflineDirections. */
 const DIRECTIONS_KEY_PREFIX = "bea.directions.";
@@ -20,6 +21,8 @@ export function clearLocalUserData(uid: string) {
     `bea-home-layout-${uid}`,
     `bea-stats-layout-${uid}`,
     sampleCtaDismissKey(uid),
+    // The Face ID / fingerprint copy of the Protected key.
+    passkeyStorageKey(uid),
     "bea.trips.open",
     "bea-photo-consent-skip",
     "bea-location-consent",
