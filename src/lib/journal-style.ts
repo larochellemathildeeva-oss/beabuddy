@@ -1,4 +1,4 @@
-import type { StyleSpecification, LayerSpecification } from "maplibre-gl";
+import type { ExpressionSpecification, LayerSpecification, StyleSpecification } from "maplibre-gl";
 import {
   GLYPH_PROTOCOL_TEMPLATE,
   VTILE_PROTOCOL_TEMPLATE,
@@ -49,17 +49,35 @@ export const OMT_LAYERS = [
 const SOURCE = "omt";
 const FONT = ["Noto Sans Regular"];
 const FONT_ITALIC = ["Noto Sans Italic"];
-/** Latin where the data has it, so a traveller can read the map; the local name otherwise. */
-const NAME: ["coalesce", ["get", string], ["get", string]] = [
-  "coalesce",
-  ["get", "name:latin"],
-  ["get", "name"],
-];
+/**
+ * The language a label is asked for in: the first part of a browser locale
+ * ("fr-CA" → "fr"), or none when it is not a plain language code.
+ * OpenMapTiles keys its translated names `name:fr`, `name:ja` and so on.
+ */
+export function labelLanguage(locale: string | null | undefined): string | undefined {
+  const lang = locale?.trim().split(/[-_]/)[0]?.toLowerCase();
+  return lang && /^[a-z]{2,3}$/.test(lang) ? lang : undefined;
+}
+
+/**
+ * The traveller's own language where the data has it; otherwise Latin, so
+ * the map can still be read; otherwise the local name.
+ */
+export function labelName(lang?: string): ExpressionSpecification {
+  const names: ExpressionSpecification[] = [
+    ["get", "name:latin"],
+    ["get", "name"],
+  ];
+  if (lang) names.unshift(["get", `name:${lang}`]);
+  return ["coalesce", ...names];
+}
 
 const minorRoads = ["minor", "service", "track"];
 const majorRoads = ["motorway", "trunk", "primary", "secondary", "tertiary"];
 
-export function journalStyle(): StyleSpecification {
+/** `lang` from `labelLanguage`; without one, labels read as before. */
+export function journalStyle(lang?: string): StyleSpecification {
+  const NAME = labelName(lang);
   const layers: LayerSpecification[] = [
     { id: "paper", type: "background", paint: { "background-color": JOURNAL.paper } },
     {

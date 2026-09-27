@@ -6,8 +6,9 @@ import type { DayMapPin, PinTone } from "@/lib/day-map";
 import { curvedLeg } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
 import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
-import { journalStyle } from "@/lib/journal-style";
+import { journalStyle, labelLanguage } from "@/lib/journal-style";
 import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
+import { enableRtlText } from "@/lib/rtl-text";
 
 const OSM_CREDIT =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
@@ -151,9 +152,9 @@ export function DayMap({
             ]);
             if (cancelled || map.current !== m) return;
             registerBeaProtocols(maplibregl);
-            const base = new MaplibreGL({ style: journalStyle(), attributionControl: false }).addTo(
-              m,
-            );
+            enableRtlText(maplibregl);
+            const style = journalStyle(labelLanguage(navigator.language));
+            const base = new MaplibreGL({ style, attributionControl: false }).addTo(m);
             const credit = `${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`;
             m.attributionControl.addAttribution(credit);
             setVector(true);

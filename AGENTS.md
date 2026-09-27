@@ -108,6 +108,10 @@ per trip (`offline-map.ts`). There is no service worker, so this helps an open
 day map when the signal drops, not opening Béa with none. The Geoapify URLs
 were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
 confirms them against the real thing.
+Labels ask for the browser's language first (`name:fr`, `name:ja` …), then
+Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
+`@mapbox/mapbox-gl-rtl-text` (`rtl-text.ts`), served from Béa's own build and
+fetched only when such a label is drawn.
 
 **Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
