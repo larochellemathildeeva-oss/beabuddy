@@ -3,7 +3,14 @@ import { Users } from "lucide-react";
 import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { photoCreditLine, tripDateLine, tripPlacesLine } from "@/lib/trip-card";
-import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/trip-glance";
+import {
+  bannerPill,
+  bannerScene,
+  daysShort,
+  heroPill,
+  routeLine,
+  type BeaPose,
+} from "@/lib/trip-glance";
 
 /**
  * The evening scene behind a trip that has no photograph yet.
@@ -13,24 +20,117 @@ import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/t
  * ridges of hills, chosen from the trip's name so it keeps its picture. It is
  * drawn inline, so it costs no request and no provider.
  */
-/**
- * Béa, a small French bulldog in her bandana, sitting on the hills —
- * a silhouette in the near hill's colour, bandana in coral.
- */
-function Bea({ x, flip, ink }: { x: number; flip: boolean; ink: string }) {
+const COAT = "#fbf6ec";
+const INK = "#2b2220";
+const LINE = { stroke: INK, strokeWidth: 0.8, strokeLinejoin: "round" as const };
+
+/** A stocky leg: a short, thick outlined stroke in her coat colour. */
+function Leg({ d }: { d: string }) {
   return (
-    <g transform={`translate(${x} 106) scale(${flip ? -1.5 : 1.5} 1.5)`} opacity="0.92">
-      {/* body, sitting, chunky */}
-      <path d="M-11,0 C-13,-10 -9,-17 0,-17.5 C9,-17 13,-10 11,0 Z" fill={ink} />
-      {/* wide, flat bulldog head */}
-      <ellipse cx="0" cy="-22.5" rx="10" ry="7" fill={ink} />
-      {/* rounded bat ears, set wide */}
+    <>
+      <path d={d} stroke={INK} strokeWidth={4.4} strokeLinecap="round" fill="none" />
+      <path d={d} stroke={COAT} strokeWidth={2.8} strokeLinecap="round" fill="none" />
+    </>
+  );
+}
+
+/**
+ * Her head, centred on 0,0: wide and flat, big bat ears set wide with round
+ * tips and pink inside, dark eyes, pink nose and a jowly mouth.
+ */
+function Head() {
+  return (
+    <g>
       <path
-        d="M-8.5,-26 C-13,-33 -10,-36 -4.5,-28.5 Z M8.5,-26 C13,-33 10,-36 4.5,-28.5 Z"
-        fill={ink}
+        d="M-6.5,-1.5 C-10.5,-4 -10.5,-10.5 -8,-11 C-5.8,-11 -4,-6.5 -3,-3.5 Z M6.5,-1.5 C10.5,-4 10.5,-10.5 8,-11 C5.8,-11 4,-6.5 3,-3.5 Z"
+        fill={COAT}
+        {...LINE}
       />
-      {/* bandana */}
-      <path d="M-8,-16.5 L8,-16.5 L0,-9 Z" fill="#e0573a" />
+      <path
+        d="M-6.6,-3.6 C-8.6,-5.6 -8.6,-9 -7.7,-9.3 C-6.8,-9 -5.6,-6.5 -4.8,-4.4 Z M6.6,-3.6 C8.6,-5.6 8.6,-9 7.7,-9.3 C6.8,-9 5.6,-6.5 4.8,-4.4 Z"
+        fill="#f0b3a0"
+      />
+      <path
+        d="M-7.5,0 C-7.5,-4.5 -4,-5.5 0,-5.5 C4,-5.5 7.5,-4.5 7.5,0 C7.5,3.8 4,5 0,5 C-4,5 -7.5,3.8 -7.5,0 Z"
+        fill={COAT}
+        {...LINE}
+      />
+      <path d="M-1.2,-4.2 L-0.6,-2.6 M1.2,-4.2 L0.6,-2.6" stroke={INK} strokeWidth={0.4} />
+      <circle cx="-3" cy="-0.8" r="0.95" fill={INK} />
+      <circle cx="3" cy="-0.8" r="0.95" fill={INK} />
+      <ellipse cx="0" cy="1" rx="1.5" ry="1" fill="#e8958a" stroke={INK} strokeWidth={0.4} />
+      <path
+        d="M-3.2,2.4 C-2,3.8 -0.8,3.6 0,2.4 C0.8,3.6 2,3.8 3.2,2.4"
+        stroke={INK}
+        strokeWidth={0.5}
+        fill="none"
+      />
+    </g>
+  );
+}
+
+const BANDANA = "#f5d547";
+
+/**
+ * Béa as she is on the logo — a small cream-white French bulldog in a yellow
+ * lemon bandana — busy with something: rolling on her back, chasing a ball,
+ * or chewing a bone. Paws on the ground at y = 0, drawn facing right.
+ */
+function Bea({ x, flip, pose }: { x: number; flip: boolean; pose: BeaPose }) {
+  return (
+    <g transform={`translate(${x} 108) scale(${flip ? -1 : 1} 1)`}>
+      {pose === "roll" && (
+        <>
+          <Leg d="M-4,-8 L-5,-11.5" />
+          <Leg d="M0,-8.5 L0,-12" />
+          <Leg d="M5,-8.5 L6,-12" />
+          <Leg d="M8.5,-7.5 L10.5,-10.5" />
+          <ellipse cx="2" cy="-4.8" rx="9.5" ry="5.2" fill={COAT} {...LINE} />
+          <ellipse cx="2" cy="-6.6" rx="5" ry="2.2" fill="#f3d6cb" />
+          <g transform="translate(-12.5 -6) rotate(-35)">
+            <Head />
+            <path d="M-4.5,4.2 L4.5,4.2 L0,8.5 Z" fill={BANDANA} {...LINE} />
+          </g>
+        </>
+      )}
+      {pose === "ball" && (
+        <>
+          <Leg d="M-6,-6 L-9,-1.5" />
+          <Leg d="M-2.5,-6 L-3,-1" />
+          <Leg d="M4,-6 L7.5,-1.5" />
+          <Leg d="M6,-6.5 L10.5,-4" />
+          <path d="M-9.5,-10 L-11.5,-11.5" stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
+          <ellipse cx="0" cy="-8.8" rx="9.5" ry="5.2" fill={COAT} {...LINE} />
+          <g transform="translate(12.5 -13.5)">
+            <Head />
+            <path d="M-4.5,4.2 L4.5,4.2 L0,8.5 Z" fill={BANDANA} {...LINE} />
+          </g>
+          <circle cx="26" cy="-2.6" r="2.6" fill="#e0573a" {...LINE} />
+          <path
+            d="M23.8,-3.6 C25,-2 27,-2 28.4,-3.4"
+            stroke="#fff4e8"
+            strokeWidth={0.6}
+            fill="none"
+          />
+        </>
+      )}
+      {pose === "bone" && (
+        <>
+          <ellipse cx="-1.5" cy="-4.5" rx="10.5" ry="4.8" fill={COAT} {...LINE} />
+          <Leg d="M4.5,-1.8 L11,-1.8" />
+          <g transform="translate(11.5 -8.5)">
+            <Head />
+            <path d="M-4.5,4.2 L4.5,4.2 L0,8.5 Z" fill={BANDANA} {...LINE} />
+          </g>
+          <g transform="translate(15.5 -3.6) rotate(-12)">
+            <rect x="-4" y="-0.9" width="8" height="1.8" fill="#fffaf0" {...LINE} />
+            <circle cx="-4.2" cy="-1" r="1.2" fill="#fffaf0" {...LINE} />
+            <circle cx="-4.2" cy="1" r="1.2" fill="#fffaf0" {...LINE} />
+            <circle cx="4.2" cy="-1" r="1.2" fill="#fffaf0" {...LINE} />
+            <circle cx="4.2" cy="1" r="1.2" fill="#fffaf0" {...LINE} />
+          </g>
+        </>
+      )}
     </g>
   );
 }
@@ -70,7 +170,7 @@ function Scene({ seed }: { seed: string }) {
       <path d={s.paths[0]} fill={s.hills[0]} />
       <path d={s.paths[1]} fill={s.hills[1]} />
       <path d={s.paths[2]} fill={s.hills[2]} />
-      {s.bea ? <Bea x={s.bea.x} flip={s.bea.flip} ink={s.hills[2]} /> : null}
+      {s.bea ? <Bea x={s.bea.x} flip={s.bea.flip} pose={s.bea.pose} /> : null}
     </svg>
   );
 }

@@ -178,6 +178,10 @@ export function walkMinutes(metres: number): number {
 /* The painted scene                                                          */
 /* ------------------------------------------------------------------------ */
 
+/** What Béa is up to on a banner. */
+export type BeaPose = "roll" | "ball" | "bone";
+const BEA_POSES: readonly BeaPose[] = ["roll", "ball", "bone"];
+
 export type BannerScene = {
   sky: [string, string];
   sun: string;
@@ -194,7 +198,7 @@ export type BannerScene = {
    * others — clear of the title and dates, which sit bottom-left. `x` is
    * where her paws are, in the same 400 × 160 box.
    */
-  bea: { x: number; flip: boolean } | null;
+  bea: { x: number; flip: boolean; pose: BeaPose } | null;
 };
 
 /**
@@ -271,6 +275,13 @@ export function bannerScene(seed: string): BannerScene {
     birds: rand() > 0.45,
     // About four banners in ten. Drawn last so the rest of the scene is the
     // same with or without her.
-    bea: rand() < 0.4 ? { x: r1(300 + rand() * 50), flip: rand() > 0.5 } : null,
+    bea:
+      rand() < 0.4
+        ? {
+            x: r1(300 + rand() * 50),
+            flip: rand() > 0.5,
+            pose: BEA_POSES[Math.floor(rand() * BEA_POSES.length)]!,
+          }
+        : null,
   };
 }
