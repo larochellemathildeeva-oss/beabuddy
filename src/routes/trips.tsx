@@ -20,6 +20,8 @@ import { usePacking } from "@/hooks/usePacking";
 import { locationFromParsedPlace } from "@/lib/place-label";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
+import { emptyLine } from "@/lib/bea-personality";
+import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { type DatesStatus } from "@/lib/trip-dates";
 import {
   EMPTY_CITY,
@@ -111,6 +113,9 @@ function TripsPage() {
   const { photos } = useTripPhotos(t.uid);
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const lists = tripTabs(t.trips, toLocalISODate(new Date()));
+  const beaSettings = useBeaSettings();
+  // Picked once per visit, in the traveller's mix.
+  const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
 
   return (
     <AppShell
@@ -598,10 +603,14 @@ function TripsPage() {
               )}
 
               {t.trips.length === 0 && !t.loading && (
-                <div className="py-8 text-center">
-                  <p className="font-display text-[18px] leading-snug">
-                    {beaLine("empty.trips").title}
-                  </p>
+                <div className="flex flex-col items-center py-8 text-center">
+                  <img
+                    src="/bea/bea-think-static.png"
+                    alt=""
+                    aria-hidden
+                    className="size-24 object-contain"
+                  />
+                  <p className="mt-2 font-display text-[22px] leading-snug">{emptyTrips}</p>
                   <p className="mt-1 text-[14.5px] text-muted-foreground">
                     {beaLine("empty.trips").body}
                   </p>

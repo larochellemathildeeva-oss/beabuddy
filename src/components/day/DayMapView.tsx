@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, MapPin, Maximize2 } from "@/components/icons";
 import { DayMap } from "@/components/day/DayMap";
-import { beaSaysLine } from "@/components/day/bea-says";
+import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
 import { dayLengthLabel, dayTitle, legWords, measured } from "@/components/day/stop-words";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -560,7 +560,7 @@ function LiveLayout({
   const leg = measured(realLeg) ? realLeg : null;
   const leave = next && leg ? leaveBy(next.time_label, leg) : null;
   const trip = stop && next ? between(stop, next, legFor) : null;
-  const says = stop ? beaSaysLine(stop, next ?? null, leave) : null;
+  const says = useBeaSays(stop ?? null, next ?? null, leave);
   const current = stop ? Boolean(stop.arrived_at) && !stop.left_at : false;
   const time = stop ? timeForRail(stop.time_label) : "";
 

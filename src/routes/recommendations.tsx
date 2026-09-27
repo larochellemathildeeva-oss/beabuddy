@@ -43,7 +43,7 @@ import {
   searchWorthShowing,
 } from "@/lib/reco-ui";
 import { useAuth } from "@/hooks/useAuth";
-import { useBeaSettings } from "@/hooks/useBeaSettings";
+import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { Section } from "@/components/Section";
@@ -479,7 +479,7 @@ function RecommendationsPage() {
       if (id) setJustSaved({ id, name: found.name });
       else {
         const line = beaLine("recs.saved");
-        toast.success(line.title, { description: line.body });
+        toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that one.");
@@ -498,7 +498,7 @@ function RecommendationsPage() {
       const savedId = await vault.add(draft);
       confirm();
       const line = beaLine("recs.saved");
-      toast.success(line.title, { description: line.body });
+      toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
       if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
       setDraft(null);
       setDraftField2(null);
@@ -548,7 +548,7 @@ function RecommendationsPage() {
         );
       } else {
         const line = beaLine("recs.saved");
-        toast.success(line.title, { description: line.body });
+        toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that one.");

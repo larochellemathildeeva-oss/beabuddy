@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronRight, Clock, CloudRain, MapPin } from "@/components/icons";
-import { beaSaysLine } from "@/components/day/bea-says";
+import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
@@ -129,7 +129,7 @@ export function NowPanel({
       nextTitle={next.title}
     />
   ) : null;
-  const says = current && phase === "at" ? beaSaysLine(current, next, leave) : null;
+  const says = useBeaSays(current && phase === "at" ? current : null, next, leave);
 
   const later = next ? dayStops.slice(dayStops.indexOf(next) + 1).filter((s) => !s.arrived_at) : [];
   const [showAllLater, setShowAllLater] = useState(false);

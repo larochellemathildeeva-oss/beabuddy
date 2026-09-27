@@ -574,6 +574,12 @@
   [data-theme="colorful"] .seq-text-4 { color: #7a5aa8; }
   [data-theme="colorful"] .seq-text-5 { color: #a8730f; }
 
+  /* "No pictures" (You → Appearance): stop and place pictures leave, lists
+     tighten up. */
+  [data-pictures="none"] .place-art {
+    display: none;
+  }
+
   /* The painted pictures are shared by every theme, as in the master; Dark
      takes the glare off them. */
   .dark .art-dim {

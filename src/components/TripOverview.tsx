@@ -202,7 +202,7 @@ export function TripOverview({
                         placeArtFor({ category: item.kind, kind: item.kind, name: item.title }),
                       )}
                       alt=""
-                      className="art-dim h-14 w-[72px] shrink-0 rounded-[12px] object-cover"
+                      className="place-art art-dim h-14 w-[72px] shrink-0 rounded-[12px] object-cover"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 block font-display text-[18px] leading-tight">

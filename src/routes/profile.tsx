@@ -48,6 +48,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
+import { StopPicturesPicker } from "@/components/StopPicturesPicker";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { modeName } from "@/lib/bea-personality";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
@@ -467,6 +468,7 @@ function ProfilePage() {
       >
         <div className="space-y-3">
           <ThemePicker />
+          <StopPicturesPicker />
           <CustomizeHome variant="row" />
         </div>
       </Sheet>

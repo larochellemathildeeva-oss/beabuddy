@@ -13,6 +13,7 @@ import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 import { PageGuide } from "./PageGuide";
+import { useStopPictures } from "../hooks/useStopPictures";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 // Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
 
@@ -86,6 +87,8 @@ export function AppShell({
     }
   }, [matches, pathname]);
   const { user, loading } = useAuth();
+  // Applies the stop-pictures setting to every page.
+  useStopPictures();
   useLegalConsent();
   useIdleLogout(!!user);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);

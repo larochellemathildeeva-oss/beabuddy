@@ -361,7 +361,7 @@ function HomePlaceCard({
         src={art}
         alt=""
         decoding="async"
-        className="art-dim h-[112px] w-[42%] shrink-0 rounded-[12px] object-cover"
+        className="place-art art-dim h-[112px] w-[42%] shrink-0 rounded-[12px] object-cover"
       />
       <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
         <div className="flex items-start justify-between gap-2">

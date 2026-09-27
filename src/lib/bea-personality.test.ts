@@ -16,6 +16,7 @@ import {
   presetOf,
   seededRandom,
   successLine,
+  stopAside,
   type BeaMix,
 } from "./bea-personality.ts";
 
@@ -130,4 +131,17 @@ test("empty screens and success lines follow the mix; a plain Béa skips success
   const off = { ...DEFAULT_SETTINGS, reactions: false };
   assert.equal(successLine({ kind: "route", settings: off, rand: () => 0 }), null);
   assert.ok(successLine({ kind: "route", settings: DEFAULT_SETTINGS, rand: () => 0 }));
+});
+
+test("a stop aside follows the mix and the 'Béa says' switch", () => {
+  const playful = { ...DEFAULT_SETTINGS, mix: mix({ funny: 60, sassy: 40 }) };
+  assert.ok(stopAside({ mood: "meal", settings: playful, rand: () => 0 }));
+  assert.equal(
+    stopAside({ mood: "meal", settings: { ...playful, says: false }, rand: () => 0 }),
+    null,
+  );
+  const plain = { ...DEFAULT_SETTINGS, mix: mix({ helpful: 90, funny: 10 }) };
+  assert.equal(stopAside({ mood: "meal", settings: plain, rand: () => 0 }), null);
+  const early = stopAside({ mood: "sight", hour: 5, settings: playful, rand: () => 0 });
+  assert.match(early ?? "", /early|mornings/);
 });

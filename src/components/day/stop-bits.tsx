@@ -42,7 +42,7 @@ export function StopArt({
       src={stopArtUrl(item)}
       alt=""
       loading="lazy"
-      className={`art-dim shrink-0 object-cover ${className}`}
+      className={`place-art art-dim shrink-0 object-cover ${className}`}
     />
   );
 }

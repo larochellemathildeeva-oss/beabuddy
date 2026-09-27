@@ -32,7 +32,7 @@ export function PlaceArt({
       alt=""
       loading="lazy"
       draggable={false}
-      className={`art-dim object-cover ${className}`}
+      className={`place-art art-dim object-cover ${className}`}
     />
   );
 }

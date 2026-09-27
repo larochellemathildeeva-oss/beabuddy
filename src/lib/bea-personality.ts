@@ -274,3 +274,80 @@ export function successLine(input: {
 export function credentialLine(rand: () => number = Math.random): string {
   return fresh(BEA_CHARACTER.credentials, [], rand);
 }
+
+/** What a stop is, for Béa's aside about it. */
+export type StopMood = "meal" | "sight" | "walk" | "lodging" | "transport" | "activity" | "note";
+
+/**
+ * Béa's asides on a stop, by what the stop is. Playful, third person, no emoji,
+ * and never about the place's culture — only the kind of stop and the clock.
+ */
+const STOP_ASIDES: Record<StopMood | "early" | "late", readonly string[]> = {
+  meal: [
+    "Béa has pre-approved the snack budget.",
+    "Béa would like it noted that she is available for crumbs.",
+    "Eating counts as sightseeing. Béa checked.",
+  ],
+  sight: [
+    "Béa recommends looking up. She cannot, but you can.",
+    "A photo stop. Béa will pose if asked.",
+    "Béa has sniffed out the good angle. Probably.",
+  ],
+  walk: [
+    "Tiny legs, big ambitions. Béa is ready.",
+    "A walk. Béa's favourite word, after snack.",
+    "Béa has stretched. Mostly her ears.",
+  ],
+  lodging: [
+    "Béa has already chosen her side of the bed.",
+    "Nap potential: high. Béa approves.",
+    "Béa will inspect the pillows. Professionally.",
+  ],
+  transport: [
+    "Béa has her window seat face ready.",
+    "Travel time. Béa suggests a snack for morale.",
+    "Béa is counting the minutes. She is not good at counting.",
+  ],
+  activity: [
+    "Béa is excited. Her tail is doing the paperwork.",
+    "Something fun. Béa has cleared her schedule.",
+    "Béa considers this a professional recommendation.",
+  ],
+  note: [],
+  early: [
+    "That is an aggressively early start.",
+    "Béa recognizes that mornings exist. She still objects.",
+  ],
+  late: ["A late one. Béa has scheduled a nap in advance.", "Night owl plans. Béa is a day dog."],
+};
+
+/**
+ * A short, playful aside after Béa's plain line on a stop — or null.
+ *
+ * Only with "Béa says" lines on, and only when the mix has some play in it:
+ * a Helpful- or Minimal-leaning Béa sticks to the facts. The more playful the
+ * mix, the more often she adds one. Never replaces the facts; only follows
+ * them.
+ */
+export function stopAside(input: {
+  mood: StopMood;
+  hour?: number | null;
+  settings: BeaSettings;
+  recent?: readonly string[];
+  rand?: () => number;
+}): string | null {
+  const { mood, hour, settings, recent = [], rand = Math.random } = input;
+  if (!settings.says) return null;
+  const shares = normalizeMix(settings.mix);
+  const play = 1 - shares.helpful - shares.chill;
+  if (play < 0.25) return null;
+  if (rand() > Math.min(0.9, play + 0.2)) return null;
+  const clock =
+    hour != null && hour < 7
+      ? STOP_ASIDES.early
+      : hour != null && hour >= 21
+        ? STOP_ASIDES.late
+        : [];
+  const pool = clock.length && rand() < 0.6 ? clock : STOP_ASIDES[mood];
+  return fresh(pool, recent, rand) || null;
+}

@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from "react";
-import { cleanSettings, DEFAULT_SETTINGS, type BeaSettings } from "@/lib/bea-personality";
+import {
+  cleanSettings,
+  DEFAULT_SETTINGS,
+  successLine,
+  type BeaSettings,
+  type SuccessKind,
+} from "@/lib/bea-personality";
 
 /** Béa's personality lives on the device, like the theme: a preference, not account data. */
 export const BEA_SETTINGS_KEY = "bea-personality";
@@ -60,4 +66,16 @@ export function rememberBeaLine(line: string | null | undefined): void {
   if (!line) return;
   recentLines.push(line);
   if (recentLines.length > 12) recentLines.shift();
+}
+
+/**
+ * Béa's reaction to something finishing, for a toast's second line — or null
+ * (reactions off, a plain mix, or simply not this time). Reads the settings
+ * directly, so it can be called from an event handler.
+ */
+export function beaCheer(kind: SuccessKind): string | null {
+  if (typeof window === "undefined") return null;
+  const line = successLine({ kind, settings: read(), recent: beaRecent() });
+  rememberBeaLine(line);
+  return line;
 }

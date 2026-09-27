@@ -78,6 +78,7 @@ import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
 
@@ -392,7 +393,7 @@ function ImportPanel({
     setPlanVersion((v) => v + 1);
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
-      toast.success(ready.title, { description: ready.body });
+      toast.success(ready.title, { description: beaCheer("itinerary") ?? ready.body });
     }
   };
 
@@ -722,7 +723,7 @@ function ImportPanel({
           undo: () => onRemoveItems(insertedIds),
         });
       } else {
-        toast.success(done.title, { description: done.body });
+        toast.success(done.title, { description: beaCheer("route") ?? done.body });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save those. Try again.");
@@ -1497,7 +1498,7 @@ function OptimizePanel({
       await onApplySchedule(plan.items);
       setSaved(true);
       const done = beaLine("plan.complete");
-      toast.success(done.title, { description: done.body });
+      toast.success(done.title, { description: beaCheer("route") ?? done.body });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
     } finally {
