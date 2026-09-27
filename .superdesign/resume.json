@@ -41,6 +41,28 @@
         "calm": "3a44051c-f96e-4313-9964-439a8f45e42e",
         "colorful": "5e34196d-25db-40cb-a6bf-58fb48790ae6",
         "dark": "268eb6a4-c5a3-4879-9fe5-2920d92a2d71"
+      },
+      "v2": {
+        "status": "awaiting review",
+        "checklist": ".superdesign/checklists/home.md",
+        "html": ".superdesign/tmp/home2-<frame>-<theme>.html",
+        "frames": {
+          "main": {
+            "calm": "89e2b6c4-f023-4337-ae8b-e664b84e592a",
+            "colorful": "1a070fde-b430-4ee1-8253-02a3fc3dc5be",
+            "dark": "6ec21765-2290-46a1-83a2-34dc27b06469"
+          },
+          "fresh": {
+            "calm": "d5eda777-0cc1-4e49-8252-453d875ce5ef",
+            "colorful": "093c9293-f1e3-4d07-9fb3-55a4c254b54c",
+            "dark": "1e70e692-8d7c-4bde-91a6-015a97a2d28a"
+          },
+          "landing": {
+            "calm": "055902ac-b6ea-4195-992c-2c9e764e7a50",
+            "colorful": "8c73772e-7c59-42e1-800c-22de3a5eda98",
+            "dark": "6832f8d6-d482-402d-ad57-acd6117b43c8"
+          }
+        }
       }
     },
     "/world": {
