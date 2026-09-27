@@ -251,7 +251,7 @@ See `docs/UI_PORT_PLAN.md`. In short:
 - **Cannot be verified visually from a sandbox session.** The route is behind
   `_authenticated` and needs live Supabase; `mcp.supabase.com` and
   `ai.studio` are both blocked by the network egress policy. The dev server
-  also can't bind — the Lovable config forces `:::8080` and there is no IPv6.
+  also may not bind — it listens on port 8080.
   Run it locally to look at it.
 - CI gates every push: typecheck, lint, test, build. Bump the version per the
   table in `AGENTS.md`.
