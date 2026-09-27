@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Image as ImageIcon } from "@/components/icons";
+import { Camera, Copy, Image as ImageIcon, ListPlus, RotateCcw, Trash2 } from "@/components/icons";
+import type { PrepMenuItem } from "@/components/TripPrep";
 import { BeaRunning } from "@/components/BeaRunning";
 import { Sheet } from "@/components/Sheet";
 import { PackingListView } from "@/components/PackingListView";
@@ -121,7 +122,14 @@ const STARTERS: Record<string, string[]> = {
  * "To do" sheet next to the to-dos, and inside the standalone
  * PackingLists sheet on You, where the packs are reusable templates.
  */
-export function PackingBody({ tripId }: { tripId?: string | null | undefined }) {
+export function PackingBody({
+  tripId,
+  onMenu,
+}: {
+  tripId?: string | null | undefined;
+  /** On a trip's sheet: the list's actions go in its ⋯ menu instead of links. */
+  onMenu?: ((items: PrepMenuItem[]) => void) | undefined;
+}) {
   const p = usePacking(tripId ?? null);
   const allowCreate = !tripId;
   const [activeId, setActiveId] = useState("");
@@ -186,13 +194,58 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
     .filter((i) => i.list_id === activeId)
     .sort((a, b) => a.position - b.position);
 
+  // The list's actions for the sheet's ⋯ menu, handed up when they change.
+  const packActions = useRef(p);
+  packActions.current = p;
+  const activeKey = active?.id ?? "";
+  useEffect(() => {
+    if (!onMenu) return;
+    const items: PrepMenuItem[] = [];
+    if (tripId) {
+      items.push({
+        id: "attach",
+        label: "Add a saved list",
+        icon: ListPlus,
+        onSelect: () => setShowAttach(true),
+      });
+    }
+    if (activeKey) {
+      items.push(
+        {
+          id: "reset",
+          label: "Uncheck all",
+          icon: RotateCcw,
+          onSelect: () => void packActions.current.resetPack(activeKey),
+        },
+        {
+          id: "duplicate",
+          label: "Duplicate list",
+          icon: Copy,
+          onSelect: () => void packActions.current.duplicatePack(activeKey),
+        },
+        {
+          id: "delete",
+          label: "Delete list",
+          icon: Trash2,
+          danger: true,
+          onSelect: () => void packActions.current.deletePack(activeKey),
+        },
+      );
+    }
+    onMenu(items);
+  }, [onMenu, tripId, activeKey]);
+
   return !p.signedIn ? (
     <p className="p-6 text-center text-[14.5px] text-muted-foreground">
       Sign in to save packing lists to your account.
     </p>
   ) : (
     <div>
-      <div className="mb-3 flex flex-wrap gap-1.5">
+      <div
+        className={`mb-3 flex flex-wrap gap-1.5 ${
+          onMenu && p.packs.length < 2 && !allowCreate ? "hidden" : ""
+        }`}
+      >
         {p.packs.map((pack) => (
           <button
             key={pack.id}
@@ -218,7 +271,7 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
             + New pack
           </button>
         )}
-        {tripId && (
+        {tripId && !onMenu && (
           <button
             onClick={() => setShowAttach(!showAttach)}
             className="rounded-full border border-dashed border-border px-3.5 py-1.5 text-[13px] font-semibold text-primary"
@@ -229,7 +282,7 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
       </div>
 
       {showAttach && tripId && (
-        <div className="mb-3 space-y-2 rounded-xl bg-elevated p-3">
+        <div className="plain-card mb-3 space-y-2 p-3">
           <TripAttachForm
             tripId={tripId}
             onAttached={async (id) => {
@@ -238,6 +291,15 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
               setShowAttach(false);
             }}
           />
+          {onMenu && (
+            <button
+              type="button"
+              onClick={() => setShowAttach(false)}
+              className="w-full text-center text-[12.5px] text-muted-foreground underline"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       )}
 
@@ -372,16 +434,28 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
       )}
 
       {!active && !showNew && !showAttach && (
-        <p className="py-6 text-center text-[14.5px] text-muted-foreground">
-          {tripId
-            ? "No packing list on this trip yet. Add one of your saved lists from You."
-            : "No packs yet. Create one here and reuse it on any trip."}
-        </p>
+        <div className="plain-card flex flex-col items-center gap-3 px-5 py-6 text-center">
+          <p className="text-[14.5px] text-muted-foreground">
+            {tripId
+              ? "No packing list on this trip yet. Add one of your saved lists from You."
+              : "No packs yet. Create one here and reuse it on any trip."}
+          </p>
+          {tripId && onMenu && (
+            <button
+              type="button"
+              onClick={() => setShowAttach(true)}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-[14px] font-semibold"
+            >
+              <ListPlus className="size-4" aria-hidden />
+              Add a saved list
+            </button>
+          )}
+        </div>
       )}
 
       {active && (
         <>
-          <div className="mb-2 flex items-center justify-end gap-3">
+          <div className={`mb-2 flex items-center justify-end gap-3 ${onMenu ? "hidden" : ""}`}>
             <button
               onClick={() => void p.resetPack(active.id)}
               className="text-[12px] text-muted-foreground underline"
