@@ -80,7 +80,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
   if (pins.length < 2) return null;
 
   return (
-    <section data-guide="compare-pins" className="card-soft p-3.5">
+    <section data-guide="compare-pins" className="plain-card p-3.5">
       <div className="flex items-baseline justify-between">
         <p className="label-caps text-foreground">Help me choose</p>
         <button onClick={() => setOpen((v) => !v)} className="text-[12px] text-primary">

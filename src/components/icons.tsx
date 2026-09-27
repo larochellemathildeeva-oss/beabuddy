@@ -108,6 +108,7 @@ import {
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
+  Export as PhExport,
 } from "@phosphor-icons/react";
 
 export type LucideProps = Omit<ComponentPropsWithoutRef<"svg">, "ref"> & {
@@ -237,3 +238,4 @@ export const RouteIcon = Route;
 export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;
 export const ChevronRightIcon = ChevronRight;
+export const Share = icon(PhExport, "Share");
