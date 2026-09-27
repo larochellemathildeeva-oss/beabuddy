@@ -6,6 +6,7 @@
  */
 
 import { countdownLabel, isUnderway } from "./trip-card.ts";
+import type { ThemeName } from "./theme.ts";
 
 /** Parse a stored YYYY-MM-DD as a local date, never as UTC midnight. */
 function localDate(iso: string | null | undefined): Date | null {
@@ -178,10 +179,6 @@ export function walkMinutes(metres: number): number {
 /* The painted scene                                                          */
 /* ------------------------------------------------------------------------ */
 
-/** What Béa is up to on a banner. */
-export type BeaPose = "roll" | "ball" | "bone";
-const BEA_POSES: readonly BeaPose[] = ["roll", "ball", "bone"];
-
 export type BannerScene = {
   sky: [string, string];
   sun: string;
@@ -193,26 +190,43 @@ export type BannerScene = {
   /** SVG path data for each hill, far to near, in a 400 × 160 box. */
   paths: [string, string, string];
   birds: boolean;
-  /**
-   * Béa herself, sitting on a hill on the right, on some banners and not
-   * others — clear of the title and dates, which sit bottom-left. `x` is
-   * where her paws are, in the same 400 × 160 box.
-   */
-  bea: { x: number; flip: boolean; pose: BeaPose } | null;
 };
 
+type Palette = { sky: [string, string]; sun: string; hills: [string, string, string] };
+
 /**
- * Daylight palettes — peach, sage, lavender, sky, butter. Light skies, with
- * the near hill deep enough that the white title still holds on top of it
- * (the banner adds a soft shade along the bottom as well).
+ * Five palettes per theme, so a painted banner belongs to the look you chose.
+ * The same trip keeps the same slot (and the same hills) in every theme; only
+ * the colours change. In each, the near hill is deep enough that the white
+ * title holds on top of it, with the banner's soft shade underneath.
+ *
+ *   calm     — sand, stone, clay, oat, linen
+ *   colorful — peach, sage, lavender, sky, butter
+ *   dark     — near-black hills under a beige or pale sun
  */
-const PALETTES: { sky: [string, string]; sun: string; hills: [string, string, string] }[] = [
-  { sky: ["#f6c9a8", "#fbe7d3"], sun: "#f08a5d", hills: ["#d9a48a", "#b97c66", "#8f5a4a"] },
-  { sky: ["#cfe3da", "#eef5ef"], sun: "#fff1c9", hills: ["#9dc2b2", "#6e9c88", "#4a7363"] },
-  { sky: ["#d9d1ee", "#f1ecf8"], sun: "#ffe0b8", hills: ["#ada1cf", "#8577ae", "#5e528a"] },
-  { sky: ["#bbd8ee", "#e6f1f9"], sun: "#fff3c4", hills: ["#93b9d6", "#6690b3", "#456e8f"] },
-  { sky: ["#f5dfa6", "#fbf1d2"], sun: "#f3a75a", hills: ["#d7b06c", "#b38a4a", "#86652f"] },
-];
+const PALETTES: Record<ThemeName, Palette[]> = {
+  calm: [
+    { sky: ["#efe4d2", "#f8f2e8"], sun: "#e3c49a", hills: ["#d6c2a6", "#b89f80", "#8c755b"] },
+    { sky: ["#e6e1d8", "#f4f1ea"], sun: "#f1dcc0", hills: ["#cbc2b4", "#a79c8b", "#7d7263"] },
+    { sky: ["#f0dccb", "#f8eee4"], sun: "#dfa987", hills: ["#d8b8a0", "#b8927a", "#8a6a57"] },
+    { sky: ["#ece6d6", "#f7f3ea"], sun: "#e9d6a8", hills: ["#cfc6a8", "#aca183", "#817860"] },
+    { sky: ["#e8e0d6", "#f5f0ea"], sun: "#e8c9b3", hills: ["#d2c3b6", "#ae9d8f", "#84756a"] },
+  ],
+  colorful: [
+    { sky: ["#f6c9a8", "#fbe7d3"], sun: "#f08a5d", hills: ["#d9a48a", "#b97c66", "#8f5a4a"] },
+    { sky: ["#cfe3da", "#eef5ef"], sun: "#fff1c9", hills: ["#9dc2b2", "#6e9c88", "#4a7363"] },
+    { sky: ["#d9d1ee", "#f1ecf8"], sun: "#ffe0b8", hills: ["#ada1cf", "#8577ae", "#5e528a"] },
+    { sky: ["#bbd8ee", "#e6f1f9"], sun: "#fff3c4", hills: ["#93b9d6", "#6690b3", "#456e8f"] },
+    { sky: ["#f5dfa6", "#fbf1d2"], sun: "#f3a75a", hills: ["#d7b06c", "#b38a4a", "#86652f"] },
+  ],
+  dark: [
+    { sky: ["#1c1a18", "#2a2622"], sun: "#d9c3a5", hills: ["#2f2a25", "#231f1c", "#161412"] },
+    { sky: ["#1a1b1f", "#2a2a2e"], sun: "#e8dcc0", hills: ["#2b2b30", "#202024", "#141417"] },
+    { sky: ["#211c1a", "#33291f"], sun: "#caa57a", hills: ["#35291f", "#281f18", "#1a1410"] },
+    { sky: ["#1b1d1b", "#282b27"], sun: "#d7cfa8", hills: ["#2a2d28", "#1f221e", "#141613"] },
+    { sky: ["#1f1b1d", "#2e2729"], sun: "#dcbfb0", hills: ["#312a2c", "#241f21", "#171415"] },
+  ],
+};
 
 function hash(seed: string): number {
   let h = 2166136261;
@@ -258,10 +272,11 @@ function ridge(rand: () => number, base: number, amp: number, peaks: number): st
  * and three ridges of hills. Chosen from the trip's name, so a trip keeps its
  * picture from visit to visit and two trips side by side do not match.
  */
-export function bannerScene(seed: string): BannerScene {
+export function bannerScene(seed: string, theme: ThemeName = "calm"): BannerScene {
   const h = hash(seed || "Béa");
   const rand = random(h);
-  const palette = PALETTES[h % PALETTES.length]!;
+  const set = PALETTES[theme];
+  const palette = set[h % set.length]!;
   return {
     ...palette,
     sunX: r1(120 + rand() * 200),
@@ -273,15 +288,5 @@ export function bannerScene(seed: string): BannerScene {
       ridge(rand, 152, 26, 3 + Math.floor(rand() * 3)),
     ],
     birds: rand() > 0.45,
-    // About four banners in ten. Drawn last so the rest of the scene is the
-    // same with or without her.
-    bea:
-      rand() < 0.4
-        ? {
-            x: r1(300 + rand() * 50),
-            flip: rand() > 0.5,
-            pose: BEA_POSES[Math.floor(rand() * BEA_POSES.length)]!,
-          }
-        : null,
   };
 }

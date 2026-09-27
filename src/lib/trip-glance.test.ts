@@ -123,18 +123,15 @@ test("a trip keeps its painted scene, and trips differ", () => {
   assert.ok(bannerScene("").sky.length === 2);
 });
 
-test("Béa sits on some painted banners, always the same ones", () => {
-  const seeds = Array.from({ length: 60 }, (_, i) => `Trip ${i}`);
-  const withBea = seeds.filter((s) => bannerScene(s).bea);
-  const poses = new Set(withBea.map((s) => bannerScene(s).bea!.pose));
-  assert.equal(poses.size, 3, "all three poses turn up");
-  assert.ok(withBea.length > 10 && withBea.length < 40, `${withBea.length} of 60`);
-  for (const s of withBea) {
-    const bea = bannerScene(s).bea!;
-    assert.deepEqual(bea, bannerScene(s).bea);
-    assert.ok(bea.x >= 300 && bea.x <= 350);
-    assert.ok(["roll", "ball", "bone"].includes(bea.pose));
-  }
+test("painted banners take the theme's colours but keep their hills", () => {
+  const calm = bannerScene("Hiroshima", "calm");
+  const colorful = bannerScene("Hiroshima", "colorful");
+  const dark = bannerScene("Hiroshima", "dark");
+  assert.deepEqual(calm.paths, colorful.paths);
+  assert.deepEqual(calm.paths, dark.paths);
+  assert.notEqual(calm.sky[0], colorful.sky[0]);
+  assert.notEqual(colorful.sky[0], dark.sky[0]);
+  assert.deepEqual(bannerScene("Hiroshima"), calm);
 });
 
 test("stops count places to see, not travel, beds or notes", () => {
