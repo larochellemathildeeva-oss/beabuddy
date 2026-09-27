@@ -127,6 +127,14 @@ Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for
 an hour. `OVERTURE_ATTRIBUTION` sits beside the other map credits.
 
+**Place photos.** When a stop's Place Details carry a `wikimedia_commons`,
+`image` or `wikidata` tag, the stop card shows that place's photo from
+Wikimedia Commons (`wikimedia.ts`, pure and tested; `wikimedia.server.ts`
+fetches, keyless, cached in process). Never `brand:wikidata` — that is the
+chain, not the branch. Every photo is shown with its author and licence and
+a link to its Commons page, and files with extra restrictions are skipped.
+Only places already matched by name get one, like hours.
+
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them
 `VITE_`. After changing anything here, check neither followed the code into

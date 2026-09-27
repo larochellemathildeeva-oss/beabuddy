@@ -1,3 +1,5 @@
+import { commonsRefFromTags, type CommonsRef } from "./wikimedia.ts";
+
 /**
  * Geoapify, translated into the shapes the rest of Béa already reads.
  *
@@ -421,6 +423,8 @@ export type PlaceFacts = {
   website?: string;
   phone?: string;
   wheelchair?: string;
+  /** Where Wikimedia Commons may have a photo of it (wikimedia.ts). */
+  commons?: CommonsRef;
 };
 
 type DetailsProps = GeoapifyResult & {
@@ -429,6 +433,7 @@ type DetailsProps = GeoapifyResult & {
   website?: string;
   contact?: { phone?: string; email?: string };
   facilities?: { wheelchair?: boolean | string };
+  wiki_and_media?: { wikidata?: string; image?: string };
 };
 
 /** The "details" feature of a place-details answer, or null. */
@@ -453,9 +458,15 @@ export function readPlaceDetails(json: unknown): PlaceFacts | null {
       .filter(([k]) => k === "name" || k.startsWith("name:"))
       .map(([, v]) => v),
   ].filter((v): v is string => typeof v === "string" && v.length > 0);
+  const commons = commonsRefFromTags({
+    wikidata: p.wiki_and_media?.wikidata,
+    image: p.wiki_and_media?.image,
+    ...raw,
+  });
   return {
     ...(p.name ? { name: p.name } : {}),
     names: [...new Set(names)],
+    ...(commons ? { commons } : {}),
     ...(openingHours ? { openingHours } : {}),
     ...(website && /^https?:\/\//i.test(website) ? { website } : {}),
     ...(phone ? { phone } : {}),
