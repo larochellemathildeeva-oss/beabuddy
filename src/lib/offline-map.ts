@@ -11,6 +11,7 @@
  * Browser-only; everything that can be pure lives in `vector-tiles.ts`.
  */
 import type * as MapLibre from "maplibre-gl";
+import { labelLanguage } from "./journal-style.ts";
 import {
   offlineGlyphPaths,
   offlineTilePlan,
@@ -200,7 +201,9 @@ export async function saveOfflineMap(
   const generation = nextGeneration(tripId);
   const tiles = offlineTilePlan(days);
   if (!tiles.length) return null;
-  const paths = [...tiles.map(vectorTilePath), ...offlineGlyphPaths()];
+  // The traveller's own script, which the labels ask for first.
+  const lang = labelLanguage(typeof navigator === "undefined" ? undefined : navigator.language);
+  const paths = [...tiles.map(vectorTilePath), ...offlineGlyphPaths(lang)];
   const name = `${tripCachePrefix(tripId)}${Date.now()}`;
   const cache = await caches.open(name);
 

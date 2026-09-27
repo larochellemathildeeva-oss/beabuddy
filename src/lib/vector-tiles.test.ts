@@ -5,6 +5,7 @@ import {
   boxAround,
   glyphPath,
   glyphSourceUrl,
+  LANGUAGE_GLYPH_STARTS,
   offlineGlyphPaths,
   offlineTilePlan,
   parseGlyphPath,
@@ -69,6 +70,9 @@ test("the map's protocol URLs become the same Béa paths the server accepts", ()
   assert.equal(protocolToPath("https://example.com/0/0/0"), null);
   // Every glyph kept offline is one the server will serve.
   for (const p of offlineGlyphPaths()) assert.ok(parseGlyphPath(p), p);
+  for (const lang of Object.keys(LANGUAGE_GLYPH_STARTS)) {
+    for (const p of offlineGlyphPaths(lang)) assert.ok(parseGlyphPath(p), `${lang}: ${p}`);
+  }
 });
 
 test("tileFor matches the usual slippy-map numbering", () => {
@@ -174,4 +178,20 @@ test("a box edge exactly on a tile boundary does not pull in the next column", (
     tilesInBox({ south: 1, west: 1, north: 2, east: 180 }, 1).map((t) => t.x),
     [1],
   );
+});
+
+test("a saved map keeps the traveller's own script, so its labels do not vanish offline", () => {
+  const base = offlineGlyphPaths();
+  assert.equal(base.length, 10, "five blocks, two fonts");
+  assert.deepEqual(offlineGlyphPaths("fr"), base, "Latin needs nothing more");
+  assert.deepEqual(offlineGlyphPaths("ru"), base, "Cyrillic is already kept");
+
+  const arabic = offlineGlyphPaths("ar");
+  assert.ok(arabic.includes("/api/glyphs/Noto%20Sans%20Regular/1536-1791.pbf"), "Arabic letters");
+  assert.ok(
+    arabic.includes("/api/glyphs/Noto%20Sans%20Regular/65024-65279.pbf"),
+    "the joined forms the right-to-left plugin draws",
+  );
+  assert.ok(offlineGlyphPaths("he").includes("/api/glyphs/Noto%20Sans%20Italic/1280-1535.pbf"));
+  assert.equal(new Set(offlineGlyphPaths("he")).size, offlineGlyphPaths("he").length, "no repeats");
 });
