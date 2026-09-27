@@ -6,7 +6,7 @@ import { htmlToPlainText } from "./html-text.ts";
  * link to one) or `wikidata` (whose "image" statement, P18, names one).
  *
  * Commons files are free to show with their author and licence beside them,
- * which is what `credit` is for — the picture is never shown without it.
+ * which is what `photoCredit` is for — the picture is never shown without it.
  * Pure URL building and reading, tested; the fetching is in
  * wikimedia.server.ts.
  */
@@ -15,7 +15,6 @@ export const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 export const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
 /** Wide enough for a card on a phone at 2x, small enough to load on a trip. */
 export const COMMONS_THUMB_WIDTH = 640;
-export const COMMONS_ATTRIBUTION = "Photo from Wikimedia Commons";
 
 export type PlacePhoto = {
   /** The thumbnail, on upload.wikimedia.org. */
