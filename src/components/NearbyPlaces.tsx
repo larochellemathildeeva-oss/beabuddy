@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { Bookmark, MapPin } from "lucide-react";
+import { placeArtFor, placeArtUrl } from "@/lib/place-art";
 import type { Pin } from "@/data/atlas";
 import { pinColorClass, pinLabel } from "@/data/atlas";
 import { DayTripFromNear } from "@/components/DayTripFromNear";
@@ -36,6 +38,8 @@ export function NearbyPlaces({
   const [picking, setPicking] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [duration, setDuration] = useState<(typeof SHARE_DURATIONS)[number]["id"]>("once");
+  // On Home the explanation waits behind one short card until you ask to share.
+  const [explaining, setExplaining] = useState(false);
 
   const { here, state, error, radius, setRadius, consent, consentReady, dismissed } = near;
   const HOME_LIMIT = 3;
@@ -76,6 +80,24 @@ export function NearbyPlaces({
    */
   const settled = consent && state === "ok" && !!here;
   const showLocationCard = !collapsed || !settled;
+
+  if (collapsed && consentReady && !consent && !explaining) {
+    return (
+      <div data-guide="location-card" className="tile-card-2 flex items-center gap-3 p-4">
+        <MapPin className="size-6 shrink-0 text-primary" aria-hidden />
+        <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-muted-foreground">
+          Share where you are and Béa will show which saved places are within reach.
+        </p>
+        <button
+          type="button"
+          onClick={() => setExplaining(true)}
+          className="shrink-0 rounded-[12px] border border-border bg-card px-3 py-2 text-[13px] font-bold"
+        >
+          Share
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -219,59 +241,74 @@ export function NearbyPlaces({
           </p>
         )}
 
-        {shown.map(({ pin: p, metres }) => (
-          <article key={p.id} className="rise tile-card-4 p-4">
-            {metres < 800 && (
-              <p className="mb-2 text-[13px] text-muted-foreground">
-                You're {formatMetres(metres)} from something Past You cared about.
-              </p>
-            )}
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  {picking && (
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(p.id)}
-                      onChange={() => togglePick(p.id)}
-                      aria-label={`Add ${p.name} to a day trip`}
-                      className="size-4"
-                    />
-                  )}
-                  <span className={`size-2 rounded-full ${pinColorClass[p.type]}`} />
-                  <span className="label-caps">{pinLabel[p.type]}</span>
-                </div>
-                <h2 className="mt-1 text-[21px] leading-tight">{p.name}</h2>
-                <p className="text-[13px] text-muted-foreground">
-                  {scoreOpportunity(p, scorePrefs, here ? { here } : {}).reasons[0] ??
-                    reachLabel(metres)}
-                  {p.dateAdded ? ` · added ${p.dateAdded.slice(0, 4)}` : ""}
-                  {p.category ? ` · ${p.category}` : ""}
+        {shown.map(({ pin: p, metres }) =>
+          collapsed ? (
+            <HomePlaceCard
+              key={p.id}
+              pin={p}
+              metres={metres}
+              reason={
+                metres < 800
+                  ? "Past You saved this"
+                  : (scoreOpportunity(p, scorePrefs, here ? { here } : {}).reasons[0] ??
+                    reachLabel(metres))
+              }
+              onSnooze={() => near.dismiss(p.id)}
+            />
+          ) : (
+            <article key={p.id} className="rise tile-card-4 p-4">
+              {metres < 800 && (
+                <p className="mb-2 text-[13px] text-muted-foreground">
+                  You're {formatMetres(metres)} from something Past You cared about.
                 </p>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {picking && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(p.id)}
+                        onChange={() => togglePick(p.id)}
+                        aria-label={`Add ${p.name} to a day trip`}
+                        className="size-4"
+                      />
+                    )}
+                    <span className={`size-2 rounded-full ${pinColorClass[p.type]}`} />
+                    <span className="label-caps">{pinLabel[p.type]}</span>
+                  </div>
+                  <h2 className="mt-1 text-[21px] leading-tight">{p.name}</h2>
+                  <p className="text-[13px] text-muted-foreground">
+                    {scoreOpportunity(p, scorePrefs, here ? { here } : {}).reasons[0] ??
+                      reachLabel(metres)}
+                    {p.dateAdded ? ` · added ${p.dateAdded.slice(0, 4)}` : ""}
+                    {p.category ? ` · ${p.category}` : ""}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] font-semibold">
+                  {formatMetres(metres)}
+                </span>
               </div>
-              <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] font-semibold">
-                {formatMetres(metres)}
-              </span>
-            </div>
-            {p.notes && <p className="mt-3 font-display text-[15px] leading-snug">“{p.notes}”</p>}
-            <div className="mt-3 flex gap-2">
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
-              >
-                Go now
-              </a>
-              <button
-                onClick={() => near.dismiss(p.id)}
-                className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
-              >
-                Snooze
-              </button>
-            </div>
-          </article>
-        ))}
+              {p.notes && <p className="mt-3 font-display text-[15px] leading-snug">“{p.notes}”</p>}
+              <div className="mt-3 flex gap-2">
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
+                >
+                  Go now
+                </a>
+                <button
+                  onClick={() => near.dismiss(p.id)}
+                  className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
+                >
+                  Snooze
+                </button>
+              </div>
+            </article>
+          ),
+        )}
 
         {collapsed && here && nearby.length > 0 && onExpand && (
           <button
@@ -299,5 +336,63 @@ export function NearbyPlaces({
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * A nearby saved place on Home, as the master draws it: the picture for its
+ * kind, its name, how far, why it matters, and Go now.
+ */
+function HomePlaceCard({
+  pin,
+  metres,
+  reason,
+  onSnooze,
+}: {
+  pin: Pin;
+  metres: number;
+  reason: string;
+  onSnooze: () => void;
+}) {
+  const art = placeArtUrl(placeArtFor({ category: pin.category, name: pin.name }));
+  return (
+    <article className="rise tile-card-4 flex gap-3 p-2.5">
+      <img
+        src={art}
+        alt=""
+        decoding="async"
+        className="art-dim h-[112px] w-[42%] shrink-0 rounded-[12px] object-cover"
+      />
+      <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="line-clamp-2 text-[18px] leading-tight">{pin.name}</h3>
+          <Bookmark className="mt-0.5 size-5 shrink-0 fill-current text-primary" aria-hidden />
+        </div>
+        <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+          <MapPin className="size-3.5 shrink-0 text-primary" aria-hidden />
+          {formatMetres(metres)} away
+        </p>
+        <p className="truncate text-[13px] text-muted-foreground">
+          {[pin.category, reason].filter(Boolean).join(" · ")}
+        </p>
+        <div className="mt-auto flex items-center gap-2 pt-2">
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${pin.lat},${pin.lon}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 rounded-[12px] bg-primary py-2 text-center text-[14px] font-bold text-primary-foreground"
+          >
+            Go now
+          </a>
+          <button
+            type="button"
+            onClick={onSnooze}
+            className="rounded-[12px] px-2 py-2 text-[12.5px] font-semibold text-muted-foreground"
+          >
+            Snooze
+          </button>
+        </div>
+      </div>
+    </article>
   );
 }

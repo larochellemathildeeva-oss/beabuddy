@@ -1,8 +1,7 @@
-import type { ThemeName } from "./theme.ts";
-
 /**
- * The illustrated scenes in `public/banners/`, one per kind of place, each
- * painted three times — once in each theme's colours.
+ * The illustrated scenes in `public/banners/`, one per kind of place, painted
+ * in the master design's style. One picture serves every theme, as in the
+ * master; Dark only dims it (`.art-dim` in styles.css).
  */
 export const BANNER_SCENES = [
   "coastal",
@@ -311,7 +310,7 @@ export function bannerSceneFor(
   return BANNER_SCENES[hash(seed || "Béa") % BANNER_SCENES.length]!;
 }
 
-/** The illustration's path, in the colours of the theme. */
-export function bannerArtUrl(scene: BannerSceneName, theme: ThemeName): string {
-  return `/banners/${scene}-${theme}.webp`;
+/** The illustration's path. */
+export function bannerArtUrl(scene: BannerSceneName): string {
+  return `/banners/${scene}.webp`;
 }

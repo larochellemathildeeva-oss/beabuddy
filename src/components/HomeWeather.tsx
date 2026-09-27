@@ -4,6 +4,7 @@ import {
   CloudFog,
   CloudLightning,
   CloudMoon,
+  CloudOff,
   CloudRain,
   CloudSnow,
   CloudSun,
@@ -24,7 +25,7 @@ import {
 } from "@/lib/weather";
 
 function WeatherIcon({ kind, isDay }: { kind: WeatherKind; isDay: boolean }) {
-  const cls = "size-7 shrink-0 text-primary";
+  const cls = "size-6 shrink-0 text-primary";
   if (kind === "clear") return isDay ? <Sun className={cls} /> : <Moon className={cls} />;
   if (kind === "partly")
     return isDay ? <CloudSun className={cls} /> : <CloudMoon className={cls} />;
@@ -35,17 +36,17 @@ function WeatherIcon({ kind, isDay }: { kind: WeatherKind; isDay: boolean }) {
   return <Cloud className={cls} />;
 }
 
-/** The tile both of Home's "At a glance" squares sit in. */
-export const GLANCE_TILE =
-  "rise flex min-h-[150px] min-w-0 flex-col justify-between rounded-3xl border p-4";
+const PILL =
+  "flex h-11 min-w-0 max-w-[150px] items-center gap-2 rounded-full border border-border bg-card px-3 shadow-xs";
 
 /**
- * Where you are and what it is like outside, as one of Home's "At a glance"
- * tiles.
+ * Where you are and what it is like outside, as the pill beside the date at
+ * the top of Home (the master's "Montréal 13°").
  *
  * It shares Near's location and Near's consent, so there is one question
  * about your position on Home, not two. Before you have said yes it offers to
- * look, once; nothing is remembered from that tap.
+ * look, once; nothing is remembered from that tap. Open-Meteo's credit sits at
+ * the foot of Home (`WeatherCredit`), where there is room for it.
  */
 export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
   const [weather, setWeather] = useState<Weather | null>(null);
@@ -84,94 +85,97 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
     };
   }, [lat, lon]);
 
-  const tile = `${GLANCE_TILE} tile-card-2`;
-
-  if (!near.consentReady) return <div className={tile} aria-hidden />;
+  if (!near.consentReady) return <span className={`${PILL} invisible`} aria-hidden />;
 
   if (!near.consent) {
     return (
-      <section data-guide="home-weather" className={tile}>
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-[15px] text-muted-foreground">Weather here</p>
-          <CloudSun className="size-7 shrink-0 text-muted-foreground" aria-hidden />
-        </div>
-        <div>
-          <p className="text-[12px] leading-snug text-muted-foreground">
-            Looked up once, from a position rounded to about a kilometre.
-          </p>
-          <button
-            type="button"
-            onClick={() => near.allow("once")}
-            className="mt-2 rounded-xl border border-border px-3 py-1.5 text-[13px] font-semibold"
-          >
-            Show
-          </button>
-        </div>
-      </section>
+      <button
+        type="button"
+        data-guide="home-weather"
+        onClick={() => near.allow("once")}
+        title="Looked up once, from a position rounded to about a kilometre."
+        className={PILL}
+      >
+        <CloudSun className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="text-left leading-tight">
+          <span className="block text-[11px] text-muted-foreground">Weather</span>
+          <span className="block text-[13px] font-bold">Show</span>
+        </span>
+        <span className="sr-only">
+          Looked up once, from a position rounded to about a kilometre.
+        </span>
+      </button>
     );
   }
 
   if (near.state === "error") {
     return (
-      <section data-guide="home-weather" className={tile}>
-        <p className="line-clamp-3 text-[13px] text-muted-foreground">{near.error}</p>
-        <button
-          type="button"
-          onClick={near.locate}
-          className="self-start rounded-xl border border-border px-3 py-1.5 text-[13px] font-semibold"
-        >
-          Try again
-        </button>
-      </section>
+      <button
+        type="button"
+        data-guide="home-weather"
+        onClick={near.locate}
+        title={near.error || "Location off"}
+        className={PILL}
+      >
+        <CloudOff className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="text-left leading-tight">
+          <span className="block text-[11px] text-muted-foreground">Weather</span>
+          <span className="block text-[13px] font-bold">Try again</span>
+        </span>
+      </button>
     );
   }
 
   if (!weather) {
     return (
-      <section data-guide="home-weather" className={tile}>
-        <p className="text-[15px] text-muted-foreground">Weather here</p>
-        <p className="text-[13px] text-muted-foreground">
-          {failed ? "Not available right now." : "Checking…"}
-        </p>
-      </section>
+      <span data-guide="home-weather" className={PILL} role="status">
+        <CloudSun className="size-6 shrink-0 text-muted-foreground" aria-hidden />
+        <span className="text-[12px] text-muted-foreground">
+          {failed ? "Not available" : "Checking…"}
+        </span>
+      </span>
     );
   }
 
   const { label, kind } = describeWeather(weather.code);
   const where = place?.city?.split(",")[0]?.trim() || place?.country || "";
+  const range =
+    weather.high !== null && weather.low !== null
+      ? ` High ${formatTemp(weather.high, fahrenheit)}, low ${formatTemp(weather.low, fahrenheit)}.`
+      : "";
 
   return (
-    <section data-guide="home-weather" className={tile}>
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-[15px] text-muted-foreground">
-          {where || "Where you are"}
-        </p>
-        <WeatherIcon kind={kind} isDay={weather.isDay} />
-      </div>
-      <div>
-        <div className="flex items-end justify-between gap-2">
-          <p className="font-display text-[46px] leading-none">
-            {formatTemp(weather.temp, fahrenheit)}
-          </p>
-          <p className="min-w-0 truncate pb-1 text-right text-[13px] text-muted-foreground">
-            {label}
-          </p>
-        </div>
-        <p className="mt-1.5 truncate text-[10.5px] text-muted-foreground">
-          {weather.high !== null && weather.low !== null
-            ? `H ${formatTemp(weather.high, fahrenheit)} · L ${formatTemp(weather.low, fahrenheit)} · `
-            : ""}
-          <a
-            href="https://open-meteo.com/"
-            target="_blank"
-            rel="noreferrer"
-            title={WEATHER_ATTRIBUTION}
-            className="underline underline-offset-2"
-          >
-            Open-Meteo
-          </a>
-        </p>
-      </div>
-    </section>
+    <span
+      data-guide="home-weather"
+      className={PILL}
+      title={`${label}.${range}`}
+      aria-label={`${where || "Where you are"}: ${formatTemp(weather.temp, fahrenheit)}, ${label}.${range}`}
+    >
+      <WeatherIcon kind={kind} isDay={weather.isDay} />
+      <span className="min-w-0 leading-tight" aria-hidden>
+        <span className="block truncate text-[11px] text-muted-foreground">{where || "Here"}</span>
+        <span className="block font-display text-[17px] font-bold">
+          {formatTemp(weather.temp, fahrenheit)}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** Open-Meteo's credit, at the foot of Home once the weather is showing. */
+export function WeatherCredit() {
+  return (
+    <p className="text-center text-[11px] text-muted-foreground">
+      Weather by{" "}
+      <a
+        href="https://open-meteo.com/"
+        target="_blank"
+        rel="noreferrer"
+        title={WEATHER_ATTRIBUTION}
+        className="underline underline-offset-2"
+      >
+        Open-Meteo
+      </a>
+    </p>
   );
 }

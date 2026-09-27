@@ -23,7 +23,7 @@ import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
 import { TripMap } from "@/components/TripMap";
-import { TripPrep } from "@/components/TripPrep";
+import { TripPrep, type PrepTab } from "@/components/TripPrep";
 import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
 import { useUndo } from "@/hooks/useUndo";
 import { addRecommendationOnce } from "@/hooks/useRecommendations";
@@ -117,6 +117,7 @@ export function TripDetail({
   onDelete,
   onLeave,
   onRemoveMember,
+  openPrep,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
@@ -129,6 +130,8 @@ export function TripDetail({
   onDelete: () => Promise<void>;
   onLeave: () => Promise<void>;
   onRemoveMember: (userId: string) => Promise<void>;
+  /** Open the to-do or packing sheet on arrival (Home's shortcuts). */
+  openPrep?: PrepTab | undefined;
 }) {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
@@ -1499,6 +1502,7 @@ export function TripDetail({
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
           openSignal={prepSignal}
+          openTab={openPrep}
         />
       </div>
 

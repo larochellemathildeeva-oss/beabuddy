@@ -7,9 +7,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { tripCompanionsLine } from "@/lib/trip-copy";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { clearOfflineMap } from "@/lib/offline-map";
+import type { PrepTab } from "@/components/TripPrep";
 
 export const Route = createFileRoute("/trips_/$tripId")({
   staticData: { plane: "detail" },
+  // `?prep=todo` or `?prep=packing` opens the to-do / packing sheet, for
+  // Home's shortcuts. Anything else is ignored.
+  validateSearch: (search: Record<string, unknown>): { prep?: PrepTab } =>
+    search["prep"] === "todo" || search["prep"] === "packing" ? { prep: search["prep"] } : {},
   head: () => ({
     meta: [
       { title: "Trip — Béa" },
@@ -27,6 +32,7 @@ export const Route = createFileRoute("/trips_/$tripId")({
 
 function TripPage() {
   const { tripId } = Route.useParams();
+  const { prep } = Route.useSearch();
   const { user } = useAuth();
   const navigate = useNavigate();
   const t = useTrips();
@@ -75,6 +81,7 @@ function TripPage() {
     <AppShell flush>
       <TripDetail
         trip={trip}
+        openPrep={prep}
         photos={photos}
         members={members}
         companionsLine={tripCompanionsLine(members, t.uid)}

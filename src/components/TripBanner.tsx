@@ -116,7 +116,7 @@ export function TripBanner({
   const theme = useThemeName();
   const art =
     kind === "feature"
-      ? bannerArtUrl(bannerSceneFor([title, ...cities, city, country], title || city || ""), theme)
+      ? bannerArtUrl(bannerSceneFor([title, ...cities, city, country], title || city || ""))
       : null;
 
   // formatTripLocation, not a plain join: the city field often already ends

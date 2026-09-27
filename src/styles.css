@@ -4,6 +4,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "DejaVu Serif";
+  src: url("/fonts/DejaVuSerif.woff2") format("woff2");
+  /* DejaVu is much wider than the serif the layouts were sized for. */
+  size-adjust: 84%;
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DejaVu Serif";
+  src: url("/fonts/DejaVuSerif-Bold.woff2") format("woff2");
+  /* DejaVu is much wider than the serif the layouts were sized for. */
+  size-adjust: 84%;
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DejaVu Sans";
+  src: url("/fonts/DejaVuSans.woff2") format("woff2");
+  size-adjust: 94%;
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DejaVu Sans";
+  src: url("/fonts/DejaVuSans-Bold.woff2") format("woff2");
+  size-adjust: 94%;
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -48,12 +83,10 @@
   --color-tile-5: var(--tile-5);
   --color-inverse-accent: var(--inverse-accent);
 
-  /* Library requirement: consumers must load these fonts in their <head>:
-     <link rel="preconnect" href="https://fonts.googleapis.com">
-     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
-  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  /* DejaVu Serif for headings, DejaVu Sans for everything else — the master
+     design's type. Self-hosted: see @font-face below. */
+  --font-sans: "DejaVu Sans", Arial, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "DejaVu Serif", Georgia, ui-serif, serif;
 }
 
 :root,
@@ -382,8 +415,8 @@
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.018em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     text-wrap: balance;
   }
 }
@@ -520,6 +553,12 @@
   }
   [data-theme="colorful"] .tile-card-5 {
     background-color: var(--tile-5);
+  }
+
+  /* The painted pictures are shared by every theme, as in the master; Dark
+     takes the glare off them. */
+  .dark .art-dim {
+    filter: brightness(0.86) saturate(0.95);
   }
 
   /* Just the colour, for a panel inside a card: the card's own surface in

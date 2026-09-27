@@ -4,6 +4,9 @@ import { NearbyPlaces } from "@/components/NearbyPlaces";
 import type { useNearMe } from "@/hooks/useNearMe";
 import { formatMetres } from "@/lib/near";
 import { nearHomeView } from "@/lib/near-home";
+import { Link } from "@tanstack/react-router";
+import { ChevronRight } from "lucide-react";
+import { HomeSaveTile } from "@/components/HomeSaveTile";
 
 /**
  * What's saved around you, on the screen you actually open.
@@ -18,7 +21,16 @@ import { nearHomeView } from "@/lib/near-home";
  * Collapsed by default: the nearest few, and the working tools a tap away.
  * Home stays a landing screen.
  */
-export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof useNearMe> }) {
+export function NearHome({
+  pins,
+  near,
+  waiting,
+}: {
+  pins: Pin[];
+  near: ReturnType<typeof useNearMe>;
+  /** A saved place to show while Béa does not know where you are. */
+  waiting?: Parameters<typeof HomeSaveTile>[0]["waiting"];
+}) {
   const [expanded, setExpanded] = useState(false);
 
   const view = nearHomeView({
@@ -30,10 +42,19 @@ export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof 
     dismissed: near.dismissed,
   });
 
+  const located = near.consent && near.state === "ok";
+  const card = !located && waiting ? <HomeSaveTile waiting={waiting} /> : null;
+
   // Nothing to be near. No point offering location to someone whose saved
   // places have no position — there is nothing for Béa to measure against.
-  if (view.kind === "hidden") return null;
-  if (!near.consentReady) return null;
+  if (view.kind === "hidden" || !near.consentReady) {
+    return card ? (
+      <section data-guide="home-near" className="rise">
+        <NearTitle />
+        {card}
+      </section>
+    ) : null;
+  }
 
   /**
    * Béa looked and found nothing within reach.
@@ -48,33 +69,34 @@ export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof 
    */
   if (view.kind === "none-near" && !expanded) {
     return (
-      <section data-guide="home-near" className="rise surface p-3.5">
-        <p className="label-caps text-foreground">Around you right now</p>
-        <p className="mt-1 text-[14.5px] text-muted-foreground">
-          Nothing you've saved is within {formatMetres(near.radius)}.
-        </p>
-        {view.nearest && (
-          <p className="mt-1.5 text-[14.5px]">
-            Nearest is <span className="font-semibold">{view.nearest.pin.name}</span>, about{" "}
-            {formatMetres(view.nearest.metres)} away.
+      <section data-guide="home-near" className="rise">
+        <NearTitle />
+        {card}
+        <div className="surface mt-3 p-3.5">
+          <p className="text-[14.5px] text-muted-foreground">
+            Nothing you've saved is within {formatMetres(near.radius)}.
           </p>
-        )}
-        <button
-          onClick={() => setExpanded(true)}
-          className="mt-2.5 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
-        >
-          Look further
-        </button>
+          {view.nearest && (
+            <p className="mt-1.5 text-[14.5px]">
+              Nearest is <span className="font-semibold">{view.nearest.pin.name}</span>, about{" "}
+              {formatMetres(view.nearest.metres)} away.
+            </p>
+          )}
+          <button
+            onClick={() => setExpanded(true)}
+            className="mt-2.5 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
+          >
+            Look further
+          </button>
+        </div>
       </section>
     );
   }
 
   return (
     <section data-guide="home-near" className="rise">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="label-caps text-foreground">
-          {near.consent ? "Around you right now" : "Places near you"}
-        </p>
+      <div className="flex items-baseline justify-between gap-2">
+        <NearTitle />
         {expanded && (
           <button
             onClick={() => setExpanded(false)}
@@ -85,11 +107,7 @@ export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof 
         )}
       </div>
 
-      {!near.consent && (
-        <p className="mb-3 text-[14.5px] text-muted-foreground">
-          Share where you are and Béa will show which of your saved places are within reach.
-        </p>
-      )}
+      {card ? <div className="mb-3">{card}</div> : null}
 
       <NearbyPlaces
         pins={pins}
@@ -98,5 +116,20 @@ export function NearHome({ pins, near }: { pins: Pin[]; near: ReturnType<typeof 
         onExpand={() => setExpanded(true)}
       />
     </section>
+  );
+}
+
+function NearTitle() {
+  return (
+    <div className="mb-3 flex flex-1 items-baseline justify-between gap-3">
+      <h2 className="font-display text-[22px] leading-tight">Nearby recommendations</h2>
+      <Link
+        to="/recommendations"
+        className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary"
+      >
+        See all
+        <ChevronRight className="size-4" aria-hidden />
+      </Link>
+    </div>
   );
 }

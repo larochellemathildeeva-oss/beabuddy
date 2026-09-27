@@ -59,6 +59,32 @@ export function heroPill(
   return "Just back";
 }
 
+/**
+ * Home's hero in the master design has two pills: what kind of moment this is
+ * on the left ("Upcoming trip", "On the trip") and when on the right ("In 4
+ * days", "Day 3 of 7"). `when` is empty when there is nothing to count.
+ */
+export function heroTags(
+  start: string | null | undefined,
+  end: string | null | undefined,
+  tentative = false,
+  now = new Date(),
+): { label: string; when: string } {
+  const from = localDate(start);
+  if (!from) return { label: tentative ? "Tentative dates" : "Planning", when: "" };
+  const to = localDate(end) ?? from;
+  const until = daysFrom(now, from);
+  const label = tentative ? "Tentative dates" : "Upcoming trip";
+  if (until > 1) return { label, when: `In ${until} days` };
+  if (until === 1) return { label, when: "Tomorrow" };
+  if (until === 0) return { label, when: "Today" };
+  const day = daysFrom(from, now) + 1;
+  const length = daysFrom(from, to) + 1;
+  if (day <= length)
+    return { label: "On the trip", when: length > 1 ? `Day ${day} of ${length}` : "" };
+  return { label: "Just back", when: "" };
+}
+
 /** "3D": the trip's length in days, for the corner of a banner. */
 export function daysShort(start: string | null | undefined, end: string | null | undefined) {
   const from = localDate(start);

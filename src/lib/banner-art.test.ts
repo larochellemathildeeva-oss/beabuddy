@@ -2,7 +2,6 @@ import { strict as assert } from "node:assert";
 import { existsSync } from "node:fs";
 import { test } from "node:test";
 import { BANNER_SCENES, bannerArtUrl, bannerSceneFor } from "./banner-art.ts";
-import { THEMES } from "./theme.ts";
 
 test("a place picks the scene that suits it", () => {
   assert.equal(bannerSceneFor(["Lisbon", "Portugal"], "x"), "coastal");
@@ -27,11 +26,9 @@ test("somewhere unknown keeps the same scene every time", () => {
   assert.ok((BANNER_SCENES as readonly string[]).includes(a));
 });
 
-test("every scene is painted in every theme", () => {
+test("every scene is painted", () => {
   for (const scene of BANNER_SCENES) {
-    for (const theme of THEMES) {
-      const url = bannerArtUrl(scene, theme);
-      assert.ok(existsSync(new URL(`../../public${url}`, import.meta.url)), url);
-    }
+    const url = bannerArtUrl(scene);
+    assert.ok(existsSync(new URL(`../../public${url}`, import.meta.url)), url);
   }
 });

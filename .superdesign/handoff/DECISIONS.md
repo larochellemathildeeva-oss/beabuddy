@@ -35,3 +35,14 @@
   keep the current serif (Instrument Serif) and body font (Manrope).
 - Colorful uses peach, sky, mint, butter and blush for the five tiles.
   Lavender and rose are left out so it never reads as purple.
+
+## Font and pictures (update)
+
+- **Font changed** at the owner's request: DejaVu Serif (bold headings) and
+  DejaVu Sans, self-hosted in `public/fonts` (subset to Latin, ~200 KB).
+- Pictures: three settings are still the plan — illustrations, real photos
+  (Wikimedia Commons), none (condensed). Illustrations first.
+- Illustrations repainted in the master's painterly style (Gemini, with the
+  master's pictures as the style reference): 18 place kinds in
+  `public/places/` (`place-art.ts`) and 8 trip scenes in `public/banners/`.
+  One picture for all themes, as in the master; Dark dims it.

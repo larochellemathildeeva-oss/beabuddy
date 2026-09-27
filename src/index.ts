@@ -1,10 +1,8 @@
 /**
  * Béa design system — entry point.
  *
- * Consumers must load these fonts in their app's <head>:
- *   <link rel="preconnect" href="https://fonts.googleapis.com">
- *   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
- *   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+ * Fonts (DejaVu Serif and DejaVu Sans) are self-hosted from `public/fonts`;
+ * render <BeaFontLinks /> in the document head to preload them.
  */
 import "./styles.css";
 
