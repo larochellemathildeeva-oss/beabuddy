@@ -20,8 +20,13 @@ import { beaLine } from "@/lib/bea-voice";
 import { type DatesStatus } from "@/lib/trip-dates";
 import {
   EMPTY_CITY,
+  EMPTY_DAY_TRIP,
   citiesToStops,
   cityOutsideTrip,
+  dayTripInsertAt,
+  dayTripOutsideBase,
+  onePlaceStops,
+  shortCity,
   tripDatesFromCities,
   type CityDraft,
 } from "@/lib/trip-cities";
@@ -73,6 +78,10 @@ function TripsPage() {
   const [cities, setCities] = useState<CityDraft[]>([EMPTY_CITY, EMPTY_CITY]);
   const setCity = (index: number, patch: Partial<CityDraft>) =>
     setCities((list) => list.map((city, i) => (i === index ? { ...city, ...patch } : city)));
+  /** One place with days out of it: Kyoto for the week, Hiroshima for a day. */
+  const [dayTrips, setDayTrips] = useState<CityDraft[]>([]);
+  const setDayTrip = (index: number, patch: Partial<CityDraft>) =>
+    setDayTrips((list) => list.map((trip, i) => (i === index ? { ...trip, ...patch } : trip)));
   // With several cities, blank trip dates come from the cities' own.
   const cityDates = tripDatesFromCities(cities);
   const tripStart = multiCity ? form.start_date || cityDates.start : form.start_date;
@@ -202,71 +211,133 @@ function TripsPage() {
                     multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
                   }
                 />
+                {!multiCity && form.city.trim() && (
+                  <div className="space-y-2">
+                    {dayTrips.map((trip, index) => (
+                      <DayTripRow
+                        key={index}
+                        trip={trip}
+                        base={form.city}
+                        min={form.start_date}
+                        max={form.end_date}
+                        outside={cityOutsideTrip(
+                          { ...trip, end: trip.start },
+                          form.start_date,
+                          form.end_date,
+                        )}
+                        onChange={(patch) => setDayTrip(index, patch)}
+                        onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
+                      className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      Add a day trip from {shortCity(form.city)}
+                    </button>
+                  </div>
+                )}
                 {multiCity && (
                   <div className="space-y-2">
                     <p className="px-1 text-[12px] text-muted-foreground">
-                      Each city in order, with the days you're there. Add layovers too.
+                      Each city in order, with the days you're there. Add layovers too, and day
+                      trips from a city you're sleeping in.
                     </p>
-                    {cities.map((city, index) => (
-                      <div
-                        key={index}
-                        className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
-                            {index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <PlaceSearchInput
-                              value={city.city}
-                              onChange={(v) =>
-                                setCity(index, { city: v, lat: undefined, lon: undefined })
-                              }
-                              onPick={(p) => {
-                                const loc = locationFromParsedPlace(p);
-                                setCity(index, {
-                                  city: loc.city,
-                                  country: loc.country,
-                                  lat: p.lat,
-                                  lon: p.lon,
-                                });
-                              }}
-                              placeholder={`City ${index + 1} — search it`}
-                              areas
-                            />
+                    {cities.map((city, index) =>
+                      city.dayTrip ? (
+                        <div key={index} className="ml-7">
+                          <DayTripRow
+                            trip={city}
+                            base={baseOf(cities, index)?.city ?? ""}
+                            min={baseOf(cities, index)?.start ?? ""}
+                            max={baseOf(cities, index)?.end ?? ""}
+                            outside={dayTripOutsideBase(cities, index)}
+                            onChange={(patch) => setCity(index, patch)}
+                            onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          key={index}
+                          className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
+                              {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <PlaceSearchInput
+                                value={city.city}
+                                onChange={(v) =>
+                                  setCity(index, { city: v, lat: undefined, lon: undefined })
+                                }
+                                onPick={(p) => {
+                                  const loc = locationFromParsedPlace(p);
+                                  setCity(index, {
+                                    city: loc.city,
+                                    country: loc.country,
+                                    lat: p.lat,
+                                    lon: p.lon,
+                                  });
+                                }}
+                                placeholder={`City ${index + 1} — search it`}
+                                areas
+                              />
+                            </div>
+                            {cities.length > 1 && (
+                              <button
+                                type="button"
+                                aria-label={`Remove city ${index + 1}`}
+                                onClick={() =>
+                                  // Its day trips go with it: they sleep there.
+                                  setCities((list) => {
+                                    const end = dayTripInsertAt(list, index);
+                                    return list.filter((_, i) => i < index || i >= end);
+                                  })
+                                }
+                                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                              >
+                                <X className="size-4" aria-hidden />
+                              </button>
+                            )}
                           </div>
-                          {cities.length > 1 && (
+                          <DateRangeField
+                            start={city.start}
+                            end={city.end}
+                            onChange={(start, end) => setCity(index, { start, end })}
+                            title={
+                              city.city.trim()
+                                ? `Dates in ${city.city.split(",")[0]}`
+                                : "Dates in this city"
+                            }
+                            placeholder="Dates in this city"
+                            month={cities[index - 1]?.end || form.start_date || undefined}
+                          />
+                          {cityOutsideTrip(city, form.start_date, form.end_date) && (
+                            <p className="px-1 text-[12px] font-medium text-destructive">
+                              These dates fall outside the trip's.
+                            </p>
+                          )}
+                          {city.city.trim() && (
                             <button
                               type="button"
-                              aria-label={`Remove city ${index + 1}`}
                               onClick={() =>
-                                setCities((list) => list.filter((_, i) => i !== index))
+                                setCities((list) => {
+                                  const at = dayTripInsertAt(list, index);
+                                  return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
+                                })
                               }
-                              className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                              className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
                             >
-                              <X className="size-4" aria-hidden />
+                              <Plus className="size-3.5" aria-hidden />
+                              Day trip from {shortCity(city.city)}
                             </button>
                           )}
                         </div>
-                        <DateRangeField
-                          start={city.start}
-                          end={city.end}
-                          onChange={(start, end) => setCity(index, { start, end })}
-                          title={
-                            city.city.trim()
-                              ? `Dates in ${city.city.split(",")[0]}`
-                              : "Dates in this city"
-                          }
-                          placeholder="Dates in this city"
-                          month={cities[index - 1]?.end || form.start_date || undefined}
-                        />
-                        {cityOutsideTrip(city, form.start_date, form.end_date) && (
-                          <p className="px-1 text-[12px] font-medium text-destructive">
-                            These dates fall outside the trip's.
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      ),
+                    )}
                     <button
                       type="button"
                       onClick={() => setCities((list) => [...list, EMPTY_CITY])}
@@ -328,7 +399,17 @@ function TripsPage() {
                               country: firstCity?.country ?? "",
                               stops: citiesToStops(cities),
                             }
-                          : {}),
+                          : {
+                              stops: onePlaceStops(
+                                {
+                                  city: form.city,
+                                  country: form.country,
+                                  start: tripStart,
+                                  end: tripEnd,
+                                },
+                                dayTrips,
+                              ),
+                            }),
                         start_date: tripStart,
                         end_date: tripEnd,
                         title: form.title.trim() || suggestedName,
@@ -351,6 +432,7 @@ function TripsPage() {
                       });
                       setMultiCity(false);
                       setCities([EMPTY_CITY, EMPTY_CITY]);
+                      setDayTrips([]);
                       setWithBudget(false);
                       setCreating(false);
                     } catch (e) {
@@ -445,5 +527,83 @@ function TripsPage() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+/** The city a day trip in the list goes out from, and sleeps in. */
+function baseOf(cities: CityDraft[], index: number): CityDraft | null {
+  for (let i = index - 1; i >= 0; i--) if (!cities[i]!.dayTrip) return cities[i]!;
+  return null;
+}
+
+/** A day out and back: where to, and the one day. */
+function DayTripRow({
+  trip,
+  base,
+  min,
+  max,
+  outside,
+  onChange,
+  onRemove,
+}: {
+  trip: CityDraft;
+  base: string;
+  min: string;
+  max: string;
+  outside: boolean;
+  onChange: (patch: Partial<CityDraft>) => void;
+  onRemove: () => void;
+}) {
+  const from = shortCity(base);
+  return (
+    <div className="space-y-1.5 rounded-xl border border-dashed border-border bg-elevated p-2">
+      <div className="flex items-center gap-1.5">
+        <span aria-hidden className="grid size-6 shrink-0 place-items-center text-[14px]">
+          🚆
+        </span>
+        <div className="min-w-0 flex-1">
+          <PlaceSearchInput
+            value={trip.city}
+            onChange={(v) => onChange({ city: v, lat: undefined, lon: undefined })}
+            onPick={(p) => {
+              const loc = locationFromParsedPlace(p);
+              onChange({ city: loc.city, country: loc.country, lat: p.lat, lon: p.lon });
+            }}
+            placeholder={from ? `Day trip from ${from} — where to?` : "Day trip — where to?"}
+            areas
+          />
+        </div>
+        <button
+          type="button"
+          aria-label="Remove this day trip"
+          onClick={onRemove}
+          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      </div>
+      <label className="flex flex-wrap items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
+        On
+        <input
+          type="date"
+          value={trip.start}
+          {...(min ? { min } : {})}
+          {...(max ? { max } : {})}
+          aria-label="The day of this day trip"
+          onChange={(e) => onChange({ start: e.target.value, end: e.target.value })}
+          className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+        />
+      </label>
+      <p className="px-1 text-[12px] text-muted-foreground">
+        {from ? `Back to ${from} for the night.` : "Back the same night."}
+      </p>
+      {outside && (
+        <p className="px-1 text-[12px] font-medium text-destructive">
+          {from
+            ? `This day falls outside your stay in ${from}.`
+            : "This day falls outside the trip's."}
+        </p>
+      )}
+    </div>
   );
 }

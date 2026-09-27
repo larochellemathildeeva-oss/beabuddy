@@ -192,3 +192,23 @@ test("past trips: the last year, most recent first", () => {
     ["japan"],
   );
 });
+
+test("a day trip is where you are for a day, never where you sleep", () => {
+  const stops = [
+    { city: "Kyoto, Japan", arrive_on: "2026-10-01", depart_on: "2026-10-07" },
+    { kind: "daytrip", city: "Hiroshima", arrive_on: "2026-10-04", depart_on: "2026-10-04" },
+  ];
+  const rows = [
+    dated("flight", "Out", "2026-10-01"),
+    dated("hotel", "Kyoto inn", "2026-10-01"),
+    dated("flight", "Home", "2026-10-07"),
+  ];
+  const at = (today: string) => {
+    const leg = currentLeg(stops, rows, today)!;
+    return [leg.label, leg.city, leg.flight?.title ?? null, leg.lodging?.title ?? null];
+  };
+  assert.deepEqual(at("2026-09-26"), ["First stop", "Kyoto", "Out", "Kyoto inn"]);
+  assert.deepEqual(at("2026-10-04"), ["Day trip to", "Hiroshima", "Home", "Kyoto inn"]);
+  // The day after, back in Kyoto — not still "in" Hiroshima.
+  assert.deepEqual(at("2026-10-05"), ["Now in", "Kyoto", "Home", "Kyoto inn"]);
+});

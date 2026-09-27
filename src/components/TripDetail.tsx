@@ -1573,6 +1573,7 @@ export function TripDetail({
         }))}
         cities={cities.stops.map((stop) => ({
           city: stop.city,
+          kind: stop.kind,
           country: stop.country,
           arrive_on: stop.arrive_on,
           depart_on: stop.depart_on,
