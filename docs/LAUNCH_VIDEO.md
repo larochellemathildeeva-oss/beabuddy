@@ -384,26 +384,15 @@ site, the store listing and onboarding, and the video should match them exactly.
 
 ## Putting the finished film in the app
 
-The app ships without a video and has no way to make one. Once a cut exists,
-host it and set one environment variable:
+This launch film is for the site and the stores, not for the app. Inside the
+app, `VITE_DEMO_VIDEO_URL` holds the 40-second **welcome film**, which plays on
+the first card of the welcome tour, in the Replay chooser and on How Béa works.
+It and the Help clips are planned in `DEMO_VIDEOS.md`, each with its own
+variable.
 
-```
-VITE_DEMO_VIDEO_URL=https://…/bea-tour.mp4
-```
-
-Accepted: an `.mp4` / `.webm` / `.ogv` / `.mov` over https, a path served by the
-app itself (`/demo.mp4` in `public/`), or a YouTube or Vimeo link — those are
-rewritten to `youtube-nocookie.com/embed/…` and `player.vimeo.com/video/…`.
-Anything else resolves to "no video" on purpose: a mis-set variable should not
-drop an arbitrary page into an iframe inside the app.
-
-With it set, **Take the tour again** (You → replay) offers "Watch how Béa
-works" in place of the written walk. Leave it unset and the walk stays exactly
-as it is, so an unconfigured deploy never shows a dead button.
-
-The **How Béa works** page shows it too. The in-app welcome film, the
-walkthrough and the Help clips are planned in `DEMO_VIDEOS.md`, each with its
-own variable.
+If a cut of this launch film was ever set in `VITE_DEMO_VIDEO_URL`, replace it
+with the welcome film, or clear it, before the welcome film is expected in
+the tour.
 
 ## Production notes
 

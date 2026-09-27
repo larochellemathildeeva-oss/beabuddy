@@ -124,9 +124,9 @@ export const DEMO_VIDEOS: readonly DemoVideo[] = [
   {
     id: "walkthrough",
     envKey: "VITE_WALKTHROUGH_VIDEO_URL",
-    title: "Béa in five minutes",
+    title: "Béa, start to finish",
     blurb: "The whole app in order, one chapter per feature.",
-    length: "About five minutes",
+    length: "About nine minutes",
   },
   {
     id: "save",
@@ -139,7 +139,7 @@ export const DEMO_VIDEOS: readonly DemoVideo[] = [
     id: "world",
     envKey: "VITE_CLIP_WORLD_URL",
     title: "Your globe",
-    blurb: "Where you have been, the four kinds of pin, and Help me choose.",
+    blurb: "Where you have been, city by city, and Help me choose.",
     length: "About a minute",
   },
   {

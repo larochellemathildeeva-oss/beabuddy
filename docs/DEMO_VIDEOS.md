@@ -54,7 +54,7 @@ language across all of it, and Béa used sparingly.
 | #   | Film                         | Length | Plays where                                                       | Variable                     |
 | --- | ---------------------------- | ------ | ----------------------------------------------------------------- | ---------------------------- |
 | —   | Welcome film                 | ~40 s  | First card of the welcome tour, the Replay chooser, How Béa works | `VITE_DEMO_VIDEO_URL`        |
-| —   | Béa in five minutes          | ~5 min | Top of Help → Watch how it's done                                 | `VITE_WALKTHROUGH_VIDEO_URL` |
+| —   | Béa, start to finish         | ~9 min | Top of Help → Watch how it's done                                 | `VITE_WALKTHROUGH_VIDEO_URL` |
 | 1   | Save a place                 | ~60 s  | Help                                                              | `VITE_CLIP_SAVE_URL`         |
 | 2   | Your globe                   | ~60 s  | Help                                                              | `VITE_CLIP_WORLD_URL`        |
 | 3   | Start a trip                 | ~60 s  | Help                                                              | `VITE_CLIP_PLAN_URL`         |
@@ -72,7 +72,12 @@ ship first.
 **Make the walkthrough last, from the clips.** It is clips 1–9 in order, with
 a two-second chapter card between each one and a short opening and close. One
 recording session serves both. When the app changes, you re-record one clip and
-re-cut the walkthrough, instead of shooting five minutes again.
+re-cut the walkthrough, instead of shooting nine minutes again.
+
+Nine clips plus the cards come to about nine minutes. That is fine because
+nobody is meant to watch it straight through: the chapters let people jump to
+the part they need. If you want a shorter cut, trim clips in the edit rather
+than dropping any, and update the walkthrough's `length` in the app to match.
 
 The titles, one-line descriptions and lengths shown in the app live in
 `DEMO_VIDEOS` in `src/lib/demo-video.ts`. If a finished clip runs much longer
@@ -219,7 +224,7 @@ little instruction.
 | 0–4 s   | Béa's portrait fades in on cream. A small map pin lands beside her.                                                             | _Your travel life, all in one place._                                     | Real artwork, motion graphics                      |
 | 4–9 s   | Fragments drift across the frame: a friend's text, a screenshot of a café, a link in a group chat. They scatter.                | _You already found the good places._                                      | Motion graphics or Veo (`LAUNCH_VIDEO.md` scene 1) |
 | 9–15 s  | Recs: a link is pasted, places appear, a finger ticks three. Toast: **"Saved." / "Future You has excellent taste."**            | _Keep who told you._                                                      | Screen recording                                   |
-| 15–21 s | World: the globe turns to Lisbon. Four colours of pin.                                                                          | _Where you've been, and where you're going next._                         | Screen recording                                   |
+| 15–21 s | World: the globe turns to Portugal. Visited countries shaded, a dot for each city.                                              | _Everywhere you've been, on one globe._                                   | Screen recording                                   |
 | 21–28 s | Paris trip: a saved place drops onto a day, the map draws the day. Béa runs on the spot: **"Béa is sniffing out hidden gems…"** | _Professionally assembled from your own excellent ideas._                 | Screen recording                                   |
 | 28–34 s | Home, out walking: Near you shows Café A Brasileira, 180 m.                                                                     | _Past You left a breadcrumb._                                             | Screen recording, with an optional street shot     |
 | 34–40 s | Béa's portrait again, on cream.                                                                                                 | _Béa remembers your travel life so Future You doesn't miss what matters._ | Real artwork                                       |
@@ -228,12 +233,12 @@ No button in the film. The tour's own **Next** is the call to action.
 
 ---
 
-## Béa in five minutes
+## Béa, start to finish (~9 min)
 
 Clips 1–9 in order. Between each, a two-second chapter card: cream, the clip's
 title in Instrument Serif, and its number.
 
-- **Open (8 s):** Béa's portrait. _"Five minutes, nine things. Skip to any one
+- **Open (8 s):** Béa's portrait. _"Nine things, one at a time. Skip to any one
   of them."_
 - **Close (8 s):** _"Forgot one? Every clip is in Help, one at a time."_ Then
   the mission line.
@@ -271,8 +276,9 @@ habit that helps with everything else.
 | 9   | Tap the Lisbon city chip, then a kind chip.                                                                                                    | _Filter by city, or by kind._                       |
 | 10  | **+ → Send places**: tick three and make a code. Crop the code.                                                                                | _Send a few to a friend. They never see the rest._  |
 
-**Show these details:** a place already in the vault is flagged before it is
-saved twice. **Remove** gives an Undo. **Pick the exact spot** fixes a pin Béa
+**Show these details:** every saved place is one of four kinds: Visited,
+Next time, Wishlist or Recommendation. Show the choice once. A place already
+in the vault is flagged before it is saved twice. **Remove** gives an Undo. **Pick the exact spot** fixes a pin Béa
 missed.
 
 **Never say:** that Béa recommends places to you. The vault is yours.
@@ -286,7 +292,7 @@ helps you choose where next.
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | 1   | World tab. Drag to spin the globe. Pinch to zoom.                                                                                                                                      | _Everywhere you've been, on one globe._                |
 | 2   | Zoom to Europe: visited countries shaded, provinces inside them, a dot per city.                                                                                                       | _Countries, the regions inside them, and your cities._ |
-| 3   | The chips above the globe hide and show the four pin types: Visited, Next time, Wishlist, Recommendation.                                                                              | _Four kinds of pin. Hide any group when it gets busy._ |
+| 3   | Tap the counters above the globe, **Cities**, **Provinces & states** and **Countries**, to show each one alone.                                                                        | _Tap a counter to show only that._                     |
 | 4   | The round **+**: add "Kyoto". Then paste a short list. Béa shows the pins to confirm before anything lands.                                                                            | _Add places by hand, or paste a list from your notes._ |
 | 5   | In the places list, show one saved as "日本" counted as Japan.                                                                                                                         | _Saved in another language? Still the same country._   |
 | 6   | Open **Travel statistics**. Switch countries to a share of the world.                                                                                                                  | _Choose which counters to show._                       |
@@ -299,6 +305,9 @@ keyboard and a screen reader."_
 
 **Never say:** that Help me choose searches the internet for new destinations.
 It weighs only places you picked.
+
+**Never show** wishlist or recommendation pins on the globe. It shows only
+where you have been. The other three kinds live on Recs.
 
 ### 3. Start a trip (~60 s)
 
@@ -486,11 +495,11 @@ Each film is switched on by its own variable in Canner. They are build-time
 (`VITE_`) variables, so **redeploy after setting one**. A variable left unset
 shows nothing: no empty heading, no dead button.
 
-| Variable                                        | Film                | Appears                                                                                       |
-| ----------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------- |
-| `VITE_DEMO_VIDEO_URL`                           | Welcome film        | **Watch the film first** on the tour's first card; the Replay chooser; the How Béa works page |
-| `VITE_WALKTHROUGH_VIDEO_URL`                    | Béa in five minutes | Help → Watch how it's done, first row                                                         |
-| `VITE_CLIP_SAVE_URL` … `VITE_CLIP_MEMORIES_URL` | Clips 1–9           | Help → Watch how it's done, in order                                                          |
+| Variable                                        | Film                 | Appears                                                                                       |
+| ----------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------- |
+| `VITE_DEMO_VIDEO_URL`                           | Welcome film         | **Watch the film first** on the tour's first card; the Replay chooser; the How Béa works page |
+| `VITE_WALKTHROUGH_VIDEO_URL`                    | Béa, start to finish | Help → Watch how it's done, first row                                                         |
+| `VITE_CLIP_SAVE_URL` … `VITE_CLIP_MEMORIES_URL` | Clips 1–9            | Help → Watch how it's done, in order                                                          |
 
 **Accepted values** (the same for every variable): an `.mp4`, `.webm`, `.ogv`
 or `.mov` over https; a path the app serves itself (`/clips/near.mp4` in
