@@ -22,7 +22,7 @@ export function HomeSaveTile({
 }) {
   const located = near.consent && near.state === "ok" ? near.here : null;
   const close = located ? nudgePin(located, pins, near.dismissed) : null;
-  const tile = `${GLANCE_TILE} border-primary/10 bg-primary/10`;
+  const tile = `${GLANCE_TILE} border-primary/10 bg-tile-3`;
 
   if (close) {
     const minutes = walkMinutes(close.metres);

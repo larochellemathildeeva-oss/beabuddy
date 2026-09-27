@@ -445,6 +445,45 @@
   box-shadow: var(--shadow-md);
 }
 
+/**
+ * A card that is a quiet white card in Calm and Dark and turns pastel in
+ * Colorful: tile-card-1 peach, -2 sky, -3 mint, -4 lavender, -5 butter.
+ * Plain CSS rather than @utility so the Colorful rules sit beside the base;
+ * in the components layer so utilities on the element still win.
+ */
+@layer components {
+  .tile-card-1,
+  .tile-card-2,
+  .tile-card-3,
+  .tile-card-4,
+  .tile-card-5 {
+    background-color: var(--color-card);
+    border: 1px solid color-mix(in oklch, var(--color-border) 55%, transparent);
+    border-radius: var(--radius-3xl);
+    box-shadow: var(--shadow-sm);
+  }
+  [data-theme="colorful"]
+    :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-card-4, .tile-card-5) {
+    border-color: transparent;
+    box-shadow: none;
+  }
+  [data-theme="colorful"] .tile-card-1 {
+    background-color: var(--tile-1);
+  }
+  [data-theme="colorful"] .tile-card-2 {
+    background-color: var(--tile-2);
+  }
+  [data-theme="colorful"] .tile-card-3 {
+    background-color: var(--tile-3);
+  }
+  [data-theme="colorful"] .tile-card-4 {
+    background-color: var(--tile-4);
+  }
+  [data-theme="colorful"] .tile-card-5 {
+    background-color: var(--tile-5);
+  }
+}
+
 /** A quiet panel: grouped, but not competing with real cards. */
 @utility surface {
   background-color: var(--color-elevated);

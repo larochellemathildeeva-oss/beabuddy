@@ -19,7 +19,24 @@ function todayIso() {
 }
 
 /** A serif heading with one quiet link beside it, as on Home. */
-export function HomeSectionTitle({ title, aside }: { title: string; aside?: ReactNode }) {
+export function HomeSectionTitle({
+  title,
+  aside,
+  small = false,
+}: {
+  title: string;
+  aside?: ReactNode;
+  /** A quiet caps label, for the glanceable rows; the serif is for trips. */
+  small?: boolean;
+}) {
+  if (small) {
+    return (
+      <div className="mb-3 flex items-baseline justify-between gap-3 px-1">
+        <h2 className="label-caps font-sans text-foreground">{title}</h2>
+        {aside ? <div className="shrink-0 text-[12.5px] text-muted-foreground">{aside}</div> : null}
+      </div>
+    );
+  }
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
       <h2 className="font-display text-[27px] leading-none">{title}</h2>
@@ -150,6 +167,7 @@ export function HomeNextUp({
   return (
     <section data-guide="home-next" className="rise">
       <HomeSectionTitle
+        small
         title="Next up"
         aside={
           open.length > 0 ? `${open.length} ${open.length === 1 ? "task" : "tasks"}` : undefined
@@ -158,7 +176,7 @@ export function HomeNextUp({
       <Link
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
-        className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-xs transition-shadow hover:shadow-sm"
+        className="tile-card-1 flex items-center gap-4 p-4 transition-shadow hover:shadow-md"
       >
         <span
           aria-hidden

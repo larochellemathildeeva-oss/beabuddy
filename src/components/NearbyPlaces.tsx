@@ -220,7 +220,7 @@ export function NearbyPlaces({
         )}
 
         {shown.map(({ pin: p, metres }) => (
-          <article key={p.id} className="rise card-soft p-4">
+          <article key={p.id} className="rise tile-card-4 p-4">
             {metres < 800 && (
               <p className="mb-2 text-[13px] text-muted-foreground">
                 You're {formatMetres(metres)} from something Past You cared about.

@@ -84,7 +84,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
     };
   }, [lat, lon]);
 
-  const tile = `${GLANCE_TILE} border-border bg-card`;
+  const tile = `${GLANCE_TILE} tile-card-2`;
 
   if (!near.consentReady) return <div className={tile} aria-hidden />;
 
