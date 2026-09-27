@@ -6,26 +6,33 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
+  ArrowLeft,
+  ArrowRight,
   Bookmark,
-  Check,
   ChevronDown,
   Hand,
+  Heart,
   Inbox,
   ListPlus,
   LocateFixed,
+  MapPin,
   MapPinned,
   Plus,
+  Search,
+  Settings2,
   Share2,
-  StickyNote,
-  UserRound,
-  X,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
-import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";
 import { TripPlacesImport } from "@/components/TripPlacesImport";
 import { ShareRecos } from "@/components/ShareRecos";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
+import { AddToTripSheet } from "@/components/recs/AddToTripSheet";
+import { ExploreNearby } from "@/components/recs/ExploreNearby";
+import { PlaceDetail } from "@/components/recs/PlaceDetail";
+import { KIND_ICON } from "@/components/recs/kind-icons";
+import { PlaceArt, RecsSectionHead, Sheet, type RecsPlace } from "@/components/recs/RecsParts";
+import { SaveSheet } from "@/components/recs/SaveSheet";
 import {
   addPlaceholder,
   anyFilterWorthShowing,
@@ -36,6 +43,8 @@ import {
   searchWorthShowing,
 } from "@/lib/reco-ui";
 import { useAuth } from "@/hooks/useAuth";
+import { useBeaSettings } from "@/hooks/useBeaSettings";
+import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { Section } from "@/components/Section";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
@@ -55,6 +64,7 @@ import {
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines, formatTripLocation } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
+import { placeArtUrl, type PlaceArt as PlaceArtKind } from "@/lib/place-art";
 import { useUndo } from "@/hooks/useUndo";
 import {
   capturedFromParsedPlace,
@@ -74,18 +84,21 @@ import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { scoreOpportunity } from "@/lib/score-opportunity";
 import { beaLine } from "@/lib/bea-voice";
+import { emptyLine } from "@/lib/bea-personality";
+import { BROWSE_KINDS, listCounts, recentlySaved, type BrowseKind } from "@/lib/recs-browse";
+import { toLocalISODate } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/recommendations")({
   staticData: { plane: "tab" },
   head: () => ({
     meta: [
-      { title: "Recommendation vault — Béa" },
+      { title: "Recommendations — Béa" },
       {
         name: "description",
         content:
           "Every recommendation you've ever been given, saved by link, GPS or note — filterable by city, category and who told you.",
       },
-      { property: "og:title", content: "Recommendation vault — Béa" },
+      { property: "og:title", content: "Recommendations — Béa" },
       {
         property: "og:description",
         content: "Never lose a recommendation again. Save it once, find it years later.",
@@ -127,6 +140,13 @@ type Draft = {
   travel_tags?: string[];
 };
 
+/** Which of the tab's screens is showing; a place remembers where it was opened from. */
+type Screen =
+  | { kind: "home" }
+  | { kind: "saved"; list: PinType | "all" }
+  | { kind: "nearby"; browse: BrowseKind | "All" }
+  | { kind: "place"; place: RecsPlace; back: Screen };
+
 function draftWithTags(place: Draft): Draft {
   return { ...place, travel_tags: suggestTravelTags(place) };
 }
@@ -157,8 +177,12 @@ function RecommendationsPage() {
   const [justDrafted, setJustDrafted] = useState(0);
   /** The rec just saved, while the offer to fill in the rest is still up. */
   const [justSaved, setJustSaved] = useState<{ id: string; name: string } | null>(null);
-  const [refining, setRefining] = useState<"pin" | "who" | "note" | null>(null);
-  const [refineText, setRefineText] = useState("");
+  const [screen, setScreen] = useState<Screen>({ kind: "home" });
+  /** The place being saved from a list, for its button. */
+  const [savingName, setSavingName] = useState<string | null>(null);
+  /** The place being added to a trip, while that sheet is up. */
+  const [tripSheet, setTripSheet] = useState<RecsPlace | null>(null);
+  const trips = useTrips();
   /** Which optional draft field is open, if any. */
   const [draftField, setDraftField2] = useState<Exclude<DraftField, "name"> | null>(null);
 
@@ -451,8 +475,6 @@ function RecommendationsPage() {
         travel_tags: suggestTravelTags({ name: found.name, category: prettyPlaceCategory(found) }),
       });
       setDraft(null);
-      setRefining(null);
-      setRefineText("");
       confirm();
       if (id) setJustSaved({ id, name: found.name });
       else {
@@ -463,18 +485,6 @@ function RecommendationsPage() {
       setError(e instanceof Error ? e.message : "Couldn't save that one.");
     } finally {
       setBusy(null);
-    }
-  };
-
-  /** Fill in one optional thing on the rec just saved. */
-  const refineSaved = async (patch: Parameters<typeof vault.update>[1]) => {
-    if (!justSaved) return;
-    try {
-      await vault.update(justSaved.id, patch);
-      setRefining(null);
-      setRefineText("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't update that.");
     }
   };
 
@@ -490,8 +500,6 @@ function RecommendationsPage() {
       const line = beaLine("recs.saved");
       toast.success(line.title, { description: line.body });
       if (savedId) setJustSaved({ id: savedId, name: draft.name.trim() });
-      setRefining(null);
-      setRefineText("");
       setDraft(null);
       setDraftField2(null);
       setTagsTouched(false);
@@ -508,673 +516,1127 @@ function RecommendationsPage() {
     }
   };
 
+  /** Save any place in one tap, then offer the rest in the save sheet. */
+  const savePlace = async (place: RecsPlace, pin?: PinType) => {
+    setBusy("quick");
+    setSavingName(place.name);
+    setError(null);
+    try {
+      const id = await vault.add({
+        name: place.name,
+        ...(place.category ? { category: place.category } : {}),
+        ...(place.city ? { city: place.city } : {}),
+        ...(place.country ? { country: place.country } : {}),
+        ...(place.address ? { address: place.address } : {}),
+        ...(place.url ? { url: place.url } : {}),
+        ...(place.source ? { source: place.source } : {}),
+        ...(place.lat != null ? { lat: place.lat } : {}),
+        ...(place.lon != null ? { lon: place.lon } : {}),
+        ...(pin ? { pin_type: pin } : {}),
+        travel_tags: suggestTravelTags({
+          name: place.name,
+          ...(place.category ? { category: place.category } : {}),
+        }),
+      });
+      confirm();
+      if (id) {
+        setJustSaved({ id, name: place.name });
+        setScreen((s) =>
+          s.kind === "place" && s.place.name === place.name
+            ? { ...s, place: { ...s.place, savedId: id } }
+            : s,
+        );
+      } else {
+        const line = beaLine("recs.saved");
+        toast.success(line.title, { description: line.body });
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Couldn't save that one.");
+      toast.error(e instanceof Error ? e.message : "Couldn't save that one.");
+    } finally {
+      setBusy(null);
+      setSavingName(null);
+    }
+  };
+
+  const removeRow = (id: string, name: string) => {
+    // Keep enough to re-create it before the row is gone.
+    const row = vault.rows.find((r) => r.id === id);
+    void removeWithUndo({
+      label: name,
+      remove: () => vault.remove(id),
+      restore: async () => {
+        if (!row) throw new Error("gone");
+        await vault.add({
+          ...toNewReco(capturedFromReco(row), {
+            ...(row.category ? { category: row.category } : {}),
+            ...(row.recommended_by ? { recommended_by: row.recommended_by } : {}),
+          }),
+          ...(row.pin_type ? { pin_type: row.pin_type as PinType } : {}),
+          ...(row.travel_tags ? { travel_tags: row.travel_tags } : {}),
+        });
+      },
+    });
+  };
+
+  /** A saved row as a place to open. */
+  const placeFromRow = (r: RecoRowDB): RecsPlace => ({
+    name: r.name,
+    savedId: r.id,
+    ...(r.category ? { category: r.category } : {}),
+    ...(r.city ? { city: r.city } : {}),
+    ...(r.country ? { country: r.country } : {}),
+    ...(r.address ? { address: r.address } : {}),
+    ...(r.lat != null ? { lat: r.lat } : {}),
+    ...(r.lon != null ? { lon: r.lon } : {}),
+    ...(r.url ? { url: r.url } : {}),
+    ...(r.source ? { source: r.source } : {}),
+  });
+
+  const openPlace = (place: RecsPlace) =>
+    setScreen((s) => ({ kind: "place", place, back: s.kind === "place" ? s.back : s }));
+
+  /** A search hit or a read link: a full place opens, a thin one goes to the details card. */
+  const openFound = (found: ParsedPlace) => {
+    setAddText("");
+    const category = prettyPlaceCategory(found);
+    if (!found.name.trim() || found.partial) {
+      showDraft({ ...found, category });
+      return;
+    }
+    const match = findDuplicate(
+      vault.rows.map((r) => ({ id: r.id, name: r.name, city: r.city, lat: r.lat, lon: r.lon })),
+      {
+        name: found.name,
+        ...(found.city ? { city: found.city } : {}),
+        ...(found.lat != null ? { lat: found.lat } : {}),
+        ...(found.lon != null ? { lon: found.lon } : {}),
+      },
+    );
+    openPlace({
+      name: found.name,
+      ...(category ? { category } : {}),
+      ...(found.city ? { city: found.city } : {}),
+      ...(found.country ? { country: found.country } : {}),
+      ...(found.address ? { address: found.address } : {}),
+      ...(found.lat != null ? { lat: found.lat } : {}),
+      ...(found.lon != null ? { lon: found.lon } : {}),
+      ...(found.url ? { url: found.url } : {}),
+      ...(found.source ? { source: found.source } : {}),
+      ...(match ? { savedId: match.id } : {}),
+    });
+  };
+
+  const startMode = (m: "trips" | "here" | "manual" | "list") => {
+    setScreen({ kind: "home" });
+    setMode(mode === m ? null : m);
+    setTagsTouched(false);
+    setMoreTags(false);
+    if (m === "manual") showDraft({ name: "" });
+    else setDraft(null);
+    setLocQuery("");
+    setLocResults(null);
+    setError(null);
+    if (m === "here") handleHere();
+    setMoreWays(false);
+  };
+
+  // Each screen opens at its top, as a new page would.
+  const screenKey = screen.kind === "place" ? `place:${screen.place.name}` : `${screen.kind}`;
+  useEffect(() => {
+    document.querySelector("main")?.scrollTo({ top: 0 });
+  }, [screenKey]);
+
+  const today = toLocalISODate(new Date());
+  const tripNow = trips.trips.find(
+    (t) => t.start_date && t.start_date <= today && (t.end_date ?? t.start_date) >= today,
+  );
+  const tripLine = tripNow?.start_date
+    ? [tripNow.start_date, tripNow.end_date ?? tripNow.start_date]
+        .map((d) =>
+          new Date(`${d}T12:00:00`).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          }),
+        )
+        .filter((d, i, all) => i === 0 || d !== all[0])
+        .join(" – ")
+    : undefined;
+
+  const counts = listCounts(vault.rows.filter((r) => !isCityLevelPlace(r)));
+  const recent = recentlySaved(
+    vault.rows.filter((r) => !isCityLevelPlace(r)),
+    3,
+  );
+  const latestIn = (t: PinType) =>
+    recentlySaved(
+      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !isCityLevelPlace(r)),
+      1,
+    )[0];
+
+  const savedRow = justSaved ? vault.rows.find((r) => r.id === justSaved.id) : undefined;
+  const placeRow =
+    screen.kind === "place" && screen.place.savedId
+      ? vault.rows.find((r) => r.id === screen.place.savedId)
+      : undefined;
+  const nearbyOpen =
+    screen.kind === "nearby" || (screen.kind === "place" && screen.back.kind === "nearby");
+  const listFilter = screen.kind === "saved" ? screen.list : "all";
+  const shownGroups = listFilter === "all" ? groups : groups.filter((g) => g.type === listFilter);
+
   return (
-    <AppShell eyebrow={`${views.length} saved`} title="Recommendation vault.">
-      <div className="space-y-5">
-        {/* One field, whatever you have: a name is looked up as you type, a
-            pasted link gets read. Everything else — places from your trips,
-            where you are, by hand, a list, sending and opening shares — is
-            one tap away under the "+" beside it, so the page opens on one row. */}
-        <section data-guide="reco-add">
-          <div className="flex items-start gap-2">
-            <div className="min-w-0 flex-1">
-              <PlaceSearchInput
-                value={addText}
-                onChange={setAddText}
-                at={searchAt}
-                onLocate={locateForSearch}
-                onPick={(place) => {
-                  setAddText("");
-                  showDraft({ ...place, category: prettyPlaceCategory(place) });
-                }}
-                placeholder={addPlaceholder(views.length > 0)}
-                onSaveTyped={(text) => {
-                  setAddText("");
-                  const typed = draftFromTyped(text);
-                  showDraft({
-                    ...typed,
-                    source: "Typed in",
-                    url: recMapsUrl(typed),
-                  });
-                }}
-                quickAdd={{
-                  label: "Save",
-                  busyLabel: "Saving…",
-                  onAdd: async (place) => {
-                    await quickSave(place);
-                    setAddText("");
-                  },
-                }}
-              />
-            </div>
+    <AppShell
+      title={
+        screen.kind === "home" ? (
+          <span className="text-[38px] leading-none">Recommendations</span>
+        ) : undefined
+      }
+      headerAction={
+        screen.kind === "home" ? (
+          <button
+            type="button"
+            onClick={() => setMoreWays((v) => !v)}
+            aria-expanded={moreWays}
+            aria-label="Add a place, or share"
+            title="Add a place, or share"
+            className="grid size-13 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
+          >
+            <Plus
+              className={`size-6 transition-transform ${moreWays ? "rotate-45" : ""}`}
+              aria-hidden
+            />
+          </button>
+        ) : undefined
+      }
+    >
+      {nearbyOpen && (
+        <div className={screen.kind === "nearby" ? "" : "hidden"}>
+          <ExploreNearby
+            initialKind={screen.kind === "nearby" ? screen.browse : "All"}
+            saved={vault.rows}
+            tripLine={tripLine}
+            savingName={savingName}
+            onBack={() => setScreen({ kind: "home" })}
+            onOpen={openPlace}
+            onSave={(place) => savePlace(place, "wishlist")}
+            onAdd={vault.add}
+            onHere={setSearchAt}
+          />
+        </div>
+      )}
+
+      {screen.kind === "place" && (
+        <PlaceDetail
+          place={screen.place}
+          row={placeRow}
+          here={searchAt}
+          saving={busy === "quick"}
+          onBack={() => setScreen(screen.back)}
+          onSave={() => void savePlace(screen.place)}
+          onEditSaved={() => placeRow && setJustSaved({ id: placeRow.id, name: placeRow.name })}
+          onAddToTrip={() => setTripSheet(screen.place)}
+          onEditBeforeSave={() => {
+            const p = screen.place;
+            setScreen({ kind: "home" });
+            // Only the fields there are: a draft never carries an empty one.
+            const fields = Object.fromEntries(
+              Object.entries(p).filter(([k, v]) => k !== "savedId" && v != null && v !== ""),
+            ) as Omit<Draft, "name">;
+            showDraft({ ...fields, name: p.name });
+          }}
+          onRemove={() => {
+            if (!placeRow) return;
+            removeRow(placeRow.id, placeRow.name);
+            setScreen(screen.back);
+          }}
+        />
+      )}
+
+      {screen.kind === "saved" && (
+        <div className="rise space-y-4">
+          <div className="flex items-start gap-3">
             <button
               type="button"
-              onClick={() => setMoreWays((v) => !v)}
-              aria-expanded={moreWays}
-              aria-controls="reco-add-menu"
-              aria-label={moreWays ? "Close other ways to add" : "Other ways to add and share"}
-              title="Other ways to add and share"
-              className={`grid size-[42px] shrink-0 place-items-center rounded-xl transition-colors ${
-                moreWays ? "bg-foreground text-background" : "bg-primary text-primary-foreground"
-              }`}
+              onClick={() => setScreen({ kind: "home" })}
+              aria-label="Back to Recommendations"
+              className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card"
             >
-              <Plus
-                className={`size-5 transition-transform ${moreWays ? "rotate-45" : ""}`}
-                aria-hidden
-              />
+              <ArrowLeft className="size-5" aria-hidden />
             </button>
+            <div className="min-w-0">
+              <h2 className="font-display text-[30px] leading-none">
+                {listFilter === "all" ? "Saved places" : pinLabel[listFilter]}
+              </h2>
+              <p className="mt-1 text-[14px] text-muted-foreground">{views.length} saved</p>
+            </div>
           </div>
 
-          {moreWays && (
-            <div id="reco-add-menu" className="mt-2 grid grid-cols-2 gap-2">
-              {(
-                [
-                  ["trips", "From my trips", MapPinned],
-                  ["here", "I'm here now", LocateFixed],
-                  ["manual", "By hand", Hand],
-                  ["list", "Paste a list", ListPlus],
-                ] as const
-              ).map(([m, label, Icon]) => (
+          <div
+            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]"
+            role="tablist"
+            aria-label="Which list"
+          >
+            {(["all", ...pinChoices] as const).map((t, i) => {
+              const on = listFilter === t;
+              return (
                 <button
-                  key={m}
+                  key={t}
                   type="button"
-                  onClick={() => {
-                    setMode(mode === m ? null : m);
-                    setTagsTouched(false);
-                    setMoreTags(false);
-                    if (m === "manual") showDraft({ name: "" });
-                    else setDraft(null);
-                    setLocQuery("");
-                    setLocResults(null);
-                    setError(null);
-                    if (m === "here") handleHere();
-                    setMoreWays(false);
-                  }}
-                  aria-pressed={mode === m}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[14px] font-medium transition-colors ${
-                    mode === m ? "border-primary bg-elevated" : "border-border bg-card"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setScreen({ kind: "saved", list: t })}
+                  className={`h-9 shrink-0 whitespace-nowrap rounded-full border px-4 text-[14px] font-semibold ${
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : `tile-fill-${(i % 5) + 1} border-border`
                   }`}
                 >
-                  <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-                  {label}
+                  {t === "all" ? "All" : pinLabel[t]}
                 </button>
-              ))}
-              {(
-                [
-                  ["picking", "Send places", Share2],
-                  ["opening", "Open a share", Inbox],
-                ] as const
-              ).map(([m, label, Icon]) => (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => {
-                    setShareAsk((prev) => ({ mode: m, n: (prev?.n ?? 0) + 1 }));
-                    setMode(null);
-                    setDraft(null);
-                    setMoreWays(false);
+              );
+            })}
+          </div>
+
+          {(searchWorthShowing({ total: views.length }) ||
+            anyFilterWorthShowing({
+              total: views.length,
+              places: places.length - 1,
+              kinds: categories.length - 1,
+            })) && (
+            // One row: search, then City and Type as two compact menus rather
+            // than two rows of chips that ran off the side of the screen.
+            <div className="flex flex-wrap gap-2">
+              {searchWorthShowing({ total: views.length }) && (
+                <label className="relative min-w-[12rem] flex-[2_1_14rem]">
+                  <Search
+                    className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+                    aria-hidden
+                  />
+                  <input
+                    data-guide="reco-search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search places, cities, people…"
+                    aria-label="Search your saved places — typos are fine"
+                    className="h-12 w-full rounded-full border border-border bg-card pl-12 pr-4 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
+                  />
+                </label>
+              )}
+              {placeFilterWorthShowing({
+                total: views.length,
+                places: places.length - 1,
+                kinds: categories.length - 1,
+              }) && (
+                <FilterSelect
+                  guide="reco-places"
+                  label="City"
+                  value={placeFilter}
+                  all="All places"
+                  options={places}
+                  onChange={setPlaceFilter}
+                />
+              )}
+              {kindFilterWorthShowing({
+                total: views.length,
+                places: places.length - 1,
+                kinds: categories.length - 1,
+              }) && (
+                <FilterSelect
+                  guide="reco-categories"
+                  label="Type"
+                  value={category}
+                  all="All"
+                  options={categories}
+                  onChange={setCategory}
+                />
+              )}
+            </div>
+          )}
+
+          <section data-guide="reco-list" className="space-y-3">
+            {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
+            {shownGroups.map((group) => (
+              <Section
+                key={group.type}
+                title={pinLabel[group.type]}
+                hint={groupCountLabel(group.rows.length)}
+                defaultOpen
+              >
+                <div className="space-y-3">
+                  {group.rows.map((v) => {
+                    const row = vault.rows.find((r) => r.id === v.id);
+                    return (
+                      <article key={v.id} className="plain-card p-3">
+                        <div className="flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => row && openPlace(placeFromRow(row))}
+                            aria-label={`Open ${v.name}`}
+                            className="shrink-0"
+                          >
+                            <PlaceArt
+                              place={{ name: v.name, category: v.category }}
+                              className="size-[68px] rounded-xl"
+                            />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <button
+                              type="button"
+                              onClick={() => row && openPlace(placeFromRow(row))}
+                              className="flex items-center gap-1.5 text-left"
+                            >
+                              <span
+                                className={`size-2 shrink-0 rounded-full ${pinColorClass[v.type]}`}
+                                aria-hidden
+                              />
+                              <span className="font-display text-[20px] leading-tight">
+                                {v.name}
+                              </span>
+                            </button>
+                            <p className="text-[13px] text-muted-foreground">
+                              {formatTripLocation(v.city, v.country)}
+                              {v.by ? ` · by ${v.by}` : ""}
+                              {v.source ? ` · ${v.source}` : ""}
+                            </p>
+                            {v.notes && (
+                              <p className="mt-1.5 text-[14.5px] leading-snug">{v.notes}</p>
+                            )}
+                            {v.tags.length > 0 && (
+                              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                                {v.tags.join(" · ")}
+                              </p>
+                            )}
+                            {row && (
+                              // The phone's maps app, on this place: its pin when
+                              // it has one, otherwise a search for its name.
+                              <div className="mt-1.5 space-y-1">
+                                <a
+                                  href={recMapsUrl(row)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-block text-[12.5px] font-semibold text-primary underline"
+                                >
+                                  Open in Maps ↗
+                                </a>
+                                {/* Hours on request: one lookup per card tapped,
+                                    not one per card listed. A country or a city
+                                    has no opening hours, so it gets no button. */}
+                                {!isCountryLevelPlace(row) && !isCityLevelPlace(row) && (
+                                  <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
+                              {v.category}
+                            </span>
+                            <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
+                            {v.removable && (
+                              <button
+                                type="button"
+                                onClick={() => removeRow(v.id, v.name)}
+                                className="mt-1.5 text-[11.5px] text-muted-foreground underline"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              </Section>
+            ))}
+            {views.length === 0 && !vault.loading && <EmptyVault />}
+            {views.length > 0 && filtered.length === 0 && (
+              <p className="py-8 text-center text-[14.5px] text-muted-foreground">
+                Nothing saved matches that yet.
+              </p>
+            )}
+            {views.length > 0 && filtered.length > 0 && shownGroups.length === 0 && (
+              <p className="py-8 text-center text-[14.5px] text-muted-foreground">
+                Nothing in this list yet.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+
+      {screen.kind === "home" && (
+        <div className="space-y-5">
+          <p className="-mt-3 text-[15px] text-muted-foreground">
+            Find, save and organize places for your next adventure.
+          </p>
+
+          {/* One field, whatever you have: a name is looked up as you type, a
+              pasted link gets read. The filter button beside it opens the
+              saved places with their search, city and type filters. */}
+          <section data-guide="reco-add" className="space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="relative min-w-0 flex-1 [&_textarea]:min-h-12 [&_textarea]:rounded-[24px] [&_textarea]:py-[13px] [&_textarea]:pl-12 [&_textarea]:text-[15px] [&_textarea]:leading-snug [&_textarea+button]:size-12 [&_textarea+button]:rounded-full [&_textarea+button]:bg-card [&_textarea:placeholder-shown+button]:hidden">
+                <Search
+                  className="pointer-events-none absolute left-4 top-3.5 z-[1] size-5 text-muted-foreground"
+                  aria-hidden
+                />
+                <PlaceSearchInput
+                  value={addText}
+                  onChange={setAddText}
+                  at={searchAt}
+                  onLocate={locateForSearch}
+                  onPick={openFound}
+                  placeholder={
+                    views.length > 0 ? "Search places, cities, people…" : addPlaceholder(false)
+                  }
+                  onSaveTyped={(text) => {
+                    setAddText("");
+                    const typed = draftFromTyped(text);
+                    showDraft({
+                      ...typed,
+                      source: "Typed in",
+                      url: recMapsUrl(typed),
+                    });
                   }}
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5 text-left text-[14px] font-medium"
-                >
-                  <Icon className="size-4 shrink-0 text-primary" aria-hidden />
-                  {label}
-                </button>
-              ))}
-              <div className="col-span-2">
-                <NearbyMapPin
-                  existing={venues
-                    .filter((r): r is RecoRowDB => "lat" in r && r.lat != null && r.lon != null)
-                    .map((r) => ({
-                      id: r.id,
-                      type: (r.pin_type as PinType) || "reco",
-                      name: r.name,
-                      city: r.city ?? "",
-                      country: r.country ?? "",
-                      lat: r.lat!,
-                      lon: r.lon!,
-                      ...(r.category ? { category: r.category } : {}),
-                    }))}
+                  quickAdd={{
+                    label: "Save",
+                    busyLabel: "Saving…",
+                    onAdd: async (place) => {
+                      await quickSave(place);
+                      setAddText("");
+                    },
+                  }}
                 />
               </div>
+              <button
+                type="button"
+                data-guide="reco-search"
+                onClick={() => setScreen({ kind: "saved", list: "all" })}
+                aria-label="Your saved places: search and filter"
+                title="Your saved places: search and filter"
+                className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card"
+              >
+                <Settings2 className="size-5" aria-hidden />
+              </button>
             </div>
-          )}
 
-          <div className="mt-2 empty:hidden">
-            <ShareRecos
-              rows={vault.rows}
-              uid={user?.id ?? null}
-              myName={myName}
-              onKept={vault.addMany}
-              request={shareAsk}
-              onClose={() => setShareAsk(null)}
-            />
-          </div>
-          {mode === "here" && busy === "here" && (
-            <p className="mt-3 text-[14.5px] text-muted-foreground">Finding where you are…</p>
-          )}
+            {/* Saved places matching what is typed, so a name, a city or who
+                told you finds your own save before the map is asked. */}
+            {addText.trim().length >= 2 && !looksLikePastedPlaceLink(addText) && (
+              <SavedMatches
+                rows={fuzzyRank(vault.rows, addText, (r) => [
+                  r.name,
+                  r.city ?? "",
+                  r.country ?? "",
+                  r.recommended_by ?? "",
+                  r.notes ?? "",
+                ]).slice(0, 3)}
+                onOpen={(r) => openPlace(placeFromRow(r))}
+              />
+            )}
 
-          {mode === "list" && (
-            <RecoListImport
-              signedIn={vault.signedIn}
-              onAddMany={vault.addMany}
-              onSaved={() => {
-                setMode(null);
-                setError(null);
-              }}
-            />
-          )}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => startMode("trips")}
+                aria-pressed={mode === "trips"}
+                className={`tile-fill-5 flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-[14.5px] font-semibold ${
+                  mode === "trips" ? "border-primary" : "border-border"
+                }`}
+              >
+                <MapPin className="size-5 text-primary" aria-hidden />
+                From my trips
+              </button>
+              <button
+                type="button"
+                onClick={() => startMode("here")}
+                aria-pressed={mode === "here"}
+                className={`tile-fill-2 flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-[14.5px] font-semibold ${
+                  mode === "here" ? "border-primary" : "border-border"
+                }`}
+              >
+                <LocateFixed className="size-5 text-primary" aria-hidden />
+                I'm here now
+              </button>
+            </div>
 
-          {mode === "trips" && (
-            <TripPlacesImport
-              signedIn={vault.signedIn}
-              vault={vault.rows}
-              onAddMany={vault.addMany}
-              onSaved={() => setMode(null)}
-            />
-          )}
+            <div className="empty:hidden">
+              <ShareRecos
+                rows={vault.rows}
+                uid={user?.id ?? null}
+                myName={myName}
+                onKept={vault.addMany}
+                request={shareAsk}
+                onClose={() => setShareAsk(null)}
+              />
+            </div>
+            {mode === "here" && busy === "here" && (
+              <p className="text-[14.5px] text-muted-foreground">Finding where you are…</p>
+            )}
 
-          {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
-          {/* Saved first, filled in after. Who told you about it and which pin
-              it is are the two things worth asking, and neither is worth
-              blocking the save over. */}
-          {justSaved && (
-            <div className="rise mt-3 space-y-2 rounded-xl border border-primary/40 bg-elevated p-3">
-              <div className="flex items-start justify-between gap-2">
-                <p aria-live="polite" className="min-w-0 text-[14.5px]">
-                  <Check className="mr-1 inline size-4 text-primary" aria-hidden />
-                  Saved <span className="font-medium">{justSaved.name}</span>
-                </p>
-                <button
-                  type="button"
-                  aria-label="Done with this one"
-                  onClick={() => {
-                    setJustSaved(null);
-                    setRefining(null);
-                    setRefineText("");
-                  }}
-                  className="grid size-6 shrink-0 place-items-center rounded-full border border-border"
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
+            {mode === "list" && (
+              <RecoListImport
+                signedIn={vault.signedIn}
+                onAddMany={vault.addMany}
+                onSaved={() => {
+                  setMode(null);
+                  setError(null);
+                }}
+              />
+            )}
 
-              {refining === null && (
-                <div className="flex flex-wrap gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setRefining("pin")}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px]"
-                  >
-                    <Bookmark className="size-3.5" aria-hidden /> Which pin
-                  </button>
+            {mode === "trips" && (
+              <TripPlacesImport
+                signedIn={vault.signedIn}
+                vault={vault.rows}
+                onAddMany={vault.addMany}
+                onSaved={() => setMode(null)}
+              />
+            )}
+
+            {error && <p className="text-[13px] text-destructive">{error}</p>}
+
+            {draft && (
+              <div ref={draftRef} className="rise mt-3 card-soft space-y-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="label-caps">Check the details</p>
+                    <p className="text-[12px] text-muted-foreground">
+                      Name is the only part Béa needs. Everything else can wait.
+                    </p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
-                      setRefining("who");
-                      setRefineText("");
+                      setDraft(null);
+                      setDraftField2(null);
+                      setLocQuery("");
+                      setLocResults(null);
+                      setError(null);
                     }}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px]"
+                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] text-muted-foreground"
                   >
-                    <UserRound className="size-3.5" aria-hidden /> Who told you
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRefining("note");
-                      setRefineText("");
-                    }}
-                    className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[12px]"
-                  >
-                    <StickyNote className="size-3.5" aria-hidden /> Add a note
+                    Discard
                   </button>
                 </div>
-              )}
-
-              {refining === "pin" && (
-                <div className="flex flex-wrap gap-1.5">
-                  {pinChoices.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => void refineSaved({ pin_type: t })}
-                      className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13px]"
-                    >
-                      <span className={`size-2 rounded-full ${pinColorClass[t]}`} aria-hidden />
-                      {pinLabel[t]}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {(refining === "who" || refining === "note") && (
-                <div className="flex gap-2">
-                  <input
-                    autoFocus
-                    value={refineText}
-                    onChange={(e) => setRefineText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key !== "Enter") return;
-                      e.preventDefault();
-                      void refineSaved(
-                        refining === "who"
-                          ? { recommended_by: refineText.trim() }
-                          : { notes: refineText.trim() },
-                      );
-                    }}
-                    placeholder={
-                      refining === "who" ? "A friend, a guide, a stranger…" : "Why it's worth it"
-                    }
-                    aria-label={refining === "who" ? "Who told you" : "Note"}
-                    className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-                  />
-                  <button
-                    type="button"
-                    disabled={!refineText.trim()}
-                    onClick={() =>
-                      void refineSaved(
-                        refining === "who"
-                          ? { recommended_by: refineText.trim() }
-                          : { notes: refineText.trim() },
-                      )
-                    }
-                    className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
-                  >
-                    Save
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {draft && (
-            <div ref={draftRef} className="rise mt-3 card-soft space-y-2 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="label-caps">Check the details</p>
-                  <p className="text-[12px] text-muted-foreground">
-                    Name is the only part Béa needs. Everything else can wait.
+                {existingMatch && (
+                  <p className="rounded-xl border border-border bg-card px-3 py-2 text-[13px] text-muted-foreground">
+                    You already saved{" "}
+                    <span className="font-medium text-foreground">{existingMatch.name}</span>
+                    {existingMatch.city ? ` in ${existingMatch.city}` : ""}. Saving again makes a
+                    second copy — fine if that is what you want.
                   </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDraft(null);
-                    setDraftField2(null);
-                    setLocQuery("");
-                    setLocResults(null);
-                    setError(null);
-                  }}
-                  className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] text-muted-foreground"
-                >
-                  Discard
-                </button>
-              </div>
-              {existingMatch && (
-                <p className="rounded-xl border border-border bg-card px-3 py-2 text-[13px] text-muted-foreground">
-                  You already saved{" "}
-                  <span className="font-medium text-foreground">{existingMatch.name}</span>
-                  {existingMatch.city ? ` in ${existingMatch.city}` : ""}. Saving again makes a
-                  second copy — fine if that is what you want.
-                </p>
-              )}
-              {/* Save sits at the top as well as the bottom: the card is long,
+                )}
+                {/* Save sits at the top as well as the bottom: the card is long,
                   and on a phone the only Save button used to be several
                   scrolls past the point where the rec was already complete. */}
-              <button
-                onClick={save}
-                disabled={busy === "save" || !draft.name.trim()}
-                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {busy === "save" ? "Saving…" : "Save to vault"}
-              </button>
-              {/* The name is the only thing Béa needs. The rest are chips that
+                <button
+                  onClick={save}
+                  disabled={busy === "save" || !draft.name.trim()}
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  {busy === "save" ? "Saving…" : "Save to vault"}
+                </button>
+                {/* The name is the only thing Béa needs. The rest are chips that
                   read as their own value and open one field at a time, the
                   same shape as adding to a trip timeline. */}
-              <input
-                value={draft.name ?? ""}
-                onChange={(e) => setDraftField("name", e.target.value)}
-                placeholder="Name"
-                aria-label="Name"
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-              />
-              {[draft.address, draft.city, draft.country].some(Boolean) && (
-                <p className="px-1 text-[12px] text-muted-foreground">
-                  📍 {[draft.address || draft.city, draft.country].filter(Boolean).join(", ")}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Optional details">
-                {DRAFT_FIELDS.map(([field, label]) => {
-                  const value = (draft[field] as string | undefined) ?? "";
-                  const open = draftField === field;
-                  return (
-                    <button
-                      key={field}
-                      type="button"
-                      aria-expanded={open}
-                      onClick={() => setDraftField2(open ? null : field)}
-                      className={`rounded-full border px-2.5 py-1.5 text-[13px] ${
-                        open
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : value
-                            ? "border-primary/50 text-foreground"
-                            : "border-border text-muted-foreground"
-                      }`}
-                    >
-                      {value ? (value.length > 18 ? `${value.slice(0, 17)}…` : value) : label}
-                    </button>
-                  );
-                })}
-              </div>
-              {draftField && (
                 <input
-                  autoFocus
-                  value={(draft[draftField] as string | undefined) ?? ""}
-                  onChange={(e) => setDraftField(draftField, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") setDraftField2(null);
-                  }}
-                  placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
-                  aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
+                  value={draft.name ?? ""}
+                  onChange={(e) => setDraftField("name", e.target.value)}
+                  placeholder="Name"
+                  aria-label="Name"
                   className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
                 />
-              )}
-              <div className="pt-1">
-                <p className="label-caps">Travel tags</p>
-                <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
-                  Béa guessed these so she can pick this rec when you ask her to plan. Tap to
-                  change.
-                </p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {(moreTags ? PLACE_TRAVEL_TAGS : (draft.travel_tags ?? [])).map((tag) => {
-                    const on = (draft.travel_tags ?? []).includes(tag);
+                {[draft.address, draft.city, draft.country].some(Boolean) && (
+                  <p className="px-1 text-[12px] text-muted-foreground">
+                    📍 {[draft.address || draft.city, draft.country].filter(Boolean).join(", ")}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Optional details">
+                  {DRAFT_FIELDS.map(([field, label]) => {
+                    const value = (draft[field] as string | undefined) ?? "";
+                    const open = draftField === field;
                     return (
                       <button
-                        key={tag}
+                        key={field}
                         type="button"
-                        onClick={() => {
-                          setTagsTouched(true);
-                          setDraft({
-                            ...draft,
-                            travel_tags: toggleTravelTag(draft.travel_tags ?? [], tag),
-                          });
-                        }}
-                        aria-pressed={on}
-                        className={`rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
-                          on
-                            ? "border-primary bg-card text-foreground"
-                            : "border-border/60 text-muted-foreground"
+                        aria-expanded={open}
+                        onClick={() => setDraftField2(open ? null : field)}
+                        className={`rounded-full border px-2.5 py-1.5 text-[13px] ${
+                          open
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : value
+                              ? "border-primary/50 text-foreground"
+                              : "border-border text-muted-foreground"
                         }`}
                       >
-                        {tag}
+                        {value ? (value.length > 18 ? `${value.slice(0, 17)}…` : value) : label}
                       </button>
                     );
                   })}
-                  <button
-                    type="button"
-                    onClick={() => setMoreTags((v) => !v)}
-                    className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[12px] text-muted-foreground"
-                  >
-                    {moreTags ? "Fewer tags" : "Add a tag"}
-                  </button>
                 </div>
-              </div>
-              <div data-guide="reco-location" className="pt-1">
-                <p className="label-caps">Location on the map</p>
-                {draft.lat != null ? (
-                  <p className="mt-1 text-[12px] text-muted-foreground">
-                    Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to move
-                    it.
-                  </p>
-                ) : (
-                  <p className="mt-1 text-[12px] text-muted-foreground">
-                    No exact spot yet. Search a place or address and pick the pin yourself — Near
-                    and directions need it.
-                  </p>
+                {draftField && (
+                  <input
+                    autoFocus
+                    value={(draft[draftField] as string | undefined) ?? ""}
+                    onChange={(e) => setDraftField(draftField, e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") setDraftField2(null);
+                    }}
+                    placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
+                    aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                  />
                 )}
-                <input
-                  value={locQuery}
-                  onChange={(e) => setLocQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void findLocation();
-                    }
-                  }}
-                  placeholder="Search a place, street, or city"
-                  className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-                />
-                <button
-                  type="button"
-                  onClick={() => void findLocation()}
-                  disabled={busy === "location"}
-                  className="mt-2 w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-50"
-                >
-                  {busy === "location" ? "Searching the map…" : "Find this spot"}
-                </button>
-                {locResults && locResults.length > 0 && (
-                  <div className="mt-2 space-y-2">
-                    {locResults.map((r) => {
-                      const line = placeSuggestionLines(r);
+                <div className="pt-1">
+                  <p className="label-caps">Travel tags</p>
+                  <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                    Béa guessed these so she can pick this rec when you ask her to plan. Tap to
+                    change.
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {(moreTags ? PLACE_TRAVEL_TAGS : (draft.travel_tags ?? [])).map((tag) => {
+                      const on = (draft.travel_tags ?? []).includes(tag);
                       return (
                         <button
-                          key={`${r.lat}-${r.lon}-${r.name}`}
+                          key={tag}
                           type="button"
-                          onClick={() => pickLocation(r)}
-                          className="w-full rounded-xl border border-border bg-background p-3 text-left"
+                          onClick={() => {
+                            setTagsTouched(true);
+                            setDraft({
+                              ...draft,
+                              travel_tags: toggleTravelTag(draft.travel_tags ?? [], tag),
+                            });
+                          }}
+                          aria-pressed={on}
+                          className={`rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                            on
+                              ? "border-primary bg-card text-foreground"
+                              : "border-border/60 text-muted-foreground"
+                          }`}
                         >
-                          <p className="text-[14.5px] font-semibold">{line.title}</p>
-                          {line.subtitle ? (
-                            <p className="text-[12px] text-muted-foreground">{line.subtitle}</p>
-                          ) : null}
+                          {tag}
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setMoreTags((v) => !v)}
+                      className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[12px] text-muted-foreground"
+                    >
+                      {moreTags ? "Fewer tags" : "Add a tag"}
+                    </button>
+                  </div>
+                </div>
+                <div data-guide="reco-location" className="pt-1">
+                  <p className="label-caps">Location on the map</p>
+                  {draft.lat != null ? (
+                    <p className="mt-1 text-[12px] text-muted-foreground">
+                      Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to
+                      move it.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[12px] text-muted-foreground">
+                      No exact spot yet. Search a place or address and pick the pin yourself — Near
+                      and directions need it.
+                    </p>
+                  )}
+                  <input
+                    value={locQuery}
+                    onChange={(e) => setLocQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void findLocation();
+                      }
+                    }}
+                    placeholder="Search a place, street, or city"
+                    className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void findLocation()}
+                    disabled={busy === "location"}
+                    className="mt-2 w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-50"
+                  >
+                    {busy === "location" ? "Searching the map…" : "Find this spot"}
+                  </button>
+                  {locResults && locResults.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {locResults.map((r) => {
+                        const line = placeSuggestionLines(r);
+                        return (
+                          <button
+                            key={`${r.lat}-${r.lon}-${r.name}`}
+                            type="button"
+                            onClick={() => pickLocation(r)}
+                            className="w-full rounded-xl border border-border bg-background p-3 text-left"
+                          >
+                            <p className="text-[14.5px] font-semibold">{line.title}</p>
+                            {line.subtitle ? (
+                              <p className="text-[12px] text-muted-foreground">{line.subtitle}</p>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="pt-1">
+                  <p className="label-caps">Pin on the map</p>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {pinChoices.map((t) => {
+                      const on = (draft.pin_type ?? "reco") === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setDraft({ ...draft, pin_type: t })}
+                          aria-pressed={on}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                            on ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
+                          }`}
+                        >
+                          <span className={`size-2 rounded-full ${pinColorClass[t]}`} />
+                          {pinLabel[t]}
                         </button>
                       );
                     })}
                   </div>
+                </div>
+                <button
+                  onClick={save}
+                  disabled={busy === "save" || !draft.name.trim()}
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                >
+                  {busy === "save" ? "Saving…" : "Save to vault"}
+                </button>
+                {!draft.name.trim() && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Give it a name first — that's the only required field.
+                  </p>
+                )}
+                {!vault.signedIn && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Sign in on the You tab to keep this saved to your account.
+                  </p>
                 )}
               </div>
-              <div className="pt-1">
-                <p className="label-caps">Pin on the map</p>
-                <div className="mt-1.5 flex flex-wrap gap-2">
-                  {pinChoices.map((t) => {
-                    const on = (draft.pin_type ?? "reco") === t;
+            )}
+          </section>
+
+          <nav aria-label="Explore by kind" className="grid grid-cols-5 gap-1">
+            {BROWSE_KINDS.map((k, i) => {
+              const Icon = KIND_ICON[k];
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setScreen({ kind: "nearby", browse: k === "More" ? "All" : k })}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span
+                    className={`tile-fill-${i + 1} grid size-14 place-items-center rounded-full border border-border`}
+                  >
+                    <Icon className="size-6 text-primary" aria-hidden />
+                  </span>
+                  <span className="whitespace-nowrap text-center text-[12px] leading-tight tracking-tight">
+                    {k}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <button
+            type="button"
+            onClick={() => setScreen({ kind: "nearby", browse: "All" })}
+            className="plain-card grid w-full grid-cols-[1fr_118px] overflow-hidden text-left"
+          >
+            <span className="block p-4">
+              <span className="block font-display text-[26px] leading-none">Explore nearby</span>
+              <span className="mt-2 block text-[14px] leading-snug text-muted-foreground">
+                Open a map of where you are and discover what's around you.
+              </span>
+              <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary-soft px-4 text-[14.5px] font-semibold text-primary">
+                Open map <ArrowRight className="size-4" aria-hidden />
+              </span>
+            </span>
+            <MapSketch />
+          </button>
+
+          {views.length === 0 && !vault.loading ? (
+            <section data-guide="reco-list">
+              <EmptyVault />
+            </section>
+          ) : (
+            <div data-guide="reco-list" className="space-y-6">
+              <section>
+                <RecsSectionHead
+                  title="My collections"
+                  onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
+                />
+                <div className="grid grid-cols-3 gap-2.5">
+                  {(["reco", "wishlist", "nexttime"] as const).map((t) => {
+                    const latest = latestIn(t);
+                    const Badge = t === "wishlist" ? Heart : Bookmark;
                     return (
                       <button
                         key={t}
                         type="button"
-                        onClick={() => setDraft({ ...draft, pin_type: t })}
-                        aria-pressed={on}
-                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                          on ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-                        }`}
+                        onClick={() => setScreen({ kind: "saved", list: t })}
+                        className="min-w-0 text-left"
                       >
-                        <span className={`size-2 rounded-full ${pinColorClass[t]}`} />
-                        {pinLabel[t]}
+                        <span className="relative block overflow-hidden rounded-2xl">
+                          {latest ? (
+                            <PlaceArt
+                              place={{ name: latest.name, category: latest.category }}
+                              className="aspect-[5/4] w-full"
+                            />
+                          ) : (
+                            <img
+                              src={placeArtUrl(COLLECTION_ART[t])}
+                              alt=""
+                              className="art-dim aspect-[5/4] w-full object-cover"
+                            />
+                          )}
+                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[12.5px] font-semibold">
+                            <Badge className="size-3.5" aria-hidden />
+                            {counts[t]}
+                          </span>
+                        </span>
+                        <span className="mt-1.5 block truncate text-[13.5px] font-medium tracking-tight">
+                          {t === "reco" ? "Recommendations" : pinLabel[t]}
+                        </span>
+                        <span className="block text-[13px] text-muted-foreground">
+                          {counts[t]} saved
+                        </span>
                       </button>
                     );
                   })}
                 </div>
-              </div>
-              <button
-                onClick={save}
-                disabled={busy === "save" || !draft.name.trim()}
-                className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
-              >
-                {busy === "save" ? "Saving…" : "Save to vault"}
-              </button>
-              {!draft.name.trim() && (
-                <p className="text-[12px] text-muted-foreground">
-                  Give it a name first — that's the only required field.
-                </p>
-              )}
-              {!vault.signedIn && (
-                <p className="text-[12px] text-muted-foreground">
-                  Sign in on the You tab to keep this saved to your account.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
+              </section>
 
-        {(searchWorthShowing({ total: views.length }) ||
-          anyFilterWorthShowing({
-            total: views.length,
-            places: places.length - 1,
-            kinds: categories.length - 1,
-          })) && (
-          // One row: search, then City and Type as two compact menus rather
-          // than two rows of chips that ran off the side of the screen.
-          <div className="flex flex-wrap gap-2">
-            {searchWorthShowing({ total: views.length }) && (
-              <input
-                data-guide="reco-search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search places, cities, people"
-                aria-label="Search your saved places — typos are fine"
-                className="min-w-[12rem] flex-[2_1_14rem] rounded-full border border-border bg-card px-4 py-2.5 text-[14.5px] outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-            )}
-            {placeFilterWorthShowing({
-              total: views.length,
-              places: places.length - 1,
-              kinds: categories.length - 1,
-            }) && (
-              <FilterSelect
-                guide="reco-places"
-                label="City"
-                value={placeFilter}
-                all="All places"
-                options={places}
-                onChange={setPlaceFilter}
-              />
-            )}
-            {kindFilterWorthShowing({
-              total: views.length,
-              places: places.length - 1,
-              kinds: categories.length - 1,
-            }) && (
-              <FilterSelect
-                guide="reco-categories"
-                label="Type"
-                value={category}
-                all="All"
-                options={categories}
-                onChange={setCategory}
-              />
-            )}
-          </div>
-        )}
-
-        <section data-guide="reco-list" className="space-y-3">
-          {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-          {groups.map((group) => (
-            <Section
-              key={group.type}
-              title={pinLabel[group.type]}
-              hint={groupCountLabel(group.rows.length)}
-              defaultOpen
-            >
-              <div className="space-y-3">
-                {group.rows.map((v) => (
-                  <article key={v.id} className="card-soft p-3.5">
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={`mt-1.5 size-2 shrink-0 rounded-full ${pinColorClass[v.type]}`}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="font-display text-[18px] leading-tight">{v.name}</p>
-                        <p className="text-[13px] text-muted-foreground">
-                          {formatTripLocation(v.city, v.country)}
-                          {v.by ? ` · by ${v.by}` : ""}
-                          {v.source ? ` · ${v.source}` : ""}
-                        </p>
-                        {v.notes && <p className="mt-1.5 text-[14.5px] leading-snug">{v.notes}</p>}
-                        {v.tags.length > 0 && (
-                          <p className="mt-1.5 text-[12px] text-muted-foreground">
-                            {v.tags.join(" · ")}
-                          </p>
-                        )}
-                        {(() => {
-                          // The phone's maps app, on this place: its pin when
-                          // it has one, otherwise a search for its name.
-                          const row = vault.rows.find((r) => r.id === v.id);
-                          if (!row) return null;
-                          return (
-                            <div className="mt-1.5 space-y-1">
-                              <a
-                                href={recMapsUrl(row)}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-block text-[12.5px] font-semibold text-primary underline"
-                              >
-                                Open in Maps ↗
-                              </a>
-                              {/* Hours on request: one lookup per card tapped,
-                                  not one per card listed. A country or a city
-                                  has no opening hours, so it gets no button. */}
-                              {!isCountryLevelPlace(row) && !isCityLevelPlace(row) && (
-                                <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
-                          {v.category}
+              <section>
+                <RecsSectionHead
+                  title="Recently saved"
+                  onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
+                />
+                {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
+                <ul className="space-y-2.5">
+                  {recent.map((r) => (
+                    <li key={r.id} className="plain-card flex items-center overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => openPlace(placeFromRow(r))}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <PlaceArt
+                          place={{ name: r.name, category: r.category }}
+                          className="h-[76px] w-[96px] shrink-0"
+                        />
+                        <span className="min-w-0 py-2">
+                          <span className="block truncate text-[16.5px] font-semibold">
+                            {r.name}
+                          </span>
+                          <span className="block truncate text-[13.5px] text-muted-foreground">
+                            {[r.city, r.category].filter(Boolean).join(" · ")}
+                          </span>
                         </span>
-                        <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
-                        {v.removable && (
-                          <button
-                            onClick={() => {
-                              // Keep enough to re-create it before the row is gone.
-                              const row = vault.rows.find((r) => r.id === v.id);
-                              void removeWithUndo({
-                                label: v.name,
-                                remove: () => vault.remove(v.id),
-                                restore: async () => {
-                                  if (!row) throw new Error("gone");
-                                  await vault.add({
-                                    ...toNewReco(capturedFromReco(row), {
-                                      ...(row.category ? { category: row.category } : {}),
-                                      ...(row.recommended_by
-                                        ? { recommended_by: row.recommended_by }
-                                        : {}),
-                                    }),
-                                    ...(row.pin_type ? { pin_type: row.pin_type as PinType } : {}),
-                                    ...(row.travel_tags ? { travel_tags: row.travel_tags } : {}),
-                                  });
-                                },
-                              });
-                            }}
-                            className="mt-1.5 text-[11.5px] text-muted-foreground underline"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </Section>
-          ))}
-          {views.length === 0 && (
-            <div className="py-8 text-center">
-              <p className="font-display text-[18px] leading-snug">{beaLine("empty.recs").title}</p>
-              <p className="mt-1 text-[14.5px] text-muted-foreground">
-                {beaLine("empty.recs").body}
-              </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setJustSaved({ id: r.id, name: r.name })}
+                        aria-label={`${r.name}: note, list, who told you`}
+                        className="grid size-12 shrink-0 place-items-center"
+                      >
+                        <Bookmark className="size-5 text-primary" weight="fill" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             </div>
           )}
-          {views.length > 0 && filtered.length === 0 && (
-            <p className="py-8 text-center text-[14.5px] text-muted-foreground">
-              Nothing saved matches that yet.
-            </p>
-          )}
-        </section>
-      </div>
+        </div>
+      )}
+
+      {moreWays && (
+        <Sheet label="Add a place" onClose={() => setMoreWays(false)}>
+          <h2 id="reco-add-menu" className="pr-10 font-display text-[27px] leading-none">
+            Add a place
+          </h2>
+          <p className="mt-1 text-[14px] text-muted-foreground">
+            Or search above: a name or a pasted link works too.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {(
+              [
+                ["trips", "From my trips", MapPinned],
+                ["here", "I'm here now", LocateFixed],
+                ["manual", "By hand", Hand],
+                ["list", "Paste a list", ListPlus],
+              ] as const
+            ).map(([m, label, Icon], i) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => startMode(m)}
+                className={`tile-fill-${i + 1} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold`}
+              >
+                <Icon className="size-5 shrink-0 text-primary" aria-hidden />
+                {label}
+              </button>
+            ))}
+            {(
+              [
+                ["picking", "Send places", Share2],
+                ["opening", "Open a share", Inbox],
+              ] as const
+            ).map(([m, label, Icon], i) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  setScreen({ kind: "home" });
+                  setShareAsk((prev) => ({ mode: m, n: (prev?.n ?? 0) + 1 }));
+                  setMode(null);
+                  setDraft(null);
+                  setMoreWays(false);
+                }}
+                className={`tile-fill-${i + 5 > 5 ? 1 : 5} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold`}
+              >
+                <Icon className="size-5 shrink-0 text-primary" aria-hidden />
+                {label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setMoreWays(false);
+                setScreen({ kind: "nearby", browse: "All" });
+              }}
+              className="tile-fill-2 col-span-2 flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold"
+            >
+              <MapPinned className="size-5 shrink-0 text-primary" aria-hidden />
+              Pin somewhere nearby
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {justSaved && (
+        <SaveSheet
+          key={justSaved.id}
+          row={savedRow}
+          fallbackName={justSaved.name}
+          onUpdate={(patch) => vault.update(justSaved.id, patch)}
+          onClose={() => setJustSaved(null)}
+        />
+      )}
+
+      {tripSheet && (
+        <AddToTripSheet
+          place={tripSheet}
+          trips={trips.trips}
+          onClose={() => setTripSheet(null)}
+          onAnother={() => {
+            setTripSheet(null);
+            setScreen({ kind: "home" });
+          }}
+        />
+      )}
     </AppShell>
+  );
+}
+
+const COLLECTION_ART: Record<"reco" | "wishlist" | "nexttime", PlaceArtKind> = {
+  reco: "street",
+  wishlist: "viewpoint",
+  nexttime: "harbour",
+};
+
+function EmptyVault() {
+  const settings = useBeaSettings();
+  const [line] = useState(() => emptyLine({ kind: "noSavedRecommendations", settings }));
+  return (
+    <div className="flex flex-col items-center py-6 text-center">
+      <img src="/bea/bea-think-static.png" alt="" className="size-28 object-contain" />
+      <p className="mt-2 font-display text-[22px] leading-snug">{beaLine("empty.recs").title}</p>
+      <p className="mt-1 max-w-[30ch] text-[14.5px] text-muted-foreground">
+        {line || beaLine("empty.recs").body}
+      </p>
+    </div>
+  );
+}
+
+/** Your own saves matching the search field, above the map's answers. */
+function SavedMatches({ rows, onOpen }: { rows: RecoRowDB[]; onOpen: (row: RecoRowDB) => void }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="plain-card p-1.5">
+      <p className="px-2.5 pt-1.5 text-[12px] font-semibold text-muted-foreground">
+        In your saved places
+      </p>
+      <ul>
+        {rows.map((r) => (
+          <li key={r.id}>
+            <button
+              type="button"
+              onClick={() => onOpen(r)}
+              className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left"
+            >
+              <PlaceArt
+                place={{ name: r.name, category: r.category }}
+                className="size-10 shrink-0 rounded-lg"
+              />
+              <span className="min-w-0">
+                <span className="block truncate text-[15px] font-medium">{r.name}</span>
+                <span className="block truncate text-[12.5px] text-muted-foreground">
+                  {[r.city, r.category, r.recommended_by ? `from ${r.recommended_by}` : ""]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** A small drawing of a map for the Explore nearby card: neutral in every theme. */
+function MapSketch() {
+  return (
+    <svg
+      viewBox="0 0 118 140"
+      preserveAspectRatio="xMidYMid slice"
+      className="h-full min-h-[140px] w-full"
+      aria-hidden
+    >
+      <rect width="118" height="140" fill="var(--color-elevated)" />
+      <path
+        d="M70 140 C 80 110, 118 100, 118 70 L118 140 Z"
+        fill="color-mix(in oklch, var(--color-muted-foreground) 18%, var(--color-elevated))"
+      />
+      <g stroke="var(--color-card)" strokeWidth="5" fill="none" strokeLinecap="round">
+        <path d="M-5 30 L 125 80" />
+        <path d="M30 -5 L 60 145" />
+        <path d="M-5 105 L 80 60 L 125 20" />
+      </g>
+      <g stroke="var(--color-border)" strokeWidth="1.5" fill="none">
+        <path d="M-5 60 L 125 45" />
+        <path d="M90 -5 L 75 145" />
+      </g>
+      <g transform="translate(59 48)">
+        <path
+          d="M0 22 C -9 11, -11 7, -11 0 A 11 11 0 0 1 11 0 C 11 7, 9 11, 0 22 Z"
+          fill="var(--color-primary)"
+        />
+        <circle r="4" fill="var(--color-card)" />
+      </g>
+    </svg>
   );
 }
 

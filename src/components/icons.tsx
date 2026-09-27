@@ -126,6 +126,9 @@ import {
   FolderOpen as PhFolderOpen,
   FilePdf as PhFilePdf,
   LinkBreak as PhLinkBreak,
+  Binoculars as PhBinoculars,
+  ListBullets as PhListBullets,
+  NavigationArrow as PhNavigationArrow,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -281,3 +284,6 @@ export const Upload = icon(PhUploadSimple, "Upload");
 export const FolderOpen = icon(PhFolderOpen, "FolderOpen");
 export const FilePdf = icon(PhFilePdf, "FilePdf");
 export const Unlink = icon(PhLinkBreak, "Unlink");
+export const Binoculars = icon(PhBinoculars, "Binoculars");
+export const List = icon(PhListBullets, "List");
+export const Navigation = icon(PhNavigationArrow, "Navigation");
