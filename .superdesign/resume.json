@@ -85,7 +85,7 @@
         "dark": "ec7fb69b-d796-4cfd-8b09-0fd732a68962"
       },
       "v2": {
-        "status": "awaiting review",
+        "status": "superseded by v3",
         "checklist": ".superdesign/checklists/trips.md",
         "html": ".superdesign/tmp/trips2-<frame>-<theme>.html",
         "frames": {
@@ -103,6 +103,23 @@
             "calm": "7cc2c4d9-488a-48bc-b633-1753b25fa623",
             "colorful": "97d570d2-5967-448b-82cf-fa9336a4cfad",
             "dark": "2597110c-2519-4240-b473-570357351bf7"
+          }
+        }
+      },
+      "v3": {
+        "status": "awaiting review",
+        "note": "photo-1 card format, My trips / Past trips toggle, illustrated banners per theme (public/banners)",
+        "html": ".superdesign/tmp/trips3-<frame>-<theme>.html",
+        "frames": {
+          "mine": {
+            "calm": "64e765e1-fab4-4f0c-9af6-67d2f9626538",
+            "colorful": "55b4dc6e-2374-405d-9de9-afd3692d3c21",
+            "dark": "72c95ceb-d483-4d43-a5b5-0ac8bee4e7ec"
+          },
+          "past": {
+            "calm": "1ab71521-43f6-4437-9fda-cc14881171b1",
+            "colorful": "beeb4054-cf01-438c-844e-e6704c0fb26a",
+            "dark": "325347b8-a187-4583-81f2-eab056538519"
           }
         }
       }
