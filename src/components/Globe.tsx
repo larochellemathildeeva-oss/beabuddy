@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "@/components/icons";
+import { LocateFixed, Minus, Plus, RotateCcw } from "@/components/icons";
 import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
 import { feature } from "topojson-client";
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
@@ -100,6 +100,7 @@ export function Globe({
   shadePinCountries = true,
   countryMarks,
   className,
+  variant = "framed",
 }: {
   pins: Pin[];
   /**
@@ -130,7 +131,14 @@ export function Globe({
   onCountrySelect?: ((countryName: string) => void) | undefined;
   /** Extra classes on the outer frame — e.g. full-bleed on large screens. */
   className?: string | undefined;
+  /**
+   * "framed" (default): the globe in a bordered panel with a stacked control
+   * strip. "open": the World tab's master look — no panel, a larger globe on
+   * the page, and round separate controls down the right.
+   */
+  variant?: "framed" | "open" | undefined;
 }) {
+  const open = variant === "open";
   const oceanId = `globe-ocean-${useId().replace(/:/g, "")}`;
   const [rotation, setRotation] = useState<[number, number]>([-10, -18]);
   const [zoom, setZoom] = useState(1);
@@ -383,6 +391,14 @@ export function Globe({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLon, selectedLat]);
 
+  const resetView = () => {
+    stopInertia();
+    velocity.current = [0, 0];
+    live.current = [-10, -18];
+    setRotation([-10, -18]);
+    applyZoom(1);
+  };
+
   const trySelectPin = (pin: Pin) => {
     if (gestureConsumed.current || moved.current > DRAG_SLOP) return;
     onSelect?.(pin);
@@ -416,7 +432,9 @@ export function Globe({
           e.preventDefault();
           stopInertia();
         }}
-        className="relative touch-none overflow-hidden rounded-3xl border border-border bg-elevated outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2"
+        className={`relative touch-none overflow-hidden rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
+          open ? "" : "border border-border bg-elevated"
+        }`}
         onPointerDown={(e) => {
           // Zoom controls are buttons inside the frame — don't steal their gesture.
           if ((e.target as Element | null)?.closest?.("button")) return;
@@ -490,7 +508,9 @@ export function Globe({
                   new Set(pins.map((p) => p.country).filter(Boolean)).size
                 } countries. Every pin is also listed below the globe.`
           }
-          className="h-[min(52vw,420px)] w-full cursor-grab active:cursor-grabbing md:h-[480px]"
+          className={`w-full cursor-grab active:cursor-grabbing ${
+            open ? "h-[min(92vw,440px)] md:h-[500px]" : "h-[min(52vw,420px)] md:h-[480px]"
+          }`}
         >
           <defs>
             <radialGradient id={oceanId} cx="35%" cy="30%">
@@ -616,42 +636,70 @@ export function Globe({
           ))}
         </svg>
 
-        <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-border bg-card">
-          <button
-            type="button"
-            aria-label="Zoom in"
-            className="grid size-11 place-items-center text-base text-foreground"
-            onClick={() => applyZoom(liveZoom.current + 0.2)}
-          >
-            +
-          </button>
-          <span className="h-px bg-border" />
-          <button
-            type="button"
-            aria-label="Zoom out"
-            className="grid size-11 place-items-center text-base text-foreground"
-            onClick={() => applyZoom(liveZoom.current - 0.2)}
-          >
-            −
-          </button>
-          <span className="h-px bg-border" />
-          <button
-            type="button"
-            aria-label="Reset the view"
-            className="grid size-11 place-items-center text-foreground"
-            onClick={() => {
-              stopInertia();
-              velocity.current = [0, 0];
-              live.current = [-10, -18];
-              setRotation([-10, -18]);
-              applyZoom(1);
-            }}
-          >
-            <RotateCcw className="size-4" aria-hidden />
-          </button>
-        </div>
+        {open ? (
+          <div className="absolute right-1 top-2 flex flex-col gap-2.5">
+            <button
+              type="button"
+              aria-label="Reset the view"
+              title="Reset the view"
+              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+              onClick={resetView}
+            >
+              <LocateFixed className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+              onClick={() => applyZoom(liveZoom.current + 0.2)}
+            >
+              <Plus className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom out"
+              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+              onClick={() => applyZoom(liveZoom.current - 0.2)}
+            >
+              <Minus className="size-5" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <div className="absolute right-3 top-3 flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+            <button
+              type="button"
+              aria-label="Zoom in"
+              className="grid size-11 place-items-center text-base text-foreground"
+              onClick={() => applyZoom(liveZoom.current + 0.2)}
+            >
+              +
+            </button>
+            <span className="h-px bg-border" />
+            <button
+              type="button"
+              aria-label="Zoom out"
+              className="grid size-11 place-items-center text-base text-foreground"
+              onClick={() => applyZoom(liveZoom.current - 0.2)}
+            >
+              −
+            </button>
+            <span className="h-px bg-border" />
+            <button
+              type="button"
+              aria-label="Reset the view"
+              className="grid size-11 place-items-center text-foreground"
+              onClick={resetView}
+            >
+              <RotateCcw className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
 
-        <p className="absolute bottom-3 left-4 right-16 text-[12px] text-muted-foreground">
+        <p
+          className={`absolute bottom-3 left-4 text-muted-foreground ${
+            open ? "right-28 text-[11px]" : "right-16 text-[12px]"
+          }`}
+        >
           Drag or use the arrow keys to rotate · pinch, scroll or +/− to zoom
         </p>
       </div>
