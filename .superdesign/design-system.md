@@ -49,3 +49,12 @@ Approved by the owner as the overall style — "a good start", not final screens
 - **Maps stay neutral in every theme** (beige in Calm, grey in Colorful, dark in Dark); only the route and pins carry color.
 - **Keep:** the "Day by day" itinerary overview.
 - **Hard rules for building it:** keep the app's existing icons, and keep every existing function on every page. The mockups omit some of both; they are a style reference, not a feature list.
+
+## Stop pictures (decided)
+A setting with three choices, never mixed on one screen:
+- **Illustrations** (default): every stop gets a painted scene matched to its kind and name, in the theme's colours.
+- **Real photos**: the stop's Wikimedia Commons photo, with its credit; a stop without one shows no picture (the row closes up), never an illustration.
+- **No pictures**: text-only rows.
+Real photos in lists needs each stop's photo saved once found (a new column on
+`itinerary_items`, migration applied by hand), so lists don't spend a Geoapify
+lookup per stop each time.
