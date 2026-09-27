@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Check, GraduationCap, RefreshCw, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, GraduationCap, RefreshCw, RotateCcw } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import {
   BALANCED,

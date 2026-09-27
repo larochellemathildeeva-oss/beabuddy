@@ -19,7 +19,7 @@ import {
   StickyNote,
   UserRound,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { NearbyMapPin } from "@/components/NearbyMapPin";
 import { RecoListImport } from "@/components/RecoListImport";

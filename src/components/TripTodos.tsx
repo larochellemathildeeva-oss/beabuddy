@@ -22,7 +22,7 @@ import {
   Ticket,
   Wallet,
   type LucideProps,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTripTodos } from "@/hooks/useTripTodos";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { tripDateLine } from "@/lib/trip-card";

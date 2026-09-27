@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, MapPin } from "lucide-react";
+import { ChevronDown, MapPin } from "@/components/icons";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { timeForRail } from "@/lib/timeline-kind";
 import { mapsPlaceUrl } from "@/lib/direction-stops";

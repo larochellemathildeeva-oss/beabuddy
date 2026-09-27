@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bookmark, MapPin } from "lucide-react";
+import { Bookmark, MapPin } from "@/components/icons";
 import { placeArtFor, placeArtUrl } from "@/lib/place-art";
 
 /**
@@ -40,7 +40,7 @@ export function HomeSaveTile({
           <span className="line-clamp-2 font-display text-[22px] leading-tight">
             {waiting.name}
           </span>
-          <Bookmark className="mt-0.5 size-5 shrink-0 fill-current text-primary" aria-hidden />
+          <Bookmark weight="fill" className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
         </span>
         {where ? (
           <span className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">

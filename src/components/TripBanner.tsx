@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CalendarDays, MapPin, Users } from "lucide-react";
+import { CalendarDays, MapPin, Users } from "@/components/icons";
 import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { photoCreditLine, tripDateLine, tripPlacesLine } from "@/lib/trip-card";

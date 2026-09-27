@@ -5,7 +5,7 @@ import type { useNearMe } from "@/hooks/useNearMe";
 import { formatMetres } from "@/lib/near";
 import { nearHomeView } from "@/lib/near-home";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/icons";
 import { HomeSaveTile } from "@/components/HomeSaveTile";
 
 /**

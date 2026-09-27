@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import { Section } from "@/components/Section";

@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import { X } from "@/components/icons";
 
 /**
  * The fifth primitive: anything that opens over the page.

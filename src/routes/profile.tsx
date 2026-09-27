@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { resumeOrReplayTour } from "@/components/Tour";

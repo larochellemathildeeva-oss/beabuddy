@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, Clock, CloudRain, MapPin } from "lucide-react";
+import { ArrowRight, Clock, CloudRain, MapPin } from "@/components/icons";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";

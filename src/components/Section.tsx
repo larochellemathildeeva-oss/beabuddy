@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/icons";
 
 /**
  * A named block of content, optionally collapsible.

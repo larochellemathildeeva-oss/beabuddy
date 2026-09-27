@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Route as RouteIcon } from "lucide-react";
+import { Route as RouteIcon } from "@/components/icons";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import {

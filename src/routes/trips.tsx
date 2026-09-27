@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, ChevronRight, Plus, X } from "lucide-react";
+import { CalendarDays, ChevronRight, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -115,7 +115,7 @@ function TripsPage() {
 
   return (
     <AppShell
-      title="Trips"
+      title={<span className="text-[44px] leading-none">Trips</span>}
       headerAction={
         t.signedIn ? (
           <button

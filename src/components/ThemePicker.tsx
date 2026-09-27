@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check } from "@/components/icons";
 import { applyTheme, readTheme, THEMES, type ThemeName } from "@/lib/theme";
 
 const LABELS: Record<ThemeName, { name: string; hint: string }> = {

@@ -4,7 +4,7 @@ import { partOfDay, stopStatuses, type PartOfDay } from "@/lib/companion";
 import { timeForRail } from "@/lib/timeline-kind";
 import { stayLabel } from "@/lib/planned-stay";
 import { isBooked } from "@/lib/bookings";
-import { Compass } from "lucide-react";
+import { Compass } from "@/components/icons";
 
 type Filter = "all" | PartOfDay;
 

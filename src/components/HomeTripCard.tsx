@@ -9,7 +9,7 @@ import {
   ListChecks,
   Luggage,
   Users,
-} from "lucide-react";
+} from "@/components/icons";
 import type { TripRow } from "@/hooks/useTrips";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripGlance } from "@/hooks/useTripGlances";

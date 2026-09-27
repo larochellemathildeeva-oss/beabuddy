@@ -13,7 +13,7 @@ import {
   ListOrdered,
   Sparkles,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   compareItineraries,
   optimizeItinerary,

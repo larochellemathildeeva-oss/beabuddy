@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
 import { guideKeyForPath } from "@/lib/guide-key";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "@/components/icons";
 import {
   findGuideTarget,
   measureGuideTarget,

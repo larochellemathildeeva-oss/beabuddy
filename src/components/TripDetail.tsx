@@ -10,7 +10,7 @@ import {
   Pencil,
   Plus,
   Settings,
-} from "lucide-react";
+} from "@/components/icons";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";

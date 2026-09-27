@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw } from "@/components/icons";
 import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
 import { feature } from "topojson-client";
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";

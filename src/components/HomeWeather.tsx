@@ -10,7 +10,7 @@ import {
   CloudSun,
   Moon,
   Sun,
-} from "lucide-react";
+} from "@/components/icons";
 import type { useNearMe } from "@/hooks/useNearMe";
 import { reverseGeocode, type Place } from "@/lib/geocode";
 import { lookupWeather } from "@/lib/weather.functions";

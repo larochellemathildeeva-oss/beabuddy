@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "@/components/icons";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section } from "@/components/Section";
 import { Sheet } from "@/components/Sheet";

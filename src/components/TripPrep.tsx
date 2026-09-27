@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Backpack, ListChecks } from "lucide-react";
+import { Backpack, ListChecks } from "@/components/icons";
 import { PackingBody } from "@/components/PackingLists";
 import { Sheet } from "@/components/Sheet";
 import { TripTodosBody } from "@/components/TripTodos";

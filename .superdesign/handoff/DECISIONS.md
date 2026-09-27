@@ -46,3 +46,13 @@
   master's pictures as the style reference): 18 place kinds in
   `public/places/` (`place-art.ts`) and 8 trip scenes in `public/banners/`.
   One picture for all themes, as in the master; Dark dims it.
+
+## Update (icons, fonts, image budget)
+
+- **Fonts reverted** to Instrument Serif + Manrope at the owner's request.
+- **Icons: Phosphor Regular** app-wide through `src/components/icons.tsx`
+  (Lucide names kept, so screens import the same names).
+- **No more Gemini image generation without asking** — it spends the
+  owner's Google credits. Reuse `public/places/` and `public/banners/`.
+- ChatGPT's single-file prototype (pasted in chat) is the layout and flow
+  blueprint for the remaining screens; colours stay from the token file.

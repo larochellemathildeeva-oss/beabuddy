@@ -1,4 +1,4 @@
-import { Bed, Landmark, MapPin, Utensils } from "lucide-react";
+import { Bed, Landmark, MapPin, Utensils } from "@/components/icons";
 import type { SceneFigure } from "@/lib/how-it-works";
 
 /**

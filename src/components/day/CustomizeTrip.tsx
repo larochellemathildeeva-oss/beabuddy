@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings2 } from "lucide-react";
+import { Settings2 } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { Switch } from "@/components/ui/switch";
 import { TRIP_VIEW_OPTIONS, type TripViewKey, type TripViewPrefs } from "@/hooks/useTripViewPrefs";

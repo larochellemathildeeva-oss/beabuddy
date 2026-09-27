@@ -8,7 +8,7 @@ import { nextCompressed, tabIdForPath } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
+import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Camera, Image as ImageIcon } from "lucide-react";
+import { Camera, Image as ImageIcon } from "@/components/icons";
 import { BeaRunning } from "@/components/BeaRunning";
 import { Sheet } from "@/components/Sheet";
 import { PackingListView } from "@/components/PackingListView";

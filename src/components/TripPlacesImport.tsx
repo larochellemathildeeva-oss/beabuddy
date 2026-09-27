@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "@/components/icons";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { pinColorClass, pinLabel } from "@/data/atlas";

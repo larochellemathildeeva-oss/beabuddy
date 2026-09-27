@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { Link } from "@tanstack/react-router";
-import { Bed, ChevronRight, ListChecks, Luggage, MapPin, Plane, Users } from "lucide-react";
+import { Bed, ChevronRight, ListChecks, Luggage, MapPin, Plane, Users } from "@/components/icons";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import type { TripRow } from "@/hooks/useTrips";
@@ -54,11 +54,7 @@ function Stat({
         <span className={`block truncate font-bold ${large ? "text-[14px]" : "text-[13px]"}`}>
           {value}
         </span>
-        {large ? (
-          <span className="block truncate text-[11.5px] text-muted-foreground">{label}</span>
-        ) : (
-          <span className="sr-only">{label}</span>
-        )}
+        <span className="block truncate text-[11.5px] text-muted-foreground">{label}</span>
       </span>
     </div>
   );
@@ -128,7 +124,7 @@ export function TripCard({
       ? "None yet"
       : "—";
   const stats = (
-    <div className={`mt-auto flex divide-x divide-border ${large ? "pt-3" : "pt-2"}`}>
+    <div className="flex divide-x divide-border border-t border-border px-3.5 py-2.5">
       <Stat
         icon={Plane}
         value={flightValue}
@@ -155,88 +151,90 @@ export function TripCard({
       to="/trips/$tripId"
       params={{ tripId: trip.id }}
       viewTransition
-      className="tile-card-1 group flex overflow-hidden transition-shadow hover:shadow-md"
+      className="tile-card-1 group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
     >
-      <div
-        className={`relative shrink-0 bg-[#2a2026] ${large ? "w-[42%] min-h-[190px]" : "w-[36%] min-h-[140px]"}`}
-        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
-      >
-        <img
-          src={photoUrl ?? art}
-          alt=""
-          decoding="async"
-          className="art-dim absolute inset-0 size-full object-cover"
-        />
-        {peopleCount > 1 ? (
-          <span
-            aria-label={`${peopleCount} people on this trip`}
-            className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/92 px-2 py-0.5 text-[11px] font-bold text-[#28231f]"
-          >
-            <Users className="size-3" aria-hidden />
-            {peopleCount}
-          </span>
-        ) : null}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col p-3.5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p
-              className={`line-clamp-2 break-words font-display leading-tight ${large ? "text-[30px]" : "text-[25px]"}`}
+      <div className="flex">
+        <div
+          className={`relative shrink-0 bg-[#2a2026] ${large ? "w-[40%] min-h-[150px]" : "w-[34%] min-h-[112px]"}`}
+          style={{ viewTransitionName: `trip-photo-${trip.id}` }}
+        >
+          <img
+            src={photoUrl ?? art}
+            alt=""
+            decoding="async"
+            className="art-dim absolute inset-0 size-full object-cover"
+          />
+          {peopleCount > 1 ? (
+            <span
+              aria-label={`${peopleCount} people on this trip`}
+              className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/92 px-2 py-0.5 text-[11px] font-bold text-[#28231f]"
             >
-              {trip.title}
-            </p>
-            {dates ? (
-              <p className={`text-muted-foreground ${large ? "text-[15px]" : "text-[14px]"}`}>
-                {dates}
-                {trip.dates_status === "tentative" ? " · tentative" : ""}
-              </p>
-            ) : (
-              <p className="text-[14px] text-muted-foreground">No dates yet</p>
-            )}
-          </div>
-          <span
-            aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-full bg-elevated transition-transform group-hover:translate-x-0.5"
-          >
-            <ChevronRight className="size-4.5" />
-          </span>
+              <Users className="size-3" aria-hidden />
+              {peopleCount}
+            </span>
+          ) : null}
         </div>
-        {places ? (
-          <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{places}</span>
-          </p>
-        ) : null}
-        {leg ? (
-          <p className="mt-1.5 truncate text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
-            {leg.label} · <span className="normal-case tracking-normal">{leg.city}</span>
-          </p>
-        ) : null}
-        {live ? (
-          <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-primary-soft px-2 py-1 text-[12.5px]">
-            <span className="relative flex size-2 shrink-0" aria-hidden>
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
-              <span className="relative inline-flex size-2 rounded-full bg-primary" />
+        <div className="flex min-w-0 flex-1 flex-col p-3.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p
+                className={`line-clamp-2 break-words font-display leading-tight ${large ? "text-[28px]" : "text-[24px]"}`}
+              >
+                {trip.title}
+              </p>
+              {dates ? (
+                <p className={`text-muted-foreground ${large ? "text-[15px]" : "text-[14px]"}`}>
+                  {dates}
+                  {trip.dates_status === "tentative" ? " · tentative" : ""}
+                </p>
+              ) : (
+                <p className="text-[14px] text-muted-foreground">No dates yet</p>
+              )}
+            </div>
+            <span
+              aria-hidden
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-elevated transition-transform group-hover:translate-x-0.5"
+            >
+              <ChevronRight className="size-4.5" />
             </span>
-            <span className="shrink-0 font-bold text-primary">
-              Stop {live.step} of {live.total}
-            </span>
-            <span className="min-w-0 truncate">{live.title}</span>
-          </p>
-        ) : null}
-        {large && lodging ? (
-          <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
-            <Bed className="size-3.5 shrink-0" aria-hidden />
-            <span className="truncate">{lodging.title}</span>
-          </p>
-        ) : null}
-        {stats}
-        {quote ? (
-          <p className="mt-2.5 line-clamp-2 border-t border-border pt-2 font-display text-[16px] italic leading-snug text-muted-foreground">
-            “{quote}”
-          </p>
-        ) : null}
+          </div>
+          {places ? (
+            <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{places}</span>
+            </p>
+          ) : null}
+          {leg ? (
+            <p className="mt-1.5 truncate text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
+              {leg.label} · <span className="normal-case tracking-normal">{leg.city}</span>
+            </p>
+          ) : null}
+          {live ? (
+            <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-primary-soft px-2 py-1 text-[12.5px]">
+              <span className="relative flex size-2 shrink-0" aria-hidden>
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
+                <span className="relative inline-flex size-2 rounded-full bg-primary" />
+              </span>
+              <span className="shrink-0 font-bold text-primary">
+                Stop {live.step} of {live.total}
+              </span>
+              <span className="min-w-0 truncate">{live.title}</span>
+            </p>
+          ) : null}
+          {large && lodging ? (
+            <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+              <Bed className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{lodging.title}</span>
+            </p>
+          ) : null}
+          {quote ? (
+            <p className="mt-2.5 line-clamp-2 border-t border-border pt-2 font-display text-[16px] italic leading-snug text-muted-foreground">
+              “{quote}”
+            </p>
+          ) : null}
+        </div>
       </div>
+      {stats}
     </Link>
   );
 }

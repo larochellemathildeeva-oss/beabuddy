@@ -19,7 +19,7 @@ import {
   Snowflake,
   Sun,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import type { PackItemRow, PackRow } from "@/hooks/usePacking";
 import {
   SECTION_MAX_LEN,

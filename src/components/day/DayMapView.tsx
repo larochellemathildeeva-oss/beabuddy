@@ -7,7 +7,7 @@ import {
   MapPin,
   Maximize2,
   Route,
-} from "lucide-react";
+} from "@/components/icons";
 import { DayMap } from "@/components/day/DayMap";
 import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import type { ItineraryRow } from "@/hooks/useTrips";
