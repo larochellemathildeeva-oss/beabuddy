@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
 import type { ItineraryRow } from "@/hooks/useTrips";
+import { Check } from "@/components/icons";
 import { companionState, stopStatuses, type StopStatus } from "@/lib/companion";
+import { timeForRail } from "@/lib/timeline-kind";
 
 const DOT: Record<StopStatus, string> = {
-  done: "bg-nexttime text-white",
-  here: "scale-110 bg-primary text-primary-foreground shadow-2xs ring-4 ring-primary/25",
+  done: "border-2 border-primary bg-card text-primary",
+  here: "bg-primary text-primary-foreground shadow-sm ring-4 ring-primary/20",
   next: "border-2 border-primary bg-card text-primary",
   skipped: "border border-border bg-elevated text-muted-foreground line-through",
-  upcoming: "border border-border bg-card text-muted-foreground",
+  upcoming: "border border-border bg-card text-foreground",
 };
 
 const STATUS_WORD: Record<StopStatus, string> = {
@@ -52,88 +54,83 @@ export function JourneyTracker({
   const statuses = stopStatuses(stops);
   const focus = state.current ?? state.next;
   const position = focus ? stops.indexOf(focus) + 1 : stops.length;
-  const behind = statuses.filter((s) => s === "done" || s === "skipped").length;
-  const percent = Math.round((behind / stops.length) * 100);
   const filled = stops.length > 1 ? Math.min(1, (position - 1) / (stops.length - 1)) : 1;
 
   return (
-    <section
-      aria-label="Live journey"
-      className="rounded-2xl border border-border bg-card p-3.5 shadow-2xs sm:p-4"
-    >
+    <section aria-label="Today's progress" className="plain-card p-3.5">
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-2 text-xs font-bold sm:text-sm">
-          <span className="relative flex size-2" aria-hidden>
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-nexttime opacity-60 motion-reduce:animate-none" />
-            <span className="relative inline-flex size-2 rounded-full bg-nexttime" />
-          </span>
-          Live Journey Tracker
+        <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          Today's progress
         </p>
-        <p className="text-[10px] font-semibold tabular-nums text-muted-foreground sm:text-xs">
-          Stop <span className="font-bold text-primary">{position}</span> of {stops.length}
-          <span className="ml-1.5 opacity-80">({percent}% done)</span>
+        <p className="text-[12px] tabular-nums text-muted-foreground">
+          {state.reached} / {stops.length} stops ·{" "}
+          {Math.round((state.reached / stops.length) * 100)}% complete
         </p>
       </div>
 
       {/* Scrolls sideways on a long day; each stop keeps a thumb-sized dot. */}
       <div ref={track} className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
         <ol
-          className="relative flex items-center justify-between gap-2 px-1 py-1.5"
-          style={{ minWidth: `${stops.length * 28}px` }}
+          className="relative flex items-start justify-between gap-1"
+          style={{ minWidth: `${stops.length * 64}px` }}
         >
           <span
             aria-hidden
-            className="absolute inset-x-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-elevated"
+            className="absolute inset-x-8 top-[15px] h-0.5 rounded-full bg-border"
           />
           <span
             aria-hidden
-            className="absolute left-3 top-1/2 h-1 -translate-y-1/2 rounded-full bg-primary transition-[width] duration-500"
-            style={{ width: `calc((100% - 1.5rem) * ${filled})` }}
+            className="absolute left-8 top-[15px] h-0.5 rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `calc((100% - 4rem) * ${filled})` }}
           />
-          {stops.map((stop, i) => (
-            <li key={stop.id} data-index={i} className="relative z-10 shrink-0">
-              <button
-                type="button"
-                aria-pressed={i === pickedIndex}
-                onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
-                title={`${stop.title}, ${STATUS_WORD[statuses[i]!]}`}
-                className={`tap-44 grid size-5 place-items-center rounded-full text-[9px] font-bold sm:size-6 sm:text-[10px] tabular-nums transition-all ${DOT[statuses[i]!]} ${
-                  i === pickedIndex ? "ring-2 ring-foreground ring-offset-1 ring-offset-card" : ""
-                }`}
+          {stops.map((stop, i) => {
+            const status = statuses[i]!;
+            const time = timeForRail(stop.time_label);
+            return (
+              <li
+                key={stop.id}
+                data-index={i}
+                className="relative z-10 flex w-16 shrink-0 flex-col items-center text-center"
               >
-                {statuses[i] === "done" ? "✓" : i + 1}
-                <span className="sr-only">
-                  {" "}
-                  {stop.title}, {STATUS_WORD[statuses[i]!]} — show this stop
+                <button
+                  type="button"
+                  aria-pressed={i === pickedIndex}
+                  onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
+                  title={`${stop.title}, ${STATUS_WORD[status]}`}
+                  className={`tap-44 grid size-8 place-items-center rounded-full text-[12.5px] font-bold tabular-nums transition-all ${DOT[status]} ${
+                    i === pickedIndex ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : ""
+                  }`}
+                >
+                  {status === "done" ? <Check className="size-4" aria-hidden /> : i + 1}
+                  <span className="sr-only">
+                    {" "}
+                    {stop.title}, {STATUS_WORD[status]} — show this stop
+                  </span>
+                </button>
+                <span
+                  className={`mt-1.5 text-[11.5px] tabular-nums ${
+                    status === "here" ? "font-bold text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {time || "–"}
                 </span>
-              </button>
-            </li>
-          ))}
+                <span
+                  className={`line-clamp-2 text-[11px] leading-tight ${
+                    status === "here" ? "font-semibold text-primary" : "text-muted-foreground"
+                  }`}
+                >
+                  {status === "here" ? "Now" : stop.title}
+                </span>
+              </li>
+            );
+          })}
         </ol>
       </div>
-
-      <div className="mt-2 grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2 sm:text-sm">
-        {state.current && (
-          <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-border/60 bg-elevated px-2.5 py-1.5">
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-muted-foreground sm:text-xs">
-              Now:
-            </span>
-            <span className="truncate font-bold">{state.current.title}</span>
-          </p>
-        )}
-        {state.next ? (
-          <p className="flex min-w-0 items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/10 px-2.5 py-1.5 text-primary">
-            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider sm:text-xs">
-              Next:
-            </span>
-            <span className="truncate font-bold">{state.next.title}</span>
-          </p>
-        ) : (
-          <p className="rounded-xl bg-elevated px-2.5 py-1.5 font-semibold text-nexttime">
-            Every stop behind you for this day.
-          </p>
-        )}
-      </div>
+      {!state.next && !state.current && (
+        <p className="mt-2 text-[12.5px] font-semibold text-nexttime">
+          Every stop behind you for this day.
+        </p>
+      )}
     </section>
   );
 }
