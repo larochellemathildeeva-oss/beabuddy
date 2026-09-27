@@ -32,6 +32,7 @@ export function AppShell({
   eyebrow,
   title,
   headerAction,
+  actionBesideEyebrow = false,
   publicPage = false,
   flush = false,
 }: {
@@ -40,6 +41,8 @@ export function AppShell({
   title?: ReactNode;
   /** One action beside the title. More than one belongs in the content. */
   headerAction?: ReactNode;
+  /** Put that action on the eyebrow's line, leaving the title the full width. */
+  actionBesideEyebrow?: boolean;
   /**
    * Pages a signed-out visitor must be able to read. The sign-up form asks
    * people to agree to the Privacy Policy and links to it, so gating that link
@@ -214,7 +217,13 @@ export function AppShell({
           </div>
         </header>
 
-        <PageHeader eyebrow={eyebrow} title={title} action={headerAction} compressed={compressed} />
+        <PageHeader
+          eyebrow={eyebrow}
+          title={title}
+          action={headerAction}
+          actionBesideEyebrow={actionBesideEyebrow}
+          compressed={compressed}
+        />
 
         <main
           ref={scrollRef}

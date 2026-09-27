@@ -193,6 +193,7 @@ function SignedInHome() {
       eyebrow={today}
       title={firstName ? `${greeting}, ${firstName}` : greeting}
       headerAction={layout.weather ? <HomeWeather near={near} /> : undefined}
+      actionBesideEyebrow
     >
       <div className="space-y-5">
         {showTrip && (
@@ -261,7 +262,7 @@ function SignedInHome() {
 function SectionHead({ title, aside }: { title: string; aside?: string }) {
   return (
     <div className="mb-3 flex items-baseline justify-between">
-      <h2 className="font-display text-[22px] leading-tight">{title}</h2>
+      <h2 className="font-display text-[27px] leading-none">{title}</h2>
       {aside && <span className="text-[12px] text-muted-foreground">{aside}</span>}
     </div>
   );

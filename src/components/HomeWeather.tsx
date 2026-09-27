@@ -37,7 +37,7 @@ function WeatherIcon({ kind, isDay }: { kind: WeatherKind; isDay: boolean }) {
 }
 
 const PILL =
-  "flex h-11 min-w-0 max-w-[150px] items-center gap-2 rounded-full border border-border bg-card px-3 shadow-xs";
+  "flex h-10 min-w-0 max-w-[160px] items-center gap-2 rounded-full border border-border bg-card px-3 shadow-xs";
 
 /**
  * Where you are and what it is like outside, as the pill beside the date at
@@ -154,7 +154,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
       <WeatherIcon kind={kind} isDay={weather.isDay} />
       <span className="min-w-0 leading-tight" aria-hidden>
         <span className="block truncate text-[11px] text-muted-foreground">{where || "Here"}</span>
-        <span className="block font-display text-[17px] font-bold">
+        <span className="block font-display text-[21px] leading-none">
           {formatTemp(weather.temp, fahrenheit)}
         </span>
       </span>

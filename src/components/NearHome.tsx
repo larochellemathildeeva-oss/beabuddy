@@ -122,7 +122,7 @@ export function NearHome({
 function NearTitle() {
   return (
     <div className="mb-3 flex flex-1 items-baseline justify-between gap-3">
-      <h2 className="font-display text-[22px] leading-tight">Nearby recommendations</h2>
+      <h2 className="font-display text-[27px] leading-none">Nearby recommendations</h2>
       <Link
         to="/recommendations"
         className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary"

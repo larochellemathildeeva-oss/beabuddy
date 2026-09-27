@@ -365,7 +365,7 @@ function HomePlaceCard({
       />
       <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-2 text-[18px] leading-tight">{pin.name}</h3>
+          <h3 className="line-clamp-2 text-[22px] leading-tight">{pin.name}</h3>
           <Bookmark className="mt-0.5 size-5 shrink-0 fill-current text-primary" aria-hidden />
         </div>
         <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">

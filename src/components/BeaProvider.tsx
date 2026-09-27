@@ -16,26 +16,18 @@ export function BeaProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Béa's typefaces are served from her own build (`public/fonts`, DejaVu Serif
- * and DejaVu Sans, subset to Latin): no third-party font request. The two
- * faces every first screen shows are preloaded; the rest load on use.
+ * The web-font <link> tags Béa's typography expects. Render inside the
+ * document head (in TanStack Start, from a route `head()` links entry or the
+ * root document) so Instrument Serif and Manrope load.
  */
 export function BeaFontLinks() {
   return (
     <>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link
-        rel="preload"
-        href="/fonts/DejaVuSerif-Bold.woff2"
-        as="font"
-        type="font/woff2"
-        crossOrigin="anonymous"
-      />
-      <link
-        rel="preload"
-        href="/fonts/DejaVuSans.woff2"
-        as="font"
-        type="font/woff2"
-        crossOrigin="anonymous"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
       />
     </>
   );

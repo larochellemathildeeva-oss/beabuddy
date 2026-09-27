@@ -1,18 +1,19 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { CalendarDays, Plus, X } from "lucide-react";
+import { CalendarDays, ChevronRight, Plus, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripCard } from "@/components/TripCard";
-import { TripBanner } from "@/components/TripBanner";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { peopleOnTrip, splitTrips } from "@/lib/home-trip";
+import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
 import { pickTripPhoto } from "@/lib/trip-card";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
-import { useTripPhotos } from "@/hooks/useTripPhotos";
+import { useSignedPhoto, useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import type { TripRow } from "@/hooks/useTrips";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips } from "@/hooks/useTrips";
@@ -68,8 +69,8 @@ function TripsPage() {
   // has that for free, and the note is gone.
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
-  /** My trips (ahead or under way) or the ones that have ended. */
-  const [view, setView] = useState<"mine" | "past">("mine");
+  /** The master's four tabs. */
+  const [view, setView] = useState<"upcoming" | "past" | "drafts" | "all">("upcoming");
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -110,22 +111,45 @@ function TripsPage() {
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
-  const lists = splitTrips(t.trips, toLocalISODate(new Date()));
+  const lists = tripTabs(t.trips, toLocalISODate(new Date()));
 
   return (
-    <AppShell eyebrow="Trip folders" title="Everything, already filed.">
+    <AppShell
+      title="Trips"
+      headerAction={
+        t.signedIn ? (
+          <button
+            type="button"
+            data-guide="new-trip"
+            aria-label="New trip"
+            aria-expanded={creating}
+            onClick={() => {
+              setCreating(!creating);
+              setJoining(false);
+            }}
+            className="grid size-13 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
+          >
+            <Plus
+              className={`size-6 transition-transform ${creating ? "rotate-45" : ""}`}
+              aria-hidden
+            />
+          </button>
+        ) : undefined
+      }
+    >
       <div className="space-y-5">
+        <p className="-mt-3 text-[15px] text-muted-foreground">
+          Your adventures, all in one place.
+        </p>
         {t.signedIn ? (
           <>
-            <div
-              role="tablist"
-              aria-label="Which trips"
-              className="flex gap-1 text-[14.5px] font-semibold"
-            >
+            <div role="tablist" aria-label="Which trips" className="grid grid-cols-4 gap-1.5">
               {(
                 [
-                  ["mine", "My trips"],
-                  ["past", "Past trips"],
+                  ["upcoming", "Upcoming"],
+                  ["past", "Past"],
+                  ["drafts", "Drafts"],
+                  ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
                 <button
@@ -134,50 +158,32 @@ function TripsPage() {
                   role="tab"
                   aria-selected={view === value}
                   onClick={() => setView(value)}
-                  className={`rounded-full px-4 py-2 transition-colors duration-(--t-tap) ${
+                  className={`h-10 rounded-full text-[14px] font-semibold transition-colors duration-(--t-tap) ${
                     view === value
-                      ? "bg-elevated text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-elevated text-foreground hover:bg-accent"
                   }`}
                 >
                   {label}
-                  {value === "past" && lists.past.length ? (
-                    <span className="ml-1.5 font-mono text-[11.5px] text-muted-foreground">
-                      {lists.past.length}
-                    </span>
-                  ) : null}
                 </button>
               ))}
             </div>
 
             <div className="flex gap-2">
               <button
-                data-guide="new-trip"
-                onClick={() => {
-                  setCreating(!creating);
-                  setJoining(false);
-                  setView("mine");
-                }}
-                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3.5 py-2.5 text-[13.5px] font-semibold text-primary-foreground"
-              >
-                <Plus className="size-4" aria-hidden />
-                New trip
-              </button>
-              <button
                 data-guide="join-trip"
                 onClick={() => {
                   setJoining(!joining);
                   setCreating(false);
-                  setView("mine");
                 }}
-                className="tile-fill-3 min-w-0 flex-1 truncate whitespace-nowrap rounded-full border border-border px-2 py-2.5 text-[13.5px] font-semibold"
+                className="tile-fill-3 flex-1 whitespace-nowrap rounded-full border border-border px-3 py-2 text-[13px] font-semibold"
               >
-                Join with code
+                Join with a code
               </button>
               <Link
                 to="/calendar"
                 aria-label="Calendar view"
-                className="tile-fill-2 flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3.5 py-2.5 text-[13.5px] font-semibold"
+                className="tile-fill-2 flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 py-2 text-[13px] font-semibold"
               >
                 <CalendarDays className="size-4" aria-hidden />
                 Calendar
@@ -521,69 +527,88 @@ function TripsPage() {
 
             {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-            {view === "mine" ? (
-              <div data-guide="trip-list" className="space-y-4">
-                {t.loading && t.trips.length === 0 && <TripListSkeleton />}
-                {lists.mine.map((trip, index) => (
-                  <TripCard
-                    key={trip.id}
-                    trip={trip}
-                    index={index}
-                    photos={photos}
-                    glance={glances[trip.id]}
-                    peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-                  />
-                ))}
-                {t.trips.length === 0 && !t.loading && (
-                  <div className="py-8 text-center">
-                    <p className="font-display text-[18px] leading-snug">
-                      {beaLine("empty.trips").title}
+            <div data-guide="trip-list" className="space-y-6">
+              {t.loading && t.trips.length === 0 && <TripListSkeleton />}
+
+              {view === "upcoming" && (
+                <>
+                  {lists.upcoming[0] ? (
+                    <section className="rise">
+                      <ListHead title="Next up" />
+                      <TripCard
+                        large
+                        trip={lists.upcoming[0]}
+                        photos={photos}
+                        glance={glances[lists.upcoming[0].id]}
+                        peopleCount={peopleOnTrip(t.members, lists.upcoming[0].id, t.uid)}
+                      />
+                    </section>
+                  ) : null}
+                  {lists.upcoming.length > 1 ? (
+                    <section className="rise">
+                      <ListHead title="Upcoming trips" />
+                      <div className="space-y-3">
+                        {lists.upcoming.slice(1).map((trip) => (
+                          <TripCard
+                            key={trip.id}
+                            trip={trip}
+                            photos={photos}
+                            glance={glances[trip.id]}
+                            peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                  {lists.past.length > 0 ? (
+                    <section className="rise">
+                      <ListHead title="Past trips" onSeeAll={() => setView("past")} />
+                      <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
+                    </section>
+                  ) : null}
+                  {t.trips.length > 0 && lists.upcoming.length === 0 && !t.loading && (
+                    <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                      Nothing ahead yet.
+                      {lists.drafts.length ? " Undated trips are under Drafts." : ""}
                     </p>
-                    <p className="mt-1 text-[14.5px] text-muted-foreground">
-                      {beaLine("empty.trips").body}
-                    </p>
-                  </div>
-                )}
-                {t.trips.length > 0 && lists.mine.length === 0 && (
-                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
-                    Nothing ahead yet. Your past trips are one tab over.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {lists.past.map((trip) => (
-                  <Link
-                    key={trip.id}
-                    to="/trips/$tripId"
-                    params={{ tripId: trip.id }}
-                    viewTransition
-                    className="block overflow-hidden rounded-2xl shadow-xs transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  >
-                    <TripBanner
-                      variant="compact"
-                      title={trip.title}
-                      city={trip.city}
-                      country={trip.country}
-                      cities={[]}
-                      startDate={trip.start_date}
-                      endDate={trip.end_date}
-                      photo={pickTripPhoto(photos, {
-                        city: trip.city,
-                        country: trip.country,
-                        cities: [],
-                      })}
-                      viewTransitionName={`trip-photo-${trip.id}`}
+                  )}
+                </>
+              )}
+
+              {view !== "upcoming" && (
+                <div className="space-y-3">
+                  {lists[view].map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      photos={photos}
+                      glance={glances[trip.id]}
+                      peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
                     />
-                  </Link>
-                ))}
-                {lists.past.length === 0 && !t.loading && (
-                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
-                    No past trips yet. They land here once they end.
+                  ))}
+                  {lists[view].length === 0 && !t.loading && (
+                    <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                      {view === "past"
+                        ? "No past trips yet. They land here once they end."
+                        : view === "drafts"
+                          ? "No drafts. A trip without dates waits here."
+                          : "No trips yet."}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {t.trips.length === 0 && !t.loading && (
+                <div className="py-8 text-center">
+                  <p className="font-display text-[18px] leading-snug">
+                    {beaLine("empty.trips").title}
                   </p>
-                )}
-              </div>
-            )}
+                  <p className="mt-1 text-[14.5px] text-muted-foreground">
+                    {beaLine("empty.trips").body}
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="card-soft p-4">
@@ -609,7 +634,7 @@ function TripsPage() {
 
         <section data-guide="document-vault">
           <div className="mb-3 flex items-baseline justify-between">
-            <p className="label-caps text-foreground">Trip documents</p>
+            <h2 className="font-display text-[27px] leading-none">Trip documents</h2>
             <span className="text-[12px] text-muted-foreground">Encrypted on this device</span>
           </div>
           <DocumentVault />
@@ -694,5 +719,78 @@ function DayTripRow({
         </p>
       )}
     </div>
+  );
+}
+
+function ListHead({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      {onSeeAll ? (
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary"
+        >
+          See all
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Past trips as three painted tiles, name and month over the picture. */
+function PastTiles({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-2.5">
+      {trips.map((trip) => (
+        <PastTile key={trip.id} trip={trip} photos={photos} />
+      ))}
+    </div>
+  );
+}
+
+function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+  const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: [] });
+  const url = useSignedPhoto(photo?.storage_path ?? null);
+  const art = bannerArtUrl(
+    bannerSceneFor([trip.title, trip.city, trip.country], trip.title || trip.city || ""),
+  );
+  const month = trip.end_date || trip.start_date;
+  return (
+    <Link
+      to="/trips/$tripId"
+      params={{ tripId: trip.id }}
+      viewTransition
+      className="relative block h-[118px] overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm"
+    >
+      <img
+        src={url ?? art}
+        alt=""
+        decoding="async"
+        className="art-dim absolute inset-0 size-full object-cover"
+      />
+      <span
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage: "linear-gradient(to top, rgba(18,12,10,0.72), rgba(18,12,10,0) 60%)",
+        }}
+      />
+      <span className="absolute inset-x-0 bottom-0 p-2">
+        <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
+          {trip.title}
+        </span>
+        {month ? (
+          <span className="block text-[11.5px] text-white/90">
+            {new Date(`${month}T00:00:00`).toLocaleDateString(undefined, {
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        ) : null}
+      </span>
+    </Link>
   );
 }

@@ -37,7 +37,7 @@ export function HomeSaveTile({
       />
       <span className="flex min-w-0 flex-1 flex-col py-1 pr-1">
         <span className="flex items-start justify-between gap-2">
-          <span className="line-clamp-2 font-display text-[18px] font-bold leading-tight">
+          <span className="line-clamp-2 font-display text-[22px] leading-tight">
             {waiting.name}
           </span>
           <Bookmark className="mt-0.5 size-5 shrink-0 fill-current text-primary" aria-hidden />

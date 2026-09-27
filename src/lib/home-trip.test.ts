@@ -9,6 +9,7 @@ import {
   peopleOnTrip,
   pastTrips,
   splitTrips,
+  tripTabs,
   pickActiveTrip,
   tripHighlights,
 } from "./home-trip.ts";
@@ -231,4 +232,30 @@ test("a day trip is where you are for a day, never where you sleep", () => {
   assert.deepEqual(at("2026-10-04"), ["Day trip to", "Hiroshima", "Home", "Kyoto inn"]);
   // The day after, back in Kyoto — not still "in" Hiroshima.
   assert.deepEqual(at("2026-10-05"), ["Now in", "Kyoto", "Home", "Kyoto inn"]);
+});
+
+test("Trips tabs: upcoming soonest first, undated drafts, past, and all", () => {
+  const trips = [
+    { id: "b", start_date: "2026-12-01", end_date: "2026-12-05" },
+    { id: "draft", start_date: null, end_date: null },
+    { id: "a", start_date: "2026-10-01", end_date: "2026-10-07" },
+    { id: "old", start_date: "2026-01-01", end_date: "2026-01-04" },
+  ];
+  const tabs = tripTabs(trips, "2026-09-27");
+  assert.deepEqual(
+    tabs.upcoming.map((t) => t.id),
+    ["a", "b"],
+  );
+  assert.deepEqual(
+    tabs.drafts.map((t) => t.id),
+    ["draft"],
+  );
+  assert.deepEqual(
+    tabs.past.map((t) => t.id),
+    ["old"],
+  );
+  assert.deepEqual(
+    tabs.all.map((t) => t.id),
+    ["a", "b", "draft", "old"],
+  );
 });
