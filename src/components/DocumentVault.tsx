@@ -36,7 +36,7 @@ export function DocumentVault() {
 
   if (!v.signedIn) {
     return (
-      <div className="card-soft p-4 text-center">
+      <div className="tile-card-5 p-4 text-center">
         <p className="font-display text-[20px]">Trip confirmations & tickets</p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Keep reservations, tickets, and booking confirmations handy for the trip — encrypted on
@@ -54,7 +54,7 @@ export function DocumentVault() {
 
   if (!v.unlocked) {
     return (
-      <div className="card-soft p-4">
+      <div className="tile-card-5 p-4">
         <div className="text-center">
           <p className="font-display text-[20px]">
             {v.hasVault ? "Vault locked" : "Set a vault passcode"}
@@ -106,7 +106,7 @@ export function DocumentVault() {
   }
 
   return (
-    <div className="card-soft p-4">
+    <div className="tile-card-5 p-4">
       <div className="flex items-center justify-between">
         <p className="label-caps text-foreground">Unlocked</p>
         <button onClick={v.lock} className="text-[13px] text-muted-foreground underline">

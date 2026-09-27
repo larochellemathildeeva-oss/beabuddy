@@ -465,7 +465,7 @@
 
 /**
  * A card that is a quiet white card in Calm and Dark and turns pastel in
- * Colorful: tile-card-1 peach, -2 sky, -3 mint, -4 lavender, -5 butter.
+ * Colorful: tile-card-1 lilac, -2 sky, -3 teal, -4 cyan, -5 pink.
  * Plain CSS rather than @utility so the Colorful rules sit beside the base;
  * in the components layer so utilities on the element still win.
  */
@@ -499,6 +499,59 @@
   }
   [data-theme="colorful"] .tile-card-5 {
     background-color: var(--tile-5);
+  }
+
+  /* Just the colour, for a panel inside a card: the card's own surface in
+     Calm and Dark, one of the pastels in Colorful. */
+  .tile-fill-1,
+  .tile-fill-2,
+  .tile-fill-3,
+  .tile-fill-4,
+  .tile-fill-5 {
+    background-color: var(--color-card);
+  }
+  [data-theme="colorful"] .tile-fill-1 {
+    background-color: var(--tile-1);
+  }
+  [data-theme="colorful"] .tile-fill-2 {
+    background-color: var(--tile-2);
+  }
+  [data-theme="colorful"] .tile-fill-3 {
+    background-color: var(--tile-3);
+  }
+  [data-theme="colorful"] .tile-fill-4 {
+    background-color: var(--tile-4);
+  }
+  [data-theme="colorful"] .tile-fill-5 {
+    background-color: var(--tile-5);
+  }
+
+  /* A trip card's facts: columns split by hairlines in Calm and Dark, a row
+     of little boxes in Colorful, each given its own pastel by tile-fill-N. */
+  .fact-row {
+    display: flex;
+  }
+  .fact-row > * {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.75rem;
+  }
+  .fact-row > :first-child {
+    padding-left: 0;
+  }
+  .fact-row > :last-child {
+    padding-right: 0;
+  }
+  .fact-row > * + * {
+    border-left: 1px solid var(--color-border);
+  }
+  [data-theme="colorful"] .fact-row {
+    gap: 0.5rem;
+  }
+  [data-theme="colorful"] .fact-row > * {
+    border-left: 0;
+    border-radius: 1rem;
+    padding: 0.625rem;
   }
 }
 

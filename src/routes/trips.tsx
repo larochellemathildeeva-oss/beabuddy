@@ -1,13 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { CalendarDays, Plus, X } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripCard } from "@/components/TripCard";
+import { TripBanner } from "@/components/TripBanner";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { peopleOnTrip } from "@/lib/home-trip";
+import { peopleOnTrip, splitTrips } from "@/lib/home-trip";
+import { pickTripPhoto } from "@/lib/trip-card";
+import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
@@ -60,6 +63,8 @@ function TripsPage() {
   // has that for free, and the note is gone.
   const [creating, setCreating] = useState(false);
   const [joining, setJoining] = useState(false);
+  /** My trips (ahead or under way) or the ones that have ended. */
+  const [view, setView] = useState<"mine" | "past">("mine");
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -96,30 +101,57 @@ function TripsPage() {
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
+  const lists = splitTrips(t.trips, toLocalISODate(new Date()));
 
   return (
     <AppShell eyebrow="Trip folders" title="Everything, already filed.">
       <div className="space-y-5">
-        <div className="flex gap-2">
-          <Link
-            to="/calendar"
-            className="flex-1 rounded-xl border border-border px-3 py-2.5 text-center text-[13px] font-semibold"
-          >
-            Calendar view
-          </Link>
-        </div>
-
         {t.signedIn ? (
           <>
+            <div
+              role="tablist"
+              aria-label="Which trips"
+              className="flex gap-1 text-[14.5px] font-semibold"
+            >
+              {(
+                [
+                  ["mine", "My trips"],
+                  ["past", "Past trips"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === value}
+                  onClick={() => setView(value)}
+                  className={`rounded-full px-4 py-2 transition-colors duration-(--t-tap) ${
+                    view === value
+                      ? "bg-elevated text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                  {value === "past" && lists.past.length ? (
+                    <span className="ml-1.5 font-mono text-[11.5px] text-muted-foreground">
+                      {lists.past.length}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+
             <div className="flex gap-2">
               <button
                 data-guide="new-trip"
                 onClick={() => {
                   setCreating(!creating);
                   setJoining(false);
+                  setView("mine");
                 }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-3.5 py-2.5 text-[13.5px] font-semibold text-primary-foreground"
               >
+                <Plus className="size-4" aria-hidden />
                 New trip
               </button>
               <button
@@ -127,11 +159,20 @@ function TripsPage() {
                 onClick={() => {
                   setJoining(!joining);
                   setCreating(false);
+                  setView("mine");
                 }}
-                className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
+                className="tile-fill-3 min-w-0 flex-1 truncate whitespace-nowrap rounded-full border border-border px-2 py-2.5 text-[13.5px] font-semibold"
               >
-                Join with a code
+                Join with code
               </button>
+              <Link
+                to="/calendar"
+                aria-label="Calendar view"
+                className="tile-fill-2 flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3.5 py-2.5 text-[13.5px] font-semibold"
+              >
+                <CalendarDays className="size-4" aria-hidden />
+                Calendar
+              </Link>
             </div>
 
             {creating && (
@@ -398,31 +439,79 @@ function TripsPage() {
 
             {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-            <div data-guide="trip-list" className="space-y-3">
-              {t.loading && t.trips.length === 0 && <TripListSkeleton />}
-              {t.trips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  photos={photos}
-                  glance={glances[trip.id]}
-                  peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-                />
-              ))}
-              {t.trips.length === 0 && !t.loading && (
-                <div className="py-8 text-center">
-                  <p className="font-display text-[18px] leading-snug">
-                    {beaLine("empty.trips").title}
+            {view === "mine" ? (
+              <div data-guide="trip-list" className="space-y-4">
+                {t.loading && t.trips.length === 0 && <TripListSkeleton />}
+                {lists.mine.map((trip, index) => (
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    index={index}
+                    photos={photos}
+                    glance={glances[trip.id]}
+                    peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+                  />
+                ))}
+                {t.trips.length === 0 && !t.loading && (
+                  <div className="py-8 text-center">
+                    <p className="font-display text-[18px] leading-snug">
+                      {beaLine("empty.trips").title}
+                    </p>
+                    <p className="mt-1 text-[14.5px] text-muted-foreground">
+                      {beaLine("empty.trips").body}
+                    </p>
+                  </div>
+                )}
+                {t.trips.length > 0 && lists.mine.length === 0 && (
+                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                    Nothing ahead yet. Your past trips are one tab over.
                   </p>
-                  <p className="mt-1 text-[14.5px] text-muted-foreground">
-                    {beaLine("empty.trips").body}
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lists.past.map((trip) => (
+                  <Link
+                    key={trip.id}
+                    to="/trips/$tripId"
+                    params={{ tripId: trip.id }}
+                    viewTransition
+                    className="block overflow-hidden rounded-2xl shadow-xs transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  >
+                    <TripBanner
+                      variant="compact"
+                      title={trip.title}
+                      city={trip.city}
+                      country={trip.country}
+                      cities={[]}
+                      startDate={trip.start_date}
+                      endDate={trip.end_date}
+                      photo={pickTripPhoto(photos, {
+                        city: trip.city,
+                        country: trip.country,
+                        cities: [],
+                      })}
+                      viewTransitionName={`trip-photo-${trip.id}`}
+                    />
+                  </Link>
+                ))}
+                {lists.past.length === 0 && !t.loading && (
+                  <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                    No past trips yet. They land here once they end.
                   </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div className="card-soft p-4">
+            <Link
+              to="/calendar"
+              className="mb-3 flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-2 text-[13.5px] font-semibold"
+            >
+              <CalendarDays className="size-4" aria-hidden />
+              Calendar view
+            </Link>
             <p className="font-display text-[19px] leading-snug">Sign in to start a trip.</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               Trips, itineraries, invited friends and saved directions all save to your account.

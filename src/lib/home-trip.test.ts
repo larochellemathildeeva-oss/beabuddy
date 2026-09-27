@@ -8,6 +8,7 @@ import {
   packingReadiness,
   peopleOnTrip,
   pastTrips,
+  splitTrips,
   pickActiveTrip,
   tripHighlights,
 } from "./home-trip.ts";
@@ -190,5 +191,24 @@ test("past trips: the last year, most recent first", () => {
   assert.deepEqual(
     pastTrips(trips, "2026-09-26", 1).map((t) => t.id),
     ["japan"],
+  );
+});
+
+test("the Trips tab splits ended trips off, most recent first, with none lost", () => {
+  const trips = [
+    { id: "old", start_date: "2024-05-01", end_date: "2024-05-04" },
+    { id: "soon", start_date: "2026-10-01", end_date: "2026-10-07" },
+    { id: "undated", start_date: null, end_date: null },
+    { id: "recent", start_date: "2026-07-02", end_date: "2026-07-12" },
+    { id: "now", start_date: "2026-09-20", end_date: "2026-09-30" },
+  ];
+  const { mine, past } = splitTrips(trips, "2026-09-26");
+  assert.deepEqual(
+    mine.map((t) => t.id),
+    ["soon", "undated", "now"],
+  );
+  assert.deepEqual(
+    past.map((t) => t.id),
+    ["recent", "old"],
   );
 });

@@ -213,6 +213,21 @@ export function pastTrips<T extends DatedTrip>(trips: readonly T[], today: strin
     .slice(0, limit);
 }
 
+/**
+ * The Trips tab's two lists: trips still ahead or under way, in the order
+ * they came, and every trip that has ended, most recent first.
+ */
+export function splitTrips<T extends DatedTrip>(
+  trips: readonly T[],
+  today: string,
+): { mine: T[]; past: T[] } {
+  const mine: T[] = [];
+  const past: T[] = [];
+  for (const t of trips) (isPastTrip(t, today) ? past : mine).push(t);
+  past.sort((a, b) => lastDay(b).localeCompare(lastDay(a)));
+  return { mine, past };
+}
+
 /** Up to three trips after the active one, soonest first. */
 export function laterTrips<T extends DatedTrip>(
   trips: readonly T[],

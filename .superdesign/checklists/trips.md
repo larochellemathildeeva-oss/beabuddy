@@ -6,47 +6,54 @@ of them, with the app's lucide icons. Sources: `src/routes/trips.tsx`,
 `PlaceSearchInput.tsx`, `Skeletons.tsx`.
 
 ## Header
-- [ ] Eyebrow "Trip folders", title "Everything, already filed."
-- [ ] "Calendar view" → /calendar
+- [x] Eyebrow "Trip folders", title "Everything, already filed."
+- [x] "Calendar view" → /calendar
 
 ## Actions (signed in)
-- [ ] "New trip" toggles the new-trip form (closes Join)
-- [ ] "Join with a code" toggles the join form (closes New trip)
-- [ ] Error line under the forms
+- [x] "New trip" toggles the new-trip form (closes Join)
+- [x] "Join with a code" toggles the join form (closes New trip)
+- [x] Error line under the forms
 
 ## New trip form
-- [ ] Trip name (placeholder = Béa's suggested name) + "No name needed — Béa will file this as “…”"
-- [ ] One place / Several cities switch
-- [ ] One place: "Where to — search it" place search
-- [ ] Dates (range picker) with fixed / tentative dates
-- [ ] Several cities: numbered city rows (search + "Dates in {city}" + remove X), "These dates fall outside the trip's.", "Add another city"
-- [ ] "End date can't be earlier than the start date."
-- [ ] "Attach a copy of a packing list" (select, "No packing list", note about copies) — only if you have packs
-- [ ] "Track a budget for this trip" checkbox
-- [ ] Still-editable note
-- [ ] "Create trip" (disabled until valid) → opens the new trip
+- [x] Trip name (placeholder = Béa's suggested name) + "No name needed — Béa will file this as “…”"
+- [x] One place / Several cities switch
+- [x] One place: "Where to — search it" place search
+- [x] Dates (range picker) with fixed / tentative dates
+- [x] Several cities: numbered city rows (search + "Dates in {city}" + remove X), "These dates fall outside the trip's.", "Add another city"
+- [x] "End date can't be earlier than the start date."
+- [x] "Attach a copy of a packing list" (select, "No packing list", note about copies) — only if you have packs
+- [x] "Track a budget for this trip" checkbox
+- [x] Still-editable note
+- [x] "Create trip" (disabled until valid) → opens the new trip
 
 ## Join form
-- [ ] "Invite code" (uppercase, spaced) + "Join trip" (needs 4+ characters) → opens the trip
+- [x] "Invite code" (uppercase, spaced) + "Join trip" (needs 4+ characters) → opens the trip
 
 ## Trip list
-- [ ] Loading skeletons
-- [ ] Trip cards → trip page:
-  - [ ] Banner: your photo (credit line) or painted scene; pill (countdown / live / planning); people count; places · dates; title; corner "N stops · Nd"
-  - [ ] Current leg ("Now · Lisbon")
-  - [ ] Live strip: "Live · Stop 2 of 5 · Now: …"
-  - [ ] Facts: First/Next flight (or "None saved yet · Add it to the itinerary"), Stay, Packing (x/y + bar) or First stop, To do (N open, due line)
-  - [ ] Or "N places so far. Nothing on the timeline yet." / "Open it to start planning."
-  - [ ] Béa's quote + "View itinerary →"
-- [ ] Empty state: Béa line (empty.trips)
+- [x] Loading skeletons
+- [x] Trip cards → trip page:
+  - [x] Banner: your photo (credit line) or painted scene; pill (countdown / live / planning); people count; places · dates; title; corner "N stops · Nd"
+  - [x] Current leg ("Now · Lisbon")
+  - [x] Live strip: "Live · Stop 2 of 5 · Now: …"
+  - [x] Facts: First/Next flight (or "None saved yet · Add it to the itinerary"), Stay, Packing (x/y + bar) or First stop, To do (N open, due line)
+  - [x] Or "N places so far. Nothing on the timeline yet." / "Open it to start planning."
+  - [x] Béa's quote + "View itinerary →"
+- [x] Empty state: Béa line (empty.trips)
 
 ## Signed out
-- [ ] "Sign in to start a trip." + note + sign-in link
+- [x] "Sign in to start a trip." + note + sign-in link
 
 ## Trip documents (vault)
-- [ ] "Trip documents" · "Encrypted on this device"
-- [ ] Signed out: "Trip confirmations & tickets" + "Sign in to set up your vault"
-- [ ] No vault: "Set a vault passcode" — passcode, repeat, create
-- [ ] Locked: "Vault locked" — passcode, unlock
-- [ ] Unlocked: list of documents (label, kind, expiry, open, remove), Lock
-- [ ] Add a document: kind chips, label, confirmation / reference, date, notes, file (image or PDF), save / cancel
+- [x] "Trip documents" · "Encrypted on this device"
+- [x] Signed out: "Trip confirmations & tickets" + "Sign in to set up your vault"
+- [x] No vault: "Set a vault passcode" — passcode, repeat, create
+- [x] Locked: "Vault locked" — passcode, unlock
+- [x] Unlocked: list of documents (label, kind, expiry, open, remove), Lock
+- [x] Add a document: kind chips, label, confirmation / reference, date, notes, file (image or PDF), save / cancel
+
+## Built (Trips v3)
+- Tall illustrated banner (`TripBanner variant="feature"`), your photo first,
+  else the scene for the place (`src/lib/banner-art.ts`) in the theme's colours.
+- Facts in columns (Calm/Dark) or pastel boxes (Colorful); packing bar under them.
+- My trips / Past trips toggle (`splitTrips`); past trips as the compact banners from Home.
+- Colorful: each card, fact box, button and the vault a different pastel.
