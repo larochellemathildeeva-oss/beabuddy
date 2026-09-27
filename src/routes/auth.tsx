@@ -1,5 +1,15 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  ArrowRight,
+  Check,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  User,
+  type LucideProps,
+} from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
@@ -37,6 +47,7 @@ function AuthPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [agreeDisclaimer, setAgreeDisclaimer] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Google sign-in preference: "auto" continues silently with the current
@@ -128,174 +139,296 @@ function AuthPage() {
     }
   };
 
+  const signup = mode === "signup";
+  const switchMode = () => {
+    setMode(signup ? "signin" : "signup");
+    setError(null);
+    setMessage(null);
+  };
+
   return (
     <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
-        <div className="flex flex-1 flex-col justify-center">
-          <div className="rise">
-            <p className="label-caps">Béa</p>
-            <h1 className="mt-2 text-[30px] leading-[1.05]">
-              {mode === "signup" ? "Start your vault" : "Welcome back"}
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 pb-8 pt-10">
+        <div className="rise">
+          <p className="font-display text-[64px] leading-[0.9] text-primary">BÉA</p>
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+            Trips · Places · Memories
+          </p>
+        </div>
+
+        <div className="rise mt-6 flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-display text-[52px] leading-[0.95]">
+              {signup ? "Start your vault" : "Welcome back"}
             </h1>
-            <p className="mt-2 text-[14.5px] text-muted-foreground">
+            <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
               Your places, trips and photo memories are saved to your account and follow you across
               devices.
             </p>
           </div>
+          <img
+            src="/bea/bea-think-static.png"
+            alt=""
+            aria-hidden
+            className="art-dim -mr-3 w-[48%] max-w-[230px] shrink-0 scale-125 object-contain"
+          />
+        </div>
 
-          <div className="mt-7 space-y-2.5">
-            <button
-              onClick={() => social("google")}
-              disabled={busy}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] font-medium disabled:opacity-60"
-            >
-              Continue with Google
-            </button>
-            <div className="flex items-center justify-center gap-4 pt-1 text-[12px] text-muted-foreground">
-              <label className="flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="google-signin-mode"
-                  checked={googleMode === "auto"}
-                  onChange={() => setGoogleMode("auto")}
-                  className="h-3 w-3"
-                />
-                Sign me in automatically
-              </label>
-              <label className="flex cursor-pointer items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="google-signin-mode"
-                  checked={googleMode === "ask"}
-                  onChange={() => setGoogleMode("ask")}
-                  className="h-3 w-3"
-                />
-                Ask me every time
-              </label>
-            </div>
-            <p className="pt-1 text-center text-[12px] leading-relaxed text-muted-foreground">
-              By continuing you agree to our{" "}
-              <Link to="/terms" className="underline underline-offset-4">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link to="/privacy" className="underline underline-offset-4">
-                Privacy Policy
-              </Link>
-              .
-            </p>
+        <div className="mt-6 space-y-3">
+          <button
+            type="button"
+            onClick={() => social("google")}
+            disabled={busy}
+            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
+          >
+            <GoogleG />
+            Continue with Google
+          </button>
+          <div
+            role="radiogroup"
+            aria-label="Google sign-in"
+            className="flex items-center justify-between gap-3 px-1"
+          >
+            <RoundChoice
+              name="google-signin-mode"
+              checked={googleMode === "auto"}
+              onChange={() => setGoogleMode("auto")}
+              label="Sign me in automatically"
+            />
+            <RoundChoice
+              name="google-signin-mode"
+              checked={googleMode === "ask"}
+              onChange={() => setGoogleMode("ask")}
+              label="Ask me every time"
+            />
           </div>
+        </div>
 
-          <div className="my-6 flex items-center gap-3">
-            <span className="h-px flex-1 bg-border" />
-            <span className="label-caps">or email</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
+        <Divider>{signup ? "Or sign up with email" : "Or sign in with email"}</Divider>
 
-          <form onSubmit={submit} className="space-y-3">
-            {mode === "signup" && (
+        <form onSubmit={submit} className="space-y-3">
+          {signup && (
+            <PillField icon={User}>
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
+                aria-label="Your name"
                 autoComplete="name"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
               />
-            )}
+            </PillField>
+          )}
+          <PillField icon={Mail}>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               required
               placeholder="Email"
+              aria-label="Email"
               autoComplete="email"
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
             />
+          </PillField>
+          <PillField icon={Lock}>
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
-              minLength={mode === "signup" ? MIN_NEW_PASSWORD_LENGTH : 6}
+              minLength={signup ? MIN_NEW_PASSWORD_LENGTH : 6}
               placeholder="Password"
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              aria-describedby={mode === "signup" ? "password-rules" : undefined}
-              className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+              aria-label="Password"
+              autoComplete={signup ? "new-password" : "current-password"}
+              aria-describedby={signup ? "password-rules" : undefined}
+              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
             />
-            {mode === "signup" && (
-              <div id="password-rules">
-                <PasswordCreationRules password={password} />
-              </div>
-            )}
-            {mode === "signup" && (
-              <div className="space-y-2.5 rounded-xl border border-border bg-card/60 p-3.5">
-                <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                  <input
-                    type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0"
-                  />
-                  <span>
-                    I'm at least 16 and I agree to the{" "}
-                    <Link to="/terms" className="text-primary underline underline-offset-4">
-                      Terms of Service
-                    </Link>{" "}
-                    and{" "}
-                    <Link to="/privacy" className="text-primary underline underline-offset-4">
-                      Privacy Policy
-                    </Link>
-                    .
-                  </span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                  <input
-                    type="checkbox"
-                    checked={agreeDisclaimer}
-                    onChange={(e) => setAgreeDisclaimer(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0"
-                  />
-                  <span>
-                    I understand Béa is a personal organiser, not a travel adviser — suggestions,
-                    directions, exchange rates and AI picks may be wrong, my travel decisions are my
-                    own, and Béa's liability is limited as the Terms describe.
-                  </span>
-                </label>
-              </div>
-            )}
-            {error && <p className="text-[13px] text-destructive">{error}</p>}
-            {message && <p className="text-[13px] text-nexttime">{message}</p>}
             <button
-              type="submit"
-              disabled={busy || (mode === "signup" && !consented)}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+              className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground"
             >
-              {mode === "signup" ? "Agree & create account" : "Sign in"}
+              {showPassword ? (
+                <Eye className="size-5" aria-hidden />
+              ) : (
+                <EyeOff className="size-5" aria-hidden />
+              )}
             </button>
-          </form>
-
-          {mode === "signin" && (
-            <Link
-              to="/forgot-password"
-              className="mt-3 block text-[14.5px] text-muted-foreground underline underline-offset-4"
-            >
-              Forgot your password?
-            </Link>
+          </PillField>
+          {signup && (
+            <div id="password-rules">
+              <PasswordCreationRules password={password} />
+            </div>
           )}
-
+          {signup && (
+            <div className="space-y-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5">
+              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                />
+                <span>
+                  I'm at least 16 and I agree to the{" "}
+                  <Link to="/terms" className="text-primary underline underline-offset-4">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="text-primary underline underline-offset-4">
+                    Privacy Policy
+                  </Link>
+                  .
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
+                <input
+                  type="checkbox"
+                  checked={agreeDisclaimer}
+                  onChange={(e) => setAgreeDisclaimer(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                />
+                <span>
+                  I understand Béa is a personal organiser, not a travel adviser — suggestions,
+                  directions, exchange rates and AI picks may be wrong, my travel decisions are my
+                  own, and Béa's liability is limited as the Terms describe.
+                </span>
+              </label>
+            </div>
+          )}
+          {error && <p className="px-1 text-[13px] text-destructive">{error}</p>}
+          {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
           <button
-            onClick={() => {
-              setMode(mode === "signup" ? "signin" : "signup");
-              setError(null);
-              setMessage(null);
-            }}
-            className="mt-4 text-[14.5px] text-muted-foreground underline underline-offset-4"
+            type="submit"
+            disabled={busy || (signup && !consented)}
+            className="btn-primary flex w-full items-center justify-center gap-2 rounded-full px-4 text-[18px] disabled:opacity-60"
           >
-            {mode === "signup" ? "I already have an account" : "Create a new account"}
+            {signup ? "Agree & create account" : "Sign in"}
+            {!signup && <ArrowRight className="size-5" aria-hidden />}
           </button>
-        </div>
+        </form>
+
+        {!signup && (
+          <Link
+            to="/forgot-password"
+            className="mx-auto mt-4 block text-[15px] text-muted-foreground underline underline-offset-4"
+          >
+            Forgot your password?
+          </Link>
+        )}
+
+        <Divider>{signup ? "Have an account?" : "New here?"}</Divider>
+
+        <button
+          type="button"
+          onClick={switchMode}
+          className="mx-auto flex h-[52px] w-full max-w-[340px] items-center justify-center rounded-full border border-primary/70 px-4 text-[17px] font-semibold text-primary"
+        >
+          {signup ? "I already have an account" : "Create a new account"}
+        </button>
+
+        <p className="mt-6 text-center text-[13px] leading-relaxed text-muted-foreground">
+          By continuing you agree to our{" "}
+          <Link to="/terms" className="underline underline-offset-4">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="underline underline-offset-4">
+            Privacy Policy
+          </Link>
+          .
+        </p>
         <CopyrightNotice />
       </div>
     </div>
+  );
+}
+
+function Divider({ children }: { children: ReactNode }) {
+  return (
+    <div className="my-6 flex items-center gap-3">
+      <span className="h-px flex-1 bg-border" />
+      <span className="text-[11.5px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+        {children}
+      </span>
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
+/** An input in a pill, with its icon in front. */
+function PillField({
+  icon: Glyph,
+  children,
+}: {
+  icon: ComponentType<LucideProps>;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex h-[56px] items-center gap-3 rounded-full border border-border bg-card pl-5 pr-2 focus-within:border-primary">
+      <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      {children}
+    </div>
+  );
+}
+
+/** A round radio: an empty ring, or a filled one with a check. */
+function RoundChoice({
+  name,
+  checked,
+  onChange,
+  label,
+}: {
+  name: string;
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap text-[13.5px]">
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden
+        className={`grid size-6 shrink-0 place-items-center rounded-full border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/50 ${
+          checked ? "border-primary bg-primary text-primary-foreground" : "border-border"
+        }`}
+      >
+        {checked && <Check className="size-3.5" strokeWidth={3} />}
+      </span>
+      {label}
+    </label>
+  );
+}
+
+/** Google's G, in Google's own colours, as its brand guidelines ask. */
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 48 48" className="size-6 shrink-0" aria-hidden>
+      <path
+        fill="#FFC107"
+        d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"
+      />
+      <path
+        fill="#FF3D00"
+        d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"
+      />
+      <path
+        fill="#4CAF50"
+        d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"
+      />
+      <path
+        fill="#1976D2"
+        d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"
+      />
+    </svg>
   );
 }

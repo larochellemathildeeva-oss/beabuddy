@@ -105,6 +105,21 @@ import {
   Users as PhUsers,
   Wallet as PhWallet,
   X as PhX,
+  Envelope as PhEnvelope,
+  Lock as PhLock,
+  Eye as PhEye,
+  EyeSlash as PhEyeSlash,
+  Palette as PhPalette,
+  CloudArrowUp as PhCloudArrowUp,
+  Question as PhQuestion,
+  ChatCircle as PhChatCircle,
+  Info as PhInfo,
+  Smiley as PhSmiley,
+  Heart as PhHeart,
+  Mountains as PhMountains,
+  MaskHappy as PhMaskHappy,
+  Coffee as PhCoffee,
+  ChartBar as PhChartBar,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -239,3 +254,18 @@ export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;
 export const ChevronRightIcon = ChevronRight;
 export const Share = icon(PhExport, "Share");
+export const Mail = icon(PhEnvelope, "Mail");
+export const Lock = icon(PhLock, "Lock");
+export const Eye = icon(PhEye, "Eye");
+export const EyeOff = icon(PhEyeSlash, "EyeOff");
+export const Palette = icon(PhPalette, "Palette");
+export const CloudUpload = icon(PhCloudArrowUp, "CloudUpload");
+export const HelpCircle = icon(PhQuestion, "HelpCircle");
+export const MessageCircle = icon(PhChatCircle, "MessageCircle");
+export const Info = icon(PhInfo, "Info");
+export const Smile = icon(PhSmiley, "Smile");
+export const Heart = icon(PhHeart, "Heart");
+export const Mountain = icon(PhMountains, "Mountain");
+export const Drama = icon(PhMaskHappy, "Drama");
+export const Coffee = icon(PhCoffee, "Coffee");
+export const BarChart3 = icon(PhChartBar, "BarChart3");

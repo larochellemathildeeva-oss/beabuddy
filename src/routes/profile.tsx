@@ -1,13 +1,32 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
-import { ChevronDown, ChevronRight } from "@/components/icons";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import {
+  BookOpen,
+  Briefcase,
+  CalendarDays,
+  Camera,
+  ChevronRight,
+  CloudUpload,
+  FileText,
+  HelpCircle,
+  House,
+  Info,
+  Luggage,
+  MapPin,
+  MessageCircle,
+  Palette,
+  Plane,
+  Settings,
+  ShieldCheck,
+  type LucideProps,
+} from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { Sheet } from "@/components/Sheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
-import { Section } from "@/components/Section";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { FeedbackForm } from "@/components/FeedbackForm";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
@@ -40,13 +59,13 @@ export const Route = createFileRoute("/profile")({
   staticData: { plane: "tab" },
   head: () => ({
     meta: [
-      { title: "Profile — Béa" },
+      { title: "You — Béa" },
       {
         name: "description",
         content:
-          "Your travel statistics, preferences, offline downloads and appearance settings inside Béa.",
+          "Your travel profile, preferences, offline downloads and appearance settings inside Béa.",
       },
-      { property: "og:title", content: "Profile — Béa" },
+      { property: "og:title", content: "You — Béa" },
       {
         property: "og:description",
         content: "Travel statistics, interests and offline settings for your travel buddy.",
@@ -56,18 +75,41 @@ export const Route = createFileRoute("/profile")({
   component: ProfilePage,
 });
 
+/** The panels the You page opens over itself. One at a time. */
+type Panel = "settings" | "packing" | "appearance" | "data" | "legal" | "feedback" | "about";
+
+/**
+ * A big card or list: plain in every theme, Colorful included. `plain-card`
+ * comes from styles.css; the utilities are the same look, for safety.
+ */
+const PLAIN = "plain-card rounded-[var(--r-card)] border border-border/55 bg-card shadow-sm";
+
+type Icon = ComponentType<LucideProps>;
+
+/**
+ * You: who you are to Béa, and everything she keeps for you.
+ *
+ * The master lays it out as a profile card, two grids of small tiles and a
+ * list. Each tile opens what used to be a collapsible section — in a sheet,
+ * or on its own page where one exists — so nothing that was here has gone.
+ */
 function ProfilePage() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const t = useTrips();
+  const bea = useBeaSettings();
   const [interests, setInterests] = useState<string[]>([]);
   const [offlineTripIds, setOfflineTripIds] = useState<string[]>([]);
   const [displayName, setDisplayName] = useState("");
   const [homeCity, setHomeCity] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [placeCount, setPlaceCount] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [sampleCtaDismissed, setSampleCtaDismissed] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const close = () => setPanel(null);
 
   useEffect(() => {
     if (!user) {
@@ -82,14 +124,23 @@ function ProfilePage() {
     let active = true;
     supabase
       .from("profiles")
-      .select("display_name, home_city, preferences")
+      .select("display_name, home_city, preferences, avatar_url")
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
         setDisplayName(data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
+        setAvatarUrl(data.avatar_url ?? null);
         if (data.preferences?.length) setInterests(data.preferences);
+      });
+    // The places figure is a count, not the list: no rows come back.
+    supabase
+      .from("recommendations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .then(({ count, error }) => {
+        if (active && !error) setPlaceCount(count ?? 0);
       });
     return () => {
       active = false;
@@ -113,319 +164,657 @@ function ProfilePage() {
 
   const signedInName = displayName || user?.email?.split("@")[0] || "Traveller";
   const offlineTrips = t.trips.filter((trip) => offlineTripIds.includes(trip.id));
+  // A Google account brings its photo; one saved on the profile wins.
+  const metaAvatar = user?.user_metadata?.["avatar_url"];
+  const photo = avatarUrl || (typeof metaAvatar === "string" ? metaAvatar : null);
+  const tripCount = t.trips.length;
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth" });
+  };
+
+  const replayTour = () => {
+    resumeOrReplayTour();
+    void navigate({ to: "/" });
+  };
 
   return (
-    <AppShell eyebrow="Profile" title={user ? signedInName : "Your profile"}>
-      <div className="space-y-4">
+    <AppShell
+      title={<span className="text-[44px] leading-none">You</span>}
+      headerAction={
+        user ? (
+          <button
+            type="button"
+            data-guide="profile-settings"
+            aria-label="Settings"
+            onClick={() => setPanel("settings")}
+            className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground"
+          >
+            <Settings className="size-5" aria-hidden />
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
+        <p className="-mt-4 text-[15px] text-muted-foreground">
+          Your travel profile, preferences and settings.
+        </p>
+
         {!loading && !user && (
-          <div data-guide="profile-account" className="card-soft p-4">
-            <p className="font-display text-[19px] leading-snug">
+          <div data-guide="profile-account" className={`${PLAIN} p-4`}>
+            <p className="font-display text-[21px] leading-snug">
               Sign in to keep all of this forever.
             </p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               With an account your pins, trips, recommendations and photo memories are saved to you
               and follow you to any device.
             </p>
-            <Link
-              to="/auth"
-              className="mt-3 block rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
-            >
+            <Link to="/auth" className="btn-primary mt-3 grid place-items-center px-4 text-center">
               Sign in or create an account
             </Link>
           </div>
         )}
 
         {user && (
-          <div data-guide="profile-account" className="card-soft space-y-3 p-4">
-            <div className="flex items-center gap-4">
-              <div className="clay-gradient grid size-14 shrink-0 place-items-center rounded-full font-display text-[22px] text-primary-foreground">
-                {signedInName[0]?.toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[15px] font-medium">{user.email}</p>
-                <p className="text-[13px] text-muted-foreground">
-                  {saved ? "Saved" : "Signed in — everything saves to your account"}
+          <section data-guide="profile-account" className={`${PLAIN} p-4`}>
+            <div className="flex items-center gap-3.5">
+              {photo ? (
+                <img
+                  src={photo}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="size-16 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <span
+                  aria-hidden
+                  className="grid size-16 shrink-0 place-items-center rounded-full bg-primary-soft font-display text-[28px] text-primary"
+                >
+                  {signedInName[0]?.toUpperCase()}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-display text-[24px] leading-tight">{signedInName}</p>
+                <p className="truncate text-[13px] text-muted-foreground">
+                  {saved ? "Saved" : user.email}
                 </p>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <Link
-                to="/photos"
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
-              >
-                Import photos
-              </Link>
               <button
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  navigate({ to: "/auth" });
-                }}
-                className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
+                type="button"
+                onClick={() => setPanel("settings")}
+                className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft [[data-theme=colorful]_&]:bg-tile-5 px-3.5 py-2 text-[13.5px] font-semibold text-primary"
               >
-                Sign out
+                Edit profile
+                <ChevronRight className="size-3.5" aria-hidden />
               </button>
             </div>
-            {!sampleCtaDismissed && (
-              <div className="rounded-xl border border-border bg-elevated p-3">
-                <p className="text-[14.5px] font-semibold">Demo / sample data</p>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future
-                  Me notes. Remove only deletes the sample rows — not places you added yourself.
-                </p>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    disabled={seeding}
-                    onClick={async () => {
-                      setSeeding(true);
-                      setSeedMsg("");
-                      const result = await loadDemoSeed();
-                      setSeeding(false);
-                      setSeedMsg(
-                        result.ok
-                          ? `Loaded ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
-                          : result.message,
-                      );
-                      if (result.ok) navigate({ to: "/world" });
-                    }}
-                    className="flex-1 rounded-xl border border-border bg-card px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
-                  >
-                    {seeding ? "Working…" : "Load sample"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={seeding}
-                    onClick={async () => {
-                      setSeeding(true);
-                      setSeedMsg("");
-                      const result = await clearDemoSeed();
-                      setSeeding(false);
-                      // Remove (or empty) opts out of sample prompts — hide this card.
-                      if (result.ok || result.reason === "empty") {
-                        setSampleCtaDismissed(true);
-                        return;
-                      }
-                      setSeedMsg(result.message);
-                    }}
-                    className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
-                  >
-                    Remove sample
-                  </button>
-                </div>
-                {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
-              </div>
-            )}
-          </div>
+            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/60 pt-3.5">
+              <Figure
+                icon={House}
+                tone={1}
+                value={homeCity || "Add"}
+                label="Home city"
+                onClick={() => setPanel("settings")}
+              />
+              <Figure icon={Plane} tone={2} value={String(tripCount)} label="Trips" to="/trips" />
+              <Figure
+                icon={MapPin}
+                tone={3}
+                value={placeCount === null ? "–" : String(placeCount)}
+                label="Places"
+                to="/recommendations"
+              />
+            </div>
+          </section>
         )}
 
-        <BeaCard />
-
-        <Section
-          defaultOpen={false}
-          title="Profile settings"
-          hint={`Your details and ${interests.length} travel tag${interests.length === 1 ? "" : "s"}`}
-          guide="profile-settings"
-        >
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <p className="label-caps text-foreground">Your details</p>
-              <input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                onBlur={() => saveProfile({ display_name: displayName })}
-                placeholder="Your name"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-              />
-              <input
-                value={homeCity}
-                onChange={(e) => setHomeCity(e.target.value)}
-                onBlur={() => saveProfile({ home_city: homeCity })}
-                placeholder="Home city"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-              />
-            </div>
-
-            <Link
+        <div className="space-y-3">
+          <SectionTitle>Your travel</SectionTitle>
+          <div className="grid grid-cols-2 gap-3">
+            <Tile
+              icon={Plane}
+              card={5}
+              tone={1}
+              title="Travel preferences"
+              hint="Style, pace, budget, interests and diet"
               to="/preferences"
-              data-guide="travel-preferences"
-              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
-            >
-              <span>
-                <span className="block text-[14.5px] font-medium">Travel preferences</span>
-                <span className="block text-[12.5px] text-muted-foreground">
-                  Help Béa understand how you like to travel — style, pace, and tags she plans with.
-                </span>
-              </span>
-              <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold">
-                Open
-              </span>
-            </Link>
-
-            <CustomizeHome variant="row" />
-
-            <ThemePicker />
-
-            <div
-              data-guide="replay-tour"
-              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
-            >
-              <div>
-                <p className="text-[14.5px] font-medium">Take the tour again</p>
-                <p className="text-[12.5px] text-muted-foreground">
-                  Replay the story walk, or the Deep Dive on what makes Béa different.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  resumeOrReplayTour();
-                  void navigate({ to: "/" });
-                }}
-                className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold"
-              >
-                Replay
-              </button>
-            </div>
+              guide="travel-preferences"
+            />
+            <Tile
+              icon={Luggage}
+              card={2}
+              tone={2}
+              title="Packing lists"
+              hint="Create and manage your reusable lists"
+              onClick={() => setPanel("packing")}
+              guide="packing-lists"
+            />
+            <Tile
+              icon={Briefcase}
+              card={3}
+              tone={3}
+              title="Work travel"
+              hint="Receipts, expenses and reports"
+              to="/expenses"
+            />
+            <Tile
+              icon={FileText}
+              card={1}
+              tone={4}
+              title="Trip documents"
+              hint="Bookings, confirmations and trip files"
+              // Its own page is being built alongside this one; a plain link
+              // so the route table does not have to know about it yet.
+              href="/profile/documents"
+            />
           </div>
-        </Section>
+        </div>
 
-        <Section
-          defaultOpen={false}
-          title="Create packing lists"
-          hint="Reusable lists you can attach to a new trip"
-          guide="packing-lists"
-        >
-          <div className="space-y-2">
-            <p className="text-[13px] text-muted-foreground">
-              Build lists here once. When you create a trip you can attach a copy of one — what you
-              tick off or add there stays on that trip only.
-            </p>
-            <PackingLists label="My saved packing lists" hint="Your reusable templates." />
-          </div>
-        </Section>
-
-        <Section
-          defaultOpen={false}
-          title="What is kept on this phone"
-          hint={
-            offlineTrips.length
-              ? `${offlineTrips.length} trip${offlineTrips.length === 1 ? "" : "s"} with directions on this phone`
-              : "Only trip directions are kept on this phone"
-          }
-          guide="offline-options"
-        >
-          <p className="text-[13px] text-muted-foreground">
-            Béa needs a connection to open, so she is not a no-signal app yet. Maps, photos,
-            recommendations, itineraries and the vault all load fresh each time.
-          </p>
-          <p className="mt-2 text-[13px] text-muted-foreground">
-            What is kept locally: open a trip → settings → Saved directions. That stores the walk or
-            drive steps here, so they cost nothing to open again once you have them — and, where
-            this phone can draw it, the map around each day's stops, so a day map that is already
-            open keeps panning and zooming when the signal drops.
-          </p>
-          {offlineTrips.length > 0 ? (
-            <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
-              {offlineTrips.map((trip) => (
-                <li key={trip.id} className="px-3 py-2.5">
-                  <p className="text-[14.5px] font-medium">{trip.title}</p>
-                  <p className="text-[12.5px] text-muted-foreground">
-                    {formatTripLocation(trip.city, trip.country) || "Directions saved here"}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              None yet. Open a trip and download Saved directions there.
-            </p>
-          )}
-          <Link
-            to="/trips"
-            className="mt-3 block rounded-xl border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
-          >
-            Open trips
-          </Link>
-        </Section>
-
-        <Section
-          defaultOpen={false}
-          title="Legal, privacy and such"
-          hint="Policies, terms and your data"
-          guide="legal"
-        >
-          <div className="space-y-2">
-            <Link
-              to="/privacy"
-              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
-            >
-              <span>
-                <span className="block text-[15px] font-medium">Privacy policy</span>
-                <span className="block text-[12.5px] text-muted-foreground">
-                  How your account, photos and documents are stored and protected.
-                </span>
-              </span>
-              <span className="shrink-0 text-[14.5px] text-primary">Read</span>
-            </Link>
-            <Link
-              to="/terms"
-              className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
-            >
-              <span>
-                <span className="block text-[15px] font-medium">Terms of Service</span>
-                <span className="block text-[12.5px] text-muted-foreground">
-                  The rules of the road, disclaimers and liability limits you agreed to.
-                </span>
-              </span>
-              <span className="shrink-0 text-[14.5px] text-primary">Read</span>
-            </Link>
-            <div className="rounded-xl bg-elevated p-3">
-              <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[13px] text-muted-foreground" />
-              <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                Béa — the app, its name, design, features and original ideas — is Mathilde E.
-                Larochelle's work. You keep what you save in it. The Terms spell this out.
-              </p>
-            </div>
-            {user && <EraseDataPanel userId={user.id} />}
-            {user && <DeleteAccountPanel userId={user.id} />}
-          </div>
-        </Section>
-
-        <Section defaultOpen={false} title="Work travel" hint="Receipts, expenses and exports">
-          <Link
-            to="/expenses"
-            className="flex items-center justify-between gap-3 rounded-xl bg-elevated p-3"
-          >
-            <span>
-              <span className="block text-[15px] font-medium">Receipts & expenses</span>
-              <span className="block text-[12.5px] text-muted-foreground">
-                Photograph receipts and download a spreadsheet for accounting.
+        <div className="space-y-3">
+          <SectionTitle>Your Béa</SectionTitle>
+          <Link to="/profile/bea" className={`${PLAIN} flex items-center gap-3 p-3.5`}>
+            <img
+              src="/bea/bea-think-static.png"
+              alt=""
+              aria-hidden
+              className="art-dim -my-1 size-20 shrink-0 object-contain"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[24px] leading-tight">Béa</span>
+              <span className="block text-[13px] leading-snug text-muted-foreground">
+                Personality, suggestions and assistance
               </span>
             </span>
-            <span className="shrink-0 text-[14.5px] text-primary">Open</span>
-          </Link>
-        </Section>
-
-        <Link to="/help" className="card-soft flex items-center justify-between gap-3 px-4 py-3.5">
-          <span>
-            <span className="block text-[15px] font-medium">Help & FAQ</span>
-            <span className="block text-[13px] text-muted-foreground">
-              Answers to the questions people ask most.
+            <span className="flex shrink-0 items-center gap-1 self-start rounded-full bg-primary-soft [[data-theme=colorful]_&]:bg-tile-5 px-3.5 py-2 text-[13.5px] font-semibold text-primary">
+              {modeName(bea.mix)}
+              <ChevronRight className="size-3.5" aria-hidden />
             </span>
-          </span>
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        </Link>
+          </Link>
+        </div>
 
-        <Section defaultOpen={false} title="Feedback" hint="Tell Béa something" guide="feedback">
-          <div className="space-y-2">
-            <p className="text-[14.5px] text-muted-foreground">
-              Béa is here to make you happy. A missing travel stat, a wish, something that broke —
-              write it here. It is saved to your account so we can actually read it.
-            </p>
-            <FeedbackForm alreadySignedIn={!!user} />
+        <div className="space-y-3">
+          <SectionTitle>App & account</SectionTitle>
+          <div className="grid grid-cols-2 gap-3">
+            <Tile
+              icon={Palette}
+              card={1}
+              tone={4}
+              title="Appearance"
+              hint="Theme and what Home shows"
+              onClick={() => setPanel("appearance")}
+            />
+            {/* Links & formats and Notifications are in the master but not
+                built yet, so their tiles stay hidden. */}
+            <Tile
+              icon={CloudUpload}
+              card={3}
+              tone={3}
+              title="Data & imports"
+              hint="Photos, calendar, sample data, offline"
+              onClick={() => setPanel("data")}
+              guide="offline-options"
+            />
           </div>
-        </Section>
+        </div>
+
+        <div className="space-y-3">
+          <SectionTitle>More</SectionTitle>
+          <div className={`${PLAIN} divide-y divide-border/60 px-4`}>
+            <Row
+              icon={ShieldCheck}
+              label="Privacy & legal"
+              onClick={() => setPanel("legal")}
+              guide="legal"
+            />
+            <Row icon={HelpCircle} label="Help & FAQ" to="/help" />
+            <Row
+              icon={MessageCircle}
+              label="Feedback"
+              onClick={() => setPanel("feedback")}
+              guide="feedback"
+            />
+            <Row
+              icon={Info}
+              label="About Béa"
+              onClick={() => setPanel("about")}
+              guide="replay-tour"
+            />
+          </div>
+        </div>
+
+        {user && (
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="mx-auto block rounded-full border border-border bg-card px-5 py-2.5 text-[14.5px] font-semibold"
+          >
+            Sign out
+          </button>
+        )}
       </div>
+
+      <Sheet
+        open={panel === "settings"}
+        onClose={close}
+        title="Profile settings"
+        hint={`Your details and ${interests.length} travel tag${interests.length === 1 ? "" : "s"}`}
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <p className="label-caps text-foreground">Your details</p>
+            <input
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              onBlur={() => saveProfile({ display_name: displayName })}
+              placeholder="Your name"
+              aria-label="Your name"
+              className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+            />
+            <input
+              value={homeCity}
+              onChange={(e) => setHomeCity(e.target.value)}
+              onBlur={() => saveProfile({ home_city: homeCity })}
+              placeholder="Home city"
+              aria-label="Home city"
+              className="w-full rounded-full border border-border bg-card px-4 py-2.5 text-[15px] outline-none focus:border-primary"
+            />
+            {saved && <p className="text-[12.5px] text-muted-foreground">Saved</p>}
+            {user?.email && (
+              <p className="text-[12.5px] text-muted-foreground">
+                Signed in as {user.email} — everything saves to your account.
+              </p>
+            )}
+          </div>
+          <SheetLink
+            to="/preferences"
+            title="Travel preferences"
+            hint="Help Béa understand how you like to travel — style, pace, and tags she plans with."
+          />
+          <CustomizeHome variant="row" />
+          <ThemePicker />
+          <TourRow onReplay={replayTour} />
+          {user && (
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="w-full rounded-full border border-border px-4 py-2.5 text-[14.5px] font-semibold"
+            >
+              Sign out
+            </button>
+          )}
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={panel === "packing"}
+        onClose={close}
+        title="Packing lists"
+        hint="Reusable lists you can attach to a new trip"
+      >
+        <div className="space-y-3">
+          <p className="text-[13.5px] text-muted-foreground">
+            Build lists here once. When you create a trip you can attach a copy of one — what you
+            tick off or add there stays on that trip only.
+          </p>
+          <PackingLists label="My saved packing lists" hint="Your reusable templates." />
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={panel === "appearance"}
+        onClose={close}
+        title="Appearance"
+        hint="Saved on this device"
+      >
+        <div className="space-y-3">
+          <ThemePicker />
+          <CustomizeHome variant="row" />
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={panel === "data"}
+        onClose={close}
+        title="Data & imports"
+        hint="What comes in, and what is kept on this phone"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <SheetLink
+              to="/photos"
+              icon={Camera}
+              title="Import photos"
+              hint="Bring photos from your phone into your travel memories."
+            />
+            <SheetLink
+              to="/calendar"
+              icon={CalendarDays}
+              title="Trip calendar"
+              hint="Every trip, flight, hotel and reservation on one calendar."
+            />
+          </div>
+
+          {user && !sampleCtaDismissed && (
+            <div className="rounded-2xl border border-border bg-elevated p-3">
+              <p className="text-[14.5px] font-semibold">Demo / sample data</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future
+                Me notes. Remove only deletes the sample rows — not places you added yourself.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  disabled={seeding}
+                  onClick={async () => {
+                    setSeeding(true);
+                    setSeedMsg("");
+                    const result = await loadDemoSeed();
+                    setSeeding(false);
+                    setSeedMsg(
+                      result.ok
+                        ? `Loaded ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
+                        : result.message,
+                    );
+                    if (result.ok) navigate({ to: "/world" });
+                  }}
+                  className="flex-1 rounded-full border border-border bg-card px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
+                >
+                  {seeding ? "Working…" : "Load sample"}
+                </button>
+                <button
+                  type="button"
+                  disabled={seeding}
+                  onClick={async () => {
+                    setSeeding(true);
+                    setSeedMsg("");
+                    const result = await clearDemoSeed();
+                    setSeeding(false);
+                    // Remove (or empty) opts out of sample prompts — hide this card.
+                    if (result.ok || result.reason === "empty") {
+                      setSampleCtaDismissed(true);
+                      return;
+                    }
+                    setSeedMsg(result.message);
+                  }}
+                  className="flex-1 rounded-full border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
+                >
+                  Remove sample
+                </button>
+              </div>
+              {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
+            </div>
+          )}
+
+          <div>
+            <p className="label-caps text-foreground">What is kept on this phone</p>
+            <p className="mt-1.5 text-[13px] text-muted-foreground">
+              Béa needs a connection to open, so she is not a no-signal app yet. Maps, photos,
+              recommendations, itineraries and the vault all load fresh each time.
+            </p>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              What is kept locally: open a trip → settings → Saved directions. That stores the walk
+              or drive steps here, so they cost nothing to open again once you have them — and,
+              where this phone can draw it, the map around each day's stops, so a day map that is
+              already open keeps panning and zooming when the signal drops.
+            </p>
+            {offlineTrips.length > 0 ? (
+              <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
+                {offlineTrips.map((trip) => (
+                  <li key={trip.id} className="px-3 py-2.5">
+                    <p className="text-[14.5px] font-medium">{trip.title}</p>
+                    <p className="text-[12.5px] text-muted-foreground">
+                      {formatTripLocation(trip.city, trip.country) || "Directions saved here"}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-3 text-[13px] text-muted-foreground">
+                None yet. Open a trip and download Saved directions there.
+              </p>
+            )}
+            <Link
+              to="/trips"
+              className="mt-3 block rounded-full border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
+            >
+              Open trips
+            </Link>
+          </div>
+        </div>
+      </Sheet>
+
+      <Sheet
+        open={panel === "legal"}
+        onClose={close}
+        title="Privacy & legal"
+        hint="Policies, terms and your data"
+      >
+        <div className="space-y-2">
+          <SheetLink
+            to="/privacy"
+            title="Privacy policy"
+            hint="How your account, photos and documents are stored and protected."
+          />
+          <SheetLink
+            to="/terms"
+            title="Terms of Service"
+            hint="The rules of the road, disclaimers and liability limits you agreed to."
+          />
+          <div className="rounded-2xl bg-elevated p-3">
+            <CopyrightNotice className="px-0 pb-0 pt-0 text-left text-[13px] text-muted-foreground" />
+            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+              Béa — the app, its name, design, features and original ideas — is Mathilde E.
+              Larochelle's work. You keep what you save in it. The Terms spell this out.
+            </p>
+          </div>
+          {user && <EraseDataPanel userId={user.id} />}
+          {user && <DeleteAccountPanel userId={user.id} />}
+        </div>
+      </Sheet>
+
+      <Sheet open={panel === "feedback"} onClose={close} title="Feedback" hint="Tell Béa something">
+        <div className="space-y-2">
+          <p className="text-[14.5px] text-muted-foreground">
+            Béa is here to make you happy. A missing travel stat, a wish, something that broke —
+            write it here. It is saved to your account so we can actually read it.
+          </p>
+          <FeedbackForm alreadySignedIn={!!user} />
+        </div>
+      </Sheet>
+
+      <Sheet open={panel === "about"} onClose={close} title="About Béa" hint="Your travel buddy">
+        <div className="space-y-2">
+          <SheetLink
+            to="/how-it-works"
+            icon={BookOpen}
+            title="How Béa works"
+            hint="What she does with your places, trips and photos."
+          />
+          <TourRow onReplay={replayTour} />
+          <CopyrightNotice className="px-1 pb-0 pt-1 text-left text-[13px] text-muted-foreground" />
+        </div>
+      </Sheet>
     </AppShell>
+  );
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h2 className="font-display text-[27px] leading-none">{children}</h2>;
+}
+
+type Tone = 1 | 2 | 3 | 4 | 5;
+
+/** A figure under the profile: an icon in its colour, a value and a caption. */
+function Figure({
+  icon: Glyph,
+  tone,
+  value,
+  label,
+  to,
+  onClick,
+}: {
+  icon: Icon;
+  tone: Tone;
+  value: string;
+  label: string;
+  to?: "/trips" | "/recommendations";
+  onClick?: () => void;
+}) {
+  const body = (
+    <>
+      <Glyph className={`seq-text-${tone} size-6 shrink-0`} aria-hidden />
+      <span className="min-w-0 text-left">
+        <span className="block truncate text-[15px] font-semibold leading-tight">{value}</span>
+        <span className="block truncate text-[12px] text-muted-foreground">{label}</span>
+      </span>
+    </>
+  );
+  const cls = "flex min-w-0 items-center justify-center gap-2 rounded-xl py-1";
+  return to ? (
+    <Link to={to} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+/**
+ * A small 2×2 tile: pastel in Colorful (`tile-card-N`), its icon in the
+ * matching accent (`seq-text-N`); a quiet card in Calm and Dark.
+ */
+function Tile({
+  icon: Glyph,
+  card,
+  tone,
+  title,
+  hint,
+  to,
+  href,
+  onClick,
+  guide,
+}: {
+  icon: Icon;
+  card: Tone;
+  tone: Tone;
+  title: string;
+  hint: string;
+  to?: "/preferences" | "/expenses";
+  href?: string;
+  onClick?: () => void;
+  guide?: string;
+}) {
+  const body = (
+    <>
+      <Glyph className={`seq-text-${tone} mt-0.5 size-6 shrink-0`} aria-hidden />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-1">
+          <span className="font-display text-[16.5px] leading-tight">{title}</span>
+          <ChevronRight className="mt-1 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+        </span>
+        <span className="mt-0.5 line-clamp-2 block text-[12px] leading-snug text-muted-foreground">
+          {hint}
+        </span>
+      </span>
+    </>
+  );
+  const cls = `tile-card-${card} flex min-h-[92px] items-start gap-2 p-3 text-left`;
+  if (to)
+    return (
+      <Link to={to} data-guide={guide} className={cls}>
+        {body}
+      </Link>
+    );
+  if (href)
+    return (
+      <a href={href} data-guide={guide} className={cls}>
+        {body}
+      </a>
+    );
+  return (
+    <button type="button" onClick={onClick} data-guide={guide} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+/** A row in the More list. */
+function Row({
+  icon: Glyph,
+  label,
+  to,
+  onClick,
+  guide,
+}: {
+  icon: Icon;
+  label: string;
+  to?: "/help";
+  onClick?: () => void;
+  guide?: string;
+}) {
+  const body = (
+    <>
+      <Glyph className="seq-text-1 size-5 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 text-[15px]">{label}</span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    </>
+  );
+  const cls = "flex w-full items-center gap-3 py-3.5 text-left";
+  return to ? (
+    <Link to={to} data-guide={guide} className={cls}>
+      {body}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} data-guide={guide} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+/** A link row inside a sheet. */
+function SheetLink({
+  to,
+  title,
+  hint,
+  icon: Glyph,
+}: {
+  to: "/preferences" | "/photos" | "/calendar" | "/privacy" | "/terms" | "/how-it-works";
+  title: string;
+  hint: string;
+  icon?: Icon;
+}) {
+  return (
+    <Link to={to} className="flex items-center gap-3 rounded-2xl bg-elevated p-3">
+      {Glyph && <Glyph className="size-5 shrink-0 text-primary" aria-hidden />}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15px] font-medium">{title}</span>
+        <span className="block text-[12.5px] text-muted-foreground">{hint}</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    </Link>
+  );
+}
+
+function TourRow({ onReplay }: { onReplay: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3">
+      <div>
+        <p className="text-[14.5px] font-medium">Take the tour again</p>
+        <p className="text-[12.5px] text-muted-foreground">
+          Replay the story walk, or the Deep Dive on what makes Béa different.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onReplay}
+        className="shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-[14.5px] font-semibold"
+      >
+        Replay
+      </button>
+    </div>
   );
 }
 
@@ -575,30 +964,5 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
         {busy ? "Deleting…" : "Delete my account forever"}
       </button>
     </div>
-  );
-}
-
-/** Your Béa: the mix she talks in, one tap from her settings. */
-function BeaCard() {
-  const settings = useBeaSettings();
-  return (
-    <Link to="/profile/bea" className="tile-card-1 flex items-center gap-3 p-3.5">
-      <img
-        src="/bea/bea-think-static.png"
-        alt=""
-        aria-hidden
-        className="size-16 shrink-0 object-contain"
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block font-display text-[21px] leading-tight">Béa</span>
-        <span className="block text-[12.5px] text-muted-foreground">
-          Personality, suggestions and assistance
-        </span>
-      </span>
-      <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 text-[13px] font-semibold text-primary">
-        {modeName(settings.mix)}
-        <ChevronRight className="size-3.5" aria-hidden />
-      </span>
-    </Link>
   );
 }
