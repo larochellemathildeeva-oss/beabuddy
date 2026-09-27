@@ -1,8 +1,16 @@
 import "./lib/error-capture";
 
+import { gunzipSync } from "node:zlib";
+
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { TILE_CACHE_CONTROL, parseTilePath, tileSourceUrl } from "./lib/tile-proxy";
+import {
+  glyphSourceUrl,
+  parseGlyphPath,
+  parseVectorTilePath,
+  vectorTileSourceUrl,
+} from "./lib/vector-tiles";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -87,10 +95,55 @@ async function serveTile(request: Request): Promise<Response | null> {
   }
 }
 
+/**
+ * The day map's vector tiles and label fonts, fetched by Béa like the image
+ * tiles above, so the Geoapify key stays on the server.
+ *
+ * Only with a Geoapify key: LocationIQ and OpenStreetMap's own servers offer
+ * no vector tiles, and a 404 here is how the day map knows to draw the image
+ * tiles instead. An upstream failure is a 502, never a blank 200, so the map
+ * falls back rather than drawing an empty page.
+ */
+async function serveVectorAsset(request: Request): Promise<Response | null> {
+  const { pathname } = new URL(request.url);
+  const tile = parseVectorTilePath(pathname);
+  const glyph = tile ? null : parseGlyphPath(pathname);
+  if (!tile && !glyph) return null;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+  const key = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
+  if (!key) return new Response(null, { status: 404 });
+  try {
+    const upstream = await fetch(
+      tile ? vectorTileSourceUrl(tile, key) : glyphSourceUrl(glyph!, key),
+      {
+        headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "application/x-protobuf,*/*" },
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+    if (!upstream.ok) return new Response(null, { status: 502 });
+    let body = new Uint8Array(await upstream.arrayBuffer());
+    if (body.byteLength === 0 && !tile) return new Response(null, { status: 502 });
+    // Vector tiles are often stored gzipped and sometimes sent that way with
+    // no Content-Encoding, which neither fetch nor MapLibre would undo.
+    if (body[0] === 0x1f && body[1] === 0x8b) body = new Uint8Array(gunzipSync(body));
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "content-type": "application/x-protobuf",
+        "cache-control": TILE_CACHE_CONTROL,
+      },
+    });
+  } catch {
+    return new Response(null, { status: 502 });
+  }
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
-      const tile = await serveTile(request);
+      const tile = (await serveTile(request)) ?? (await serveVectorAsset(request));
       if (tile) return tile;
     } catch (error) {
       // Never let the map take the whole app down with it.

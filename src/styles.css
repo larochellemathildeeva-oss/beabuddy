@@ -754,6 +754,11 @@
   filter: sepia(0.18) saturate(0.78) hue-rotate(-8deg) brightness(1.03) contrast(0.9);
   opacity: 0.9;
 }
+/* Vector tiles are drawn in the journal palette already; tinting them again would muddy it. */
+.journal-map--vector .leaflet-tile-pane {
+  filter: none;
+  opacity: 1;
+}
 .journal-route {
   stroke: var(--journal-accent);
 }

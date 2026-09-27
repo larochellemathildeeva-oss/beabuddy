@@ -1,9 +1,16 @@
 import "leaflet/dist/leaflet.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import type { DayMapPin, PinTone } from "@/lib/day-map";
 import { curvedLeg } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
+import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { journalStyle } from "@/lib/journal-style";
+import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
+
+const OSM_CREDIT =
+  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
 
 /** Close enough to read street names, not so close one stop fills the frame. */
 const SINGLE_STOP_ZOOM = 15;
@@ -48,9 +55,11 @@ function escapeHtml(text: string): string {
  *
  * Leaflet reads `window` the moment it is imported, so it is loaded inside an
  * effect and never on the server; the server renders the empty frame and the
- * browser fills it. Tiles come through Béa's own `/api/tile` proxy — the same
- * one the Near map uses — so the provider token stays on the server and the
- * browser talks to nobody new.
+ * browser fills it. The base map is vector tiles in the journal style where
+ * they can be had (`/api/vtile`, read from the trip's saved copy first), and
+ * image tiles through `/api/tile` — the same proxy the Near map uses —
+ * otherwise. Either way the provider key stays on the server and the browser
+ * talks to nobody new.
  *
  * Pins carry the card's number rather than the title. A title on every pin is
  * unreadable on a phone once three stops share a street, and the number is
@@ -93,6 +102,7 @@ export function DayMap({
   const leaflet = useRef<typeof Leaflet | null>(null);
   const map = useRef<Leaflet.Map | null>(null);
   const [ready, setReady] = useState(false);
+  const [vector, setVector] = useState(false);
 
   // The latest handler, so redrawing pins is not also triggered by a parent
   // that passes a fresh closure every render.
@@ -102,6 +112,7 @@ export function DayMap({
   useEffect(() => {
     let cancelled = false;
     let observer: ResizeObserver | null = null;
+    let stopWatching: (() => void) | null = null;
 
     void import("leaflet").then((mod) => {
       const L = (mod as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet);
@@ -120,12 +131,52 @@ export function DayMap({
       });
       m.attributionControl.setPrefix(false);
       L.control.zoom({ position: "topright" }).addTo(m);
-      L.tileLayer(TILE_URL_TEMPLATE, {
-        minZoom: TILE_ZOOM_MIN,
-        maxZoom: TILE_ZOOM_MAX,
-        attribution:
-          '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors',
-      }).addTo(m);
+      // Vector tiles where they can be had — sharp at every zoom, and what
+      // "Keep offline" saves — and the image tiles otherwise: no Geoapify
+      // key, no WebGL, or a server that is not answering. The pins do not
+      // wait for either; they are Leaflet's, above whichever base is drawn.
+      const imageTiles = () =>
+        L.tileLayer(TILE_URL_TEMPLATE, {
+          minZoom: TILE_ZOOM_MIN,
+          maxZoom: TILE_ZOOM_MAX,
+          attribution: OSM_CREDIT,
+        }).addTo(m);
+      void vectorMapAvailable().then(async (vector) => {
+        if (cancelled) return;
+        if (vector) {
+          try {
+            const [maplibregl, { MaplibreGL }] = await Promise.all([
+              import("maplibre-gl"),
+              import("@maplibre/maplibre-gl-leaflet"),
+            ]);
+            if (cancelled || map.current !== m) return;
+            registerBeaProtocols(maplibregl);
+            const base = new MaplibreGL({ style: journalStyle(), attributionControl: false }).addTo(
+              m,
+            );
+            const credit = `${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`;
+            m.attributionControl.addAttribution(credit);
+            setVector(true);
+            // The server started refusing tiles or fonts after the first
+            // check passed: put the image tiles back, once, rather than
+            // leave squares or labels missing.
+            stopWatching = onVectorTrouble(() => {
+              stopWatching?.();
+              stopWatching = null;
+              if (cancelled || map.current !== m) return;
+              m.removeLayer(base);
+              m.attributionControl.removeAttribution(credit);
+              imageTiles();
+              setVector(false);
+            });
+            return;
+          } catch (error) {
+            console.error(error);
+            if (cancelled || map.current !== m) return;
+          }
+        }
+        imageTiles();
+      });
 
       // The frame can change size without the window doing so — a tab
       // switch, the chips wrapping — and Leaflet only notices the window.
@@ -139,6 +190,7 @@ export function DayMap({
 
     return () => {
       cancelled = true;
+      stopWatching?.();
       observer?.disconnect();
       map.current?.remove();
       map.current = null;
@@ -326,7 +378,7 @@ export function DayMap({
     <div
       role="region"
       aria-label={label}
-      className={`journal-map relative isolate overflow-hidden ${roundedClass} ${heightClass}`}
+      className={`journal-map${vector ? " journal-map--vector" : ""} relative isolate overflow-hidden ${roundedClass} ${heightClass}`}
     >
       <div ref={container} className="absolute inset-0" />
       {children}

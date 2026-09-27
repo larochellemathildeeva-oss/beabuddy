@@ -1,4 +1,5 @@
 import { sampleCtaDismissKey } from "./auto-seed.ts";
+import { clearAllOfflineMaps, OFFLINE_MAP_KEY_PREFIX } from "./offline-map.ts";
 import { clearStoredVaultKeys } from "./vaultCrypto.ts";
 
 /** Same prefix as `DIRECTIONS_KEY_PREFIX` in useOfflineDirections. */
@@ -36,7 +37,11 @@ export function clearLocalUserData(uid: string) {
     const doomed: string[] = [];
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i);
-      if (key?.startsWith(DIRECTIONS_KEY_PREFIX) || key?.startsWith(DAY_MAPS_KEY_PREFIX)) {
+      if (
+        key?.startsWith(DIRECTIONS_KEY_PREFIX) ||
+        key?.startsWith(DAY_MAPS_KEY_PREFIX) ||
+        key?.startsWith(OFFLINE_MAP_KEY_PREFIX)
+      ) {
         doomed.push(key);
       }
     }
@@ -44,4 +49,7 @@ export function clearLocalUserData(uid: string) {
   } catch {
     /* private mode */
   }
+
+  // The trips' saved maps: street tiles, but of where this account went.
+  void clearAllOfflineMaps();
 }
