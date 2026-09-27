@@ -201,7 +201,7 @@ type Palette = { sky: [string, string]; sun: string; hills: [string, string, str
  * title holds on top of it, with the banner's soft shade underneath.
  *
  *   calm     — sand, stone, clay, oat, linen
- *   colorful — peach, sage, lavender, sky, butter
+ *   colorful — lilac, sky, teal, cyan, periwinkle
  *   dark     — near-black hills under a beige or pale sun
  */
 const PALETTES: Record<ThemeName, Palette[]> = {
@@ -213,11 +213,11 @@ const PALETTES: Record<ThemeName, Palette[]> = {
     { sky: ["#e8e0d6", "#f5f0ea"], sun: "#e8c9b3", hills: ["#d2c3b6", "#ae9d8f", "#84756a"] },
   ],
   colorful: [
-    { sky: ["#f6c9a8", "#fbe7d3"], sun: "#f08a5d", hills: ["#d9a48a", "#b97c66", "#8f5a4a"] },
-    { sky: ["#cfe3da", "#eef5ef"], sun: "#fff1c9", hills: ["#9dc2b2", "#6e9c88", "#4a7363"] },
-    { sky: ["#d9d1ee", "#f1ecf8"], sun: "#ffe0b8", hills: ["#ada1cf", "#8577ae", "#5e528a"] },
-    { sky: ["#bbd8ee", "#e6f1f9"], sun: "#fff3c4", hills: ["#93b9d6", "#6690b3", "#456e8f"] },
-    { sky: ["#f5dfa6", "#fbf1d2"], sun: "#f3a75a", hills: ["#d7b06c", "#b38a4a", "#86652f"] },
+    { sky: ["#d9d1ee", "#f1ecf8"], sun: "#fff3c4", hills: ["#b3a6d9", "#8b7cc0", "#5f5296"] },
+    { sky: ["#c8e3f5", "#eaf5fc"], sun: "#ffffff", hills: ["#93bfdf", "#6696c3", "#44709c"] },
+    { sky: ["#c4ece9", "#e9f8f6"], sun: "#fffbe0", hills: ["#8fd1c8", "#5aada4", "#387f78"] },
+    { sky: ["#c6e6f4", "#eaf6fb"], sun: "#fff3c4", hills: ["#8ccbe3", "#58a7c6", "#347e9c"] },
+    { sky: ["#dcd6f5", "#f2effc"], sun: "#ffe6f2", hills: ["#aeb2e6", "#8088c9", "#5a5f9e"] },
   ],
   dark: [
     { sky: ["#1c1a18", "#2a2622"], sun: "#d9c3a5", hills: ["#2f2a25", "#231f1c", "#161412"] },
