@@ -1057,7 +1057,7 @@ function ImportPanel({
       </button>
       {busy && (
         <div className="mt-2">
-          <BeaRunning moment="plan.working" />
+          <BeaRunning moment="plan.working" action={mode === "build" ? "run" : "think"} />
         </div>
       )}
       {mode === "import" && !hasFiles && text.trim().length < 10 && (
@@ -1192,6 +1192,7 @@ function ImportPanel({
               {placing && (
                 <div className="mt-2">
                   <BeaRunning
+                    status="Placing your stops…"
                     done={placing.done}
                     total={placing.total}
                     estimate={estimatedSeconds(placing.total, PLAN_LOOKUP_GAP_MS)}
@@ -1322,6 +1323,7 @@ function ImportPanel({
               >
                 {busy ? "Béa is working…" : "Rebuild my trip"}
               </button>
+              {busy && <BeaRunning moment="plan.working" action="run" />}
             </div>
           )}
         </div>
@@ -1561,6 +1563,7 @@ function OptimizePanel({
           >
             {busy && !plan ? "Béa is rearranging…" : "Ask Béa to rearrange"}
           </button>
+          {busy && !plan && <BeaRunning moment="choose.working" status="Rearranging the days" />}
         </>
       )}
 
@@ -1721,6 +1724,7 @@ function ComparePanel() {
             ? "Compare side by side"
             : "Paste both plans first"}
       </button>
+      {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
 

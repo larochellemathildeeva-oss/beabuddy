@@ -10,6 +10,7 @@ import {
   type DirectionStop,
 } from "@/lib/timeline-directions";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
+import { BeaRunning } from "@/components/BeaRunning";
 
 type TimelineAdd = {
   day_date?: string;
@@ -138,6 +139,12 @@ export function ItineraryDirections({
             {busy ? "Working…" : legs ? "Refresh" : "Get directions"}
           </button>
         </div>
+
+        {busy && (
+          <div className="mt-2">
+            <BeaRunning moment="plan.locating" status="Working out the walks and drives" />
+          </div>
+        )}
 
         {offlineNote && <p className="mt-2 text-[12.5px] text-muted-foreground">{offlineNote}</p>}
 

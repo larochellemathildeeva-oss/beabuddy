@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, Image as ImageIcon } from "lucide-react";
+import { BeaRunning } from "@/components/BeaRunning";
 import { Sheet } from "@/components/Sheet";
 import { PackingListView } from "@/components/PackingListView";
 import { usePacking } from "@/hooks/usePacking";
@@ -308,9 +309,7 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
             Pictures and files are sent to an AI provider to organize them — skip passport numbers,
             card details or other sensitive information.
           </p>
-          {importBusy && (
-            <p className="text-[13px] text-muted-foreground">Béa is organizing your list…</p>
-          )}
+          {importBusy && <BeaRunning moment="choose.working" status="Organizing your list" />}
           {importError && <p className="text-[13px] text-destructive">{importError}</p>}
           {importPreview && (
             <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">

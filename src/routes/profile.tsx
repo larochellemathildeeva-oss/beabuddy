@@ -29,6 +29,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
+import { useBeaSettings } from "@/hooks/useBeaSettings";
+import { modeName } from "@/lib/bea-personality";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
 import { safeStorage } from "@/lib/tour-state";
@@ -215,6 +217,8 @@ function ProfilePage() {
             )}
           </div>
         )}
+
+        <BeaCard />
 
         <Section
           defaultOpen={false}
@@ -571,5 +575,30 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
         {busy ? "Deleting…" : "Delete my account forever"}
       </button>
     </div>
+  );
+}
+
+/** Your Béa: the mix she talks in, one tap from her settings. */
+function BeaCard() {
+  const settings = useBeaSettings();
+  return (
+    <Link to="/profile/bea" className="tile-card-1 flex items-center gap-3 p-3.5">
+      <img
+        src="/bea/bea-think-static.png"
+        alt=""
+        aria-hidden
+        className="size-16 shrink-0 object-contain"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[21px] leading-tight">Béa</span>
+        <span className="block text-[12.5px] text-muted-foreground">
+          Personality, suggestions and assistance
+        </span>
+      </span>
+      <span className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft px-3 py-1.5 text-[13px] font-semibold text-primary">
+        {modeName(settings.mix)}
+        <ChevronRight className="size-3.5" aria-hidden />
+      </span>
+    </Link>
   );
 }
