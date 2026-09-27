@@ -168,8 +168,9 @@ export function ItineraryDirections({
             <div>
               <p className="label-caps text-foreground">Add these legs</p>
               <p className="text-[12px] text-muted-foreground">
-                “Add to timeline” saves each walk or drive as a stop. “Keep on this phone” stores
-                these exact steps here, so you don't have to work them out twice.
+                “Add to timeline” saves each walk or drive between its two stops, with the steps
+                folded under it — never as a stop of its own. “Keep on this phone” stores these
+                exact steps here, so you don't have to work them out twice.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-1.5">

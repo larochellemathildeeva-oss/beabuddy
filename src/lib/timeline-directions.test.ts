@@ -178,3 +178,82 @@ describe("placedFromLegs", () => {
     );
   });
 });
+
+test("a saved walk keeps its steps and reads back as the same leg", async () => {
+  const { directionDetailWithSteps, legFromDirectionRow } =
+    await import("./timeline-directions.ts");
+  const detail = directionDetailWithSteps({
+    mode: "walking",
+    distance: 1200,
+    duration: 900,
+    steps: [
+      { instruction: "Head north on Karasuma-dori", distance: 350 },
+      { instruction: "Turn  right\nonto Shijo-dori", distance: 850 },
+      { instruction: "Arrive", distance: 0 },
+    ],
+  });
+  assert.equal(
+    detail,
+    "Walk · 1.2 km · 15 min\nHead north on Karasuma-dori · 350 m\nTurn right onto Shijo-dori · 850 m\nArrive",
+  );
+  const leg = legFromDirectionRow({
+    title: "Walk to Nishiki Market",
+    detail,
+    lat: 35,
+    lon: 135.7,
+  })!;
+  assert.equal(leg.mode, "walking");
+  assert.equal(leg.to, "Nishiki Market");
+  assert.equal(leg.distance, 1200);
+  assert.equal(leg.duration, 900);
+  assert.deepEqual(leg.steps, [
+    { instruction: "Head north on Karasuma-dori", distance: 350 },
+    { instruction: "Turn right onto Shijo-dori", distance: 850 },
+    { instruction: "Arrive", distance: 0 },
+  ]);
+  assert.equal(leg.toLat, 35);
+});
+
+test("an older saved drive with only a summary still reads as a leg", async () => {
+  const { legFromDirectionRow } = await import("./timeline-directions.ts");
+  const leg = legFromDirectionRow({
+    title: "Drive to Nara",
+    detail: "Drive · 45.0 km · 1 h 5 min",
+  })!;
+  assert.equal(leg.mode, "driving");
+  assert.equal(leg.distance, 45000);
+  assert.equal(leg.duration, 3900);
+  assert.deepEqual(leg.steps, []);
+  assert.equal(legFromDirectionRow({ title: "Lunch at Kakiya" }), null);
+  const same = legFromDirectionRow({ title: "Walk to Hotel", detail: "Same place — no walk" })!;
+  assert.equal(same.distance, 0);
+  assert.equal(same.sameSpot, true);
+});
+
+test("walks and drives come off the list and attach to the stop they reach", async () => {
+  const { splitDirectionRows, directionKey } = await import("./timeline-directions.ts");
+  const items = [
+    { title: "Kinkaku-ji", kind: "Activity", day_date: "2026-10-02" },
+    {
+      title: "Walk to Ryoan-ji",
+      kind: "Transport",
+      day_date: "2026-10-02",
+      detail: "Walk · 1.4 km · 18 min",
+    },
+    { title: "Ryoan-ji", kind: "Activity", day_date: "2026-10-02" },
+    {
+      title: "Drive to Arashiyama",
+      kind: "Transport",
+      day_date: "2026-10-02",
+      detail: "Drive · 6.0 km · 15 min",
+    },
+    { title: "Arashiyama", kind: "Activity", day_date: "2026-10-02" },
+  ];
+  const { stops, travel } = splitDirectionRows(items);
+  assert.deepEqual(
+    stops.map((s) => s.title),
+    ["Kinkaku-ji", "Ryoan-ji", "Arashiyama"],
+  );
+  assert.equal(travel.get(directionKey("2026-10-02", "Ryoan-ji"))?.distance, 1400);
+  assert.equal(travel.get(directionKey("2026-10-02", "arashiyama"))?.mode, "driving");
+});

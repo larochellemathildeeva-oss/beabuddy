@@ -79,6 +79,7 @@ import { beaLine } from "@/lib/bea-voice";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
+import { routeStopLine } from "@/lib/trip-cities";
 
 type NewItineraryItem = {
   day_date?: string;
@@ -239,12 +240,9 @@ function ImportPanel({
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
   /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
-  const routeLine = cities
-    .filter((c) => c.city.trim())
-    .map((c) => {
-      const dates = [c.arrive_on, c.depart_on].filter(Boolean).join(" – ");
-      return `${[c.city, c.country].filter(Boolean).join(", ")}${dates ? ` (${dates})` : ""}`;
-    })
+  const named = cities.filter((c) => c.city.trim());
+  const routeLine = named
+    .map((_, i) => routeStopLine(named, i))
     .join("; ")
     .slice(0, 600);
   const { addedWithUndo } = useUndo();
