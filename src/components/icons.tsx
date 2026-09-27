@@ -105,6 +105,11 @@ import {
   Users as PhUsers,
   Wallet as PhWallet,
   X as PhX,
+  Binoculars as PhBinoculars,
+  Coffee as PhCoffee,
+  Heart as PhHeart,
+  ListBullets as PhListBullets,
+  NavigationArrow as PhNavigationArrow,
   type Icon as PhosphorIcon,
   type IconProps,
   type IconWeight,
@@ -237,3 +242,8 @@ export const RouteIcon = Route;
 export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;
 export const ChevronRightIcon = ChevronRight;
+export const Binoculars = icon(PhBinoculars, "Binoculars");
+export const Coffee = icon(PhCoffee, "Coffee");
+export const Heart = icon(PhHeart, "Heart");
+export const List = icon(PhListBullets, "List");
+export const Navigation = icon(PhNavigationArrow, "Navigation");
