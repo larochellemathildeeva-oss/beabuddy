@@ -12,6 +12,7 @@ import {
   type DatesStatus,
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
+import { isSavedDirectionItem } from "@/lib/direction-stops";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
@@ -913,7 +914,13 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       const tripId2 = tripIdRef.current;
       if (!tripId2) throw new Error("Open a trip first");
       const current = items.find((item) => item.id === id);
-      const swapWith = neighbourInDay(items, id, direction);
+      // Saved walks and drives are drawn between stops, not as stops, so a
+      // move steps over them — swapping with one would look like no move.
+      const swapWith = neighbourInDay(
+        items.filter((item) => !isSavedDirectionItem(item)),
+        id,
+        direction,
+      );
       if (!current || !swapWith) return;
       const authorId = await liveUserId(me.id);
       await Promise.all([

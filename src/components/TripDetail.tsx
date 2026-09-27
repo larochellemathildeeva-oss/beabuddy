@@ -66,7 +66,7 @@ import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
-import { unroutedLegCopy } from "@/lib/timeline-directions";
+import { directionKey, splitDirectionRows, unroutedLegCopy } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
@@ -142,6 +142,15 @@ export function TripDetail({
   const dayMaps = useOfflineDayMaps(activeId);
   const directionStops = timelineStopsForDirections(board.items);
   const routeStops = stopsForDirections(cities.stops, board.items);
+  /**
+   * The stops, and the walks and drives saved between them. Those are the
+   * travel between two stops, drawn in the connector with their steps
+   * folded away — never a stop of their own on the list, the map or a count.
+   */
+  const { stops: stopItems, travel: savedTravel } = useMemo(
+    () => splitDirectionRows(board.items),
+    [board.items],
+  );
   /**
    * One area, used by everything that looks a place up.
    *
@@ -462,7 +471,7 @@ export function TripDetail({
   };
   // Pins far from the rest of the trip, saved before lookups were bounded to
   // the trip's area: flagged on their cards so they get checked.
-  const strayIds = useMemo(() => strayStopIds(board.items), [board.items]);
+  const strayIds = useMemo(() => strayStopIds(stopItems), [stopItems]);
   // Legs are worked out over `directionStops` (the timeline without its
   // Walk / Drive rows), so a leg is found by the stop's place in that list —
   // not in board.items, where every such row shifted every leg after it.
@@ -474,6 +483,11 @@ export function TripDetail({
     if (index == null || directionStops[index + 1]?.id !== toId) return undefined;
     return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   };
+  /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
+  const travelInto = (from: ItineraryRow, to: ItineraryRow) =>
+    legFor(from.id, to.id) ??
+    savedTravel.get(directionKey(to.day_date, to.title)) ??
+    savedTravel.get(directionKey(from.day_date, to.title));
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<
@@ -518,7 +532,7 @@ export function TripDetail({
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
   const others = board.present.filter((p) => p.userId !== me.id);
-  const timelineGroups = groupTimelineByDay(board.items);
+  const timelineGroups = groupTimelineByDay(stopItems);
   /**
    * The day on screen. Null until the traveller picks one, so the default
    * keeps tracking the data while it loads — the first render has no items,
@@ -549,7 +563,7 @@ export function TripDetail({
   const [hideDone, setHideDone] = useState(false);
   /** Timeline Editor grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
-  const doneCount = board.items.filter(isDone).length;
+  const doneCount = stopItems.filter(isDone).length;
   // Nothing hidden while editing: edit mode is for the whole list.
   const hidingDone = hideDone && !editingTimeline;
   const restored = useRef(false);
@@ -670,7 +684,7 @@ export function TripDetail({
       startDate: trip.start_date,
       endDate: trip.end_date,
       stopCount: cities.stops.length,
-      plannedCount: board.items.length,
+      plannedCount: stopItems.length,
     },
     toLocalISODate(new Date()),
   );
@@ -749,7 +763,7 @@ export function TripDetail({
         </button>
         <span className="ml-auto hidden shrink-0 pl-1 text-[11px] text-muted-foreground sm:inline">
           {[
-            board.items.length ? `${board.items.length} entries` : "",
+            stopItems.length ? `${stopItems.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
           ]
             .filter(Boolean)
@@ -784,7 +798,7 @@ export function TripDetail({
 
         {/* One day strip for Now, Map and Day (by day), as in the prototype:
             the chosen day in charcoal, and the optimiser beside it. */}
-        {board.items.length > 0 &&
+        {stopItems.length > 0 &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) && (
@@ -891,16 +905,16 @@ export function TripDetail({
             ) : (
               <div className="card-soft space-y-2 p-4">
                 <p className="font-display text-[19px] leading-snug">
-                  {board.items.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
+                  {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
                 </p>
                 <p className="text-[14px] text-muted-foreground">
-                  {board.items.length === 0
+                  {stopItems.length === 0
                     ? "Add stops in the Timeline Editor, or let Béa draft the days from a plan you already have."
                     : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
                 </p>
                 {/* The days right here, so the prompt is never a dead end: the
                     strip above scrolls sideways and is easy to miss. */}
-                {board.items.length > 0 && (
+                {stopItems.length > 0 && (
                   <div
                     role="group"
                     aria-label="Day to follow"
@@ -934,7 +948,7 @@ export function TripDetail({
         {/* Mounted only while showing: Leaflet cannot lay out in a hidden box. */}
         {perspective === "map" && (
           <div className="space-y-3">
-            {board.items.length > 0 && (
+            {stopItems.length > 0 && (
               <DayMapView
                 key={`${chosenDay}:${mapFocus ?? ""}`}
                 focusId={mapFocus}
@@ -961,12 +975,12 @@ export function TripDetail({
             progress survives a tab switch and the action row's buttons can
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
-          {board.items.length > 0 && (
+          {stopItems.length > 0 && (
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card px-3 py-2.5 shadow-2xs">
               <div className="min-w-0">
                 <p className="text-xs font-bold">All Scheduled Stops</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {board.items.length} {board.items.length === 1 ? "stop" : "stops"} scheduled
+                  {stopItems.length} {stopItems.length === 1 ? "stop" : "stops"} scheduled
                   {doneCount > 0 ? ` · ${doneCount} visited` : ""}
                 </p>
               </div>
@@ -981,7 +995,7 @@ export function TripDetail({
                   {(
                     [
                       [false, "All"],
-                      [true, `Not visited (${board.items.length - doneCount})`],
+                      [true, `Not visited (${stopItems.length - doneCount})`],
                     ] as const
                   ).map(([value, label]) => (
                     <button
@@ -1042,9 +1056,9 @@ export function TripDetail({
             guide="trip-timeline"
             title="Your itinerary"
             hint={
-              board.items.length === 0
+              stopItems.length === 0
                 ? "Activities, meals, transport and notes."
-                : `${board.items.length} entr${board.items.length === 1 ? "y" : "ies"}`
+                : `${stopItems.length} entr${stopItems.length === 1 ? "y" : "ies"}`
             }
             open={timelineOpen}
             onToggle={() => setTimelineOpen((v) => !v)}
@@ -1059,7 +1073,7 @@ export function TripDetail({
                 >
                   {addingTimeline ? "Cancel" : "Add"}
                 </SectionAction>
-                {board.items.length > 0 && (
+                {stopItems.length > 0 && (
                   <SectionAction
                     icon
                     pressed={editingTimeline}
@@ -1076,7 +1090,7 @@ export function TripDetail({
                     )}
                   </SectionAction>
                 )}
-                {board.items.length >= 2 && (
+                {stopItems.length >= 2 && (
                   <SectionAction
                     guide="optimize-trip"
                     onClick={() => {
@@ -1092,7 +1106,7 @@ export function TripDetail({
           >
             {timelineOpen && (
               <div className="space-y-3">
-                {board.items.length > 0 && (
+                {stopItems.length > 0 && (
                   <div
                     role="group"
                     aria-label="Timeline layout"
@@ -1122,7 +1136,7 @@ export function TripDetail({
                   </div>
                 )}
 
-                {board.items.length === 0 ? null : timelineByDay ? (
+                {stopItems.length === 0 ? null : timelineByDay ? (
                   <div className="space-y-3">
                     {shownGroups.map((group) => {
                       const dayOpen = !collapsedDays[group.key];
@@ -1297,8 +1311,8 @@ export function TripDetail({
                                           onMove={(direction) =>
                                             void board.moveItem(item.id, direction)
                                           }
-                                          canMoveUp={canMove(board.items, item.id, -1)}
-                                          canMoveDown={canMove(board.items, item.id, 1)}
+                                          canMoveUp={canMove(stopItems, item.id, -1)}
+                                          canMoveDown={canMove(stopItems, item.id, 1)}
                                           tripStart={trip.start_date}
                                           tripEnd={trip.end_date}
                                           onKeep={keepItemAsReco}
@@ -1313,7 +1327,7 @@ export function TripDetail({
                                             .slice(dayIndex + 1)
                                             .find((n) => !(hidingDone && isDone(n)));
                                           if (!next || editingTimeline) return null;
-                                          const leg = legFor(item.id, next.id);
+                                          const leg = travelInto(item, next);
                                           return (
                                             <TravelConnector
                                               from={item}
@@ -1336,7 +1350,7 @@ export function TripDetail({
                   </div>
                 ) : (
                   <ol className="relative min-w-0 space-y-3 overflow-x-hidden">
-                    {board.items.map((item, i) =>
+                    {stopItems.map((item, i) =>
                       hidingDone && isDone(item) ? null : (
                         <Fragment key={item.id}>
                           <TimelineEntry
@@ -1354,8 +1368,8 @@ export function TripDetail({
                             onUpdate={(patch) => void board.updateItem(item.id, patch)}
                             onRemove={() => void removeTimelineItem(item)}
                             onMove={(direction) => void board.moveItem(item.id, direction)}
-                            canMoveUp={canMove(board.items, item.id, -1)}
-                            canMoveDown={canMove(board.items, item.id, 1)}
+                            canMoveUp={canMove(stopItems, item.id, -1)}
+                            canMoveDown={canMove(stopItems, item.id, 1)}
                             tripStart={trip.start_date}
                             tripEnd={trip.end_date}
                             onKeep={keepItemAsReco}
@@ -1364,7 +1378,7 @@ export function TripDetail({
                             {...foldProps(item)}
                           />
                           {(() => {
-                            const next = board.items
+                            const next = stopItems
                               .slice(i + 1)
                               .find((n) => !(hidingDone && isDone(n)));
                             if (!next || editingTimeline) return null;
@@ -1372,7 +1386,7 @@ export function TripDetail({
                               <TravelConnector
                                 from={item}
                                 to={next}
-                                leg={legFor(item.id, next.id)}
+                                leg={travelInto(item, next)}
                                 area={directionArea ?? ""}
                                 showTime={view.prefs.walkTimes}
                               />
@@ -1447,7 +1461,7 @@ export function TripDetail({
                 const kept = dir.keep(result, stops);
                 // A picture of each day's map goes with the directions, so the
                 // day can be followed with no signal at all.
-                if (kept) void dayMaps.save(daysForMaps(board.items));
+                if (kept) void dayMaps.save(daysForMaps(stopItems));
                 return kept;
               }}
               onLegs={setLiveLegs}
@@ -1559,7 +1573,7 @@ export function TripDetail({
         open={plannerOpen}
         onClose={() => setPlannerOpen(false)}
         defaultTab={plannerTab}
-        existingItems={board.items.map((item) => ({
+        existingItems={stopItems.map((item) => ({
           id: item.id,
           day_date: item.day_date,
           time_label: item.time_label,

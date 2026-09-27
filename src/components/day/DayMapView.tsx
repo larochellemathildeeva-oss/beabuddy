@@ -74,9 +74,9 @@ function readLayout(): MapLayout {
  * says "then here", never a route to follow. Distances between stops are
  * as the crow flies and say "about" — nothing here is routed or paid for.
  *
- * With every day shown, the stops are numbered straight through rather than
- * restarting each day: the pins share one map, and two pins both saying "1"
- * would leave the reader to work out which card each belongs to.
+ * With every day shown, Split gives each day its own list and map, numbered
+ * from 1 like that day's cards. Focus keeps one map and numbers straight
+ * through, since its pins share it.
  */
 export function DayMapView({
   groups,
@@ -168,35 +168,53 @@ export function DayMapView({
       <div className="space-y-3">
         <LayoutSwitch value={layout} onChange={setLayout} />
 
-        {layout === "split" && (
-          <div
-            className={`grid overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xs max-md:grid-rows-[minmax(0,45fr)_minmax(0,55fr)] md:grid-cols-[minmax(0,46fr)_minmax(0,54fr)] ${PANEL_HEIGHT}`}
-          >
-            <div className="order-2 min-h-0 overflow-y-auto overscroll-contain px-3.5 pb-6 pt-4 md:order-1 md:px-5">
-              <RailList
-                groups={groups}
-                area={area}
-                ordinals={ordinals}
-                selectedId={selectedId}
-                onSelect={pickFromList}
-              />
-            </div>
-            <div className="order-1 min-h-0 md:order-2">
-              <DayMap
-                pins={model.pins}
-                selectedId={selectedId}
-                onSelect={pickFromMap}
-                heightClass="h-full"
-                roundedClass="rounded-none"
-                fitSignal={fitSignal}
-                label={mapLabel}
+        {layout === "split" &&
+          // One map per day, each with only that day's pins. All the days on
+          // one map read as a tangle of numbers from different days, and
+          // "Fit route" framed the whole trip rather than a walk you can take.
+          groups.map((group) => {
+            const dayModel = dayMapModel(group.items, { nesting });
+            const dayLabel = `Map of ${ordinals[group.key] || group.label}: ${
+              dayModel.pins.length === 1 ? "one place" : `${dayModel.pins.length} places`
+            }`;
+            return (
+              <div
+                key={group.key || "undated"}
+                className={`grid overflow-hidden rounded-3xl border border-border/70 bg-card shadow-2xs max-md:grid-rows-[minmax(0,45fr)_minmax(0,55fr)] md:grid-cols-[minmax(0,46fr)_minmax(0,54fr)] ${PANEL_HEIGHT}`}
               >
-                {fitButton}
-                <Legend model={model} />
-              </DayMap>
-            </div>
-          </div>
-        )}
+                <div className="order-2 min-h-0 overflow-y-auto overscroll-contain px-3.5 pb-6 pt-4 md:order-1 md:px-5">
+                  <RailList
+                    groups={[group]}
+                    many={groups.length > 1}
+                    area={area}
+                    ordinals={ordinals}
+                    selectedId={selectedId}
+                    onSelect={pickFromList}
+                  />
+                </div>
+                <div className="order-1 min-h-0 md:order-2">
+                  {dayModel.pins.length > 0 ? (
+                    <DayMap
+                      pins={dayModel.pins}
+                      selectedId={selectedId}
+                      onSelect={pickFromMap}
+                      heightClass="h-full"
+                      roundedClass="rounded-none"
+                      fitSignal={fitSignal}
+                      label={dayLabel}
+                    >
+                      {fitButton}
+                      <Legend model={dayModel} />
+                    </DayMap>
+                  ) : (
+                    <div className="grid h-full place-items-center bg-elevated p-4 text-center text-[13px] text-muted-foreground">
+                      No stop on this day has a location yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
 
         {layout === "focus" && (
           <FocusLayout
@@ -365,12 +383,15 @@ function kicker(
  */
 function RailList({
   groups,
+  many,
   area,
   ordinals,
   selectedId,
   onSelect,
 }: {
   groups: TimelineDayGroup<ItineraryRow>[];
+  /** Other days are shown too, each in its own panel. */
+  many: boolean;
   area: string;
   ordinals: Record<string, string>;
   selectedId: string | null;
@@ -388,7 +409,7 @@ function RailList({
           <section key={group.key || "undated"} aria-label={group.label}>
             <header className="mb-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {kicker(group, ordinals, groups.length > 1)}
+                {kicker(group, ordinals, many)}
               </p>
               <h2 className="mt-1 font-display text-[30px] leading-[1.05] tracking-tight">
                 {place || group.label}
