@@ -160,18 +160,20 @@
   --elevated: oklch(0.96 0.018 270);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.28 0.045 280);
-  --primary: oklch(0.54 0.16 292);
+  /* No single loud accent: a quiet blue-teal ink, and the colour comes from
+     the pastels, which alternate from box to box. */
+  --primary: oklch(0.47 0.07 225);
   --primary-foreground: oklch(0.995 0.003 280);
-  --primary-soft: oklch(0.54 0.16 292 / 0.13);
+  --primary-soft: oklch(0.47 0.07 225 / 0.12);
   --secondary: oklch(0.955 0.02 265);
   --secondary-foreground: oklch(0.32 0.045 280);
   --muted: oklch(0.96 0.014 265);
   --muted-foreground: oklch(0.5 0.04 280);
-  --accent: oklch(0.93 0.035 290);
+  --accent: oklch(0.95 0.03 210);
   --accent-foreground: oklch(0.3 0.045 280);
   --border: oklch(0.92 0.02 270);
   --input: oklch(0.92 0.02 270);
-  --ring: oklch(0.54 0.16 292);
+  --ring: oklch(0.47 0.07 225);
 
   --visited: oklch(0.56 0.14 249);
   --nexttime: oklch(0.56 0.12 175);
@@ -191,7 +193,7 @@
   --tab-l: 0.56;
   --tab-c: 0.14;
 
-  --shadow-primary: 0 10px 26px -12px oklch(0.54 0.16 292 / 0.45);
+  --shadow-primary: 0 10px 26px -12px oklch(0.47 0.07 225 / 0.4);
   --gradient-clay: linear-gradient(142deg, oklch(0.62 0.15 285), oklch(0.52 0.16 300));
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.97 0.025 270 / 0.9), transparent 70%);
 }

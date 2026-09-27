@@ -196,10 +196,10 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
           <button
             key={pack.id}
             onClick={() => setActiveId(pack.id)}
-            className={`rounded-full border px-3 py-1.5 text-[13px] ${
+            className={`rounded-full border px-3.5 py-1.5 text-[13px] font-semibold ${
               pack.id === activeId
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-border"
+                : "border-border text-muted-foreground"
             }`}
           >
             {pack.emoji} {pack.name}
@@ -220,7 +220,7 @@ export function PackingBody({ tripId }: { tripId?: string | null | undefined }) 
         {tripId && (
           <button
             onClick={() => setShowAttach(!showAttach)}
-            className="rounded-full border border-dashed border-border px-3 py-1.5 text-[13px]"
+            className="rounded-full border border-dashed border-border px-3.5 py-1.5 text-[13px] font-semibold text-primary"
           >
             + Add saved list
           </button>

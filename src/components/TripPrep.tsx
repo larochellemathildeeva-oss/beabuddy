@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Backpack, ListChecks } from "lucide-react";
 import { PackingBody } from "@/components/PackingLists";
 import { Sheet } from "@/components/Sheet";
 import { TripTodosBody } from "@/components/TripTodos";
@@ -19,6 +20,7 @@ export function TripPrep({
   hasLodging,
   hasFlights,
   tripStart,
+  tripEnd,
   openSignal,
 }: {
   tripId: string;
@@ -27,6 +29,7 @@ export function TripPrep({
   hasLodging: boolean;
   hasFlights: boolean;
   tripStart?: string | null | undefined;
+  tripEnd?: string | null | undefined;
   /** Bumped by the trip card's icon to open the sheet. */
   openSignal?: number;
 }) {
@@ -40,32 +43,30 @@ export function TripPrep({
     }
   }, [openSignal]);
 
-  const tabs: { id: PrepTab; label: string }[] = [
-    { id: "todo", label: "To do" },
-    { id: "packing", label: "Packing" },
-  ];
+  const tabs = [
+    { id: "todo", label: "To do", Icon: ListChecks },
+    { id: "packing", label: "Packing", Icon: Backpack },
+  ] as const;
 
   return (
     <Sheet open={open} onClose={() => setOpen(false)} title="To do">
-      <div className="mb-3 flex gap-1.5" role="tablist">
-        {tabs.map((t) => (
+      <div role="tablist" className="mb-3 grid grid-cols-2 gap-1 rounded-full bg-elevated p-1">
+        {tabs.map(({ id, label, Icon }) => (
           <button
-            key={t.id}
+            key={id}
             type="button"
             role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`rounded-full border px-3 py-1.5 text-[13px] font-semibold ${
-              tab === t.id
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`flex items-center justify-center gap-1.5 rounded-full py-2 text-[14px] font-semibold transition-colors ${
+              tab === id ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground"
             }`}
           >
-            {t.label}
+            <Icon className="size-4" aria-hidden />
+            {label}
           </button>
         ))}
       </div>
-
       {tab === "todo" ? (
         <TripTodosBody
           tripId={tripId}
@@ -74,6 +75,7 @@ export function TripPrep({
           hasLodging={hasLodging}
           hasFlights={hasFlights}
           tripStart={tripStart}
+          tripEnd={tripEnd}
         />
       ) : (
         <PackingBody tripId={tripId} />

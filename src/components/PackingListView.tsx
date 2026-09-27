@@ -7,6 +7,7 @@ import {
   ChevronDown,
   EllipsisVertical,
   FileText,
+  Luggage,
   Minus,
   Package,
   Pencil,
@@ -100,6 +101,8 @@ export function PackingListView({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [newName, setNewName] = useState<string | null>(null);
+  /** One section only, from the chips; null shows them all. */
+  const [only, setOnly] = useState<string | null>(null);
 
   const saved = useMemo(() => fromRows(rows), [rows]);
   const view = edit ?? saved;
@@ -217,22 +220,71 @@ export function PackingListView({
 
   return (
     <div className={dirty ? "pb-2" : ""}>
-      <div className="mb-3 flex items-center gap-3 rounded-2xl border border-border bg-card px-3.5 py-2.5 shadow-2xs">
-        <span className="shrink-0 text-[13px] font-semibold">
-          {total} item{total === 1 ? "" : "s"}
+      <div className="tile-card-3 mb-3 flex items-center gap-3 px-3.5 py-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-elevated">
+          <Luggage className="size-5 text-primary" aria-hidden />
         </span>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-elevated">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-[15px]">
+              <b>
+                {done} of {total}
+              </b>{" "}
+              packed
+            </p>
+            <span className="text-[13px] font-semibold">{pct}%</span>
+          </div>
           <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${pct}%` }}
-          />
+            role="progressbar"
+            aria-label="Packed"
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={done}
+            className="mt-1.5 h-2 overflow-hidden rounded-full bg-elevated"
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
-        <span className="w-9 shrink-0 text-right text-[13px] text-muted-foreground">{pct}%</span>
       </div>
 
+      {groups.length > 1 && (
+        <div
+          role="group"
+          aria-label="Sections"
+          className="no-scrollbar -mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 text-[13px] font-semibold"
+        >
+          {[
+            { key: null, label: "All", count: total },
+            ...groups.map((g) => ({
+              key: keyOf(g.section),
+              label: g.section ?? "Unsorted",
+              count: g.items.length,
+            })),
+          ].map((chip) => (
+            <button
+              key={chip.key ?? "all"}
+              type="button"
+              aria-pressed={only === chip.key}
+              onClick={() => setOnly(chip.key)}
+              className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 ${
+                only === chip.key
+                  ? "bg-foreground text-background"
+                  : "border border-border text-muted-foreground"
+              }`}
+            >
+              {chip.label} · {chip.count}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="space-y-2">
-        {groups.map((group) => {
+        {groups.map((group, g) => {
           const key = keyOf(group.section);
+          if (only !== null && only !== key) return null;
           const isOpen = open.has(key);
           const count = group.items.length;
           const packed = group.items.filter((i) => i.packed).length;
@@ -242,14 +294,17 @@ export function PackingListView({
           return (
             <section
               key={key}
-              className={`rounded-2xl border bg-card shadow-2xs transition-colors ${
-                complete ? "border-primary" : "border-border"
+              className={`tile-card-${(g % 5) + 1} transition-colors ${
+                complete ? "ring-1 ring-primary/40" : ""
               }`}
             >
-              <div className="flex items-center gap-2 px-3 py-2.5">
-                <Icon
-                  className={`size-4 shrink-0 ${complete ? "text-primary" : "text-muted-foreground"}`}
-                />
+              <div className="flex items-center gap-2.5 px-3.5 py-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-elevated">
+                  <Icon
+                    className={`size-[18px] ${complete ? "text-primary" : "text-muted-foreground"}`}
+                    aria-hidden
+                  />
+                </span>
                 {renaming?.key === key ? (
                   <form
                     className="flex flex-1 gap-1.5"
@@ -296,7 +351,7 @@ export function PackingListView({
                     }
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
-                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
+                    <span className="min-w-0 flex-1 truncate font-display text-[20px] leading-tight">
                       {title}
                     </span>
                     <span
@@ -307,7 +362,7 @@ export function PackingListView({
                       }`}
                     >
                       {complete && <CheckCheck className="size-3.5" />}
-                      {packed}/{count}
+                      {packed} of {count}
                     </span>
                   </button>
                 )}
@@ -369,7 +424,7 @@ export function PackingListView({
               </div>
 
               {isOpen && (
-                <ul className="space-y-1.5 px-2.5 pb-2.5">
+                <ul className="divide-y divide-border/60 px-3.5 pb-2.5">
                   {group.items.map((item) =>
                     editingItem === item.key ? (
                       <ItemEditor
@@ -388,12 +443,7 @@ export function PackingListView({
                         onCancel={() => setEditingItem(null)}
                       />
                     ) : (
-                      <li
-                        key={item.key}
-                        className={`flex items-center gap-2.5 rounded-xl border px-2.5 py-2 ${
-                          item.packed ? "border-primary/40 bg-primary/5" : "border-border bg-card"
-                        }`}
-                      >
+                      <li key={item.key} className="flex items-center gap-3 py-2.5">
                         <input
                           id={`pack-${item.key}`}
                           type="checkbox"
@@ -404,12 +454,16 @@ export function PackingListView({
                         <label
                           htmlFor={`pack-${item.key}`}
                           className={`min-w-0 flex-1 text-[15px] ${
-                            item.packed ? "text-muted-foreground line-through" : ""
+                            item.packed ? "text-muted-foreground line-through" : "font-semibold"
                           }`}
                         >
                           {item.label}
-                          {item.quantity > 1 ? ` ×${item.quantity}` : ""}
                         </label>
+                        {item.quantity > 1 && (
+                          <span className="shrink-0 rounded-full bg-elevated px-2 py-0.5 text-[12px] font-semibold tabular-nums">
+                            ×{item.quantity}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setEditingItem(item.key)}
@@ -429,7 +483,7 @@ export function PackingListView({
                       </li>
                     ),
                   )}
-                  <li>
+                  <li className="pt-2">
                     {addingIn?.key === key ? (
                       <form
                         className="flex gap-1.5"

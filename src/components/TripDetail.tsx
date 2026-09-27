@@ -1497,6 +1497,7 @@ export function TripDetail({
           hasLodging={tripWide.hasLodging}
           hasFlights={tripWide.hasFlights}
           tripStart={trip.start_date}
+          tripEnd={trip.end_date}
           openSignal={prepSignal}
         />
       </div>
