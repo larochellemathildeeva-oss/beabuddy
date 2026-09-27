@@ -33,8 +33,8 @@ export function TripPrep({
   tripEnd?: string | null | undefined;
   /** Bumped by the trip card's icon to open the sheet. */
   openSignal?: number;
-  /** Open on this tab when the page arrives with one. */
-  openTab?: PrepTab | undefined;
+  /** Open on this tab: from the page's arrival link or the Overview's tiles. */
+  openTab?: { tab: PrepTab; n: number } | null | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<PrepTab>("todo");
@@ -48,7 +48,7 @@ export function TripPrep({
 
   useEffect(() => {
     if (openTab) {
-      setTab(openTab);
+      setTab(openTab.tab);
       setOpen(true);
     }
   }, [openTab]);

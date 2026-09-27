@@ -632,7 +632,7 @@ function TripsPage() {
           </div>
         )}
 
-        <section data-guide="document-vault">
+        <section id="documents" data-guide="document-vault" className="scroll-mt-4">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-display text-[27px] leading-none">Trip documents</h2>
             <span className="text-[12px] text-muted-foreground">Encrypted on this device</span>

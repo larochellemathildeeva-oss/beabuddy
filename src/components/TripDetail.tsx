@@ -7,18 +7,18 @@ import {
   MapPin,
   ChevronDown,
   ListChecks,
+  MoreHorizontal,
   Pencil,
   Plus,
-  Settings,
 } from "@/components/icons";
 import { TripBudget } from "@/components/TripBudget";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import { Section, SectionAction } from "@/components/Section";
-import { TripBanner } from "@/components/TripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { pickTripPhoto } from "@/lib/trip-card";
+import { tripDateLine } from "@/lib/trip-card";
+import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
 import { Sheet } from "@/components/Sheet";
@@ -107,7 +107,6 @@ import {
  */
 export function TripDetail({
   trip,
-  photos,
   members,
   companionsLine,
   me,
@@ -120,7 +119,8 @@ export function TripDetail({
   openPrep,
 }: {
   trip: TripRow;
-  photos: TripPhotoRow[];
+  /** Kept for callers; the trip page no longer shows a banner photo. */
+  photos?: TripPhotoRow[];
   members: MemberRow[];
   companionsLine: string;
   me: { id: string | null; name: string };
@@ -502,6 +502,10 @@ export function TripDetail({
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
+  /** Open the to-do or packing sheet on a given tab (arrival link, Overview). */
+  const [prepAsk, setPrepAsk] = useState<{ tab: PrepTab; n: number } | null>(() =>
+    openPrep ? { tab: openPrep, n: 1 } : null,
+  );
   /** The member about to lose access, or null. Named, so the sheet can say who. */
   const [addingTimeline, setAddingTimeline] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(true);
@@ -678,13 +682,6 @@ export function TripDetail({
     hasFlights: board.items.some((item) => timelineGlyph(item) === "transport"),
   };
 
-  // The trip's own photo, out of the one list loaded for the whole page.
-  const banner = pickTripPhoto(photos, {
-    city: trip.city,
-    country: trip.country,
-    cities: cities.stops.map((stop) => stop.city),
-  });
-
   const tripNote = beaTripNote(
     {
       startDate: trip.start_date,
@@ -700,24 +697,41 @@ export function TripDetail({
     // not hidden: hidden makes this the scroll box and the pinned banner would
     // never stick.
     <article className="overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card">
-      {/* Pinned: where and when stay on screen while the itinerary scrolls. */}
-      <div className="sticky top-0 z-30 shadow-sm">
-        <TripBanner
-          compact
-          title={trip.title}
-          city={trip.city}
-          country={trip.country}
-          cities={cities.stops.map((stop) => stop.city)}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-          tentative={trip.dates_status === "tentative"}
-          photo={banner}
-          companions={companionsLine}
-          // The same name as the card in the list, so the browser tweens the one
-          // photograph between them instead of cutting.
-          viewTransitionName={`trip-photo-${trip.id}`}
-        />
-      </div>
+      {/* The master's trip header: the name large, where and when under it,
+          and the trip menu. The same view-transition name as the card that
+          opened it, so the move reads as one object. */}
+      <header
+        className="flex items-start justify-between gap-3 px-4 pt-3"
+        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
+      >
+        <div className="min-w-0">
+          <h1 className="break-words font-display text-[40px] leading-[1.02]">{trip.title}</h1>
+          <p className="mt-1 text-[14.5px] text-muted-foreground">
+            {[
+              formatTripLocation(trip.city?.split(",")[0], trip.country),
+              tripDateLine(trip.start_date, trip.end_date),
+              trip.dates_status === "tentative" ? "tentative" : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+          {companionsLine ? (
+            <p className="text-[13px] text-muted-foreground">{companionsLine}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSettingsOpen(true);
+            setSheetSection(null);
+          }}
+          title="Trip menu"
+          aria-label="Trip menu"
+          className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
+      </header>
       {/* Béa's line scrolls away with the page; only the bar above stays. */}
       {tripNote ? (
         <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
@@ -747,18 +761,6 @@ export function TripDetail({
           To do
         </button>
         <button
-          onClick={() => {
-            setSettingsOpen(true);
-            setSheetSection(null);
-          }}
-          // A gear alone, so the whole row fits one line on a phone.
-          title="Trip settings"
-          aria-label="Trip settings"
-          className="inline-flex shrink-0 items-center rounded-xl border border-border bg-elevated p-1.5 shadow-2xs transition-all active:scale-95"
-        >
-          <Settings className="size-4 text-primary" aria-hidden />
-        </button>
-        <button
           data-guide="add-stop"
           title="Add a stop, a saved place or a city"
           onClick={() => setAddOpen(true)}
@@ -778,7 +780,10 @@ export function TripDetail({
       </div>
 
       <div className="section-stagger border-t border-border px-3 pb-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5">
+        <div
+          hidden={others.length === 0}
+          className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5"
+        >
           <div className="flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
             <p className="text-[11.5px] text-muted-foreground">
@@ -862,6 +867,24 @@ export function TripDetail({
           <p className="mb-3 px-0.5 text-[11px] text-muted-foreground">{activePerspective.hint}</p>
         ) : (
           <div className="mb-3" />
+        )}
+
+        {perspective === "overview" && (
+          <TripOverview
+            tripId={trip.id}
+            items={stopItems}
+            cities={cities.stops.map((stop) => stop.city)}
+            groups={timelineGroups}
+            onOpenTimeline={(dayKey) => {
+              if (dayKey !== undefined) setDayChoice(dayKey);
+              setPerspective("timeline");
+            }}
+            onOpenMap={(dayKey) => {
+              if (dayKey) setDayChoice(dayKey);
+              setPerspective("map");
+            }}
+            onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+          />
         )}
 
         {perspective === "companion" && (
@@ -1502,7 +1525,7 @@ export function TripDetail({
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
           openSignal={prepSignal}
-          openTab={openPrep}
+          openTab={prepAsk}
         />
       </div>
 
