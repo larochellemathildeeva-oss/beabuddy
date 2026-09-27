@@ -177,8 +177,8 @@ Country names are matched in any language through `src/lib/country-names.ts`.
   Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`.
   Never position Béa as “AI travel planner.” Prefer privacy copy that matches reality
   (*designed to / private by default / may*), not absolute guarantees.
-- `vite.config.ts` builds on `@lovable.dev/vite-tanstack-config`, which supplies
-  the whole plugin chain. It is a leftover from the previous host but is load-
-  bearing — removing it means reconstructing the build config.
+- `vite.config.ts` lists the whole plugin chain itself: Tailwind, tsconfig
+  paths, TanStack Start, Nitro (`node-server`, build only) and React. Add a
+  plugin there only if it is not already in that list.
 - `src/lib/*.functions.ts` files ship to the client bundle. Server-only code
   belongs in `*.server.ts`, or behind a lazy import inside a handler.
