@@ -1,0 +1,167 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "meta": {
+    "product": "Béa",
+    "version": "1.0",
+    "status": "canonical implementation baseline",
+    "note": "Values below are the single canonical implementation values to use going forward. Where the approved mockups did not encode a machine-readable measurement, the value is normalized from the approved visual system rather than claimed as an originally-recorded numeric value."
+  },
+  "fonts": {
+    "heading": "DejaVu Serif",
+    "body": "DejaVu Sans",
+    "fallback": [
+      "Georgia",
+      "serif",
+      "Arial",
+      "sans-serif"
+    ]
+  },
+  "typography": {
+    "pageTitle": {
+      "sizePx": 32,
+      "weight": 700,
+      "lineHeightPx": 38
+    },
+    "sectionTitle": {
+      "sizePx": 20,
+      "weight": 700,
+      "lineHeightPx": 26
+    },
+    "cardTitle": {
+      "sizePx": 17,
+      "weight": 700,
+      "lineHeightPx": 22
+    },
+    "body": {
+      "sizePx": 15,
+      "weight": 400,
+      "lineHeightPx": 22
+    },
+    "small": {
+      "sizePx": 13,
+      "weight": 400,
+      "lineHeightPx": 18
+    },
+    "labelCaps": {
+      "sizePx": 11,
+      "weight": 700,
+      "lineHeightPx": 14,
+      "letterSpacingEm": 0.08
+    },
+    "button": {
+      "sizePx": 16,
+      "weight": 700,
+      "lineHeightPx": 20
+    }
+  },
+  "spacingPx": {
+    "0": 0,
+    "1": 4,
+    "2": 8,
+    "3": 12,
+    "4": 16,
+    "5": 20,
+    "6": 24,
+    "8": 32,
+    "10": 40,
+    "12": 48
+  },
+  "radiusPx": {
+    "card": 18,
+    "button": 16,
+    "chip": 999,
+    "sheet": 28,
+    "image": 16,
+    "input": 14
+  },
+  "shadow": {
+    "card": {
+      "x": 0,
+      "y": 2,
+      "blur": 12,
+      "spread": 0,
+      "color": "#1E1A1730"
+    },
+    "raised": {
+      "x": 0,
+      "y": 6,
+      "blur": 24,
+      "spread": 0,
+      "color": "#1E1A1738"
+    },
+    "sheet": {
+      "x": 0,
+      "y": -4,
+      "blur": 24,
+      "spread": 0,
+      "color": "#1E1A172E"
+    }
+  },
+  "component": {
+    "buttonHeightPx": 52,
+    "iconSizePx": 22,
+    "bottomNavHeightPx": 72,
+    "cardPaddingPx": 16,
+    "listRowHeightPx": 56,
+    "chipHeightPx": 34,
+    "inputHeightPx": 52,
+    "screenHorizontalPaddingPx": 20
+  },
+  "themes": {
+    "calm": {
+      "background": "#F7F2E9",
+      "surface": "#FFFDF8",
+      "surfaceRaised": "#FFFFFF",
+      "text": "#28231F",
+      "textSecondary": "#746B63",
+      "border": "#DDD3C7",
+      "primary": "#A9583D",
+      "onPrimary": "#FFFFFF",
+      "success": "#58745C",
+      "warning": "#B47A35",
+      "danger": "#A94A46",
+      "navSelected": "#A9583D",
+      "navUnselected": "#8B8178"
+    },
+    "colorful": {
+      "background": "#FFF9F3",
+      "surface": "#FFFFFF",
+      "surfaceRaised": "#FFFFFF",
+      "text": "#29252A",
+      "textSecondary": "#766D76",
+      "border": "#E7DDE2",
+      "primary": "#B55B45",
+      "onPrimary": "#FFFFFF",
+      "success": "#5E806B",
+      "warning": "#B9833E",
+      "danger": "#B45159",
+      "pastels": {
+        "peach": "#F7D8C9",
+        "blush": "#F4DCE2",
+        "lavender": "#E6DDF3",
+        "sky": "#DCEAF4",
+        "mint": "#DCECDD",
+        "butter": "#F4E7B9",
+        "sand": "#EEDFCB",
+        "rose": "#EBCFD4"
+      },
+      "navSelected": "#B55B45",
+      "navUnselected": "#8C8189"
+    },
+    "dark": {
+      "background": "#171513",
+      "surface": "#211E1B",
+      "surfaceRaised": "#2B2723",
+      "text": "#F6F0E8",
+      "textSecondary": "#B8AEA4",
+      "border": "#3A342F",
+      "primary": "#D98261",
+      "onPrimary": "#171513",
+      "success": "#86A78B",
+      "warning": "#D5A25D",
+      "danger": "#D97A76",
+      "navSelected": "#D98261",
+      "navUnselected": "#91877E"
+    }
+  }
+}

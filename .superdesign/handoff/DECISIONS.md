@@ -26,3 +26,12 @@
   personality never changes facts or recommendations.
 - To exactly match ChatGPT's designs: asking ChatGPT for design tokens (JSON) and, if
   it can, a real layered Figma file; plus separate image files for any picture to keep.
+
+## Design tokens (bea-design-tokens.json)
+
+- ChatGPT's token file is the source of truth for colours, radii, shadows and
+  sizes in all three themes. Applied in `src/styles.css`.
+- **Fonts: not applied.** The file names DejaVu Serif/Sans; the owner chose to
+  keep the current serif (Instrument Serif) and body font (Manrope).
+- Colorful uses peach, sky, mint, butter and blush for the five tiles.
+  Lavender and rose are left out so it never reads as purple.

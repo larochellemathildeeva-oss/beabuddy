@@ -39,6 +39,8 @@
   --color-reco: var(--reco);
   --color-elevated: var(--elevated);
   --color-primary-soft: var(--primary-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-tile-1: var(--tile-1);
   --color-tile-2: var(--tile-2);
   --color-tile-3: var(--tile-3);
@@ -58,31 +60,46 @@
 [data-theme="calm"] {
   --radius: 1.02rem;
 
+  /* The master design's sizes (bea-design-tokens.json), the same in every theme. */
+  --r-card: 18px;
+  --r-button: 16px;
+  --r-sheet: 28px;
+  --r-image: 16px;
+  --r-input: 14px;
+  --h-button: 52px;
+  --h-input: 52px;
+  --h-row: 56px;
+  --h-chip: 34px;
+  --pad-card: 16px;
+  --pad-screen: 20px;
+  --success: #58745c;
+  --warning: #b47a35;
+
   /* Calm — the default. White and cream on light beige; a soft sand accent.
      Cards sit *lighter* than the ground so depth comes from surface, not from
      a border on every element. */
-  --background: oklch(0.982 0.007 80);
-  --foreground: oklch(0.31 0.017 60);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.31 0.017 60);
-  --elevated: oklch(0.945 0.017 76);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.31 0.017 60);
-  --primary: oklch(0.54 0.075 50);
-  --primary-foreground: oklch(0.995 0.003 85);
+  --background: #f7f2e9;
+  --foreground: #28231f;
+  --card: #fffdf8;
+  --card-foreground: #28231f;
+  --elevated: #efe8dc;
+  --popover: #ffffff;
+  --popover-foreground: #28231f;
+  --primary: #a9583d;
+  --primary-foreground: #ffffff;
   /* A tint of the primary, for selected chips and quiet highlights. */
-  --primary-soft: oklch(0.54 0.075 50 / 0.12);
-  --secondary: oklch(0.945 0.017 76);
-  --secondary-foreground: oklch(0.36 0.02 60);
-  --muted: oklch(0.95 0.012 78);
-  --muted-foreground: oklch(0.53 0.02 62);
-  --accent: oklch(0.93 0.02 72);
-  --accent-foreground: oklch(0.33 0.02 60);
-  --destructive: oklch(0.55 0.185 27);
+  --primary-soft: rgb(169 88 61 / 0.12);
+  --secondary: #efe8dc;
+  --secondary-foreground: #28231f;
+  --muted: #f0eae0;
+  --muted-foreground: #746b63;
+  --accent: #ece3d6;
+  --accent-foreground: #28231f;
+  --destructive: #a94a46;
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.915 0.017 78);
-  --input: oklch(0.915 0.017 78);
-  --ring: oklch(0.54 0.075 50);
+  --border: #ddd3c7;
+  --input: #ddd3c7;
+  --ring: #a9583d;
 
   --visited: oklch(0.55 0.135 249);
   --nexttime: oklch(0.56 0.12 158);
@@ -105,13 +122,13 @@
 
   /* Diffuse and low-contrast: modern depth is soft, not a hard drop shadow. */
   --shadow-xs: 0 1px 2px oklch(0.3 0.02 60 / 0.04);
-  --shadow-sm: 0 1px 2px oklch(0.3 0.02 60 / 0.03), 0 3px 8px -4px oklch(0.3 0.02 60 / 0.08);
-  --shadow-md: 0 1px 2px oklch(0.3 0.02 60 / 0.03), 0 10px 22px -14px oklch(0.3 0.02 60 / 0.22);
-  --shadow-lg: 0 2px 4px oklch(0.3 0.02 60 / 0.04), 0 24px 48px -24px oklch(0.3 0.02 60 / 0.3);
-  --shadow-primary: 0 10px 24px -14px oklch(0.54 0.075 50 / 0.55);
+  --shadow-sm: 0 2px 12px rgb(30 26 23 / 0.19);
+  --shadow-md: 0 2px 12px rgb(30 26 23 / 0.19);
+  --shadow-lg: 0 6px 24px rgb(30 26 23 / 0.22);
+  --shadow-primary: 0 6px 18px -8px rgb(169 88 61 / 0.5);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.6 0.075 55), oklch(0.5 0.075 45));
+  --gradient-clay: linear-gradient(142deg, #b5654a, #a9583d);
   /* Barely-there warmth so the page is not a flat fill. */
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(1 0.006 80 / 0.9), transparent 70%);
 
@@ -150,77 +167,77 @@
   --ease-spring: var(--ease-confirm);
 }
 
-/* Colorful — cheerful cool pastels (lilac, sky, cyan, teal) and a violet
-   accent, on a cool white. No orange: that belongs to Calm's warmth. */
+/* Colorful — the master's pastels (peach, sky, mint, butter, blush) on a warm
+   white, with a terracotta accent. Lavender is left out: no purple wash. */
 [data-theme="colorful"] {
-  --background: oklch(0.988 0.006 260);
-  --foreground: oklch(0.28 0.045 280);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.28 0.045 280);
-  --elevated: oklch(0.96 0.018 270);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.28 0.045 280);
-  /* No single loud accent: a quiet blue-teal ink, and the colour comes from
-     the pastels, which alternate from box to box. */
-  --primary: oklch(0.47 0.07 225);
-  --primary-foreground: oklch(0.995 0.003 280);
-  --primary-soft: oklch(0.47 0.07 225 / 0.12);
-  --secondary: oklch(0.955 0.02 265);
-  --secondary-foreground: oklch(0.32 0.045 280);
-  --muted: oklch(0.96 0.014 265);
-  --muted-foreground: oklch(0.5 0.04 280);
-  --accent: oklch(0.95 0.03 210);
-  --accent-foreground: oklch(0.3 0.045 280);
-  --border: oklch(0.92 0.02 270);
-  --input: oklch(0.92 0.02 270);
-  --ring: oklch(0.47 0.07 225);
+  --background: #fff9f3;
+  --foreground: #29252a;
+  --card: #ffffff;
+  --card-foreground: #29252a;
+  --elevated: #f6eee8;
+  --popover: #ffffff;
+  --popover-foreground: #29252a;
+  --primary: #b55b45;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgb(181 91 69 / 0.12);
+  --secondary: #f6eee8;
+  --secondary-foreground: #29252a;
+  --muted: #f7f0ea;
+  --muted-foreground: #766d76;
+  --accent: #f7d8c9;
+  --accent-foreground: #29252a;
+  --border: #e7dde2;
+  --input: #e7dde2;
+  --ring: #b55b45;
 
   --visited: oklch(0.56 0.14 249);
   --nexttime: oklch(0.56 0.12 175);
   --wishlist: oklch(0.66 0.15 84);
   --reco: oklch(0.56 0.16 320);
 
-  /* Lilac, sky, teal, cyan, pink — different enough that neighbouring
+  /* Peach, sky, mint, butter, blush — different enough that neighbouring
      boxes read as different colours, which is the point of Colorful. */
-  --tile-1: oklch(0.945 0.035 300);
-  --tile-2: oklch(0.95 0.03 245);
-  --tile-3: oklch(0.955 0.035 175);
-  --tile-4: oklch(0.955 0.03 210);
-  --tile-5: oklch(0.95 0.03 345);
+  --tile-1: #f7d8c9;
+  --tile-2: #dceaf4;
+  --tile-3: #dcecdd;
+  --tile-4: #f4e7b9;
+  --tile-5: #f4dce2;
 
   --inverse-accent: oklch(0.83 0.1 295);
 
   --tab-l: 0.56;
   --tab-c: 0.14;
 
-  --shadow-primary: 0 10px 26px -12px oklch(0.47 0.07 225 / 0.4);
-  --gradient-clay: linear-gradient(142deg, oklch(0.62 0.15 285), oklch(0.52 0.16 300));
-  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.97 0.025 270 / 0.9), transparent 70%);
+  --shadow-primary: 0 6px 18px -8px rgb(181 91 69 / 0.45);
+  --gradient-clay: linear-gradient(142deg, #c06a52, #b55b45);
+  --page-wash: none;
+  --success: #5e806b;
+  --warning: #b9833e;
 }
 
-/* Dark — near-black with off-white text and a warm beige accent. */
+/* Dark — near-black with off-white text and a warm terracotta accent. */
 .dark {
-  --background: oklch(0.165 0.004 60);
-  --foreground: oklch(0.955 0.01 75);
-  --card: oklch(0.21 0.005 60);
-  --card-foreground: oklch(0.955 0.01 75);
-  --elevated: oklch(0.24 0.006 60);
-  --popover: oklch(0.225 0.005 60);
-  --popover-foreground: oklch(0.955 0.01 75);
-  --primary: oklch(0.83 0.045 75);
-  --primary-foreground: oklch(0.2 0.01 60);
-  --primary-soft: oklch(0.83 0.045 75 / 0.14);
-  --secondary: oklch(0.24 0.006 60);
-  --secondary-foreground: oklch(0.93 0.01 75);
-  --muted: oklch(0.24 0.006 60);
-  --muted-foreground: oklch(0.71 0.018 70);
-  --accent: oklch(0.27 0.008 60);
-  --accent-foreground: oklch(0.94 0.01 75);
-  --destructive: oklch(0.65 0.175 27);
+  --background: #171513;
+  --foreground: #f6f0e8;
+  --card: #211e1b;
+  --card-foreground: #f6f0e8;
+  --elevated: #2b2723;
+  --popover: #2b2723;
+  --popover-foreground: #f6f0e8;
+  --primary: #d98261;
+  --primary-foreground: #171513;
+  --primary-soft: rgb(217 130 97 / 0.16);
+  --secondary: #2b2723;
+  --secondary-foreground: #f6f0e8;
+  --muted: #2b2723;
+  --muted-foreground: #b8aea4;
+  --accent: #2b2723;
+  --accent-foreground: #f6f0e8;
+  --destructive: #d97a76;
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: oklch(0.3 0.008 60);
-  --input: oklch(0.3 0.008 60);
-  --ring: oklch(0.83 0.045 75);
+  --border: #3a342f;
+  --input: #3a342f;
+  --ring: #d98261;
 
   --visited: oklch(0.7 0.135 249);
   --nexttime: oklch(0.72 0.13 158);
@@ -243,12 +260,14 @@
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
   --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
   --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 10px 28px -12px oklch(0.83 0.045 75 / 0.35);
+  --shadow-primary: 0 6px 18px -8px rgb(217 130 97 / 0.4);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, oklch(0.87 0.045 78), oklch(0.78 0.05 70));
+  --gradient-clay: linear-gradient(142deg, #e08f70, #d98261);
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
 
+  --success: #86a78b;
+  --warning: #d5a25d;
   color-scheme: dark;
 }
 
@@ -266,7 +285,7 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     font-size: 15px;
-    line-height: 1.5;
+    line-height: 22px;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -467,7 +486,7 @@
 
 /**
  * A card that is a quiet white card in Calm and Dark and turns pastel in
- * Colorful: tile-card-1 lilac, -2 sky, -3 teal, -4 cyan, -5 pink.
+ * Colorful: tile-card-1 peach, -2 sky, -3 mint, -4 butter, -5 blush.
  * Plain CSS rather than @utility so the Colorful rules sit beside the base;
  * in the components layer so utilities on the element still win.
  */
@@ -479,7 +498,7 @@
   .tile-card-5 {
     background-color: var(--color-card);
     border: 1px solid color-mix(in oklch, var(--color-border) 55%, transparent);
-    border-radius: var(--radius-3xl);
+    border-radius: var(--r-card);
     box-shadow: var(--shadow-sm);
   }
   [data-theme="colorful"]
@@ -567,7 +586,7 @@
 @utility card-raised {
   background-color: var(--color-popover);
   border: 1px solid color-mix(in oklch, var(--color-border) 65%, transparent);
-  border-radius: var(--radius-3xl);
+  border-radius: var(--r-sheet);
   box-shadow: var(--shadow-lg);
 }
 
@@ -581,10 +600,11 @@
  * larger and slightly tighter reads as deliberate instead of squinty.
  */
 @utility label-caps {
-  font-size: 0.6875rem;
+  font-size: 11px;
+  line-height: 14px;
   text-transform: uppercase;
-  letter-spacing: 0.13em;
-  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-weight: 700;
   color: var(--color-muted-foreground);
 }
 
@@ -592,9 +612,11 @@
 @utility btn-primary {
   background-image: var(--gradient-clay);
   color: var(--color-primary-foreground);
-  border-radius: var(--radius-2xl);
+  border-radius: var(--r-button);
   box-shadow: var(--shadow-primary);
-  font-weight: 600;
+  min-height: var(--h-button);
+  font-size: 16px;
+  font-weight: 700;
 }
 
 /** A chip that is switched on, without shouting. */
