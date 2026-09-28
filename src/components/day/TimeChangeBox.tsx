@@ -1,49 +1,93 @@
 import { useState, type FormEvent } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { findStopForChange, readTimeChange } from "@/lib/stop-edit";
+import { askPlanEdit } from "@/lib/plan-edit.functions";
+import { PLAN_EDIT_MAX_REQUEST } from "@/lib/plan-edit";
+import { rearrange, stopsOfDay, type StopMove } from "@/lib/stop-move";
+import { formatTimelineDayLabel } from "@/lib/timeline-groups";
+import { readableError } from "@/lib/optimistic";
 
-type Stop = { id: string; title: string; day_date: string | null; time_label: string | null };
+type Stop = {
+  id: string;
+  title: string;
+  day_date: string | null;
+  time_label: string | null;
+  position: number;
+  kind?: string | null;
+};
 
 /**
- * "Change the time of Louvre on day 2 to 6am", typed instead of tapped
- * through. Read without a model (`stop-edit.ts`); when the words or the stop
- * are unclear it says so rather than moving the wrong one.
+ * "Change the time of Louvre on day 2 to 6am", "put the Louvre on Thursday
+ * morning", "swap day 2 and day 3": a change to the plan, typed instead of
+ * tapped through.
+ *
+ * A plain time change is read here without a model (`stop-edit.ts`) and saved
+ * straight away, as before. Anything else goes to Béa (`askPlanEdit`), whose
+ * moves are shown first and only saved on Apply — a wrong stop moved quietly
+ * is worse than a question.
  */
+/** The plan as Béa read it, to tell whether it changed before Apply. */
+const planKey = (stops: readonly Stop[]) =>
+  stops.map((s) => `${s.id}|${s.day_date ?? ""}|${s.time_label ?? ""}|${s.position}`).join("\n");
+
 export function TimeChangeBox({
+  tripId,
   stops,
   days,
   onChangeTime,
+  onApply,
   onDone,
 }: {
+  tripId: string;
   stops: readonly Stop[];
-  /** The trip's dated days in order: "day 2" is the second. */
+  /** The trip's days in order: "day 2" is the second. */
   days: readonly string[];
   onChangeTime: (id: string, time: string | null) => Promise<void>;
+  /** Save Béa's moves, with its own Undo. */
+  onApply: (moves: StopMove[], summary: string) => Promise<void>;
   onDone?: () => void;
 }) {
   const [text, setText] = useState("");
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
+  const [proposal, setProposal] = useState<{
+    moves: StopMove[];
+    reply: string;
+    /** `planKey` of the stops Béa was asked about. */
+    basis: string;
+  } | null>(null);
+  const ask = useServerFn(askPlanEdit);
+
+  const askBea = async () => {
+    // The server reads the trip itself; only which trip and the words go.
+    const basis = planKey(stops);
+    const answer = await ask({
+      data: { tripId, request: text.trim().slice(0, PLAN_EDIT_MAX_REQUEST) },
+    });
+    if (answer.moves.length === 0) {
+      setProblem(answer.reply || "Béa didn't find anything to move for that.");
+      return;
+    }
+    setProposal({ ...answer, basis });
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setProblem("");
+    setProposal(null);
     const change = readTimeChange(text);
-    if (!change) {
-      setProblem('Béa didn\'t follow that. Try "Change the time of Louvre on day 2 to 6am".');
-      return;
-    }
-    const found = findStopForChange(change, stops, days);
-    if ("problem" in found) {
-      setProblem(
-        found.problem === "no-day"
-          ? `This trip has no day ${change.day}.`
-          : found.problem === "ambiguous"
-            ? `More than one stop is called that${
-                change.day == null ? " — add the day, like “on day 2”" : ""
-              }.`
-            : `Béa couldn't find “${change.stop}”${change.day ? ` on day ${change.day}` : ""}.`,
-      );
+    const found = change ? findStopForChange(change, stops, days) : null;
+    if (!change || !found || "problem" in found) {
+      // Not a plain time change Béa can be sure of here: ask the model.
+      setBusy(true);
+      try {
+        await askBea();
+      } catch (err) {
+        setProblem(readableError(err) ?? "Béa couldn't answer just now. Try again in a moment.");
+      } finally {
+        setBusy(false);
+      }
       return;
     }
     const { stop } = found;
@@ -71,20 +115,70 @@ export function TimeChangeBox({
     }
   };
 
+  const apply = async () => {
+    if (!proposal) return;
+    // Someone changed the plan since Béa read it: her moves were worked out
+    // on the old one, so ask again rather than apply them to the new.
+    if (planKey(stops) !== proposal.basis) {
+      setProposal(null);
+      setProblem("The plan changed since Béa suggested this. Ask again.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onApply(proposal.moves, proposal.reply);
+      setProposal(null);
+      setText("");
+      onDone?.();
+    } catch {
+      setProblem("Couldn't save that. Check your connection and try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const dayName = (day: string | null) => {
+    if (!day) return "No date";
+    const index = days.indexOf(day);
+    return index < 0 ? formatTimelineDayLabel(day) : `Day ${index + 1}`;
+  };
+  /**
+   * "Day 3, after Orsay, 16:00": where each stop ends up once every move is
+   * applied in order, the same way Apply saves them.
+   */
+  const landed = (() => {
+    if (!proposal) return null;
+    const updates = rearrange(stops, proposal.moves);
+    return stops.map((stop) => ({ ...stop, ...updates.find((u) => u.id === stop.id) }));
+  })();
+  const describe = (move: StopMove) => {
+    const stop = landed?.find((s) => s.id === move.id);
+    if (!landed || !stop) return "";
+    const list = stopsOfDay(landed, stop.day_date);
+    const index = list.findIndex((s) => s.id === move.id);
+    const where =
+      index === 0
+        ? "first"
+        : index === list.length - 1
+          ? "last"
+          : `after ${list[index - 1]!.title}`;
+    return `${dayName(stop.day_date)}, ${where}${stop.time_label ? `, ${stop.time_label}` : ""}`;
+  };
+
   return (
     <form onSubmit={(e) => void submit(e)}>
       <label
         htmlFor="time-change"
         className="mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
       >
-        Change a time
+        Ask Béa to change the plan
       </label>
       <div className="flex gap-2">
         <input
           id="time-change"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Change the time of Louvre on day 2 to 6am"
+          placeholder="Put the Louvre on day 3 morning"
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-[16px]"
         />
         <button
@@ -92,10 +186,43 @@ export function TimeChangeBox({
           disabled={busy || !text.trim()}
           className="min-h-11 shrink-0 rounded-xl bg-primary px-3 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Change"}
+          {busy ? "Thinking…" : "Ask"}
         </button>
       </div>
       {problem && <p className="mt-1.5 text-[13px] text-destructive">{problem}</p>}
+      {proposal && (
+        <div className="mt-2 rounded-xl border border-primary/30 bg-primary-soft p-2.5">
+          {proposal.reply && <p className="text-[13.5px] text-foreground">{proposal.reply}</p>}
+          <ul className="mt-1.5 space-y-1 text-[13px]">
+            {proposal.moves.map((move) => {
+              const stop = stops.find((s) => s.id === move.id);
+              return (
+                <li key={move.id}>
+                  <span className="font-semibold">{stop?.title ?? "A stop"}</span>
+                  <span className="text-muted-foreground"> → {describe(move)}</span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void apply()}
+              className="min-h-10 rounded-xl bg-primary px-3 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              onClick={() => setProposal(null)}
+              className="min-h-10 rounded-xl border border-border bg-card px-3 text-[14px] font-semibold text-muted-foreground"
+            >
+              Not this
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

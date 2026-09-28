@@ -49,7 +49,7 @@ import {
   timelineStopsForDirections,
 } from "@/lib/direction-stops";
 import { formatTripLocation } from "@/lib/place-label";
-import { groupTimelineByDay } from "@/lib/timeline-groups";
+import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
 import { CompanionBanner } from "@/components/day/CompanionBanner";
 import {
@@ -70,7 +70,8 @@ import {
   visibleGroups,
   type DayChoice,
 } from "@/lib/trip-days";
-import { canMove } from "@/lib/timeline-order";
+import { rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
+import { MoveStopSheet } from "@/components/day/MoveStopSheet";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
 import { dayTightnessNote, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
@@ -91,6 +92,7 @@ import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { NowPanel } from "@/components/day/NowPanel";
 import {
+  clockMinutes,
   companionState,
   companionStops,
   isDone,
@@ -620,6 +622,108 @@ export function TripDetail({
   const bookingDocs = useTripBookingDocuments(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(stopItems);
+  /** Every day of the trip, for moving stops between them — empty days too. */
+  const moveDays = tripDays(trip.start_date, trip.end_date, stopItems);
+  /** The stop "Move to…" is open on. */
+  const [movingId, setMovingId] = useState<string | null>(null);
+  const movingStop = movingId ? (stopItems.find((item) => item.id === movingId) ?? null) : null;
+
+  /**
+   * Save moves (Up/Down, "Move to…", or Béa's), then say what happened with
+   * Undo. A single stop whose time no longer fits where it landed gets the
+   * offer of one that does. A plain step inside a day stays quiet.
+   */
+  const moveStops = async (moves: StopMove[], summary?: string) => {
+    const updates = rearrange(stopItems, moves);
+    if (updates.length === 0) return;
+    const previous = updates.flatMap((u) => {
+      const row = board.items.find((item) => item.id === u.id);
+      return row
+        ? [
+            {
+              id: row.id,
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+            },
+          ]
+        : [];
+    });
+    const single = moves.length === 1 ? moves[0]! : null;
+    const fit = single ? timeFit(stopItems, single, clockMinutes) : null;
+    const stop = single ? stopItems.find((item) => item.id === single.id) : undefined;
+    const crossedDay = single && stop && (stop.day_date ?? "") !== (single.day_date ?? "");
+    const undo = () =>
+      void board.applySchedule(previous).then(
+        () => toast.success("Back where it was"),
+        () => toast.error("Couldn't undo that. Check your connection."),
+      );
+    try {
+      await board.applySchedule(updates);
+    } catch (e) {
+      // Rows are written one by one, so some may have saved before the
+      // failure. The list has reloaded to show them; offer to put it back.
+      setLiveLegs(null);
+      toast.error("Couldn't save all of that move.", {
+        description: "Check your connection. Some stops may already have moved.",
+        duration: 10000,
+        action: { label: "Put back", onClick: undo },
+      });
+      throw e;
+    }
+    // Journeys worked out just now were for the old neighbours.
+    setLiveLegs(null);
+    if (fit && single) {
+      const landed = updates.find((u) => u.id === single.id);
+      toast(`${stop?.title ?? "That stop"}'s ${fit.time} is now out of order`, {
+        description: fit.suggestion
+          ? `${fit.suggestion} would fit between its neighbours.`
+          : "Clear its time, or set one by hand.",
+        duration: 10000,
+        action: {
+          label: fit.suggestion ? `Set ${fit.suggestion}` : "Clear time",
+          onClick: () =>
+            landed &&
+            void board
+              .applySchedule([{ ...landed, time_label: fit.suggestion }])
+              .catch(() => toast.error("Couldn't change the time. Check your connection.")),
+        },
+        cancel: { label: "Undo", onClick: undo },
+      });
+      return;
+    }
+    if (!summary && !crossedDay) return;
+    toast(
+      summary ||
+        `${stop?.title ?? "Stop"} moved to ${
+          single?.day_date ? formatTimelineDayLabel(single.day_date) : "No date"
+        }`,
+      {
+        ...(summary
+          ? {
+              description: `${updates.length} ${updates.length === 1 ? "change" : "changes"} saved.`,
+            }
+          : {}),
+        duration: 8000,
+        action: { label: "Undo", onClick: undo },
+      },
+    );
+  };
+  const moveProps = (item: ItineraryRow) => {
+    const up = stepMove(stopItems, item.id, -1, moveDays);
+    const down = stepMove(stopItems, item.id, 1, moveDays);
+    return {
+      onMove: (direction: -1 | 1) => {
+        const move = direction < 0 ? up : down;
+        if (move)
+          // moveStops says what went wrong itself.
+          void moveStops([move]).catch(() => undefined);
+      },
+      canMoveUp: up !== null,
+      canMoveDown: down !== null,
+      onMoveTo: () => setMovingId(item.id),
+    };
+  };
   /**
    * The day on screen. Null until the traveller picks one, so the default
    * keeps tracking the data while it loads — the first render has no items,
@@ -1357,11 +1461,7 @@ export function TripDetail({
                                       onEdit={(field) => board.setEditing(field)}
                                       onUpdate={(patch) => void board.updateItem(item.id, patch)}
                                       onRemove={() => void removeTimelineItem(item)}
-                                      onMove={(direction) =>
-                                        void board.moveItem(item.id, direction)
-                                      }
-                                      canMoveUp={canMove(stopItems, item.id, -1)}
-                                      canMoveDown={canMove(stopItems, item.id, 1)}
+                                      {...moveProps(item)}
                                       tripStart={trip.start_date}
                                       tripEnd={trip.end_date}
                                       onKeep={keepItemAsReco}
@@ -1436,9 +1536,7 @@ export function TripDetail({
                           onEdit={(field) => board.setEditing(field)}
                           onUpdate={(patch) => void board.updateItem(item.id, patch)}
                           onRemove={() => void removeTimelineItem(item)}
-                          onMove={(direction) => void board.moveItem(item.id, direction)}
-                          canMoveUp={canMove(stopItems, item.id, -1)}
-                          canMoveDown={canMove(stopItems, item.id, 1)}
+                          {...moveProps(item)}
                           tripStart={trip.start_date}
                           tripEnd={trip.end_date}
                           onKeep={keepItemAsReco}
@@ -1562,6 +1660,14 @@ export function TripDetail({
             />
           </Sheet>
 
+          <MoveStopSheet
+            stop={movingStop}
+            stops={stopItems}
+            days={moveDays}
+            onMove={(move) => moveStops([move])}
+            onClose={() => setMovingId(null)}
+          />
+
           {/* The list's own ⋯: which stops, in which order, and the tools. */}
           <Sheet
             open={timelineMenuOpen}
@@ -1575,11 +1681,13 @@ export function TripDetail({
             <div className="space-y-4">
               {stopItems.length > 0 && (
                 <TimeChangeBox
+                  tripId={trip.id}
                   stops={stopItems}
-                  days={timelineGroups.map((group) => group.key).filter(Boolean)}
+                  days={moveDays}
                   onChangeTime={async (id, time) => {
                     await board.updateItem(id, { time_label: time });
                   }}
+                  onApply={(moves, summary) => moveStops(moves, summary || "Plan changed")}
                   onDone={() => setTimelineMenuOpen(false)}
                 />
               )}

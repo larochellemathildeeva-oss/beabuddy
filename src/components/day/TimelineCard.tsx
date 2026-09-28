@@ -83,6 +83,7 @@ export function TimelineEntry({
   onUpdate,
   onRemove,
   onMove,
+  onMoveTo,
   linkedDocuments = 0,
   onOpenDocuments,
   canMoveUp = false,
@@ -131,8 +132,13 @@ export function TimelineEntry({
     >,
   ) => void;
   onRemove: () => void;
-  /** Swap with the entry above or below, within the same day. */
+  /**
+   * One step up or down: inside the day, or over its edge onto the day
+   * before or after.
+   */
   onMove?: ((direction: -1 | 1) => void) | undefined;
+  /** Open "Move to…": any day, any place in it, and its time. */
+  onMoveTo?: (() => void) | undefined;
   /** Trip documents linked to this stop (a ticket, a confirmation). */
   linkedDocuments?: number;
   /** Open them: the same record the trip's Bookings and Trip documents open. */
@@ -478,6 +484,20 @@ export function TimelineEntry({
               </button>
             </>
           )}
+          {onMoveTo && (
+            <button
+              type="button"
+              onClick={() => {
+                setActionsOpen(false);
+                onMoveTo();
+              }}
+              aria-label={`Move ${item.title} to another day or place`}
+              className={quickButton}
+            >
+              <CalendarDays className="size-4" aria-hidden />
+              Move to…
+            </button>
+          )}
           <button
             type="button"
             onClick={onRemove}
@@ -746,6 +766,17 @@ export function TimelineEntry({
               Later
             </button>
           </>
+        )}
+        {onMoveTo && (
+          <button
+            type="button"
+            onClick={onMoveTo}
+            aria-label={`Move ${item.title} to another day or place`}
+            className={`${lineButton} col-span-6`}
+          >
+            <CalendarDays className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
+            Move to…
+          </button>
         )}
       </div>
     </article>
