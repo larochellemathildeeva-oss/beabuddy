@@ -17,6 +17,8 @@ import { recMapsUrl } from "@/lib/reco-open";
 import { directionsUrl } from "@/lib/recs-browse";
 import { tagsForSave } from "@/lib/reco-tags";
 import { isCityLevelPlace, isCountryLevelPlace } from "@/lib/reco-place";
+import { singlePlaceShareReco, singlePlaceShareText } from "@/lib/reco-share";
+import { createRecoShare } from "@/hooks/useRecoShares";
 import { PlaceArt, type RecsPlace } from "./RecsParts";
 
 /**
@@ -29,6 +31,8 @@ export function PlaceDetail({
   place,
   row,
   here,
+  uid,
+  myName,
   saving,
   onBack,
   onSave,
@@ -40,6 +44,9 @@ export function PlaceDetail({
   place: RecsPlace;
   row: RecoRowDB | undefined;
   here: { lat: number; lon: number } | null;
+  /** Signed in: the place can go as a Béa code, not only a Maps link. */
+  uid: string | null;
+  myName: string;
   saving: boolean;
   onBack: () => void;
   onSave: () => void;
@@ -49,6 +56,10 @@ export function PlaceDetail({
   onRemove: () => void;
 }) {
   const [shared, setShared] = useState("");
+  const [choosing, setChoosing] = useState(false);
+  const [making, setMaking] = useState(false);
+  /** A code made and waiting to be sent. */
+  const [ready, setReady] = useState<string | null>(null);
   const saved = Boolean(row);
   const where = formatTripLocation(place.city, place.country);
   const metres =
@@ -65,18 +76,73 @@ export function PlaceDetail({
   const venue = !isCountryLevelPlace(fields) && !isCityLevelPlace(fields);
   const tags = row ? tagsForSave(row) : [];
 
-  const share = async () => {
+  /** Tapping Share asks how, when there is a choice; signed out it is the link. */
+  const share = () => {
+    setShared("");
+    setReady(null);
+    if (uid) setChoosing((open) => !open);
+    else void deliver(null);
+  };
+
+  /**
+   * Open the share sheet, or copy when there is none. Only ever called
+   * straight from a tap: a browser refuses the share sheet once a network
+   * wait has used up the tap, which is why a code is made first and sent from
+   * a second tap.
+   */
+  const deliver = async (code: string | null) => {
     const url = recMapsUrl(place);
-    const text = [place.name, where].filter(Boolean).join(", ");
+    const text = singlePlaceShareText({
+      name: place.name,
+      where,
+      mapsUrl: url,
+      ...(code ? { code } : {}),
+    });
     try {
       if (navigator.share) {
-        await navigator.share({ title: place.name, text, url });
+        // The link rides inside the text when there is a code, so the code is
+        // never dropped by an app that keeps only one of the two.
+        await navigator.share(
+          code
+            ? { title: place.name, text }
+            : { title: place.name, text: [place.name, where].filter(Boolean).join(", "), url },
+        );
         return;
       }
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      setShared("Link copied.");
-    } catch {
-      /* the share sheet was dismissed */
+      await navigator.clipboard.writeText(text);
+      setShared(code ? "Copied, with the code." : "Link copied.");
+    } catch (e) {
+      // Dismissing the sheet is not a failure; anything else falls back to copying.
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(text);
+        setShared(code ? "Copied, with the code." : "Link copied.");
+      } catch {
+        setShared(code ? `Couldn't open sharing — the code is ${code}.` : "Couldn't share that.");
+      }
+    }
+  };
+
+  /**
+   * Put the rec itself behind a one-place share, the same kind "Send places"
+   * makes. Your note stays behind, as it does there.
+   */
+  const makeCode = async () => {
+    if (!uid) return;
+    setMaking(true);
+    setShared("");
+    try {
+      const made = await createRecoShare(uid, {
+        recos: [singlePlaceShareReco(place, row)],
+        title: place.name,
+        sharedByName: myName,
+      });
+      setReady(made.code);
+      setChoosing(false);
+    } catch (e) {
+      setShared(e instanceof Error ? e.message : "Couldn't make a code for this place.");
+    } finally {
+      setMaking(false);
     }
   };
 
@@ -98,7 +164,7 @@ export function PlaceDetail({
         <div className="absolute right-4 top-4 flex gap-2">
           <button
             type="button"
-            onClick={() => void share()}
+            onClick={share}
             aria-label="Share"
             className="grid size-10 place-items-center rounded-full bg-card/90 shadow-sm"
           >
@@ -159,11 +225,56 @@ export function PlaceDetail({
           <CalendarDays className="size-5 text-primary" aria-hidden />
           Add to trip
         </button>
-        <button type="button" onClick={() => void share()} className={action}>
+        <button
+          type="button"
+          onClick={share}
+          aria-expanded={uid ? choosing : undefined}
+          className={action}
+        >
           <Share2 className="size-5 text-primary" aria-hidden />
           Share
         </button>
       </div>
+      {choosing && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => void makeCode()}
+            disabled={making}
+            className="rounded-xl bg-primary px-3 py-2.5 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {making ? "Making a code…" : "As a Béa rec, with a code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChoosing(false);
+              void deliver(null);
+            }}
+            disabled={making}
+            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] font-semibold disabled:opacity-60"
+          >
+            Just the Maps link
+          </button>
+        </div>
+      )}
+      {ready && (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-mono text-[16.5px] tracking-widest">{ready}</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Works for 30 days. Sent with the Maps link.
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void deliver(ready)}
+            className="shrink-0 rounded-xl bg-primary px-4 py-2 text-[13.5px] font-semibold text-primary-foreground"
+          >
+            Send it
+          </button>
+        </div>
+      )}
       {shared && <p className="text-[13px] text-muted-foreground">{shared}</p>}
 
       <section className="plain-card space-y-3 p-4">

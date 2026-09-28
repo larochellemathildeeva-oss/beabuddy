@@ -299,7 +299,10 @@ function RecommendationsPage() {
           ...(extracted.addressHint ? { addressHint: extracted.addressHint } : {}),
         },
       });
-      showDraft({ ...place, category: prettyPlaceCategory(place) });
+      // "Saved place" is the server's stand-in for no name at all. Saving it
+      // as the name is how a rec ended up called that; an empty field asks.
+      const name = place.name === "Saved place" ? (extracted.nameHint ?? "") : place.name;
+      showDraft({ ...place, name, category: prettyPlaceCategory(place) });
       if (place.partial) setError(linkFailureMessage(place.partialReason, hostOf(place.url)));
       else if (place.unlocated) setError(unlocatedMessage(place.name));
     } catch {
@@ -730,6 +733,8 @@ function RecommendationsPage() {
           place={screen.place}
           row={placeRow}
           here={searchAt}
+          uid={user?.id ?? null}
+          myName={myName}
           saving={busy === "quick"}
           onBack={() => setScreen(screen.back)}
           onSave={() => void savePlace(screen.place)}

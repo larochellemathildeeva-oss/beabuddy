@@ -32,6 +32,52 @@ function isMissingShareTable(error: { message?: string; code?: string } | null):
   );
 }
 
+export type CreateShareInput = {
+  recos: ShareableReco[];
+  title: string;
+  note?: string;
+  includeNotes?: boolean;
+  sharedByName?: string;
+};
+
+/**
+ * Snapshot the picked places behind a fresh code.
+ *
+ * The items are written after the share row, so a failure halfway leaves an
+ * empty share rather than a share of somebody else's rows. An empty share
+ * reads as "nothing here" and can be stopped; there is no state where a code
+ * points at more than what was ticked.
+ */
+export async function createRecoShare(uid: string, input: CreateShareInput): Promise<ShareRow> {
+  if (input.recos.length === 0) throw new Error("Pick at least one place to share");
+
+  const code = generateInviteCode();
+  const { data, error } = await supabase
+    .from("reco_shares")
+    .insert({
+      owner_id: uid,
+      code,
+      title: input.title.trim() || null,
+      note: input.note?.trim() || null,
+      shared_by_name: input.sharedByName?.trim() || null,
+    })
+    .select(SHARE_COLS)
+    .single();
+  if (error) throw error;
+
+  const share = data as ShareRow;
+  const items = toShareItems(share.id, input.recos, {
+    ...(input.includeNotes === undefined ? {} : { includeNotes: input.includeNotes }),
+  });
+  const { error: itemsError } = await supabase.from("reco_share_items").insert(items);
+  if (itemsError) {
+    // Leave nothing half-shared behind.
+    await supabase.from("reco_shares").delete().eq("id", share.id);
+    throw itemsError;
+  }
+  return share;
+}
+
 /** Shares this account has handed out, and the making of new ones. */
 export function useRecoShares(uid: string | null) {
   const [shares, setShares] = useState<ShareRow[]>([]);
@@ -64,50 +110,10 @@ export function useRecoShares(uid: string | null) {
     void load();
   }, [load]);
 
-  /**
-   * Snapshot the picked places behind a fresh code.
-   *
-   * The items are written after the share row, so a failure halfway leaves an
-   * empty share rather than a share of somebody else's rows. An empty share
-   * reads as "nothing here" and can be stopped; there is no state where a code
-   * points at more than what was ticked.
-   */
   const createShare = useCallback(
-    async (input: {
-      recos: ShareableReco[];
-      title: string;
-      note?: string;
-      includeNotes?: boolean;
-      sharedByName?: string;
-    }): Promise<ShareRow> => {
+    async (input: CreateShareInput): Promise<ShareRow> => {
       if (!uid) throw new Error("Sign in to share places");
-      if (input.recos.length === 0) throw new Error("Pick at least one place to share");
-
-      const code = generateInviteCode();
-      const { data, error } = await supabase
-        .from("reco_shares")
-        .insert({
-          owner_id: uid,
-          code,
-          title: input.title.trim() || null,
-          note: input.note?.trim() || null,
-          shared_by_name: input.sharedByName?.trim() || null,
-        })
-        .select(SHARE_COLS)
-        .single();
-      if (error) throw error;
-
-      const share = data as ShareRow;
-      const items = toShareItems(share.id, input.recos, {
-        ...(input.includeNotes === undefined ? {} : { includeNotes: input.includeNotes }),
-      });
-      const { error: itemsError } = await supabase.from("reco_share_items").insert(items);
-      if (itemsError) {
-        // Leave nothing half-shared behind.
-        await supabase.from("reco_shares").delete().eq("id", share.id);
-        throw itemsError;
-      }
-
+      const share = await createRecoShare(uid, input);
       await load();
       return share;
     },
