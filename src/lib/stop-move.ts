@@ -243,3 +243,29 @@ export function timeFit<T extends MovableStop>(
     (next == null || suggestion <= next);
   return { time, suggestion: fits ? clock(suggestion!) : null };
 }
+
+/**
+ * A stop dragged onto another in the same day: dropped below it when it came
+ * from above, and above it when it came from below, the way a list reads the
+ * gesture. Null for a drop on itself or on another day.
+ */
+export function dropMove<T extends MovableStop>(
+  stops: readonly T[],
+  activeId: string,
+  overId: string,
+): StopMove | null {
+  if (activeId === overId) return null;
+  const active = stops.find((s) => s.id === activeId);
+  const over = stops.find((s) => s.id === overId);
+  if (!active || !over || dayKey(active.day_date) !== dayKey(over.day_date)) return null;
+  const list = stopsOfDay(stops, active.day_date);
+  const from = list.findIndex((s) => s.id === activeId);
+  const to = list.findIndex((s) => s.id === overId);
+  if (from < to) return { id: activeId, day_date: active.day_date, at: { after: overId } };
+  const without = stopsOfDay(stops, active.day_date, activeId);
+  return {
+    id: activeId,
+    day_date: active.day_date,
+    at: { index: without.findIndex((s) => s.id === overId) },
+  };
+}

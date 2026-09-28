@@ -54,6 +54,7 @@ import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-group
 import { DayCards } from "@/components/day/DayCards";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
+import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { CompanionBanner } from "@/components/day/CompanionBanner";
 import {
   TripMenuSheet,
@@ -73,7 +74,7 @@ import {
   visibleGroups,
   type DayChoice,
 } from "@/lib/trip-days";
-import { rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
+import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
@@ -777,6 +778,8 @@ export function TripDetail({
   const [byArea, setByArea] = useState(false);
   /** One line a stop, tap to open: for reading a long day at a glance. */
   const [compactCards, setCompactCards] = useState(false);
+  /** The day a stop is being dragged in, if any. */
+  const [draggingDay, setDraggingDay] = useState<string | null>(null);
   const doneCount = stopItems.filter(isDone).length;
   // Nothing hidden while editing: edit mode is for the whole list.
   const hidingDone = hideDone && !editingTimeline;
@@ -1472,19 +1475,16 @@ export function TripDetail({
                                   ))}
                                 </Fragment>
                               ))
-                            : group.items.map((item, dayIndex) =>
-                                hidingDone && isDone(item) ? null : (
-                                  <Fragment key={item.id}>
-                                    {divider === dayIndex && <NowLine />}
-                                    {/* A run of stops close enough together to
-                                        be one decision rather than several. A
-                                        label, not a container. */}
-                                    {runLabels.has(dayIndex) && (
-                                      <li className="relative z-10 list-none pl-[5.25rem] pt-1 text-[12px] text-muted-foreground">
-                                        {runLabels.get(dayIndex)}
-                                      </li>
-                                    )}
+                            : (() => {
+                                // Drag to reorder: a grip on each card, inside
+                                // the day, not while editing every card at once.
+                                const sortable = !editingTimeline && group.items.length > 1;
+                                const dragging = draggingDay === group.key;
+                                const rows = group.items.map((item, dayIndex) => {
+                                  if (hidingDone && isDone(item)) return null;
+                                  const entry = (bind?: SortableBind) => (
                                     <TimelineEntry
+                                      {...(bind ?? {})}
                                       compact={compactCards && !editingTimeline}
                                       item={item}
                                       showDay={false}
@@ -1508,14 +1508,31 @@ export function TripDetail({
                                       stray={strayIds.has(item.id)}
                                       {...foldProps(item)}
                                     />
-                                    {(() => {
-                                      // The next stop on the list as shown, so
-                                      // the connector never points at a hidden one.
-                                      const next = group.items
-                                        .slice(dayIndex + 1)
-                                        .find((n) => !(hidingDone && isDone(n)));
-                                      if (!next || editingTimeline) return null;
-                                      return (
+                                  );
+                                  // The next stop on the list as shown, so the
+                                  // connector never points at a hidden one.
+                                  const next = group.items
+                                    .slice(dayIndex + 1)
+                                    .find((n) => !(hidingDone && isDone(n)));
+                                  return (
+                                    <Fragment key={item.id}>
+                                      {!dragging && divider === dayIndex && <NowLine />}
+                                      {/* A run of stops close enough together to
+                                          be one decision rather than several. A
+                                          label, not a container. */}
+                                      {!dragging && runLabels.has(dayIndex) && (
+                                        <li className="relative z-10 list-none pl-[5.25rem] pt-1 text-[12px] text-muted-foreground">
+                                          {runLabels.get(dayIndex)}
+                                        </li>
+                                      )}
+                                      {sortable ? (
+                                        <SortableStop id={item.id} title={item.title}>
+                                          {entry}
+                                        </SortableStop>
+                                      ) : (
+                                        entry()
+                                      )}
+                                      {next && !editingTimeline && !dragging && (
                                         <TravelConnector
                                           from={item}
                                           to={next}
@@ -1525,11 +1542,26 @@ export function TripDetail({
                                           onAddBetween={() => openAddBetween(item, next)}
                                           fromNumber={dayIndex + 1}
                                         />
-                                      );
-                                    })()}
-                                  </Fragment>
-                                ),
-                              )}
+                                      )}
+                                    </Fragment>
+                                  );
+                                });
+                                if (!sortable) return rows;
+                                return (
+                                  <SortableDay
+                                    ids={group.items
+                                      .filter((item) => !(hidingDone && isDone(item)))
+                                      .map((item) => item.id)}
+                                    onDragging={(on) => setDraggingDay(on ? group.key : null)}
+                                    onDrop={(activeId, overId) => {
+                                      const move = dropMove(stopItems, activeId, overId);
+                                      if (move) void moveStops([move]).catch(() => undefined);
+                                    }}
+                                  >
+                                    {rows}
+                                  </SortableDay>
+                                );
+                              })()}
                           {divider === group.items.length && <NowLine done />}
                         </ol>
                       )}
