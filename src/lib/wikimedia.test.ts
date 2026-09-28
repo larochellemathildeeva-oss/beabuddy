@@ -7,7 +7,10 @@ import {
   photoCredit,
   readCommonsImage,
   readWikidataImage,
+  readWikipediaItem,
+  townTitles,
   wikidataImageUrl,
+  wikipediaItemsUrl,
 } from "./wikimedia.ts";
 import { readPlaceDetails } from "./geoapify.ts";
 
@@ -111,6 +114,17 @@ test("a Commons answer gives the thumbnail, its page and a plain-text credit", (
   assert.equal(photoCredit(photo!), "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons");
 });
 
+test("thumbnails served from thumb.wikimedia.org are accepted", () => {
+  const credit = { Artist: { value: "Jane" }, LicenseShortName: { value: "CC BY 4.0" } };
+  const thumb =
+    "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ab/Pont_Neuf.jpg/1024px-Pont_Neuf.jpg";
+  assert.equal(readCommonsImage(info(credit, { thumburl: thumb }))?.url, thumb);
+  assert.equal(
+    readCommonsImage(info(credit, { thumburl: "https://thumb.example.org/a.jpg" })),
+    null,
+  );
+});
+
 test("missing, uncredited, restricted or off-site files are not shown", () => {
   assert.equal(readCommonsImage(info({ LicenseShortName: { value: "CC BY 4.0" } })), null);
   assert.equal(readCommonsImage(info({ Artist: { value: "Jane" } })), null);
@@ -138,4 +152,47 @@ test("Place Details carries the Commons reference from the OSM tags", () => {
     features: [{ properties: { name: "X", wiki_and_media: { wikidata: "Q1" } } }],
   });
   assert.deepEqual(onlyItem?.commons, { wikidata: "Q1" });
+});
+
+test("a trip's town is asked with its country first, then alone", () => {
+  assert.deepEqual(townTitles("Kyoto, Kyoto Prefecture, Japan", "Japan"), [
+    "Kyoto, Japan",
+    "Kyoto",
+  ]);
+  assert.deepEqual(townTitles("Singapore", "Singapore"), ["Singapore"]);
+  assert.deepEqual(townTitles("Lisbon"), ["Lisbon"]);
+  assert.deepEqual(townTitles("  ", "France"), []);
+  const url = new URL(wikipediaItemsUrl(["Kyoto, Japan", "Kyoto"]));
+  assert.equal(url.hostname, "en.wikipedia.org");
+  assert.equal(url.searchParams.get("titles"), "Kyoto, Japan|Kyoto");
+  assert.equal(url.searchParams.get("redirects"), "1");
+});
+
+test("the town's Wikidata item skips missing and disambiguation pages", () => {
+  const titles = ["Portland, United States", "Portland"];
+  const json = {
+    query: {
+      pages: [
+        { title: "Portland, United States", missing: true },
+        { title: "Portland", pageprops: { disambiguation: "", wikibase_item: "Q1" } },
+      ],
+    },
+  };
+  assert.equal(readWikipediaItem(json, titles), null);
+
+  const kyoto = {
+    query: {
+      normalized: [{ from: "kyoto", to: "Kyoto" }],
+      redirects: [{ from: "Kyoto, Japan", to: "Kyoto" }],
+      pages: [{ title: "Kyoto", pageprops: { wikibase_item: "Q34600" } }],
+    },
+  };
+  assert.equal(readWikipediaItem(kyoto, ["Kyoto, Japan", "kyoto"]), "Q34600");
+  assert.equal(readWikipediaItem({}, ["Kyoto"]), null);
+  assert.equal(
+    readWikipediaItem({ query: { pages: [{ title: "X", pageprops: { wikibase_item: "bad" } }] } }, [
+      "X",
+    ]),
+    null,
+  );
 });

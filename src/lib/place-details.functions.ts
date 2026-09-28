@@ -78,3 +78,23 @@ export const dayMapImage = createServerFn({ method: "POST" })
       return null;
     }
   });
+
+/**
+ * A photo of a trip's town from Wikimedia Commons, for its banner when the
+ * traveller chose real photos and has none of their own. Keyless: it asks
+ * Wikipedia and Commons only, never Geoapify, so it costs no credit.
+ */
+export const townPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { city: string; country?: string | null }) =>
+    z
+      .object({
+        city: z.string().trim().min(1).max(200),
+        country: z.string().trim().max(100).nullish(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }): Promise<PlacePhoto | null> => {
+    const { townPhotoFor } = await import("@/lib/wikimedia.server");
+    return townPhotoFor(data.city, data.country);
+  });

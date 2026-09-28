@@ -137,7 +137,9 @@ Only places already matched by name get one, like hours. With "Real photos" chos
 under You → Appearance (`stop-pictures.ts`), the same photo replaces the
 illustration on stop and place pictures (`PlacePicture.tsx`), one Place
 Details lookup per new placed stop; anything without a photo keeps its
-illustration.
+illustration. A trip banner with no photo of the traveller's own shows
+its town instead (`townPhotoFor`: the town's English Wikipedia article → its
+Wikidata item → that item's Commons image; keyless, no Geoapify credit).
 
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them

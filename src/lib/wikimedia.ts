@@ -13,11 +13,14 @@ import { htmlToPlainText } from "./html-text.ts";
 
 export const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 export const WIKIDATA_API = "https://www.wikidata.org/w/api.php";
+export const WIKIPEDIA_API = "https://en.wikipedia.org/w/api.php";
 /** Wide enough for a card on a phone at 2x, small enough to load on a trip. */
 export const COMMONS_THUMB_WIDTH = 640;
+/** A trip banner spans the screen, so its photo is asked for wider. */
+export const COMMONS_BANNER_WIDTH = 1024;
 
 export type PlacePhoto = {
-  /** The thumbnail, on upload.wikimedia.org. */
+  /** The thumbnail, on thumb.wikimedia.org or upload.wikimedia.org. */
   url: string;
   width?: number;
   height?: number;
@@ -120,6 +123,8 @@ export function readWikidataImage(json: unknown): string | null {
   return commonsFileName(value);
 }
 
+const COMMONS_IMAGE_HOSTS = new Set(["upload.wikimedia.org", "thumb.wikimedia.org"]);
+
 type ExtMeta = Record<string, { value?: unknown } | undefined>;
 type ImageInfo = {
   thumburl?: string;
@@ -155,7 +160,9 @@ export function readCommonsImage(json: unknown): PlacePhoto | null {
   } catch {
     return null;
   }
-  if (thumb.protocol !== "https:" || thumb.hostname !== "upload.wikimedia.org") return null;
+  // Commons serves thumbnails from thumb.wikimedia.org, older ones and
+  // unscaled files from upload.wikimedia.org.
+  if (thumb.protocol !== "https:" || !COMMONS_IMAGE_HOSTS.has(thumb.hostname)) return null;
   if (described.protocol !== "https:" || !described.hostname.endsWith("wikimedia.org")) return null;
   const meta = info.extmetadata ?? {};
   if (plain(meta["Restrictions"]?.value, 200)) return null;
@@ -170,6 +177,67 @@ export function readCommonsImage(json: unknown): PlacePhoto | null {
     author,
     license,
   };
+}
+
+/**
+ * The Wikipedia articles that may be a trip's town, best first: "Kyoto,
+ * Japan" before "Kyoto", so a town that shares its name with another lands
+ * on the right one when Wikipedia has such a page. Only the town's own name
+ * is used — "Kyoto, Kyoto Prefecture, Japan" is asked as "Kyoto".
+ */
+export function townTitles(city: string | null | undefined, country?: string | null): string[] {
+  const town = (city ?? "").split(",")[0]?.trim().slice(0, 100) ?? "";
+  if (!town) return [];
+  const land = (country ?? "").trim().slice(0, 100);
+  return land && land.toLowerCase() !== town.toLowerCase() ? [`${town}, ${land}`, town] : [town];
+}
+
+/** Asks Wikipedia which Wikidata item each title is, following redirects. */
+export function wikipediaItemsUrl(titles: string[]): string {
+  const params = new URLSearchParams({
+    action: "query",
+    format: "json",
+    formatversion: "2",
+    redirects: "1",
+    prop: "pageprops",
+    ppprop: "wikibase_item|disambiguation",
+    titles: titles.join("|"),
+  });
+  return `${WIKIPEDIA_API}?${params.toString()}`;
+}
+
+/**
+ * The Wikidata item of the first title, in the order asked, that is a real
+ * article — not missing, not a disambiguation page ("Portland" is one).
+ */
+export function readWikipediaItem(json: unknown, titles: string[]): string | null {
+  const q = (json as { query?: Record<string, unknown> })?.query;
+  if (!q) return null;
+  // Wikipedia normalises and follows redirects; map each asked title to the page it became.
+  const hop = new Map<string, string>();
+  for (const key of ["normalized", "redirects"]) {
+    const list = q[key];
+    if (!Array.isArray(list)) continue;
+    for (const r of list as { from?: unknown; to?: unknown }[]) {
+      if (typeof r?.from === "string" && typeof r?.to === "string") hop.set(r.from, r.to);
+    }
+  }
+  const pages = Array.isArray(q["pages"])
+    ? (q["pages"] as {
+        title?: string;
+        missing?: boolean;
+        pageprops?: { wikibase_item?: unknown; disambiguation?: unknown };
+      }[])
+    : [];
+  for (const asked of titles) {
+    let title = asked;
+    for (let i = 0; i < 3 && hop.has(title); i++) title = hop.get(title)!;
+    const page = pages.find((p) => p?.title === title);
+    if (!page || page.missing || page.pageprops?.disambiguation !== undefined) continue;
+    const id = wikidataId(page.pageprops?.wikibase_item);
+    if (id) return id;
+  }
+  return null;
 }
 
 /** "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons" */
