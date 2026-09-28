@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Route,
+  Signpost,
   ListChecks,
   MoreHorizontal,
   Pencil,
@@ -42,7 +43,11 @@ import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@
 import { useTripStops } from "@/hooks/useTripStops";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
-import { stopsForDirections, timelineStopsForDirections } from "@/lib/direction-stops";
+import {
+  isSavedDirectionItem,
+  stopsForDirections,
+  timelineStopsForDirections,
+} from "@/lib/direction-stops";
 import { formatTripLocation } from "@/lib/place-label";
 import { groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
@@ -551,13 +556,42 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
-  /** The directions icon at the top of the timeline asks the panel at its foot. */
-  const [directionsAsk, setDirectionsAsk] = useState(0);
+  /** The signpost on every day's header opens the directions sheet. */
+  const [directionsOpen, setDirectionsOpen] = useState(false);
   const [directionsBusy, setDirectionsBusy] = useState(false);
   const directionsButton =
     directionStops.length >= 2 && !editingTimeline
-      ? { onDirections: () => setDirectionsAsk((n) => n + 1), directionsBusy }
+      ? { onDirections: () => setDirectionsOpen(true), directionsBusy }
       : {};
+  const savedDirectionRows = useMemo(() => board.items.filter(isSavedDirectionItem), [board.items]);
+  /** Every saved walk and drive off the timeline at once, with an undo. */
+  const removeDirectionRows = async () => {
+    const rows = savedDirectionRows;
+    if (rows.length === 0) return;
+    await board.removeItems(rows.map((row) => row.id));
+    setLiveLegs(null);
+    toast.success(
+      `Removed ${rows.length} ${rows.length === 1 ? "walk or drive" : "walks and drives"}`,
+      {
+        action: {
+          label: "Undo",
+          onClick: () =>
+            void board.upsertItems(
+              rows.map((row) => ({
+                kind: row.kind,
+                title: row.title,
+                ...(row.day_date ? { day_date: row.day_date } : {}),
+                ...(row.time_label ? { time_label: row.time_label } : {}),
+                ...(row.detail ? { detail: row.detail } : {}),
+                ...(row.address ? { address: row.address } : {}),
+                ...(row.lat != null ? { lat: row.lat } : {}),
+                ...(row.lon != null ? { lon: row.lon } : {}),
+              })),
+            ),
+        },
+      },
+    );
+  };
   /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
   const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
   /**
@@ -1182,7 +1216,7 @@ export function TripDetail({
               </>
             ) : timelineByDay ? (
               <div className="space-y-6">
-                {shownGroups.map((group, groupIndex) => {
+                {shownGroups.map((group) => {
                   const dayOpen = !collapsedDays[group.key];
                   const isToday = group.key === todayKey;
                   const divider = isToday ? nowDivider(group.items, minutesNow) : null;
@@ -1216,7 +1250,7 @@ export function TripDetail({
                         }}
                         addLabel={`Add something to ${group.label}`}
                         onMore={() => setTimelineMenuOpen(true)}
-                        {...(groupIndex === 0 ? directionsButton : {})}
+                        {...directionsButton}
                       >
                         {coming && (
                           <span className="mt-1 block text-[12.5px] font-semibold text-primary">
@@ -1436,43 +1470,50 @@ export function TripDetail({
               </>
             )}
 
-            {/* Directions live with the stops they join rather than in a
-                section of their own: this is the control strip, and each leg
-                draws under the entry it leaves from. */}
-            <div className="mt-3">
-              <ItineraryDirections
-                stops={directionStops}
-                existingTitles={board.items.map((i) => i.title)}
-                onAddToTimeline={board.upsertItems}
-                onKeepOffline={(result, stops) => {
-                  const kept = dir.keep(result, stops);
-                  // A picture of each day's map goes with the directions, so
-                  // the day can be followed with no signal at all; and, where
-                  // the day map is drawn from vector tiles, the map itself
-                  // around each day's stops, so it still pans and zooms.
-                  if (kept) {
-                    void dayMaps.save(daysForMaps(stopItems));
-                    // Every day, not only the pictures' first three weeks:
-                    // the tile plan has its own cap.
-                    void offlineMap.save(daysForMaps(stopItems, Infinity));
-                  }
-                  return kept;
-                }}
-                onLegs={setLiveLegs}
-                onPlaced={(placed) => {
-                  // The router already found these. Keep them, so the map can
-                  // draw the trip and the next Refresh does not pay again.
-                  for (const stop of placed) {
-                    void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
-                  }
-                }}
-                runSignal={directionsAsk}
-                onBusy={setDirectionsBusy}
-                {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
-                {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
-                {...(directionArea ? { area: directionArea } : {})}
-              />
-            </div>
+            {/* Opened from the signpost on a day's header; each leg draws
+                under the entry it leaves from. */}
+            <ItineraryDirections
+              open={directionsOpen}
+              onClose={() => setDirectionsOpen(false)}
+              timelineCount={savedDirectionRows.length}
+              onRemoveFromTimeline={removeDirectionRows}
+              onForgetOffline={() => {
+                dir.clear();
+                dayMaps.clear();
+                offlineMap.clear();
+                setLiveLegs(null);
+                toast.success("Directions deleted from this phone");
+              }}
+              stops={directionStops}
+              existingTitles={board.items.map((i) => i.title)}
+              onAddToTimeline={board.upsertItems}
+              onKeepOffline={(result, stops) => {
+                const kept = dir.keep(result, stops);
+                // A picture of each day's map goes with the directions, so
+                // the day can be followed with no signal at all; and, where
+                // the day map is drawn from vector tiles, the map itself
+                // around each day's stops, so it still pans and zooms.
+                if (kept) {
+                  void dayMaps.save(daysForMaps(stopItems));
+                  // Every day, not only the pictures' first three weeks:
+                  // the tile plan has its own cap.
+                  void offlineMap.save(daysForMaps(stopItems, Infinity));
+                }
+                return kept;
+              }}
+              onLegs={setLiveLegs}
+              onPlaced={(placed) => {
+                // The router already found these. Keep them, so the map can
+                // draw the trip and the next Refresh does not pay again.
+                for (const stop of placed) {
+                  void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+                }
+              }}
+              onBusy={setDirectionsBusy}
+              {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+              {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+              {...(directionArea ? { area: directionArea } : {})}
+            />
           </div>
 
           {/**
@@ -2117,11 +2158,11 @@ function TimelineHead({
           type="button"
           onClick={onDirections}
           disabled={directionsBusy}
-          aria-label={directionsBusy ? "Working out directions" : "Get directions between stops"}
+          aria-label={directionsBusy ? "Working out directions" : "Directions between stops"}
           title="Get directions"
           className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-xs disabled:opacity-60"
         >
-          <Route className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
+          <Signpost className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
         </button>
       ) : null}
       <button
