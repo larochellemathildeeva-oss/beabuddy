@@ -51,6 +51,7 @@ import {
 import { formatTripLocation } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
+import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { CompanionBanner } from "@/components/day/CompanionBanner";
 import {
   TripMenuSheet,
@@ -733,6 +734,8 @@ export function TripDetail({
   const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
   const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
   const shownGroups = visibleGroups(timelineGroups, chosenDay);
+  /** The day cards, for the sticky day bar to know when they scroll away. */
+  const dayCardsRef = useRef<HTMLDivElement>(null);
   const offerDays = shouldOfferDays(timelineGroups);
 
   /**
@@ -1120,7 +1123,7 @@ export function TripDetail({
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-3">
+            <div ref={dayCardsRef} className="mb-3">
               <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
@@ -1287,6 +1290,14 @@ export function TripDetail({
             progress survives a tab switch and the action row's buttons can
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
+          {perspective === "timeline" && timelineByDay && offerDays && stopItems.length > 0 && (
+            <StickyDayBar
+              chips={chips}
+              value={chosenDay}
+              onChange={setDayChoice}
+              anchor={dayCardsRef}
+            />
+          )}
           <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
             {editingTimeline && (
               <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
@@ -1334,7 +1345,11 @@ export function TripDetail({
                   const visited = group.items.filter(isDone).length;
                   const length = dayLengthLabel(group.items, travelInto);
                   return (
-                    <section key={group.key || "undated"} className="min-w-0">
+                    <section
+                      key={group.key || "undated"}
+                      data-day-key={group.key}
+                      className="min-w-0"
+                    >
                       <TimelineHead
                         title={dayTitle(group.key, ordinalFor(group.key), group.label)}
                         line={[
