@@ -22,8 +22,12 @@ import { foldTravelLegs, normalizeClock } from "./import-stop.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 import type { TimelineKind } from "./timeline-kind.ts";
 
-/** The most stops one import makes, as for the AI import. */
-const MAX_ITEMS = 60;
+/**
+ * The most stops one list makes. More than the AI import's sixty: a ten-day
+ * plan runs past a hundred lines, and reading it here costs nothing, where
+ * the model would stop partway and drop the last days.
+ */
+const MAX_ITEMS = 150;
 /** Fewer timed lines than this is not a list worth trusting. */
 const MIN_ENTRIES = 3;
 /** A longer line is prose, not a list entry. */
@@ -155,6 +159,8 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
   /** The towns the day heading names: one, or two on a travel day ("Paris → Lyon"). */
   let dayCities: string[] = [];
   let cityAt = 0;
+  /** Where a day trip has taken the traveller, from the plan's own arrivals. */
+  let away: TownTrail = { town: null, before: null };
 
   for (const [index, raw] of lines.entries()) {
     if (raw.length > MAX_LINE) return null;
@@ -168,7 +174,11 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
       lastTime = entry.time;
       const stop = readStop(entry);
       if (!stop) return null;
-      const city = dayCities[Math.min(cityAt, dayCities.length - 1)] ?? null;
+      const moved = followTown(away, stop, entry.rest);
+      // Leaving is still where you leave from; arriving is already there.
+      const here = moved.leaving ? away.town : moved.trail.town;
+      away = moved.trail;
+      const city = here ?? dayCities[Math.min(cityAt, dayCities.length - 1)] ?? null;
       // On a travel day, the stops after the journey are in the next town.
       if ((stop.kind === "transport" || stop.kind === "flight") && cityAt < dayCities.length - 1) {
         cityAt++;
@@ -194,6 +204,7 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
         if (named.length) dayCities = named;
         else if (dayCities.length > 1) dayCities = dayCities.slice(-1);
         cityAt = 0;
+        away = { town: null, before: null };
         // A second heading before any stop ("Paris — Saturday", then
         // "Oct 10") names the same day rather than starting another.
         if (heading.dayNumber != null) dayNumber = heading.dayNumber;
@@ -252,6 +263,50 @@ function tableRow(raw: string): string | null {
   if (parts.length > 1 && /^time$/i.test(parts[0]!)) return null;
   if (!cells || parts.length < 2) return parts.join(" ") || null;
   return `${parts[0]} ${parts.slice(1).join(" - ")}`;
+}
+
+type TownTrail = { town: string | null; before: string | null };
+
+/** Arriving by rail or boat names the town: "Hiroshima Station — arrival". */
+const ARRIVAL_PLACE = /^(.+?)\s+(?:station|pier|port|ferry terminal)$/i;
+/** "morning departure toward Himeji", "return to Osaka": the town only, one word. */
+const HEADING_TO = /\b(?:toward|towards|to)\s+(\p{Lu}[\p{L}-]+)(?![\p{L}-])(?!\s+\p{Lu})/u;
+/** The note says only that this is an arrival: "arrival", "island arrival". */
+const ARRIVAL_NOTE = /^(?:[\p{L}-]+\s+)?arriv(?:al|e|ing)$/iu;
+/** A name alone, with nothing to say it is a venue: "Miyajima". */
+const BARE_TOWN = /^\p{Lu}[\p{L}-]+(?:\s\p{Lu}[\p{L}-]+)?$/u;
+
+/**
+ * Which town the traveller is in, after this stop, when the plan says it only
+ * by moving: "Hiroshima Station — arrival" puts the rest of the day in
+ * Hiroshima, "Miyajima — island arrival" on the island, and "return boat"
+ * back where they came from; "departure toward Himeji" sends them on. A
+ * train with no destination leaves them nowhere the plan names, and the
+ * trip's own town for the day answers. The day's heading starts afresh.
+ *
+ * Only a plain arrival counts: an airport is where a trip lands, not a town
+ * to look its stops up in.
+ */
+function followTown(
+  trail: TownTrail,
+  stop: { kind: string; title: string; detail: string | null },
+  rest: string,
+): { trail: TownTrail; leaving: boolean } {
+  const note = (stop.detail ?? "").trim();
+  const journey = stop.kind === "transport" || stop.kind === "flight";
+  const heading = /\b(?:depart|departure|return|back)\b/i.test(note)
+    ? note.match(HEADING_TO)
+    : null;
+  if (heading) return { trail: { town: heading[1]!, before: trail.town }, leaving: true };
+  if (ARRIVAL_NOTE.test(note) && !/\bairport\b/i.test(rest)) {
+    const place = stop.title.match(ARRIVAL_PLACE)?.[1];
+    const town = place ?? (BARE_TOWN.test(stop.title) ? stop.title : null);
+    if (town) return { trail: { town, before: trail.town }, leaving: false };
+  }
+  if (/\breturn\b/i.test(note))
+    return { trail: { town: trail.before, before: null }, leaving: true };
+  if (journey) return { trail: { town: null, before: null }, leaving: true };
+  return { trail, leaving: false };
 }
 
 /** A line that starts with a time, split into the time and what follows. */
