@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CalendarDays, MapPin, Users } from "@/components/icons";
 import { formatTripLocation } from "@/lib/place-label";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
@@ -6,6 +6,9 @@ import { photoCreditLine, tripDateLine, tripPlacesLine } from "@/lib/trip-card";
 import { bannerPill, bannerScene, daysShort, heroPill, routeLine } from "@/lib/trip-glance";
 import { useThemeName } from "@/hooks/useThemeName";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useStopPictures } from "@/hooks/useStopPictures";
+import { useTownPhoto } from "@/hooks/useTownPhoto";
+import { photoCredit } from "@/lib/wikimedia";
 
 /**
  * The painted scene behind a trip that has no photograph yet.
@@ -112,7 +115,14 @@ export function TripBanner({
   compact?: boolean;
 }) {
   const kind: Variant = variant ?? (compact ? "compact" : "card");
-  const url = useSignedPhoto(photo?.storage_path ?? null);
+  const own = useSignedPhoto(photo?.storage_path ?? null);
+  // "Real photos" (You → Appearance): a trip with no photo of its own shows
+  // its town from Wikimedia Commons, credited, before any painting.
+  const [pictures] = useStopPictures();
+  const town = useTownPhoto(city || cities[0], country, pictures === "photos" && !photo);
+  const [brokenTown, setBrokenTown] = useState<string | null>(null);
+  const commons = !photo && pictures === "photos" && town && town.url !== brokenTown ? town : null;
+  const url = own ?? commons?.url ?? null;
   const theme = useThemeName();
   const art =
     kind === "feature"
@@ -163,7 +173,13 @@ export function TripBanner({
       {url ? (
         // eager, not lazy: a transition cannot tween an image the browser has
         // not decoded yet, and it would land as a grey box that fills in after.
-        <img src={url} alt="" className="absolute inset-0 size-full object-cover" />
+        <img
+          src={url}
+          alt=""
+          referrerPolicy={commons ? "no-referrer" : undefined}
+          onError={commons ? () => setBrokenTown(commons.url) : undefined}
+          className="absolute inset-0 size-full object-cover"
+        />
       ) : art ? (
         <img
           src={art}
@@ -192,6 +208,16 @@ export function TripBanner({
         }}
       />
 
+      {commons && !own ? (
+        <span
+          title={photoCredit(commons)}
+          className={`absolute right-2 z-10 max-w-[70%] truncate text-[9px] leading-tight text-white/75 ${
+            kind === "compact" ? "top-0.5" : "bottom-1"
+          }`}
+        >
+          {photoCredit(commons)}
+        </span>
+      ) : null}
       {kind === "compact" ? (
         <div className="absolute inset-0 flex items-center gap-3 px-3">
           <div className="min-w-0 flex-1">
