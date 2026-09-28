@@ -24,9 +24,12 @@ every push that will deploy to Canner.
 
 | Change | Command | Example |
 | --- | --- | --- |
-| Bug fix, no new capability | `npm run version:fix` | 1.0.0 → 1.0.1 |
-| Better existing feature | `npm run version:enhance` | 1.0.0 → 1.1.0 |
-| New feature or large change | `npm run version:feature` | 1.0.0 → 2.0.0 |
+| Almost every change: fixes, improvements, small new tools | `npm run version:fix` | 1.0.0 → 1.0.1 |
+| A big feature | `npm run version:enhance` | 1.0.0 → 1.1.0 |
+| A major overhaul, only when asked | `npm run version:feature` | 1.0.0 → 2.0.0 |
+
+Default to the patch step. Move the middle number only for a big feature, and
+never the first unless the owner asks.
 
 ## Database
 

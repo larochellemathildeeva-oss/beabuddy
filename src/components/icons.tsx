@@ -16,6 +16,7 @@ import {
   ArrowRight as PhArrowRight,
   ArrowSquareOut as PhArrowSquareOut,
   ArrowsClockwise as PhArrowsClockwise,
+  ArrowsDownUp as PhArrowsDownUp,
   ArrowsOut as PhArrowsOut,
   Backpack as PhBackpack,
   Bank as PhBank,
@@ -47,6 +48,7 @@ import {
   CloudSlash as PhCloudSlash,
   CloudSnow as PhCloudSnow,
   CloudSun as PhCloudSun,
+  Coins as PhCoins,
   Columns as PhColumns,
   Compass as PhCompass,
   Copy as PhCopy,
@@ -170,6 +172,7 @@ function icon(Glyph: PhosphorIcon, name: string) {
 export const Accessibility = icon(PhPersonArmsSpread, "Accessibility");
 export const ArrowLeft = icon(PhArrowLeft, "ArrowLeft");
 export const ArrowRight = icon(PhArrowRight, "ArrowRight");
+export const ArrowUpDown = icon(PhArrowsDownUp, "ArrowUpDown");
 export const Backpack = icon(PhBackpack, "Backpack");
 export const Bath = icon(PhBathtub, "Bath");
 export const Bed = icon(PhBed, "Bed");
@@ -201,6 +204,7 @@ export const CloudOff = icon(PhCloudSlash, "CloudOff");
 export const CloudRain = icon(PhCloudRain, "CloudRain");
 export const CloudSnow = icon(PhCloudSnow, "CloudSnow");
 export const CloudSun = icon(PhCloudSun, "CloudSun");
+export const Coins = icon(PhCoins, "Coins");
 export const Columns2 = icon(PhColumns, "Columns2");
 export const Compass = icon(PhCompass, "Compass");
 export const Copy = icon(PhCopy, "Copy");

@@ -39,7 +39,7 @@ import { downscaleImage } from "@/lib/image";
 import { pdfProblem, pdfProblemMessage } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary, looksLikeIcs } from "@/lib/itinerary-ics";
 import { pastedLink } from "@/lib/itinerary-link";
-import { placeHintFromDetail } from "@/lib/direction-stops";
+import { looksLikeStreetAddress, placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds, labelAddress } from "@/lib/geocode-plan";
 import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
@@ -743,8 +743,13 @@ function ImportPanel({
         const found = savedPin(i);
         // With no address of its own, where it was found: a pinned stop
         // that says "No place yet" hides a wrong pin as well as a right one.
+        // A note is never the address: "Kiyomizu-zaka — historic shopping
+        // street" was saved with "historic shopping street" as where it is.
+        const hint = placeHintFromDetail(it.detail);
         const address =
-          it.address?.trim() || placeHintFromDetail(it.detail) || labelAddress(found?.label);
+          it.address?.trim() ||
+          (hint && looksLikeStreetAddress(hint) ? hint : null) ||
+          labelAddress(found?.label);
         const stay = stayMinutesFrom(it);
         return [
           {
