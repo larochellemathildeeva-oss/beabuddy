@@ -152,3 +152,12 @@ test("an amano elsewhere is not the whole of Sushidokoro Amano", () => {
     true,
   );
 });
+
+test("a branch number, a two-character name and other scripts all count", () => {
+  assert.equal(foundWhole("Curry 36", { name: "Curry", address: "Berlin" }), false);
+  assert.equal(foundWhole("Curry 36", { name: "Curry 36", address: "Berlin" }), true);
+  assert.equal(foundWhole("北京 Amano", { name: "Amano", address: "Osaka" }), false);
+  assert.equal(foundWhole("Кафе Пушкин", { name: "Пушкин", address: "Москва" }), false);
+  assert.equal(foundWhole("Кафе Пушкин", { name: "Кафе Пушкин", address: "Москва" }), true);
+  assert.equal(foundWhole("مطعم نجمة", { name: "نجمة", address: "Beirut" }), false);
+});

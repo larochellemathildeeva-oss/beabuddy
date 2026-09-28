@@ -109,7 +109,12 @@ const NOISE = new Set([
   "explore",
 ]);
 
-export function meaningfulWords(text: string): string[] {
+/** A word that carries no identity: "the", "cafe", "restaurant"… */
+export function isNoiseWord(word: string): boolean {
+  return NOISE.has(word);
+}
+
+function meaningfulWords(text: string): string[] {
   return foldAccents(text.toLowerCase())
     .split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/)
     .filter((word) => word.length > 1 && !NOISE.has(word));
