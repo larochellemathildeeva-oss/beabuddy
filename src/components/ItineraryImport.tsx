@@ -1,20 +1,14 @@
 import { Sheet } from "@/components/Sheet";
+import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
-  ArrowUp,
   CalendarDays,
   Camera,
-  ChevronRight,
   MapPin,
-  Plus,
-  Route,
-  Sun,
-  Upload,
-  Users,
   Columns2,
   FileText,
   Image as ImageIcon,
@@ -112,7 +106,9 @@ const PLACE_BATCH = 8;
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
-export type PlannerTab = "start" | "import" | "optimize" | "compare";
+type PanelTab = "start" | "import" | "optimize" | "compare";
+/** Where the planner opens: its start screen, a panel, or Build / Import straight away. */
+export type PlannerTab = PanelTab | "build";
 
 export function ItineraryImport({
   open,
@@ -121,6 +117,7 @@ export function ItineraryImport({
   startDate,
   endDate,
   defaultTab = "start",
+  initialAsk = "",
   existingItems = [],
   cities = [],
   onAddItems,
@@ -135,6 +132,8 @@ export function ItineraryImport({
   startDate?: string | undefined;
   endDate?: string | undefined;
   defaultTab?: PlannerTab;
+  /** Words to start Build with, typed before the planner opened. */
+  initialAsk?: string | undefined;
   existingItems?: OptimizeSourceItem[];
   cities?: OptimizeSourceCity[];
   /** Returns the inserted row ids, so a bulk save can be undone. */
@@ -152,7 +151,7 @@ export function ItineraryImport({
     }>,
   ) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<PlannerTab>(defaultTab);
+  const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
   /** How the Plan panel opens from the start screen: which job, and any words already typed. */
   const [start, setStart] = useState<{ mode: "build" | "import"; text: string; n: number }>({
     mode: "build",
@@ -160,14 +159,22 @@ export function ItineraryImport({
     n: 0,
   });
 
-  useEffect(() => {
-    if (open) setTab(defaultTab);
-  }, [open, defaultTab]);
-
   const openPlan = (mode: "build" | "import", text = "") => {
     setStart((cur) => ({ mode, text, n: cur.n + 1 }));
     setTab("import");
   };
+
+  useEffect(() => {
+    if (!open) return;
+    if (defaultTab === "build" || (defaultTab === "import" && initialAsk)) {
+      openPlan(defaultTab === "build" ? "build" : "import", initialAsk);
+    } else if (defaultTab === "import") {
+      openPlan("import");
+    } else {
+      setTab(defaultTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only
+  }, [open, defaultTab]);
 
   return (
     <Sheet
@@ -178,13 +185,18 @@ export function ItineraryImport({
       icon={<img src={logo} alt="" className="size-10 object-contain" />}
     >
       {tab === "start" ? (
-        <PlannerStart
-          canOptimize={existingItems.length >= 2}
-          onBuild={(text) => openPlan("build", text)}
-          onImport={() => openPlan("import")}
-          onOptimize={() => setTab("optimize")}
-          onCompare={() => setTab("compare")}
-        />
+        <div className="space-y-5">
+          <PlanHero compact />
+          <PlanCards
+            optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
+            onBuild={() => openPlan("build")}
+            onImport={() => openPlan("import")}
+            onOptimize={() => setTab("optimize")}
+            onCompare={() => setTab("compare")}
+          />
+          <PlanExamples onPick={(ask) => openPlan("build", ask)} />
+          <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+        </div>
       ) : (
         <>
           <button
@@ -2057,172 +2069,6 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-const START_EXAMPLES: { icon: typeof Sparkles; label: string; ask: string }[] = [
-  {
-    icon: Sparkles,
-    label: "A cultural trip in 3 days",
-    ask: "A cultural trip in 3 days: museums, history, architecture and local life.",
-  },
-  {
-    icon: Sun,
-    label: "A mix of nature and city",
-    ask: "A mix of nature and city: some days outdoors, some days in town.",
-  },
-  {
-    icon: Users,
-    label: "A family-friendly itinerary",
-    ask: "A family-friendly itinerary: kid-proof pacing, parks, and easy meals.",
-  },
-];
-
-/**
- * The planner's first screen, as the master draws it: Béa asks what you would
- * like to do, four cards answer (build, import, optimize, compare), a few
- * examples start a build, and a box takes anything else in your own words.
- */
-function PlannerStart({
-  canOptimize,
-  onBuild,
-  onImport,
-  onOptimize,
-  onCompare,
-}: {
-  canOptimize: boolean;
-  onBuild: (text?: string) => void;
-  onImport: () => void;
-  onOptimize: () => void;
-  onCompare: () => void;
-}) {
-  const [ask, setAsk] = useState("");
-  const cards: {
-    key: string;
-    icon: typeof Plus;
-    title: string;
-    body: string;
-    tone: number;
-    onClick: () => void;
-    note?: string;
-  }[] = [
-    {
-      key: "build",
-      icon: Plus,
-      title: "Build my trip",
-      body: "Tell me your preferences and I'll create a personalized day-by-day itinerary.",
-      tone: 5,
-      onClick: () => onBuild(),
-    },
-    {
-      key: "import",
-      icon: Upload,
-      title: "Import a plan",
-      body: "Upload a photo, PDF, calendar or paste your plan and I'll turn it into a trip.",
-      tone: 3,
-      onClick: onImport,
-    },
-    {
-      key: "optimize",
-      icon: Route,
-      title: "Optimize my trip",
-      body: "I'll improve the order, reduce travel time and find the best flow.",
-      tone: 4,
-      onClick: onOptimize,
-      ...(canOptimize ? {} : { note: "Add two stops first" }),
-    },
-    {
-      key: "compare",
-      icon: Columns2,
-      title: "Compare options",
-      body: "Show me the pros and cons of different plans based on what matters to you.",
-      tone: 1,
-      onClick: onCompare,
-    },
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center gap-3">
-        <img src={logo} alt="" className="size-20 shrink-0 rounded-full object-contain" />
-        <div className="plain-card min-w-0 flex-1 rounded-3xl px-4 py-3">
-          <p className="font-display text-[26px] leading-none">What would you like to do?</p>
-          <p className="mt-1.5 text-[13.5px] leading-snug text-muted-foreground">
-            I can build a new trip, import your plan, optimize it or compare options.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
-        {cards.map((card) => (
-          <button
-            key={card.key}
-            type="button"
-            onClick={card.onClick}
-            data-guide={card.key === "optimize" ? "bea-optimize" : undefined}
-            className={`tile-card-${card.tone} flex min-h-[168px] flex-col p-3 text-left`}
-          >
-            <span className="grid size-11 place-items-center rounded-full bg-card/70 text-primary">
-              <card.icon className="size-5" aria-hidden />
-            </span>
-            <span className="mt-2 block font-display text-[21px] leading-tight">{card.title}</span>
-            <span className="mt-1 block text-[12.5px] leading-snug text-muted-foreground">
-              {card.body}
-            </span>
-            <span className="mt-auto flex w-full items-center justify-between pt-2">
-              <span className="text-[11.5px] font-semibold text-muted-foreground">
-                {card.note ?? ""}
-              </span>
-              <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
-                <ChevronRight className="size-4" aria-hidden />
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div>
-        <p className="mb-2 font-display text-[20px] leading-none">Not sure? Try an example</p>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
-          {START_EXAMPLES.map((ex) => (
-            <button
-              key={ex.label}
-              type="button"
-              onClick={() => onBuild(ex.ask)}
-              className="plain-card flex w-[150px] shrink-0 items-center gap-2 px-3 py-2.5 text-left text-[13px] leading-snug"
-            >
-              <ex.icon className="size-5 shrink-0 text-primary" aria-hidden />
-              {ex.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (ask.trim()) onBuild(ask.trim());
-        }}
-        className="plain-card flex items-center gap-2 rounded-full py-1.5 pl-4 pr-1.5"
-      >
-        <input
-          value={ask}
-          onChange={(e) => setAsk(e.target.value)}
-          maxLength={2000}
-          placeholder="Or just tell me what you need…"
-          aria-label="Tell Béa what you need"
-          className="min-w-0 flex-1 bg-transparent py-2 text-[14.5px] outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!ask.trim()}
-          aria-label="Send to Béa"
-          className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50"
-        >
-          <ArrowUp className="size-5" aria-hidden />
-        </button>
-      </form>
     </div>
   );
 }

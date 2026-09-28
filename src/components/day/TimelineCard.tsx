@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  FileText,
   CornerUpLeft,
   CornerUpRight,
   FlagArrive,
@@ -73,6 +74,8 @@ export function TimelineEntry({
   onUpdate,
   onRemove,
   onMove,
+  linkedDocuments = 0,
+  onOpenDocuments,
   canMoveUp = false,
   canMoveDown = false,
   tripStart,
@@ -121,6 +124,10 @@ export function TimelineEntry({
   onRemove: () => void;
   /** Swap with the entry above or below, within the same day. */
   onMove?: ((direction: -1 | 1) => void) | undefined;
+  /** Trip documents linked to this stop (a ticket, a confirmation). */
+  linkedDocuments?: number;
+  /** Open them: the same record the trip's Bookings and Trip documents open. */
+  onOpenDocuments?: (() => void) | undefined;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   tripStart?: string | null | undefined;
@@ -313,6 +320,16 @@ export function TimelineEntry({
           </span>
         </button>
         <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
+          {linkedDocuments > 0 && onOpenDocuments ? (
+            <button
+              type="button"
+              onClick={onOpenDocuments}
+              aria-label={`${linkedDocuments === 1 ? "Booking document" : `${linkedDocuments} booking documents`} for ${item.title}`}
+              className="tap-44 grid size-8 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
+            >
+              <FileText className="size-4" aria-hidden />
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setActionsOpen((o) => !o)}

@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
@@ -51,7 +52,7 @@ import {
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
-import { TripBookingsSheet, type BookingFilter } from "@/components/day/TripBookingsSheet";
+import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import {
   ALL_DAYS,
@@ -128,6 +129,8 @@ export function TripDetail({
   onLeave,
   onRemoveMember,
   openPrep,
+  openView,
+  openPlan,
 }: {
   trip: TripRow;
   /** Kept for callers; the trip page no longer shows a banner photo. */
@@ -143,9 +146,16 @@ export function TripDetail({
   onRemoveMember: (userId: string) => Promise<void>;
   /** Open the to-do or packing sheet on arrival (Home's shortcuts). */
   openPrep?: PrepTab | undefined;
+  /** A tab asked for in the link. */
+  openView?: "bookings" | undefined;
+  /** Open Plan with Béa on arrival, on this panel, with any words already typed. */
+  openPlan?: { tab: PlannerTab; ask?: string | undefined } | undefined;
 }) {
+  const navigate = useNavigate();
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
+  /** Words carried into Build from the Plan with Béa page. */
+  const [plannerAsk, setPlannerAsk] = useState("");
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -561,8 +571,8 @@ export function TripDetail({
   const todayKey = toLocalISODate(new Date());
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
-  /** The trip's Bookings list, open on one kind, or null. */
-  const [bookingsOpen, setBookingsOpen] = useState<BookingFilter | null>(null);
+  /** Which kind the Bookings tab shows. */
+  const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(stopItems);
@@ -630,6 +640,49 @@ export function TripDetail({
     }
   }, [viewKey, perspective, dayChoice, hideDone, byArea]);
   const view = useTripViewPrefs();
+
+  /** Trip documents linked to each stop, for the document mark on its card. */
+  const docsByStop = new Map<string, string[]>();
+  for (const doc of bookingDocs.docs) {
+    if (!doc.itinerary_item_id) continue;
+    docsByStop.set(doc.itinerary_item_id, [
+      ...(docsByStop.get(doc.itinerary_item_id) ?? []),
+      doc.id,
+    ]);
+  }
+  const docProps = (item: ItineraryRow) => {
+    const ids = docsByStop.get(item.id);
+    if (!ids?.length) return {};
+    return {
+      linkedDocuments: ids.length,
+      // One opens straight onto its detail; several open the library on
+      // this stop's documents.
+      onOpenDocuments: () =>
+        void navigate({
+          to: "/profile/documents",
+          search: ids.length === 1 ? { doc: ids[0]! } : { event: item.id },
+        }),
+    };
+  };
+
+  /** The Bookings tab, on one kind — for the Overview's tiles and the trip menu. */
+  const openBookings = (kind: BookingFilter) => {
+    setBookingFilter(kind);
+    setPerspective("bookings");
+  };
+
+  // Arriving with a request in the link (Plan with Béa, a booking link):
+  // after the saved tab is restored, so the request wins over it.
+  useEffect(() => {
+    if (openView === "bookings") setPerspective("bookings");
+    if (openPlan) {
+      setPlannerTab(openPlan.tab);
+      setPlannerAsk(openPlan.ask ?? "");
+      setPlannerOpen(true);
+    }
+    // Once per arrival; the link is not a setting.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * "+ Add stop between": where the next added stop goes. The form stays
@@ -934,7 +987,7 @@ export function TripDetail({
             cities={cities.stops.map((stop) => stop.city)}
             groups={timelineGroups}
             bookingDocs={bookingDocs.docs}
-            onOpenBookings={setBookingsOpen}
+            onOpenBookings={openBookings}
             onOpenTimeline={(dayKey) => {
               if (dayKey !== undefined) setDayChoice(dayKey);
               setPerspective("timeline");
@@ -944,6 +997,16 @@ export function TripDetail({
               setPerspective("map");
             }}
             onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+          />
+        )}
+
+        {perspective === "bookings" && (
+          <TripBookings
+            filter={bookingFilter}
+            onFilter={setBookingFilter}
+            stops={stopItems}
+            docs={bookingDocs.docs}
+            onSaveBooking={(id, patch) => board.updateItem(id, patch)}
           />
         )}
 
@@ -1205,6 +1268,7 @@ export function TripDetail({
                                       number={group.items.indexOf(item) + 1}
                                       onLocate={() => locate(item)}
                                       onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      {...docProps(item)}
                                       onToggleDone={() => toggleDone(item)}
                                       {...withNear(item.day_date)}
                                       {...nestProps(item)}
@@ -1240,6 +1304,7 @@ export function TripDetail({
                                       showSwipeHint={dayIndex === 0}
                                       onLocate={() => locate(item)}
                                       onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      {...docProps(item)}
                                       onToggleDone={() => toggleDone(item)}
                                       editing={editingTimeline}
                                       {...withNear(item.day_date)}
@@ -1317,6 +1382,7 @@ export function TripDetail({
                           showSwipeHint={i === 0}
                           onLocate={() => locate(item)}
                           onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                          {...docProps(item)}
                           onToggleDone={() => toggleDone(item)}
                           editing={editingTimeline}
                           {...withNear(item.day_date)}
@@ -1595,15 +1661,6 @@ export function TripDetail({
 
       <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly />
 
-      <TripBookingsSheet
-        open={bookingsOpen !== null}
-        onClose={() => setBookingsOpen(null)}
-        kind={bookingsOpen ?? "all"}
-        stops={stopItems}
-        docs={bookingDocs.docs}
-        onSaveBooking={(id, patch) => board.updateItem(id, patch)}
-      />
-
       <SavedPlacesSheet
         open={savedOpen}
         onClose={() => setSavedOpen(false)}
@@ -1626,8 +1683,12 @@ export function TripDetail({
 
       <ItineraryImport
         open={plannerOpen}
-        onClose={() => setPlannerOpen(false)}
+        onClose={() => {
+          setPlannerOpen(false);
+          setPlannerAsk("");
+        }}
         defaultTab={plannerTab}
+        initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
           id: item.id,
           day_date: item.day_date,
@@ -1710,7 +1771,7 @@ export function TripDetail({
         bookings={bookingCounts}
         onBookings={(kind) => {
           setSettingsOpen(false);
-          setBookingsOpen(kind);
+          openBookings(kind);
         }}
         citiesCount={cities.stops.length}
         offlineNote={

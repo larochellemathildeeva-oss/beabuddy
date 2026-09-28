@@ -8,10 +8,10 @@ import {
 } from "./trip-perspective.ts";
 
 describe("TRIP_PERSPECTIVES", () => {
-  it("is the Overview, then the three day views", () => {
+  it("is the Overview, the three day views, then Bookings", () => {
     assert.deepEqual(
       TRIP_PERSPECTIVES.map((p) => p.id),
-      ["overview", "companion", "map", "timeline"],
+      ["overview", "companion", "map", "timeline", "bookings"],
     );
   });
 
