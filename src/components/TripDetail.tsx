@@ -2090,7 +2090,7 @@ function RailLine() {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute bottom-6 left-[calc(4.125rem-1px)] top-6 border-l-2 border-dashed border-primary/35"
+      className="pointer-events-none absolute bottom-6 left-[calc(0.875rem-1px)] top-6 border-l-2 border-dashed border-primary/35"
     />
   );
 }

@@ -209,7 +209,7 @@ export function TimelineEntry({
         if (e.target.value.trim() && e.target.value !== item.title)
           onUpdate({ title: e.target.value.trim() });
       }}
-      className="w-full min-w-0 bg-transparent font-display text-[22px] leading-snug outline-none"
+      className="w-full min-w-0 bg-transparent font-display text-[18.5px] leading-snug outline-none"
     />
   );
 
@@ -237,7 +237,7 @@ export function TimelineEntry({
 
   // The front: the name in the serif; how long and the kind on one line; the
   // note; where, with a pin; and Map, Save and Directions along the bottom.
-  // The time and the numbered disc sit on the rail to the left (see the <li>).
+  // The time sits on the card, and the numbered disc on the rail (see the <li>).
   // Tapping the name turns the card over to edit it; ⋯ opens the rest (done,
   // booking, order, delete) that the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
@@ -245,7 +245,7 @@ export function TimelineEntry({
   const roundIcon =
     "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-colors";
   const pillButton =
-    "inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[13.5px] font-medium transition-colors disabled:opacity-40";
+    "inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[13px] font-medium transition-colors disabled:opacity-40";
   const softButton = `${pillButton} bg-primary-soft text-primary`;
   const lineButton = `${pillButton} border border-border bg-card text-foreground`;
   const dangerButton = `${pillButton} border border-destructive/20 bg-destructive/10 text-destructive`;
@@ -259,7 +259,7 @@ export function TimelineEntry({
       aria-label={`Locate ${item.title} on the map`}
       className={softButton}
     >
-      <MapIcon className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+      <MapIcon className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
       Map
     </button>
   );
@@ -272,7 +272,7 @@ export function TimelineEntry({
       className={`${lineButton} ${kept ? "text-primary" : ""}`}
     >
       <Bookmark
-        className="hidden size-[18px] shrink-0 @[17rem]:inline"
+        className="hidden size-4 shrink-0 @[17rem]:inline"
         weight={kept ? "fill" : "regular"}
         aria-hidden
       />
@@ -284,7 +284,7 @@ export function TimelineEntry({
 
   const front = (
     <article
-      className={`rounded-2xl border border-border/70 bg-card p-3 transition-colors ${current ? "bg-primary-soft" : ""}`}
+      className={`rounded-2xl border border-border/70 bg-card p-2.5 transition-colors ${current ? "bg-primary-soft" : ""}`}
     >
       <div className="flex items-start gap-2">
         <button
@@ -303,7 +303,7 @@ export function TimelineEntry({
             <span className="block text-[11px] text-muted-foreground">{item.day_date}</span>
           ) : null}
           <span
-            className={`block break-words font-display text-[20px] leading-[1.15] ${
+            className={`block break-words font-display text-[18.5px] leading-[1.15] ${
               done ? "text-muted-foreground line-through" : ""
             }`}
           >
@@ -312,12 +312,17 @@ export function TimelineEntry({
           <StopChips
             item={item}
             before={
-              item.planned_stay_minutes ? (
-                <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                  <Clock className="size-4" aria-hidden />
-                  {stayLabel(item.planned_stay_minutes)}
-                </span>
-              ) : null
+              <>
+                {rail ? (
+                  <span className="text-[13px] font-bold tabular-nums text-primary">{rail}</span>
+                ) : null}
+                {item.planned_stay_minutes ? (
+                  <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                    <Clock className="size-4" aria-hidden />
+                    {stayLabel(item.planned_stay_minutes)}
+                  </span>
+                ) : null}
+              </>
             }
             extra={
               <>
@@ -395,7 +400,7 @@ export function TimelineEntry({
         />
       )}
       {(canLocate || canKeep || canDirect) && (
-        <div className="@container mt-2.5 grid grid-cols-3 gap-2">
+        <div className="@container mt-2 grid grid-cols-3 gap-1.5">
           {canLocate ? mapButton : <span />}
           {canKeep ? saveButton : <span />}
           {canDirect ? (
@@ -406,7 +411,7 @@ export function TimelineEntry({
               aria-label={`Directions to ${item.title} in Maps`}
               className={lineButton}
             >
-              <Send className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              <Send className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
               Directions
             </a>
           ) : (
@@ -487,22 +492,23 @@ export function TimelineEntry({
     </article>
   );
 
-  const fieldPill =
-    "min-h-10 min-w-0 max-w-[12rem] flex-1 rounded-full border border-border bg-card px-3 text-[15px] text-foreground";
-  const rowLabel =
-    "flex w-[4.75rem] shrink-0 items-center gap-1.5 text-[14px] text-muted-foreground";
+  const field =
+    "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
+  const caption = "mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground";
 
-  // The back: every change to this stop, and its booking, in one place.
+  // The back: every change to this stop, and its booking, in one place. It
+  // opens across the whole width (the rail steps aside, see the <li>) and
+  // keeps each field to one short line, so a phone sees most of it at once.
   const backSide = (
-    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3.5 shadow-sm">
-      <div className="flex min-w-0 items-center gap-2">
+    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3 shadow-sm">
+      <div className="flex min-w-0 items-center gap-1.5">
         {number != null && (
-          <span className="grid h-9 min-w-9 place-items-center rounded-full bg-elevated px-2 text-[13px] font-semibold tabular-nums text-muted-foreground">
+          <span className="grid h-8 min-w-8 place-items-center rounded-full bg-elevated px-2 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
             #{number}
           </span>
         )}
         <span
-          className={`kind-chip kind-${timelineGlyph(item)} grid size-9 place-items-center rounded-full`}
+          className={`kind-chip kind-${timelineGlyph(item)} grid size-8 place-items-center rounded-full`}
         >
           <KindIcon item={item} />
         </span>
@@ -512,22 +518,22 @@ export function TimelineEntry({
             type="button"
             onClick={() => flip(false)}
             aria-label={`Close ${item.title}`}
-            className="ml-auto inline-flex min-h-10 items-center rounded-full bg-primary px-5 text-[14px] font-bold text-primary-foreground"
+            className="ml-auto inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13.5px] font-bold text-primary-foreground"
           >
             Done
           </button>
         )}
       </div>
 
-      <div className="mt-3 space-y-2.5">
-        <div className="rounded-2xl border border-border bg-elevated px-4 py-2">{titleInput}</div>
+      <div className="mt-2.5 space-y-2">
+        <div className="rounded-xl border border-border bg-elevated px-3 py-1">{titleInput}</div>
         <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
       </div>
 
-      <div className="mt-3 space-y-2">
-        <label className="flex items-center gap-2">
-          <span className={rowLabel}>
-            <CalendarDays className="size-5" aria-hidden />
+      <div className="mt-2.5 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1.5">
+        <label className="min-w-0">
+          <span className={caption}>
+            <CalendarDays className="size-3.5" aria-hidden />
             Date
           </span>
           <input
@@ -537,12 +543,12 @@ export function TimelineEntry({
             {...(tripStart ? { min: tripStart } : {})}
             {...(tripEnd ? { max: tripEnd } : {})}
             onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-            className={fieldPill}
+            className={field}
           />
         </label>
-        <label className="flex items-center gap-2">
-          <span className={rowLabel}>
-            <Clock className="size-5" aria-hidden />
+        <label className="min-w-0">
+          <span className={caption}>
+            <Clock className="size-3.5" aria-hidden />
             Time
           </span>
           <input
@@ -550,21 +556,21 @@ export function TimelineEntry({
             value={rail}
             aria-label={`Time for ${item.title}`}
             onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-            className={fieldPill}
+            className={field}
           />
         </label>
         {/* How long the plan allows here. Companion counts it down once you
             tap "I'm here"; left empty, it only says how long it has been. */}
-        <label className="flex items-center gap-2">
-          <span className={rowLabel}>
-            <Hourglass className="size-5" aria-hidden />
+        <label className="min-w-0">
+          <span className={caption}>
+            <Hourglass className="size-3.5" aria-hidden />
             Stay
           </span>
           <select
             value={item.planned_stay_minutes ?? ""}
             aria-label={`How long to stay at ${item.title}`}
             onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
-            className={fieldPill}
+            className={field}
           >
             <option value="">—</option>
             {stayChoices(item.planned_stay_minutes).map((minutes) => (
@@ -574,26 +580,27 @@ export function TimelineEntry({
             ))}
           </select>
         </label>
-        <div className="flex items-start gap-2">
-          <span className={`${rowLabel} min-h-10`}>
-            <MapPin className="size-5" aria-hidden />
-            Address
-          </span>
-          <p
-            className={`min-w-0 flex-1 break-words rounded-2xl border border-border bg-card px-4 py-2 text-[14.5px] leading-snug ${
-              item.address ? "text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            {item.address || "No place yet"}
-          </p>
-        </div>
+      </div>
+
+      <div className="mt-2.5">
+        <span className={caption}>
+          <MapPin className="size-3.5" aria-hidden />
+          Place
+        </span>
+        <p
+          className={`break-words rounded-xl border border-border bg-card px-2.5 py-1.5 text-[14px] leading-snug ${
+            item.address ? "text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          {item.address || "No place yet"}
+        </p>
         {stray && (
-          <p className="text-[12.5px] font-semibold text-destructive">
+          <p className="mt-1 text-[12.5px] font-semibold text-destructive">
             ⚠ This pin is far from the rest of the trip, so it may be a different place with the
             same name. Use “Change place” to pick the right one.
           </p>
         )}
-        <div className="@container grid grid-cols-2 gap-2">
+        <div className="@container mt-1.5 grid grid-cols-2 gap-1.5">
           <TimelinePlaceEditor
             item={item}
             {...(near ? { near } : {})}
@@ -608,18 +615,19 @@ export function TimelineEntry({
               rel="noreferrer"
               className={lineButton}
             >
-              <Send className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              <Send className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
               Open in Maps
             </a>
           )}
         </div>
-        <label className="flex items-start gap-2">
-          <span className={`${rowLabel} min-h-10`}>Notes</span>
-          <span className="block min-w-0 flex-1 rounded-2xl border border-border bg-card px-4 py-2">
-            {detailInput}
-          </span>
-        </label>
       </div>
+
+      <label className="mt-2.5 block">
+        <span className={caption}>Notes</span>
+        <span className="block rounded-xl border border-border bg-card px-2.5 py-1.5">
+          {detailInput}
+        </span>
+      </label>
 
       {/* Hours, website and phone for a stop on the map, and a warning when
           its time falls outside the hours. Looked up when the card turns. */}
@@ -674,7 +682,7 @@ export function TimelineEntry({
       )}
 
       {/* The same actions the swipe gives, and the rest, with their names. */}
-      <div className="@container mt-3 grid grid-cols-6 gap-2 border-t border-border pt-3">
+      <div className="@container mt-2.5 grid grid-cols-6 gap-1.5 border-t border-border pt-2.5">
         {canLocate && <span className="col-span-2 grid">{mapButton}</span>}
         {canKeep && <span className="col-span-2 grid">{saveButton}</span>}
         {onSaveBooking && (
@@ -684,7 +692,7 @@ export function TimelineEntry({
             aria-label={`Booking for ${item.title}`}
             className={`${lineButton} col-span-2 ${booked ? "text-nexttime" : ""}`}
           >
-            <Ticket className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+            <Ticket className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
             Booking
           </button>
         )}
@@ -696,7 +704,7 @@ export function TimelineEntry({
           className={`${lineButton} col-span-3 ${done ? "border-nexttime/40 text-nexttime" : ""}`}
         >
           <Check
-            className="hidden size-[18px] shrink-0 @[17rem]:inline text-nexttime"
+            className="hidden size-4 shrink-0 @[17rem]:inline text-nexttime"
             strokeWidth={done ? 3 : 2}
             aria-hidden
           />
@@ -708,7 +716,7 @@ export function TimelineEntry({
           aria-label={`Delete ${item.title}`}
           className={`${dangerButton} col-span-3`}
         >
-          <Trash2 className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+          <Trash2 className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
           Delete
         </button>
         {onMove && (
@@ -720,7 +728,7 @@ export function TimelineEntry({
               aria-label={`Move ${item.title} earlier`}
               className={`${lineButton} col-span-3`}
             >
-              <ChevronUp className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              <ChevronUp className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
               Earlier
             </button>
             <button
@@ -730,7 +738,7 @@ export function TimelineEntry({
               aria-label={`Move ${item.title} later`}
               className={`${lineButton} col-span-3`}
             >
-              <ChevronDown className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              <ChevronDown className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
               Later
             </button>
           </>
@@ -741,22 +749,22 @@ export function TimelineEntry({
 
   return (
     <li className="relative min-w-0 list-none">
-      <div className="grid grid-cols-[2.75rem_2rem_minmax(0,1fr)] gap-x-1.5">
-        {/* The rail: the hour, and the numbered disc on the day's line. */}
-        <span
-          className={`pt-3.5 text-[14px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+      <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
+        {/* The rail: the numbered disc on the day's line; the hour is on the
+            card. An open card takes the whole width instead; its # says it. */}
+        {!back && (
+          <span className="relative z-10 flex justify-center pt-2.5">
+            {number != null ? (
+              <StopDisc number={number} done={done} />
+            ) : (
+              <span className="mt-2 size-3 rounded-full bg-primary" aria-hidden />
+            )}
+          </span>
+        )}
+        <div
+          className={`relative min-w-0 ${back ? "z-20 col-span-2" : ""} ${parentTitle && !back ? "ml-5" : ""}`}
         >
-          {rail || "–"}
-        </span>
-        <span className="relative z-10 flex justify-center pt-3">
-          {number != null ? (
-            <StopDisc number={number} done={done} />
-          ) : (
-            <span className="mt-2 size-3 rounded-full bg-primary" aria-hidden />
-          )}
-        </span>
-        <div className={`relative min-w-0 ${parentTitle ? "ml-5" : ""}`}>
-          {parentTitle ? (
+          {parentTitle && !back ? (
             // The thread from the stop this one is inside.
             <span
               aria-hidden
@@ -808,9 +816,9 @@ function KindPicker({
   const value = normaliseKind(item.kind);
   return (
     <label className="relative inline-flex items-center gap-1">
-      <KindChip item={item} className="min-h-9 pr-8 text-[14px]" />
+      <KindChip item={item} className="min-h-8 pr-7 text-[13px]" />
       <ChevronDown
-        className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground"
+        className="pointer-events-none absolute right-2 size-3.5 text-muted-foreground"
         aria-hidden
       />
       <select
@@ -1013,7 +1021,7 @@ function TimelinePlaceEditor({
         }}
         className={buttonClassName}
       >
-        <MapPinPlus className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+        <MapPinPlus className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
         {item.address ? "Change place" : "Set place"}
       </button>
     );
@@ -1080,7 +1088,7 @@ function TimelineDetailInput({
         setDraft(next);
         onCommit(next);
       }}
-      className="block w-full min-w-0 resize-none bg-transparent text-[14.5px] leading-snug text-foreground outline-none"
+      className="block w-full min-w-0 resize-none bg-transparent text-[14px] leading-snug text-foreground outline-none"
     />
   );
 }
@@ -1136,8 +1144,7 @@ export function TravelConnector({
         : "Directions in Maps";
   return (
     <li className="list-none">
-      <div className="grid grid-cols-[2.75rem_2rem_minmax(0,1fr)] gap-x-1.5">
-        <span />
+      <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
         <span />
         <div className="my-1 overflow-hidden rounded-2xl bg-elevated">
           <div className="flex items-center gap-2 py-1 pl-2.5 pr-1">
