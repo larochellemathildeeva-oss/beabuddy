@@ -530,56 +530,60 @@ export function TimelineEntry({
         <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
       </div>
 
-      <div className="mt-2.5 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)] gap-1.5">
-        <label className="min-w-0">
-          <span className={caption}>
-            <CalendarDays className="size-3.5" aria-hidden />
-            Date
-          </span>
-          <input
-            type="date"
-            value={item.day_date ?? ""}
-            aria-label={`Day for ${item.title}`}
-            {...(tripStart ? { min: tripStart } : {})}
-            {...(tripEnd ? { max: tripEnd } : {})}
-            onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-            className={field}
-          />
-        </label>
-        <label className="min-w-0">
-          <span className={caption}>
-            <Clock className="size-3.5" aria-hidden />
-            Time
-          </span>
-          <input
-            type="time"
-            value={rail}
-            aria-label={`Time for ${item.title}`}
-            onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-            className={field}
-          />
-        </label>
-        {/* How long the plan allows here. Companion counts it down once you
+      {/* Three across when the card has room; on a narrow phone (touch fields
+          are held at 16px) the date takes its own line, time and stay under it. */}
+      <div className="@container mt-2.5">
+        <div className="grid grid-cols-2 gap-1.5 @[24rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <label className="col-span-2 min-w-0 @[24rem]:col-span-1">
+            <span className={caption}>
+              <CalendarDays className="size-3.5" aria-hidden />
+              Date
+            </span>
+            <input
+              type="date"
+              value={item.day_date ?? ""}
+              aria-label={`Day for ${item.title}`}
+              {...(tripStart ? { min: tripStart } : {})}
+              {...(tripEnd ? { max: tripEnd } : {})}
+              onChange={(e) => onUpdate({ day_date: e.target.value || null })}
+              className={field}
+            />
+          </label>
+          <label className="min-w-0">
+            <span className={caption}>
+              <Clock className="size-3.5" aria-hidden />
+              Time
+            </span>
+            <input
+              type="time"
+              value={rail}
+              aria-label={`Time for ${item.title}`}
+              onChange={(e) => onUpdate({ time_label: e.target.value || null })}
+              className={field}
+            />
+          </label>
+          {/* How long the plan allows here. Companion counts it down once you
             tap "I'm here"; left empty, it only says how long it has been. */}
-        <label className="min-w-0">
-          <span className={caption}>
-            <Hourglass className="size-3.5" aria-hidden />
-            Stay
-          </span>
-          <select
-            value={item.planned_stay_minutes ?? ""}
-            aria-label={`How long to stay at ${item.title}`}
-            onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
-            className={field}
-          >
-            <option value="">—</option>
-            {stayChoices(item.planned_stay_minutes).map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {stayLabel(minutes)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="min-w-0">
+            <span className={caption}>
+              <Hourglass className="size-3.5" aria-hidden />
+              Stay
+            </span>
+            <select
+              value={item.planned_stay_minutes ?? ""}
+              aria-label={`How long to stay at ${item.title}`}
+              onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
+              className={field}
+            >
+              <option value="">—</option>
+              {stayChoices(item.planned_stay_minutes).map((minutes) => (
+                <option key={minutes} value={minutes}>
+                  {stayLabel(minutes)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="mt-2.5">
