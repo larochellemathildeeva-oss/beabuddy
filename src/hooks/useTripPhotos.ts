@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lastLoaded, rememberLoaded } from "@/lib/screen-cache";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type TripPhotoRow = {
   id: string;
@@ -28,6 +28,7 @@ export function useTripPhotos(uid: string | null) {
       setLoading(false);
       return;
     }
+    const since = screenGeneration();
     const { data, error } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, taken_at")
@@ -39,7 +40,7 @@ export function useTripPhotos(uid: string | null) {
     const rows = error ? [] : ((data ?? []) as TripPhotoRow[]);
     setPhotos(rows);
     setLoading(false);
-    if (!error) rememberLoaded(`photos:${uid}`, rows);
+    if (!error) rememberLoaded(`photos:${uid}`, rows, since);
   }, [uid]);
 
   useEffect(() => {

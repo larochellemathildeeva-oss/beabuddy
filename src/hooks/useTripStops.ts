@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lastLoaded, rememberLoaded } from "@/lib/screen-cache";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type StopRow = {
   id: string;
@@ -48,6 +48,7 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       setLoading(false);
       return;
     }
+    const since = screenGeneration();
     // Same rule as the timeline: a failed read is not an empty trip, and
     // blanking the stops would take the map, the directions and the day
     // grouping with it.
@@ -59,7 +60,7 @@ export function useTripStops(tripId: string | null, uid: string | null) {
     if (!error) {
       const rows = (data ?? []) as StopRow[];
       setStops(rows);
-      rememberLoaded(`stops:${tripId}`, rows);
+      rememberLoaded(`stops:${tripId}`, rows, since);
     }
     setLoading(false);
   }, [tripId]);

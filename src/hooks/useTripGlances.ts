@@ -11,7 +11,7 @@ import {
   plansConfirmed,
   stopCount,
 } from "@/lib/trip-glance";
-import { lastLoaded, rememberLoaded } from "@/lib/screen-cache";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type GlanceItem = {
   id: string;
@@ -66,7 +66,8 @@ const COLS = "id, trip_id, day_date, time_label, title, kind, detail, address, a
 /** Kept after the first miss: the bookings migration is applied by hand. */
 let bookedColumn: boolean | null = null;
 
-async function selectItems(ids: string[]): Promise<GlanceItem[]> {
+/** Null when the read failed, so a hiccup is not mistaken for an empty plan. */
+async function selectItems(ids: string[]): Promise<GlanceItem[] | null> {
   const query = (cols: string) =>
     supabase
       .from("itinerary_items")
@@ -80,11 +81,11 @@ async function selectItems(ids: string[]): Promise<GlanceItem[]> {
       bookedColumn = true;
       return (first.data ?? []) as unknown as GlanceItem[];
     }
-    if (!isMissingColumn(first.error, ["booked"])) return [];
+    if (!isMissingColumn(first.error, ["booked"])) return null;
     bookedColumn = false;
   }
   const retry = await query(COLS);
-  return retry.error ? [] : ((retry.data ?? []) as unknown as GlanceItem[]);
+  return retry.error ? null : ((retry.data ?? []) as unknown as GlanceItem[]);
 }
 
 /**
@@ -124,6 +125,7 @@ export function useTripGlances(tripIds: readonly string[]) {
       return;
     }
     let active = true;
+    const since = screenGeneration();
     void (async () => {
       const [rows, lists, todoRows, docRows] = await Promise.all([
         selectItems(ids),
@@ -161,31 +163,35 @@ export function useTripGlances(tripIds: readonly string[]) {
       ]);
       const listTrip = new Map<string, string>();
       for (const l of lists.data ?? []) if (l.trip_id) listTrip.set(l.id, l.trip_id);
-      let packing: { trip_id: string; packed: boolean }[] = [];
+      let packing: { trip_id: string; packed: boolean }[] | null = lists.error ? null : [];
       if (listTrip.size > 0) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("packing_items")
           .select("list_id, packed")
           .in("list_id", [...listTrip.keys()]);
-        packing = (data ?? []).map((p) => ({
-          trip_id: listTrip.get(p.list_id) ?? "",
-          packed: Boolean(p.packed),
-        }));
+        packing = error
+          ? null
+          : (data ?? []).map((p) => ({
+              trip_id: listTrip.get(p.list_id) ?? "",
+              packed: Boolean(p.packed),
+            }));
       }
       if (!active) return;
+      // A read that failed keeps what the cards last said rather than
+      // blanking it — and so does the copy kept for the next visit.
       const next: GlanceRows = {
         // Saved walks and drives are travel between stops, not stops to count.
-        items: rows.filter((row) => !isSavedDirectionItem(row)),
-        packed: packing,
-        todos: todoRows.error ? [] : ((todoRows.data ?? []) as GlanceTodo[]),
-        docs: docRows.error ? [] : (docRows.data ?? []),
+        items: rows ? rows.filter((row) => !isSavedDirectionItem(row)) : (hit?.items ?? []),
+        packed: packing ?? hit?.packed ?? [],
+        todos: todoRows.error ? (hit?.todos ?? []) : ((todoRows.data ?? []) as GlanceTodo[]),
+        docs: docRows.error ? (hit?.docs ?? []) : (docRows.data ?? []),
       };
       setItems(next.items);
       setPacked(next.packed);
       setTodos(next.todos);
       setDocs(next.docs);
       setLoaded(true);
-      rememberLoaded(`glances:${key}`, next);
+      rememberLoaded(`glances:${key}`, next, since);
     })();
     return () => {
       active = false;

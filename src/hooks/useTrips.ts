@@ -15,7 +15,7 @@ import {
 import type { NewStop } from "@/hooks/useTripStops";
 import { directionSource } from "@/lib/timeline-directions";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
-import { lastLoaded, rememberLoaded } from "@/lib/screen-cache";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -193,6 +193,7 @@ export function useTrips() {
   const [loading, setLoading] = useState(!last);
 
   const load = useCallback(async () => {
+    const since = screenGeneration();
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
     setUid(user?.id ?? null);
@@ -211,7 +212,11 @@ export function useTrips() {
     setTrips(rows);
     setMembers(memberRows);
     setLoading(false);
-    rememberLoaded<TripsSnapshot>("trips", { uid: user.id, trips: rows, members: memberRows });
+    rememberLoaded<TripsSnapshot>(
+      "trips",
+      { uid: user.id, trips: rows, members: memberRows },
+      since,
+    );
   }, []);
 
   useEffect(() => {

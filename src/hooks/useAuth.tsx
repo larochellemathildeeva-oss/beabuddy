@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { forgetScreens } from "@/lib/screen-cache";
+import { forgetScreens, screensBelongTo } from "@/lib/screen-cache";
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -11,6 +11,7 @@ export function useAuth() {
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
       if (event === "SIGNED_OUT") forgetScreens();
+      else screensBelongTo(next?.user?.id ?? null);
       setSession(next);
       setUser(next?.user ?? null);
       setLoading(false);

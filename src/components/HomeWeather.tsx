@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import {
   Cloud,
   CloudFog,
@@ -49,11 +50,13 @@ const PILL =
  * the foot of Home (`WeatherCredit`), where there is room for it.
  */
 /** The last reading, so coming back to Home shows it while the position is re-read. */
-let lastReading: { weather: Weather; place: Place | null } | null = null;
+type Reading = { weather: Weather; place: Place | null };
 
 export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
-  const [weather, setWeather] = useState<Weather | null>(lastReading?.weather ?? null);
-  const [place, setPlace] = useState<Place | null>(lastReading?.place ?? null);
+  // Kept with the account's other screens, so signing out forgets where you were.
+  const [last] = useState(() => lastLoaded<Reading>("weather"));
+  const [weather, setWeather] = useState<Weather | null>(last?.weather ?? null);
+  const [place, setPlace] = useState<Place | null>(last?.place ?? null);
   const [failed, setFailed] = useState(false);
   const [fahrenheit, setFahrenheit] = useState(false);
 
@@ -71,6 +74,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
     // Without consent or with location off the pill says so instead of it.
     if (lat === null || lon === null) return;
     let active = true;
+    const since = screenGeneration();
     setFailed(false);
     void Promise.all([
       lookupWeather({ data: { lat, lon } }).catch(() => null),
@@ -80,7 +84,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
       setWeather(w);
       setPlace(p);
       setFailed(!w);
-      lastReading = w ? { weather: w, place: p } : null;
+      if (w) rememberLoaded<Reading>("weather", { weather: w, place: p }, since);
     });
     return () => {
       active = false;
