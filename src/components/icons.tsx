@@ -78,6 +78,7 @@ import {
   Note as PhNote,
   Package as PhPackage,
   Path as PhPath,
+  Signpost as PhSignpost,
   PawPrint as PhPawPrint,
   PencilSimple as PhPencilSimple,
   PersonArmsSpread as PhPersonArmsSpread,
@@ -240,6 +241,7 @@ export const RefreshCw = icon(PhArrowsClockwise, "RefreshCw");
 export const RotateCcw = icon(PhArrowCounterClockwise, "RotateCcw");
 export const Route = icon(PhPath, "Route");
 export const Search = icon(PhMagnifyingGlass, "Search");
+export const Signpost = icon(PhSignpost, "Signpost");
 export const Settings = icon(PhGear, "Settings");
 export const Settings2 = icon(PhSlidersHorizontal, "Settings2");
 export const Share2 = icon(PhShareNetwork, "Share2");
