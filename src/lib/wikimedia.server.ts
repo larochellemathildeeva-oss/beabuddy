@@ -6,6 +6,7 @@ import {
   commonsImageInfoUrl,
   readBestCategoryImage,
   readCommonsImage,
+  readContinue,
   readWikidataCategory,
   readWikidataImage,
   readWikipediaItem,
@@ -26,6 +27,24 @@ import {
 const UA = "BeaTravelApp/1.0 (https://github.com/larochellemathildeeva-oss/beabuddy)";
 const cache = new Map<string, Promise<PlacePhoto | null>>();
 const CACHE_MAX = 2_000;
+/** Pages of a Commons category read for a rated photo: 150 files at most. */
+const CATEGORY_PAGES = 3;
+
+/**
+ * One lookup's trail. A source that fails (timeout, error) is passed over so
+ * the next can still answer, but the answer is then not kept: next time the
+ * better source may be back.
+ */
+type Trail = { failed: boolean };
+
+async function attempt<T>(trail: Trail, run: () => Promise<T>): Promise<T | null> {
+  try {
+    return await run();
+  } catch {
+    trail.failed = true;
+    return null;
+  }
+}
 
 async function getJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
@@ -45,12 +64,15 @@ export function commonsPhotoFor(
   width = COMMONS_THUMB_WIDTH,
 ): Promise<PlacePhoto | null> {
   const key = `f:${ref.file ?? ""}|q:${ref.wikidata ?? ""}@${width}`;
-  return remembered(key, async () => {
+  return remembered(key, async (trail) => {
     if (ref.file) {
-      const named = readCommonsImage(await getJson(commonsImageInfoUrl(ref.file, width)));
+      const file = ref.file;
+      const named = await attempt(trail, async () =>
+        readCommonsImage(await getJson(commonsImageInfoUrl(file, width))),
+      );
       if (named) return named;
     }
-    return ref.wikidata ? itemPhoto(ref.wikidata, width, "place") : null;
+    return ref.wikidata ? itemPhoto(trail, ref.wikidata, width, "place") : null;
   });
 }
 
@@ -64,23 +86,29 @@ export function commonsPhotoFor(
 export function townPhotoFor(city: string, country?: string | null): Promise<PlacePhoto | null> {
   const titles = townTitles(city, country);
   if (!titles.length) return Promise.resolve(null);
-  return remembered(`t:${titles[0]!.toLowerCase()}`, async () => {
+  return remembered(`t:${titles[0]!.toLowerCase()}`, async (trail) => {
     const item = readWikipediaItem(await getJson(wikipediaItemsUrl(titles)), titles);
-    return item ? itemPhoto(item, COMMONS_BANNER_WIDTH, "banner") : null;
+    return item ? itemPhoto(trail, item, COMMONS_BANNER_WIDTH, "banner") : null;
   });
 }
 
 function remembered(
   key: string,
-  run: () => Promise<PlacePhoto | null>,
+  run: (trail: Trail) => Promise<PlacePhoto | null>,
 ): Promise<PlacePhoto | null> {
   const cached = cache.get(key);
   if (cached) return cached;
   // The promise is kept while it runs, so cards asking at once share one lookup.
-  const pending = run().catch(() => {
-    cache.delete(key);
-    return null;
-  });
+  const trail: Trail = { failed: false };
+  const pending = run(trail)
+    .then((photo) => {
+      if (trail.failed) cache.delete(key);
+      return photo;
+    })
+    .catch(() => {
+      cache.delete(key);
+      return null;
+    });
   if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
   cache.set(key, pending);
   return pending;
@@ -93,25 +121,35 @@ function remembered(
  * found nothing.
  */
 async function itemPhoto(
+  trail: Trail,
   id: string,
   width: number,
   use: "place" | "banner",
 ): Promise<PlacePhoto | null> {
   if (use === "banner") {
-    const banner = readWikidataImage(await getJson(wikidataImageUrl(id, "P948")), "P948");
-    if (banner) {
+    const photo = await attempt(trail, async () => {
+      const banner = readWikidataImage(await getJson(wikidataImageUrl(id, "P948")), "P948");
+      if (!banner) return null;
       const url = commonsImageInfoUrl(banner, WIKIVOYAGE_BANNER_WIDTH);
-      const photo = readCommonsImage(await getJson(url), "banner");
-      if (photo) return photo;
-    }
-  }
-  const image = readWikidataImage(await getJson(wikidataImageUrl(id, "P18")));
-  if (image) {
-    const photo = readCommonsImage(await getJson(commonsImageInfoUrl(image, width)));
+      return readCommonsImage(await getJson(url), "banner");
+    });
     if (photo) return photo;
   }
-  const category = readWikidataCategory(await getJson(wikidataImageUrl(id, "P373")));
-  return category
-    ? readBestCategoryImage(await getJson(commonsCategoryFilesUrl(category, width)))
-    : null;
+  const image = await attempt(trail, async () => {
+    const file = readWikidataImage(await getJson(wikidataImageUrl(id, "P18")));
+    return file ? readCommonsImage(await getJson(commonsImageInfoUrl(file, width))) : null;
+  });
+  if (image) return image;
+  return attempt(trail, async () => {
+    const category = readWikidataCategory(await getJson(wikidataImageUrl(id, "P373")));
+    if (!category) return null;
+    const answers: unknown[] = [];
+    let from: Record<string, string> | null = {};
+    for (let i = 0; i < CATEGORY_PAGES && from; i++) {
+      const answer = await getJson(commonsCategoryFilesUrl(category, width, from));
+      answers.push(answer);
+      from = readContinue(answer);
+    }
+    return readBestCategoryImage(answers);
+  });
 }

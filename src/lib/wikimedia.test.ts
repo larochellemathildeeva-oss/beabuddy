@@ -9,6 +9,7 @@ import {
   readWikidataImage,
   readWikidataCategory,
   readBestCategoryImage,
+  readContinue,
   commonsCategoryFilesUrl,
   readWikipediaItem,
   townTitles,
@@ -291,4 +292,44 @@ test("from a category, only a rated photo is picked: best rating, then landscape
   // A rated drawing is still not a photo
   assert.equal(pick(file("Map", "featured", { mime: "image/png" })), undefined);
   assert.equal(readBestCategoryImage(null), null);
+});
+
+test("a category is read page by page, and the best across pages wins", () => {
+  const url = new URL(
+    commonsCategoryFilesUrl("Kyoto", 640, { gcmcontinue: "file|abc", continue: "gcmcontinue||" }),
+  );
+  assert.equal(url.searchParams.get("gcmcontinue"), "file|abc");
+  assert.equal(url.searchParams.get("continue"), "gcmcontinue||");
+  assert.deepEqual(readContinue({ continue: { gcmcontinue: "file|abc", continue: "x", n: 1 } }), {
+    gcmcontinue: "file|abc",
+    continue: "x",
+  });
+  assert.equal(readContinue({ batchcomplete: true }), null);
+
+  const page = (name: string, assessed: string | null) => ({
+    query: {
+      pages: [
+        {
+          title: `File:${name}.jpg`,
+          imageinfo: [
+            {
+              thumburl: `https://upload.wikimedia.org/wikipedia/commons/a/ab/${name}.jpg`,
+              descriptionurl: `https://commons.wikimedia.org/wiki/File:${name}.jpg`,
+              width: 3000,
+              height: 2000,
+              mime: "image/jpeg",
+              extmetadata: {
+                ...credit,
+                ...(assessed ? { Assessments: { value: assessed } } : {}),
+              },
+            },
+          ],
+        },
+      ],
+    },
+  });
+  assert.equal(
+    readBestCategoryImage([page("First", null), page("Later", "quality")])?.page,
+    "https://commons.wikimedia.org/wiki/File:Later.jpg",
+  );
 });

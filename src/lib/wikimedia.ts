@@ -115,7 +115,11 @@ const IMAGE_INFO = {
  * Asks Commons for the files in a category with their credit and ratings, so
  * the best-rated photo of a place can be picked when its own image is poor.
  */
-export function commonsCategoryFilesUrl(category: string, width = COMMONS_THUMB_WIDTH): string {
+export function commonsCategoryFilesUrl(
+  category: string,
+  width = COMMONS_THUMB_WIDTH,
+  from: Record<string, string> = {},
+): string {
   const params = new URLSearchParams({
     action: "query",
     format: "json",
@@ -126,8 +130,18 @@ export function commonsCategoryFilesUrl(category: string, width = COMMONS_THUMB_
     gcmlimit: "50",
     ...IMAGE_INFO,
     iiurlwidth: String(width),
+    ...from,
   });
   return `${COMMONS_API}?${params.toString()}`;
+}
+
+/** Where the next page of an answer starts (its `continue`), or null on the last page. */
+export function readContinue(json: unknown): Record<string, string> | null {
+  const cont = (json as { continue?: unknown })?.continue;
+  if (!cont || typeof cont !== "object") return null;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(cont)) if (typeof v === "string") out[k] = v;
+  return Object.keys(out).length ? out : null;
 }
 
 /**
@@ -287,11 +301,14 @@ export function readCommonsImage(json: unknown, use: PhotoUse = "place"): PlaceP
  * The best photo in a category's files: only ones Commons' reviewers rated
  * (featured, quality or valued), so an unrated snapshot is never picked just
  * for being there; the highest rating first, then landscape, then the first
- * listed.
+ * listed. Takes one answer or several pages of one.
  */
-export function readBestCategoryImage(json: unknown): PlacePhoto | null {
-  const pages = (json as { query?: { pages?: unknown } })?.query?.pages;
-  if (!Array.isArray(pages)) return null;
+export function readBestCategoryImage(json: unknown | unknown[]): PlacePhoto | null {
+  const answers = Array.isArray(json) ? json : [json];
+  const pages = answers.flatMap((a) => {
+    const p = (a as { query?: { pages?: unknown } })?.query?.pages;
+    return Array.isArray(p) ? p : [];
+  });
   let best: RatedPhoto | null = null;
   for (const page of pages) {
     const photo = readImageInfo(page as Parameters<typeof readImageInfo>[0], "place");
