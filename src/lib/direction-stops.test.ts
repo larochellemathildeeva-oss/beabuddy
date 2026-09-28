@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   addressForStop,
   hasCoords,
+  wideDayPinsToKeep,
   isSavedDirectionItem,
   looksLikeStreetAddress,
   mapsDirToUrl,
@@ -286,4 +287,26 @@ test("mapsDirToUrl leaves the start to Maps and names the stop without coords", 
   const named = mapsDirToUrl({ title: "Mercado" }, "Barreiras (BA)");
   assert.ok(named.includes(`destination=${encodeURIComponent("Mercado, Barreiras")}`));
   assert.ok(!named.includes("origin="));
+});
+
+test("a day trip's stops found far from the hotel are kept when they agree", () => {
+  const osakaHotel = { lat: 34.665, lon: 135.501 };
+  const keep = wideDayPinsToKeep([
+    // Hiroshima Station and the Peace Memorial Museum, 280 km from Osaka.
+    { index: 3, day: "2026-10-06", pin: { lat: 34.397, lon: 132.475 }, anchor: osakaHotel },
+    { index: 4, day: "2026-10-06", pin: { lat: 34.392, lon: 132.452 }, anchor: osakaHotel },
+    // Sannomiya, 27 km away: a day's reach on its own.
+    { index: 9, day: "2026-10-08", pin: { lat: 34.694, lon: 135.195 }, anchor: osakaHotel },
+  ]);
+  assert.deepEqual([...keep].sort(), [3, 4, 9]);
+});
+
+test("a lone namesake a day's reach away is not kept", () => {
+  const hiroshima = { lat: 34.397, lon: 132.475 };
+  // A Hiroshima lunch found in Kyoto, nothing else of its day beside it.
+  const keep = wideDayPinsToKeep([
+    { index: 2, day: "2026-10-07", pin: { lat: 35.004, lon: 135.768 }, anchor: hiroshima },
+    { index: 5, day: "2026-10-08", pin: { lat: 35.01, lon: 135.77 }, anchor: hiroshima },
+  ]);
+  assert.equal(keep.size, 0);
 });
