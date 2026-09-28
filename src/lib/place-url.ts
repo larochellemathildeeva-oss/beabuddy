@@ -26,6 +26,13 @@ export type FetchFailure = "blocked-host" | "unreachable" | "http-error" | "bad-
 export type FetchedHtml = {
   html: string;
   finalUrl: string;
+  /**
+   * Every URL the redirect chain reached, first to last. The place is often
+   * named on a hop in the middle: a short link goes to `maps.google.com?q=Name`
+   * and from there, on a server in Europe, to a consent page that names
+   * nothing.
+   */
+  visited: string[];
   failure?: FetchFailure;
 };
 
@@ -273,21 +280,22 @@ async function fetchHtmlWithPolicy(
   canFollow: (url: URL) => boolean,
 ): Promise<FetchedHtml> {
   const start = parseHref(href);
-  if (!start) return { html: "", finalUrl: href, failure: "bad-url" };
+  if (!start) return { html: "", finalUrl: href, visited: [], failure: "bad-url" };
   if (!isPublicHttpsUrl(start)) {
     throw new UnsupportedPlaceUrlError();
   }
   if (!canFollow(start)) {
-    return { html: "", finalUrl: start.toString(), failure: "blocked-host" };
+    return { html: "", finalUrl: start.toString(), visited: [], failure: "blocked-host" };
   }
 
   let current = start;
+  const visited: string[] = [];
   for (let hops = 0; hops <= MAX_REDIRECTS; hops++) {
     // Where the name actually points, checked on every hop rather than only on
     // the one the person pasted. A redirect is the easy way to reach an address
     // the first URL would never have been allowed to name.
     if (!(await resolvesToPublicAddress(current.hostname))) {
-      return { html: "", finalUrl: current.toString(), failure: "blocked-host" };
+      return { html: "", finalUrl: current.toString(), visited, failure: "blocked-host" };
     }
 
     let res: Response;
@@ -306,38 +314,39 @@ async function fetchHtmlWithPolicy(
     } catch {
       // DNS failure, TLS failure, timeout, or no egress from this server at
       // all. Worth telling apart from a page that answered and said nothing.
-      return { html: "", finalUrl: current.toString(), failure: "unreachable" };
+      return { html: "", finalUrl: current.toString(), visited, failure: "unreachable" };
     }
 
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get("location");
       await res.body?.cancel();
       if (!location || hops === MAX_REDIRECTS) {
-        return { html: "", finalUrl: current.toString(), failure: "http-error" };
+        return { html: "", finalUrl: current.toString(), visited, failure: "http-error" };
       }
       const next = parseHref(location, current);
       if (!next) {
-        return { html: "", finalUrl: current.toString(), failure: "http-error" };
+        return { html: "", finalUrl: current.toString(), visited, failure: "http-error" };
       }
       if (!canFollow(next)) {
-        return { html: "", finalUrl: current.toString(), failure: "blocked-host" };
+        return { html: "", finalUrl: current.toString(), visited, failure: "blocked-host" };
       }
       // The redirect target is where the link really points, so report it even
       // when the hop after it fails — a short link resolves to a Maps URL whose
       // path still carries the place name.
       current = next;
+      visited.push(next.toString());
       continue;
     }
 
     if (!res.ok) {
       await res.body?.cancel();
-      return { html: "", finalUrl: current.toString(), failure: "http-error" };
+      return { html: "", finalUrl: current.toString(), visited, failure: "http-error" };
     }
     const html = await readCappedText(res);
-    return { html, finalUrl: current.toString() };
+    return { html, finalUrl: current.toString(), visited };
   }
 
-  return { html: "", finalUrl: current.toString(), failure: "http-error" };
+  return { html: "", finalUrl: current.toString(), visited, failure: "http-error" };
 }
 
 /**

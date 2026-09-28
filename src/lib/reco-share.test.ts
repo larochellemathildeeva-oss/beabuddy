@@ -1,9 +1,10 @@
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   shareStatusLine,
   shareSummaryLine,
   sharedListFromRows,
+  singlePlaceShareText,
   suggestedShareTitle,
   toKeptReco,
   toShareItems,
@@ -233,4 +234,15 @@ describe("shareStatusLine", () => {
   it("marks a share that has hit its cap", () => {
     assert.equal(shareStatusLine({ ...base, use_count: 50 }), "Kept by 50 people · full");
   });
+});
+
+test("singlePlaceShareText carries the Maps link, and the code when there is one", () => {
+  const link = "https://www.google.com/maps/search/?api=1&query=Harvey%27s";
+  assert.equal(
+    singlePlaceShareText({ name: "Harvey's", where: "Montréal, Canada", mapsUrl: link }),
+    `Harvey's, Montréal, Canada\n${link}`,
+  );
+  const withCode = singlePlaceShareText({ name: "Harvey's", mapsUrl: link, code: "AB12CD34" });
+  assert.ok(withCode.startsWith(`Harvey's\n${link}\n\n`));
+  assert.ok(withCode.includes("AB12CD34"));
 });

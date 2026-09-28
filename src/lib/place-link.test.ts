@@ -6,8 +6,13 @@ import {
   isPlaceUrl,
   placeCoordsFromUrl,
   placePathSegment,
+  placeTextFromUrls,
+  placeUrlCandidates,
+  resolveChainCoords,
   resolvePlaceCoords,
   splitPlacePathName,
+  stripPlusCode,
+  unwrapGoogleInterstitial,
   viewportCoordsFromUrl,
 } from "./place-link.ts";
 
@@ -148,4 +153,50 @@ test("cleanPageTitle strips map branding", () => {
   assert.equal(cleanPageTitle("Google Maps"), "");
   assert.equal(cleanPageTitle("Apple Maps"), "");
   assert.equal(cleanPageTitle("Bar Raval · Toronto"), "Bar Raval");
+});
+
+test("a consent page gives up the Maps URL it was standing in front of", () => {
+  const consent =
+    "https://consent.google.com/ml?continue=https://www.google.com/maps?q%3DHarvey%27s,%2B1216%2BRue%2BSainte-Catherine%2BO,%2BMontr%C3%A9al%26ftid%3D0x1:0x2&gl=FR";
+  const hidden = unwrapGoogleInterstitial(consent);
+  assert.ok(hidden?.startsWith("https://www.google.com/maps?q="));
+  assert.equal(googleQueryPlaceText(hidden!), "Harvey's, 1216 Rue Sainte-Catherine O, Montréal");
+  assert.equal(unwrapGoogleInterstitial("https://www.google.com/maps?q=x"), undefined);
+  assert.equal(unwrapGoogleInterstitial("https://evil.example/ml?continue=https://x.y"), undefined);
+});
+
+test("the name is read from a hop in the middle of the chain, not only the last", () => {
+  const urls = placeUrlCandidates(
+    "https://maps.app.goo.gl/yNWrPg1SFLomwCKX9",
+    [
+      "https://maps.google.com/?q=Caf%C3%A9+Olimpico,+124+Rue+St-Viateur+O,+Montr%C3%A9al&ftid=0x1:0x2",
+      "https://consent.google.com/ml?continue=https://www.google.com/maps",
+    ],
+    "https://consent.google.com/ml?continue=https://www.google.com/maps",
+  );
+  const { name, address } = splitPlacePathName(placeTextFromUrls(urls));
+  assert.equal(name, "Café Olimpico");
+  assert.equal(address, "124 Rue St-Viateur O, Montréal");
+});
+
+test("a pin on any hop beats the pasted link's viewport", () => {
+  const coords = resolveChainCoords(
+    [
+      "https://www.google.com/maps/@45.5,-73.6,15z",
+      "https://www.google.com/maps/place/X/@1,1,17z/data=!3d45.52!4d-73.61",
+    ],
+    true,
+  );
+  assert.deepEqual(coords, { lat: 45.52, lon: -73.61 });
+});
+
+test("stripPlusCode drops a leading Plus Code and nothing else", () => {
+  assert.equal(
+    stripPlusCode("8G9M+MRR Hotel Park, 1 Al Corniche, Doha"),
+    "Hotel Park, 1 Al Corniche, Doha",
+  );
+  assert.equal(stripPlusCode("8G9M MRR Hotel Park"), "Hotel Park");
+  assert.equal(stripPlusCode("Harvey's, Montréal"), "Harvey's, Montréal");
+  // Only the code's letters, no digit: a name, not a code.
+  assert.equal(stripPlusCode("CHXX PQR Bar"), "CHXX PQR Bar");
 });

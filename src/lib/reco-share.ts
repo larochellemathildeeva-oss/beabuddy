@@ -226,3 +226,22 @@ export function shareStatusLine(
   const taken = `Kept by ${share.use_count} ${share.use_count === 1 ? "person" : "people"}`;
   return left === 0 ? `${taken} · full` : taken;
 }
+
+/**
+ * The message for one place sent on from its page: the Maps link, so it
+ * opens for anyone, and the Béa code, so someone with Béa can keep the rec
+ * itself — name, city, pin and who it came from — instead of retyping it.
+ */
+export function singlePlaceShareText(place: {
+  name: string;
+  where?: string;
+  mapsUrl: string;
+  code?: string;
+}): string {
+  const head = [place.name.trim(), place.where?.trim()].filter(Boolean).join(", ");
+  const lines = [head, place.mapsUrl];
+  if (place.code) {
+    lines.push("", `On Béa? Recs → + → Open a share, and paste ${place.code} to keep it.`);
+  }
+  return lines.join("\n");
+}

@@ -17,6 +17,8 @@ import { recMapsUrl } from "@/lib/reco-open";
 import { directionsUrl } from "@/lib/recs-browse";
 import { tagsForSave } from "@/lib/reco-tags";
 import { isCityLevelPlace, isCountryLevelPlace } from "@/lib/reco-place";
+import { singlePlaceShareText } from "@/lib/reco-share";
+import { createRecoShare } from "@/hooks/useRecoShares";
 import { PlaceArt, type RecsPlace } from "./RecsParts";
 
 /**
@@ -29,6 +31,8 @@ export function PlaceDetail({
   place,
   row,
   here,
+  uid,
+  myName,
   saving,
   onBack,
   onSave,
@@ -40,6 +44,9 @@ export function PlaceDetail({
   place: RecsPlace;
   row: RecoRowDB | undefined;
   here: { lat: number; lon: number } | null;
+  /** Signed in: the place can go as a Béa code, not only a Maps link. */
+  uid: string | null;
+  myName: string;
   saving: boolean;
   onBack: () => void;
   onSave: () => void;
@@ -49,6 +56,8 @@ export function PlaceDetail({
   onRemove: () => void;
 }) {
   const [shared, setShared] = useState("");
+  const [choosing, setChoosing] = useState(false);
+  const [making, setMaking] = useState(false);
   const saved = Boolean(row);
   const where = formatTripLocation(place.city, place.country);
   const metres =
@@ -65,18 +74,74 @@ export function PlaceDetail({
   const venue = !isCountryLevelPlace(fields) && !isCityLevelPlace(fields);
   const tags = row ? tagsForSave(row) : [];
 
-  const share = async () => {
+  /** Tapping Share asks how, when there is a choice; signed out it is the link. */
+  const share = () => {
+    setShared("");
+    if (uid) setChoosing((open) => !open);
+    else void send(false);
+  };
+
+  /**
+   * Send the place on. With a code, the rec itself goes behind a one-place
+   * share, the same kind "Send places" makes, and the message carries both
+   * the Maps link and the code. Your note stays behind, as it does there.
+   */
+  const send = async (withCode: boolean) => {
     const url = recMapsUrl(place);
-    const text = [place.name, where].filter(Boolean).join(", ");
+    let code: string | undefined;
+    if (withCode && uid) {
+      setMaking(true);
+      try {
+        const made = await createRecoShare(uid, {
+          recos: [
+            {
+              id: row?.id ?? "",
+              name: place.name,
+              city: place.city ?? null,
+              country: place.country ?? null,
+              address: row?.address ?? place.address ?? null,
+              category: place.category ?? null,
+              source: row?.source ?? null,
+              url: row?.url ?? null,
+              lat: place.lat ?? null,
+              lon: place.lon ?? null,
+            },
+          ],
+          title: place.name,
+          sharedByName: myName,
+        });
+        code = made.code;
+      } catch (e) {
+        setShared(e instanceof Error ? e.message : "Couldn't make a code for this place.");
+        return;
+      } finally {
+        setMaking(false);
+      }
+    }
+    setChoosing(false);
+    const text = singlePlaceShareText({
+      name: place.name,
+      where,
+      mapsUrl: url,
+      ...(code ? { code } : {}),
+    });
     try {
       if (navigator.share) {
-        await navigator.share({ title: place.name, text, url });
+        // The link rides inside the text when there is a code, so the code is
+        // never dropped by an app that keeps only one of the two.
+        await navigator.share(
+          code
+            ? { title: place.name, text }
+            : { title: place.name, text: [place.name, where].filter(Boolean).join(", "), url },
+        );
+        if (code) setShared(`Code ${code} — works for 30 days.`);
         return;
       }
-      await navigator.clipboard.writeText(`${text}\n${url}`);
-      setShared("Link copied.");
+      await navigator.clipboard.writeText(text);
+      setShared(code ? `Copied, with code ${code}.` : "Link copied.");
     } catch {
-      /* the share sheet was dismissed */
+      // The share sheet was dismissed; a code already made is still worth showing.
+      if (code) setShared(`Code ${code} — works for 30 days.`);
     }
   };
 
@@ -98,7 +163,7 @@ export function PlaceDetail({
         <div className="absolute right-4 top-4 flex gap-2">
           <button
             type="button"
-            onClick={() => void share()}
+            onClick={share}
             aria-label="Share"
             className="grid size-10 place-items-center rounded-full bg-card/90 shadow-sm"
           >
@@ -159,11 +224,36 @@ export function PlaceDetail({
           <CalendarDays className="size-5 text-primary" aria-hidden />
           Add to trip
         </button>
-        <button type="button" onClick={() => void share()} className={action}>
+        <button
+          type="button"
+          onClick={share}
+          aria-expanded={uid ? choosing : undefined}
+          className={action}
+        >
           <Share2 className="size-5 text-primary" aria-hidden />
           Share
         </button>
       </div>
+      {choosing && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => void send(true)}
+            disabled={making}
+            className="rounded-xl bg-primary px-3 py-2.5 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {making ? "Making a code…" : "As a Béa rec, with a code"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void send(false)}
+            disabled={making}
+            className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] font-semibold disabled:opacity-60"
+          >
+            Just the Maps link
+          </button>
+        </div>
+      )}
       {shared && <p className="text-[13px] text-muted-foreground">{shared}</p>}
 
       <section className="plain-card space-y-3 p-4">
