@@ -17,6 +17,7 @@
  * The output has the shape the AI import returns, as the calendar reader's
  * does, so review, placing and saving are the same whichever way it came in.
  */
+import { looksLikeStreetAddress } from "./direction-stops.ts";
 import { foldTravelLegs, normalizeClock } from "./import-stop.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 import type { TimelineKind } from "./timeline-kind.ts";
@@ -105,15 +106,19 @@ const VENUE =
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const DURATION =
   /^(?:about\s+|~|approx\.?\s*)?(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?|min|mins|minutes?)(?:\s*(\d{1,2})\s*(?:min|mins|minutes?)?)?$/i;
-/** ", 7 Rue du Faubourg Montmartre", ", 199-206 High Holborn": a street address. */
+/**
+ * ", 7 Rue du Faubourg Montmartre", ", 199-206 High Holborn", or with the
+ * number after the street, ", Poststraße 8", ", Hasengasse 5-7": a street address.
+ */
 const ADDRESS = /^\d+[\d\-–/]*[a-z]?\s+\p{L}/u;
+const isAddress = (seg: string) => ADDRESS.test(seg) || looksLikeStreetAddress(seg);
 
 const FLIGHT_WORDS =
   /✈|\bflight\b|\b(?:fly|land|landing|arrive|arrival|depart|departure)\b.*\b(?:airport|terminal)\b/i;
 /** "LHR T5", "JFK T4": an airport code with its terminal. Case matters. */
 const AIRPORT_TERMINAL = /\b[A-Z]{3}\s+T\d\b/;
 const HOTEL_WORDS =
-  /\b(?:hotel|hostel|ryokan|guesthouse|airbnb|check[- ]?in|check[- ]?out|drop (?:the |our |off )?bags)\b/i;
+  /\b(?:hotel|hostel|ryokan|guesthouse|airbnb|check[- ]?in|check[- ]?out|overnight|drop (?:the |our |off )?(?:bags|luggage)|(?:luggage|bag) drop)\b/i;
 const NOTE_WORDS = /^(?:be at|be back|meet|reminder|note)\b/i;
 const TRANSPORT_WORDS =
   /\b(?:train|ferry|bus|shinkansen|eurostar|tgv|jr|line|metro|subway|tram|taxi|uber|coach|transfer)\b/i;
@@ -133,8 +138,8 @@ type Heading = { dayNumber: number | null; date: string | null; titleText: strin
 export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItinerary | null {
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+    .map(tableRow)
+    .filter((l): l is string => Boolean(l));
   if (lines.length < MIN_ENTRIES) return null;
   if (lines.some((l) => CHAT_LINE.test(l))) return null;
   if (CHANGED.test(text.replace(/skip[- ]the[- ]line/gi, ""))) return null;
@@ -228,6 +233,27 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
   };
 }
 
+/**
+ * A table row as a plain line: "| 09:00–09:40 | Brandenburg Gate | stop |"
+ * or the same with tabs, as a table copied out of a chat comes. The time
+ * cell leads and the others follow as notes. The header row ("Time | Place
+ * / note") and the rule under it say nothing, so they go.
+ */
+function tableRow(raw: string): string | null {
+  const line = raw.trim();
+  if (!line) return null;
+  if (/^\|?[\s:|-]+\|[\s:|-]*$/.test(line)) return null;
+  const cells = line.includes("|")
+    ? line.replace(/^\||\|$/g, "").split("|")
+    : line.includes("\t")
+      ? line.split(/\t+/)
+      : null;
+  const parts = (cells ?? [line]).map((c) => c.trim()).filter(Boolean);
+  if (parts.length > 1 && /^time$/i.test(parts[0]!)) return null;
+  if (!cells || parts.length < 2) return parts.join(" ") || null;
+  return `${parts[0]} ${parts.slice(1).join(" - ")}`;
+}
+
 /** A line that starts with a time, split into the time and what follows. */
 function readEntry(raw: string): Entry | null {
   const line = stripLead(raw.replace(EMOJI, " ").replace(/\s+/g, " ").trim());
@@ -298,7 +324,14 @@ function readStop(
   // " — go early", " — reservation confirmed #8843": the rest is a note.
   let main = text;
   let dashNote: string | null = null;
-  const dash = text.match(/^(.+?)\s+[—–]\s+(.+)$/);
+  // A plain hyphen with spaces round it does the same job in most plans
+  // ("Städel Museum, Schaumainkai 63 - 700 years of European art"), except
+  // on a journey, where it joins two towns ("Train Paris - Lyon").
+  const dash =
+    text.match(/^(.+?)\s+[—–]\s+(.+)$/) ??
+    (TRANSPORT_WORDS.test(text) || FLIGHT_WORDS.test(text)
+      ? null
+      : text.match(/^(.+?)\s+-\s+(.+)$/));
   if (dash) {
     main = cleanText(dash[1]!);
     dashNote = cleanText(dash[2]!);
@@ -307,7 +340,7 @@ function readStop(
   // A street address given after a comma is kept verbatim and taken out of the title.
   let address: string | null = null;
   const segments = main.split(/\s*,\s*/);
-  const addrAt = segments.findIndex((seg, i) => i > 0 && ADDRESS.test(seg));
+  const addrAt = segments.findIndex((seg, i) => i > 0 && isAddress(seg));
   if (addrAt > 0) {
     address = segments[addrAt]!;
     segments.splice(addrAt, 1);
@@ -396,6 +429,8 @@ function kindFor(text: string, raw: string, booked: boolean): TimelineKind {
   // A flight is fixed in the day and needs a ticket, booked or not: kept as
   // a flight, it stays a stop at the airport and counts as a plan to book.
   if (FLIGHT_WORDS.test(text) || AIRPORT_TERMINAL.test(raw)) return "flight";
+  // "Breakfast at the Hotel Adlon" is a meal, wherever it is eaten.
+  if (/^(?:breakfast|brunch|lunch|dinner|supper)\b/i.test(text)) return "meal";
   if (HOTEL_WORDS.test(text)) return booked ? "hotel" : "lodging";
   if (NOTE_WORDS.test(text)) return "note";
   if (TRANSPORT_WORDS.test(text) || /^(?:take|catch|board|hop on)\b.*\bto\b/i.test(text)) {
