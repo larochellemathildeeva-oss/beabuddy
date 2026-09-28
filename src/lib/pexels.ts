@@ -78,37 +78,72 @@ function describes(alt: string, names: readonly string[]): boolean {
 }
 
 /**
- * Does `alt` name a country other than `country`? "Paris, France" is not a
- * photo of Paris, Texas. Runs of one to three words are read as country names
- * in any language; lone one- and two-letter words are skipped, since "in" and
- * "it" are also country codes.
+ * The countries `alt` names, as ISO codes. Runs of one to three words are read
+ * as country names in any language; lone one- and two-letter words are
+ * skipped, since "in" and "it" are also country codes.
  */
-export function namesOtherCountry(alt: string, country: string | null | undefined): boolean {
-  const wanted = countryCode(country);
-  if (!wanted) return false;
+function countriesNamed(alt: string): string[] {
+  const found: string[] = [];
   const words = comparableName(alt).split(" ").filter(Boolean);
   for (let i = 0; i < words.length; i++) {
     for (let n = 1; n <= 3 && i + n <= words.length; n++) {
       const run = words.slice(i, i + n).join(" ");
       if (run.length <= 2) continue;
       const code = countryCode(run);
-      if (code && code !== wanted) return true;
+      if (code) found.push(code);
     }
   }
-  return false;
+  return found;
+}
+
+/**
+ * Does `alt` name a country other than `country`? "Paris, France" is not a
+ * photo of Paris, Texas.
+ */
+export function namesOtherCountry(alt: string, country: string | null | undefined): boolean {
+  const wanted = countryCode(country);
+  return !!wanted && countriesNamed(alt).some((code) => code !== wanted);
+}
+
+/** A country's bounding box, [west, south, east, north], by name. */
+export type CountryBox = { country: string; bbox: readonly number[] };
+
+/**
+ * Could a point be in the countries named? From their boxes, so it errs on
+ * the side of yes: a country without a box, or whose box holds the point,
+ * passes. Used for a stop's photo, whose trip country the picture does not
+ * know: "Café Central, Vienna, Austria" is not a photo of a Café Central in
+ * Madrid.
+ */
+export function countryFilterAt(
+  lat: number,
+  lon: number,
+  boxes: readonly CountryBox[],
+): (code: string) => boolean {
+  const byCode = new Map<string, (readonly number[])[]>();
+  for (const box of boxes) {
+    const code = countryCode(box.country);
+    if (!code || box.bbox.length !== 4) continue;
+    byCode.set(code, [...(byCode.get(code) ?? []), box.bbox]);
+  }
+  return (code) => {
+    const found = byCode.get(code);
+    return !found || found.some(([w, s, e, n]) => lat >= s! && lat <= n! && lon >= w! && lon <= e!);
+  };
 }
 
 /**
  * The first photo in a Pexels search whose description names one of `names`
  * (a stop's names, or a town's), as a credited PlacePhoto. A banner must be
- * wider than tall, and a town's must not name another country. Null when none
- * does.
+ * wider than tall, and a town's must not name another country; a stop's must
+ * not name a country its pin cannot be in (`mayBeIn`). Null when none does.
  */
 export function readPexelsPhoto(
   json: unknown,
   names: readonly string[],
   use: PexelsUse,
   country?: string | null,
+  mayBeIn?: (code: string) => boolean,
 ): PlacePhoto | null {
   const photos = (json as { photos?: unknown } | null)?.photos;
   if (!Array.isArray(photos)) return null;
@@ -118,6 +153,7 @@ export function readPexelsPhoto(
     if (!isPexelsUrl(url, "images.pexels.com") || !isPexelsUrl(p.url, "www.pexels.com")) continue;
     if (use === "banner" && p.width && p.height && p.width <= p.height) continue;
     if (!describes(p.alt, names) || namesOtherCountry(p.alt, country)) continue;
+    if (mayBeIn && !countriesNamed(p.alt).every(mayBeIn)) continue;
     return {
       url,
       page: p.url,

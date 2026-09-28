@@ -169,7 +169,9 @@ stop's photo are searched on Pexels first (`pexels.ts`, pure and tested;
 `pexels.server.ts` holds the key), and Commons is only the backup. Pexels is a
 stock library, so a photo is taken only when its description names the stop
 or town (never a generic name like "Cafe"), and a town's must not name another
-country. Pexels photos carry no credit of their own: the privacy page credits
+country. A stop's photo is searched by its name even when Place Details cannot
+confirm the place at the pin, so it must not name a country the pin is outside
+(`countryFilterAt`, from the boxes in `public/geo/admin1/index.json`). Pexels photos carry no credit of their own: the privacy page credits
 Pexels, with a link, once. Commons photos keep theirs, as their licences
 require. The free plan is 200 searches an hour for the whole app, so Béa stays
 under 180, gives one traveller at most 40, and rests when Pexels says few are

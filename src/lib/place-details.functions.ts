@@ -38,11 +38,11 @@ export const placeDetails = createServerFn({ method: "POST" })
     // cannot confirm the place at the pin — otherwise most stops, which the
     // map does not know by name, would never get a photo.
     const { pexelsPlacePhoto } = await import("@/lib/pexels.server");
-    let photo = await pexelsPlacePhoto(context.userId, [
-      data.name,
-      ...(facts?.name ? [facts.name] : []),
-      ...(facts?.names ?? []),
-    ]);
+    let photo = await pexelsPlacePhoto(
+      context.userId,
+      [data.name, ...(facts?.name ? [facts.name] : []), ...(facts?.names ?? [])],
+      data,
+    );
     if (!photo && facts?.commons) {
       const { commonsPhotoFor } = await import("@/lib/wikimedia.server");
       photo = await commonsPhotoFor(facts.commons);
