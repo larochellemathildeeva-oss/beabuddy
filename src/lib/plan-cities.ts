@@ -138,3 +138,35 @@ export async function planTowns(
   }
   return planCities(withDayTowns(rows, towns), existing);
 }
+
+/** "Hiroshima" on a plan in Japan is "Hiroshima, Japan"; a town already with its country is left alone. */
+export function withCountry<T extends PlanCityRow>(row: T, country: string | null | undefined): T {
+  const city = row.city?.trim();
+  const nation = country?.trim();
+  if (!city || !nation || city.includes(",")) return row;
+  if (city.toLowerCase() === nation.toLowerCase()) return row;
+  return { ...row, city: `${city}, ${nation}` };
+}
+
+/**
+ * The place a trip with none takes from the plan saved into it.
+ *
+ * A whole Japan itinerary imported into a trip with no place left it saying
+ * nowhere, and everything that looks a stop up without a day's town — the
+ * background placing, the directions — then used its first destination: a
+ * Kyoto hotel was looked for around Hiroshima. The country the plan's towns
+ * share becomes the trip's, and its town too when the plan has only one.
+ * A trip that has a place keeps it; towns in several countries set nothing.
+ */
+export function tripPlaceFromTowns(
+  trip: { city?: string | null | undefined; country?: string | null | undefined },
+  towns: readonly PlanCity[],
+  country?: string | null | undefined,
+): { city?: string; country: string } | null {
+  if (trip.city?.trim() || trip.country?.trim()) return null;
+  const named = new Set(towns.map((t) => t.country?.trim()).filter((c): c is string => Boolean(c)));
+  if (named.size > 1) return null;
+  const nation = [...named][0] ?? country?.trim();
+  if (!nation) return null;
+  return towns.length === 1 ? { city: towns[0]!.city, country: nation } : { country: nation };
+}

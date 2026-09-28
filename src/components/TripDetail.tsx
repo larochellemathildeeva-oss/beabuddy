@@ -95,7 +95,7 @@ import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { lookupCoords } from "@/lib/places.functions";
-import { planTowns } from "@/lib/plan-cities";
+import { planTowns, tripPlaceFromTowns } from "@/lib/plan-cities";
 import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
 import { DayRibbon } from "@/components/day/DayRibbon";
@@ -2071,7 +2071,10 @@ export function TripDetail({
           lat: stop.lat,
           lon: stop.lon,
         }))}
-        {...(trip.city ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") } : {})}
+        {...(trip.city || trip.country
+          ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") }
+          : {})}
+        tripTitle={trip.title}
         {...(trip.start_date ? { startDate: trip.start_date } : {})}
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
@@ -2113,7 +2116,12 @@ export function TripDetail({
         onApplyDates={async (dates) => {
           await onUpdate(dates);
         }}
-        onAddCities={(list) => cities.addStops(list)}
+        onAddCities={async (list) => {
+          await cities.addStops(list);
+          // A trip with no place takes the one its plan shows ("Japan").
+          const place = tripPlaceFromTowns(trip, list);
+          if (place) await onUpdate(place);
+        }}
       />
 
       <TripMenuSheet

@@ -100,11 +100,20 @@ export function tripLookupArea(trip: {
 }): string {
   const own = joinArea(trip.city, trip.country);
   if (own) return own;
-  for (const stop of trip.stops ?? []) {
-    const fromStop = joinArea(stop.city, stop.country ?? trip.country);
-    if (fromStop) return fromStop;
+  const named = (trip.stops ?? []).filter((stop) => (stop.city ?? "").trim());
+  // Several towns: the country they share, never the first of them. A Kyoto
+  // and Osaka trip with a Hiroshima day (Oct 7) filed first had its Oct 1
+  // stops looked for around Hiroshima, and a Kyoto hotel found its namesake
+  // street there. Their country is broad, and Béa searches it as such.
+  if (named.length > 1) {
+    const countries = new Set(
+      named.map((stop) => (stop.country ?? "").trim().toLowerCase()).filter(Boolean),
+    );
+    const shared = named.find((stop) => stop.country?.trim())?.country?.trim() ?? "";
+    return countries.size === 1 && named.every((stop) => stop.country?.trim()) ? shared : "";
   }
-  return "";
+  const only = named[0];
+  return only ? joinArea(only.city, only.country ?? trip.country) : "";
 }
 
 function joinArea(city?: string | null, country?: string | null): string {

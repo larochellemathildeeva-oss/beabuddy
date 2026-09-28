@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { dayPinsToLookUp, planCities, withDayTowns } from "./plan-cities.ts";
+import {
+  dayPinsToLookUp,
+  planCities,
+  tripPlaceFromTowns,
+  withCountry,
+  withDayTowns,
+} from "./plan-cities.ts";
 
 const row = (city: string | null, day_date: string, kind = "sight") => ({ city, day_date, kind });
 
@@ -69,4 +75,32 @@ test("rows with no town take their day's", () => {
     withDayTowns(rows, { "2026-10-02": "Frankfurt, Germany" }).map((r) => r.city),
     ["Frankfurt, Germany", "Mainz", null],
   );
+});
+
+test("withCountry: a town the plan named alone takes the plan's country", () => {
+  const row = { city: "Hiroshima", kind: "sight", day_date: "2026-10-07" };
+  assert.equal(withCountry(row, "Japan").city, "Hiroshima, Japan");
+  assert.equal(withCountry({ ...row, city: "Kyoto, Japan" }, "Japan").city, "Kyoto, Japan");
+  assert.equal(withCountry({ ...row, city: null }, "Japan").city, null);
+  assert.equal(withCountry(row, null).city, "Hiroshima");
+});
+
+test("tripPlaceFromTowns: a trip with no place takes the plan's", () => {
+  const towns = [
+    { city: "Kyoto", country: "Japan" },
+    { city: "Osaka", country: "Japan" },
+    { city: "Hiroshima", country: "Japan" },
+  ];
+  assert.deepEqual(tripPlaceFromTowns({}, towns), { country: "Japan" });
+  assert.deepEqual(tripPlaceFromTowns({ city: "", country: null }, towns.slice(0, 1)), {
+    city: "Kyoto",
+    country: "Japan",
+  });
+  // A trip that has a place keeps it; two countries set nothing.
+  assert.equal(tripPlaceFromTowns({ country: "Japan" }, towns), null);
+  assert.equal(tripPlaceFromTowns({}, [...towns, { city: "Seoul", country: "South Korea" }]), null);
+  // Towns without a country take the one the plan was placed in.
+  assert.deepEqual(tripPlaceFromTowns({}, [{ city: "Kyoto" }, { city: "Osaka" }], "Japan"), {
+    country: "Japan",
+  });
 });
