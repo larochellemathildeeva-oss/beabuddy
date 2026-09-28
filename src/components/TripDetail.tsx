@@ -653,14 +653,26 @@ export function TripDetail({
     const fit = single ? timeFit(stopItems, single, clockMinutes) : null;
     const stop = single ? stopItems.find((item) => item.id === single.id) : undefined;
     const crossedDay = single && stop && (stop.day_date ?? "") !== (single.day_date ?? "");
-    await board.applySchedule(updates);
-    // Journeys worked out just now were for the old neighbours.
-    setLiveLegs(null);
     const undo = () =>
       void board.applySchedule(previous).then(
         () => toast.success("Back where it was"),
         () => toast.error("Couldn't undo that. Check your connection."),
       );
+    try {
+      await board.applySchedule(updates);
+    } catch (e) {
+      // Rows are written one by one, so some may have saved before the
+      // failure. The list has reloaded to show them; offer to put it back.
+      setLiveLegs(null);
+      toast.error("Couldn't save all of that move.", {
+        description: "Check your connection. Some stops may already have moved.",
+        duration: 10000,
+        action: { label: "Put back", onClick: undo },
+      });
+      throw e;
+    }
+    // Journeys worked out just now were for the old neighbours.
+    setLiveLegs(null);
     if (fit && single) {
       const landed = updates.find((u) => u.id === single.id);
       toast(`${stop?.title ?? "That stop"}'s ${fit.time} is now out of order`, {
@@ -704,9 +716,8 @@ export function TripDetail({
       onMove: (direction: -1 | 1) => {
         const move = direction < 0 ? up : down;
         if (move)
-          void moveStops([move]).catch(() =>
-            toast.error("Couldn't move that. Check your connection."),
-          );
+          // moveStops says what went wrong itself.
+          void moveStops([move]).catch(() => undefined);
       },
       canMoveUp: up !== null,
       canMoveDown: down !== null,
