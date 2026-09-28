@@ -44,7 +44,7 @@ const EURO = [
 
 const DOLLAR = ["US", "PR", "EC", "SV", "PA", "TL", "VG", "BQ", "FM", "MH", "PW", "TC"];
 
-/** ISO 3166 country → ISO 4217 currency, for the places people travel to. */
+/** ISO 3166 country → ISO 4217 currency: every inhabited country and territory. */
 const BY_COUNTRY: Record<string, string> = {
   ...Object.fromEntries(EURO.map((c) => [c, "EUR"])),
   ...Object.fromEntries(DOLLAR.map((c) => [c, "USD"])),
@@ -74,7 +74,7 @@ const BY_COUNTRY: Record<string, string> = {
   CR: "CRC",
   CU: "CUP",
   CV: "CVE",
-  CW: "ANG",
+  CW: "XCG",
   CZ: "CZK",
   DK: "DKK",
   DO: "DOP",
@@ -158,6 +158,98 @@ const BY_COUNTRY: Record<string, string> = {
   VN: "VND",
   ZA: "ZAR",
   ZM: "ZMW",
+  AF: "AFN",
+  AG: "XCD",
+  AI: "XCD",
+  AO: "AOA",
+  AS: "USD",
+  AX: "EUR",
+  BF: "XOF",
+  BI: "BIF",
+  BJ: "XOF",
+  BM: "BMD",
+  BN: "BND",
+  BT: "BTN",
+  BV: "NOK",
+  BY: "BYN",
+  CC: "AUD",
+  CD: "CDF",
+  CF: "XAF",
+  CG: "XAF",
+  CK: "NZD",
+  CX: "AUD",
+  DJ: "DJF",
+  DM: "XCD",
+  EH: "MAD",
+  ER: "ERN",
+  FK: "FKP",
+  GA: "XAF",
+  GD: "XCD",
+  GM: "GMD",
+  GN: "GNF",
+  GQ: "XAF",
+  GS: "GBP",
+  GU: "USD",
+  GW: "XOF",
+  GY: "GYD",
+  HM: "AUD",
+  HT: "HTG",
+  IO: "USD",
+  IQ: "IQD",
+  IR: "IRR",
+  KG: "KGS",
+  KI: "AUD",
+  KM: "KMF",
+  KN: "XCD",
+  KP: "KPW",
+  KY: "KYD",
+  LC: "XCD",
+  LR: "LRD",
+  LS: "LSL",
+  LY: "LYD",
+  ML: "XOF",
+  MM: "MMK",
+  MP: "USD",
+  MR: "MRU",
+  MS: "XCD",
+  MW: "MWK",
+  MZ: "MZN",
+  NE: "XOF",
+  NF: "AUD",
+  NR: "AUD",
+  NU: "NZD",
+  PG: "PGK",
+  PN: "NZD",
+  PS: "ILS",
+  SB: "SBD",
+  SD: "SDG",
+  SH: "SHP",
+  SJ: "NOK",
+  SL: "SLE",
+  SO: "SOS",
+  SR: "SRD",
+  SS: "SSP",
+  ST: "STN",
+  SX: "XCG",
+  SY: "SYP",
+  SZ: "SZL",
+  TD: "XAF",
+  TF: "EUR",
+  TG: "XOF",
+  TJ: "TJS",
+  TK: "NZD",
+  TM: "TMT",
+  TO: "TOP",
+  TV: "AUD",
+  UM: "USD",
+  VC: "XCD",
+  VE: "VES",
+  VI: "USD",
+  VU: "VUV",
+  WF: "XPF",
+  WS: "WST",
+  YE: "YER",
+  ZW: "ZWG",
 };
 
 /** The currency spent in a country, from its name in any language or its code. */
@@ -182,20 +274,40 @@ export function localCurrencies(
   return out;
 }
 
+/** How many digits a currency writes after its decimal mark: 2, 0 for yen, 3 for dinars. */
+export function minorDigits(currency: string | null | undefined): number {
+  if (!currency) return 2;
+  try {
+    return (
+      new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+        .maximumFractionDigits ?? 2
+    );
+  } catch {
+    return 2;
+  }
+}
+
 /**
- * An amount as typed: "12.50", "12,50", "1 234,5", "1,234.50", "€20".
- * The last "." or "," is the decimal mark when one or two digits follow it;
- * every other separator groups thousands. Null for anything not a number.
+ * An amount as typed: "12.50", "12,50", "1 234,5", "1,234.50", "€20",
+ * "12.345" in dinars. The last "." or "," is the decimal mark when the other
+ * separator also appears, when it follows a lone 0, or when no more digits
+ * follow it than the currency writes (two unless it is given); otherwise it
+ * groups thousands, as every other separator does. Null for anything not a number.
  */
-export function parseAmount(input: string): number | null {
+export function parseAmount(input: string, currency?: string): number | null {
   const raw = input.replace(/[\s']/g, "").replace(/[^\d.,-]/g, "");
   if (!/\d/.test(raw)) return null;
   const mark = Math.max(raw.lastIndexOf("."), raw.lastIndexOf(","));
   let text = raw;
   if (mark >= 0) {
     const tail = raw.slice(mark + 1);
-    const head = raw.slice(0, mark).replace(/[.,]/g, "");
-    text = tail.length > 0 && tail.length <= 2 ? `${head}.${tail}` : head + tail;
+    const head = raw.slice(0, mark);
+    const bothMarks = head.includes(raw[mark] === "." ? "," : ".");
+    const decimal =
+      tail.length > 0 &&
+      (bothMarks || /^0?$/.test(head) || tail.length <= Math.max(2, minorDigits(currency)));
+    const whole = head.replace(/[.,]/g, "");
+    text = decimal ? `${whole}.${tail}` : whole + tail;
   }
   const n = Number(text);
   return Number.isFinite(n) && n >= 0 ? n : null;

@@ -41,7 +41,14 @@ function guessHome() {
 export function useRates() {
   const fetchRates = useServerFn(getRates);
   const [home, setHome] = useState("CAD");
-  const [table, setTable] = useState<RateTable | null>(null);
+  // Kept per base, so a late answer for another home currency can never be
+  // read as this one's rates.
+  const [tables, setTables] = useState<Record<string, RateTable>>({});
+  const table = tables[home]?.base === home ? tables[home] : null;
+  const keep = useCallback((base: string, next: RateTable) => {
+    if (next.base !== base) return;
+    setTables((all) => ({ ...all, [base]: next }));
+  }, []);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -56,7 +63,7 @@ export function useRates() {
         const cached = window.localStorage.getItem(cacheKey);
         if (cached) {
           const parsed = JSON.parse(cached) as RateTable & { fetchedOn?: string };
-          setTable(parsed);
+          keep(base, parsed);
           if (parsed.fetchedOn === today) return;
         }
       } catch {
@@ -64,14 +71,14 @@ export function useRates() {
       }
       try {
         const fresh = await fetchRates({ data: { base } });
-        setTable(fresh);
+        keep(base, fresh);
         setError(false);
         window.localStorage.setItem(cacheKey, JSON.stringify({ ...fresh, fetchedOn: today }));
       } catch {
         setError(true);
       }
     },
-    [fetchRates],
+    [fetchRates, keep],
   );
 
   useEffect(() => {
@@ -114,7 +121,6 @@ export function useRates() {
         return new Intl.NumberFormat(undefined, {
           style: "currency",
           currency,
-          maximumFractionDigits: 2,
         }).format(amount);
       } catch {
         return `${amount.toFixed(2)} ${currency}`;

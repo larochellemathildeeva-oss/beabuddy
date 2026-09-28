@@ -10,7 +10,9 @@ function readPair(tripId: string): Pair | null {
   try {
     const raw = window.localStorage.getItem(`bea-fx-${tripId}`);
     const pair = raw ? (JSON.parse(raw) as Partial<Pair>) : null;
-    return pair?.from && pair.to ? { from: pair.from, to: pair.to } : null;
+    return typeof pair?.from === "string" && typeof pair.to === "string"
+      ? { from: pair.from, to: pair.to }
+      : null;
   } catch {
     return null;
   }
@@ -28,7 +30,8 @@ function savePair(tripId: string, pair: Pair) {
  * "What's that in my money?", one tap from the trip page while following the
  * day. It opens on the trip's own currency against the traveller's, keeps the
  * last pair per trip, and works from the day's saved rates when the signal
- * drops.
+ * drops. Mounted only while open, and keyed on the trip, so a closed sheet
+ * fetches nothing and one trip's pair never shows on another.
  */
 export function CurrencySheet({
   open,
@@ -71,10 +74,11 @@ export function CurrencySheet({
 
   const from = pair?.from ?? rates.home;
   const to = pair?.to ?? rates.home;
-  const value = parseAmount(amount);
+  const value = parseAmount(amount, from);
   const result = value == null ? null : rates.convertTo(value, from, to);
   const perUnitOfTo = rates.convertTo(1, to, from);
-  const missing = locals.filter((c) => !rates.canConvert(c));
+  // Only a table that is in can say a currency is not on it.
+  const missing = rates.ready ? locals.filter((c) => !rates.canConvert(c)) : [];
 
   const hint = rates.asOf
     ? `${rates.error ? "Offline · saved " : ""}rates of ${rates.asOf} · European Central Bank`

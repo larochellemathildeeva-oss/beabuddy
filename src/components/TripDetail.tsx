@@ -1941,12 +1941,15 @@ export function TripDetail({
           openSignal={prepSignal}
           openTab={prepAsk}
         />
-        <CurrencySheet
-          open={currencyOpen}
-          onClose={() => setCurrencyOpen(false)}
-          tripId={trip.id}
-          countries={tripCountries}
-        />
+        {currencyOpen && (
+          <CurrencySheet
+            key={trip.id}
+            open
+            onClose={() => setCurrencyOpen(false)}
+            tripId={trip.id}
+            countries={tripCountries}
+          />
+        )}
       </div>
 
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to this trip" width="sm">
