@@ -201,6 +201,11 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
       reason: "This is a street named after it, not the place itself.",
     };
   }
+  const other =
+    echoes && !looksLikeStreetAddress(evidence.title)
+      ? otherBranch(evidence.title, label, evidence.alsoNamed ?? [])
+      : null;
+  if (other) return { confidence: "low", reason: other };
   if (areaish && !echoes) {
     return {
       confidence: "low",
@@ -214,6 +219,43 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/**
+ * Right name, different place: another branch of a chain, or a namesake that
+ * shares a word with the stop.
+ *
+ * One shared word is enough to echo, and a chain shares its words: "Motel One
+ * Frankfurt-Hauptbahnhof" echoed "Motel One Berlin-Alexanderplatz" on "motel"
+ * and was pinned in Berlin; "Curry 36" echoed "Curry 61", and "Apfelwein Dax"
+ * any other cider tavern. What gives it away is that each name has something
+ * the other lacks: a different number, or a word of the stop's that the found
+ * place has nowhere in its name or address while its own name carries a word
+ * the stop never said. A name the place is also known by that holds the whole
+ * of the stop's clears it.
+ */
+function otherBranch(title: string, label: string, alsoNamed: readonly string[]): string | null {
+  const name = hitName(label);
+  if (!name) return null;
+  const numbers = (text: string): string[] => text.match(/\b\d{1,4}\b/g) ?? [];
+  const askedNumbers = numbers(title);
+  const gotNumbers = numbers(name);
+  if (
+    askedNumbers.length > 0 &&
+    gotNumbers.length > 0 &&
+    !askedNumbers.some((n) => gotNumbers.includes(n))
+  ) {
+    return `Béa found ${name}, which has another number — maybe a namesake.`;
+  }
+  const asked = meaningfulWords(title).filter((w) => w.length >= 3 && !/^\d+$/.test(w));
+  const covers = (text: string) => {
+    const folded = foldAccents(text.toLowerCase());
+    return asked.every((w) => folded.includes(w));
+  };
+  if (covers(label) || alsoNamed.some(covers)) return null;
+  const askedText = foldAccents(title.toLowerCase());
+  const extra = meaningfulWords(name).some((w) => w.length >= 3 && !askedText.includes(w));
+  return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;
 }
 
 /**

@@ -54,10 +54,24 @@ export function isSavedDirectionItem(item: {
   return /^(walk|drive) to /i.test((item.title ?? "").trim());
 }
 
+/**
+ * A street word, in the languages that put the house number after the street
+ * ("Poststraße 8", "Hasengasse 5-7", "Keizersgracht 123", "Via Roma 12").
+ * It has to be there: "Curry 36" and "Terminal 5" are names ending in a number.
+ */
+const STREET_WORD =
+  /(?:stra(?:ss|ß)e|str\.|gasse|weg|platz|damm|allee|ufer|kai|ring|markt|steig|chaussee|zeile|graben|straat|gracht|laan|plein|kade|singel|gatan|gata|v[äa]gen|gade|vej|veien|torget|ulica|utca|ulice)\b|^(?:via|viale|piazza|corso|largo|calle|carrer|avenida|plaza|rua|travessa|pra[cç]a|rynek|n[aá]m[eě]st[ií])\s/i;
+
+/** "Poststraße 8", "Neue Mainzer Straße 52-58": the street, then its number. */
+const NUMBER_LAST = /^\p{L}[\p{L}\p{M}.'’\s-]*?\s\d{1,4}[a-z]?(?:\s*[-–/]\s*\d{1,4}[a-z]?)?$/iu;
+
 export function looksLikeStreetAddress(value: string): boolean {
   const text = value.trim();
   if (!text) return false;
-  return /^\d+[a-z]?\s+\S+/i.test(text);
+  if (/^\d+[a-z]?\s+\S+/i.test(text)) return true;
+  // Only the street part, before any postcode or town: "Poststraße 8, Frankfurt".
+  const street = text.split(",")[0]!.trim();
+  return NUMBER_LAST.test(street) && STREET_WORD.test(street.replace(/\s*\d.*$/, ""));
 }
 
 const ACTIVITY_SUFFIX =

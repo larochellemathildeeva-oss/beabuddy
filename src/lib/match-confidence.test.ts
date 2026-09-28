@@ -248,3 +248,42 @@ test("a venue named after its street is not the street", () => {
     );
   }
 });
+
+test("another branch of a chain, or a namesake with another number, is not the stop", () => {
+  const wrongBranch = scoreMatch({
+    title: "Motel One Frankfurt-Hauptbahnhof",
+    label: "Motel One Berlin-Alexanderplatz, Dircksenstraße 36, Mitte, Berlin, 10179, Germany",
+    category: "tourism",
+    kind: "hotel",
+  });
+  assert.equal(wrongBranch.confidence, "low");
+  const rightBranch = scoreMatch({
+    title: "Motel One Frankfurt-Hauptbahnhof",
+    label: "Motel One Frankfurt-Hauptbahnhof, Poststraße 8, Gallus, Frankfurt am Main, Germany",
+    category: "tourism",
+    kind: "hotel",
+  });
+  assert.equal(rightBranch.confidence, "high");
+  const otherNumber = scoreMatch({
+    title: "Curry 36",
+    label: "Curry 61, Oranienburger Straße 6, Mitte, Berlin, Germany",
+    category: "amenity",
+    kind: "fast_food",
+  });
+  assert.equal(otherNumber.confidence, "low");
+  const namesake = scoreMatch({
+    title: "Apfelwein Dax",
+    label: "Apfelwein Klaus, Pankower Straße 1, Pankow, Berlin, Germany",
+    category: "amenity",
+    kind: "restaurant",
+  });
+  assert.equal(namesake.confidence, "low");
+  // A found name longer than the stop's, with nothing of the stop's missing, is it.
+  const longer = scoreMatch({
+    title: "Starbucks Reserve Roastery",
+    label: "Starbucks Reserve Roastery Tokyo, 2-19-23 Aobadai, Meguro, Tokyo, Japan",
+    category: "amenity",
+    kind: "cafe",
+  });
+  assert.equal(longer.confidence, "high");
+});

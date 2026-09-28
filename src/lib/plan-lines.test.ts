@@ -237,3 +237,56 @@ test("a day heading's theme is not a town", () => {
   assert.deepEqual(headingCities("Free day & shopping"), []);
   assert.deepEqual(headingCities(null), []);
 });
+
+test("a German plan: street-then-number addresses, spaced-hyphen notes, a night is a stay", () => {
+  const plan = read(`Day 1 - 2026-10-01
+08:00 Breakfast at Motel One Berlin-Hauptbahnhof, Invalidenstraße 54
+09:00-09:40 Brandenburg Gate, Pariser Platz 1 - morning landmark stop
+10:45-12:30 Neues Museum, Bodestraße 1-3 - Egyptian and prehistoric collections
+13:00 Lunch at Curry 36, Mehringdamm 36
+21:00 Motel One Berlin-Hauptbahnhof, Invalidenstraße 54 - overnight`);
+  assert.ok(plan);
+  const [breakfast, gate, museum, lunch, night] = plan.items;
+  assert.equal(breakfast!.kind, "meal");
+  assert.equal(breakfast!.address, "Invalidenstraße 54");
+  assert.equal(gate!.title, "Brandenburg Gate");
+  assert.equal(gate!.address, "Pariser Platz 1");
+  assert.equal(gate!.detail, "morning landmark stop");
+  assert.equal(gate!.end_time, "09:40");
+  assert.equal(museum!.address, "Bodestraße 1-3");
+  // "Curry 36" is the name; only the street after it is an address.
+  assert.equal(lunch!.place, "Curry 36");
+  assert.equal(lunch!.address, "Mehringdamm 36");
+  assert.equal(night!.kind, "lodging");
+  assert.equal(night!.detail, "overnight");
+});
+
+test("a plan copied as a table is read like a list", () => {
+  const text = `Day 1 - 2026-10-01
+| Time | Place / note |
+|---|---|
+| 09:00-09:40 | Brandenburg Gate, Pariser Platz 1 | morning landmark stop |
+| 12:00 | Lunch at Curry 61, Oranienburger Straße 6 |
+| 14:30-16:00 | East Side Gallery, Mühlenstraße 70-71 |`;
+  const plan = read(text);
+  assert.ok(plan);
+  assert.equal(plan.items.length, 3);
+  assert.equal(plan.items[0]!.detail, "morning landmark stop");
+  const tabs = read(
+    text
+      .replace(/^\|\s*|\s*\|$/gm, "")
+      .replace(/\s*\|\s*/g, "\t")
+      .replace(/^[-\t]+$/m, ""),
+  );
+  assert.ok(tabs);
+  assert.equal(tabs.items[2]!.address, "Mühlenstraße 70-71");
+});
+
+test("a hyphen between towns on a journey is not a note", () => {
+  const plan = read(`Day 1
+08:00 Breakfast at Café de Flore
+10:00 Train Paris - Lyon
+13:00 Lunch at Bouchon Daniel et Denise`);
+  assert.ok(plan);
+  assert.ok(plan.items.some((i) => /Paris - Lyon/.test(`${i.title} ${i.detail ?? ""}`)));
+});
