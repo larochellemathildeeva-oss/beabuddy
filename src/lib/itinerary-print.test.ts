@@ -37,3 +37,17 @@ test("the traveller's text cannot become markup", () => {
   const html = itineraryPrintHtml({ title: "T" }, [row({ detail: "<img src=x onerror=1>" })]);
   assert.ok(!html.includes("<img"));
 });
+
+test("each stop says exactly where Béa has it", () => {
+  const html = itineraryPrintHtml({ title: "T" }, [
+    row({ address: "1 Rue de la Légion d'Honneur", lat: 48.860611, lon: 2.326561 }),
+    row({ title: "Somewhere", lat: null, lon: null }),
+    row({ kind: "note", title: "Pack snacks" }),
+  ]);
+  assert.ok(html.includes("1 Rue de la Légion d&#39;Honneur"));
+  assert.ok(html.includes('Map pin: <a href="https://www.google.com/maps/search/'));
+  assert.ok(html.includes(">48.86061, 2.32656</a>"));
+  // A stop without a pin says so; a note is not a place.
+  assert.equal(html.split("Not on the map yet").length - 1, 1);
+  assert.ok(html.includes("Not on the map yet · no address"));
+});
