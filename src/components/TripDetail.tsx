@@ -775,6 +775,8 @@ export function TripDetail({
   const [hideDone, setHideDone] = useState(false);
   /** Timeline Editor grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
+  /** One line a stop, tap to open: for reading a long day at a glance. */
+  const [compactCards, setCompactCards] = useState(false);
   const doneCount = stopItems.filter(isDone).length;
   // Nothing hidden while editing: edit mode is for the whole list.
   const hidingDone = hideDone && !editingTimeline;
@@ -786,12 +788,14 @@ export function TripDetail({
         day?: unknown;
         hideDone?: unknown;
         byArea?: unknown;
+        compact?: unknown;
       } | null;
       const p = asPerspective(saved?.perspective);
       if (p) setPerspective(p);
       if (typeof saved?.day === "string") setDayChoice(saved.day);
       if (saved?.hideDone === true) setHideDone(true);
       if (saved?.byArea === true) setByArea(true);
+      if (saved?.compact === true) setCompactCards(true);
     } catch {
       /* storage unavailable: start from the defaults */
     }
@@ -802,12 +806,12 @@ export function TripDetail({
     try {
       window.localStorage.setItem(
         viewKey,
-        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea }),
+        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea, compact: compactCards }),
       );
     } catch {
       /* storage unavailable: the choice lasts for this visit */
     }
-  }, [viewKey, perspective, dayChoice, hideDone, byArea]);
+  }, [viewKey, perspective, dayChoice, hideDone, byArea, compactCards]);
   const view = useTripViewPrefs();
 
   /** Trip documents linked to each stop, for the document mark on its card. */
@@ -1444,6 +1448,7 @@ export function TripDetail({
                                   </li>
                                   {area.items.map((item) => (
                                     <TimelineEntry
+                                      compact={compactCards && !editingTimeline}
                                       key={item.id}
                                       item={item}
                                       showDay={false}
@@ -1480,6 +1485,7 @@ export function TripDetail({
                                       </li>
                                     )}
                                     <TimelineEntry
+                                      compact={compactCards && !editingTimeline}
                                       item={item}
                                       showDay={false}
                                       number={dayIndex + 1}
@@ -1555,6 +1561,7 @@ export function TripDetail({
                     hidingDone && isDone(item) ? null : (
                       <Fragment key={item.id}>
                         <TimelineEntry
+                          compact={compactCards && !editingTimeline}
                           item={item}
                           showDay
                           number={i + 1}
@@ -1747,6 +1754,15 @@ export function TripDetail({
                 options={[
                   [false, "All"],
                   [true, `Not visited (${stopItems.length - doneCount})`],
+                ]}
+              />
+              <MenuChoice
+                label="Cards"
+                value={compactCards}
+                onChange={setCompactCards}
+                options={[
+                  [false, "Full"],
+                  [true, "Compact"],
                 ]}
               />
               <MenuChoice

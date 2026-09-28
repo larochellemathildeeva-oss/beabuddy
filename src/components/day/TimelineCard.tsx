@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUp,
   Bookmark,
@@ -103,6 +103,10 @@ export function TimelineEntry({
   nestedStops = 0,
   onInside,
   flat = false,
+  compact = false,
+  dragHandle,
+  liRef,
+  liStyle,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -176,10 +180,19 @@ export function TimelineEntry({
   onInside?: ((next: InsideEntry[]) => void) | undefined;
   /** The flat view: what is inside is a plain line, not a pill. */
   flat?: boolean;
+  /** One line a stop (time, name, kind); tapping it shows the whole card. */
+  compact?: boolean;
+  /** The grip for dragging the stop within its day, when the list offers it. */
+  dragHandle?: ReactNode;
+  /** For the drag-and-drop list: the row itself, and its moving style. */
+  liRef?: ((el: HTMLLIElement | null) => void) | undefined;
+  liStyle?: CSSProperties | undefined;
 }) {
   const [keptHere, setKept] = useState(false);
   const kept = keptHere || alreadyKept;
   const [flipped, setFlipped] = useState(false);
+  /** A compact row opened to its whole card. */
+  const [expanded, setExpanded] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   /** The quick actions under the front, opened by ⋯. */
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -293,6 +306,7 @@ export function TimelineEntry({
       className={`rounded-2xl border border-border/70 bg-card p-2.5 transition-colors ${current ? "bg-primary-soft" : ""}`}
     >
       <div className="flex items-start gap-2">
+        {dragHandle}
         <button
           type="button"
           onClick={() => flip(true)}
@@ -523,6 +537,45 @@ export function TimelineEntry({
       )}
     </article>
   );
+
+  // The compact row: time, name and kind on one line. Tapping it shows the
+  // whole card; "Less" folds it back.
+  const compactRow = (
+    <article
+      className={`flex items-center gap-1.5 rounded-xl border border-border/70 bg-card py-1.5 pl-1.5 pr-2 ${
+        current ? "bg-primary-soft" : ""
+      }`}
+    >
+      {dragHandle}
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        aria-expanded={false}
+        aria-label={`${rail ? `${rail}, ` : ""}${item.title} — show the whole card`}
+        className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
+      >
+        <span
+          className={`w-11 shrink-0 text-[13px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+        >
+          {rail || "–"}
+        </span>
+        <span
+          className={`min-w-0 flex-1 truncate text-[15px] font-medium ${
+            done ? "text-muted-foreground line-through" : ""
+          }`}
+        >
+          {item.title}
+        </span>
+        <span
+          className={`kind-chip kind-${timelineGlyph(item)} grid size-7 shrink-0 place-items-center rounded-full`}
+          aria-hidden
+        >
+          <KindIcon item={item} />
+        </span>
+      </button>
+    </article>
+  );
+  const folded = compact && !expanded;
 
   const field =
     "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
@@ -795,12 +848,17 @@ export function TimelineEntry({
   );
 
   return (
-    <li id={`stop-${item.id}`} className="relative min-w-0 scroll-mt-16 list-none">
+    <li
+      id={`stop-${item.id}`}
+      ref={liRef}
+      style={liStyle}
+      className="relative min-w-0 scroll-mt-16 list-none"
+    >
       <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
         {/* The rail: the numbered disc on the day's line; the hour is on the
             card. An open card takes the whole width instead; its # says it. */}
         {!back && (
-          <span className="relative z-10 flex justify-center pt-2.5">
+          <span className={`relative z-10 flex justify-center ${folded ? "pt-1.5" : "pt-2.5"}`}>
             {number != null ? (
               <StopDisc number={number} done={done} />
             ) : (
@@ -827,10 +885,19 @@ export function TimelineEntry({
               onSave={canKeep && !kept ? keep : undefined}
               onDelete={onRemove}
             >
-              {front}
+              {folded ? compactRow : front}
             </SwipeRow>
           )}
-          {!back && showSwipeHint && (
+          {!back && compact && expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="mt-0.5 px-1 text-[12px] font-semibold text-muted-foreground"
+            >
+              Less
+            </button>
+          )}
+          {!back && showSwipeHint && !compact && (
             <p className="mt-1 px-1 text-[10.5px] text-muted-foreground/80">
               Tap a stop to edit · swipe right for done, left to save or delete
             </p>
