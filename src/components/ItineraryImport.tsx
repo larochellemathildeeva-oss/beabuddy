@@ -321,8 +321,15 @@ function ImportPanel({
    * Now Build waits until it knows where.
    */
   const [whereTo, setWhereTo] = useState("");
-  const place = tripCity?.trim() || whereTo.trim();
   const needsPlace = !tripCity?.trim() && !routeLine;
+  /** The place sent with a request: the answer above counts only for Build. */
+  const placeFor = (forMode: "build" | "import") =>
+    tripCity?.trim() || (forMode === "build" ? whereTo.trim() : "");
+  /**
+   * The place the draft on screen was made for. Revisions and pins follow the
+   * draft, not the box, which can be edited after it (or hidden by Import).
+   */
+  const [draftPlace, setDraftPlace] = useState("");
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
@@ -481,6 +488,7 @@ function ImportPanel({
     setSaveStatus("");
     setItems(null);
     setPlan(null);
+    const sentPlace = placeFor(mode);
     try {
       const out = await run({
         data: {
@@ -488,7 +496,7 @@ function ImportPanel({
           pdfDataUrl: mode === "import" && pdf ? pdf.dataUrl : null,
           pageUrl: mode === "import" && link ? link : null,
           text: (mode === "import" && link ? "" : text.trim()) || null,
-          tripCity: place || null,
+          tripCity: sentPlace || null,
           route: routeLine || null,
           startDate: startDate || null,
           endDate: endDate || null,
@@ -499,6 +507,7 @@ function ImportPanel({
           includeCosts,
         },
       });
+      setDraftPlace(sentPlace);
       showParsed(out);
     } catch (e) {
       setError(aiFailure(e).message);
@@ -523,7 +532,7 @@ function ImportPanel({
     // A trip filed under one city, or none, can still be placed day by day
     // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
     // the whole of Japan.
-    const area = place || routeCountry(cities) || "";
+    const area = draftPlace || routeCountry(cities) || "";
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
     const stops = dated.map((item) => {
@@ -831,7 +840,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: place || null,
+          tripCity: draftPlace || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -861,7 +870,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: place || null,
+          tripCity: draftPlace || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -1137,7 +1146,7 @@ function ImportPanel({
         disabled={
           busy ||
           (mode === "import" && !hasFiles && text.trim().length < 10) ||
-          (mode === "build" && needsPlace && !place)
+          (mode === "build" && needsPlace && !whereTo.trim())
         }
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
