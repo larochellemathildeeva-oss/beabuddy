@@ -15,7 +15,8 @@ import {
 } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { bookingKind, type BookingKind } from "@/lib/trip-overview";
+import { bookingKind, countBookings, tripBookings, type BookingKind } from "@/lib/trip-overview";
+import type { TripDocument } from "@/lib/trip-documents";
 import { PlacePicture } from "@/components/PlacePicture";
 import { timeForRail } from "@/lib/timeline-kind";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
@@ -43,6 +44,8 @@ export function TripOverview({
   items,
   cities,
   groups,
+  bookingDocs,
+  onOpenBookings,
   onOpenTimeline,
   onOpenMap,
   onPrep,
@@ -51,6 +54,10 @@ export function TripOverview({
   items: ItineraryRow[];
   cities: string[];
   groups: TimelineDayGroup<ItineraryRow>[];
+  /** Trip documents filed to this trip: they are bookings too. */
+  bookingDocs: TripDocument[];
+  /** The trip's bookings list, open on one kind. */
+  onOpenBookings: (kind: BookingKind) => void;
   onOpenTimeline: (dayKey?: string) => void;
   onOpenMap: (dayKey: string) => void;
   onPrep: (tab: PrepTab) => void;
@@ -66,7 +73,9 @@ export function TripOverview({
     if (item.booked) row.booked += 1;
     byKind.set(kind, row);
   }
-  const booked = items.filter((i) => i.booked).length;
+  const bookings = tripBookings(items, bookingDocs);
+  const bookedByKind = countBookings(bookings);
+  const booked = bookings.length;
   const names = [...new Set(cities.map((c) => (c.split(",")[0] ?? "").trim()).filter(Boolean))];
   const todos = glance?.todos.open ?? 0;
   const packing = glance?.packing;
@@ -84,12 +93,13 @@ export function TripOverview({
   }[] = [
     ...KINDS.map(({ kind, label, icon }) => {
       const row = byKind.get(kind);
+      const bookedCount = bookedByKind[kind];
       return {
         key: kind,
         icon,
         title: label,
-        note: row ? `${row.booked || row.all} ${row.booked ? "booked" : "planned"}` : "None yet",
-        onClick: () => onOpenTimeline(),
+        note: bookedCount ? `${bookedCount} booked` : row ? `${row.all} planned` : "None yet",
+        onClick: () => onOpenBookings(kind),
       };
     }),
     {

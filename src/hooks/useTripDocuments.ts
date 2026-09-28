@@ -25,6 +25,7 @@ type Query = {
   eq: (col: string, value: string) => Query;
   order: (col: string, opts: { ascending: boolean }) => Query;
   limit: (n: number) => Query;
+  range: (from: number, to: number) => Query;
   single: () => Result<unknown>;
   then: Result<unknown>["then"];
 };
@@ -246,4 +247,57 @@ export function useStopDocumentCount(itemId: string | null, open: boolean) {
     };
   }, [itemId, open]);
   return count;
+}
+
+/**
+ * The Trip documents filed to one trip, for its bookings: the Overview's
+ * counts and the trip menu's Flights, Hotels, Transport and Activities.
+ * Read again when Béa comes back to the front, so a booking added from
+ * You → Trip documents shows up on the trip. Empty, quietly, while the
+ * migration is not applied.
+ */
+const TRIP_DOCS_PAGE = 500;
+
+export function useTripBookingDocuments(tripId: string | null) {
+  const [docs, setDocs] = useState<TripDocument[]>([]);
+
+  const load = useCallback(async () => {
+    if (!tripId) {
+      setDocs([]);
+      return;
+    }
+    // Every document on the trip, a page at a time: the counts are totals,
+    // so a first page read as the whole set would undercount.
+    const all: TripDocument[] = [];
+    for (let from = 0; ; from += TRIP_DOCS_PAGE) {
+      const { data, error } = (await documentsTable()
+        .select(DOCUMENT_COLUMNS)
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + TRIP_DOCS_PAGE - 1)) as {
+        data: TripDocument[] | null;
+        error: unknown;
+      };
+      if (error) return;
+      all.push(...(data ?? []));
+      if ((data ?? []).length < TRIP_DOCS_PAGE) break;
+    }
+    setDocs(all.map((d) => ({ ...d, lines: d.lines ?? [] })));
+  }, [tripId]);
+
+  useEffect(() => {
+    void load();
+    const onShow = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("focus", onShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("focus", onShow);
+    };
+  }, [load]);
+
+  return { docs, reload: load };
 }

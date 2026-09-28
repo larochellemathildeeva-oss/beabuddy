@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
@@ -30,7 +31,7 @@ import { addRecommendationOnce } from "@/hooks/useRecommendations";
 import type { PlaceLike } from "@/lib/captured-place";
 import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
 import { supabase } from "@/integrations/supabase/client";
-import { ItineraryImport } from "@/components/ItineraryImport";
+import { ItineraryImport, type PlannerTab } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
@@ -50,8 +51,9 @@ import {
 } from "@/components/day/TripMenuSheet";
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { bookingKind } from "@/lib/trip-overview";
-import { isBooked } from "@/lib/bookings";
+import { countBookings, tripBookings } from "@/lib/trip-overview";
+import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
+import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import {
   ALL_DAYS,
   dayChips,
@@ -127,6 +129,8 @@ export function TripDetail({
   onLeave,
   onRemoveMember,
   openPrep,
+  openView,
+  openPlan,
 }: {
   trip: TripRow;
   /** Kept for callers; the trip page no longer shows a banner photo. */
@@ -142,9 +146,16 @@ export function TripDetail({
   onRemoveMember: (userId: string) => Promise<void>;
   /** Open the to-do or packing sheet on arrival (Home's shortcuts). */
   openPrep?: PrepTab | undefined;
+  /** A tab asked for in the link. */
+  openView?: "bookings" | undefined;
+  /** Open Plan with Béa on arrival, on this panel, with any words already typed. */
+  openPlan?: { tab: PlannerTab; ask?: string | undefined } | undefined;
 }) {
+  const navigate = useNavigate();
   const [plannerOpen, setPlannerOpen] = useState(false);
-  const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
+  const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
+  /** Words carried into Build from the Plan with Béa page. */
+  const [plannerAsk, setPlannerAsk] = useState("");
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -560,6 +571,9 @@ export function TripDetail({
   const todayKey = toLocalISODate(new Date());
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
+  /** Which kind the Bookings tab shows. */
+  const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
+  const bookingDocs = useTripBookingDocuments(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(stopItems);
   /**
@@ -626,6 +640,49 @@ export function TripDetail({
     }
   }, [viewKey, perspective, dayChoice, hideDone, byArea]);
   const view = useTripViewPrefs();
+
+  /** Trip documents linked to each stop, for the document mark on its card. */
+  const docsByStop = new Map<string, string[]>();
+  for (const doc of bookingDocs.docs) {
+    if (!doc.itinerary_item_id) continue;
+    docsByStop.set(doc.itinerary_item_id, [
+      ...(docsByStop.get(doc.itinerary_item_id) ?? []),
+      doc.id,
+    ]);
+  }
+  const docProps = (item: ItineraryRow) => {
+    const ids = docsByStop.get(item.id);
+    if (!ids?.length) return {};
+    return {
+      linkedDocuments: ids.length,
+      // One opens straight onto its detail; several open the library on
+      // this stop's documents.
+      onOpenDocuments: () =>
+        void navigate({
+          to: "/profile/documents",
+          search: ids.length === 1 ? { doc: ids[0]! } : { event: item.id },
+        }),
+    };
+  };
+
+  /** The Bookings tab, on one kind — for the Overview's tiles and the trip menu. */
+  const openBookings = (kind: BookingFilter) => {
+    setBookingFilter(kind);
+    setPerspective("bookings");
+  };
+
+  // Arriving with a request in the link (Plan with Béa, a booking link):
+  // after the saved tab is restored, so the request wins over it.
+  useEffect(() => {
+    if (openView === "bookings") setPerspective("bookings");
+    if (openPlan) {
+      setPlannerTab(openPlan.tab);
+      setPlannerAsk(openPlan.ask ?? "");
+      setPlannerOpen(true);
+    }
+    // Once per arrival; the link is not a setting.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * "+ Add stop between": where the next added stop goes. The form stays
@@ -735,16 +792,9 @@ export function TripDetail({
     ),
   );
   /** Booked stops by kind, for the trip menu's Flights, Hotels, Transport and Activities. */
-  const bookingCounts: Record<BookingTile, number> = {
-    flight: 0,
-    stay: 0,
-    transport: 0,
-    activity: 0,
-  };
-  for (const item of stopItems) {
-    const kind = isBooked(item) ? bookingKind(item) : null;
-    if (kind) bookingCounts[kind] += 1;
-  }
+  const bookingCounts: Record<BookingTile, number> = countBookings(
+    tripBookings(stopItems, bookingDocs.docs),
+  );
   /** "+ Add a stop between" on a connector: the form opens at the time between them. */
   const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
     insertAnchor.current = null;
@@ -814,7 +864,7 @@ export function TripDetail({
           data-guide="bea-plan"
           title="Let Béa plan this trip"
           onClick={() => {
-            setPlannerTab("import");
+            setPlannerTab("start");
             setPlannerOpen(true);
           }}
           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
@@ -936,6 +986,8 @@ export function TripDetail({
             items={stopItems}
             cities={cities.stops.map((stop) => stop.city)}
             groups={timelineGroups}
+            bookingDocs={bookingDocs.docs}
+            onOpenBookings={openBookings}
             onOpenTimeline={(dayKey) => {
               if (dayKey !== undefined) setDayChoice(dayKey);
               setPerspective("timeline");
@@ -945,6 +997,16 @@ export function TripDetail({
               setPerspective("map");
             }}
             onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+          />
+        )}
+
+        {perspective === "bookings" && (
+          <TripBookings
+            filter={bookingFilter}
+            onFilter={setBookingFilter}
+            stops={stopItems}
+            docs={bookingDocs.docs}
+            onSaveBooking={(id, patch) => board.updateItem(id, patch)}
           />
         )}
 
@@ -1098,7 +1160,7 @@ export function TripDetail({
                   title="Your itinerary"
                   line="Activities, meals, transport and notes."
                   onAdd={() => {
-                    setAddDay("");
+                    setAddDay(addToDay ?? "");
                     setAddingTimeline(true);
                   }}
                   addLabel="Add to the timeline"
@@ -1206,6 +1268,7 @@ export function TripDetail({
                                       number={group.items.indexOf(item) + 1}
                                       onLocate={() => locate(item)}
                                       onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      {...docProps(item)}
                                       onToggleDone={() => toggleDone(item)}
                                       {...withNear(item.day_date)}
                                       {...nestProps(item)}
@@ -1241,6 +1304,7 @@ export function TripDetail({
                                       showSwipeHint={dayIndex === 0}
                                       onLocate={() => locate(item)}
                                       onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      {...docProps(item)}
                                       onToggleDone={() => toggleDone(item)}
                                       editing={editingTimeline}
                                       {...withNear(item.day_date)}
@@ -1300,7 +1364,7 @@ export function TripDetail({
                     .filter(Boolean)
                     .join(" · ")}
                   onAdd={() => {
-                    setAddDay("");
+                    setAddDay(addToDay ?? "");
                     setAddingTimeline(true);
                   }}
                   addLabel="Add to the timeline"
@@ -1318,6 +1382,7 @@ export function TripDetail({
                           showSwipeHint={i === 0}
                           onLocate={() => locate(item)}
                           onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                          {...docProps(item)}
                           onToggleDone={() => toggleDone(item)}
                           editing={editingTimeline}
                           {...withNear(item.day_date)}
@@ -1546,7 +1611,7 @@ export function TripDetail({
               setAddOpen(false);
               setPerspective("timeline");
               setTimelineOpen(true);
-              setAddDay("");
+              setAddDay(addToDay ?? "");
               setAddingTimeline(true);
             }}
             className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
@@ -1618,8 +1683,12 @@ export function TripDetail({
 
       <ItineraryImport
         open={plannerOpen}
-        onClose={() => setPlannerOpen(false)}
+        onClose={() => {
+          setPlannerOpen(false);
+          setPlannerAsk("");
+        }}
         defaultTab={plannerTab}
+        initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
           id: item.id,
           day_date: item.day_date,
@@ -1700,11 +1769,9 @@ export function TripDetail({
         onSection={setSheetSection}
         people={members.map((m) => m.display_name || "Traveller")}
         bookings={bookingCounts}
-        onBookings={() => {
+        onBookings={(kind) => {
           setSettingsOpen(false);
-          setTimelineByDay(true);
-          setDayChoice(ALL_DAYS);
-          setPerspective("timeline");
+          openBookings(kind);
         }}
         citiesCount={cities.stops.length}
         offlineNote={

@@ -1,6 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { canMove, insertAfter, neighbourInDay, nextPosition } from "./timeline-order.ts";
+import { clockMinutes } from "./companion.ts";
+import {
+  canMove,
+  chronologicalSlot,
+  insertAfter,
+  neighbourInDay,
+  nextPosition,
+} from "./timeline-order.ts";
 
 const row = (id: string, day_date: string | null, position: number) => ({ id, day_date, position });
 
@@ -70,5 +77,98 @@ test("inserting after a row makes room behind it", () => {
     insertAfter(rows, "zz"),
     { position: 3, shifts: [] },
     "unknown anchor goes last",
+  );
+});
+
+const timed = (
+  id: string,
+  day_date: string | null,
+  position: number,
+  time_label: string | null,
+) => ({
+  id,
+  day_date,
+  position,
+  time_label,
+});
+const day = [
+  timed("a", "2026-10-01", 0, "09:00"),
+  timed("b", "2026-10-01", 1, "12:30"),
+  timed("c", "2026-10-01", 2, "16:00"),
+  timed("d", "2026-10-02", 3, "10:00"),
+];
+
+test("a timed stop slots in by its time, not at the end", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: "14:00" },
+    clockMinutes,
+  );
+  assert.equal(slot.position, 2);
+  assert.deepEqual(
+    slot.shifts.map((s) => s.id),
+    ["c", "d"],
+  );
+});
+
+test("an earliest stop goes first on its day", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-02", time_label: "08:00" },
+    clockMinutes,
+  );
+  assert.equal(slot.position, 3);
+  assert.deepEqual(
+    slot.shifts.map((s) => s.id),
+    ["d"],
+  );
+  const first = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: "07:00" },
+    clockMinutes,
+  );
+  assert.equal(first.position, 0);
+});
+
+test("an untimed stop goes to the end of its day", () => {
+  const slot = chronologicalSlot(day, { day_date: "2026-10-01" }, clockMinutes);
+  assert.equal(slot.position, 3);
+  assert.deepEqual(
+    slot.shifts.map((s) => s.id),
+    ["d"],
+  );
+});
+
+test("moving a stop's own time ignores the stop itself", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: "18:00" },
+    clockMinutes,
+    "a",
+  );
+  assert.equal(slot.position, 3);
+});
+
+test("other stops keep their times: only positions shift", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: "10:00" },
+    clockMinutes,
+  );
+  for (const shift of slot.shifts) assert.equal(Object.keys(shift).sort().join(), "id,position");
+});
+
+test("clearing a stop's time moves it to the end of its day", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: null },
+    clockMinutes,
+    "a",
+  );
+  // After c, the day's last stop; before d on the next day.
+  assert.equal(slot.position, 3);
+  assert.deepEqual(
+    slot.shifts.map((s) => s.id),
+    ["d"],
   );
 });

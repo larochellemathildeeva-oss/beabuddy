@@ -37,7 +37,7 @@ export function HomeSectionTitle({ title, aside }: { title: string; aside?: Reac
 }
 
 /** A trip's picture: your own photo of the place, else its painted scene. */
-function TripPicture({
+export function TripPicture({
   trip,
   photos,
   cities,

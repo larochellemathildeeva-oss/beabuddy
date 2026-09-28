@@ -1,9 +1,11 @@
 import { Sheet } from "@/components/Sheet";
+import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ArrowLeft,
   CalendarDays,
   Camera,
   MapPin,
@@ -104,7 +106,9 @@ const PLACE_BATCH = 8;
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
-type PlannerTab = "import" | "optimize" | "compare";
+type PanelTab = "start" | "import" | "optimize" | "compare";
+/** Where the planner opens: its start screen, a panel, or Build / Import straight away. */
+export type PlannerTab = PanelTab | "build";
 
 export function ItineraryImport({
   open,
@@ -112,7 +116,8 @@ export function ItineraryImport({
   tripCity,
   startDate,
   endDate,
-  defaultTab = "import",
+  defaultTab = "start",
+  initialAsk = "",
   existingItems = [],
   cities = [],
   onAddItems,
@@ -127,6 +132,8 @@ export function ItineraryImport({
   startDate?: string | undefined;
   endDate?: string | undefined;
   defaultTab?: PlannerTab;
+  /** Words to start Build with, typed before the planner opened. */
+  initialAsk?: string | undefined;
   existingItems?: OptimizeSourceItem[];
   cities?: OptimizeSourceCity[];
   /** Returns the inserted row ids, so a bulk save can be undone. */
@@ -144,50 +151,103 @@ export function ItineraryImport({
     }>,
   ) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<PlannerTab>(defaultTab);
+  const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
+  /** How the Plan panel opens from the start screen: which job, and any words already typed. */
+  const [start, setStart] = useState<{ mode: "build" | "import"; text: string; n: number }>({
+    mode: "build",
+    text: "",
+    n: 0,
+  });
+
+  const openPlan = (mode: "build" | "import", text = "") => {
+    setStart((cur) => ({ mode, text, n: cur.n + 1 }));
+    setTab("import");
+  };
 
   useEffect(() => {
-    if (open) setTab(defaultTab);
+    if (!open) return;
+    if (defaultTab === "build" || (defaultTab === "import" && initialAsk)) {
+      openPlan(defaultTab === "build" ? "build" : "import", initialAsk);
+    } else if (defaultTab === "import") {
+      openPlan("import");
+    } else {
+      setTab(defaultTab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only
   }, [open, defaultTab]);
 
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Let Béa plan this trip"
+      title="Plan with Béa"
       hint="Built around your travel preferences and tagged recs"
       icon={<img src={logo} alt="" className="size-10 object-contain" />}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setTab("import")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <Camera className="size-3.5" /> Plan
-        </button>
-        <button
-          data-guide="bea-optimize"
-          onClick={() => setTab("optimize")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "optimize" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <ListOrdered className="size-3.5" /> Optimize
-        </button>
-        <button
-          onClick={() => setTab("compare")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "compare" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <Columns2 className="size-3.5" /> Compare
-        </button>
-      </div>
+      {tab === "start" ? (
+        <div className="space-y-5">
+          <PlanHero compact />
+          <PlanCards
+            optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
+            onBuild={() => openPlan("build")}
+            onImport={() => openPlan("import")}
+            onOptimize={() => setTab("optimize")}
+            onCompare={() => setTab("compare")}
+          />
+          <PlanExamples onPick={(ask) => openPlan("build", ask)} />
+          <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setTab("start")}
+            className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            All options
+          </button>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setTab("import")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "import"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <Camera className="size-3.5" /> Plan
+            </button>
+            <button
+              data-guide="bea-optimize"
+              onClick={() => setTab("optimize")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "optimize"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <ListOrdered className="size-3.5" /> Optimize
+            </button>
+            <button
+              onClick={() => setTab("compare")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "compare"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <Columns2 className="size-3.5" /> Compare
+            </button>
+          </div>
+        </>
+      )}
 
       {tab === "import" && (
         <ImportPanel
+          key={start.n}
+          initialMode={start.mode}
+          initialText={start.text}
           existingItems={existingItems}
           cities={cities}
           tripCity={tripCity}
@@ -215,6 +275,8 @@ export function ItineraryImport({
 }
 
 function ImportPanel({
+  initialMode = "build",
+  initialText = "",
   existingItems,
   cities,
   tripCity,
@@ -225,6 +287,10 @@ function ImportPanel({
   onAddCosts,
   onApplyDates,
 }: {
+  /** Which job the panel opens on, chosen on the start screen. */
+  initialMode?: "build" | "import";
+  /** Words typed on the start screen, carried into the box. */
+  initialText?: string;
   existingItems: OptimizeSourceItem[];
   /** The trip's route, so each day's stops are looked up in that day's city. */
   cities: OptimizeSourceCity[];
@@ -313,7 +379,7 @@ function ImportPanel({
     }
   };
   const hasFiles = images.length > 0 || pdf !== null;
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -323,7 +389,7 @@ function ImportPanel({
   const [saveStatus, setSaveStatus] = useState("");
   /** Set while Béa is out placing the stops; null the rest of the time. */
   const [placing, setPlacing] = useState<{ done: number; total: number } | null>(null);
-  const [mode, setMode] = useState<"build" | "import">("build");
+  const [mode, setMode] = useState<"build" | "import">(initialMode);
   const [pace, setPace] = useState<"relaxed" | "balanced" | "full">("balanced");
   const [budgetLevel, setBudgetLevel] = useState<"value" | "comfortable" | "premium">(
     "comfortable",

@@ -168,10 +168,10 @@
   --ease-spring: var(--ease-confirm);
 }
 
-/* Colorful — the master's pastels (peach, sky, mint, butter, blush) on a warm
+/* Colorful — the master's pastels (peach, sky, mint, butter, blush) on plain
    white. The accent alternates between the pastels, one per tab (below). */
 [data-theme="colorful"] {
-  --background: #fff9f3;
+  --background: #ffffff;
   --foreground: #29252a;
   --card: #ffffff;
   --card-foreground: #29252a;

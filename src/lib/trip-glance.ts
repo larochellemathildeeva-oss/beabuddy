@@ -316,3 +316,18 @@ export function bannerScene(seed: string, theme: ThemeName = "calm"): BannerScen
     birds: rand() > 0.45,
   };
 }
+
+/**
+ * A flight and a stay from Trip documents filed to the trip, for a card
+ * whose timeline has none. A confirmation added under You → Trip documents
+ * is a booking, and the card used to say "None yet" beside it. Newest
+ * first, as the library lists them; linked or not, one of each is enough.
+ */
+export function documentHighlights<
+  D extends { id: string; trip_id: string | null; kind: string; title: string },
+>(docs: readonly D[]): { flight: D | null; lodging: D | null } {
+  return {
+    flight: docs.find((d) => d.kind === "flight") ?? null,
+    lodging: docs.find((d) => d.kind === "accommodation") ?? null,
+  };
+}

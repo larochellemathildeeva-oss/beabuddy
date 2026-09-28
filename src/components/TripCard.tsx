@@ -104,7 +104,9 @@ export function TripCard({
   const live = glance ? liveSummary(glance.items, today) : null;
   const notStarted = !isPastTrip(trip, today) && !(trip.start_date && trip.start_date <= today);
   const flight = leg ? leg.flight : glance?.flight;
-  const lodging = leg ? leg.lodging : glance?.lodging;
+  const lodging = (leg ? leg.lodging : glance?.lodging) ?? glance?.booked.lodging ?? null;
+  // Nothing on the timeline, but a confirmation in Trip documents: booked.
+  const bookedFlight = flight ? null : (glance?.booked.flight ?? null);
   const packing = glance?.packing;
   const openTodos = glance?.todos.open ?? 0;
   const quote = large
@@ -120,9 +122,11 @@ export function TripCard({
 
   const flightValue = flight
     ? flightDay(flight.day_date) || timeForRail(flight.time_label) || "Saved"
-    : notStarted
-      ? "None yet"
-      : "—";
+    : bookedFlight
+      ? "Booked"
+      : notStarted
+        ? "None yet"
+        : "—";
   const stats = (
     <div className="flex divide-x divide-border border-t border-border px-3.5 py-2.5">
       <Stat
