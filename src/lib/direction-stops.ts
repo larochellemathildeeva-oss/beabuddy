@@ -1,6 +1,7 @@
 import { placeQueryParts } from "./place-query.ts";
 import { dayTripBase, isDayTrip } from "./trip-cities.ts";
 import { minimumNameLength, startsLikeAName, wordCount } from "./script.ts";
+import { haversine } from "./geo.ts";
 
 export type DirectionStop = {
   /**
@@ -415,4 +416,43 @@ export function sameDayAnchors(
     }
     return null;
   });
+}
+
+/**
+ * Which pins found beyond a day's anchor may be kept.
+ *
+ * A stop with a pinned neighbour on its day is looked up within ~45 km of
+ * it. On a day trip that neighbour is often the hotel back in the base city,
+ * so a whole Hiroshima day on an Osaka trip with no route was searched for
+ * around Osaka and came back "couldn't find" — Hiroshima Station included.
+ * Those stops are then looked for across the trip's country, and a pin is
+ * kept when the day backs it: within a day's reach of the anchor, or beside
+ * another stop of the same day found the same way. Two stops agreeing on a
+ * town is what a day trip looks like; a lone namesake 300 km away (a
+ * Hiroshima lunch found in Kyoto) is not, and stays unplaced.
+ */
+export function wideDayPinsToKeep(
+  found: readonly {
+    index: number;
+    day: string;
+    pin: { lat: number; lon: number };
+    anchor: { lat: number; lon: number };
+  }[],
+  reachM: number = SAME_DAY_FAR_APART_M,
+): Set<number> {
+  const keep = new Set<number>();
+  for (const hit of found) {
+    if (haversine(hit.pin, hit.anchor) <= reachM) {
+      keep.add(hit.index);
+      continue;
+    }
+    const agreed = found.some(
+      (other) =>
+        other.index !== hit.index &&
+        other.day === hit.day &&
+        haversine(other.pin, hit.pin) <= reachM,
+    );
+    if (agreed) keep.add(hit.index);
+  }
+  return keep;
 }

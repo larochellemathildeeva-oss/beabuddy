@@ -146,13 +146,21 @@ export function ItineraryDirections({
         saved.push("added to the timeline");
       }
       if (choice.phone && onKeepOffline) {
+        // The stops just found are saved with their new pins, so the copy
+        // must be signed with those pins too — else it reads as out of date
+        // the moment it is kept.
+        const pins = new Map(placed.map((p) => [p.id, p] as const));
+        const signed = stops.map((stop) => {
+          const pin = stop.id ? pins.get(stop.id) : undefined;
+          return pin ? { ...stop, lat: pin.lat, lon: pin.lon } : stop;
+        });
         const ok = onKeepOffline(
           {
             legs: result.legs,
             unresolved: result.unresolved,
             ...(result.deferred?.length ? { deferred: result.deferred } : {}),
           },
-          stops,
+          signed,
         );
         if (ok) saved.push("kept on this phone");
         else setError("This phone is out of room to keep them. They're still on screen.");
@@ -282,7 +290,7 @@ export function ItineraryDirections({
                   Delete from this phone
                 </button>
                 {offlineNote && (
-                  <p className="mt-1 text-[12px] text-muted-foreground">Saved {offlineNote}</p>
+                  <p className="mt-1 text-[12px] text-muted-foreground">{offlineNote}</p>
                 )}
               </div>
             )}

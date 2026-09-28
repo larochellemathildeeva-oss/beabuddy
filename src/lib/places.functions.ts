@@ -647,9 +647,17 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // chains. If the box is empty (Eiffel Tower while standing in Montreal,
     // or a chain that is not in this city), fall back to the world so
     // turning location on does not make every other search go blank.
+    // Planning from home, with the trip (or that day of it) on the map: the
+    // answers lean towards it, not held to it — "Sushidokoro Amano" on an
+    // Osaka day offered Berlin, Madrid and Prague first. A trip with a town
+    // already has it in the query (`near`).
+    const lean =
+      !data.at && !input.near && !input.areas && input.center
+        ? { viewbox: viewboxAround(input.center.lat, input.center.lon), bounded: false }
+        : undefined;
     const area = data.at
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
-      : undefined;
+      : lean;
     let hits: NominatimHit[] = [];
     // "coffee" near you is a kind of place, not a word to look for: with
     // nothing tagged nearby, the geocoder may look only around the same

@@ -507,14 +507,30 @@ export function TripDetail({
     };
     return { lat: median(placed.map((p) => p.lat)), lon: median(placed.map((p) => p.lon)) };
   }, [board.items]);
-  /** The middle of that day's city when the route has it pinned, else the trip's. */
+  // The same, one day at a time: a trip with no route still knows a
+  // Hiroshima day is in Hiroshima once a stop or two of it is pinned.
+  const dayCenters = useMemo(() => {
+    const byDay = new Map<string, { lat: number[]; lon: number[] }>();
+    for (const item of board.items) {
+      if (!item.day_date || item.lat == null || item.lon == null) continue;
+      const day = byDay.get(item.day_date) ?? { lat: [], lon: [] };
+      day.lat.push(item.lat);
+      day.lon.push(item.lon);
+      byDay.set(item.day_date, day);
+    }
+    const median = (values: number[]) => [...values].sort((a, b) => a - b)[values.length >> 1]!;
+    return new Map(
+      [...byDay].map(([day, { lat, lon }]) => [day, { lat: median(lat), lon: median(lon) }]),
+    );
+  }, [board.items]);
+  /**
+   * The middle of that day's city when the route has it pinned; with no
+   * route, the middle of that day's pinned stops; else the trip's.
+   */
   const centerOn = (day: string | null | undefined) => {
     const here = routeStopOn(cities.stops, day);
-    return here && here.lat != null && here.lon != null
-      ? { lat: here.lat, lon: here.lon }
-      : here
-        ? null
-        : tripCenter;
+    if (here) return here.lat != null && here.lon != null ? { lat: here.lat, lon: here.lon } : null;
+    return (day ? dayCenters.get(day) : undefined) ?? tripCenter;
   };
   /**
    * What a card needs to show nesting: the stop it is inside (same day only,
