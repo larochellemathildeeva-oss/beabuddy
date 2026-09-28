@@ -30,6 +30,7 @@ import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
 import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
+import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 
 export const Route = createFileRoute("/")({
   staticData: { plane: "tab" },
@@ -101,7 +102,10 @@ function LandingPage() {
 function SignedInHome() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState("");
+  const [displayName, setDisplayName] = useState(() =>
+    user ? rememberedProfileName(safeStorage(), user.id) : "",
+  );
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [homeCity, setHomeCity] = useState("");
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
@@ -129,26 +133,32 @@ function SignedInHome() {
   useEffect(() => {
     if (!user) {
       setDisplayName("");
+      setProfileLoaded(false);
       setHomeCity("");
       return;
     }
     let active = true;
+    setDisplayName((current) => current || rememberedProfileName(safeStorage(), user.id));
     supabase
       .from("profiles")
       .select("display_name, home_city")
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!active || !data) return;
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (!error) setProfileLoaded(true);
+        if (!data) return;
         setDisplayName(data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
+        rememberProfileName(safeStorage(), user.id, data.display_name ?? "");
       });
     return () => {
       active = false;
     };
   }, [user]);
 
-  const firstName = (displayName || user?.email?.split("@")[0] || "").split(" ")[0] ?? "";
+  const firstName =
+    shownName({ profileName: displayName, profileLoaded, email: user?.email }).split(" ")[0] ?? "";
 
   const topReco = useMemo(() => {
     const ranked = rankOpportunities(vault.comparePins, scorePrefs);
