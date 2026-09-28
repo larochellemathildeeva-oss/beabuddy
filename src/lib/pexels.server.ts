@@ -1,4 +1,6 @@
+import countryBoxes from "../../public/geo/admin1/index.json";
 import {
+  countryFilterAt,
   pexelsSearchUrl,
   pexelsTownQuery,
   readPexelsPhoto,
@@ -47,13 +49,19 @@ export function pexelsTownPhoto(
   return query ? search(userId, query, [town], "banner", country) : Promise.resolve(null);
 }
 
-/** A photo of a stop, described by one of its names, or null. */
+/**
+ * A photo of a stop, described by one of its names, or null. With the stop's
+ * pin, a photo that names a country the pin is not in is passed over.
+ */
 export function pexelsPlacePhoto(
   userId: string,
   names: readonly string[],
+  at?: { lat: number; lon: number },
 ): Promise<PlacePhoto | null> {
   const asked = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
-  return asked[0] ? search(userId, asked[0], asked, "place") : Promise.resolve(null);
+  if (!asked[0]) return Promise.resolve(null);
+  const where = at ? { ...at, mayBeIn: countryFilterAt(at.lat, at.lon, countryBoxes) } : undefined;
+  return search(userId, asked[0], asked, "place", null, where);
 }
 
 /** One more search for this traveller, if the hour allows it. */
@@ -76,12 +84,15 @@ function search(
   names: string[],
   use: PexelsUse,
   country?: string | null,
+  where?: { lat: number; lon: number; mayBeIn: (code: string) => boolean },
 ): Promise<PlacePhoto | null> {
   const key = pexelsKey();
   const now = Date.now();
   if (!key || now < refusedUntil) return Promise.resolve(null);
   const url = pexelsSearchUrl(query, use);
-  const id = `${url}|${names.join("|").toLowerCase()}|${(country ?? "").toLowerCase()}`;
+  const id = `${url}|${names.join("|").toLowerCase()}|${(country ?? "").toLowerCase()}|${
+    where ? `${where.lat.toFixed(1)},${where.lon.toFixed(1)}` : ""
+  }`;
   const hit = cache.get(id);
   if (hit) return hit;
   if (!allowed(userId, now)) return Promise.resolve(null);
@@ -109,7 +120,7 @@ function search(
           : Date.now() + 60 * 60_000;
     }
     if (!res.ok) throw new Error(`Pexels answered ${res.status}`);
-    return readPexelsPhoto(await res.json(), names, use, country);
+    return readPexelsPhoto(await res.json(), names, use, country, where?.mayBeIn);
   })().catch(() => {
     cache.delete(id);
     return null;

@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  countryFilterAt,
   isGenericPlaceName,
   namesOtherCountry,
   pexelsSearchUrl,
@@ -109,4 +110,26 @@ test("a Pexels photo is credited to its photographer on Pexels", () => {
     photoCredit({ author: "Jane Doe", license: "Pexels License", source: "pexels" }),
     "Photo: Jane Doe on Pexels",
   );
+});
+
+test("a stop's photo that names a country its pin cannot be in is passed over", () => {
+  const boxes = [
+    { country: "Austria", bbox: [9.53, 46.37, 17.16, 49.02] },
+    { country: "Spain", bbox: [-18.17, 27.64, 4.33, 43.79] },
+    { country: "Aland", bbox: [19.5, 59.9, 21.1, 60.5] },
+  ];
+  const madrid = countryFilterAt(40.42, -3.7, boxes);
+  const vienna = countryFilterAt(48.21, 16.37, boxes);
+  assert.equal(madrid("ES"), true);
+  assert.equal(madrid("AT"), false);
+  assert.equal(vienna("AT"), true);
+  // A country without a box never rules a photo out.
+  assert.equal(madrid("JP"), true);
+
+  const json = { photos: [photo("Inside Cafe Central in Vienna, Austria")] };
+  assert.equal(readPexelsPhoto(json, ["Cafe Central"], "place", null, madrid), null);
+  assert.notEqual(readPexelsPhoto(json, ["Cafe Central"], "place", null, vienna), null);
+  // A description that names no country is taken anywhere.
+  const plain = { photos: [photo("Cafe Central at night")] };
+  assert.notEqual(readPexelsPhoto(plain, ["Cafe Central"], "place", null, madrid), null);
 });
