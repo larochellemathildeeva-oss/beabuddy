@@ -157,3 +157,18 @@ test("other stops keep their times: only positions shift", () => {
   );
   for (const shift of slot.shifts) assert.equal(Object.keys(shift).sort().join(), "id,position");
 });
+
+test("clearing a stop's time moves it to the end of its day", () => {
+  const slot = chronologicalSlot(
+    day,
+    { day_date: "2026-10-01", time_label: null },
+    clockMinutes,
+    "a",
+  );
+  // After c, the day's last stop; before d on the next day.
+  assert.equal(slot.position, 3);
+  assert.deepEqual(
+    slot.shifts.map((s) => s.id),
+    ["d"],
+  );
+});

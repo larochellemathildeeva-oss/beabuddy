@@ -562,7 +562,12 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [me.id, me.name],
   );
 
-  /** Move rows down to make room, one write each; positions have no uniqueness rule. */
+  /**
+   * Move rows down to make room, one write each; positions have no uniqueness
+   * rule, the same as "+ Add stop between". Not a transaction: a write that
+   * fails part way reloads the trip, so the screen shows the order actually
+   * saved rather than the one hoped for, and the error still reaches the form.
+   */
   const shiftPositions = useCallback(
     async (shifts: { id: string; position: number }[], authorId: string | null) => {
       for (const shift of shifts) {
@@ -570,10 +575,13 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           .from("itinerary_items")
           .update({ position: shift.position, ...(authorId ? { updated_by: authorId } : {}) })
           .eq("id", shift.id);
-        if (error) throw error;
+        if (error) {
+          await load();
+          throw error;
+        }
       }
     },
-    [],
+    [load],
   );
 
   const addItem = useCallback(
@@ -911,7 +919,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         const moved =
           (day ?? "") !== (current.day_date ?? "") ||
           clockMinutes(time) !== clockMinutes(current.time_label);
-        if (moved && (clockMinutes(time) != null || (day ?? "") !== (current.day_date ?? ""))) {
+        // Includes clearing a time: an untimed stop goes to the end of its day.
+        if (moved) {
           const slot = chronologicalSlot(
             items,
             { day_date: day, time_label: time },

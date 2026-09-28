@@ -25,6 +25,7 @@ type Query = {
   eq: (col: string, value: string) => Query;
   order: (col: string, opts: { ascending: boolean }) => Query;
   limit: (n: number) => Query;
+  range: (from: number, to: number) => Query;
   single: () => Result<unknown>;
   then: Result<unknown>["then"];
 };
@@ -255,6 +256,8 @@ export function useStopDocumentCount(itemId: string | null, open: boolean) {
  * You → Trip documents shows up on the trip. Empty, quietly, while the
  * migration is not applied.
  */
+const TRIP_DOCS_PAGE = 500;
+
 export function useTripBookingDocuments(tripId: string | null) {
   const [docs, setDocs] = useState<TripDocument[]>([]);
 
@@ -263,13 +266,24 @@ export function useTripBookingDocuments(tripId: string | null) {
       setDocs([]);
       return;
     }
-    const { data, error } = (await documentsTable()
-      .select(DOCUMENT_COLUMNS)
-      .eq("trip_id", tripId)
-      .order("created_at", { ascending: false })
-      .limit(200)) as { data: TripDocument[] | null; error: unknown };
-    if (error) return;
-    setDocs((data ?? []).map((d) => ({ ...d, lines: d.lines ?? [] })));
+    // Every document on the trip, a page at a time: the counts are totals,
+    // so a first page read as the whole set would undercount.
+    const all: TripDocument[] = [];
+    for (let from = 0; ; from += TRIP_DOCS_PAGE) {
+      const { data, error } = (await documentsTable()
+        .select(DOCUMENT_COLUMNS)
+        .eq("trip_id", tripId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, from + TRIP_DOCS_PAGE - 1)) as {
+        data: TripDocument[] | null;
+        error: unknown;
+      };
+      if (error) return;
+      all.push(...(data ?? []));
+      if ((data ?? []).length < TRIP_DOCS_PAGE) break;
+    }
+    setDocs(all.map((d) => ({ ...d, lines: d.lines ?? [] })));
   }, [tripId]);
 
   useEffect(() => {

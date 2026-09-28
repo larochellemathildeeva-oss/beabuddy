@@ -46,37 +46,49 @@ function read(userId: string | undefined): HomeLayout {
  * You changed that sheet and nothing else until the page was reloaded.
  */
 const listeners = new Set<() => void>();
-const cache = new Map<string, HomeLayout>();
+/** The last layout read per key, with the stored text it came from. */
+const cache = new Map<string, { raw: string | null; layout: HomeLayout }>();
 
+function rawFor(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return cache.get(key)?.raw ?? null;
+  }
+}
+
+/**
+ * The same object for as long as the stored text is the same, which is what
+ * a store snapshot needs. Checked against storage on every read, so a layout
+ * removed from outside (erasing this device's data) reads as the default.
+ */
 function current(userId: string | undefined): HomeLayout {
   const key = keyFor(userId);
-  let layout = cache.get(key);
-  if (!layout) {
-    layout = read(userId);
-    cache.set(key, layout);
-  }
+  const raw = rawFor(key);
+  const hit = cache.get(key);
+  if (hit && hit.raw === raw) return hit.layout;
+  const layout = read(userId);
+  cache.set(key, { raw, layout });
   return layout;
 }
 
 function write(userId: string | undefined, next: HomeLayout | null): void {
   const key = keyFor(userId);
+  const raw = next ? JSON.stringify(next) : null;
   try {
-    if (next) window.localStorage.setItem(key, JSON.stringify(next));
+    if (raw) window.localStorage.setItem(key, raw);
     else window.localStorage.removeItem(key);
   } catch {
     /* storage unavailable: the choice lasts for this visit */
   }
-  cache.set(key, next ?? DEFAULT_HOME_LAYOUT);
+  cache.set(key, { raw, layout: next ?? DEFAULT_HOME_LAYOUT });
   for (const listener of listeners) listener();
 }
 
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange);
   const onStorage = (e: StorageEvent) => {
-    if (e.key?.startsWith("bea-home-layout-")) {
-      cache.delete(e.key);
-      onChange();
-    }
+    if (e.key === null || e.key.startsWith("bea-home-layout-")) onChange();
   };
   window.addEventListener("storage", onStorage);
   return () => {
