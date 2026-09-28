@@ -3,6 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import {
   Bookmark,
   Check,
+  LocateFixed,
   Download,
   MapPin,
   ChevronDown,
@@ -52,6 +53,7 @@ import { formatTripLocation } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
+import { nowTarget } from "@/lib/now-jump";
 import { CompanionBanner } from "@/components/day/CompanionBanner";
 import {
   TripMenuSheet,
@@ -734,6 +736,22 @@ export function TripDetail({
   const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
   const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
   const shownGroups = visibleGroups(timelineGroups, chosenDay);
+  /** Where "Now" goes on a trip day: the stop you're at, or the next one. */
+  const todayGroup = timelineGroups.find((group) => group.key === todayKey);
+  const nowStop = todayGroup ? nowTarget(todayGroup.items, minutesNow) : null;
+  const jumpToNow = () => {
+    if (!nowStop) return;
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== todayKey) setDayChoice(todayKey);
+    setCollapsedDays((prev) => ({ ...prev, [todayKey]: false }));
+    // After the day has rendered: two frames, one for the state, one for layout.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${nowStop.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
   /** The day cards, for the sticky day bar to know when they scroll away. */
   const dayCardsRef = useRef<HTMLDivElement>(null);
   const offerDays = shouldOfferDays(timelineGroups);
@@ -1581,6 +1599,22 @@ export function TripDetail({
                   )}
                 </ol>
               </>
+            )}
+
+            {/* "Now", on a trip day: back to the stop you're at or the next
+                one. Sticky at the bottom of the list while it is on screen. */}
+            {nowStop && !editingTimeline && (
+              <div className="pointer-events-none sticky bottom-3 z-30 mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={jumpToNow}
+                  aria-label={`Jump to ${nowStop.title}`}
+                  className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
+                >
+                  <LocateFixed className="size-4" aria-hidden />
+                  Now
+                </button>
+              </div>
             )}
 
             {/* Opened from the signpost on a day's header; each leg draws

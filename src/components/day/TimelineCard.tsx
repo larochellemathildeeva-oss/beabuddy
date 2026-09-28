@@ -795,7 +795,7 @@ export function TimelineEntry({
   );
 
   return (
-    <li className="relative min-w-0 list-none">
+    <li id={`stop-${item.id}`} className="relative min-w-0 scroll-mt-16 list-none">
       <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
         {/* The rail: the numbered disc on the day's line; the hour is on the
             card. An open card takes the whole width instead; its # says it. */}
