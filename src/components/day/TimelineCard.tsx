@@ -1,4 +1,4 @@
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUp,
   Bookmark,
@@ -40,6 +40,7 @@ import {
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { SwipeRow } from "@/components/day/SwipeRow";
+import { Sheet } from "@/components/Sheet";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
@@ -103,6 +104,10 @@ export function TimelineEntry({
   nestedStops = 0,
   onInside,
   flat = false,
+  compact = false,
+  dragHandle,
+  liRef,
+  liStyle,
 }: {
   item: ItineraryRow;
   showDay: boolean;
@@ -176,10 +181,19 @@ export function TimelineEntry({
   onInside?: ((next: InsideEntry[]) => void) | undefined;
   /** The flat view: what is inside is a plain line, not a pill. */
   flat?: boolean;
+  /** One line a stop (time, name, kind); tapping it shows the whole card. */
+  compact?: boolean;
+  /** The grip for dragging the stop within its day, when the list offers it. */
+  dragHandle?: ReactNode;
+  /** For the drag-and-drop list: the row itself, and its moving style. */
+  liRef?: ((el: HTMLLIElement | null) => void) | undefined;
+  liStyle?: CSSProperties | undefined;
 }) {
   const [keptHere, setKept] = useState(false);
   const kept = keptHere || alreadyKept;
   const [flipped, setFlipped] = useState(false);
+  /** A compact row opened to its whole card. */
+  const [expanded, setExpanded] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   /** The quick actions under the front, opened by ⋯. */
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -234,7 +248,9 @@ export function TimelineEntry({
   const placed = item.lat != null && item.lon != null;
   // The front says where; a stop with no place says so, quietly.
   const where = item.address || (item.kind === "note" ? detail : "") || "";
-  const back = editing || flipped;
+  // Editing every stop turns every card over in place. One stop opens in a
+  // sheet over the day instead, so the list stays where it was.
+  const back = editing;
 
   const flip = (open: boolean) => {
     setFlipped(open);
@@ -242,10 +258,10 @@ export function TimelineEntry({
   };
 
   // The front: the name in the serif; how long and the kind on one line; the
-  // note; where, with a pin; and Map, Save and Directions along the bottom.
+  // note; where, with a pin; and Map and Directions along the bottom.
   // The time sits on the card, and the numbered disc on the rail (see the <li>).
-  // Tapping the name turns the card over to edit it; ⋯ opens the rest (done,
-  // booking, order, delete) that the swipe also gives.
+  // Tapping the name opens it in a sheet to edit; ⋯ opens the rest (done,
+  // save, booking, order, delete), some of which the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
   const roundIcon =
@@ -293,6 +309,7 @@ export function TimelineEntry({
       className={`rounded-2xl border border-border/70 bg-card p-2.5 transition-colors ${current ? "bg-primary-soft" : ""}`}
     >
       <div className="flex items-start gap-2">
+        {dragHandle}
         <button
           type="button"
           onClick={() => flip(true)}
@@ -405,10 +422,10 @@ export function TimelineEntry({
             : {})}
         />
       )}
-      {(canLocate || canKeep || canDirect) && (
-        <div className="@container mt-2 grid grid-cols-3 gap-1.5">
+      {/* Map and Directions only: Save lives under ⋯ and on swipe-left. */}
+      {(canLocate || canDirect) && (
+        <div className="@container mt-2 grid grid-cols-2 gap-1.5">
           {canLocate ? mapButton : <span />}
-          {canKeep ? saveButton : <span />}
           {canDirect ? (
             <a
               href={mapsDirToUrl(item, near ?? "")}
@@ -449,6 +466,18 @@ export function TimelineEntry({
             <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
             {done ? "Done" : "Mark done"}
           </button>
+          {canKeep && (
+            <button
+              type="button"
+              onClick={keep}
+              disabled={kept}
+              aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+              className={`${quickButton} ${kept ? "text-primary" : ""}`}
+            >
+              <Bookmark className="size-4" weight={kept ? "fill" : "regular"} aria-hidden />
+              {kept ? "Saved" : "Save"}
+            </button>
+          )}
           {onSaveBooking && (
             <button
               type="button"
@@ -512,39 +541,71 @@ export function TimelineEntry({
     </article>
   );
 
+  // The compact row: time, name and kind on one line. Tapping it shows the
+  // whole card; "Less" folds it back.
+  const compactRow = (
+    <article
+      className={`flex items-center gap-1.5 rounded-xl border border-border/70 bg-card py-1.5 pl-1.5 pr-2 ${
+        current ? "bg-primary-soft" : ""
+      }`}
+    >
+      {dragHandle}
+      <button
+        type="button"
+        onClick={() => setExpanded(true)}
+        aria-expanded={false}
+        aria-label={`${rail ? `${rail}, ` : ""}${item.title} — show the whole card`}
+        className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
+      >
+        <span
+          className={`w-11 shrink-0 text-[13px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
+        >
+          {rail || "–"}
+        </span>
+        <span
+          className={`min-w-0 flex-1 truncate text-[15px] font-medium ${
+            done ? "text-muted-foreground line-through" : ""
+          }`}
+        >
+          {item.title}
+        </span>
+        <span
+          className={`kind-chip kind-${timelineGlyph(item)} grid size-7 shrink-0 place-items-center rounded-full`}
+          aria-hidden
+        >
+          <KindIcon item={item} />
+        </span>
+      </button>
+    </article>
+  );
+  const folded = compact && !expanded;
+
   const field =
     "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
   const caption = "mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground";
 
-  // The back: every change to this stop, and its booking, in one place. It
-  // opens across the whole width (the rail steps aside, see the <li>) and
-  // keeps each field to one short line, so a phone sees most of it at once.
-  const backSide = (
-    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3 shadow-sm">
-      <div className="flex min-w-0 items-center gap-1.5">
-        {number != null && (
-          <span className="grid h-8 min-w-8 place-items-center rounded-full bg-elevated px-2 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
-            #{number}
-          </span>
-        )}
-        <span
-          className={`kind-chip kind-${timelineGlyph(item)} grid size-8 place-items-center rounded-full`}
-        >
-          <KindIcon item={item} />
+  // The back: its # and kind over the fields. Each field is kept to one short
+  // line, so a phone sees most of it at once.
+  const backHeader = (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {number != null && (
+        <span className="grid h-8 min-w-8 place-items-center rounded-full bg-elevated px-2 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
+          #{number}
         </span>
-        <span className="label-caps whitespace-nowrap">Edit stop</span>
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => flip(false)}
-            aria-label={`Close ${item.title}`}
-            className="ml-auto inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13.5px] font-bold text-primary-foreground"
-          >
-            Done
-          </button>
-        )}
-      </div>
+      )}
+      <span
+        className={`kind-chip kind-${timelineGlyph(item)} grid size-8 place-items-center rounded-full`}
+      >
+        <KindIcon item={item} />
+      </span>
+      <span className="label-caps whitespace-nowrap">Edit stop</span>
+    </div>
+  );
 
+  // Every change to this stop, and its booking, in one place: in a sheet over
+  // the day for one stop, or on the card itself when editing every stop.
+  const backBody = (
+    <>
       <div className="mt-2.5 space-y-2">
         <div className="rounded-xl border border-border bg-elevated px-3 py-1">{titleInput}</div>
         <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
@@ -743,7 +804,9 @@ export function TimelineEntry({
           <Trash2 className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
           Delete
         </button>
-        {onMove && (
+        {/* Dragging the grip reorders a day; editing every stop at once has
+            no grip, so it keeps these. */}
+        {onMove && editing && (
           <>
             <button
               type="button"
@@ -779,16 +842,28 @@ export function TimelineEntry({
           </button>
         )}
       </div>
+    </>
+  );
+
+  const backSide = (
+    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3 shadow-sm">
+      {backHeader}
+      {backBody}
     </article>
   );
 
   return (
-    <li className="relative min-w-0 list-none">
+    <li
+      id={`stop-${item.id}`}
+      ref={liRef}
+      style={liStyle}
+      className="relative min-w-0 scroll-mt-16 list-none"
+    >
       <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
         {/* The rail: the numbered disc on the day's line; the hour is on the
             card. An open card takes the whole width instead; its # says it. */}
         {!back && (
-          <span className="relative z-10 flex justify-center pt-2.5">
+          <span className={`relative z-10 flex justify-center ${folded ? "pt-1.5" : "pt-2.5"}`}>
             {number != null ? (
               <StopDisc number={number} done={done} />
             ) : (
@@ -815,16 +890,42 @@ export function TimelineEntry({
               onSave={canKeep && !kept ? keep : undefined}
               onDelete={onRemove}
             >
-              {front}
+              {folded ? compactRow : front}
             </SwipeRow>
           )}
-          {!back && showSwipeHint && (
+          {!back && compact && expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="mt-0.5 px-1 text-[12px] font-semibold text-muted-foreground"
+            >
+              Less
+            </button>
+          )}
+          {!back && showSwipeHint && !compact && (
             <p className="mt-1 px-1 text-[10.5px] text-muted-foreground/80">
               Tap a stop to edit · swipe right for done, left to save or delete
             </p>
           )}
         </div>
       </div>
+      {!editing && (
+        <Sheet
+          open={flipped}
+          onClose={() => flip(false)}
+          title={item.title}
+          {...(number != null ? { hint: `Stop ${number}` } : {})}
+        >
+          {backBody}
+          <button
+            type="button"
+            onClick={() => flip(false)}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary text-[14.5px] font-bold text-primary-foreground"
+          >
+            Done
+          </button>
+        </Sheet>
+      )}
       {onSaveBooking && bookingOpen && (
         <BookingSheet
           item={item}

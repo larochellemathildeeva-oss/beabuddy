@@ -51,6 +51,7 @@ import {
   Copy as PhCopy,
   Crosshair as PhCrosshair,
   DeviceMobile as PhDeviceMobile,
+  DotsSixVertical as PhDotsSixVertical,
   DotsThree as PhDotsThree,
   DotsThreeVertical as PhDotsThreeVertical,
   DownloadSimple as PhDownloadSimple,
@@ -305,3 +306,4 @@ export const CornerUpLeft = icon(PhArrowBendUpLeft, "CornerUpLeft");
 export const CornerUpRight = icon(PhArrowBendUpRight, "CornerUpRight");
 export const Undo2 = icon(PhArrowUUpLeft, "Undo2");
 export const FlagArrive = icon(PhFlagCheckered, "FlagArrive");
+export const GripVertical = icon(PhDotsSixVertical, "GripVertical");

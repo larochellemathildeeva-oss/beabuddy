@@ -3,6 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import {
   Bookmark,
   Check,
+  LocateFixed,
   Download,
   MapPin,
   ChevronDown,
@@ -51,6 +52,9 @@ import {
 import { formatTripLocation } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
+import { StickyDayBar } from "@/components/day/StickyDayBar";
+import { nowTarget } from "@/lib/now-jump";
+import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { CompanionBanner } from "@/components/day/CompanionBanner";
 import {
   TripMenuSheet,
@@ -70,7 +74,7 @@ import {
   visibleGroups,
   type DayChoice,
 } from "@/lib/trip-days";
-import { rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
+import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
@@ -733,6 +737,24 @@ export function TripDetail({
   const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
   const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
   const shownGroups = visibleGroups(timelineGroups, chosenDay);
+  /** Where "Now" goes on a trip day: the stop you're at, or the next one. */
+  const todayGroup = timelineGroups.find((group) => group.key === todayKey);
+  const nowStop = todayGroup ? nowTarget(todayGroup.items, minutesNow) : null;
+  const jumpToNow = () => {
+    if (!nowStop) return;
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== todayKey) setDayChoice(todayKey);
+    setCollapsedDays((prev) => ({ ...prev, [todayKey]: false }));
+    // After the day has rendered: two frames, one for the state, one for layout.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${nowStop.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
+  /** The day cards, for the sticky day bar to know when they scroll away. */
+  const dayCardsRef = useRef<HTMLDivElement>(null);
   const offerDays = shouldOfferDays(timelineGroups);
 
   /**
@@ -754,6 +776,10 @@ export function TripDetail({
   const [hideDone, setHideDone] = useState(false);
   /** Timeline Editor grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
+  /** One line a stop, tap to open: for reading a long day at a glance. */
+  const [compactCards, setCompactCards] = useState(false);
+  /** The day a stop is being dragged in, if any. */
+  const [draggingDay, setDraggingDay] = useState<string | null>(null);
   const doneCount = stopItems.filter(isDone).length;
   // Nothing hidden while editing: edit mode is for the whole list.
   const hidingDone = hideDone && !editingTimeline;
@@ -765,12 +791,14 @@ export function TripDetail({
         day?: unknown;
         hideDone?: unknown;
         byArea?: unknown;
+        compact?: unknown;
       } | null;
       const p = asPerspective(saved?.perspective);
       if (p) setPerspective(p);
       if (typeof saved?.day === "string") setDayChoice(saved.day);
       if (saved?.hideDone === true) setHideDone(true);
       if (saved?.byArea === true) setByArea(true);
+      if (saved?.compact === true) setCompactCards(true);
     } catch {
       /* storage unavailable: start from the defaults */
     }
@@ -781,12 +809,12 @@ export function TripDetail({
     try {
       window.localStorage.setItem(
         viewKey,
-        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea }),
+        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea, compact: compactCards }),
       );
     } catch {
       /* storage unavailable: the choice lasts for this visit */
     }
-  }, [viewKey, perspective, dayChoice, hideDone, byArea]);
+  }, [viewKey, perspective, dayChoice, hideDone, byArea, compactCards]);
   const view = useTripViewPrefs();
 
   /** Trip documents linked to each stop, for the document mark on its card. */
@@ -1120,7 +1148,7 @@ export function TripDetail({
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-3">
+            <div ref={dayCardsRef} className="mb-3">
               <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
@@ -1287,6 +1315,14 @@ export function TripDetail({
             progress survives a tab switch and the action row's buttons can
             open their forms from any tab. */}
         <div hidden={perspective !== "timeline"}>
+          {perspective === "timeline" && timelineByDay && offerDays && stopItems.length > 0 && (
+            <StickyDayBar
+              chips={chips}
+              value={chosenDay}
+              onChange={setDayChoice}
+              anchor={dayCardsRef}
+            />
+          )}
           <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
             {editingTimeline && (
               <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
@@ -1334,7 +1370,11 @@ export function TripDetail({
                   const visited = group.items.filter(isDone).length;
                   const length = dayLengthLabel(group.items, travelInto);
                   return (
-                    <section key={group.key || "undated"} className="min-w-0">
+                    <section
+                      key={group.key || "undated"}
+                      data-day-key={group.key}
+                      className="min-w-0"
+                    >
                       <TimelineHead
                         title={dayTitle(group.key, ordinalFor(group.key), group.label)}
                         line={[
@@ -1411,6 +1451,7 @@ export function TripDetail({
                                   </li>
                                   {area.items.map((item) => (
                                     <TimelineEntry
+                                      compact={compactCards && !editingTimeline}
                                       key={item.id}
                                       item={item}
                                       showDay={false}
@@ -1434,19 +1475,17 @@ export function TripDetail({
                                   ))}
                                 </Fragment>
                               ))
-                            : group.items.map((item, dayIndex) =>
-                                hidingDone && isDone(item) ? null : (
-                                  <Fragment key={item.id}>
-                                    {divider === dayIndex && <NowLine />}
-                                    {/* A run of stops close enough together to
-                                        be one decision rather than several. A
-                                        label, not a container. */}
-                                    {runLabels.has(dayIndex) && (
-                                      <li className="relative z-10 list-none pl-[5.25rem] pt-1 text-[12px] text-muted-foreground">
-                                        {runLabels.get(dayIndex)}
-                                      </li>
-                                    )}
+                            : (() => {
+                                // Drag to reorder: a grip on each card, inside
+                                // the day, not while editing every card at once.
+                                const sortable = !editingTimeline && group.items.length > 1;
+                                const dragging = draggingDay === group.key;
+                                const rows = group.items.map((item, dayIndex) => {
+                                  if (hidingDone && isDone(item)) return null;
+                                  const entry = (bind?: SortableBind) => (
                                     <TimelineEntry
+                                      {...(bind ?? {})}
+                                      compact={compactCards && !editingTimeline}
                                       item={item}
                                       showDay={false}
                                       number={dayIndex + 1}
@@ -1469,14 +1508,31 @@ export function TripDetail({
                                       stray={strayIds.has(item.id)}
                                       {...foldProps(item)}
                                     />
-                                    {(() => {
-                                      // The next stop on the list as shown, so
-                                      // the connector never points at a hidden one.
-                                      const next = group.items
-                                        .slice(dayIndex + 1)
-                                        .find((n) => !(hidingDone && isDone(n)));
-                                      if (!next || editingTimeline) return null;
-                                      return (
+                                  );
+                                  // The next stop on the list as shown, so the
+                                  // connector never points at a hidden one.
+                                  const next = group.items
+                                    .slice(dayIndex + 1)
+                                    .find((n) => !(hidingDone && isDone(n)));
+                                  return (
+                                    <Fragment key={item.id}>
+                                      {!dragging && divider === dayIndex && <NowLine />}
+                                      {/* A run of stops close enough together to
+                                          be one decision rather than several. A
+                                          label, not a container. */}
+                                      {!dragging && runLabels.has(dayIndex) && (
+                                        <li className="relative z-10 list-none pl-[5.25rem] pt-1 text-[12px] text-muted-foreground">
+                                          {runLabels.get(dayIndex)}
+                                        </li>
+                                      )}
+                                      {sortable ? (
+                                        <SortableStop id={item.id} title={item.title}>
+                                          {entry}
+                                        </SortableStop>
+                                      ) : (
+                                        entry()
+                                      )}
+                                      {next && !editingTimeline && !dragging && (
                                         <TravelConnector
                                           from={item}
                                           to={next}
@@ -1486,11 +1542,26 @@ export function TripDetail({
                                           onAddBetween={() => openAddBetween(item, next)}
                                           fromNumber={dayIndex + 1}
                                         />
-                                      );
-                                    })()}
-                                  </Fragment>
-                                ),
-                              )}
+                                      )}
+                                    </Fragment>
+                                  );
+                                });
+                                if (!sortable) return rows;
+                                return (
+                                  <SortableDay
+                                    ids={group.items
+                                      .filter((item) => !(hidingDone && isDone(item)))
+                                      .map((item) => item.id)}
+                                    onDragging={(on) => setDraggingDay(on ? group.key : null)}
+                                    onDrop={(activeId, overId) => {
+                                      const move = dropMove(stopItems, activeId, overId);
+                                      if (move) void moveStops([move]).catch(() => undefined);
+                                    }}
+                                  >
+                                    {rows}
+                                  </SortableDay>
+                                );
+                              })()}
                           {divider === group.items.length && <NowLine done />}
                         </ol>
                       )}
@@ -1522,6 +1593,7 @@ export function TripDetail({
                     hidingDone && isDone(item) ? null : (
                       <Fragment key={item.id}>
                         <TimelineEntry
+                          compact={compactCards && !editingTimeline}
                           item={item}
                           showDay
                           number={i + 1}
@@ -1566,6 +1638,22 @@ export function TripDetail({
                   )}
                 </ol>
               </>
+            )}
+
+            {/* "Now", on a trip day: back to the stop you're at or the next
+                one. Sticky at the bottom of the list while it is on screen. */}
+            {nowStop && !editingTimeline && (
+              <div className="pointer-events-none sticky bottom-3 z-30 mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={jumpToNow}
+                  aria-label={`Jump to ${nowStop.title}`}
+                  className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
+                >
+                  <LocateFixed className="size-4" aria-hidden />
+                  Now
+                </button>
+              </div>
             )}
 
             {/* Opened from the signpost on a day's header; each leg draws
@@ -1698,6 +1786,15 @@ export function TripDetail({
                 options={[
                   [false, "All"],
                   [true, `Not visited (${stopItems.length - doneCount})`],
+                ]}
+              />
+              <MenuChoice
+                label="Cards"
+                value={compactCards}
+                onChange={setCompactCards}
+                options={[
+                  [false, "Full"],
+                  [true, "Compact"],
                 ]}
               />
               <MenuChoice

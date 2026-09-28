@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { clockMinutes } from "./companion.ts";
 import {
+  dropMove,
   placeOf,
   rearrange,
   stepMove,
@@ -138,4 +139,13 @@ test("no suggestion when nothing after the stop before still fits the day", () =
     time: "08:00",
     suggestion: null,
   });
+});
+
+test("a drag drops below a stop when coming from above, above it from below", () => {
+  const down = dropMove(plan, "a", "c")!;
+  assert.deepEqual(after(plan, rearrange(plan, [down]))[D1], ["b", "c", "a"]);
+  const up = dropMove(plan, "c", "a")!;
+  assert.deepEqual(after(plan, rearrange(plan, [up]))[D1], ["c", "a", "b"]);
+  assert.equal(dropMove(plan, "a", "a"), null);
+  assert.equal(dropMove(plan, "a", "d"), null);
 });
