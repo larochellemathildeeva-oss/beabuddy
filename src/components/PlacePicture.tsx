@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useStopPictures } from "@/hooks/useStopPictures";
 import { usePlaceDetails } from "@/hooks/usePlaceDetails";
 import { placeArtFor, placeArtUrl } from "@/lib/place-art";
-import { photoCredit, type PlacePhoto } from "@/lib/wikimedia";
+import { creditedOnPhoto, photoCredit, type PlacePhoto } from "@/lib/wikimedia";
 
 /**
  * A stop's or a place's picture, as You → Appearance asks: Béa's painting,
@@ -71,11 +71,14 @@ function CommonsThumb({
   linked: boolean;
   onError: () => void;
 }) {
-  const credit = photoCredit(photo);
+  const credit = creditedOnPhoto(photo) ? photoCredit(photo) : "";
   const caption =
     "pointer-events-auto absolute inset-x-0 bottom-0 truncate bg-black/55 px-1.5 py-px text-[9px] leading-tight text-white";
   return (
-    <span className={`place-art relative block overflow-hidden ${className}`} title={credit}>
+    <span
+      className={`place-art relative block overflow-hidden ${className}`}
+      title={credit || undefined}
+    >
       <img
         src={photo.url}
         alt=""
@@ -87,7 +90,7 @@ function CommonsThumb({
         onError={onError}
         className="absolute inset-0 size-full object-cover"
       />
-      {linked ? (
+      {!credit ? null : linked ? (
         <a href={photo.page} target="_blank" rel="noreferrer" className={`${caption} underline`}>
           {credit}
         </a>

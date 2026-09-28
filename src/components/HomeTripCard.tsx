@@ -15,6 +15,8 @@ import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useTownPicture } from "@/hooks/useTownPicture";
+import { TownPhotoCredit } from "@/components/TownPhotoCredit";
 import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
@@ -36,30 +38,47 @@ export function HomeSectionTitle({ title, aside }: { title: string; aside?: Reac
   );
 }
 
-/** A trip's picture: your own photo of the place, else its painted scene. */
+/**
+ * A trip's picture: your own photo of the place, else — with "Real photos" —
+ * a credited photo of its town, else its painted scene.
+ */
 export function TripPicture({
   trip,
   photos,
   cities,
   className = "",
+  creditAt = "bottom",
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   cities: string[];
   className?: string;
+  /** Where a town photo's credit sits: clear of the words laid over the picture. */
+  creditAt?: "top" | "bottom";
 }) {
   const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities });
   const url = useSignedPhoto(photo?.storage_path ?? null);
+  const town = useTownPicture(!!photo, trip.city || cities[0], trip.country);
   const art = bannerArtUrl(
     bannerSceneFor([trip.title, ...cities, trip.city, trip.country], trip.title || trip.city || ""),
   );
   return (
-    <img
-      src={url ?? art}
-      alt=""
-      decoding="async"
-      className={`art-dim absolute inset-0 size-full object-cover ${className}`}
-    />
+    <>
+      <img
+        src={url ?? town.photo?.url ?? art}
+        alt=""
+        decoding="async"
+        referrerPolicy={town.photo ? "no-referrer" : undefined}
+        onError={town.onError}
+        className={`art-dim absolute inset-0 size-full object-cover ${className}`}
+      />
+      {town.photo ? (
+        <TownPhotoCredit
+          photo={town.photo}
+          className={creditAt === "top" ? "top-0.5 bottom-auto" : ""}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -301,7 +320,7 @@ export function HomeYourTrips({ trips, photos }: { trips: TripRow[]; photos: Tri
             viewTransition
             className="relative block h-[112px] w-[31%] min-w-[108px] shrink-0 snap-start overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <TripPicture trip={t} photos={photos} cities={[]} />
+            <TripPicture trip={t} photos={photos} cities={[]} creditAt="top" />
             <span
               aria-hidden
               className="absolute inset-0"

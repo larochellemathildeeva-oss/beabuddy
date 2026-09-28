@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { Bed, ChevronRight, ListChecks, Luggage, MapPin, Plane, Users } from "@/components/icons";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useTownPicture } from "@/hooks/useTownPicture";
+import { TownPhotoCredit } from "@/components/TownPhotoCredit";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
@@ -90,6 +92,7 @@ export function TripCard({
     cities: cityNames,
   });
   const photoUrl = useSignedPhoto(photo?.storage_path ?? null);
+  const town = useTownPicture(!!photo, trip.city || cityNames[0], trip.country);
   const art = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],
@@ -163,11 +166,14 @@ export function TripCard({
           style={{ viewTransitionName: `trip-photo-${trip.id}` }}
         >
           <img
-            src={photoUrl ?? art}
+            src={photoUrl ?? town.photo?.url ?? art}
             alt=""
             decoding="async"
+            referrerPolicy={town.photo ? "no-referrer" : undefined}
+            onError={town.onError}
             className="art-dim absolute inset-0 size-full object-cover"
           />
+          {town.photo ? <TownPhotoCredit photo={town.photo} /> : null}
           {peopleCount > 1 ? (
             <span
               aria-label={`${peopleCount} people on this trip`}

@@ -147,13 +147,24 @@ and not a strip taller than 2:1; when it is not, the item's image and then
 the best-rated file in its Commons category are tried, and only files Commons'
 reviewers rated (featured, quality, valued) are taken from a category.
 
+**Pexels first.** With `PEXELS_API_KEY` set, both the town banner and a
+stop's photo are searched on Pexels first (`pexels.ts`, pure and tested;
+`pexels.server.ts` holds the key), and Commons is only the backup. Pexels is a
+stock library, so a photo is taken only when its description names the stop
+or town (never a generic name like "Cafe"), and a town's must not name another
+country. Pexels photos carry no credit of their own: the privacy page credits
+Pexels, with a link, once. Commons photos keep theirs, as their licences
+require. The free plan is 200 searches an hour for the whole app, so Béa stays
+under 180, gives one traveller at most 40, and rests when Pexels says few are
+left; Commons answers meanwhile.
+
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them
 `VITE_`. After changing anything here, check neither followed the code into
 the browser:
 
 ```
-npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY" .output/public/   # must print nothing
+npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY|PEXELS_API_KEY" .output/public/   # must print nothing
 ```
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever

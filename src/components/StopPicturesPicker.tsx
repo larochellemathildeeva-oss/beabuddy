@@ -3,13 +3,14 @@ import type { StopPictures } from "@/lib/stop-pictures";
 
 const OPTIONS: { id: StopPictures; label: string; hint: string }[] = [
   { id: "illustrations", label: "Illustrations", hint: "Béa's painted pictures" },
-  { id: "photos", label: "Real photos", hint: "From Wikimedia Commons" },
+  { id: "photos", label: "Real photos", hint: "From Pexels & Wikimedia" },
   { id: "none", label: "No pictures", hint: "More compact lists" },
 ];
 
 /**
  * How stops and places are pictured. One choice for the whole app. With real
- * photos, a place Wikimedia Commons has no photo of keeps its illustration.
+ * photos, a place neither Pexels nor Wikimedia Commons has a photo of keeps
+ * its illustration.
  */
 export function StopPicturesPicker() {
   const [value, setValue] = useStopPictures();

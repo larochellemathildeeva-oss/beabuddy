@@ -15,6 +15,8 @@ import { TripListSkeleton } from "@/components/Skeletons";
 import { useSignedPhoto, useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useTownPicture } from "@/hooks/useTownPicture";
+import { TownPhotoCredit } from "@/components/TownPhotoCredit";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips } from "@/hooks/useTrips";
@@ -817,6 +819,7 @@ function PastTiles({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[]
 function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
   const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: [] });
   const url = useSignedPhoto(photo?.storage_path ?? null);
+  const town = useTownPicture(!!photo, trip.city, trip.country);
   const art = bannerArtUrl(
     bannerSceneFor([trip.title, trip.city, trip.country], trip.title || trip.city || ""),
   );
@@ -829,9 +832,11 @@ function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
       className="relative block h-[118px] overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm"
     >
       <img
-        src={url ?? art}
+        src={url ?? town.photo?.url ?? art}
         alt=""
         decoding="async"
+        referrerPolicy={town.photo ? "no-referrer" : undefined}
+        onError={town.onError}
         className="art-dim absolute inset-0 size-full object-cover"
       />
       <span
@@ -841,6 +846,7 @@ function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
           backgroundImage: "linear-gradient(to top, rgba(18,12,10,0.72), rgba(18,12,10,0) 60%)",
         }}
       />
+      {town.photo ? <TownPhotoCredit photo={town.photo} className="top-0.5 bottom-auto" /> : null}
       <span className="absolute inset-x-0 bottom-0 p-2">
         <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
           {trip.title}
