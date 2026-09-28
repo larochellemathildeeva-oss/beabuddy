@@ -30,6 +30,8 @@ export type PlacePhoto = {
   page: string;
   author: string;
   license: string;
+  /** Where it came from; Wikimedia Commons when unset (pexels.ts). */
+  source?: "pexels";
 };
 
 /**
@@ -386,6 +388,7 @@ export function readWikipediaItem(json: unknown, titles: string[]): string | nul
 }
 
 /** "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons" */
-export function photoCredit(photo: Pick<PlacePhoto, "author" | "license">): string {
+export function photoCredit(photo: Pick<PlacePhoto, "author" | "license" | "source">): string {
+  if (photo.source === "pexels") return `Photo: ${photo.author} on Pexels`;
   return `Photo: ${photo.author} · ${photo.license} · Wikimedia Commons`;
 }

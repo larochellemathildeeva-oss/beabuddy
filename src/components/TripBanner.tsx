@@ -117,7 +117,7 @@ export function TripBanner({
   const kind: Variant = variant ?? (compact ? "compact" : "card");
   const own = useSignedPhoto(photo?.storage_path ?? null);
   // "Real photos" (You → Appearance): a trip with no photo of its own shows
-  // its town from Wikimedia Commons, credited, before any painting.
+  // its town from Pexels or Wikimedia Commons, credited, before any painting.
   const [pictures] = useStopPictures();
   const town = useTownPhoto(city || cities[0], country, pictures === "photos" && !photo);
   const [brokenTown, setBrokenTown] = useState<string | null>(null);

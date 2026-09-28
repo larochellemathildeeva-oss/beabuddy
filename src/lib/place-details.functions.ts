@@ -6,7 +6,8 @@ import type { PlacePhoto } from "@/lib/wikimedia";
 
 /**
  * What a stop or a rec is like to visit — hours, website, phone, access,
- * from Geoapify, and a photo from Wikimedia Commons when the place names one
+ * from Geoapify, and a photo from Pexels when one names the place, else from
+ * Wikimedia Commons when the place names one
  * — and a picture of a day's map for offline.
  *
  * The key is read on the server only (geo-provider.server.ts, imported
@@ -31,8 +32,14 @@ export const placeDetails = createServerFn({ method: "POST" })
     const { placeFactsFor } = await import("@/lib/place-facts.server");
     const facts = await placeFactsFor(provider.token, data);
     if (!facts) return null;
-    let photo: PlacePhoto | null = null;
-    if (facts.commons) {
+    // Pexels first (a photo whose description names the place), then Commons.
+    const { pexelsPlacePhoto } = await import("@/lib/pexels.server");
+    let photo = await pexelsPlacePhoto([
+      data.name,
+      ...(facts.name ? [facts.name] : []),
+      ...facts.names,
+    ]);
+    if (!photo && facts.commons) {
       const { commonsPhotoFor } = await import("@/lib/wikimedia.server");
       photo = await commonsPhotoFor(facts.commons);
     }
@@ -80,9 +87,10 @@ export const dayMapImage = createServerFn({ method: "POST" })
   });
 
 /**
- * A photo of a trip's town from Wikimedia Commons, for its banner when the
- * traveller chose real photos and has none of their own. Keyless: it asks
- * Wikipedia and Commons only, never Geoapify, so it costs no credit.
+ * A photo of a trip's town, for its banner when the traveller chose real
+ * photos and has none of their own: from Pexels when PEXELS_API_KEY is set and
+ * a photo names the town, else from Wikimedia Commons (keyless). Never
+ * Geoapify, so it costs no credit.
  */
 export const townPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -95,6 +103,9 @@ export const townPhoto = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }): Promise<PlacePhoto | null> => {
+    const { pexelsTownPhoto } = await import("@/lib/pexels.server");
+    const pexels = await pexelsTownPhoto(data.city, data.country);
+    if (pexels) return pexels;
     const { townPhotoFor } = await import("@/lib/wikimedia.server");
     return townPhotoFor(data.city, data.country);
   });

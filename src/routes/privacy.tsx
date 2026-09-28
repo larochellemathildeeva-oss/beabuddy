@@ -204,10 +204,11 @@ function PrivacyPage() {
             its town — never who you are.
           </p>
           <p>
-            When a place on the map names a photograph of itself on Wikimedia Commons, Béa&apos;s
-            server asks Commons for it, and your device then loads that one picture straight from
+            For photos of places and towns, Béa&apos;s server searches Pexels with only the
+            place&apos;s or town&apos;s name, and otherwise asks Wikimedia Commons for a photograph
+            the map names. Your device then loads that one picture straight from Pexels or
             Wikimedia, which sees your device&apos;s address as any website would. Each photo is
-            shown with its author and licence.
+            shown with its photographer, and a Commons photo with its licence too.
           </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
           <p>
