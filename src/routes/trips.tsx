@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import type { PlannerTab } from "@/components/ItineraryImport";
+import beaLogo from "@/assets/bea-logo.png";
 import { useState } from "react";
 import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
@@ -36,8 +38,27 @@ import {
   type CityDraft,
 } from "@/lib/trip-cities";
 
+type TripsSearch = {
+  /** Open the new-trip form (from Plan with Béa). */
+  new?: boolean;
+  /** Where the new trip's planner opens once it exists. */
+  plan?: PlannerTab;
+  ask?: string;
+};
+
+const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
+
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
+  validateSearch: (search: Record<string, unknown>): TripsSearch => ({
+    ...(search["new"] === true || search["new"] === "true" ? { new: true } : {}),
+    ...(PLAN_AFTER_CREATE.includes(search["plan"] as PlannerTab)
+      ? { plan: search["plan"] as PlannerTab }
+      : {}),
+    ...(typeof search["ask"] === "string" && search["ask"].trim()
+      ? { ask: search["ask"].slice(0, 2000) }
+      : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Trips — Béa" },
@@ -68,7 +89,8 @@ function TripsPage() {
   // otherwise the itinerary, budget and saved directions all vanished, which
   // reads as "everything disappeared" rather than "the card closed". A route
   // has that for free, and the note is gone.
-  const [creating, setCreating] = useState(false);
+  const search = Route.useSearch();
+  const [creating, setCreating] = useState(Boolean(search.new));
   const [joining, setJoining] = useState(false);
   /** The master's four tabs. */
   const [view, setView] = useState<"upcoming" | "past" | "drafts" | "all">("upcoming");
@@ -147,6 +169,22 @@ function TripsPage() {
         </p>
         {t.signedIn ? (
           <>
+            {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+            <Link
+              to="/trips/plan"
+              data-guide="plan-with-bea"
+              className="plain-card flex items-center gap-3 p-3"
+            >
+              <img src={beaLogo} alt="" className="size-12 shrink-0 object-contain" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-[21px] leading-tight">Plan with Béa</span>
+                <span className="block text-[13px] text-muted-foreground">
+                  Build a trip, import your plan, optimize it or compare options.
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            </Link>
+
             <div role="tablist" aria-label="Which trips" className="grid grid-cols-4 gap-1.5">
               {(
                 [
@@ -471,6 +509,11 @@ function TripsPage() {
                       await navigate({
                         to: "/trips/$tripId",
                         params: { tripId: id },
+                        // Started from Plan with Béa: its planner opens on
+                        // the new trip, with anything already typed.
+                        search: search.plan
+                          ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                          : {},
                         viewTransition: true,
                       });
                       setForm({

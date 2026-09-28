@@ -8,13 +8,34 @@ import { tripCompanionsLine } from "@/lib/trip-copy";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { clearOfflineMap } from "@/lib/offline-map";
 import type { PrepTab } from "@/components/TripPrep";
+import type { PlannerTab } from "@/components/ItineraryImport";
+
+type TripSearch = {
+  prep?: PrepTab;
+  /** Open on the Bookings tab. */
+  view?: "bookings";
+  /** Open Plan with Béa on this panel (from the Plan with Béa page). */
+  plan?: PlannerTab;
+  /** Words to start Build with. */
+  ask?: string;
+};
+
+const PLAN_ENTRIES: readonly PlannerTab[] = ["start", "build", "import", "optimize", "compare"];
 
 export const Route = createFileRoute("/trips_/$tripId")({
   staticData: { plane: "detail" },
   // `?prep=todo` or `?prep=packing` opens the to-do / packing sheet, for
   // Home's shortcuts. Anything else is ignored.
-  validateSearch: (search: Record<string, unknown>): { prep?: PrepTab } =>
-    search["prep"] === "todo" || search["prep"] === "packing" ? { prep: search["prep"] } : {},
+  validateSearch: (search: Record<string, unknown>): TripSearch => ({
+    ...(search["prep"] === "todo" || search["prep"] === "packing" ? { prep: search["prep"] } : {}),
+    ...(search["view"] === "bookings" ? { view: "bookings" as const } : {}),
+    ...(PLAN_ENTRIES.includes(search["plan"] as PlannerTab)
+      ? { plan: search["plan"] as PlannerTab }
+      : {}),
+    ...(typeof search["ask"] === "string" && search["ask"].trim()
+      ? { ask: search["ask"].slice(0, 2000) }
+      : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Trip — Béa" },
@@ -32,7 +53,7 @@ export const Route = createFileRoute("/trips_/$tripId")({
 
 function TripPage() {
   const { tripId } = Route.useParams();
-  const { prep } = Route.useSearch();
+  const { prep, view, plan, ask } = Route.useSearch();
   const { user } = useAuth();
   const navigate = useNavigate();
   const t = useTrips();
@@ -82,6 +103,8 @@ function TripPage() {
       <TripDetail
         trip={trip}
         openPrep={prep}
+        openView={view}
+        openPlan={plan ? { tab: plan, ask } : undefined}
         photos={photos}
         members={members}
         companionsLine={tripCompanionsLine(members, t.uid)}

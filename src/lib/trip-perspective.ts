@@ -30,6 +30,7 @@ export const TRIP_PERSPECTIVES = [
   {
     id: "companion",
     label: "Companion",
+    shortLabel: "Now",
     hint: "Where you are now, what is next, and when to leave.",
   },
   {
@@ -43,6 +44,13 @@ export const TRIP_PERSPECTIVES = [
     label: "Timeline Editor",
     shortLabel: "Timeline",
     hint: "The day in order: reorder, retime, add and edit.",
+  },
+  {
+    id: "bookings",
+    label: "Bookings",
+    // Flights, stays, transport and tickets: the booked stops and the Trip
+    // documents filed to this trip, one list. Trip-wide, like the Overview.
+    hint: "",
   },
 ] as const;
 // The trip-wide "Trip" view is gone: its to-dos and packing live under the
