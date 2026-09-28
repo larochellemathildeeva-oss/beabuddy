@@ -7,6 +7,9 @@ import {
   photoCredit,
   readCommonsImage,
   readWikidataImage,
+  readWikidataCategory,
+  readBestCategoryImage,
+  commonsCategoryFilesUrl,
   readWikipediaItem,
   townTitles,
   wikidataImageUrl,
@@ -49,7 +52,9 @@ test("a Commons file is read however a mapper wrote it", () => {
 test("a named file wins over the Wikidata item, and a brand's item is never used", () => {
   assert.deepEqual(commonsRefFromTags({ wikimedia_commons: "File:A.jpg", wikidata: "Q1" }), {
     file: "A.jpg",
+    wikidata: "Q1",
   });
+  assert.deepEqual(commonsRefFromTags({ image: "File:A.jpg" }), { file: "A.jpg" });
   assert.deepEqual(commonsRefFromTags({ wikidata: "q243" }), { wikidata: "Q243" });
   assert.equal(commonsRefFromTags({ "brand:wikidata": "Q244457" }), null);
   assert.equal(commonsRefFromTags({ wikidata: "not an id" }), null);
@@ -64,6 +69,12 @@ test("the requests ask for a thumbnail with its credit, and an item's image", ()
   const wd = new URL(wikidataImageUrl("Q243"));
   assert.equal(wd.searchParams.get("entity"), "Q243");
   assert.equal(wd.searchParams.get("property"), "P18");
+  assert.equal(new URL(wikidataImageUrl("Q243", "P948")).searchParams.get("property"), "P948");
+  assert.match(url.searchParams.get("iiprop")!, /size/);
+  assert.match(url.searchParams.get("iiprop")!, /mime/);
+  const cat = new URL(commonsCategoryFilesUrl("Category:Kyoto"));
+  assert.equal(cat.searchParams.get("gcmtitle"), "Category:Kyoto");
+  assert.equal(cat.searchParams.get("gcmtype"), "file");
 });
 
 test("Wikidata's preferred image is taken, a deprecated one never", () => {
@@ -90,6 +101,9 @@ const info = (extmetadata: Record<string, { value: string }>, over = {}) => ({
               "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Pont_Neuf.jpg/640px-Pont_Neuf.jpg",
             thumbwidth: 640,
             thumbheight: 427,
+            width: 4000,
+            height: 2667,
+            mime: "image/jpeg",
             descriptionurl: "https://commons.wikimedia.org/wiki/File:Pont_Neuf.jpg",
             extmetadata,
             ...over,
@@ -147,7 +161,7 @@ test("Place Details carries the Commons reference from the OSM tags", () => {
       },
     ],
   });
-  assert.deepEqual(facts?.commons, { file: "Pont Neuf.jpg" });
+  assert.deepEqual(facts?.commons, { file: "Pont Neuf.jpg", wikidata: "Q1" });
   const onlyItem = readPlaceDetails({
     features: [{ properties: { name: "X", wiki_and_media: { wikidata: "Q1" } } }],
   });
@@ -195,4 +209,86 @@ test("the town's Wikidata item skips missing and disambiguation pages", () => {
     ]),
     null,
   );
+});
+
+const credit = { Artist: { value: "Jane" }, LicenseShortName: { value: "CC BY 4.0" } };
+
+test("only real, sharp photos, not tall strips, are shown on a place", () => {
+  assert.ok(readCommonsImage(info(credit)));
+  // Drawings, maps and logos
+  assert.equal(readCommonsImage(info(credit, { mime: "image/png" })), null);
+  assert.equal(readCommonsImage(info(credit, { mime: "image/svg+xml" })), null);
+  // Too small to be sharp
+  assert.equal(readCommonsImage(info(credit, { width: 800, height: 500 })), null);
+  // An upright tower is fine; a strip a wide card would crop to a sliver is not
+  assert.ok(readCommonsImage(info(credit, { width: 2900, height: 5367 })));
+  assert.equal(readCommonsImage(info(credit, { width: 1000, height: 2500 })), null);
+  // No size at all: not trusted
+  assert.equal(readCommonsImage(info(credit, { width: undefined })), null);
+});
+
+test("a Wikivoyage banner may be a PNG but must be wide and large", () => {
+  const banner = { mime: "image/png", width: 2100, height: 300 };
+  assert.ok(readCommonsImage(info(credit, banner), "banner"));
+  assert.equal(readCommonsImage(info(credit, banner)), null);
+  assert.equal(readCommonsImage(info(credit, { ...banner, width: 1000 }), "banner"), null);
+  assert.equal(
+    readCommonsImage(info(credit, { ...banner, width: 1500, height: 2000 }), "banner"),
+    null,
+  );
+});
+
+test("a Wikidata item's banner and Commons category are read", () => {
+  const claims = (property: string, value: string) => ({
+    claims: { [property]: [{ rank: "normal", mainsnak: { datavalue: { value } } }] },
+  });
+  assert.equal(
+    readWikidataImage(claims("P948", "Kyoto banner Fushimi Inari Torii.png"), "P948"),
+    "Kyoto banner Fushimi Inari Torii.png",
+  );
+  assert.equal(readWikidataImage(claims("P948", "Banner.png")), null);
+  assert.equal(readWikidataCategory(claims("P373", "Kyoto")), "Kyoto");
+  assert.equal(readWikidataCategory(claims("P373", "Category:Kyoto")), "Kyoto");
+  assert.equal(readWikidataCategory({}), null);
+});
+
+test("from a category, only a rated photo is picked: best rating, then landscape", () => {
+  const file = (name: string, assessed: string | null, over = {}) => ({
+    title: `File:${name}.jpg`,
+    imageinfo: [
+      {
+        thumburl: `https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/${name}.jpg/640px-${name}.jpg`,
+        descriptionurl: `https://commons.wikimedia.org/wiki/File:${name}.jpg`,
+        width: 3000,
+        height: 2000,
+        mime: "image/jpeg",
+        extmetadata: {
+          ...credit,
+          ...(assessed ? { Assessments: { value: assessed } } : {}),
+        },
+        ...over,
+      },
+    ],
+  });
+  const pick = (...pages: unknown[]) => readBestCategoryImage({ query: { pages } })?.page;
+  assert.equal(pick(file("Plain", null)), undefined);
+  assert.equal(
+    pick(file("Valued", "valued"), file("Quality", "quality"), file("Plain", null)),
+    "https://commons.wikimedia.org/wiki/File:Quality.jpg",
+  );
+  assert.equal(
+    pick(file("Featured", "featured|quality"), file("Quality", "quality")),
+    "https://commons.wikimedia.org/wiki/File:Featured.jpg",
+  );
+  assert.equal(
+    pick(file("Square", "quality", { width: 2400, height: 2400 }), file("Wide", "quality")),
+    "https://commons.wikimedia.org/wiki/File:Square.jpg",
+  );
+  assert.equal(
+    pick(file("Tall", "quality", { width: 2000, height: 2400 }), file("Wide", "quality")),
+    "https://commons.wikimedia.org/wiki/File:Wide.jpg",
+  );
+  // A rated drawing is still not a photo
+  assert.equal(pick(file("Map", "featured", { mime: "image/png" })), undefined);
+  assert.equal(readBestCategoryImage(null), null);
 });

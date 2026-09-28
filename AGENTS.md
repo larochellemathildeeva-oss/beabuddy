@@ -139,7 +139,13 @@ illustration on stop and place pictures (`PlacePicture.tsx`), one Place
 Details lookup per new placed stop; anything without a photo keeps its
 illustration. A trip banner with no photo of the traveller's own shows
 its town instead (`townPhotoFor`: the town's English Wikipedia article → its
-Wikidata item → that item's Commons image; keyless, no Geoapify credit).
+Wikidata item → its Wikivoyage banner (P948), else its image (P18), else its
+Commons category (P373); keyless, no Geoapify credit). Photos are judged
+before they are shown (`readCommonsImage`): a place's must be a JPEG or WebP
+photograph (no maps, drawings or logos), at least 600 px on its short side
+and not a strip taller than 2:1; when it is not, the item's image and then
+the best-rated file in its Commons category are tried, and only files Commons'
+reviewers rated (featured, quality, valued) are taken from a category.
 
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them
