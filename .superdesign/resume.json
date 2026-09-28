@@ -1,0 +1,271 @@
+{
+  "version": 1,
+  "projectId": "477b4701-2a14-4f83-ace5-8b4fc2840e6d",
+  "brandAssets": {
+    "logo": {
+      "assetKey": "src-assets-bea-logo.png",
+      "url": "https://vgbujcuwptvheqijyjbe.supabase.co/storage/v1/object/public/hmac-uploads/projects/477b4701-2a14-4f83-ace5-8b4fc2840e6d/brand-assets/src-assets-bea-logo.png/bea-logo.png"
+    }
+  },
+  "targets": {
+    "/": {
+      "baselineDraftId": "05f26954-4e96-47e2-b064-4963eec70361",
+      "activeDraftId": "3a44051c-f96e-4313-9964-439a8f45e42e",
+      "branches": {
+        "calm": "ce6bb5d9-8534-4589-bd11-3cfc92b4b4c5",
+        "colorful": "f042150f-0005-4fb2-b710-baaacf33d73d",
+        "dark": "a799fbb5-55f0-4742-839e-4dc71b2cf3e5"
+      },
+      "model": "gemini-3.1-pro",
+      "device": "mobile",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/init/theme.md:1:45",
+        "src/components/AppShell.tsx:186",
+        "src/components/PageHeader.tsx",
+        "src/routes/index.tsx:201:292",
+        "src/components/HomeTripCard.tsx",
+        "src/components/TripBanner.tsx",
+        "src/components/TripCard.tsx",
+        "src/components/HomeSaveTile.tsx",
+        "src/components/HomeWeather.tsx",
+        "src/components/NearHome.tsx",
+        "src/components/NearbyPlaces.tsx"
+      ],
+      "layouts": {
+        "editorial_calm": "6038d010-1417-4216-b93e-08186c1c1173",
+        "tiles_calm": "3a44051c-f96e-4313-9964-439a8f45e42e"
+      },
+      "selectedLayout": "tiles",
+      "tiles": {
+        "calm": "3a44051c-f96e-4313-9964-439a8f45e42e",
+        "colorful": "5e34196d-25db-40cb-a6bf-58fb48790ae6",
+        "dark": "268eb6a4-c5a3-4879-9fe5-2920d92a2d71"
+      },
+      "v2": {
+        "status": "built",
+        "checklist": ".superdesign/checklists/home.md",
+        "html": ".superdesign/tmp/home2-<frame>-<theme>.html",
+        "frames": {
+          "main": {
+            "calm": "89e2b6c4-f023-4337-ae8b-e664b84e592a",
+            "colorful": "1a070fde-b430-4ee1-8253-02a3fc3dc5be",
+            "dark": "6ec21765-2290-46a1-83a2-34dc27b06469"
+          },
+          "fresh": {
+            "calm": "d5eda777-0cc1-4e49-8252-453d875ce5ef",
+            "colorful": "093c9293-f1e3-4d07-9fb3-55a4c254b54c",
+            "dark": "1e70e692-8d7c-4bde-91a6-015a97a2d28a"
+          },
+          "landing": {
+            "calm": "055902ac-b6ea-4195-992c-2c9e764e7a50",
+            "colorful": "8c73772e-7c59-42e1-800c-22de3a5eda98",
+            "dark": "6832f8d6-d482-402d-ad57-acd6117b43c8"
+          }
+        }
+      }
+    },
+    "/world": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/world-<theme>.html",
+      "themes": {
+        "calm": "4c8432d1-c0c3-4e24-81c7-b7082f76b168",
+        "colorful": "4ff3ae42-74c2-445f-8296-b73ab74af0bc",
+        "dark": "2649a252-8ede-41c2-a6f4-d99775c9cdf9"
+      }
+    },
+    "/trips": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trips-<theme>.html",
+      "themes": {
+        "calm": "16522e64-5087-47d8-a648-d50a8b1414b6",
+        "colorful": "a41574f0-8d7f-4173-96a8-e53acf472397",
+        "dark": "ec7fb69b-d796-4cfd-8b09-0fd732a68962"
+      },
+      "v2": {
+        "status": "superseded by v3",
+        "checklist": ".superdesign/checklists/trips.md",
+        "html": ".superdesign/tmp/trips2-<frame>-<theme>.html",
+        "frames": {
+          "main": {
+            "calm": "0020c34f-7622-4a62-af4a-9b0420cb57c7",
+            "colorful": "4a738c90-dc2f-47ab-8da0-f8ad5c0f2cde",
+            "dark": "cf224eb3-24fa-4f71-8184-aedd257b97d3"
+          },
+          "new": {
+            "calm": "4ec04042-6fff-468b-ba53-9f466e67d8a3",
+            "colorful": "c4d83161-d881-4963-9b59-fcca53950864",
+            "dark": "bdce064b-50d1-4b73-bd5d-55352ad9e1e6"
+          },
+          "join": {
+            "calm": "7cc2c4d9-488a-48bc-b633-1753b25fa623",
+            "colorful": "97d570d2-5967-448b-82cf-fa9336a4cfad",
+            "dark": "2597110c-2519-4240-b473-570357351bf7"
+          }
+        }
+      },
+      "v3": {
+        "status": "awaiting review",
+        "note": "photo-1 card format, My trips / Past trips toggle, illustrated banners per theme (public/banners)",
+        "html": ".superdesign/tmp/trips3-<frame>-<theme>.html",
+        "frames": {
+          "mine": {
+            "calm": "64e765e1-fab4-4f0c-9af6-67d2f9626538",
+            "colorful": "55b4dc6e-2374-405d-9de9-afd3692d3c21",
+            "dark": "72c95ceb-d483-4d43-a5b5-0ac8bee4e7ec"
+          },
+          "past": {
+            "calm": "1ab71521-43f6-4437-9fda-cc14881171b1",
+            "colorful": "beeb4054-cf01-438c-844e-e6704c0fb26a",
+            "dark": "325347b8-a187-4583-81f2-eab056538519"
+          }
+        }
+      }
+    },
+    "/trips/$tripId": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/detail-<theme>.html",
+      "themes": {
+        "calm": "58720c40-e3fd-4348-a7b7-834f4dd1340c",
+        "colorful": "a817e692-8ff2-45c1-9308-e532882d3fda",
+        "dark": "6bf13872-79d8-4b66-ad02-bc4483e4ee67"
+      }
+    },
+    "/recommendations": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/recs-<theme>.html",
+      "themes": {
+        "calm": "e999e69e-3922-4a4e-aeef-3f99ca38d6b7",
+        "colorful": "9cedfb26-3efb-489e-9fe2-06117f940c18",
+        "dark": "660eaa56-e533-45af-9495-b978eaaaf360"
+      }
+    },
+    "/profile": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/you-<theme>.html",
+      "themes": {
+        "calm": "67b75a5f-6971-4619-9137-692e71a1a881",
+        "colorful": "9a7dbc8f-4690-4113-a184-31202edff142",
+        "dark": "d8cfc0a3-6da0-4909-97ff-4604cc42d455"
+      }
+    },
+    "/trips/$tripId#banners": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-banners-<theme>.html",
+      "themes": {
+        "calm": "0f029546-253e-411b-a76e-f13e75b519ff",
+        "colorful": "8fcc8a33-be5c-4949-aceb-ab7cf8702aaa",
+        "dark": "0bd01dfc-709c-4489-94c0-1a9a5fbca0d1"
+      }
+    },
+    "/trips/$tripId#overview": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-overview-<theme>.html",
+      "themes": {
+        "calm": "d8378f93-4461-4eb0-8fba-9489c81a958b",
+        "colorful": "8cfd2ba1-d4a4-46a8-aaa8-31048189c8e9",
+        "dark": "8da1ca08-efc0-4850-9a5c-8de29c4ac59d"
+      }
+    },
+    "/trips/$tripId#map": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-map-<theme>.html",
+      "themes": {
+        "calm": "391c2af0-a0f2-4837-a9bb-e3a8fe8032be",
+        "colorful": "57ca038f-1070-4e12-a9f9-9e74f30794c0",
+        "dark": "c7d43c1e-cacb-4a76-af0c-aba5bc6c18a5"
+      }
+    },
+    "/trips/$tripId#timeline": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-timeline-<theme>.html",
+      "themes": {
+        "calm": "9afb9438-5ed0-4899-96a3-eed8b08c833e",
+        "colorful": "289d4f7a-e019-4d6c-a4a8-1450e366bf80",
+        "dark": "c3bb3ee4-00d4-403a-a993-f5c08ee6c002"
+      }
+    },
+    "/trips/$tripId#companion": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-companion-<theme>.html",
+      "themes": {
+        "calm": "71d98201-e2c5-445c-9718-1eb4e3257af5",
+        "colorful": "dfbae10c-3652-4fa9-bcbe-2728d7c8449a",
+        "dark": "605e0839-3531-47b6-b163-51c62b5d143f"
+      }
+    },
+    "/trips/$tripId#customize": {
+      "layout": "tiles",
+      "source": "hand-authored (import-design-draft)",
+      "html": ".superdesign/tmp/trip-customize-<theme>.html",
+      "themes": {
+        "calm": "6d359118-fd8f-47da-8894-8410e345b410",
+        "colorful": "e7ee6817-88dc-4cf3-866a-b5ebf5b0a75e",
+        "dark": "d80dcb7d-8438-496c-842a-792acd201e37"
+      }
+    }
+  },
+  "drafts": {},
+  "companion_v1": {
+    "source": "ChatGPT draft, adapted",
+    "calm": "56b8fbc8-f078-4115-b44c-d26396d721e2",
+    "colorful": "2c3c36e8-92af-4cf7-8142-e71139c07202",
+    "dark": "cdf20a67-7216-40c9-b847-64ea557e9675",
+    "status": "v2 imported (illustrations); awaiting approval"
+  },
+  "map_focus_v1": {
+    "calm": "5b01e17e-2c1e-4c46-b261-a154cc8b25f9",
+    "colorful": "2f471b70-0092-47d7-97c3-de4133e8b3c7",
+    "dark": "06ac8737-7620-42f9-8506-fb559d63d310",
+    "status": "awaiting approval"
+  },
+  "map_split_v1": {
+    "calm": "4b02f203-e2de-4c4d-bf54-c20826dc7872",
+    "colorful": "63a93f26-2e52-45b0-9593-3a28bbef683c",
+    "dark": "e7f1931c-77c1-4d96-9197-d1833bf535ae",
+    "status": "awaiting approval"
+  },
+  "timeline_v1": {
+    "calm": "4e01e761-c71f-414a-9535-47c81d957dad",
+    "colorful": "8ff2595c-1fe0-4a45-8d18-50c7900507f4",
+    "dark": "dfe5b842-237d-4320-b3ad-41aa34d8d347",
+    "status": "awaiting approval"
+  },
+  "trip_menu_v1": {
+    "calm": "4464c206-b4de-40c6-b4a8-4b092625de25",
+    "colorful": "a00f05c6-735e-4edb-96ea-2d1c35eaa848",
+    "dark": "0c2b5be1-63b4-4203-bcf2-76f25000314f",
+    "status": "awaiting approval"
+  },
+  "planner_v1": {
+    "plan_calm": "bf75ecc3-def0-473d-b654-7859cfd92451",
+    "plan_colorful": "42a971bf-9d3f-4811-9ca5-5d37ea0d89f8",
+    "plan_dark": "8366fb9e-8781-4081-ab66-783814f0fce5",
+    "optimize_calm": "8888a1b8-ce7f-41b2-9345-6ab17bf06a26",
+    "optimize_colorful": "7a593f19-637a-46ae-a587-aa7ba8cc1b99",
+    "optimize_dark": "8ba839a6-7151-44c2-9231-0bd2daff2487",
+    "compare_calm": "3ed42604-6340-47d7-9b97-b2d521dcb2b0",
+    "compare_colorful": "cdccad1b-b613-4872-8e14-0fc6a1886691",
+    "compare_dark": "bd40a0a5-ec0d-4f10-80bd-ee05a3801900",
+    "status": "awaiting approval"
+  },
+  "prep_v1": {
+    "todo_calm": "c6d265a7-879d-40bd-8400-4e2506517fd4",
+    "todo_colorful": "1c68370d-20eb-4779-b846-52663cf1b968",
+    "todo_dark": "0a3fca5a-018f-4db1-b02c-49cefb699513",
+    "packing_calm": "c0304f23-aa2d-419c-aafb-383fac3c214f",
+    "packing_colorful": "b9a47ded-80e9-411f-88e4-98270ba7cc5e",
+    "packing_dark": "68a1a4b6-508a-4059-ab2c-a4b71001fad5",
+    "status": "built"
+  }
+}

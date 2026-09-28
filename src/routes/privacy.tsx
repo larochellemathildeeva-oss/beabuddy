@@ -142,6 +142,12 @@ function PrivacyPage() {
             of one of the day&apos;s stops, rounded to about a kilometre, and the day&apos;s date
             are passed through Béa&apos;s server to Open-Meteo. Your own position is not used.
           </p>
+          <p>
+            When you keep a trip&apos;s directions on this phone, the map around each day&apos;s
+            stops may be saved with them, in this browser&apos;s storage. The map is fetched through
+            Béa&apos;s server from our map provider, which sees the area, not who asked. Deleting
+            the saved directions, or erasing your account, removes it.
+          </p>
         </Section>
 
         <Section title="Trips and collaboration">
@@ -196,6 +202,12 @@ function PrivacyPage() {
             When a stop is not on that map, Béa's server looks its name up in Overture Maps' open
             list of places, through the Open Places API, with only the stop's name and the middle of
             its town — never who you are.
+          </p>
+          <p>
+            When a place on the map names a photograph of itself on Wikimedia Commons, Béa&apos;s
+            server asks Commons for it, and your device then loads that one picture straight from
+            Wikimedia, which sees your device&apos;s address as any website would. Each photo is
+            shown with its author and licence.
           </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
           <p>

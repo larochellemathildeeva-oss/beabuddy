@@ -1,7 +1,7 @@
 import { useServerFn } from "@tanstack/react-start";
 import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
 import { useEffect, useRef, useState } from "react";
-import { Link2, Plus, Search } from "lucide-react";
+import { Link2, Plus, Search } from "@/components/icons";
 import { placeSuggestionLines } from "@/lib/place-label";
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { hitsSpanCountries } from "@/lib/place-search-near";
@@ -118,6 +118,24 @@ export function PlaceSearchInput({
   /** Bumped on pick/clear so type-ahead does not immediately re-open. */
   const settled = useRef("");
   const [addingIndex, setAddingIndex] = useState(-1);
+  /**
+   * Counts picks. A pick usually fills the box with more than the name —
+   * "Osaka, Osaka Prefecture, Japan" — and that text is not the name, so the
+   * type-ahead took it for new typing, searched again and offered seven
+   * towns called Osaka instead of closing. Whatever the parent writes in
+   * answer to a pick is settled, not searched.
+   */
+  const [picks, setPicks] = useState(0);
+  const settle = (place: ParsedPlace) => {
+    settled.current = place.name;
+    setPicks((n) => n + 1);
+  };
+  // Declared before the type-ahead so it runs first in the same commit.
+  useEffect(() => {
+    if (picks) settled.current = value.trim();
+    // Only a pick settles; the value is read as it stands after that pick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picks]);
 
   const run = async () => {
     const q = value.trim();
@@ -134,7 +152,7 @@ export function PlaceSearchInput({
             ...(pasted.addressHint ? { addressHint: pasted.addressHint } : {}),
           },
         });
-        settled.current = place.name;
+        settle(place);
         onPick(place);
         setHits([]);
         if (place.partial) {
@@ -250,7 +268,7 @@ export function PlaceSearchInput({
   const linkPaste = looksLikePastedPlaceLink(value);
 
   const choose = (place: ParsedPlace) => {
-    settled.current = place.name;
+    settle(place);
     onPick(place);
     setHits([]);
     setSuggestions([]);

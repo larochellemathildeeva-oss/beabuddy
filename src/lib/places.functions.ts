@@ -33,10 +33,11 @@ import {
 } from "@/lib/place-label";
 import {
   cleanPageTitle,
-  googleQueryPlaceText,
-  placePathSegment,
-  resolvePlaceCoords,
+  placeTextFromUrls,
+  placeUrlCandidates,
+  resolveChainCoords,
   splitPlacePathName,
+  stripPlusCode,
 } from "@/lib/place-link";
 import {
   countriesStartingWith,
@@ -823,11 +824,13 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     let html = "";
     let finalUrl = target.toString();
+    let visited: string[] = [];
     let failure: FetchFailure | undefined;
     try {
       const fetched = await fetchPlaceHtml(data.url);
       html = fetched.html;
       finalUrl = fetched.finalUrl;
+      visited = fetched.visited;
       failure = fetched.failure;
     } catch (error) {
       if (error instanceof UnsupportedPlaceUrlError) throw error;
@@ -839,14 +842,12 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     // Google puts the name and often the street address in one path segment
     // on a /place/ URL — or, on the older ?q=Name,+Address&ftid=… share
     // shape, which has no /place/ segment at all, in the q= param instead.
-    const fromPath = splitPlacePathName(
-      placePathSegment(data.url) ||
-        placePathSegment(finalUrl) ||
-        googleQueryPlaceText(data.url) ||
-        googleQueryPlaceText(finalUrl),
-    );
+    // Read from every hop, not just the last: a chain that ends on Google's
+    // consent page still passed through the URL that names the place.
+    const urls = placeUrlCandidates(data.url, visited, finalUrl);
+    const fromPath = splitPlacePathName(stripPlusCode(placeTextFromUrls(urls)));
     const placeName = fromPath.name;
-    const coords = resolvePlaceCoords(data.url, finalUrl, Boolean(placeName));
+    const coords = resolveChainCoords(urls, Boolean(placeName));
     const place = coords ? await reverse(coords.lat, coords.lon) : {};
 
     const rawTitle =
@@ -858,7 +859,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     const titleName = cleanPageTitle(rawTitle || "");
 
-    const appleName = nameFromAppleMapsUrl(data.url) ?? nameFromAppleMapsUrl(finalUrl);
+    const appleName = urls.map(nameFromAppleMapsUrl).find(Boolean);
     const name = placeName || titleName || data.nameHint || appleName || "Saved place";
 
     const description = meta(html, "og:description") ?? "";

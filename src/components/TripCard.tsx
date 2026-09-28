@@ -1,17 +1,16 @@
-import type { ReactNode } from "react";
+import type { ComponentType } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight } from "lucide-react";
-import { TripBanner } from "@/components/TripBanner";
-import type { TripPhotoRow } from "@/hooks/useTripPhotos";
+import { Bed, ChevronRight, ListChecks, Luggage, MapPin, Plane, Users } from "@/components/icons";
+import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { pickTripPhoto } from "@/lib/trip-card";
+import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
 import { beaTripNote } from "@/lib/trip-note";
 import { timeForRail } from "@/lib/timeline-kind";
-import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { dueLine } from "@/lib/trip-glance";
+import { routeLine } from "@/lib/trip-glance";
 import { currentLeg, isPastTrip } from "@/lib/home-trip";
 import { liveSummary } from "@/lib/companion";
 
@@ -36,202 +35,210 @@ function quoteFor(trip: TripRow, stopCount: number, planned: number | null): str
   );
 }
 
-function Fact({
+/** One figure under a trip: an icon, the value, and what it is. */
+function Stat({
+  icon: Icon,
+  value,
   label,
-  aside,
-  title,
-  note,
-  children,
+  large,
 }: {
+  icon: ComponentType<{ className?: string }>;
+  value: string;
   label: string;
-  aside?: string;
-  title?: string;
-  note?: string;
-  children?: ReactNode;
+  large: boolean;
 }) {
   return (
-    <div className="min-w-0">
-      <p className="flex items-baseline justify-between gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-        {aside ? (
-          <span className="font-mono tracking-normal text-foreground/80">{aside}</span>
-        ) : null}
-      </p>
-      {title ? (
-        <p className="mt-1 truncate text-[14.5px] font-semibold leading-snug">{title}</p>
-      ) : null}
-      {children}
-      {note ? <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{note}</p> : null}
+    <div className="flex min-w-0 flex-1 items-center gap-1.5 px-2 first:pl-0 last:pr-0">
+      <Icon className={`${large ? "size-5" : "size-4"} shrink-0 text-primary`} aria-hidden />
+      <span className="min-w-0 leading-tight">
+        <span className={`block truncate font-bold ${large ? "text-[14px]" : "text-[13px]"}`}>
+          {value}
+        </span>
+        <span className="block truncate text-[11.5px] text-muted-foreground">{label}</span>
+      </span>
     </div>
   );
 }
 
 /**
- * A trip in the list: its picture, then the three things you check before
- * you go — how you get there, where you sleep, how packed you are — and a
- * way into the itinerary.
+ * A trip in the list, as the master draws it: its picture on the left, then
+ * the name, dates and places, and three figures — the flight, the to-dos left
+ * and how packed you are. `large` is the "Next up" trip, which also carries
+ * where you are today, the live stop and Béa's line about it.
  *
- * The banner carries the same `view-transition-name` as the one on the trip's
- * own page, so tapping it hands the picture to the destination rather than
- * cutting. On a browser without same-document transitions this degrades to
- * the ordinary navigation.
+ * The picture carries the same `view-transition-name` as the one on the
+ * trip's own page, so tapping hands the picture across instead of cutting.
  */
 export function TripCard({
   trip,
   photos,
   glance,
   peopleCount,
-  detail = true,
+  large = false,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
   peopleCount: number;
-  /** False on Home's later trips: the banner and nothing under it. */
-  detail?: boolean;
+  large?: boolean;
 }) {
   const cities = useTripStops(trip.id, null);
   const cityNames = cities.stops.map((stop) => stop.city);
-  const banner = pickTripPhoto(photos, {
+  const photo = pickTripPhoto(photos, {
     city: trip.city,
     country: trip.country,
     cities: cityNames,
   });
-  const stopCount = glance?.stops ?? 0;
+  const photoUrl = useSignedPhoto(photo?.storage_path ?? null);
+  const art = bannerArtUrl(
+    bannerSceneFor(
+      [trip.title, ...cityNames, trip.city, trip.country],
+      trip.title || trip.city || "",
+    ),
+  );
 
   const today = toLocalISODate(new Date());
   // Several cities: the one that matters today, with its own flight and stay.
   const leg = glance ? currentLeg(cities.stops, glance.items, today) : null;
   // On a day of the trip: the live tracker's progress, one tap from the card.
   const live = glance ? liveSummary(glance.items, today) : null;
-  // Before the trip starts, a missing flight is worth a nudge; after, it is not.
   const notStarted = !isPastTrip(trip, today) && !(trip.start_date && trip.start_date <= today);
   const flight = leg ? leg.flight : glance?.flight;
-  const lodging = leg ? leg.lodging : glance?.lodging;
+  const lodging = (leg ? leg.lodging : glance?.lodging) ?? glance?.booked.lodging ?? null;
+  // Nothing on the timeline, but a confirmation in Trip documents: booked.
+  const bookedFlight = flight ? null : (glance?.booked.flight ?? null);
   const packing = glance?.packing;
-  const first = glance?.firstStop;
-  const todo = glance?.todos.next;
   const openTodos = glance?.todos.open ?? 0;
-  const quote = quoteFor(trip, cities.stops.length, glance ? glance.items.length : null);
+  const quote = large
+    ? quoteFor(trip, cities.stops.length, glance ? glance.items.length : null)
+    : "";
+
+  const dates = tripDateLine(trip.start_date, trip.end_date);
+  const names = cityNames.map((c) => (c.split(",")[0] ?? "").trim()).filter(Boolean);
+  const places =
+    names.length > 1
+      ? [...new Set(names)].slice(0, 3).join(" · ")
+      : routeLine(cityNames) || trip.city?.split(",")[0] || trip.country || "";
+
+  const flightValue = flight
+    ? flightDay(flight.day_date) || timeForRail(flight.time_label) || "Saved"
+    : bookedFlight
+      ? "Booked"
+      : notStarted
+        ? "None yet"
+        : "—";
+  const stats = (
+    <div className="flex divide-x divide-border border-t border-border px-3.5 py-2.5">
+      <Stat
+        icon={Plane}
+        value={flightValue}
+        label={notStarted ? "Flight" : "Next flight"}
+        large={large}
+      />
+      <Stat
+        icon={ListChecks}
+        value={openTodos ? `${openTodos} left` : "All done"}
+        label="To-dos"
+        large={large}
+      />
+      <Stat
+        icon={Luggage}
+        value={packing ? `${packing.packed}/${packing.total}` : "—"}
+        label="Packing"
+        large={large}
+      />
+    </div>
+  );
 
   return (
     <Link
       to="/trips/$tripId"
       params={{ tripId: trip.id }}
       viewTransition
-      className="group block overflow-hidden rounded-3xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md"
+      className="plain-card group flex flex-col overflow-hidden transition-shadow hover:shadow-md"
     >
-      <TripBanner
-        title={trip.title}
-        city={trip.city}
-        country={trip.country}
-        cities={cityNames}
-        startDate={trip.start_date}
-        endDate={trip.end_date}
-        tentative={trip.dates_status === "tentative"}
-        photo={banner}
-        stopCount={stopCount}
-        peopleCount={peopleCount}
-        viewTransitionName={`trip-photo-${trip.id}`}
-      />
-      {detail ? (
-        <div className="px-4 pb-3.5 pt-3.5">
+      <div className="flex">
+        <div
+          className={`relative shrink-0 bg-[#2a2026] ${large ? "w-[40%] min-h-[150px]" : "w-[34%] min-h-[112px]"}`}
+          style={{ viewTransitionName: `trip-photo-${trip.id}` }}
+        >
+          <img
+            src={photoUrl ?? art}
+            alt=""
+            decoding="async"
+            className="art-dim absolute inset-0 size-full object-cover"
+          />
+          {peopleCount > 1 ? (
+            <span
+              aria-label={`${peopleCount} people on this trip`}
+              className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-white/92 px-2 py-0.5 text-[11px] font-bold text-[#28231f]"
+            >
+              <Users className="size-3" aria-hidden />
+              {peopleCount}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col p-3.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p
+                className={`line-clamp-2 break-words font-display leading-tight ${large ? "text-[28px]" : "text-[24px]"}`}
+              >
+                {trip.title}
+              </p>
+              {dates ? (
+                <p className={`text-muted-foreground ${large ? "text-[15px]" : "text-[14px]"}`}>
+                  {dates}
+                  {trip.dates_status === "tentative" ? " · tentative" : ""}
+                </p>
+              ) : (
+                <p className="text-[14px] text-muted-foreground">No dates yet</p>
+              )}
+            </div>
+            <span
+              aria-hidden
+              className="grid size-8 shrink-0 place-items-center rounded-full bg-elevated transition-transform group-hover:translate-x-0.5"
+            >
+              <ChevronRight className="size-4.5" />
+            </span>
+          </div>
+          {places ? (
+            <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+              <MapPin className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{places}</span>
+            </p>
+          ) : null}
           {leg ? (
-            <p className="mb-2.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-primary">
+            <p className="mt-1.5 truncate text-[12px] font-bold uppercase tracking-[0.08em] text-primary">
               {leg.label} · <span className="normal-case tracking-normal">{leg.city}</span>
             </p>
           ) : null}
           {live ? (
-            <div className="mb-3 flex items-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-[13.5px]">
+            <p className="mt-1.5 flex items-center gap-1.5 rounded-lg bg-primary-soft px-2 py-1 text-[12.5px]">
               <span className="relative flex size-2 shrink-0" aria-hidden>
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-70 motion-reduce:animate-none" />
                 <span className="relative inline-flex size-2 rounded-full bg-primary" />
               </span>
-              <span className="shrink-0 font-semibold text-primary">
-                Live · Stop {live.step} of {live.total}
+              <span className="shrink-0 font-bold text-primary">
+                Stop {live.step} of {live.total}
               </span>
-              <span className="min-w-0 truncate">
-                <span className="text-muted-foreground">{live.label}: </span>
-                {live.title}
-              </span>
-            </div>
-          ) : null}
-          {flight || lodging || packing || first || todo ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-5 gap-y-3.5">
-              {flight ? (
-                <Fact
-                  label={notStarted ? "First flight" : "Next flight"}
-                  title={[flight.title, timeForRail(flight.time_label)].filter(Boolean).join(" · ")}
-                  note={
-                    [flightDay(flight.day_date), stripEmbeddedMapsUrl(flight.detail)]
-                      .filter(Boolean)
-                      .join(" · ") ||
-                    flight.address ||
-                    ""
-                  }
-                />
-              ) : notStarted && !leg ? (
-                <Fact label="First flight" title="None saved yet" note="Add it to the itinerary" />
-              ) : null}
-              {lodging ? (
-                <Fact
-                  label="Stay"
-                  title={lodging.title}
-                  note={stripEmbeddedMapsUrl(lodging.detail) || lodging.address || ""}
-                />
-              ) : null}
-              {packing ? (
-                <Fact label="Packing" aside={`${packing.packed}/${packing.total}`}>
-                  <div
-                    role="progressbar"
-                    aria-label="Packed"
-                    aria-valuemin={0}
-                    aria-valuemax={packing.total}
-                    aria-valuenow={packing.packed}
-                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-elevated"
-                  >
-                    <div
-                      className="h-full rounded-full bg-[#b89b78]"
-                      style={{ width: `${Math.round(packing.ratio * 100)}%` }}
-                    />
-                  </div>
-                </Fact>
-              ) : first ? (
-                <Fact label="First stop" title={first.title} note={first.day_date ?? ""} />
-              ) : null}
-              {todo ? (
-                <Fact
-                  label="To do"
-                  aside={openTodos > 1 ? `${openTodos} open` : ""}
-                  title={todo.title}
-                  note={dueLine(todo.due_on) || (openTodos > 1 ? `and ${openTodos - 1} more` : "")}
-                />
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-[13.5px] text-muted-foreground">
-              {cities.stops.length
-                ? `${cities.stops.length} ${cities.stops.length === 1 ? "place" : "places"} so far. Nothing on the timeline yet.`
-                : "Open it to start planning."}
+              <span className="min-w-0 truncate">{live.title}</span>
             </p>
-          )}
-
-          <div className="mt-3.5 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:gap-3">
-            {quote ? (
-              <p className="line-clamp-2 min-w-0 flex-1 font-display text-[16px] italic leading-snug text-muted-foreground sm:line-clamp-1">
-                “{quote}”
-              </p>
-            ) : null}
-            <span className="flex shrink-0 items-center gap-1.5 self-end text-[14px] font-semibold sm:ml-auto sm:self-auto">
-              View itinerary
-              <ArrowRight
-                className="size-4 transition-transform group-hover:translate-x-0.5"
-                aria-hidden
-              />
-            </span>
-          </div>
+          ) : null}
+          {large && lodging ? (
+            <p className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+              <Bed className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{lodging.title}</span>
+            </p>
+          ) : null}
+          {quote ? (
+            <p className="mt-2.5 line-clamp-2 border-t border-border pt-2 font-display text-[16px] italic leading-snug text-muted-foreground">
+              “{quote}”
+            </p>
+          ) : null}
         </div>
-      ) : null}
+      </div>
+      {stats}
     </Link>
   );
 }

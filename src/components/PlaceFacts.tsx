@@ -1,42 +1,45 @@
-import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { Accessibility, Clock, Globe, Phone } from "lucide-react";
-import { placeDetails, type PlaceDetails } from "@/lib/place-details.functions";
+import { useState } from "react";
+import { Accessibility, Clock, Globe, Phone } from "@/components/icons";
+import { usePlaceDetails } from "@/hooks/usePlaceDetails";
 import { closedWarning, isOpenAt } from "@/lib/opening-hours";
+import { photoCredit, type PlacePhoto } from "@/lib/wikimedia";
 
-/** One lookup per place per session, whichever card asked first. */
-const cache = new Map<string, Promise<PlaceDetails | null>>();
-
-function usePlaceFacts(
-  name: string,
-  lat: number | null | undefined,
-  lon: number | null | undefined,
-  enabled: boolean,
-) {
-  const ask = useServerFn(placeDetails);
-  const [facts, setFacts] = useState<PlaceDetails | null | undefined>(undefined);
-  const placed = lat != null && lon != null && (lat !== 0 || lon !== 0);
-  const key = placed ? `${name}@${lat!.toFixed(5)},${lon!.toFixed(5)}` : "";
-  useEffect(() => {
-    if (!enabled || !key) return;
-    let live = true;
-    let pending = cache.get(key);
-    if (!pending) {
-      pending = ask({ data: { name, lat: lat!, lon: lon! } }).catch(() => null);
-      cache.set(key, pending);
-    }
-    void pending.then((f) => {
-      if (live) setFacts(f);
-    });
-    return () => {
-      live = false;
-    };
-  }, [enabled, key]); // eslint-disable-line react-hooks/exhaustive-deps -- `key` stands for name and pin
-  return { placed, facts, loading: enabled && placed && facts === undefined };
+/**
+ * A photo of the place from Wikimedia Commons, always with its author and
+ * licence under it and a link to its page — the terms it is shared on.
+ */
+function CommonsPhoto({ photo }: { photo: PlacePhoto }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <figure className="space-y-0.5">
+      <img
+        src={photo.url}
+        alt=""
+        width={photo.width}
+        height={photo.height}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className="h-28 w-full rounded-lg object-cover"
+      />
+      <figcaption className="truncate text-[10.5px]">
+        <a
+          href={photo.page}
+          target="_blank"
+          rel="noreferrer"
+          className="underline underline-offset-2"
+        >
+          {photoCredit(photo)}
+        </a>
+      </figcaption>
+    </figure>
+  );
 }
 
 /**
- * Hours, website, phone and step-free access for a place, from Geoapify.
+ * Hours, website, phone and step-free access for a place, from Geoapify,
+ * and a photo of it from Wikimedia Commons when the map names one.
  *
  * `auto` looks it up as soon as it is shown (a stop being edited, the next
  * stop in Companion); otherwise a small button asks, so a long list of recs
@@ -63,7 +66,7 @@ export function PlaceFacts({
   tone?: "light" | "dark";
 }) {
   const [asked, setAsked] = useState(auto);
-  const { placed, facts, loading } = usePlaceFacts(name, lat, lon, asked);
+  const { placed, facts, loading } = usePlaceDetails(name, lat, lon, asked);
   if (!placed) return null;
   const muted = tone === "dark" ? "text-background/70" : "text-muted-foreground";
 
@@ -80,7 +83,7 @@ export function PlaceFacts({
     );
   }
   if (loading) return <p className={`text-[11.5px] ${muted}`}>Looking up hours…</p>;
-  if (!facts || (!facts.openingHours && !facts.website && !facts.phone)) {
+  if (!facts || (!facts.openingHours && !facts.website && !facts.phone && !facts.photo)) {
     return auto ? null : (
       <p className={`text-[11.5px] ${muted}`}>No hours listed for this place.</p>
     );
@@ -98,6 +101,7 @@ export function PlaceFacts({
 
   return (
     <div className={`space-y-1 text-[12px] ${muted}`}>
+      {facts.photo && <CommonsPhoto key={facts.photo.url} photo={facts.photo} />}
       {facts.openingHours && (
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
           <Clock className="size-3 shrink-0" aria-hidden />

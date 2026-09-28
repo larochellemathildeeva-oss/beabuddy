@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME, type Faq } from "@/lib/help-faq";
 

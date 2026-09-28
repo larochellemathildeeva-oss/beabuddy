@@ -4,7 +4,7 @@ import { partOfDay, stopStatuses, type PartOfDay } from "@/lib/companion";
 import { timeForRail } from "@/lib/timeline-kind";
 import { stayLabel } from "@/lib/planned-stay";
 import { isBooked } from "@/lib/bookings";
-import { Compass } from "lucide-react";
+import { Compass } from "@/components/icons";
 
 type Filter = "all" | PartOfDay;
 
@@ -63,14 +63,11 @@ export function DayRibbon({
     .filter(({ i }) => filter === "all" || parts[i] === filter);
 
   return (
-    <section
-      aria-label="The day at a glance"
-      className="rounded-2xl border border-border bg-gradient-to-b from-card via-card to-elevated/60 p-3 shadow-2xs sm:p-3.5"
-    >
+    <section aria-label="The day at a glance" className="plain-card p-3 sm:p-3.5">
       <div className="mb-2.5 flex flex-col justify-between gap-2 px-0.5 sm:flex-row sm:items-center">
         <div className="flex min-w-0 items-center gap-1.5">
           <Compass className="size-3.5 shrink-0 text-primary sm:size-4" aria-hidden />
-          <span className="truncate text-xs font-bold uppercase tracking-wider sm:text-sm">
+          <span className="truncate text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {dayLabel ? `${dayLabel} itinerary ribbon` : "Itinerary ribbon"}
           </span>
           <span className="shrink-0 rounded-md border border-border bg-elevated px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground sm:text-xs">
@@ -91,9 +88,9 @@ export function DayRibbon({
                   type="button"
                   aria-pressed={on}
                   onClick={() => setFilter(f.id)}
-                  className={`shrink-0 whitespace-nowrap rounded-lg px-2 py-1 text-[10px] font-semibold transition-all sm:px-2.5 sm:text-xs ${
+                  className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold transition-all sm:px-2.5 sm:text-xs ${
                     on
-                      ? "bg-foreground text-background shadow-2xs"
+                      ? "bg-primary text-primary-foreground shadow-2xs"
                       : "border border-border bg-elevated text-muted-foreground"
                   }`}
                 >
@@ -130,7 +127,7 @@ export function DayRibbon({
                 onClick={() => onSelect?.(selected ? null : stop.id)}
                 className={`block h-full w-full rounded-xl border p-2.5 text-left transition-all sm:rounded-2xl sm:p-3 ${
                   here
-                    ? "scale-[1.02] border-foreground bg-foreground text-background shadow-xs"
+                    ? "border-primary bg-primary text-primary-foreground shadow-xs"
                     : next
                       ? "border-border bg-elevated"
                       : "border-border bg-card"
@@ -140,12 +137,12 @@ export function DayRibbon({
               >
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <span
-                    className={`font-mono text-xs font-bold tabular-nums sm:text-sm ${here ? "text-[oklch(0.78_0.1_45)]" : "text-primary"}`}
+                    className={`text-xs font-bold tabular-nums sm:text-sm ${here ? "text-primary-foreground" : "text-primary"}`}
                   >
                     {timeForRail(stop.time_label) || "–"}
                   </span>
                   {here ? (
-                    <span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground sm:text-[10px]">
+                    <span className="rounded-full bg-card px-1.5 py-0.5 text-[9px] font-bold text-primary sm:text-[10px]">
                       Current
                     </span>
                   ) : next ? (
@@ -175,7 +172,7 @@ export function DayRibbon({
                 </p>
                 {meta && (
                   <p
-                    className={`mt-1 truncate text-[10px] sm:text-xs ${here ? "text-background/70" : "text-muted-foreground"}`}
+                    className={`mt-1 truncate text-[10px] sm:text-xs ${here ? "text-primary-foreground/80" : "text-muted-foreground"}`}
                   >
                     {meta}
                   </p>

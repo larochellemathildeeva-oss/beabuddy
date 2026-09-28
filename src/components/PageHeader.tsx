@@ -17,12 +17,15 @@ export function PageHeader({
   eyebrow,
   title,
   action,
+  actionBesideEyebrow = false,
   compressed = false,
 }: {
   eyebrow?: string | undefined;
   title?: ReactNode | undefined;
   /** One action, right-aligned. Two is a toolbar, and belongs in the content. */
   action?: ReactNode | undefined;
+  /** Put the action on the eyebrow's line, so the title has the full width. */
+  actionBesideEyebrow?: boolean | undefined;
   compressed?: boolean | undefined;
 }) {
   if (!eyebrow && !title && !action) return null;
@@ -37,23 +40,37 @@ export function PageHeader({
       // and a rule there would only cut the screen in half.
       className="rise group shrink-0 border-b border-transparent px-4 pt-4 transition-[padding,border-color] duration-(--t-shift) ease-(--ease-standard) data-[compressed]:border-border/50 data-[compressed]:pb-2 data-[compressed]:pt-2.5"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          {eyebrow && (
-            // Collapsed by height rather than hidden, so the title slides up
-            // into its place instead of jumping.
-            <p className="label-caps max-h-5 overflow-hidden transition-[max-height,opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:max-h-0 group-data-[compressed]:opacity-0">
-              {eyebrow}
-            </p>
-          )}
+      {actionBesideEyebrow && action ? (
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="label-caps min-w-0 truncate">{eyebrow}</p>
+            <div className="shrink-0">{action}</div>
+          </div>
           {title && (
-            <h1 className="mt-1.5 text-[27px] leading-[1.06] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:truncate group-data-[compressed]:text-[18px] group-data-[compressed]:leading-[1.35]">
+            <h1 className="mt-1 truncate text-[30px] leading-[1.1] transition-[font-size] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:text-[18px]">
               {title}
             </h1>
           )}
         </div>
-        {action && <div className="shrink-0 pt-0.5">{action}</div>}
-      </div>
+      ) : (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {eyebrow && (
+              // Collapsed by height rather than hidden, so the title slides up
+              // into its place instead of jumping.
+              <p className="label-caps max-h-5 overflow-hidden transition-[max-height,opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:max-h-0 group-data-[compressed]:opacity-0">
+                {eyebrow}
+              </p>
+            )}
+            {title && (
+              <h1 className="mt-1.5 text-[27px] leading-[1.06] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:truncate group-data-[compressed]:text-[18px] group-data-[compressed]:leading-[1.35]">
+                {title}
+              </h1>
+            )}
+          </div>
+          {action && <div className="shrink-0 pt-0.5">{action}</div>}
+        </div>
+      )}
     </div>
   );
 }

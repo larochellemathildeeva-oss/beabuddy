@@ -94,6 +94,26 @@ order:
    keyless, one request a second, and not really intended for systematic
    geocoding.
 
+**The day map and its offline copy.** With a Geoapify key the day map
+(`DayMap.tsx`) draws OpenMapTiles vector tiles in Béa's journal palette
+(`journal-style.ts`), through `/api/vtile` and `/api/glyphs` in `server.ts`,
+using MapLibre inside Leaflet (`@maplibre/maplibre-gl-leaflet`); the pins and
+everything else stay Leaflet's. Paths are parsed in `vector-tiles.ts` (pure,
+tested). Without a key, without WebGL, or when the server does not answer, it
+draws the `/api/tile` image tiles as before — a 404 from `/api/vtile` is how
+it knows, and it also checks a label font answers. "Keep offline" on saved
+directions also saves the tiles around each day's stops (`offlineTilePlan`, at
+most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
+per trip (`offline-map.ts`). There is no service worker, so this helps an open
+day map when the signal drops, not opening Béa with none. The Geoapify URLs
+were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
+confirms them against the real thing.
+Labels ask for the browser's language first (`name:fr`, `name:ja` …), then
+Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
+`@mapbox/mapbox-gl-rtl-text` (`rtl-text.ts`), served from Béa's own build and
+fetched only when such a label is drawn. A saved map keeps the fonts for the
+traveller's own script as well (`LANGUAGE_GLYPH_STARTS`).
+
 **Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
 under another name — is looked up by name near the middle of town in
@@ -106,6 +126,26 @@ name, closed places are skipped, and the nearest to the middle of town wins.
 Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for
 an hour. `OVERTURE_ATTRIBUTION` sits beside the other map credits.
+
+**Place photos.** When a stop's Place Details carry a `wikimedia_commons`,
+`image` or `wikidata` tag, the stop card shows that place's photo from
+Wikimedia Commons (`wikimedia.ts`, pure and tested; `wikimedia.server.ts`
+fetches, keyless, cached in process). Never `brand:wikidata` — that is the
+chain, not the branch. Every photo is shown with its author and licence and
+a link to its Commons page, and files with extra restrictions are skipped.
+Only places already matched by name get one, like hours. With "Real photos" chosen
+under You → Appearance (`stop-pictures.ts`), the same photo replaces the
+illustration on stop and place pictures (`PlacePicture.tsx`), one Place
+Details lookup per new placed stop; anything without a photo keeps its
+illustration. A trip banner with no photo of the traveller's own shows
+its town instead (`townPhotoFor`: the town's English Wikipedia article → its
+Wikidata item → its Wikivoyage banner (P948), else its image (P18), else its
+Commons category (P373); keyless, no Geoapify credit). Photos are judged
+before they are shown (`readCommonsImage`): a place's must be a JPEG or WebP
+photograph (no maps, drawings or logos), at least 600 px on its short side
+and not a strip taller than 2:1; when it is not, the item's image and then
+the best-rated file in its Commons category are tried, and only files Commons'
+reviewers rated (featured, quality, valued) are taken from a category.
 
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them
@@ -149,8 +189,8 @@ Country names are matched in any language through `src/lib/country-names.ts`.
   Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`.
   Never position Béa as “AI travel planner.” Prefer privacy copy that matches reality
   (*designed to / private by default / may*), not absolute guarantees.
-- `vite.config.ts` builds on `@lovable.dev/vite-tanstack-config`, which supplies
-  the whole plugin chain. It is a leftover from the previous host but is load-
-  bearing — removing it means reconstructing the build config.
+- `vite.config.ts` lists the whole plugin chain itself: Tailwind, tsconfig
+  paths, TanStack Start, Nitro (`node-server`, build only) and React. Add a
+  plugin there only if it is not already in that list.
 - `src/lib/*.functions.ts` files ship to the client bundle. Server-only code
   belongs in `*.server.ts`, or behind a lazy import inside a handler.

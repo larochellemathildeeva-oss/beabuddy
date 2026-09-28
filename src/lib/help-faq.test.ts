@@ -75,6 +75,7 @@ describe("FAQ covers what the app ships", () => {
     // Béa still needs a connection to open, so the old name promised more than
     // it delivered. Both spellings pass so the check survives the wording.
     ["directions kept on this phone", ["saved directions", "offline directions"]],
+    ["the map kept with saved directions", ["map around each day"]],
     ["the document vault", ["document vault"]],
     ["packing lists", ["packing list"]],
     ["future me notes", ["future me"]],

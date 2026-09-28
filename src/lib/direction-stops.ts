@@ -1,4 +1,5 @@
 import { placeQueryParts } from "./place-query.ts";
+import { dayTripBase, isDayTrip } from "./trip-cities.ts";
 import { minimumNameLength, startsLikeAName, wordCount } from "./script.ts";
 
 export type DirectionStop = {
@@ -20,6 +21,7 @@ export type DirectionStop = {
 
 type CityStop = {
   city: string;
+  kind?: string | null;
   place_name?: string | null;
   address?: string | null;
   lat?: number | null;
@@ -336,14 +338,21 @@ export function timelineStopsForDirections(items: TimelineItem[]): DirectionStop
 /** Cities when the trip has a route; otherwise the timeline. */
 export function stopsForDirections(cities: CityStop[], items: TimelineItem[]): DirectionStop[] {
   if (cities.length >= 2) {
-    return cities.map((stop) => {
+    const asStop = (stop: CityStop, day: string | null | undefined): DirectionStop => {
       const title = (stop.place_name || stop.city).trim() || stop.city;
       const next: DirectionStop = { title };
-      if (stop.arrive_on) next.day_date = stop.arrive_on;
+      if (day) next.day_date = day;
       if (stop.address?.trim()) next.address = stop.address.trim();
       if (stop.lat != null) next.lat = stop.lat;
       if (stop.lon != null) next.lon = stop.lon;
       return next;
+    };
+    // A day trip is out and back: Kyoto → Hiroshima → Kyoto, the same day.
+    return cities.flatMap((stop, i) => {
+      const here = asStop(stop, stop.arrive_on);
+      if (!isDayTrip(stop)) return [here];
+      const base = dayTripBase(cities, i);
+      return base ? [here, asStop(base, stop.arrive_on)] : [here];
     });
   }
   return timelineStopsForDirections(items);

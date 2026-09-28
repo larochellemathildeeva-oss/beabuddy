@@ -1,0 +1,208 @@
+
+For every numbered section: (1) use that section’s embedded visual as the visual reference, (2) read its Claude Code prompt as the implementation instruction, (3) obey its Implementation guardrail, and (4) apply the global rules and cross-app contracts above. Where written behavior is newer than incidental copy inside an older visual, the written locked specification controls behavior without authorizing a visual redesign.
+How to use the remainder of this document
+Implementation is complete only when: all locked screens match their approved references; navigation between Home, World, Trips, Recs and You works; screen-specific controls perform the documented actions; trip/document data stays synchronized across access points; Béa personality settings persist and affect behavior as specified; the three themes preserve the same information architecture; and no unapproved visual redesigns or substitute mascot artwork have been introduced.
+Definition of done
+Béa has eight user-adjustable personality dimensions: Helpful, Funny, Sassy, Encouraging, Curious, Adventurous, Dramatic and Chill. The user may adjust the percentages freely; normalize the resulting mix to 100%. The landing You page shows only the current overall mode. Tapping Béa opens the detailed controls. Mode naming is dynamically derived from the selected combination, with supported presets and Custom behavior as specified later in this master.
+Béa personality architecture
+Do not design Trip Documents as storage for passport scans, visas, government IDs, payment-card numbers, banking credentials or passwords. It is for trip-specific bookings, confirmations, tickets, reservations, receipts/instructions and user-added trip files.
+Trip booking/document information must be represented as one structured underlying record with multiple access points, never duplicated. A booking/document can be added from You → Trip documents, assigned to a trip, optionally linked to a specific itinerary event, shown in that trip’s overview/bookings area, and opened from the associated event. Editing or deleting the record must update every view immediately.
+Core cross-app architecture
+Do not redesign, reinterpret, simplify or modernize locked screens. Do not substitute screenshots between sections. Do not regenerate Béa. Use the established user-supplied Béa mascot assets only. Calm uses neutral cream/ivory/beige/taupe/charcoal with restrained burnt-orange accents and no colorful pastel category tiles. Colorful may use restrained pastel accents while preserving identical information architecture. Dark uses black/charcoal with warm neutral accents. Bottom navigation is Home · World · Trips · Recs · You.
+Non-negotiable visual rules
+7. After implementation, compare every screen against its locked visual and correct visual drift before considering the work complete.
+6. Preserve existing working functionality unless this master explicitly supersedes it.
+5. Wire every visible control that the specification describes as functional. Do not leave decorative dead controls where behavior is specified.
+4. Implement the written interactions, workflows and data contracts even when they span multiple screens.
+3. Implement the locked screens section-by-section using the embedded visual attached to that section.
+2. Implement shared design tokens and reusable primitives first. Do not create a separate visual system for individual screens.
+1. Inspect the existing repository before changing code. Identify framework, navigation, state management, persistence, design tokens and reusable components.
+Execution order
+Each numbered screen section contains a heading named “Claude Code prompt”. These are implementation instructions to Claude Code. They are not pre-written application source files. Claude Code is expected to inspect the existing repository, reuse its stack/components, and write or modify the actual application code required to implement the specification.
+Important: what “Claude Code prompt” means
+This document is the source-of-truth design and implementation specification for the Béa app. Claude Code must implement the approved screens and behavior in the existing codebase. The embedded visuals are locked appearance references; the Claude Code prompts and written specifications define behavior, state, data flow and interactions.
+Purpose
+START HERE — IMPLEMENTATION CONTRACT
+BÉA — CLAUDE CODE IMPLEMENTATION HANDOFF
+BÉA — FINAL MASTER UI + CLAUDE CODE HANDOFF
+Canonical visual references, locked decisions and per-screen Claude implementation prompts
+READ FIRST — SOURCE OF TRUTH
+This file is the implementation master. Each screen section contains its visual reference and the Claude Code prompt that governs implementation. Approved layouts are locked. Functional additions must be additive unless an explicit later approval changes the visual.
+Calm theme: neutral cream/ivory/beige/taupe/charcoal only. No colorful pastel category tiles.
+Colorful theme: restrained pastel accents; same information architecture.
+Dark theme: black/charcoal with warm dark-beige/taupe accents; remove intense terracotta.
+Use the established Béa dog asset only. Never substitute cats or regenerate a different mascot.
+Bottom navigation is Home · World · Trips · Recs · You.
+Trip booking/document data is one structured record exposed in multiple contexts; never duplicated.
+Where a reference image contains stale copy/iconography from an earlier iteration, the written locked prompt in that same section controls the final implementation.
+
+1. HOME — LOCKED
+
+FINAL APPROVED VISUAL — HOME
+
+
+Claude Code prompt
+Implement the Béa Home screen using this visual as the locked layout reference. Preserve the header, date/weather row, compact upcoming-trip hero, Before Trip status, four quick-action tiles, Nearby recommendations, Your trips and five-item bottom navigation. Calm mode must use neutral cream/beige/taupe surfaces only; do not introduce category pastels. Colorful and Dark may theme the same components without changing information architecture. All visible controls must be functional: upcoming trip opens the trip, Before Trip opens trip to-dos, Itinerary/To-do/Packing/Saved Places route to their respective trip views, recommendation cards open place details and Go now starts navigation, and trip cards open the selected trip. Reuse the established Béa asset only; do not invent a different mascot. Do not redesign this screen.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+2. WORLD — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved World experience without changing its structure. World is the user's geographic memory/planning hub. Preserve Map / Bucket list / Been there / Stats concepts, globe/map interaction, pins, travel counts, lists and add/import actions. Support search, zoom/recenter, selecting pins, adding locations from trips, pasting a list, manual entry and file import. Bucket List and Been There are first-class states, not decorative filters. Statistics must be visible and derived from real user data. Calm uses neutral-only UI surfaces. Do not add decorative Béa illustrations to this utility screen.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+3. TRIPS — LANDING — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved Trips landing page. Keep the compact upcoming-trip presentation and quick trip information. The active/upcoming trip must expose useful at-a-glance information such as flight, to-dos, packing and saved/booking status without turning the hero into a large decorative banner. Upcoming and past trips open their trip overview. If there are no trips, use the separately supplied Béa empty-state animation/quirky copy system; do not redesign the populated state. Calm remains neutral-only.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+4. TRIP OVERVIEW — NEW ADD-ON / LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement this Trip Overview as an additional trip dashboard; it does NOT replace Companion, Map or Timeline. Remove reliance on decorative illustration and prioritize useful trip information. Provide compact trip summary plus direct access to Flights, Hotels/Stays, Transport, Activities/Bookings, To-do, Packing and Trip documents/bookings, with a concise itinerary preview and Open/See on map action. All tiles are interactive. Bookings shown here are views of the same underlying booking records attached to itinerary events; do not duplicate data. Preserve the approved layout and component style.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+5. COMPANION — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the Companion screen pixel-faithfully to this approved Barreiras reference. Preserve trip header, Companion/Map/Timeline segmented navigation, day selector, day hero/progress, current-stop card, contextual Béa guidance, leave-by time, travel duration/distance, next-stop card, daily progress and Later Today list. Data must be dynamic. Béa guidance should be contextual to current time/location/itinerary but must not alter the visual hierarchy. Existing event cards may gain only a subtle booking state such as ✓ Booked/Reserved/Ticket; tapping it opens the shared booking-detail bottom sheet.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+6. MAP — SPLIT — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved Map Split state. Preserve the existing trip header/tabs/day selector and Live/Split control. Split mode combines the route map with numbered pins and the chronological stop list. Pin numbers must map exactly to stop numbers. Route segments, distance/time and stop cards use itinerary data. Selecting a pin or stop synchronizes both map and list. Do not restyle or replace the approved screen.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+7. MAP — LIVE — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved Map Live state. Preserve map-priority layout, numbered itinerary pins, current location controls and current-stop bottom card with previous/next navigation, Béa contextual guidance, leave-by information, travel distance/time, Navigate action and next-stop preview. Live and Split are states of the same Map screen. Booking indicators are additive only and open the shared bottom sheet.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+8. TIMELINE — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved Barreiras Timeline exactly as the canonical chronological itinerary view. Preserve header, Companion/Map/Timeline tabs, day selector, stop numbering/times, vertical route line, stop image/title/duration/category, per-stop menu/chevron, transport segments, expandable route detail/mini-map and add-stop control. Each stop is an event object. Add only a subtle booking/reservation/ticket indicator where relevant; tapping opens booking details without redesigning the event card.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+9. TRIP EDIT MENU — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the approved modern tile-based Trip Edit menu as an overlay/bottom-sheet style trip settings surface. Calm mode is neutral only: cream, beige, taupe, charcoal; no multicolor category tiles. No decorative illustration. Include functional access to Edit trip, Invite/People, Flights, Hotels/Stays, Transport, Activities, Budget, Destinations, Packing, Offline maps, Customize trip and Delete trip. Preserve the modern tile hierarchy and safe destructive-action treatment.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+10. TO-DO + PACKING — LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement both approved utility screens using the same modern neutral Calm design system. TO-DO: grouped Before trip / During trip / After trip, completion state, counts, expandable sections, add to-do and paste/import list. PACKING: overall packed progress, category tiles/sections, per-item check state, counts, expandable categories, add item and paste/import list. Remove decorative destination/Béa illustrations from these utility screens. Calm must not use pastel category colors. These screens share reusable tile, checkbox, progress and section components.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+11. RECOMMENDATIONS — LANDING — CANONICAL / LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+This is the canonical Recs landing screen. Implement it without changing the information architecture: header + add, search/filter, From my trips, I'm here now, Restaurants/Cafés/Things to do/Stays/More categories, Explore nearby, My collections, Recently saved and bottom navigation. Downstream recommendation screens must visually flow from this screen. Calm uses the left-hand neutral treatment; Colorful and Dark theme the same structure. All controls are functional. Béa must be able to invoke the same recommendation/search/save/add-to-trip actions conversationally.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+12. RECS — EXPLORE NEARBY — LOCKED FLOW
+
+FINAL APPROVED VISUAL — EXPLORE NEARBY
+
+Claude Code prompt
+Implement Explore Nearby as the direct continuation of the canonical Recs landing page. Provide map/list or map/results hybrid behavior, Search this area, category/filter controls, result cards, selected-place state, save, directions/navigation and add-to-trip. Preserve the canonical Recs typography, spacing, radii and neutral Calm tokens; do not create a separate visual language. Results and map pins must stay synchronized.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+13. RECS — SEARCH / PLACE / SAVE FLOW — LOCKED
+
+FINAL APPROVED VISUAL — LOCKED
+
+Claude Code prompt
+Implement the approved Recs downstream flow as reusable states: search/autocomplete, filtered results, place detail, save/unsave, choose/create collection and add to trip. Place detail should expose the useful travel decision data available to the app (location, category, hours/status where available, directions, notes, saved state and trip association). Béa should be able to execute these same app actions, not merely describe them. Inherit the Recs landing design system exactly.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master. No standalone visual has been approved for this section; do not attach a contact sheet, comparison board, or unrelated screen as a visual reference. Use the approved Section 13 flow board above as the locked visual reference; do not replace it with a contact sheet or unrelated app screens.
+
+14. YOU — FINAL APPROVED / LOCKED
+
+FINAL VISUAL REFERENCE
+Claude Code prompt
+Implement the You screen from the embedded approved visual without redesigning its hierarchy. Build the profile summary and travel statistics, the four Your travel tiles (Travel preferences, Packing lists, Work travel, Trip documents), the compact Your Béa card, App &amp; account tiles, More links and five-item bottom navigation as reusable components. The Your Béa card displays only the current calculated overall mode. Tapping it opens the separate Béa personality submenu containing the canonical eight-trait controls; do not expose individual percentages/sliders on this landing page. Use the user-supplied canonical Béa asset rather than generating a replacement. Trip documents opens the cross-trip booking/document hub. Support upload/import, screenshot/PDF/file attachment, paste details and manual entry. New records may be Unassigned/Needs organizing. Béa may parse and suggest a likely trip/event, but the user confirms the association. Use ONE underlying booking/document record with multiple contextual views: You → Trip documents; the assigned Trip Overview → bookings/essentials; and the linked itinerary event in Timeline/Companion. Existing approved Trip screens and event cards must not be redesigned: add only subtle booking states/actions such as Booked, Reserved, Ticket added or Add booking, opening a shared booking-detail sheet. Creating or editing from any access point synchronizes all views. Trip documents is for trip-specific flights, hotels/stays, restaurant reservations, activities/tickets, rental cars/transfers and related confirmations/files; do not design it as storage for passport scans, visas, government IDs, payment-card numbers, banking credentials or passwords. All visible tiles and links must be functional and preserve the approved Calm/Colorful/Dark theme behavior.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master.
+
+15. YOUR BÉA — PERSONALITY SETTINGS — FINAL BEHAVIOR
+
+FINAL APPROVED VISUAL — LOCKED
+
+Claude Code prompt
+Implement Béa personality as eight adjustable dimensions: Helpful, Funny, Sassy, Encouraging, Curious, Adventurous, Dramatic and Chill. Users may freely customize the percentages; the system normalizes the mix to 100%. Presets are starting points, not locked modes. Keep preset access for Balanced, Helpful, Funny, Sassy and Minimal, plus Custom when the user changes the mix. The displayed mode name is dynamically derived from the resulting combination rather than forcing every mix into a fixed preset. The You landing page shows only the current summary ('Béa · [mode]'); tapping it opens the full eight-trait controls. Include Reset to Balanced. Béa quirks remain separate from trait percentages: they are occasional, contextual and continuity-aware, with rare Easter eggs, success/empty-state reactions, Companion 'Béa says' lines and seasonal lines. Suppress jokes/sass in serious contexts. Preserve the established Béa mascot asset.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master. Use the approved Section 15 personality-settings board above as the locked visual reference. Preserve the approved You-page entry state and use only the established user-supplied Béa character asset; never regenerate, reinterpret, or substitute another dog/cat mascot.
+
+16. TRIP DOCUMENTS / BOOKING INBOX — ADDITIVE NEW SCREEN
+
+FINAL APPROVED VISUAL — LOCKED
+
+Claude Code prompt
+Implement You → Trip documents as a cross-trip access/inbox for trip-specific bookings, confirmations and files. It is NOT a sensitive identity-document vault. Support Needs organizing / Unassigned items plus organization by trip. Users can upload/import a confirmation/PDF/screenshot, paste details or manually enter a booking, then assign it to a trip and optionally a specific itinerary event. Béa may suggest the likely trip/event; user confirms. Once assigned, the same underlying record appears here, in that trip's Overview/Bookings and on the specific event. Do not store passport scans, government IDs, payment-card numbers, banking credentials or passwords.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master. Use the approved Section 16 visual above as the locked reference; do not substitute unrelated screens or duplicate the underlying booking/document record.
+
+17. BOOKING DETAIL — SHARED EVENT INTERACTION
+
+FINAL APPROVED VISUAL — LOCKED
+
+Claude Code prompt
+Implement booking information as structured data attached to existing trip events. Existing approved event cards remain visually unchanged except for a subtle contextual action/state such as ✓ Booked, ✓ Reserved, Ticket added or Add booking. Tapping opens a shared booking-detail bottom sheet rather than flipping/redesigning the card. Show fields appropriate to type: confirmation/reference, dates/times, room/party details, flight number, pickup/meeting instructions, notes and original attachment. Edit/reassign/delete updates every access point immediately. One booking record, multiple views; never duplicate the data.
+Implementation guardrail
+Do not reinterpret this as permission to redesign adjacent approved screens. Reuse shared components/tokens and preserve navigation, hierarchy and interaction conventions established in the master. Use the approved Section 17 visual above as the locked reference; do not substitute unrelated screens or duplicate the underlying booking/document record.
+
+Cross-app booking/document data contract
+Access point 1 — You → Trip documents: global inbox/library + unassigned items.
+Access point 2 — Trip Overview → Bookings/Essentials: all bookings for that trip.
+Access point 3 — Timeline/Companion event: contextual booking state/details for that event.
+Create or import from any access point; assignment synchronizes all three.
+Support flights, hotels/stays, restaurants, activities/tours/tickets, rental cars and transport.
+Original attachment may coexist with parsed structured fields.
+Béa may parse and suggest associations, but user confirms trip/event assignment.
+Sensitive identity/payment credentials are out of scope.
+
+LOGIN / SIGN IN — LOCKED
+
+FINAL APPROVED VISUAL — LOCKED
+STATUS: FINAL APPROVED VISUAL
+
+Locked visual requirements
+Use this exact approved Login visual as the canonical Calm reference.
+Use the established Béa mascot shown here: cream French bulldog with lemon-patterned yellow bandana. Do not substitute or reinterpret the mascot.
+No luggage. No heart graphic.
+Typography direction: DejaVu Serif.
+Preserve the warm neutral cream/beige Calm palette with restrained terracotta accent.
+Preserve the Welcome back hierarchy, Google sign-in, email/password fields, automatic-sign-in choice, Sign in action, password recovery, account creation, Terms of Service, Privacy Policy and copyright.
+Claude Code prompt
+Implement the Béa Login / Sign In screen from the embedded approved visual. Treat the visual hierarchy, spacing, rounded fields/buttons, warm neutral Calm palette and Béa placement as locked. Use DejaVu Serif for the approved serif typography direction. Do not add luggage, heart graphics, extra illustrations, or a different mascot. Make Continue with Google functional through the app's authentication provider. Email and Password fields must support validation, password visibility, keyboard/focus states and accessible labels. Sign me in automatically and Ask me every time are mutually exclusive choices. Sign in submits credentials; Forgot your password opens recovery; Create a new account opens registration; Terms of Service and Privacy Policy open their respective legal destinations. Include loading, invalid-credential, network-error and disabled-submit states without changing the approved visual language. Do not redesign adjacent onboarding/account screens as part of this implementation.
+Implementation guardrail
+This screen was explicitly approved after removal of the luggage and heart and the typography change. Do not replace it with any earlier Login generation.
+

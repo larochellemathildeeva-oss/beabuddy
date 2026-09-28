@@ -1,15 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import type { PlannerTab } from "@/components/ItineraryImport";
+import beaLogo from "@/assets/bea-logo.png";
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
-import { DocumentVault } from "@/components/DocumentVault";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripCard } from "@/components/TripCard";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { peopleOnTrip } from "@/lib/home-trip";
+import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
+import { pickTripPhoto } from "@/lib/trip-card";
+import { toLocalISODate } from "@/lib/trip-dates";
 import { TripListSkeleton } from "@/components/Skeletons";
-import { useTripPhotos } from "@/hooks/useTripPhotos";
+import { useSignedPhoto, useTripPhotos, type TripPhotoRow } from "@/hooks/useTripPhotos";
+import type { TripRow } from "@/hooks/useTrips";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { suggestedTripTitle } from "@/lib/timeline-entry";
 import { useAuth } from "@/hooks/useAuth";
 import { useTrips } from "@/hooks/useTrips";
@@ -17,17 +22,43 @@ import { usePacking } from "@/hooks/usePacking";
 import { locationFromParsedPlace } from "@/lib/place-label";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
+import { emptyLine } from "@/lib/bea-personality";
+import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { type DatesStatus } from "@/lib/trip-dates";
 import {
   EMPTY_CITY,
+  EMPTY_DAY_TRIP,
   citiesToStops,
   cityOutsideTrip,
+  dayTripInsertAt,
+  dayTripOutsideBase,
+  onePlaceStops,
+  shortCity,
   tripDatesFromCities,
   type CityDraft,
 } from "@/lib/trip-cities";
 
+type TripsSearch = {
+  /** Open the new-trip form (from Plan with Béa). */
+  new?: boolean;
+  /** Where the new trip's planner opens once it exists. */
+  plan?: PlannerTab;
+  ask?: string;
+};
+
+const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
+
 export const Route = createFileRoute("/trips")({
   staticData: { plane: "tab" },
+  validateSearch: (search: Record<string, unknown>): TripsSearch => ({
+    ...(search["new"] === true || search["new"] === "true" ? { new: true } : {}),
+    ...(PLAN_AFTER_CREATE.includes(search["plan"] as PlannerTab)
+      ? { plan: search["plan"] as PlannerTab }
+      : {}),
+    ...(typeof search["ask"] === "string" && search["ask"].trim()
+      ? { ask: search["ask"].slice(0, 2000) }
+      : {}),
+  }),
   head: () => ({
     meta: [
       { title: "Trips — Béa" },
@@ -58,8 +89,11 @@ function TripsPage() {
   // otherwise the itinerary, budget and saved directions all vanished, which
   // reads as "everything disappeared" rather than "the card closed". A route
   // has that for free, and the note is gone.
-  const [creating, setCreating] = useState(false);
+  const search = Route.useSearch();
+  const [creating, setCreating] = useState(Boolean(search.new));
   const [joining, setJoining] = useState(false);
+  /** The master's four tabs. */
+  const [view, setView] = useState<"upcoming" | "past" | "drafts" | "all">("upcoming");
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -73,6 +107,10 @@ function TripsPage() {
   const [cities, setCities] = useState<CityDraft[]>([EMPTY_CITY, EMPTY_CITY]);
   const setCity = (index: number, patch: Partial<CityDraft>) =>
     setCities((list) => list.map((city, i) => (i === index ? { ...city, ...patch } : city)));
+  /** One place with days out of it: Kyoto for the week, Hiroshima for a day. */
+  const [dayTrips, setDayTrips] = useState<CityDraft[]>([]);
+  const setDayTrip = (index: number, patch: Partial<CityDraft>) =>
+    setDayTrips((list) => list.map((trip, i) => (i === index ? { ...trip, ...patch } : trip)));
   // With several cities, blank trip dates come from the cities' own.
   const cityDates = tripDatesFromCities(cities);
   const tripStart = multiCity ? form.start_date || cityDates.start : form.start_date;
@@ -96,42 +134,102 @@ function TripsPage() {
     "Traveller";
   const { photos } = useTripPhotos(t.uid);
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
+  const lists = tripTabs(t.trips, toLocalISODate(new Date()));
+  const beaSettings = useBeaSettings();
+  // Picked once per visit, in the traveller's mix.
+  const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
 
   return (
-    <AppShell eyebrow="Trip folders" title="Everything, already filed.">
-      <div className="space-y-5">
-        <div className="flex gap-2">
-          <Link
-            to="/calendar"
-            className="flex-1 rounded-xl border border-border px-3 py-2.5 text-center text-[13px] font-semibold"
+    <AppShell
+      title={<span className="text-[44px] leading-none">Trips</span>}
+      headerAction={
+        t.signedIn ? (
+          <button
+            type="button"
+            data-guide="new-trip"
+            aria-label="New trip"
+            aria-expanded={creating}
+            onClick={() => {
+              setCreating(!creating);
+              setJoining(false);
+            }}
+            className="grid size-13 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
           >
-            Calendar view
-          </Link>
-        </div>
-
+            <Plus
+              className={`size-6 transition-transform ${creating ? "rotate-45" : ""}`}
+              aria-hidden
+            />
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-5">
+        <p className="-mt-3 text-[15px] text-muted-foreground">
+          Your adventures, all in one place.
+        </p>
         {t.signedIn ? (
           <>
+            {/* Plan with Béa: build, import, optimize or compare, from one place. */}
+            <Link
+              to="/trips/plan"
+              data-guide="plan-with-bea"
+              className="plain-card flex items-center gap-3 p-3"
+            >
+              <img src={beaLogo} alt="" className="size-12 shrink-0 object-contain" />
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-[21px] leading-tight">Plan with Béa</span>
+                <span className="block text-[13px] text-muted-foreground">
+                  Build a trip, import your plan, optimize it or compare options.
+                </span>
+              </span>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+            </Link>
+
+            <div role="tablist" aria-label="Which trips" className="grid grid-cols-4 gap-1.5">
+              {(
+                [
+                  ["upcoming", "Upcoming"],
+                  ["past", "Past"],
+                  ["drafts", "Drafts"],
+                  ["all", "All"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === value}
+                  onClick={() => setView(value)}
+                  className={`h-10 rounded-full text-[14px] font-semibold transition-colors duration-(--t-tap) ${
+                    view === value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-elevated text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             <div className="flex gap-2">
-              <button
-                data-guide="new-trip"
-                onClick={() => {
-                  setCreating(!creating);
-                  setJoining(false);
-                }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
-              >
-                New trip
-              </button>
               <button
                 data-guide="join-trip"
                 onClick={() => {
                   setJoining(!joining);
                   setCreating(false);
                 }}
-                className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
+                className="tile-fill-3 flex-1 whitespace-nowrap rounded-full border border-border px-3 py-2 text-[13px] font-semibold"
               >
                 Join with a code
               </button>
+              <Link
+                to="/calendar"
+                aria-label="Calendar view"
+                className="tile-fill-2 flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-border px-3 py-2 text-[13px] font-semibold"
+              >
+                <CalendarDays className="size-4" aria-hidden />
+                Calendar
+              </Link>
             </div>
 
             {creating && (
@@ -202,71 +300,133 @@ function TripsPage() {
                     multiCity && cityDates.start ? "Trip dates — from the cities below" : "Dates"
                   }
                 />
+                {!multiCity && form.city.trim() && (
+                  <div className="space-y-2">
+                    {dayTrips.map((trip, index) => (
+                      <DayTripRow
+                        key={index}
+                        trip={trip}
+                        base={form.city}
+                        min={form.start_date}
+                        max={form.end_date}
+                        outside={cityOutsideTrip(
+                          { ...trip, end: trip.start },
+                          form.start_date,
+                          form.end_date,
+                        )}
+                        onChange={(patch) => setDayTrip(index, patch)}
+                        onRemove={() => setDayTrips((list) => list.filter((_, i) => i !== index))}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setDayTrips((list) => [...list, EMPTY_DAY_TRIP])}
+                      className="flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-2 text-[13.5px] font-semibold text-primary"
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      Add a day trip from {shortCity(form.city)}
+                    </button>
+                  </div>
+                )}
                 {multiCity && (
                   <div className="space-y-2">
                     <p className="px-1 text-[12px] text-muted-foreground">
-                      Each city in order, with the days you're there. Add layovers too.
+                      Each city in order, with the days you're there. Add layovers too, and day
+                      trips from a city you're sleeping in.
                     </p>
-                    {cities.map((city, index) => (
-                      <div
-                        key={index}
-                        className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
-                            {index + 1}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <PlaceSearchInput
-                              value={city.city}
-                              onChange={(v) =>
-                                setCity(index, { city: v, lat: undefined, lon: undefined })
-                              }
-                              onPick={(p) => {
-                                const loc = locationFromParsedPlace(p);
-                                setCity(index, {
-                                  city: loc.city,
-                                  country: loc.country,
-                                  lat: p.lat,
-                                  lon: p.lon,
-                                });
-                              }}
-                              placeholder={`City ${index + 1} — search it`}
-                              areas
-                            />
+                    {cities.map((city, index) =>
+                      city.dayTrip ? (
+                        <div key={index} className="ml-7">
+                          <DayTripRow
+                            trip={city}
+                            base={baseOf(cities, index)?.city ?? ""}
+                            min={baseOf(cities, index)?.start ?? ""}
+                            max={baseOf(cities, index)?.end ?? ""}
+                            outside={dayTripOutsideBase(cities, index)}
+                            onChange={(patch) => setCity(index, patch)}
+                            onRemove={() => setCities((list) => list.filter((_, i) => i !== index))}
+                          />
+                        </div>
+                      ) : (
+                        <div
+                          key={index}
+                          className="space-y-1.5 rounded-xl border border-border bg-elevated p-2"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
+                              {cities.slice(0, index + 1).filter((c) => !c.dayTrip).length}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <PlaceSearchInput
+                                value={city.city}
+                                onChange={(v) =>
+                                  setCity(index, { city: v, lat: undefined, lon: undefined })
+                                }
+                                onPick={(p) => {
+                                  const loc = locationFromParsedPlace(p);
+                                  setCity(index, {
+                                    city: loc.city,
+                                    country: loc.country,
+                                    lat: p.lat,
+                                    lon: p.lon,
+                                  });
+                                }}
+                                placeholder={`City ${index + 1} — search it`}
+                                areas
+                              />
+                            </div>
+                            {cities.length > 1 && (
+                              <button
+                                type="button"
+                                aria-label={`Remove city ${index + 1}`}
+                                onClick={() =>
+                                  // Its day trips go with it: they sleep there.
+                                  setCities((list) => {
+                                    const end = dayTripInsertAt(list, index);
+                                    return list.filter((_, i) => i < index || i >= end);
+                                  })
+                                }
+                                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                              >
+                                <X className="size-4" aria-hidden />
+                              </button>
+                            )}
                           </div>
-                          {cities.length > 1 && (
+                          <DateRangeField
+                            start={city.start}
+                            end={city.end}
+                            onChange={(start, end) => setCity(index, { start, end })}
+                            title={
+                              city.city.trim()
+                                ? `Dates in ${city.city.split(",")[0]}`
+                                : "Dates in this city"
+                            }
+                            placeholder="Dates in this city"
+                            month={cities[index - 1]?.end || form.start_date || undefined}
+                          />
+                          {cityOutsideTrip(city, form.start_date, form.end_date) && (
+                            <p className="px-1 text-[12px] font-medium text-destructive">
+                              These dates fall outside the trip's.
+                            </p>
+                          )}
+                          {city.city.trim() && (
                             <button
                               type="button"
-                              aria-label={`Remove city ${index + 1}`}
                               onClick={() =>
-                                setCities((list) => list.filter((_, i) => i !== index))
+                                setCities((list) => {
+                                  const at = dayTripInsertAt(list, index);
+                                  return [...list.slice(0, at), EMPTY_DAY_TRIP, ...list.slice(at)];
+                                })
                               }
-                              className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                              className="flex items-center gap-1 px-1 text-[12.5px] font-semibold text-primary"
                             >
-                              <X className="size-4" aria-hidden />
+                              <Plus className="size-3.5" aria-hidden />
+                              Day trip from {shortCity(city.city)}
                             </button>
                           )}
                         </div>
-                        <DateRangeField
-                          start={city.start}
-                          end={city.end}
-                          onChange={(start, end) => setCity(index, { start, end })}
-                          title={
-                            city.city.trim()
-                              ? `Dates in ${city.city.split(",")[0]}`
-                              : "Dates in this city"
-                          }
-                          placeholder="Dates in this city"
-                          month={cities[index - 1]?.end || form.start_date || undefined}
-                        />
-                        {cityOutsideTrip(city, form.start_date, form.end_date) && (
-                          <p className="px-1 text-[12px] font-medium text-destructive">
-                            These dates fall outside the trip's.
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      ),
+                    )}
                     <button
                       type="button"
                       onClick={() => setCities((list) => [...list, EMPTY_CITY])}
@@ -328,7 +488,17 @@ function TripsPage() {
                               country: firstCity?.country ?? "",
                               stops: citiesToStops(cities),
                             }
-                          : {}),
+                          : {
+                              stops: onePlaceStops(
+                                {
+                                  city: form.city,
+                                  country: form.country,
+                                  start: tripStart,
+                                  end: tripEnd,
+                                },
+                                dayTrips,
+                              ),
+                            }),
                         start_date: tripStart,
                         end_date: tripEnd,
                         title: form.title.trim() || suggestedName,
@@ -339,6 +509,11 @@ function TripsPage() {
                       await navigate({
                         to: "/trips/$tripId",
                         params: { tripId: id },
+                        // Started from Plan with Béa: its planner opens on
+                        // the new trip, with anything already typed.
+                        search: search.plan
+                          ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                          : {},
                         viewTransition: true,
                       });
                       setForm({
@@ -351,6 +526,7 @@ function TripsPage() {
                       });
                       setMultiCity(false);
                       setCities([EMPTY_CITY, EMPTY_CITY]);
+                      setDayTrips([]);
                       setWithBudget(false);
                       setCreating(false);
                     } catch (e) {
@@ -398,22 +574,86 @@ function TripsPage() {
 
             {error && <p className="text-[13px] text-destructive">{error}</p>}
 
-            <div data-guide="trip-list" className="space-y-3">
+            <div data-guide="trip-list" className="space-y-6">
               {t.loading && t.trips.length === 0 && <TripListSkeleton />}
-              {t.trips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  photos={photos}
-                  glance={glances[trip.id]}
-                  peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-                />
-              ))}
+
+              {view === "upcoming" && (
+                <>
+                  {lists.upcoming[0] ? (
+                    <section className="rise">
+                      <ListHead title="Next up" />
+                      <TripCard
+                        large
+                        trip={lists.upcoming[0]}
+                        photos={photos}
+                        glance={glances[lists.upcoming[0].id]}
+                        peopleCount={peopleOnTrip(t.members, lists.upcoming[0].id, t.uid)}
+                      />
+                    </section>
+                  ) : null}
+                  {lists.upcoming.length > 1 ? (
+                    <section className="rise">
+                      <ListHead title="Upcoming trips" />
+                      <div className="space-y-3">
+                        {lists.upcoming.slice(1).map((trip) => (
+                          <TripCard
+                            key={trip.id}
+                            trip={trip}
+                            photos={photos}
+                            glance={glances[trip.id]}
+                            peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+                  {lists.past.length > 0 ? (
+                    <section className="rise">
+                      <ListHead title="Past trips" onSeeAll={() => setView("past")} />
+                      <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
+                    </section>
+                  ) : null}
+                  {t.trips.length > 0 && lists.upcoming.length === 0 && !t.loading && (
+                    <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                      Nothing ahead yet.
+                      {lists.drafts.length ? " Undated trips are under Drafts." : ""}
+                    </p>
+                  )}
+                </>
+              )}
+
+              {view !== "upcoming" && (
+                <div className="space-y-3">
+                  {lists[view].map((trip) => (
+                    <TripCard
+                      key={trip.id}
+                      trip={trip}
+                      photos={photos}
+                      glance={glances[trip.id]}
+                      peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+                    />
+                  ))}
+                  {lists[view].length === 0 && !t.loading && (
+                    <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                      {view === "past"
+                        ? "No past trips yet. They land here once they end."
+                        : view === "drafts"
+                          ? "No drafts. A trip without dates waits here."
+                          : "No trips yet."}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {t.trips.length === 0 && !t.loading && (
-                <div className="py-8 text-center">
-                  <p className="font-display text-[18px] leading-snug">
-                    {beaLine("empty.trips").title}
-                  </p>
+                <div className="flex flex-col items-center py-8 text-center">
+                  <img
+                    src="/bea/bea-think-static.png"
+                    alt=""
+                    aria-hidden
+                    className="size-24 object-contain"
+                  />
+                  <p className="mt-2 font-display text-[22px] leading-snug">{emptyTrips}</p>
                   <p className="mt-1 text-[14.5px] text-muted-foreground">
                     {beaLine("empty.trips").body}
                   </p>
@@ -423,6 +663,13 @@ function TripsPage() {
           </>
         ) : (
           <div className="card-soft p-4">
+            <Link
+              to="/calendar"
+              className="mb-3 flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-2 text-[13.5px] font-semibold"
+            >
+              <CalendarDays className="size-4" aria-hidden />
+              Calendar view
+            </Link>
             <p className="font-display text-[19px] leading-snug">Sign in to start a trip.</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               Trips, itineraries, invited friends and saved directions all save to your account.
@@ -436,14 +683,177 @@ function TripsPage() {
           </div>
         )}
 
-        <section data-guide="document-vault">
-          <div className="mb-3 flex items-baseline justify-between">
-            <p className="label-caps text-foreground">Trip documents</p>
-            <span className="text-[12px] text-muted-foreground">Encrypted on this device</span>
-          </div>
-          <DocumentVault />
-        </section>
+        {/* The vault moved into Trip documents (its Protected section). */}
+        {t.signedIn ? (
+          <Link
+            to="/profile/documents"
+            data-guide="document-vault"
+            className="plain-card flex items-center gap-3 p-4"
+          >
+            <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full text-primary">
+              <FileText className="size-5" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[22px] leading-tight">Trip documents</span>
+              <span className="block text-[13px] text-muted-foreground">
+                Bookings, confirmations, tickets — and Protected files
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          </Link>
+        ) : null}
       </div>
     </AppShell>
+  );
+}
+
+/** The city a day trip in the list goes out from, and sleeps in. */
+function baseOf(cities: CityDraft[], index: number): CityDraft | null {
+  for (let i = index - 1; i >= 0; i--) if (!cities[i]!.dayTrip) return cities[i]!;
+  return null;
+}
+
+/** A day out and back: where to, and the one day. */
+function DayTripRow({
+  trip,
+  base,
+  min,
+  max,
+  outside,
+  onChange,
+  onRemove,
+}: {
+  trip: CityDraft;
+  base: string;
+  min: string;
+  max: string;
+  outside: boolean;
+  onChange: (patch: Partial<CityDraft>) => void;
+  onRemove: () => void;
+}) {
+  const from = shortCity(base);
+  return (
+    <div className="space-y-1.5 rounded-xl border border-dashed border-border bg-elevated p-2">
+      <div className="flex items-center gap-1.5">
+        <span aria-hidden className="grid size-6 shrink-0 place-items-center text-[14px]">
+          🚆
+        </span>
+        <div className="min-w-0 flex-1">
+          <PlaceSearchInput
+            value={trip.city}
+            onChange={(v) => onChange({ city: v, lat: undefined, lon: undefined })}
+            onPick={(p) => {
+              const loc = locationFromParsedPlace(p);
+              onChange({ city: loc.city, country: loc.country, lat: p.lat, lon: p.lon });
+            }}
+            placeholder={from ? `Day trip from ${from} — where to?` : "Day trip — where to?"}
+            areas
+          />
+        </div>
+        <button
+          type="button"
+          aria-label="Remove this day trip"
+          onClick={onRemove}
+          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      </div>
+      <label className="flex flex-wrap items-center gap-2 px-1 text-[12.5px] text-muted-foreground">
+        On
+        <input
+          type="date"
+          value={trip.start}
+          {...(min ? { min } : {})}
+          {...(max ? { max } : {})}
+          aria-label="The day of this day trip"
+          onChange={(e) => onChange({ start: e.target.value, end: e.target.value })}
+          className="min-h-11 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] text-foreground"
+        />
+      </label>
+      <p className="px-1 text-[12px] text-muted-foreground">
+        {from ? `Back to ${from} for the night.` : "Back the same night."}
+      </p>
+      {outside && (
+        <p className="px-1 text-[12px] font-medium text-destructive">
+          {from
+            ? `This day falls outside your stay in ${from}.`
+            : "This day falls outside the trip's."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ListHead({ title, onSeeAll }: { title: string; onSeeAll?: () => void }) {
+  return (
+    <div className="mb-3 flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      {onSeeAll ? (
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary"
+        >
+          See all
+          <ChevronRight className="size-4" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Past trips as three painted tiles, name and month over the picture. */
+function PastTiles({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
+  return (
+    <div className="grid grid-cols-3 gap-2.5">
+      {trips.map((trip) => (
+        <PastTile key={trip.id} trip={trip} photos={photos} />
+      ))}
+    </div>
+  );
+}
+
+function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+  const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: [] });
+  const url = useSignedPhoto(photo?.storage_path ?? null);
+  const art = bannerArtUrl(
+    bannerSceneFor([trip.title, trip.city, trip.country], trip.title || trip.city || ""),
+  );
+  const month = trip.end_date || trip.start_date;
+  return (
+    <Link
+      to="/trips/$tripId"
+      params={{ tripId: trip.id }}
+      viewTransition
+      className="relative block h-[118px] overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm"
+    >
+      <img
+        src={url ?? art}
+        alt=""
+        decoding="async"
+        className="art-dim absolute inset-0 size-full object-cover"
+      />
+      <span
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          backgroundImage: "linear-gradient(to top, rgba(18,12,10,0.72), rgba(18,12,10,0) 60%)",
+        }}
+      />
+      <span className="absolute inset-x-0 bottom-0 p-2">
+        <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
+          {trip.title}
+        </span>
+        {month ? (
+          <span className="block text-[11.5px] text-white/90">
+            {new Date(`${month}T00:00:00`).toLocaleDateString(undefined, {
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        ) : null}
+      </span>
+    </Link>
   );
 }

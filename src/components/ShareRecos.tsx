@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { formatTripLocation } from "@/lib/place-label";
-import { Check, Copy, Inbox, Share2 } from "lucide-react";
+import { Check, Copy, Inbox, Share2 } from "@/components/icons";
 import { claimSharedList, readSharedList, useRecoShares } from "@/hooks/useRecoShares";
 import { findDuplicate } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";

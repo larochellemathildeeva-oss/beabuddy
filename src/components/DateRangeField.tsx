@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays } from "@/components/icons";
 import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -97,7 +97,9 @@ export function DateRangeField({
               {title}
             </p>
             <p className="mb-2 px-1 text-[13px] text-muted-foreground">
-              {pending ? "Now tap the last day." : "Tap the first day, then the last."}
+              {pending
+                ? "Now tap the last day — or Done for a single day."
+                : "Tap the first day, then the last."}
             </p>
             <Calendar
               mode="range"

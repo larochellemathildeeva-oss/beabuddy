@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Route as RouteIcon } from "lucide-react";
+import { Route as RouteIcon } from "@/components/icons";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import {
@@ -10,6 +10,7 @@ import {
   type DirectionStop,
 } from "@/lib/timeline-directions";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
+import { BeaRunning } from "@/components/BeaRunning";
 
 type TimelineAdd = {
   day_date?: string;
@@ -139,6 +140,12 @@ export function ItineraryDirections({
           </button>
         </div>
 
+        {busy && (
+          <div className="mt-2">
+            <BeaRunning moment="plan.locating" status="Working out the walks and drives" />
+          </div>
+        )}
+
         {offlineNote && <p className="mt-2 text-[12.5px] text-muted-foreground">{offlineNote}</p>}
 
         {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
@@ -168,8 +175,9 @@ export function ItineraryDirections({
             <div>
               <p className="label-caps text-foreground">Add these legs</p>
               <p className="text-[12px] text-muted-foreground">
-                “Add to timeline” saves each walk or drive as a stop. “Keep on this phone” stores
-                these exact steps here, so you don't have to work them out twice.
+                “Add to timeline” saves each walk or drive between its two stops, with the steps
+                folded under it — never as a stop of its own. “Keep on this phone” stores these
+                exact steps here, so you don't have to work them out twice.
               </p>
             </div>
             <div className="flex shrink-0 flex-col gap-1.5">

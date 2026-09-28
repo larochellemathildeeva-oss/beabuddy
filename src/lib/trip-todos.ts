@@ -116,3 +116,59 @@ export function todosFromPaste(text: string, max = 25): string[] {
     .filter((line) => line.length > 0 && line.length <= 200)
     .slice(0, max);
 }
+
+export type TodoPhase = "before" | "during" | "after" | "anytime";
+
+/**
+ * When a to-do belongs, from its due date and the trip's dates: before the
+ * trip, during it, after it, or anytime when it has no date. A trip with no
+ * dates yet puts every dated to-do before it.
+ */
+export function todoPhase(
+  dueOn: string | null,
+  tripStart: string | null | undefined,
+  tripEnd: string | null | undefined,
+): TodoPhase {
+  if (!dueOn) return "anytime";
+  const start = tripStart || tripEnd;
+  const end = tripEnd || tripStart;
+  if (!start || !end) return "before";
+  if (dueOn < start) return "before";
+  if (dueOn > end) return "after";
+  return "during";
+}
+
+export type TodoIcon =
+  | "passport"
+  | "visa"
+  | "money"
+  | "transfer"
+  | "stay"
+  | "flight"
+  | "insurance"
+  | "map"
+  | "health"
+  | "ticket"
+  | "phone"
+  | "todo";
+
+/** Words that say what a to-do is about, checked in order. Lower case, whole words or stems. */
+const TODO_ICON_WORDS: [TodoIcon, RegExp][] = [
+  ["passport", /\bpassports?\b/],
+  ["visa", /\b(visas?|entry requirements?|esta|eta)\b/],
+  ["health", /\b(vaccin\w*|jabs?|medic\w*|prescription|pharmacy)\b/],
+  ["insurance", /\binsurance\b/],
+  ["money", /\b(bank|cards?|cash|currency|money|exchange)\b/],
+  ["transfer", /\b(transfers?|taxi|car hire|rental car|shuttle|parking)\b/],
+  ["flight", /\b(flights?|check[- ]?in|boarding|the way there)\b/],
+  ["stay", /\b(hotel|stay|lodging|accommodation|airbnb|hostel)\b/],
+  ["ticket", /\b(tickets?|reservations?|book (a )?table|tour)\b/],
+  ["map", /\b(maps?|directions|offline)\b/],
+  ["phone", /\b(sim|esim|roaming|phone|charger|adapter)\b/],
+];
+
+/** The icon a to-do gets, guessed from its words; a plain check otherwise. */
+export function todoIcon(title: string): TodoIcon {
+  const text = title.toLowerCase();
+  return TODO_ICON_WORDS.find(([, words]) => words.test(text))?.[0] ?? "todo";
+}

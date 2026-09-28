@@ -1,4 +1,4 @@
-import { ExternalLink, X } from "lucide-react";
+import { ExternalLink, X } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isBooked } from "@/lib/bookings";
 import { isDone } from "@/lib/companion";

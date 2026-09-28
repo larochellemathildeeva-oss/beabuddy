@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { PlayCircle } from "lucide-react";
+import { PlayCircle } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { DemoVideo } from "@/components/DemoVideo";
 import { SceneFigureView } from "@/components/HowItWorksFigures";

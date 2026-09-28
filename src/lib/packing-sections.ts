@@ -170,16 +170,20 @@ export function sectionKind(section: string | null | undefined): SectionKind {
   return "other";
 }
 
+/** What kind of thing an item is, from its words, for its icon and its section. */
+export function itemKind(label: string): SectionKind {
+  const text = label.trim().toLowerCase();
+  if (!text) return "other";
+  return ITEM_WORDS.find(([, words]) => words.test(text))?.[0] ?? "other";
+}
+
 /**
  * The section an item most likely belongs in: one the list already has when
  * it is the same kind, otherwise a default heading. Null when nothing fits.
  */
 export function guessSection(label: string, existing: Array<string | null> = []): string | null {
-  const text = label.trim().toLowerCase();
-  if (!text) return null;
-  const hit = ITEM_WORDS.find(([, words]) => words.test(text));
-  if (!hit) return null;
-  const [kind] = hit;
+  const kind = itemKind(label);
+  if (kind === "other") return null;
   const own = existing.find((s) => s && sectionKind(s) === kind);
   return own ?? CANONICAL[kind];
 }

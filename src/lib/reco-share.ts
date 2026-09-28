@@ -226,3 +226,60 @@ export function shareStatusLine(
   const taken = `Kept by ${share.use_count} ${share.use_count === 1 ? "person" : "people"}`;
   return left === 0 ? `${taken} · full` : taken;
 }
+
+/**
+ * The message for one place sent on from its page: the Maps link, so it
+ * opens for anyone, and the Béa code, so someone with Béa can keep the rec
+ * itself — name, city, pin and who it came from — instead of retyping it.
+ */
+export function singlePlaceShareText(place: {
+  name: string;
+  where?: string;
+  mapsUrl: string;
+  code?: string;
+}): string {
+  const head = [place.name.trim(), place.where?.trim()].filter(Boolean).join(", ");
+  const lines = [head, place.mapsUrl];
+  if (place.code) {
+    lines.push("", `On Béa? Recs → + → Open a share, and paste ${place.code} to keep it.`);
+  }
+  return lines.join("\n");
+}
+
+/**
+ * What a one-place share snapshots. The saved row wins wherever it has a
+ * value: a saved place opened from Explore Nearby arrives with only a name, a
+ * pin and the nearby category, and the row is what knows its city. A place
+ * not saved yet — a parsed link, a search hit — gives what it has, its link
+ * and source included.
+ */
+export function singlePlaceShareReco(
+  place: {
+    name: string;
+    city?: string | undefined;
+    country?: string | undefined;
+    address?: string | undefined;
+    category?: string | undefined;
+    source?: string | undefined;
+    url?: string | undefined;
+    lat?: number | undefined;
+    lon?: number | undefined;
+  },
+  row?: ShareableReco | null,
+): ShareableReco {
+  const pick = <T>(saved: T | null | undefined, shown: T | undefined): T | null =>
+    saved != null && saved !== "" ? saved : (shown ?? null);
+  return {
+    id: row?.id ?? "",
+    name: row?.name?.trim() || place.name,
+    city: pick(row?.city, place.city),
+    country: pick(row?.country, place.country),
+    address: pick(row?.address, place.address),
+    category: pick(row?.category, place.category),
+    source: pick(row?.source, place.source),
+    url: pick(row?.url, place.url),
+    lat: pick(row?.lat, place.lat),
+    lon: pick(row?.lon, place.lon),
+    ...(row?.pin_type ? { pin_type: row.pin_type } : {}),
+  };
+}

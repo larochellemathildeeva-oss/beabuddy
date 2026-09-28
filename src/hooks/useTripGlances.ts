@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { isSavedDirectionItem } from "@/lib/direction-stops";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
 import { currentHighlights, packingReadiness } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { firstStop, nextTodo, plansConfirmed, stopCount } from "@/lib/trip-glance";
+import {
+  documentHighlights,
+  firstStop,
+  nextTodo,
+  plansConfirmed,
+  stopCount,
+} from "@/lib/trip-glance";
 
 export type GlanceItem = {
   id: string;
@@ -31,7 +38,11 @@ export type TripGlance = {
   plans: ReturnType<typeof plansConfirmed>;
   /** Open to-dos on the trip, and the one due soonest. */
   todos: { open: number; next: GlanceTodo | null };
+  /** A flight and a stay from Trip documents filed to the trip, when it has any. */
+  booked: { flight: GlanceDocument | null; lodging: GlanceDocument | null };
 };
+
+export type GlanceDocument = { id: string; trip_id: string | null; kind: string; title: string };
 
 export type GlanceTodo = {
   id: string;
@@ -80,6 +91,7 @@ export function useTripGlances(tripIds: readonly string[]) {
   const [items, setItems] = useState<GlanceItem[]>([]);
   const [packed, setPacked] = useState<{ trip_id: string; packed: boolean }[]>([]);
   const [todos, setTodos] = useState<GlanceTodo[]>([]);
+  const [docs, setDocs] = useState<GlanceDocument[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -88,12 +100,13 @@ export function useTripGlances(tripIds: readonly string[]) {
       setItems([]);
       setPacked([]);
       setTodos([]);
+      setDocs([]);
       setLoaded(true);
       return;
     }
     let active = true;
     void (async () => {
-      const [rows, lists, todoRows] = await Promise.all([
+      const [rows, lists, todoRows, docRows] = await Promise.all([
         selectItems(ids),
         supabase.from("packing_lists").select("id, trip_id").in("trip_id", ids),
         // An error (the to-do migration not applied yet) just means no to-dos.
@@ -102,6 +115,30 @@ export function useTripGlances(tripIds: readonly string[]) {
           .select("id, trip_id, title, due_on, done, position")
           .in("trip_id", ids)
           .eq("done", false),
+        // Bookings kept in Trip documents. Its table arrives with a migration
+        // applied by hand and is not in the generated types; an error just
+        // means no documents.
+        (
+          supabase as unknown as {
+            from: (t: string) => {
+              select: (c: string) => {
+                in: (
+                  col: string,
+                  v: string[],
+                ) => {
+                  order: (
+                    col: string,
+                    o: { ascending: boolean },
+                  ) => PromiseLike<{ data: GlanceDocument[] | null; error: unknown }>;
+                };
+              };
+            };
+          }
+        )
+          .from("trip_documents")
+          .select("id, trip_id, kind, title")
+          .in("trip_id", ids)
+          .order("created_at", { ascending: false }),
       ]);
       const listTrip = new Map<string, string>();
       for (const l of lists.data ?? []) if (l.trip_id) listTrip.set(l.id, l.trip_id);
@@ -117,9 +154,11 @@ export function useTripGlances(tripIds: readonly string[]) {
         }));
       }
       if (!active) return;
-      setItems(rows);
+      // Saved walks and drives are travel between stops, not stops to count.
+      setItems(rows.filter((row) => !isSavedDirectionItem(row)));
       setPacked(packing);
       setTodos(todoRows.error ? [] : ((todoRows.data ?? []) as GlanceTodo[]));
+      setDocs(docRows.error ? [] : (docRows.data ?? []));
       setLoaded(true);
     })();
     return () => {
@@ -145,10 +184,11 @@ export function useTripGlances(tripIds: readonly string[]) {
           const open = todos.filter((t) => t.trip_id === id && !t.done);
           return { open: open.length, next: nextTodo(open) };
         })(),
+        booked: documentHighlights(docs.filter((d) => d.trip_id === id)),
       };
     }
     return out;
-  }, [key, items, packed, todos]);
+  }, [key, items, packed, todos, docs]);
 
   return { glances, loaded };
 }

@@ -18,6 +18,7 @@ import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
 import { foldTravelLegs, nestWithin, normalizeClock } from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
+import { routeStopLine } from "@/lib/trip-cities";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -53,7 +54,11 @@ const ParseInput = z
       v.mode === "build" ||
       Boolean(v.imageDataUrls?.length || v.pdfDataUrl || v.pageUrl || (v.text && v.text.trim())),
     { message: "Add a photo or a PDF, or paste an itinerary." },
-  );
+  )
+  // A plan drafted with no place is a plan somewhere Béa picked.
+  .refine((v) => v.mode === "import" || Boolean(v.tripCity?.trim() || v.route?.trim()), {
+    message: "Tell Béa where the trip is first.",
+  });
 
 const ItemSchema = z.object({
   day_date: z.string().nullable(), // YYYY-MM-DD
@@ -870,6 +875,8 @@ const OptimizeItemIn = z.object({
 
 const OptimizeCityIn = z.object({
   city: z.string().max(120),
+  /** "daytrip" for a day out from the city before it; the nights stay there. */
+  kind: z.string().max(40).nullish(),
   country: z.string().max(80).nullable(),
   arrive_on: z.string().max(20).nullable(),
   depart_on: z.string().max(20).nullable(),
@@ -999,12 +1006,10 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       data.cities.length
         ? `Cities on this trip, in order:\n${data.cities
             .map(
-              (city) =>
-                `- ${city.city}${city.country ? `, ${city.country}` : ""}${
-                  city.arrive_on || city.depart_on
-                    ? ` (${[city.arrive_on, city.depart_on].filter(Boolean).join(" – ")})`
-                    : ""
-                }${city.lat != null && city.lon != null ? ` @ ${city.lat},${city.lon}` : ""}`,
+              (city, i) =>
+                `- ${routeStopLine(data.cities, i)}${
+                  city.lat != null && city.lon != null ? ` @ ${city.lat},${city.lon}` : ""
+                }`,
             )
             .join("\n")}`
         : "",

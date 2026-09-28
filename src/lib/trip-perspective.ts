@@ -21,8 +21,16 @@
 
 export const TRIP_PERSPECTIVES = [
   {
+    id: "overview",
+    label: "Overview",
+    // The master design's trip dashboard: bookings by kind, prep, documents
+    // and the days at a glance. It needs no line under the tabs.
+    hint: "",
+  },
+  {
     id: "companion",
     label: "Companion",
+    shortLabel: "Now",
     hint: "Where you are now, what is next, and when to leave.",
   },
   {
@@ -37,6 +45,13 @@ export const TRIP_PERSPECTIVES = [
     shortLabel: "Timeline",
     hint: "The day in order: reorder, retime, add and edit.",
   },
+  {
+    id: "bookings",
+    label: "Bookings",
+    // Flights, stays, transport and tickets: the booked stops and the Trip
+    // documents filed to this trip, one list. Trip-wide, like the Overview.
+    hint: "",
+  },
 ] as const;
 // The trip-wide "Trip" view is gone: its to-dos and packing live under the
 // "To do" button, and its cities, budget, people and details in Settings,
@@ -49,12 +64,13 @@ export type TripPerspective = (typeof TRIP_PERSPECTIVES)[number]["id"];
  * Where to open.
  *
  * On the trip, "Now" is the only view with a right answer, so it wins. Before
- * and after, there is no now — the day list is what you came for, and
+ * and after, there is no now — the Overview (bookings, prep, the days at a
+ * glance) is what you came for, and
  * offering a companion view for a trip that has not started would be a screen
  * with nothing on it.
  */
 export function defaultPerspective(isUnderway: boolean): TripPerspective {
-  return isUnderway ? "companion" : "timeline";
+  return isUnderway ? "companion" : "overview";
 }
 
 /** Read a perspective out of a URL or storage without trusting it. */
