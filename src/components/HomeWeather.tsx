@@ -48,9 +48,12 @@ const PILL =
  * look, once; nothing is remembered from that tap. Open-Meteo's credit sits at
  * the foot of Home (`WeatherCredit`), where there is room for it.
  */
+/** The last reading, so coming back to Home shows it while the position is re-read. */
+let lastReading: { weather: Weather; place: Place | null } | null = null;
+
 export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
-  const [weather, setWeather] = useState<Weather | null>(null);
-  const [place, setPlace] = useState<Place | null>(null);
+  const [weather, setWeather] = useState<Weather | null>(lastReading?.weather ?? null);
+  const [place, setPlace] = useState<Place | null>(lastReading?.place ?? null);
   const [failed, setFailed] = useState(false);
   const [fahrenheit, setFahrenheit] = useState(false);
 
@@ -64,11 +67,9 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
   const lon = near.here ? roundCoord(near.here.lon) : null;
 
   useEffect(() => {
-    if (lat === null || lon === null) {
-      setWeather(null);
-      setPlace(null);
-      return;
-    }
+    // No position yet: keep the last reading rather than flash "Checking…".
+    // Without consent or with location off the pill says so instead of it.
+    if (lat === null || lon === null) return;
     let active = true;
     setFailed(false);
     void Promise.all([
@@ -79,6 +80,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
       setWeather(w);
       setPlace(p);
       setFailed(!w);
+      lastReading = w ? { weather: w, place: p } : null;
     });
     return () => {
       active = false;
