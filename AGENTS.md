@@ -131,7 +131,11 @@ Overture's place listings through the Open Places API (`open-places.ts`, pure
 and tested; `open-places.server.ts` holds the key). OpenStreetMap is thin
 outside big cities; Overture's listings are not, and are CDLA Permissive 2.0,
 so the pins may be saved and drawn on Béa's own map (Google Places may not be:
-its terms forbid its data on a non-Google map). A match must echo the stop's
+its terms forbid its data on a non-Google map). What Google does allow is
+a link: a rec saved from a pasted Google Maps link keeps that link, and
+"Open in Maps" opens its exact place (`googlePlaceLink` in `reco-open.ts`:
+the short link as is, a `ChIJ…` place ID through `query_place_id`, a
+feature ID through `?cid=`), with no API call. A match must echo the stop's
 name, closed places are skipped, and the nearest to the middle of town wins.
 Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for
