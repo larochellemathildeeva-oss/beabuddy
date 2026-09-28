@@ -54,7 +54,11 @@ const ParseInput = z
       v.mode === "build" ||
       Boolean(v.imageDataUrls?.length || v.pdfDataUrl || v.pageUrl || (v.text && v.text.trim())),
     { message: "Add a photo or a PDF, or paste an itinerary." },
-  );
+  )
+  // A plan drafted with no place is a plan somewhere Béa picked.
+  .refine((v) => v.mode === "import" || Boolean(v.tripCity?.trim() || v.route?.trim()), {
+    message: "Tell Béa where the trip is first.",
+  });
 
 const ItemSchema = z.object({
   day_date: z.string().nullable(), // YYYY-MM-DD
