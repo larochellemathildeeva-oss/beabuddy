@@ -681,8 +681,13 @@ export function TripDetail({
   const nowStops = companionDay ? companionStops(companionDay.items) : [];
   // Only a stop on the day being followed; another day's pick closes itself.
   const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
-  // Fresh legs first, then saved ones while they still match the timeline.
-  const nowLegs = liveLegs ?? (savedFitsTimeline ? (dir.saved?.legs ?? null) : null);
+  // Each journey between the trip's stops, in Companion's own order: worked
+  // out now, kept on the phone, or saved on the itinerary. Companion used to
+  // read only the first two, so legs added to the timeline never reached it.
+  const tripStopsForNow = companionStops(board.items);
+  const nowLegs = tripStopsForNow
+    .slice(0, -1)
+    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!));
   const tripWide = {
     international: cities.countries.length > 1 || Boolean(trip.country),
     // Asked by glyph, not by raw kind. A flight stores as "flight" and a
@@ -968,7 +973,7 @@ export function TripDetail({
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
-                  tripStops={companionStops(board.items)}
+                  tripStops={tripStopsForNow}
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
                   onProgress={board.setProgress}

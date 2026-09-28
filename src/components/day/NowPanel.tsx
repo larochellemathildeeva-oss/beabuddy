@@ -58,8 +58,8 @@ export function NowPanel({
   dayStops: ItineraryRow[];
   /** The whole trip's stops in the same shape, which saved legs index into. */
   tripStops: ItineraryRow[];
-  /** Saved directions, only when they still describe this timeline. */
-  legs: RouteLeg[] | null;
+  /** The measured leg out of each of `tripStops`, where there is one. */
+  legs: readonly (RouteLeg | undefined)[] | null;
   /** The trip's area, so a stop without a pin can be looked up to time the journey. */
   area?: string | undefined;
   onProgress: (writes: Write[]) => Promise<void>;

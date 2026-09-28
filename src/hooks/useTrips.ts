@@ -785,12 +785,21 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (!id) throw new Error("Open a trip first");
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
-      const existingByTitle = new Map(items.map((row) => [row.title.trim().toLowerCase(), row]));
+      // Matched by day and title, not title alone: "Walk to Hotel" comes back
+      // every evening, and a title-only match moved one row from day to day
+      // while every other day's walk home was never saved.
+      const keyOf = (row: { day_date?: string | null; title: string }) =>
+        `${row.day_date ?? ""}|${row.title.trim().toLowerCase()}`;
+      const existingByKey = new Map(items.map((row) => [keyOf(row), row]));
       const inserts: typeof additions = [];
+      const queued = new Set<string>();
       for (const item of additions) {
-        const hit = existingByTitle.get(item.title.trim().toLowerCase());
+        const key = keyOf(item);
+        const hit = existingByKey.get(key);
         if (!hit) {
-          inserts.push(item);
+          // The same walk twice in one batch is saved once.
+          if (!queued.has(key)) inserts.push(item);
+          queued.add(key);
           continue;
         }
         const { error } = await supabase
