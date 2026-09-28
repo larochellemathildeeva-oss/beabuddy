@@ -183,7 +183,7 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   // A street address is matched against the whole label, which is where the
   // street is; a name only against the place's own names.
   const echoes = looksLikeStreetAddress(evidence.title)
-    ? nameEchoes(evidence.title, label)
+    ? nameEchoes(evidence.title, label) && sameNumber(evidence.title, label)
     : words.length === 0
       ? names.some((name) => nameEchoes(evidence.title, name))
       : // A whole area answering for a venue has to be the whole of what was
@@ -219,6 +219,22 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/**
+ * An address found is that address only if it carries the number too.
+ *
+ * "68 Honmachi" is a castle in Himeji; the geocoder, asked near Osaka,
+ * answered with Osaka's own Honmachi district, and the street name echoed.
+ * Most towns share their street and district names; the number is what is
+ * particular. A found address carries it among its numbers ("68 Honmachi,
+ * Himeji", "1-chome-10 Otemachi"), a district does not.
+ */
+function sameNumber(address: string, label: string): boolean {
+  const asked = address.match(/\d+/g) ?? [];
+  if (asked.length === 0) return true;
+  const found = new Set(label.match(/\d+/g) ?? []);
+  return asked.some((n) => found.has(n) || found.has(String(Number(n))));
 }
 
 /**
