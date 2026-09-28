@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
+  ArrowUp,
   Bookmark,
   Car,
   Check,
@@ -7,6 +8,9 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  CornerUpLeft,
+  CornerUpRight,
+  FlagArrive,
   Footprints,
   MapIcon,
   MapPin,
@@ -17,6 +21,7 @@ import {
   Plus,
   Ticket,
   Trash2,
+  Undo2,
 } from "@/components/icons";
 import { StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
 import { toast } from "sonner";
@@ -44,6 +49,7 @@ import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import { timeForRail } from "@/lib/timeline-kind";
+import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini-map";
 
 /**
  * One stop on the Timeline tab, as a card with two sides.
@@ -949,9 +955,12 @@ export function TravelConnector({
   area,
   showTime = true,
   onAddBetween,
+  fromNumber,
 }: {
   from: Pick<ItineraryRow, "title" | "lat" | "lon">;
   to: Pick<ItineraryRow, "title" | "lat" | "lon" | "time_label">;
+  /** The number on the stop it leaves from, so the small map's pins match the list. */
+  fromNumber?: number | undefined;
   /** The measured leg from `from` to `to`, when there is one. */
   leg?: RouteLeg | undefined;
   area: string;
@@ -1037,14 +1046,32 @@ export function TravelConnector({
             </button>
           </div>
           {open && (
+            <LegMiniMap
+              from={
+                leg?.fromLat != null && leg.fromLon != null
+                  ? { lat: leg.fromLat, lon: leg.fromLon }
+                  : from.lat != null && from.lon != null
+                    ? { lat: from.lat, lon: from.lon }
+                    : null
+              }
+              to={
+                leg?.toLat != null && leg.toLon != null
+                  ? { lat: leg.toLat, lon: leg.toLon }
+                  : to.lat != null && to.lon != null
+                    ? { lat: to.lat, lon: to.lon }
+                    : null
+              }
+              walking={walking}
+              fromNumber={fromNumber}
+            />
+          )}
+          {open && (
             <div className="space-y-2 border-t border-border bg-card/60 px-3 py-2.5">
               {steps.length > 0 ? (
                 <ol className="space-y-1.5">
                   {steps.map((step, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[12.5px]">
-                      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-elevated text-[10.5px] font-bold">
-                        {i + 1}
-                      </span>
+                      <StepArrow instruction={step.instruction} />
                       <span className="min-w-0 flex-1 leading-snug">{step.instruction}</span>
                       {step.distance > 0 && (
                         <span className="shrink-0 text-[11.5px] text-muted-foreground">
@@ -1086,5 +1113,110 @@ export function TravelConnector({
         </div>
       </div>
     </li>
+  );
+}
+
+const STEP_ARROWS: Record<StepTurn, ComponentType<{ className?: string }>> = {
+  straight: ArrowUp,
+  left: CornerUpLeft,
+  right: CornerUpRight,
+  uturn: Undo2,
+  arrive: FlagArrive,
+};
+
+/** The turn a step makes, as the master draws it: an arrow, not a number. */
+function StepArrow({ instruction }: { instruction: string }) {
+  const Arrow = STEP_ARROWS[stepTurn(instruction)];
+  return <Arrow className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden />;
+}
+
+/**
+ * The two stops on a small map inside the open card, joined by a dotted line
+ * with the walker (or car) half way. Drawn only when both ends are placed.
+ */
+function LegMiniMap({
+  from,
+  to,
+  walking,
+  fromNumber,
+}: {
+  from: LatLon | null;
+  to: LatLon | null;
+  walking: boolean;
+  fromNumber?: number | undefined;
+}) {
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    if (!box) return;
+    const measure = () => setWidth(Math.round(box.clientWidth));
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, [box]);
+  if (!from || !to) return null;
+  const height = 136;
+  const plan = width > 0 ? legMiniMap(from, to, width, height, 20) : null;
+  const Mode = walking ? Footprints : Car;
+  const tone = (n: number) => `seq-${((n - 1) % 5) + 1}`;
+  return (
+    <div
+      ref={setBox}
+      className="relative overflow-hidden border-t border-border bg-elevated"
+      style={{ height }}
+      aria-hidden
+    >
+      {plan && (
+        <>
+          {plan.tiles.map((t) => (
+            <img
+              key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+              src={`/api/tile/${t.z}/${t.x}/${t.y}.png`}
+              alt=""
+              decoding="async"
+              className="art-dim absolute size-64 max-w-none"
+              style={{ left: t.left, top: t.top }}
+            />
+          ))}
+          <svg className="absolute inset-0 size-full" aria-hidden>
+            <line
+              x1={plan.from.x}
+              y1={plan.from.y}
+              x2={plan.to.x}
+              y2={plan.to.y}
+              stroke="#2f7bb0"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeDasharray="1 7"
+            />
+          </svg>
+          <span
+            className="absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+            style={{
+              left: (plan.from.x + plan.to.x) / 2,
+              top: (plan.from.y + plan.to.y) / 2,
+            }}
+          >
+            <Mode className="size-4" />
+          </span>
+          {[
+            { at: plan.from, n: fromNumber },
+            { at: plan.to, n: fromNumber != null ? fromNumber + 1 : undefined },
+          ].map(({ at, n }, i) => (
+            <span
+              key={i}
+              className={`${n != null ? tone(n) : "bg-primary text-primary-foreground"} absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 border-white text-[12px] font-bold shadow`}
+              style={{ left: at.x, top: at.y }}
+            >
+              {n ?? (i === 0 ? "A" : "B")}
+            </span>
+          ))}
+          <span className="absolute bottom-0.5 right-1 rounded bg-card/80 px-1 text-[8.5px] leading-tight text-muted-foreground">
+            © OpenStreetMap · Geoapify
+          </span>
+        </>
+      )}
+    </div>
   );
 }

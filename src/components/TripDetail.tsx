@@ -500,10 +500,19 @@ export function TripDetail({
     return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
   };
   /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
-  const travelInto = (from: ItineraryRow, to: ItineraryRow) =>
+  /**
+   * `strict` leaves out rows saved before they kept the stop they leave from:
+   * after a reorder such a row may describe another journey, and Companion
+   * times "Leave by" from it, so it works that journey out itself instead.
+   */
+  const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
     legFor(from.id, to.id) ??
-    savedTravel.get(directionKey(to.day_date, to.title)) ??
-    savedTravel.get(directionKey(from.day_date, to.title));
+    savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
+    savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
+    (strict
+      ? undefined
+      : (savedTravel.get(directionKey(to.day_date, to.title)) ??
+        savedTravel.get(directionKey(from.day_date, to.title))));
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
@@ -681,8 +690,13 @@ export function TripDetail({
   const nowStops = companionDay ? companionStops(companionDay.items) : [];
   // Only a stop on the day being followed; another day's pick closes itself.
   const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
-  // Fresh legs first, then saved ones while they still match the timeline.
-  const nowLegs = liveLegs ?? (savedFitsTimeline ? (dir.saved?.legs ?? null) : null);
+  // Each journey between the trip's stops, in Companion's own order: worked
+  // out now, kept on the phone, or saved on the itinerary. Companion used to
+  // read only the first two, so legs added to the timeline never reached it.
+  const tripStopsForNow = companionStops(board.items);
+  const nowLegs = tripStopsForNow
+    .slice(0, -1)
+    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!, true));
   const tripWide = {
     international: cities.countries.length > 1 || Boolean(trip.country),
     // Asked by glyph, not by raw kind. A flight stores as "flight" and a
@@ -968,7 +982,7 @@ export function TripDetail({
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
-                  tripStops={companionStops(board.items)}
+                  tripStops={tripStopsForNow}
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
                   onProgress={board.setProgress}
@@ -1261,6 +1275,7 @@ export function TripDetail({
                                           area={directionArea ?? ""}
                                           showTime={view.prefs.walkTimes}
                                           onAddBetween={() => openAddBetween(item, next)}
+                                          fromNumber={dayIndex + 1}
                                         />
                                       );
                                     })()}
@@ -1333,6 +1348,7 @@ export function TripDetail({
                               area={directionArea ?? ""}
                               showTime={view.prefs.walkTimes}
                               onAddBetween={() => openAddBetween(item, next)}
+                              fromNumber={i + 1}
                             />
                           );
                         })()}

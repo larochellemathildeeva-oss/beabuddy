@@ -133,6 +133,11 @@ import {
   type IconProps,
   type IconWeight,
   Export as PhExport,
+  ArrowUp as PhArrowUp,
+  ArrowBendUpLeft as PhArrowBendUpLeft,
+  ArrowBendUpRight as PhArrowBendUpRight,
+  ArrowUUpLeft as PhArrowUUpLeft,
+  FlagCheckered as PhFlagCheckered,
 } from "@phosphor-icons/react";
 
 export type LucideProps = Omit<ComponentPropsWithoutRef<"svg">, "ref"> & {
@@ -287,3 +292,8 @@ export const Unlink = icon(PhLinkBreak, "Unlink");
 export const Binoculars = icon(PhBinoculars, "Binoculars");
 export const List = icon(PhListBullets, "List");
 export const Navigation = icon(PhNavigationArrow, "Navigation");
+export const ArrowUp = icon(PhArrowUp, "ArrowUp");
+export const CornerUpLeft = icon(PhArrowBendUpLeft, "CornerUpLeft");
+export const CornerUpRight = icon(PhArrowBendUpRight, "CornerUpRight");
+export const Undo2 = icon(PhArrowUUpLeft, "Undo2");
+export const FlagArrive = icon(PhFlagCheckered, "FlagArrive");

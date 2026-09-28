@@ -13,6 +13,7 @@ import {
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
 import { isSavedDirectionItem } from "@/lib/direction-stops";
+import { directionSource } from "@/lib/timeline-directions";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
@@ -785,12 +786,31 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (!id) throw new Error("Open a trip first");
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
-      const existingByTitle = new Map(items.map((row) => [row.title.trim().toLowerCase(), row]));
+      // Matched by day, title and, for a walk or drive, the stop it leaves
+      // from — not title alone: "Walk to Hotel" comes back every evening, and
+      // a title-only match moved one row from day to day while every other
+      // day's walk home was never saved.
+      const keyOf = (row: { day_date?: string | null; title: string; detail?: string | null }) =>
+        `${row.day_date ?? ""}|${row.title.trim().toLowerCase()}|${directionSource(row.detail).toLowerCase()}`;
+      const existingByKey = new Map(items.map((row) => [keyOf(row), row]));
       const inserts: typeof additions = [];
+      const queued = new Set<string>();
       for (const item of additions) {
-        const hit = existingByTitle.get(item.title.trim().toLowerCase());
+        const key = keyOf(item);
+        // A row saved before sources were kept is claimed once, and updated
+        // in place, rather than left beside the new one.
+        const legacyKey = keyOf({ ...item, detail: null });
+        const hitKey = existingByKey.has(key)
+          ? key
+          : existingByKey.has(legacyKey)
+            ? legacyKey
+            : null;
+        const hit = hitKey ? existingByKey.get(hitKey) : undefined;
+        if (hitKey) existingByKey.delete(hitKey);
         if (!hit) {
-          inserts.push(item);
+          // The same walk twice in one batch is saved once.
+          if (!queued.has(key)) inserts.push(item);
+          queued.add(key);
           continue;
         }
         const { error } = await supabase

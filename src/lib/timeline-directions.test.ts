@@ -257,3 +257,59 @@ test("walks and drives come off the list and attach to the stop they reach", asy
   assert.equal(travel.get(directionKey("2026-10-02", "Ryoan-ji"))?.distance, 1400);
   assert.equal(travel.get(directionKey("2026-10-02", "arashiyama"))?.mode, "driving");
 });
+
+test("a saved walk keeps the stop it leaves from, and is found by both ends", async () => {
+  const {
+    directionDetailWithSteps,
+    directionSource,
+    legFromDirectionRow,
+    splitDirectionRows,
+    directionKey,
+    legsToTimelineItems,
+  } = await import("./timeline-directions.ts");
+  const leg = {
+    from: "",
+    to: "Hotel Sakura",
+    mode: "walking" as const,
+    distance: 1200,
+    duration: 900,
+    steps: [{ instruction: "Turn left onto Shijo-dori", distance: 350 }],
+    mapUrl: "",
+  };
+  const detail = directionDetailWithSteps(leg, "Nishiki Market");
+  assert.equal(detail.split("\n")[0], "Walk · 1.2 km · 15 min · from Nishiki Market");
+  assert.equal(directionSource(detail), "Nishiki Market");
+  const back = legFromDirectionRow({ title: "Walk to Hotel Sakura", detail })!;
+  assert.equal(back.from, "Nishiki Market");
+  assert.equal(back.distance, 1200);
+  assert.equal(back.duration, 900);
+  assert.equal(back.steps.length, 1);
+
+  // Two walks to the hotel on one day, from different places, stay apart.
+  const rows = [
+    { title: "Walk to Hotel Sakura", day_date: "2026-10-02", detail },
+    {
+      title: "Walk to Hotel Sakura",
+      day_date: "2026-10-02",
+      detail: directionDetailWithSteps({ ...leg, distance: 300, duration: 240 }, "Gion"),
+    },
+    { title: "Walk to Kinkaku-ji", day_date: "2026-10-02", detail: "Walk · 800 m · 10 min" },
+  ];
+  const { travel } = splitDirectionRows(rows);
+  assert.equal(
+    travel.get(directionKey("2026-10-02", "Hotel Sakura", "Nishiki Market"))?.distance,
+    1200,
+  );
+  assert.equal(travel.get(directionKey("2026-10-02", "Hotel Sakura", "gion"))?.distance, 300);
+  // Not under the key that ignores where it leaves from.
+  assert.equal(travel.get(directionKey("2026-10-02", "Hotel Sakura")), undefined);
+  // An older row, with no source, is only under that key.
+  assert.equal(travel.get(directionKey("2026-10-02", "Kinkaku-ji"))?.distance, 800);
+
+  const [item] = legsToTimelineItems(
+    [leg],
+    [{ title: "Nishiki Market" }, { title: "Hotel Sakura" }],
+  );
+  assert.equal(directionSource(item!.detail), "Nishiki Market");
+  assert.equal(directionSource("Walk · 800 m · 10 min"), "");
+});
