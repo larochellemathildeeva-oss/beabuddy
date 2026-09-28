@@ -52,6 +52,11 @@ const StopIn = z.object({
    * monument in a park), by position. Looked up beside that stop's pin first.
    */
   within: z.number().int().min(0).nullish(),
+  /**
+   * A long journey (a train between towns, a flight) comes just before this
+   * stop, so it is not beside the stop before it.
+   */
+  fresh: z.boolean().nullish(),
 });
 
 type StopInput = {
@@ -62,6 +67,7 @@ type StopInput = {
   city?: string | null;
   area?: string | null;
   within?: number | null;
+  fresh?: boolean | null;
 };
 
 const Input = z.object({
@@ -79,6 +85,13 @@ const Input = z.object({
    * would find a restaurant of that name, not the city.
    */
   venues: z.boolean().nullish(),
+  /**
+   * The stops are the plan's own, consecutive and in order, so each is
+   * where the one before it was until a journey says otherwise.
+   */
+  inOrder: z.boolean().nullish(),
+  /** The last stop the caller's previous batch placed, for the first stop of this one. */
+  near: z.object({ lat: z.number(), lon: z.number() }).nullish(),
 });
 
 /**
@@ -118,6 +131,23 @@ export type PlacedStop = {
 
 /** How far from the stop it is inside a place is looked for, in km. */
 const INSIDE_KM = 2;
+
+/**
+ * How far from the stop before it a stop is looked for first, in km, when
+ * all the plan says of where it is is the country.
+ */
+const NEXT_KM = 30;
+
+/**
+ * An area this many degrees across is a region or a country, not a town.
+ * Its middle is nowhere in particular: sorting finds by it, or flagging those
+ * far from it, picks namesakes by where they happen to lie.
+ */
+const BROAD_DEG = 3;
+
+function isBroad(box: AreaBox): boolean {
+  return box.north - box.south > BROAD_DEG || box.east - box.west > BROAD_DEG;
+}
 
 /**
  * Further than this from the middle of the stop's town, a find is flagged
@@ -200,8 +230,9 @@ async function geocode(
   query: string,
   box: AreaBox,
   near: { lat: number; lon: number } | null,
+  limit = 3,
 ): Promise<GeoResult> {
-  const hits = await lookup(provider, query, { limit: near ? 5 : 3, box });
+  const hits = await lookup(provider, query, { limit: near ? 5 : limit, box });
   if (hits === "throttled") return "throttled";
   const found: GeoHit[] = [];
   for (const hit of hits) {
@@ -278,6 +309,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       area?: string | null;
       recent?: number[] | null;
       venues?: boolean | null;
+      inOrder?: boolean | null;
+      near?: { lat: number; lon: number } | null;
     }) => Input.parse(input),
   )
   .handler(async ({ data }) => {
@@ -346,7 +379,15 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       return box;
     };
 
+    /**
+     * The last stop placed, and trusted. A plan that names only the country
+     * ("Germany") says where each stop is by the one before it: the museum
+     * after a Berlin breakfast is in Berlin, until a train goes somewhere else.
+     */
+    let lastPin: { lat: number; lon: number } | null = data.inOrder ? (data.near ?? null) : null;
+
     for (const [index, stop] of data.stops.entries()) {
+      if (stop.fresh) lastPin = null;
       // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
       // then where the trip is that day, then the trip's area.
       const dayArea = stop.area?.trim() || area;
@@ -368,8 +409,10 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         break;
       }
       if (!box) continue;
+      /** Only a town, not a country, has a middle worth measuring from. */
+      const broad = isBroad(box);
       /** The middle of the stop's town, which every find is measured from. */
-      const centre = centres.get(where.toLowerCase()) ?? null;
+      const centre = broad ? null : (centres.get(where.toLowerCase()) ?? null);
 
       // An answer that is probably not the stop (the town, for a park the
       // geocoder could not find). Kept only if nothing better turns up.
@@ -394,7 +437,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           let hits = cache.get(key);
           if (!hits) {
             if (!(await takeTurn())) return false;
-            const found = await geocode(provider, query, bounds, near ?? centre);
+            const found = await geocode(provider, query, bounds, near ?? centre, broad ? 5 : 3);
             if (found === "throttled") {
               // Asking harder will not help, and recording these as misses would
               // mark real places unfindable for the rest of the session.
@@ -436,12 +479,22 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (throttled) break;
 
-      let landed = await tryIn(where, box, null);
+      // Only the country to go on: beside the stop before it first.
+      let landed = false;
+      if (broad && lastPin && !parent) {
+        besideParent = true;
+        landed = await tryIn(where, boxAround(lastPin, NEXT_KM), lastPin);
+        besideParent = false;
+        if (throttled) break;
+      }
+      if (!landed) landed = await tryIn(where, box, null);
 
       // The map missed it, or found something that is not it (a namesake out
       // of town, another name): Overture's listings, near the middle of town.
       // OpenStreetMap is thin outside big cities; they are not.
-      if (overture?.openPlacesReady() && centre && !throttled) {
+      // A country has no middle to search from; the stop before this one does.
+      const venueCentre = centre ?? (broad ? lastPin : null);
+      if (overture?.openPlacesReady() && venueCentre && !throttled) {
         const mine = placed.findIndex((hit) => hit.index === index);
         const hit = mine >= 0 ? placed[mine] : undefined;
         const names = {
@@ -450,7 +503,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           address: stop.address ?? null,
         };
         if (!hit || hit.farKm || !autoPinTrusted(names, hit)) {
-          const found = await askOverture(overture.searchOpenPlaces, stop, centre);
+          const found = await askOverture(overture.searchOpenPlaces, stop, venueCentre);
           if (found) {
             if (mine >= 0) placed.splice(mine, 1);
             placed.push({
@@ -490,6 +543,17 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inside: parentTitle,
         });
       }
+      // The next stop is looked for beside this one, if this one is sure.
+      const settled = placed.find((hit) => hit.index === index);
+      if (
+        data.inOrder &&
+        settled &&
+        !settled.inside &&
+        !settled.farKm &&
+        autoPinTrusted(stop, settled)
+      ) {
+        lastPin = { lat: settled.lat, lon: settled.lon };
+      }
       // Nothing better than the doubtful answer: returned as before, so the
       // review can say what was found and let the person keep it.
       const fallback = doubtful[0];
@@ -500,5 +564,5 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       if (throttled) break;
     }
 
-    return { placed, lookedUp, area, throttled, sent: sent.slice(-120) };
+    return { placed, lookedUp, area, throttled, sent: sent.slice(-120), lastPin };
   });

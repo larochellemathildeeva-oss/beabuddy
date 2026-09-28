@@ -16,7 +16,7 @@ import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import type { SearchGrounding } from "@/lib/search-grounding";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
-import { foldTravelLegs, nestWithin, normalizeClock } from "@/lib/import-stop";
+import { foldTravelLegs, nestWithin, normalizeClock, tidyImportedRow } from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
 import { routeStopLine } from "@/lib/trip-cities";
 
@@ -285,11 +285,11 @@ export async function runParse(
     items: nestWithin(
       foldTravelLegs(
         out.items.slice(0, 60).map((i) => ({
-          ...i,
+          // Kinds normalised before the tidy, which files a night as a stay.
+          ...tidyImportedRow({ ...i, kind: normaliseKind(i.kind) }),
           // A time the timeline cannot sort is worse than none.
           time_label: normalizeClock(i.time_label),
           end_time: normalizeClock(i.end_time),
-          kind: normaliseKind(i.kind),
           // Only a plan the traveller already has can hold a booking; a plan
           // Béa drafts never does, whatever the model said.
           booked: data.mode === "import" && i.booked === true,

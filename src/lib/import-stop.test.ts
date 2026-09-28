@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { normalizeClock, pinIsSaved, stayMinutesFrom, stopArea } from "./import-stop.ts";
+import {
+  afterJourney,
+  tidyImportedRow,
+  normalizeClock,
+  pinIsSaved,
+  stayMinutesFrom,
+  stopArea,
+} from "./import-stop.ts";
 
 test("clock times in the ways plans write them", () => {
   const cases: [string, string | null][] = [
@@ -338,4 +345,60 @@ test("siblings that name their parent as their place are not each other's parent
     out[0]!.detail,
     "Inside: Mona Lisa, Winged Victory of Samothrace, Egyptian antiquities",
   );
+});
+
+test("afterJourney: a train between towns starts afresh, a city hop does not", () => {
+  assert.equal(
+    afterJourney({ detail: "luggage drop · getting there: direct ICE, about 4h" }, undefined),
+    true,
+  );
+  assert.equal(
+    afterJourney({ detail: "Berlin Wall murals · getting there: S-Bahn to Ostbahnhof" }, undefined),
+    false,
+  );
+  // The note of the stop itself, not of how it is reached, says nothing.
+  assert.equal(afterJourney({ detail: "Allow 2 hours" }, undefined), false);
+  assert.equal(
+    afterJourney({ detail: null }, { kind: "flight", title: "LH 123 to Munich", detail: null }),
+    true,
+  );
+  assert.equal(
+    afterJourney(
+      { detail: null },
+      { kind: "transport", title: "Tram 2 to the old town", detail: null },
+    ),
+    false,
+  );
+  assert.equal(
+    afterJourney({ detail: null }, { kind: "meal", title: "Lunch at Curry 36", detail: null }),
+    false,
+  );
+});
+
+test("tidyImportedRow: the street leaves the title, a repeated note goes, a night is a stay", () => {
+  const museum = tidyImportedRow({
+    kind: "sight",
+    title: "Neues Museum, Bodestraße 1-3 - Egyptian and prehistoric collections",
+    detail: "Egyptian and prehistoric collections",
+    address: null,
+  });
+  assert.equal(museum.title, "Neues Museum");
+  assert.equal(museum.address, "Bodestraße 1-3");
+  const hotel = tidyImportedRow({
+    kind: "activity",
+    title: "Motel One Berlin-Hauptbahnhof, Invalidenstraße 54",
+    detail: "overnight",
+    address: "Invalidenstraße 54",
+  });
+  assert.equal(hotel.title, "Motel One Berlin-Hauptbahnhof");
+  assert.equal(hotel.kind, "lodging");
+  // A name ending in a number stays whole; a note not repeated stays.
+  const curry = tidyImportedRow({
+    kind: "meal",
+    title: "Curry 36 - currywurst",
+    detail: null,
+    address: null,
+  });
+  assert.equal(curry.title, "Curry 36 - currywurst");
+  assert.equal(curry.address, null);
 });

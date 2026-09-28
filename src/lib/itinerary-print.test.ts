@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { escapeHtml, itineraryPrintHtml } from "./itinerary-print.ts";
+import {
+  escapeHtml,
+  itineraryPrintHtml,
+  timeRange,
+  tidyPrintRow,
+  toBookRows,
+} from "./itinerary-print.ts";
 
 const row = (over: Partial<Parameters<typeof itineraryPrintHtml>[1][number]> = {}) => ({
   day_date: "2026-10-12",
@@ -50,4 +56,77 @@ test("each stop says exactly where Béa has it", () => {
   // A stop without a pin says so; a note is not a place.
   assert.equal(html.split("Not on the map yet").length - 1, 1);
   assert.ok(html.includes("Not on the map yet · no address"));
+});
+
+test("a stop with a known length prints when it ends", () => {
+  assert.equal(timeRange("09:00", 40), "09:00–09:40");
+  assert.equal(timeRange("14:45", 120), "14:45–16:45");
+  assert.equal(timeRange("09:00", null), "09:00");
+  // Over midnight a range would read backwards.
+  assert.equal(timeRange("23:30", 90), "23:30");
+  const html = itineraryPrintHtml({ title: "T" }, [
+    row({ title: "Brandenburg Gate", planned_stay_minutes: 40 }),
+  ]);
+  assert.ok(html.includes(">09:00–09:40</td>"));
+});
+
+test("an address written into the title is the address, not 'no address'", () => {
+  const tidy = tidyPrintRow(
+    row({ title: "Neues Museum, Bodestraße 1-3 - Egyptian and prehistoric collections" }),
+  );
+  assert.equal(tidy.title, "Neues Museum - Egyptian and prehistoric collections");
+  assert.equal(tidy.address, "Bodestraße 1-3");
+  const html = itineraryPrintHtml({ title: "T" }, [
+    row({ title: "MAIN TOWER, Neue Mainzer Straße 52-58" }),
+  ]);
+  assert.ok(html.includes('<div class="address">Neue Mainzer Straße 52-58</div>'));
+  assert.ok(html.includes("Not on the map yet"));
+  assert.ok(!html.includes("no address"));
+  // A name ending in a number is not an address.
+  assert.equal(tidyPrintRow(row({ title: "Lunch at Curry 36" })).address, null);
+});
+
+test("a note is printed once, however it was written", () => {
+  const städel = tidyPrintRow(
+    row({
+      title: "Städel Museum, Schaumainkai 63 - 700 years of European art",
+      detail: "700 years of European art",
+    }),
+  );
+  assert.equal(städel.title, "Städel Museum");
+  assert.equal(städel.detail, "700 years of European art");
+  const wall = tidyPrintRow(
+    row({
+      title: "East Side Gallery - Berlin Wall murals",
+      detail: "Berlin Wall murals · getting there: S-Bahn to Ostbahnhof",
+    }),
+  );
+  assert.equal(wall.title, "East Side Gallery");
+  assert.equal(wall.detail, "Berlin Wall murals · getting there: S-Bahn to Ostbahnhof");
+  const html = itineraryPrintHtml({ title: "T" }, [
+    row({ title: "Jewish Museum Berlin - German-Jewish history", detail: "German-Jewish history" }),
+  ]);
+  assert.equal(html.split("German-Jewish history").length - 1, 1);
+});
+
+test("a stay is to book once, never on leaving it, and again on coming back", () => {
+  const rows = [
+    row({ kind: "lodging", title: "Motel One Berlin-Hauptbahnhof", detail: "overnight" }),
+    row({ kind: "lodging", title: "Motel One Berlin-Hauptbahnhof", detail: "check-out" }),
+    row({ kind: "lodging", title: "Motel One Frankfurt-Hauptbahnhof", detail: "luggage drop" }),
+    row({
+      kind: "lodging",
+      title: "Motel One Frankfurt-Hauptbahnhof",
+      detail: "check-in and overnight",
+    }),
+    row({ kind: "lodging", title: "Motel One Frankfurt-Hauptbahnhof - check-out" }),
+    row({ kind: "flight", title: "Flight AC 870" }),
+    row({ kind: "lodging", title: "Motel One Berlin-Hauptbahnhof", detail: "luggage drop" }),
+    row({ kind: "lodging", title: "Motel One Berlin-Hauptbahnhof", detail: "check-in" }),
+  ];
+  const marked = toBookRows(rows);
+  assert.deepEqual(
+    rows.map((r) => marked.has(r)),
+    [true, false, false, true, false, true, false, true],
+  );
 });

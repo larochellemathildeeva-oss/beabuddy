@@ -69,6 +69,7 @@ import {
   pinIsSaved,
   placeBatches,
   routeCityOn,
+  afterJourney,
   routeCountry,
   stayMinutesFrom,
   type PinChoice,
@@ -545,7 +546,7 @@ function ImportPanel({
     const area = draftPlace || routeCountry(cities) || "";
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
-    const stops = dated.map((item) => {
+    const stops = dated.map((item, i) => {
       const dayArea = routeCityOn(cities, item.day_date);
       return {
         title: item.title,
@@ -554,6 +555,8 @@ function ImportPanel({
         address: item.address ?? null,
         city: item.city ?? null,
         ...(dayArea ? { area: dayArea } : {}),
+        // A train or flight before it: not beside the stop before it.
+        ...(afterJourney(item, dated[i - 1]) ? { fresh: true } : {}),
       };
     });
     const placeable = stops.some((stop) => stop.city?.trim() || stop.area);
@@ -571,18 +574,21 @@ function ImportPanel({
       const placed: PlacedStop[] = [];
       // The provider's pace carries from one batch to the next.
       let recent: number[] = [];
+      // Where the last batch left off, so the next stop is looked for beside it.
+      let near: { lat: number; lon: number } | null = null;
       for (const [from, to] of placeBatches(parents, PLACE_BATCH)) {
         if (!current()) return;
         const batch = stops.slice(from, to).map((stop, k) => {
           const parent = parents[from + k]!;
           return parent >= from ? { ...stop, within: parent - from } : stop;
         });
-        const result = await geocodePlanStops({
-          data: { stops: batch, area, recent, venues: true },
+        const result: Awaited<ReturnType<typeof geocodePlanStops>> | null = await geocodePlanStops({
+          data: { stops: batch, area, recent, venues: true, inOrder: true, near },
         }).catch(() => null);
         if (!current()) return;
         if (!result) break;
         recent = result.sent ?? [];
+        near = result.lastPin ?? null;
         placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
         setPlacing({ done: to, total });
         if (result.throttled) break;
