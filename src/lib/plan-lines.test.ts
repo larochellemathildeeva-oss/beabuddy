@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { readPlainPlan } from "./plan-lines.ts";
+import { headingCities, readPlainPlan } from "./plan-lines.ts";
 
 const read = (text: string, startDate: string | null = "2026-10-10") =>
   readPlainPlan(text, { startDate, tripCity: "Paris, France", today: new Date("2026-01-15") });
@@ -223,4 +223,17 @@ test("no booking needed is not booked", () => {
 13:00 Lunch at Chartier`);
   assert.ok(plan);
   assert.equal(plan.items[0]!.booked, false);
+});
+
+test("a day heading names its town, or both ends of a travel day", () => {
+  assert.deepEqual(headingCities("Lyon, France"), ["Lyon, France"]);
+  assert.deepEqual(headingCities("Paris → Aix-en-Provence"), ["Paris", "Aix-en-Provence"]);
+  assert.deepEqual(headingCities("Frankfurt am Main"), ["Frankfurt am Main"]);
+});
+
+test("a day heading's theme is not a town", () => {
+  assert.deepEqual(headingCities("Arrival"), []);
+  assert.deepEqual(headingCities("Museums and markets"), []);
+  assert.deepEqual(headingCities("Free day & shopping"), []);
+  assert.deepEqual(headingCities(null), []);
 });

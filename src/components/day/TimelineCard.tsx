@@ -1138,6 +1138,17 @@ export function TravelConnector({
                   <ExternalLink className="size-3.5" aria-hidden />
                   Open in Maps
                 </a>
+                {/* Béa measures walks and drives only. Maps knows the metro:
+                    which line, which stop to get on and where to get off. */}
+                <a
+                  href={mapsDirUrl(from, to, area, "transit")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
+                >
+                  <ExternalLink className="size-3.5" aria-hidden />
+                  Public transport in Maps
+                </a>
                 {onAddBetween && (
                   <button
                     type="button"

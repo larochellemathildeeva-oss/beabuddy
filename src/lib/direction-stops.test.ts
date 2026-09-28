@@ -265,3 +265,13 @@ test("stopsForDirections goes out and back on a day trip", () => {
     ],
   );
 });
+
+test("mapsDirUrl can ask Maps for public transport", () => {
+  const url = mapsDirUrl(
+    { title: "Hotel", lat: 48.87, lon: 2.35 },
+    { title: "Louvre", lat: 48.86, lon: 2.34 },
+    "Paris, France",
+    "transit",
+  );
+  assert.ok(url.includes("travelmode=transit"));
+});

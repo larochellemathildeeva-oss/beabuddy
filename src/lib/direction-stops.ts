@@ -278,7 +278,8 @@ export function mapsDirUrl(
   from: { title: string; lat?: number | null; lon?: number | null },
   to: { title: string; lat?: number | null; lon?: number | null },
   area: string,
-  mode: "walking" | "driving" = "walking",
+  /** "transit": Maps' own metro, bus and train steps — which line, which stop to get off. */
+  mode: "walking" | "driving" | "transit" = "walking",
 ): string {
   return `https://www.google.com/maps/dir/?api=1&origin=${mapsPoint(from.title, from, area)}&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
 }
