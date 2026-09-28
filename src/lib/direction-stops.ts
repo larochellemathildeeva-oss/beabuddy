@@ -453,6 +453,14 @@ export function wideDayPinsToKeep(
     anchor: { lat: number; lon: number };
   }[],
   reachM: number = SAME_DAY_FAR_APART_M,
+  /**
+   * The day's stops already on the map. A far cluster is kept only when it
+   * outnumbers those beside the anchor: a Hiroshima day on an Osaka trip has
+   * one hotel in Osaka and a dozen stops in Hiroshima, while a Kyoto day with
+   * eight stops pinned in Kyoto kept "Gion" and "Ryō-shō" found near Tokyo
+   * because the two namesakes agreed with each other.
+   */
+  dayPins: ReadonlyMap<string, readonly { lat: number; lon: number }[]> = new Map(),
 ): Set<number> {
   const keep = new Set<number>();
   for (const hit of found) {
@@ -460,13 +468,13 @@ export function wideDayPinsToKeep(
       keep.add(hit.index);
       continue;
     }
-    const agreed = found.some(
-      (other) =>
-        other.index !== hit.index &&
-        other.day === hit.day &&
-        haversine(other.pin, hit.pin) <= reachM,
-    );
-    if (agreed) keep.add(hit.index);
+    const cluster = found.filter(
+      (other) => other.day === hit.day && haversine(other.pin, hit.pin) <= reachM,
+    ).length;
+    const home = (dayPins.get(hit.day) ?? []).filter(
+      (pin) => haversine(pin, hit.anchor) <= reachM,
+    ).length;
+    if (cluster > 1 && cluster > home) keep.add(hit.index);
   }
   return keep;
 }

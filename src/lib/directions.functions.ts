@@ -428,7 +428,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
           deferred.push(stop.title);
         }
       }
-      const keep = wideDayPinsToKeep(wideFound);
+      // The day's pins as the lookups left them, found here or saved before.
+      const dayPins = new Map<string, { lat: number; lon: number }[]>();
+      data.stops.forEach((stop, i) => {
+        const pin = points[i];
+        if (!pin || !stop.day_date) return;
+        dayPins.set(stop.day_date, [...(dayPins.get(stop.day_date) ?? []), pin]);
+      });
+      const keep = wideDayPinsToKeep(wideFound, undefined, dayPins);
       for (const hit of wideFound) {
         if (!keep.has(hit.index)) continue;
         points[hit.index] = hit.pin;
