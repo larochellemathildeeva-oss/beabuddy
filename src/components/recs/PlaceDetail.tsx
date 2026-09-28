@@ -86,7 +86,7 @@ export function PlaceDetail({
   return (
     <div className="rise space-y-5">
       <div className="relative -mx-4 -mt-2 overflow-hidden sm:mx-0 sm:rounded-[var(--r-card)]">
-        <PlaceArt place={place} className="h-60 w-full" />
+        <PlaceArt place={place} className="h-60 w-full" linked />
         <button
           type="button"
           onClick={onBack}

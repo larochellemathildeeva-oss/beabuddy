@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bookmark, MapPin } from "@/components/icons";
-import { placeArtFor, placeArtUrl } from "@/lib/place-art";
+import { PlacePicture } from "@/components/PlacePicture";
 import type { Pin } from "@/data/atlas";
 import { pinColorClass, pinLabel } from "@/data/atlas";
 import { DayTripFromNear } from "@/components/DayTripFromNear";
@@ -354,14 +354,15 @@ function HomePlaceCard({
   reason: string;
   onSnooze: () => void;
 }) {
-  const art = placeArtUrl(placeArtFor({ category: pin.category, name: pin.name }));
   return (
     <article className="rise plain-card flex gap-3 p-2.5">
-      <img
-        src={art}
-        alt=""
+      <PlacePicture
+        name={pin.name}
+        category={pin.category}
+        lat={pin.lat}
+        lon={pin.lon}
         decoding="async"
-        className="place-art art-dim h-[112px] w-[42%] shrink-0 rounded-[12px] object-cover"
+        className="h-[112px] w-[42%] shrink-0 rounded-[12px]"
       />
       <div className="flex min-w-0 flex-1 flex-col py-1 pr-1">
         <div className="flex items-start justify-between gap-2">

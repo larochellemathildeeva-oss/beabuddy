@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "@/components/icons";
-import { placeArtFor, placeArtUrl } from "@/lib/place-art";
+import { PlacePicture } from "@/components/PlacePicture";
 
 /** A place as the Recs screens pass it around: a search hit, a nearby find or a save. */
 export type RecsPlace = {
@@ -18,21 +18,29 @@ export type RecsPlace = {
   savedId?: string | undefined;
 };
 
-/** The painted picture for a place, dimmed in Dark like every painting. */
+/** A place's picture: its painting, or its Commons photo with "Real photos". */
 export function PlaceArt({
   place,
   className = "",
+  linked = false,
 }: {
-  place: { name?: string | null | undefined; category?: string | null | undefined };
+  place: {
+    name?: string | null | undefined;
+    category?: string | null | undefined;
+    lat?: number | null | undefined;
+    lon?: number | null | undefined;
+  };
   className?: string;
+  linked?: boolean;
 }) {
   return (
-    <img
-      src={placeArtUrl(placeArtFor({ category: place.category, name: place.name }))}
-      alt=""
-      loading="lazy"
-      draggable={false}
-      className={`place-art art-dim object-cover ${className}`}
+    <PlacePicture
+      name={place.name}
+      category={place.category}
+      lat={place.lat}
+      lon={place.lon}
+      className={className}
+      linked={linked}
     />
   );
 }

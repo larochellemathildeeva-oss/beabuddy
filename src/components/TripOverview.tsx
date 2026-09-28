@@ -16,7 +16,7 @@ import {
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { bookingKind, type BookingKind } from "@/lib/trip-overview";
-import { placeArtFor, placeArtUrl } from "@/lib/place-art";
+import { PlacePicture } from "@/components/PlacePicture";
 import { timeForRail } from "@/lib/timeline-kind";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 import type { PrepTab } from "@/components/TripPrep";
@@ -197,12 +197,12 @@ export function TripOverview({
                     >
                       {n}
                     </span>
-                    <img
-                      src={placeArtUrl(
-                        placeArtFor({ category: item.kind, kind: item.kind, name: item.title }),
-                      )}
-                      alt=""
-                      className="place-art art-dim h-14 w-[72px] shrink-0 rounded-[12px] object-cover"
+                    <PlacePicture
+                      name={item.title}
+                      kind={item.kind}
+                      lat={item.lat}
+                      lon={item.lon}
+                      className="h-14 w-[72px] shrink-0 rounded-[12px]"
                     />
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 block font-display text-[18px] leading-tight">
