@@ -15,7 +15,6 @@
  * Pure string building, so it is tested without a browser. Every value is
  * escaped: titles and notes are the traveller's own text.
  */
-import { mapsPlaceUrl } from "./direction-stops.ts";
 import { formatTimelineDayLabel, groupTimelineByDay } from "./timeline-groups.ts";
 
 export type PrintRow = {
@@ -93,7 +92,10 @@ function locationHtml(row: PrintRow): string {
   if (!hasPin(row)) {
     return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>`;
   }
-  const url = mapsPlaceUrl(row.title, row, address ?? null);
+  // The link opens the pin itself, not a search by name: it is there to
+  // check that point, and a search could land on the right place and hide
+  // a wrong pin.
+  const url = `https://www.google.com/maps/search/?api=1&query=${row.lat},${row.lon}`;
   return `${where}<div class="pin">Map pin: <a href="${escapeHtml(url)}">${pinText(row.lat, row.lon)}</a></div>`;
 }
 
