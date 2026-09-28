@@ -1,5 +1,5 @@
 import { useEffect, useState, type RefObject } from "react";
-import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Coins } from "@/components/icons";
 import { ALL_DAYS, type DayChip, type DayChoice } from "@/lib/trip-days";
 import { dayTitle } from "@/components/day/stop-words";
 
@@ -28,12 +28,15 @@ export function StickyDayBar({
   value,
   onChange,
   anchor,
+  onCurrency,
 }: {
   chips: DayChip[];
   value: DayChoice;
   onChange: (next: DayChoice) => void;
   /** The day cards: the bar shows once they are out of sight. */
   anchor: RefObject<HTMLElement | null>;
+  /** Opens the currency sheet, so a price can be checked mid-day without scrolling up. */
+  onCurrency?: () => void;
 }) {
   const [shown, setShown] = useState(false);
   const [reading, setReading] = useState<string | null>(null);
@@ -148,6 +151,18 @@ export function StickyDayBar({
         >
           <ChevronRight className="size-5" aria-hidden />
         </button>
+        {onCurrency ? (
+          <button
+            type="button"
+            onClick={onCurrency}
+            tabIndex={shown ? 0 : -1}
+            aria-label="Currency"
+            title="Convert prices into your money"
+            className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-primary"
+          >
+            <Coins className="size-4" aria-hidden />
+          </button>
+        ) : null}
       </div>
     </div>
   );

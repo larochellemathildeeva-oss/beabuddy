@@ -129,6 +129,12 @@ export function useRates() {
     [home, table],
   );
 
+  /** Every currency today's table can convert, home included. */
+  const currencies = useMemo(
+    () => Array.from(new Set([home, ...Object.keys(table?.rates ?? {})])).sort(),
+    [home, table],
+  );
+
   return useMemo(
     () => ({
       home,
@@ -137,10 +143,11 @@ export function useRates() {
       convertTo,
       format,
       canConvert,
+      currencies,
       ready: !!table,
       error,
       asOf: table?.date ?? null,
     }),
-    [home, setHomeCurrency, convert, convertTo, format, canConvert, table, error],
+    [home, setHomeCurrency, convert, convertTo, format, canConvert, currencies, table, error],
   );
 }
