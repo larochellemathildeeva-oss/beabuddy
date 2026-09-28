@@ -402,3 +402,28 @@ test("tidyImportedRow: the street leaves the title, a repeated note goes, a nigh
   assert.equal(curry.title, "Curry 36 - currywurst");
   assert.equal(curry.address, null);
 });
+
+test("afterJourney: landing at an airport starts afresh", () => {
+  assert.equal(
+    afterJourney(
+      { detail: "check-in" },
+      { kind: "activity", title: "Kansai International Airport", detail: "arrival" },
+    ),
+    true,
+  );
+  // The flight home after "airport arrival" starts afresh too; it is found by name.
+  assert.equal(
+    afterJourney(
+      { detail: "flight departure" },
+      { kind: "activity", title: "Kansai International Airport", detail: "airport arrival" },
+    ),
+    true,
+  );
+  assert.equal(
+    afterJourney(
+      { detail: null },
+      { kind: "sight", title: "Airport Museum", detail: "aviation exhibits" },
+    ),
+    false,
+  );
+});

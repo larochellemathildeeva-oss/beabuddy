@@ -312,3 +312,20 @@ test("an address found without its number is a district, not the address", () =>
   });
   assert.notEqual(german.confidence, "low");
 });
+
+test("a station named for its town is not another station in that town", () => {
+  const tennoji = scoreMatch({
+    title: "Osaka Station",
+    label: "Tennoji Station, Abeno Ward, Osaka, 545-0052, Japan",
+    category: "railway",
+    kind: "station",
+  });
+  assert.equal(tennoji.confidence, "low");
+  const umeda = scoreMatch({
+    title: "Osaka Station",
+    label: "Osaka Station, Umeda, Kita Ward, Osaka, Japan",
+    category: "railway",
+    kind: "station",
+  });
+  assert.equal(umeda.confidence, "high");
+});
