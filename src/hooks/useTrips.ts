@@ -3,7 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { chronologicalSlot, insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
+import { chronologicalSlot, insertAfter, nextPosition } from "@/lib/timeline-order";
 import { clockMinutes } from "@/lib/companion";
 import { isMissingColumn } from "@/lib/bookings";
 import { insideNote, readInside, type InsideEntry } from "@/lib/inside-list";
@@ -13,7 +13,6 @@ import {
   type DatesStatus,
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
-import { isSavedDirectionItem } from "@/lib/direction-stops";
 import { directionSource } from "@/lib/timeline-directions";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 
@@ -977,44 +976,9 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   );
 
   /**
-   * Move a saved entry up or down within its day.
-   *
-   * A straight swap of positions, the same way trip_stops does it. Crossing a
-   * day boundary is deliberately not possible here: rows sort by day first, so
-   * the swap would not move anything you can see. Changing the day is its own
-   * control.
+   * Write new days, times and places in the list, for Optimize and for
+   * moving stops (`stop-move.ts` works out which rows change).
    */
-  const moveItem = useCallback(
-    async (id: string, direction: -1 | 1) => {
-      const tripId2 = tripIdRef.current;
-      if (!tripId2) throw new Error("Open a trip first");
-      const current = items.find((item) => item.id === id);
-      // Saved walks and drives are drawn between stops, not as stops, so a
-      // move steps over them — swapping with one would look like no move.
-      const swapWith = neighbourInDay(
-        items.filter((item) => !isSavedDirectionItem(item)),
-        id,
-        direction,
-      );
-      if (!current || !swapWith) return;
-      const authorId = await liveUserId(me.id);
-      await Promise.all([
-        supabase
-          .from("itinerary_items")
-          .update({ position: swapWith.position, updated_by: authorId })
-          .eq("id", current.id)
-          .eq("trip_id", tripId2),
-        supabase
-          .from("itinerary_items")
-          .update({ position: current.position, updated_by: authorId })
-          .eq("id", swapWith.id)
-          .eq("trip_id", tripId2),
-      ]);
-      await load();
-    },
-    [items, me.id, load],
-  );
-
   const applySchedule = useCallback(
     async (
       updates: Array<{
@@ -1071,7 +1035,6 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     updateItem,
     setProgress,
     insertItemAfter,
-    moveItem,
     removeItem,
     setEditing,
     reload: load,
