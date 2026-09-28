@@ -4,6 +4,7 @@ import {
   Car,
   Footprints,
   Landmark,
+  Plant,
   Plane,
   Sparkles,
   StickyNote,
@@ -13,14 +14,14 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { isBooked } from "@/lib/bookings";
 import { PlacePicture } from "@/components/PlacePicture";
 import { seqClass } from "@/components/day/stop-words";
-import { glyphLabel, timelineGlyph, type TimelineGlyph } from "@/lib/timeline-kind";
+import { glyphChipLabel, timelineGlyph, type TimelineGlyph } from "@/lib/timeline-kind";
 
 const GLYPH_ICON: Record<TimelineGlyph, typeof Bed> = {
   meal: Utensils,
   lodging: Bed,
   transport: Plane,
   sight: Landmark,
-  walk: Footprints,
+  walk: Plant,
   note: StickyNote,
   activity: Sparkles,
 };
@@ -74,25 +75,58 @@ export function StopDisc({
   );
 }
 
-/**
- * The stop's kind as a chip — the app keeps one kind per stop — and Booked
- * when it is. Small pastel pills, as in the master.
- */
-export function StopChips({
+/** The stop's kind as its icon alone, in the chip's colour where it sits. */
+export function KindIcon({
   item,
-  extra,
+  className = "size-4",
 }: {
-  item: Pick<ItineraryRow, "kind" | "title" | "booked">;
-  extra?: ReactNode;
+  item: { kind?: string | null; title?: string | null };
+  className?: string;
+}) {
+  const Icon = GLYPH_ICON[timelineGlyph(item)];
+  return <Icon className={className} aria-hidden />;
+}
+
+/**
+ * The stop's kind as a chip, tinted by kind (`.kind-chip` in styles.css):
+ * food orange, culture violet, nature green. The app keeps one kind per stop.
+ */
+export function KindChip({
+  item,
+  className = "",
+}: {
+  item: { kind?: string | null; title?: string | null };
+  className?: string;
 }) {
   const glyph = timelineGlyph(item);
   const Icon = GLYPH_ICON[glyph];
   return (
-    <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-      <span className="tile-fill-2 inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[11.5px] font-medium">
-        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-        {glyphLabel(glyph)}
-      </span>
+    <span
+      className={`kind-chip kind-${glyph} inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium ${className}`}
+    >
+      <Icon className="size-3.5" aria-hidden />
+      {glyphChipLabel(glyph)}
+    </span>
+  );
+}
+
+/**
+ * The stop's kind as a chip, and Booked when it is. `before` sits ahead of
+ * them on the same line (the timeline card puts the stay there).
+ */
+export function StopChips({
+  item,
+  extra,
+  before,
+}: {
+  item: Pick<ItineraryRow, "kind" | "title" | "booked">;
+  extra?: ReactNode;
+  before?: ReactNode;
+}) {
+  return (
+    <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+      {before}
+      <KindChip item={item} />
       {isBooked(item) && (
         <span className="tile-fill-3 rounded-full border border-border/60 px-2 py-0.5 text-[11.5px] font-semibold text-nexttime">
           Booked

@@ -591,6 +591,25 @@
     filter: brightness(0.86) saturate(0.95);
   }
 
+  /* A stop's kind as a tinted chip: the tint is the kind's colour at a tenth,
+     so it reads on every theme; Dark lifts the colour so the text holds. */
+  .kind-chip {
+    color: var(--kind);
+    background-color: color-mix(in oklab, var(--kind) 11%, transparent);
+  }
+  .kind-meal { --kind: #d4551c; }
+  .kind-sight { --kind: #8a4fd1; }
+  .kind-walk { --kind: #2a8a55; }
+  .kind-lodging { --kind: #2f7bb0; }
+  .kind-transport { --kind: #a8730f; }
+  .kind-note,
+  .kind-activity { --kind: var(--color-muted-foreground); }
+  .dark .kind-meal { --kind: #f39a66; }
+  .dark .kind-sight { --kind: #b893ec; }
+  .dark .kind-walk { --kind: #6cc995; }
+  .dark .kind-lodging { --kind: #7db6e0; }
+  .dark .kind-transport { --kind: #e0b25a; }
+
   /* Just the colour, for a panel inside a card: the card's own surface in
      Calm and Dark, one of the pastels in Colorful. */
   .tile-fill-1,

@@ -285,6 +285,18 @@ export function mapsDirUrl(
 }
 
 /**
+ * Directions to one stop from wherever the phone is: Maps fills in the start
+ * from the traveller's own position, which is what "Directions" on a card means.
+ */
+export function mapsDirToUrl(
+  to: { title: string; lat?: number | null; lon?: number | null },
+  area: string,
+  mode: "walking" | "driving" | "transit" = "walking",
+): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
+}
+
+/**
  * A link that opens the place in whatever maps app the phone has.
  *
  * The "Map" link beside a timeline entry pointed at openstreetmap.org, which

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   TIMELINE_KINDS,
   glyphLabel,
+  kindChoiceLabel,
   normaliseKind,
   timeForRail,
   timelineGlyph,
@@ -137,5 +138,15 @@ describe("vaultCategory", () => {
     assert.equal(vaultCategory(timelineGlyph({ kind: "hotel" })), "Stay");
     assert.equal(vaultCategory(timelineGlyph({ kind: "museum" })), "Sight");
     assert.equal(vaultCategory(timelineGlyph({ kind: "activity" })), "Place");
+  });
+});
+
+describe("kindChoiceLabel", () => {
+  it("names every stored kind, bookings by their own", () => {
+    for (const kind of TIMELINE_KINDS) assert.ok(kindChoiceLabel(kind).length > 0);
+    assert.equal(kindChoiceLabel("meal"), "Food & local life");
+    assert.equal(kindChoiceLabel("sight"), "Culture & history");
+    assert.equal(kindChoiceLabel("hotel"), "Hotel");
+    assert.equal(kindChoiceLabel("lodging"), "Stay");
   });
 });
