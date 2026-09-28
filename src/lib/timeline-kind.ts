@@ -188,3 +188,31 @@ export function vaultCategory(glyph: TimelineGlyph): string {
   };
   return byGlyph[glyph] ?? "Place";
 }
+
+/**
+ * The kind as a card's chip says it: what the stop is for, not a data type.
+ * The spoken `glyphLabel` stays short; these are the longer names the chips
+ * and the kind picker on the back of a card show.
+ */
+export function glyphChipLabel(glyph: TimelineGlyph): string {
+  const labels: Record<TimelineGlyph, string> = {
+    meal: "Food & local life",
+    lodging: "Stay",
+    transport: "Getting around",
+    sight: "Culture & history",
+    walk: "Nature & walks",
+    note: "Note",
+    activity: "Activity",
+  };
+  return labels[glyph];
+}
+
+/** A stored kind by its chip name, for the kind picker on the back of a card. */
+export function kindChoiceLabel(kind: TimelineKind): string {
+  const bookings: Partial<Record<TimelineKind, string>> = {
+    flight: "Flight",
+    hotel: "Hotel",
+    reservation: "Reservation",
+  };
+  return bookings[kind] ?? glyphChipLabel(timelineGlyph({ kind }));
+}

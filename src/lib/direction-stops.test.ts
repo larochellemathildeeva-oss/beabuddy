@@ -5,6 +5,7 @@ import {
   hasCoords,
   isSavedDirectionItem,
   looksLikeStreetAddress,
+  mapsDirToUrl,
   mapsDirUrl,
   mapsPlaceUrl,
   placeHintFromDetail,
@@ -274,4 +275,15 @@ test("mapsDirUrl can ask Maps for public transport", () => {
     "transit",
   );
   assert.ok(url.includes("travelmode=transit"));
+});
+
+test("mapsDirToUrl leaves the start to Maps and names the stop without coords", () => {
+  const placed = mapsDirToUrl({ title: "Mercado", lat: -12.15, lon: -44.99 }, "Barreiras");
+  assert.equal(
+    placed,
+    "https://www.google.com/maps/dir/?api=1&destination=-12.15,-44.99&travelmode=walking",
+  );
+  const named = mapsDirToUrl({ title: "Mercado" }, "Barreiras (BA)");
+  assert.ok(named.includes(`destination=${encodeURIComponent("Mercado, Barreiras")}`));
+  assert.ok(!named.includes("origin="));
 });

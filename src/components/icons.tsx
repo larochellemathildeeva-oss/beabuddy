@@ -138,6 +138,9 @@ import {
   ArrowBendUpRight as PhArrowBendUpRight,
   ArrowUUpLeft as PhArrowUUpLeft,
   FlagCheckered as PhFlagCheckered,
+  Hourglass as PhHourglass,
+  Plant as PhPlant,
+  PaperPlaneTilt as PhPaperPlaneTilt,
 } from "@phosphor-icons/react";
 
 export type LucideProps = Omit<ComponentPropsWithoutRef<"svg">, "ref"> & {
@@ -263,6 +266,9 @@ export const Wallet = icon(PhWallet, "Wallet");
 export const X = icon(PhX, "X");
 export const ImageIcon = Image;
 export const MapIcon = Map;
+export const Hourglass = icon(PhHourglass, "Hourglass");
+export const Send = icon(PhPaperPlaneTilt, "Send");
+export const Plant = icon(PhPlant, "Plant");
 export const RouteIcon = Route;
 export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;

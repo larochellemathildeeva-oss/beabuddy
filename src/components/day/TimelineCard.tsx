@@ -5,26 +5,29 @@ import {
   Car,
   Check,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
+  CalendarDays,
   Clock,
   FileText,
   CornerUpLeft,
   CornerUpRight,
   FlagArrive,
   Footprints,
+  Hourglass,
   MapIcon,
   MapPin,
   MapPinPlus,
   MoreHorizontal,
+  Pencil,
   PawPrint,
   ExternalLink,
   Plus,
+  Send,
   Ticket,
   Trash2,
   Undo2,
 } from "@/components/icons";
-import { StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
+import { KindChip, KindIcon, StopChips, StopDisc } from "@/components/day/stop-bits";
 import { toast } from "sonner";
 import {
   addInside,
@@ -36,7 +39,6 @@ import {
 } from "@/lib/inside-list";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
-import { TimelineGlyphMark } from "@/components/TimelineGlyph";
 import { SwipeRow } from "@/components/day/SwipeRow";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import { isBooked } from "@/lib/bookings";
@@ -44,12 +46,19 @@ import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone, leaveBy } from "@/lib/companion";
 import type { RouteLeg } from "@/lib/directions.functions";
-import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
+import { mapsDirToUrl, mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import type { ParsedPlace } from "@/lib/places.functions";
 import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
-import { timeForRail } from "@/lib/timeline-kind";
+import {
+  kindChoiceLabel,
+  normaliseKind,
+  TIMELINE_KINDS,
+  timeForRail,
+  timelineGlyph,
+  type TimelineKind,
+} from "@/lib/timeline-kind";
 import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini-map";
 
 /**
@@ -200,7 +209,7 @@ export function TimelineEntry({
         if (e.target.value.trim() && e.target.value !== item.title)
           onUpdate({ title: e.target.value.trim() });
       }}
-      className="w-full min-w-0 rounded-md bg-transparent text-[15.5px] font-semibold leading-snug outline-none focus:bg-elevated"
+      className="w-full min-w-0 bg-transparent font-display text-[22px] leading-snug outline-none"
     />
   );
 
@@ -226,110 +235,132 @@ export function TimelineEntry({
     if (!open) onEdit(null);
   };
 
-  // The front, as in the master: a square picture, the name in the serif,
-  // how long, the kind and Booked as chips, and ⋯ and › on the right. The
-  // time and the numbered disc sit on the rail to the left (see the <li>).
-  // Tapping the name or › turns the card over to edit it; ⋯ opens the quick
-  // actions (done, save, map, booking, delete) that the swipe also gives.
+  // The front: the name in the serif; how long and the kind on one line; the
+  // note; where, with a pin; and Map, Save and Directions along the bottom.
+  // The time and the numbered disc sit on the rail to the left (see the <li>).
+  // Tapping the name turns the card over to edit it; ⋯ opens the rest (done,
+  // booking, order, delete) that the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
   const roundIcon =
-    "tap-44 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-colors";
+    "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-colors";
+  const pillButton =
+    "inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[13.5px] font-medium transition-colors disabled:opacity-40";
+  const softButton = `${pillButton} bg-primary-soft text-primary`;
+  const lineButton = `${pillButton} border border-border bg-card text-foreground`;
+  const dangerButton = `${pillButton} border border-destructive/20 bg-destructive/10 text-destructive`;
   const quickButton =
     "inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-muted-foreground disabled:opacity-40";
+
+  const mapButton = (
+    <button
+      type="button"
+      onClick={onLocate}
+      aria-label={`Locate ${item.title} on the map`}
+      className={softButton}
+    >
+      <MapIcon className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+      Map
+    </button>
+  );
+  const saveButton = (
+    <button
+      type="button"
+      onClick={keep}
+      disabled={kept}
+      aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+      className={`${lineButton} ${kept ? "text-primary" : ""}`}
+    >
+      <Bookmark
+        className="hidden size-[18px] shrink-0 @[17rem]:inline"
+        weight={kept ? "fill" : "regular"}
+        aria-hidden
+      />
+      {kept ? "Saved" : "Save"}
+    </button>
+  );
+  const canLocate = Boolean(onLocate) && placed;
+  const canDirect = placed || Boolean(item.address);
+
   const front = (
     <article
-      className={`rounded-2xl bg-card p-1.5 transition-colors ${current ? "bg-primary-soft" : ""}`}
+      className={`rounded-2xl border border-border/70 bg-card p-3 transition-colors ${current ? "bg-primary-soft" : ""}`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         <button
           type="button"
           onClick={() => flip(true)}
           aria-expanded={false}
           aria-label={`${rail ? `${rail}, ` : ""}${item.title}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
-          className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+          className="block min-w-0 flex-1 text-left"
         >
-          <StopArt
-            item={item}
-            className={`size-16 rounded-xl ${done ? "opacity-60 grayscale-[35%]" : ""}`}
-          />
-          <span className="block min-w-0 flex-1">
-            {parentTitle ? (
-              <span className="mb-0.5 block truncate text-[10.5px] font-bold uppercase tracking-wide text-primary">
-                In {parentTitle}
-              </span>
-            ) : null}
-            {showDay && item.day_date ? (
-              <span className="block text-[11px] text-muted-foreground">{item.day_date}</span>
-            ) : null}
-            <span
-              className={`block break-words font-display text-[19px] leading-[1.1] ${
-                done ? "text-muted-foreground line-through" : ""
-              }`}
-            >
-              {item.title}
+          {parentTitle ? (
+            <span className="mb-0.5 block truncate text-[10.5px] font-bold uppercase tracking-wide text-primary">
+              In {parentTitle}
             </span>
-            {item.planned_stay_minutes ? (
-              <span className="mt-0.5 flex items-center gap-1 text-[12.5px] text-muted-foreground">
-                <Clock className="size-3.5" aria-hidden />
-                {stayLabel(item.planned_stay_minutes)}
-              </span>
-            ) : null}
-            {detail ? (
-              <span className="mt-0.5 line-clamp-2 block break-words text-[12px] leading-snug text-muted-foreground">
-                {detail}
-              </span>
-            ) : null}
-            {whereLine ? (
-              <span className="mt-0.5 line-clamp-1 block break-words text-[12px] leading-snug text-muted-foreground">
-                {whereLine}
-              </span>
-            ) : null}
-            {flat && inside.length > 0 ? (
-              <span className="mt-0.5 line-clamp-2 block break-words text-[12px] leading-snug text-muted-foreground">
-                Inside:{" "}
-                {inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
-              </span>
-            ) : null}
-            {stray ? (
-              <span className="mt-1 block text-[12px] font-semibold text-destructive">
-                ⚠ Pinned far from the rest of this trip. Tap to check the place.
-              </span>
-            ) : null}
-            <StopChips
-              item={item}
-              extra={
-                <>
-                  {booked && item.booking_ref ? (
-                    <span className="text-[11.5px] text-muted-foreground">{item.booking_ref}</span>
-                  ) : null}
-                  {current && (
-                    <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
-                      Current
-                    </span>
-                  )}
-                  {done && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-nexttime/10 px-2 py-0.5 text-[11px] font-bold text-nexttime">
-                      <Check className="size-3" strokeWidth={3} aria-hidden />
-                      Completed
-                    </span>
-                  )}
-                </>
-              }
-            />
-          </span>
-        </button>
-        <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
-          {linkedDocuments > 0 && onOpenDocuments ? (
-            <button
-              type="button"
-              onClick={onOpenDocuments}
-              aria-label={`${linkedDocuments === 1 ? "Booking document" : `${linkedDocuments} booking documents`} for ${item.title}`}
-              className="tap-44 grid size-8 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary"
-            >
-              <FileText className="size-4" aria-hidden />
-            </button>
           ) : null}
+          {showDay && item.day_date ? (
+            <span className="block text-[11px] text-muted-foreground">{item.day_date}</span>
+          ) : null}
+          <span
+            className={`block break-words font-display text-[20px] leading-[1.15] ${
+              done ? "text-muted-foreground line-through" : ""
+            }`}
+          >
+            {item.title}
+          </span>
+          <StopChips
+            item={item}
+            before={
+              item.planned_stay_minutes ? (
+                <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                  <Clock className="size-4" aria-hidden />
+                  {stayLabel(item.planned_stay_minutes)}
+                </span>
+              ) : null
+            }
+            extra={
+              <>
+                {booked && item.booking_ref ? (
+                  <span className="text-[11.5px] text-muted-foreground">{item.booking_ref}</span>
+                ) : null}
+                {current && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
+                    Current
+                  </span>
+                )}
+                {done && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-nexttime/10 px-2 py-0.5 text-[11px] font-bold text-nexttime">
+                    <Check className="size-3" strokeWidth={3} aria-hidden />
+                    Completed
+                  </span>
+                )}
+              </>
+            }
+          />
+          {detail ? (
+            <span className="mt-1.5 line-clamp-2 block break-words text-[13.5px] leading-snug text-muted-foreground">
+              {detail}
+            </span>
+          ) : null}
+          {whereLine ? (
+            <span className="mt-1 flex items-start gap-1.5 text-[12.5px] leading-snug text-muted-foreground">
+              <MapPin className="mt-px size-4 shrink-0" aria-hidden />
+              <span className="line-clamp-1 break-words">{whereLine}</span>
+            </span>
+          ) : null}
+          {flat && inside.length > 0 ? (
+            <span className="mt-0.5 line-clamp-2 block break-words text-[12px] leading-snug text-muted-foreground">
+              Inside: {inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
+            </span>
+          ) : null}
+          {stray ? (
+            <span className="mt-1 block text-[12px] font-semibold text-destructive">
+              ⚠ Pinned far from the rest of this trip. Tap to check the place.
+            </span>
+          ) : null}
+        </button>
+        <div className="flex shrink-0 flex-col items-center gap-1">
           <button
             type="button"
             onClick={() => setActionsOpen((o) => !o)}
@@ -339,32 +370,64 @@ export function TimelineEntry({
           >
             <MoreHorizontal className="size-4" aria-hidden />
           </button>
-          <button
-            type="button"
-            onClick={() => flip(true)}
-            aria-label={`Open ${item.title}`}
-            className="tap-44 grid size-8 place-items-center text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
+          {linkedDocuments > 0 && onOpenDocuments ? (
+            <button
+              type="button"
+              onClick={onOpenDocuments}
+              aria-label={`${linkedDocuments === 1 ? "Booking document" : `${linkedDocuments} booking documents`} for ${item.title}`}
+              className="tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
+            >
+              <FileText className="size-4" aria-hidden />
+            </button>
+          ) : null}
         </div>
       </div>
       {pill && (
-        <div className="pl-[74px]">
-          <InsidePill
-            label={pill}
-            entries={inside}
-            doneCount={insideDone}
-            open={insideOpen}
-            onToggleOpen={() => setInsideOpen((o) => !o)}
-            {...(canEditInside && onInside
-              ? { onTick: (index: number) => onInside(toggleInside(inside, index)) }
-              : {})}
-          />
+        <InsidePill
+          label={pill}
+          entries={inside}
+          doneCount={insideDone}
+          open={insideOpen}
+          onToggleOpen={() => setInsideOpen((o) => !o)}
+          {...(canEditInside && onInside
+            ? { onTick: (index: number) => onInside(toggleInside(inside, index)) }
+            : {})}
+        />
+      )}
+      {(canLocate || canKeep || canDirect) && (
+        <div className="@container mt-2.5 grid grid-cols-3 gap-2">
+          {canLocate ? mapButton : <span />}
+          {canKeep ? saveButton : <span />}
+          {canDirect ? (
+            <a
+              href={mapsDirToUrl(item, near ?? "")}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Directions to ${item.title} in Maps`}
+              className={lineButton}
+            >
+              <Send className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              Directions
+            </a>
+          ) : (
+            <span />
+          )}
         </div>
       )}
       {actionsOpen && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setActionsOpen(false);
+              flip(true);
+            }}
+            aria-label={`Edit ${item.title}`}
+            className={quickButton}
+          >
+            <Pencil className="size-4" aria-hidden />
+            Edit
+          </button>
           <button
             type="button"
             onClick={onToggleDone}
@@ -375,29 +438,6 @@ export function TimelineEntry({
             <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
             {done ? "Done" : "Mark done"}
           </button>
-          {canKeep && (
-            <button
-              type="button"
-              onClick={keep}
-              disabled={kept}
-              aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
-              className={`${quickButton} ${kept ? "text-primary" : ""}`}
-            >
-              <Bookmark className="size-4" fill={kept ? "currentColor" : "none"} aria-hidden />
-              {kept ? "Saved" : "Save"}
-            </button>
-          )}
-          {onLocate && placed && (
-            <button
-              type="button"
-              onClick={onLocate}
-              aria-label={`Locate ${item.title} on the map`}
-              className={quickButton}
-            >
-              <MapPin className="size-4" aria-hidden />
-              Map
-            </button>
-          )}
           {onSaveBooking && (
             <button
               type="button"
@@ -447,35 +487,138 @@ export function TimelineEntry({
     </article>
   );
 
-  const iconButton =
-    "inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border bg-card px-2.5 text-[12.5px] font-semibold text-muted-foreground disabled:opacity-40";
+  const fieldPill =
+    "min-h-10 min-w-0 max-w-[12rem] flex-1 rounded-full border border-border bg-card px-3 text-[15px] text-foreground";
+  const rowLabel =
+    "flex w-[4.75rem] shrink-0 items-center gap-1.5 text-[14px] text-muted-foreground";
 
   // The back: every change to this stop, and its booking, in one place.
   const backSide = (
-    <article className="card-flip rounded-2xl border border-primary/30 bg-card p-3 shadow-sm">
+    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3.5 shadow-sm">
       <div className="flex min-w-0 items-center gap-2">
         {number != null && (
-          <span className="rounded-md bg-elevated px-1.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+          <span className="grid h-9 min-w-9 place-items-center rounded-full bg-elevated px-2 text-[13px] font-semibold tabular-nums text-muted-foreground">
             #{number}
           </span>
         )}
-        <TimelineGlyphMark item={item} />
-        <span className="label-caps">Edit stop</span>
+        <span
+          className={`kind-chip kind-${timelineGlyph(item)} grid size-9 place-items-center rounded-full`}
+        >
+          <KindIcon item={item} />
+        </span>
+        <span className="label-caps whitespace-nowrap">Edit stop</span>
         {!editing && (
           <button
             type="button"
             onClick={() => flip(false)}
             aria-label={`Close ${item.title}`}
-            className="ml-auto inline-flex min-h-9 items-center rounded-xl bg-foreground px-3 text-[12.5px] font-bold text-background"
+            className="ml-auto inline-flex min-h-10 items-center rounded-full bg-primary px-5 text-[14px] font-bold text-primary-foreground"
           >
             Done
           </button>
         )}
       </div>
 
-      <div className="mt-2 space-y-1.5">
-        <div className="rounded-lg border border-border bg-elevated px-2 py-1.5">{titleInput}</div>
-        {detailInput}
+      <div className="mt-3 space-y-2.5">
+        <div className="rounded-2xl border border-border bg-elevated px-4 py-2">{titleInput}</div>
+        <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <label className="flex items-center gap-2">
+          <span className={rowLabel}>
+            <CalendarDays className="size-5" aria-hidden />
+            Date
+          </span>
+          <input
+            type="date"
+            value={item.day_date ?? ""}
+            aria-label={`Day for ${item.title}`}
+            {...(tripStart ? { min: tripStart } : {})}
+            {...(tripEnd ? { max: tripEnd } : {})}
+            onChange={(e) => onUpdate({ day_date: e.target.value || null })}
+            className={fieldPill}
+          />
+        </label>
+        <label className="flex items-center gap-2">
+          <span className={rowLabel}>
+            <Clock className="size-5" aria-hidden />
+            Time
+          </span>
+          <input
+            type="time"
+            value={rail}
+            aria-label={`Time for ${item.title}`}
+            onChange={(e) => onUpdate({ time_label: e.target.value || null })}
+            className={fieldPill}
+          />
+        </label>
+        {/* How long the plan allows here. Companion counts it down once you
+            tap "I'm here"; left empty, it only says how long it has been. */}
+        <label className="flex items-center gap-2">
+          <span className={rowLabel}>
+            <Hourglass className="size-5" aria-hidden />
+            Stay
+          </span>
+          <select
+            value={item.planned_stay_minutes ?? ""}
+            aria-label={`How long to stay at ${item.title}`}
+            onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
+            className={fieldPill}
+          >
+            <option value="">—</option>
+            {stayChoices(item.planned_stay_minutes).map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {stayLabel(minutes)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-start gap-2">
+          <span className={`${rowLabel} min-h-10`}>
+            <MapPin className="size-5" aria-hidden />
+            Address
+          </span>
+          <p
+            className={`min-w-0 flex-1 break-words rounded-2xl border border-border bg-card px-4 py-2 text-[14.5px] leading-snug ${
+              item.address ? "text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            {item.address || "No place yet"}
+          </p>
+        </div>
+        {stray && (
+          <p className="text-[12.5px] font-semibold text-destructive">
+            ⚠ This pin is far from the rest of the trip, so it may be a different place with the
+            same name. Use “Change place” to pick the right one.
+          </p>
+        )}
+        <div className="@container grid grid-cols-2 gap-2">
+          <TimelinePlaceEditor
+            item={item}
+            {...(near ? { near } : {})}
+            {...(center ? { center } : {})}
+            buttonClassName={softButton}
+            onPick={(place) => onUpdate(placePatchForSavedRow(place))}
+          />
+          {placed && (
+            <a
+              href={mapsPlaceUrl(item.title, item, item.address)}
+              target="_blank"
+              rel="noreferrer"
+              className={lineButton}
+            >
+              <Send className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              Open in Maps
+            </a>
+          )}
+        </div>
+        <label className="flex items-start gap-2">
+          <span className={`${rowLabel} min-h-10`}>Notes</span>
+          <span className="block min-w-0 flex-1 rounded-2xl border border-border bg-card px-4 py-2">
+            {detailInput}
+          </span>
+        </label>
       </div>
 
       {/* Hours, website and phone for a stop on the map, and a warning when
@@ -490,6 +633,12 @@ export function TimelineEntry({
           auto
         />
       </div>
+
+      {canEditInside && onInside && (
+        <div className="mt-2">
+          <InsideEditor entries={inside} onChange={onInside} />
+        </div>
+      )}
 
       {onFold && foldInto && (
         <div className="mt-2 rounded-lg border border-primary/25 bg-primary/5 px-2.5 py-2">
@@ -524,119 +673,44 @@ export function TimelineEntry({
         </button>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-elevated p-2">
-        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          Day
-          <input
-            type="date"
-            value={item.day_date ?? ""}
-            aria-label={`Day for ${item.title}`}
-            {...(tripStart ? { min: tripStart } : {})}
-            {...(tripEnd ? { max: tripEnd } : {})}
-            onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-          />
-        </label>
-        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          Time
-          <input
-            type="time"
-            value={rail}
-            aria-label={`Time for ${item.title}`}
-            onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-          />
-        </label>
-        {/* How long the plan allows here. Companion counts it down once you
-            tap "I'm here"; left empty, it only says how long it has been. */}
-        <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-          Stay
-          <select
-            value={item.planned_stay_minutes ?? ""}
-            aria-label={`How long to stay at ${item.title}`}
-            onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
-            className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] text-foreground"
-          >
-            <option value="">—</option>
-            {stayChoices(item.planned_stay_minutes).map((minutes) => (
-              <option key={minutes} value={minutes}>
-                {stayLabel(minutes)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {stray && (
-          <p className="w-full text-[12.5px] font-semibold text-destructive">
-            ⚠ This pin is far from the rest of the trip, so it may be a different place with the
-            same name. Use “Change place” to pick the right one.
-          </p>
-        )}
-        <TimelinePlaceEditor
-          item={item}
-          {...(near ? { near } : {})}
-          {...(center ? { center } : {})}
-          {...(center ? { center } : {})}
-          onPick={(place) => onUpdate(placePatchForSavedRow(place))}
-        />
-        {canEditInside && onInside && <InsideEditor entries={inside} onChange={onInside} />}
-        {placed && (
-          <a
-            href={mapsPlaceUrl(item.title, item, item.address)}
-            target="_blank"
-            rel="noreferrer"
-            className="text-[12px] font-semibold text-primary underline"
-          >
-            Open in Maps
-          </a>
-        )}
-      </div>
-
       {/* The same actions the swipe gives, and the rest, with their names. */}
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onToggleDone}
-          aria-pressed={done}
-          aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-          className={`${iconButton} ${done ? "border-nexttime/40 text-nexttime" : ""}`}
-        >
-          <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
-          {done ? "Done" : "Mark done"}
-        </button>
+      <div className="@container mt-3 grid grid-cols-6 gap-2 border-t border-border pt-3">
+        {canLocate && <span className="col-span-2 grid">{mapButton}</span>}
+        {canKeep && <span className="col-span-2 grid">{saveButton}</span>}
         {onSaveBooking && (
           <button
             type="button"
             onClick={() => setBookingOpen(true)}
             aria-label={`Booking for ${item.title}`}
-            className={`${iconButton} ${booked ? "text-nexttime" : ""}`}
+            className={`${lineButton} col-span-2 ${booked ? "text-nexttime" : ""}`}
           >
-            <Ticket className="size-4" aria-hidden />
+            <Ticket className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
             Booking
           </button>
         )}
-        {onLocate && placed && (
-          <button
-            type="button"
-            onClick={onLocate}
-            aria-label={`Locate ${item.title} on the map`}
-            className={iconButton}
-          >
-            <MapPin className="size-4" aria-hidden />
-            Map
-          </button>
-        )}
-        {canKeep && (
-          <button
-            type="button"
-            onClick={keep}
-            disabled={kept}
-            aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
-            className={`${iconButton} ${kept ? "text-primary" : ""}`}
-          >
-            <Bookmark className="size-4" fill={kept ? "currentColor" : "none"} aria-hidden />
-            {kept ? "Saved" : "Save"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onToggleDone}
+          aria-pressed={done}
+          aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
+          className={`${lineButton} col-span-3 ${done ? "border-nexttime/40 text-nexttime" : ""}`}
+        >
+          <Check
+            className="hidden size-[18px] shrink-0 @[17rem]:inline text-nexttime"
+            strokeWidth={done ? 3 : 2}
+            aria-hidden
+          />
+          {done ? "Done" : "Mark done"}
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Delete ${item.title}`}
+          className={`${dangerButton} col-span-3`}
+        >
+          <Trash2 className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+          Delete
+        </button>
         {onMove && (
           <>
             <button
@@ -644,30 +718,23 @@ export function TimelineEntry({
               disabled={!canMoveUp}
               onClick={() => onMove(-1)}
               aria-label={`Move ${item.title} earlier`}
-              className={iconButton}
+              className={`${lineButton} col-span-3`}
             >
-              <ChevronUp className="size-4" aria-hidden />
+              <ChevronUp className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              Earlier
             </button>
             <button
               type="button"
               disabled={!canMoveDown}
               onClick={() => onMove(1)}
               aria-label={`Move ${item.title} later`}
-              className={iconButton}
+              className={`${lineButton} col-span-3`}
             >
-              <ChevronDown className="size-4" aria-hidden />
+              <ChevronDown className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
+              Later
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Delete ${item.title}`}
-          className={`${iconButton} ml-auto text-destructive`}
-        >
-          <Trash2 className="size-4" aria-hidden />
-          Delete
-        </button>
       </div>
     </article>
   );
@@ -724,6 +791,41 @@ export function TimelineEntry({
         />
       )}
     </li>
+  );
+}
+
+/**
+ * The kind as its chip, and a picker over it: tapping opens the stored kinds
+ * by their chip names. The chip is what the front of the card shows.
+ */
+function KindPicker({
+  item,
+  onPick,
+}: {
+  item: Pick<ItineraryRow, "kind" | "title">;
+  onPick: (kind: TimelineKind) => void;
+}) {
+  const value = normaliseKind(item.kind);
+  return (
+    <label className="relative inline-flex items-center gap-1">
+      <KindChip item={item} className="min-h-9 pr-8 text-[14px]" />
+      <ChevronDown
+        className="pointer-events-none absolute right-2.5 size-4 text-muted-foreground"
+        aria-hidden
+      />
+      <select
+        value={value}
+        aria-label={`Kind of stop for ${item.title}`}
+        onChange={(e) => onPick(e.target.value as TimelineKind)}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {TIMELINE_KINDS.map((kind) => (
+          <option key={kind} value={kind}>
+            {kindChoiceLabel(kind)}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
@@ -888,12 +990,14 @@ function TimelinePlaceEditor({
   item,
   near,
   center,
+  buttonClassName,
   onPick,
 }: {
   item: ItineraryRow;
   near?: string | undefined;
   /** The middle of the trip, for chain and category searches. */
   center?: { lat: number; lon: number } | null | undefined;
+  buttonClassName: string;
   onPick: (place: ParsedPlace) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -907,15 +1011,15 @@ function TimelinePlaceEditor({
           setQuery(item.title);
           setOpen(true);
         }}
-        className="flex items-center gap-1 rounded-lg border border-border bg-card px-2 py-1 text-[12px] text-muted-foreground"
+        className={buttonClassName}
       >
-        <MapPinPlus className="size-3.5" aria-hidden />
+        <MapPinPlus className="hidden size-[18px] shrink-0 @[17rem]:inline" aria-hidden />
         {item.address ? "Change place" : "Set place"}
       </button>
     );
 
   return (
-    <div className="w-full space-y-1.5">
+    <div className="col-span-2 w-full space-y-1.5">
       <PlaceSearchInput
         value={query}
         onChange={setQuery}
@@ -959,8 +1063,9 @@ function TimelineDetailInput({
   }, [detail, focused]);
 
   return (
-    <input
+    <textarea
       value={draft}
+      rows={2}
       onChange={(e) => setDraft(e.target.value)}
       placeholder="Add a detail"
       aria-label="Note"
@@ -975,7 +1080,7 @@ function TimelineDetailInput({
         setDraft(next);
         onCommit(next);
       }}
-      className="w-full min-w-0 truncate bg-transparent text-[13px] text-muted-foreground outline-none"
+      className="block w-full min-w-0 resize-none bg-transparent text-[14.5px] leading-snug text-foreground outline-none"
     />
   );
 }
