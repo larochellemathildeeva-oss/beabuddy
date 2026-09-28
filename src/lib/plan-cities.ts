@@ -8,6 +8,10 @@
  * days it is there, unless the trip already has it.
  *
  * A town only left from — the flight out of home — is not a destination.
+ *
+ * Rows often come back with no town at all (the model leaves it out when it
+ * is unsure), so a day with none is looked up once from one of its pins and
+ * the day's rows take that town (`dayPinsToLookUp`, `withDayTowns`).
  */
 
 export type PlanCityRow = {
@@ -32,7 +36,8 @@ function key(name: string): string {
 
 /**
  * The plan's towns the trip does not have yet, in the order the plan reaches
- * them. Empty for a plan in one town: nothing to add to a single-city trip.
+ * them. A plan in one town adds it only to a trip with no destinations yet:
+ * a single-city trip that already has its city needs nothing.
  */
 export function planCities(
   rows: readonly PlanCityRow[],
@@ -48,7 +53,7 @@ export function planCities(
     if (row.day_date) entry.dates.push(row.day_date);
     seen.set(k, entry);
   }
-  if (seen.size < 2) return [];
+  if (seen.size === 0 || (seen.size < 2 && existing.length > 0)) return [];
   const have = new Set(existing.map((c) => key(c.city)));
   const out: PlanCity[] = [];
   for (const [k, { name, dates }] of seen) {
@@ -65,4 +70,71 @@ export function planCities(
     });
   }
   return out;
+}
+
+export type PinnedRow = PlanCityRow & {
+  lat?: number | null | undefined;
+  lon?: number | null | undefined;
+};
+
+/**
+ * One pin for each day whose rows name no town, to look the town up from.
+ * A journey's pin is where it leaves from, so a sight or a stay is preferred.
+ */
+export function dayPinsToLookUp(
+  rows: readonly PinnedRow[],
+  max = 10,
+): { day: string; lat: number; lon: number }[] {
+  const named = new Set<string>();
+  const pins = new Map<string, { lat: number; lon: number; journey: boolean }>();
+  for (const row of rows) {
+    const day = row.day_date;
+    if (!day) continue;
+    if (row.city?.trim() && !JOURNEY_KINDS.has(row.kind)) named.add(day);
+    if (row.lat == null || row.lon == null) continue;
+    const journey = JOURNEY_KINDS.has(row.kind);
+    const had = pins.get(day);
+    if (!had || (had.journey && !journey)) pins.set(day, { lat: row.lat, lon: row.lon, journey });
+  }
+  return [...pins]
+    .filter(([day, pin]) => !named.has(day) && !pin.journey)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, max)
+    .map(([day, { lat, lon }]) => ({ day, lat, lon }));
+}
+
+/** Rows with no town take the town their day was found in ("Berlin, Germany"). */
+export function withDayTowns<T extends PlanCityRow>(
+  rows: readonly T[],
+  towns: Readonly<Record<string, string>>,
+): T[] {
+  return rows.map((row) =>
+    row.city?.trim() || !row.day_date || !towns[row.day_date]
+      ? row
+      : { ...row, city: towns[row.day_date] },
+  );
+}
+
+/**
+ * The plan's towns, looking up the days that name none from their pins.
+ * `lookup` is the reverse geocoder; a failed lookup only leaves its day out.
+ */
+export async function planTowns(
+  rows: readonly PinnedRow[],
+  existing: readonly { city: string }[],
+  lookup: (at: {
+    lat: number;
+    lon: number;
+  }) => Promise<{ city?: string | undefined; country?: string | undefined }>,
+): Promise<PlanCity[]> {
+  const pins = dayPinsToLookUp(rows);
+  const towns: Record<string, string> = {};
+  // One at a time: the keyless geocoder allows one request a second.
+  for (const { day, lat, lon } of pins) {
+    const found = await lookup({ lat, lon }).catch(
+      () => ({}) as { city?: string | undefined; country?: string | undefined },
+    );
+    if (found.city) towns[day] = [found.city, found.country].filter(Boolean).join(", ");
+  }
+  return planCities(withDayTowns(rows, towns), existing);
 }

@@ -83,7 +83,8 @@ import { toast } from "sonner";
 import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
-import { planCities, type PlanCity } from "@/lib/plan-cities";
+import { planTowns, type PlanCity } from "@/lib/plan-cities";
+import { lookupCoords } from "@/lib/places.functions";
 
 type NewItineraryItem = {
   day_date?: string;
@@ -314,6 +315,7 @@ function ImportPanel({
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
+  const lookup = useServerFn(lookupCoords);
   /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
   const named = cities.filter((c) => c.city.trim());
   const routeLine = named
@@ -805,14 +807,21 @@ function ImportPanel({
       }
       // A plan through several towns puts them on the trip's route, so the
       // days, the map and the directions look in the right one.
+      // A day whose stops name no town is looked up from one of its pins.
+      if (onAddCities) setSaveStatus("Adding the towns to the trip…");
       const newCities = onAddCities
-        ? planCities(
-            order.flatMap((i) => (rows[i] ? [rows[i]!] : [])),
+        ? await planTowns(
+            order.flatMap((i) => {
+              const row = rows[i];
+              if (!row) return [];
+              const pin = savedPin(i);
+              return [pin ? { ...row, lat: pin.lat, lon: pin.lon } : row];
+            }),
             cities,
-          )
+            (at) => lookup({ data: at }),
+          ).catch(() => [] as PlanCity[])
         : [];
       if (onAddCities && newCities.length > 0) {
-        setSaveStatus("Adding the towns to the trip…");
         try {
           await onAddCities(newCities);
           toast.success(

@@ -162,7 +162,9 @@ const instructions = (
     mode === "import"
       ? 'booked: true when the source marks the entry as booked, reserved, confirmed or ticketed ("BOOKED", "🎟️ booked", "✅", a confirmation number). false otherwise, including when it says no booking is needed.'
       : "booked: false.",
-    "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
+    mode === "build"
+      ? 'city: the town or city the stop is in, as "City, Country" ("Frankfurt, Germany"). Always set it: the trip learns its destinations from it.'
+      : 'city: the town or city the stop is in, as "City, Country" when the country is known, whenever the source says or the day and the stops around it make it plain (a day trip to Miyajima, a night in Kyoto). The trip learns its destinations from it. Null only when there is no way to tell.',
     "within: when the source names a place and then lists things to see in or at it (a museum's galleries, the monuments of a park, the halls of a temple), give each of those its own item and set within to the title of that earlier item, exactly as you wrote it. Keep their times only when the source gives them. Null for everything else.",
     'One item per thing to do. When one line joins different activities ("Visit Peace Memorial Museum / stroll along the Motoyasu River", "Museum, then lunch at Okonomimura"), return an item for each, in order; the line\'s time goes on the first, and the others get a time only when the source gives one. A list of places seen in one visit ("Peace Park / Atomic Bomb Dome / Cenotaph") stays one item.',
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',

@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { planCities } from "./plan-cities.ts";
+import { dayPinsToLookUp, planCities, withDayTowns } from "./plan-cities.ts";
 
 const row = (city: string | null, day_date: string, kind = "sight") => ({ city, day_date, kind });
 
@@ -25,6 +25,48 @@ test("towns the trip has already are left alone, however they are spelled", () =
   ]);
 });
 
-test("a plan in one town adds nothing", () => {
-  assert.deepEqual(planCities([row("Paris", "2026-10-12"), row(null, "2026-10-12")], []), []);
+test("a plan in one town adds nothing to a trip that has its city", () => {
+  assert.deepEqual(
+    planCities([row("Paris", "2026-10-12"), row(null, "2026-10-12")], [{ city: "Paris" }]),
+    [],
+  );
+});
+
+test("a plan in one town gives a trip with no destinations its city", () => {
+  assert.deepEqual(planCities([row("Paris", "2026-10-12"), row(null, "2026-10-13")], []), [
+    { city: "Paris", arrive_on: "2026-10-12", depart_on: "2026-10-12" },
+  ]);
+});
+
+test("a round trip names each town once, in the order it is reached", () => {
+  const rows = [
+    row("Berlin", "2026-10-01"),
+    row(null, "2026-10-02", "transport"),
+    row("Frankfurt", "2026-10-02"),
+    row("Berlin", "2026-10-03"),
+  ];
+  assert.deepEqual(
+    planCities(rows, []).map((c) => c.city),
+    ["Berlin", "Frankfurt"],
+  );
+});
+
+test("days with no town are looked up once, from a stop rather than a journey", () => {
+  const rows = [
+    { city: null, day_date: "2026-10-02", kind: "transport", lat: 52.5, lon: 13.4 },
+    { city: null, day_date: "2026-10-02", kind: "sight", lat: 50.1, lon: 8.7 },
+    { city: null, day_date: "2026-10-02", kind: "food", lat: 50.2, lon: 8.6 },
+    { city: "Berlin", day_date: "2026-10-01", kind: "sight", lat: 52.5, lon: 13.4 },
+    { city: null, day_date: "2026-10-03", kind: "flight", lat: 52.4, lon: 13.5 },
+    { city: null, day_date: null, kind: "sight", lat: 1, lon: 1 },
+  ];
+  assert.deepEqual(dayPinsToLookUp(rows), [{ day: "2026-10-02", lat: 50.1, lon: 8.7 }]);
+});
+
+test("rows with no town take their day's", () => {
+  const rows = [row(null, "2026-10-02"), row("Mainz", "2026-10-02"), row(null, "2026-10-03")];
+  assert.deepEqual(
+    withDayTowns(rows, { "2026-10-02": "Frankfurt, Germany" }).map((r) => r.city),
+    ["Frankfurt, Germany", "Mainz", null],
+  );
 });
