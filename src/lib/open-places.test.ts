@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   echoesName,
+  foundWhole,
   openPlacesNamed,
   openPlacesUrl,
   pickOpenPlace,
@@ -129,5 +130,25 @@ test("a street named after the place does not stop the second look", () => {
       placeType: "residential",
     }),
     false,
+  );
+});
+
+test("an amano elsewhere is not the whole of Sushidokoro Amano", () => {
+  const typed = "Sushidokoro Amano";
+  assert.equal(
+    foundWhole(typed, { name: "amano", address: "Toyokawa, Aichi Prefecture, Japan" }),
+    false,
+  );
+  assert.equal(
+    foundWhole(typed, { name: "Amano", address: "Linz, Upper Austria, Austria" }),
+    false,
+  );
+  assert.equal(
+    foundWhole(typed, { name: "Sushidokoro Amano", address: "Fukushima, Osaka, Japan" }),
+    true,
+  );
+  assert.equal(
+    foundWhole("sushido koro amano", { name: "Sushidokoro Amano", address: "Osaka" }),
+    true,
   );
 });

@@ -109,7 +109,7 @@ const NOISE = new Set([
   "explore",
 ]);
 
-function meaningfulWords(text: string): string[] {
+export function meaningfulWords(text: string): string[] {
   return foldAccents(text.toLowerCase())
     .split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/)
     .filter((word) => word.length > 1 && !NOISE.has(word));

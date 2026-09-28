@@ -56,7 +56,7 @@ import {
   type GeoProvider,
 } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
-import { echoesName, openPlacesNamed, type OpenPlace } from "@/lib/open-places";
+import { foundWhole, openPlacesNamed, type OpenPlace } from "@/lib/open-places";
 
 export type ParsedPlace = {
   name: string;
@@ -820,7 +820,7 @@ async function overturePlaces(
   pace: Pace,
   userId: string,
 ): Promise<ParsedPlace[]> {
-  if (found.some((place) => echoesName(name, place))) return [];
+  if (found.some((place) => foundWhole(name, place))) return [];
   const overture = await import("@/lib/open-places.server");
   if (!overture.openPlacesReady()) return [];
   let centre = anchor;
