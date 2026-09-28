@@ -1,3 +1,4 @@
+import type { LegMode } from "./travel-mode.ts";
 import { commonsRefFromTags, type CommonsRef } from "./wikimedia.ts";
 
 /**
@@ -85,16 +86,23 @@ export function geoapifyReverseUrl(key: string, lat: number, lon: number): strin
   return `${GEOAPIFY_BASE}/v1/geocode/reverse?${params.toString()}`;
 }
 
+/**
+ * Geoapify's transit mode. "approximated_transit" models typical times from
+ * its dataset of transit lines rather than live timetables, so a transit
+ * journey is shown as "about"; Maps has the real departures.
+ */
+export const GEOAPIFY_TRANSIT_MODE = "approximated_transit";
+
 /** Waypoints are "lat,lon" here, the other way round from OSRM. */
 export function geoapifyRouteUrl(
   key: string,
-  mode: "walking" | "driving",
+  mode: LegMode,
   from: { lat: number; lon: number },
   to: { lat: number; lon: number },
 ): string {
   const params = new URLSearchParams({
     waypoints: `${from.lat},${from.lon}|${to.lat},${to.lon}`,
-    mode: mode === "walking" ? "walk" : "drive",
+    mode: mode === "walking" ? "walk" : mode === "transit" ? GEOAPIFY_TRANSIT_MODE : "drive",
     lang: "en",
     apiKey: key,
   });

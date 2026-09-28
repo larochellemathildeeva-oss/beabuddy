@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
+import type { TravelChoice } from "@/lib/travel-mode";
 import {
   directionsSignature,
   storageFailureMessage,
@@ -86,13 +87,14 @@ export function useOfflineDirections(tripId: string | null) {
     async (
       stops: { title: string; address?: string | null; lat?: number | null; lon?: number | null }[],
       area?: string,
+      travel?: TravelChoice,
     ) => {
       if (!tripId) return;
       setBusy(true);
       setError("");
       try {
         const result = (await run({
-          data: { stops, ...(area ? { area } : {}) },
+          data: { stops, ...(area ? { area } : {}), ...(travel ? { travel } : {}) },
         })) as { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] };
         keep(result, stops);
       } catch (e) {

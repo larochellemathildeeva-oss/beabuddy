@@ -1,4 +1,5 @@
 import type { RouteLeg } from "@/lib/directions.functions";
+import type { LegMode } from "@/lib/travel-mode";
 import { dayDistance } from "@/lib/day-map";
 import { formatMetres } from "@/lib/geo";
 import { placed as hasPosition } from "@/lib/trip-map";
@@ -16,6 +17,9 @@ export function seqClass(number: number): string {
 /** A measured leg, as the master says it: "9 min walk · 426 m". */
 export function legWords(leg: Pick<RouteLeg, "mode" | "duration" | "distance" | "estimated">): {
   walking: boolean;
+  mode: LegMode;
+  /** "walk", "drive" or "transit", after the time. */
+  how: string;
   time: string;
   distance: string;
 } {
@@ -26,6 +30,8 @@ export function legWords(leg: Pick<RouteLeg, "mode" | "duration" | "distance" | 
       : `${Math.floor(minutes / 60)} h${minutes % 60 ? ` ${minutes % 60} min` : ""}`;
   return {
     walking: leg.mode === "walking",
+    mode: leg.mode,
+    how: leg.mode === "walking" ? "walk" : leg.mode === "transit" ? "transit" : "drive",
     time: `${leg.estimated ? "~" : ""}${time}`,
     distance: formatMetres(leg.distance),
   };

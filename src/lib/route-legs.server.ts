@@ -1,4 +1,11 @@
-import { readGeoJson, routeProfile, routeUrl, type GeoProvider } from "./geo-endpoints.ts";
+import {
+  readGeoJson,
+  routeProfile,
+  routesMode,
+  routeUrl,
+  type GeoProvider,
+} from "./geo-endpoints.ts";
+import type { LegMode } from "./travel-mode.ts";
 
 /**
  * One journey from the router, shared by directions (directions.functions.ts)
@@ -27,18 +34,13 @@ const CACHE_MAX = 5_000;
 
 type Point = { lat: number; lon: number };
 
-function key(provider: GeoProvider, mode: "walking" | "driving", a: Point, b: Point): string {
+function key(provider: GeoProvider, mode: LegMode, a: Point, b: Point): string {
   const at = (p: Point) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
   return `${provider.name}|${mode}|${at(a)}|${at(b)}`;
 }
 
 /** Whether this journey is already known, so a caller can budget only for new ones. */
-export function legCached(
-  provider: GeoProvider,
-  a: Point,
-  b: Point,
-  mode: "walking" | "driving",
-): boolean {
+export function legCached(provider: GeoProvider, a: Point, b: Point, mode: LegMode): boolean {
   return cache.has(key(provider, mode, a, b));
 }
 
@@ -61,11 +63,12 @@ export async function routeOnce(
   provider: GeoProvider,
   a: Point,
   b: Point,
-  mode: "walking" | "driving",
+  mode: LegMode,
 ): Promise<RoutedLeg | null> {
   const k = key(provider, mode, a, b);
   const known = cache.get(k);
   if (known) return known;
+  if (!routesMode(provider, mode)) return null;
   // "foot" on the demo router, "walking" on LocationIQ — the same mode under
   // two names, and the wrong one 400s every walking leg without saying so.
   const url = routeUrl(provider, routeProfile(provider, mode), a, b);

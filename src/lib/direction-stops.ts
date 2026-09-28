@@ -46,12 +46,12 @@ type TimelineItem = {
 const STATUS_LINE =
   /^(?:booked|reserved|confirmed|booking|reservation|conf(?:irmation)?\b|ticket(?:s|ed)?\b|paid|getting there|afterwards|optional|no booking)/i;
 
-/** Walk/Drive rows Béa already saved from Get directions — skip them on the next lookup. */
+/** Walk/Drive/Transit rows Béa already saved from Get directions — skip them on the next lookup. */
 export function isSavedDirectionItem(item: {
   kind?: string | null;
   title?: string | null;
 }): boolean {
-  return /^(walk|drive) to /i.test((item.title ?? "").trim());
+  return /^(walk|drive|transit) to /i.test((item.title ?? "").trim());
 }
 
 export function looksLikeStreetAddress(value: string): boolean {

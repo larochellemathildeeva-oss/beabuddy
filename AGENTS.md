@@ -87,6 +87,16 @@ order:
    ceiling, `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts`, through the
    `geo_credit_usage` migration. That migration is applied by hand; until it
    is, the ceiling is skipped with one warning in the log.
+   **How the traveller gets around** is asked in the directions sheet
+   (`travel-mode.ts`, pure and tested; remembered per trip on the phone by
+   `travel-choice-store.ts`): walk what's close (the old default: walk under
+   `DIRECTIONS_WALK_M`, drive the rest), public transit, walk everywhere, or
+   car. Transit is routed only by Geoapify, with its `approximated_transit`
+   mode (`GEOAPIFY_TRANSIT_MODE`): typical times, not a timetable, so every
+   transit journey is marked as an estimate and opens Google Maps in transit
+   mode for the real lines. Any other provider, or a failed transit route,
+   gets a straight-line estimate (`route-estimate.ts`). `npm run map:check`
+   routes one transit journey to confirm the mode name.
 2. `LOCATIONIQ_TOKEN` set: LocationIQ, which speaks Nominatim's and OSRM's
    shapes directly, at two requests a second. A walk its router refuses is
    routed as a drive and timed at walking pace, marked as an estimate.
@@ -107,7 +117,7 @@ most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
 per trip (`offline-map.ts`). There is no service worker, so this helps an open
 day map when the signal drops, not opening Béa with none. The Geoapify URLs
 were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
-confirms them against the real thing.
+confirms them, and the transit mode, against the real thing.
 Labels ask for the browser's language first (`name:fr`, `name:ja` …), then
 Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 `@mapbox/mapbox-gl-rtl-text` (`rtl-text.ts`), served from Béa's own build and

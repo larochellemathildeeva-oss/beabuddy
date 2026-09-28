@@ -86,6 +86,8 @@ import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
 import { directionKey, splitDirectionRows, unroutedLegCopy } from "@/lib/timeline-directions";
+import { modeWord, type TravelChoice } from "@/lib/travel-mode";
+import { readTravelChoice, writeTravelChoice } from "@/lib/travel-choice-store";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
@@ -182,6 +184,16 @@ export function TripDetail({
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id);
   const dir = useOfflineDirections(activeId);
+  // How this traveller gets around on this trip, asked in the directions
+  // sheet and used by every journey Béa routes for it.
+  const [travel, setTravel] = useState<TravelChoice>("auto");
+  useEffect(() => {
+    setTravel(readTravelChoice(activeId));
+  }, [activeId]);
+  const chooseTravel = (choice: TravelChoice) => {
+    setTravel(choice);
+    writeTravelChoice(activeId, choice);
+  };
   const dayMaps = useOfflineDayMaps(activeId);
   const offlineMap = useOfflineMap(activeId);
   const directionStops = timelineStopsForDirections(board.items);
@@ -630,27 +642,24 @@ export function TripDetail({
     if (rows.length === 0) return;
     await board.removeItems(rows.map((row) => row.id));
     setLiveLegs(null);
-    toast.success(
-      `Removed ${rows.length} ${rows.length === 1 ? "walk or drive" : "walks and drives"}`,
-      {
-        action: {
-          label: "Undo",
-          onClick: () =>
-            void board.upsertItems(
-              rows.map((row) => ({
-                kind: row.kind,
-                title: row.title,
-                ...(row.day_date ? { day_date: row.day_date } : {}),
-                ...(row.time_label ? { time_label: row.time_label } : {}),
-                ...(row.detail ? { detail: row.detail } : {}),
-                ...(row.address ? { address: row.address } : {}),
-                ...(row.lat != null ? { lat: row.lat } : {}),
-                ...(row.lon != null ? { lon: row.lon } : {}),
-              })),
-            ),
-        },
+    toast.success(`Removed ${rows.length} ${rows.length === 1 ? "journey" : "journeys"}`, {
+      action: {
+        label: "Undo",
+        onClick: () =>
+          void board.upsertItems(
+            rows.map((row) => ({
+              kind: row.kind,
+              title: row.title,
+              ...(row.day_date ? { day_date: row.day_date } : {}),
+              ...(row.time_label ? { time_label: row.time_label } : {}),
+              ...(row.detail ? { detail: row.detail } : {}),
+              ...(row.address ? { address: row.address } : {}),
+              ...(row.lat != null ? { lat: row.lat } : {}),
+              ...(row.lon != null ? { lon: row.lon } : {}),
+            })),
+          ),
       },
-    );
+    });
   };
   /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
   const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
@@ -1279,6 +1288,7 @@ export function TripDetail({
                   tripStops={tripStopsForNow}
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
+                  travel={travel}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);
@@ -1727,6 +1737,8 @@ export function TripDetail({
                 toast.success("Directions deleted from this phone");
               }}
               stops={directionStops}
+              travel={travel}
+              onTravel={chooseTravel}
               existingTitles={board.items.map((i) => i.title)}
               onAddToTimeline={board.upsertItems}
               onKeepOffline={(result, stops) => {
@@ -2209,7 +2221,7 @@ export function TripDetail({
         {sheetSection === "offline" && (
           <div className="plain-card p-3.5">
             <p className="text-[13px] text-muted-foreground">
-              Download the walk or drive between stops and Béa keeps the steps on this phone, so you
+              Download the journeys between stops and Béa keeps the steps on this phone, so you
               never work them out twice. Béa still needs a connection to open, so this is not a
               no-signal map yet. Adding directions to the timeline saves the summary only.
             </p>
@@ -2221,7 +2233,7 @@ export function TripDetail({
             </p>
             <button
               disabled={dir.busy || routeStops.length < 2}
-              onClick={() => void dir.download(routeStops, directionArea)}
+              onClick={() => void dir.download(routeStops, directionArea, travel)}
               className="btn-primary mt-3 w-full disabled:opacity-50"
             >
               {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
@@ -2245,7 +2257,7 @@ export function TripDetail({
                       {l.from} → {l.to}
                       <span className="ml-2 text-[12px] font-normal text-muted-foreground">
                         {l.distance > 0
-                          ? `${l.mode === "walking" ? "Walk" : "Drive"} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                          ? `${modeWord(l.mode)} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
                           : unroutedLegCopy(l)}
                       </span>
                     </summary>

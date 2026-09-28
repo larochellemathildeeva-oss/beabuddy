@@ -20,7 +20,7 @@ import {
   wideDayPinsToKeep,
 } from "@/lib/direction-stops";
 import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
-import { DIRECTIONS_WALK_M } from "@/lib/route-optimize";
+import { legModeFor, type LegMode, type TravelChoice } from "@/lib/travel-mode";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
@@ -35,7 +35,7 @@ export type RouteStep = { instruction: string; distance: number };
 export type RouteLeg = {
   from: string;
   to: string;
-  mode: "walking" | "driving";
+  mode: LegMode;
   distance: number;
   duration: number;
   steps: RouteStep[];
@@ -53,7 +53,9 @@ export type RouteLeg = {
   farApartKm?: number;
   /**
    * The router failed, so distance and duration are worked out from the
-   * straight line between the pins (see route-estimate.ts). No steps.
+   * straight line between the pins (see route-estimate.ts). No steps. Also
+   * set on every transit journey: Geoapify's transit times are typical ones,
+   * not a timetable, so they are shown as "about".
    */
   estimated?: boolean;
   fromLat?: number;
@@ -166,10 +168,11 @@ async function leg(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
-  mode: "walking" | "driving",
+  mode: LegMode,
 ): Promise<{ distance: number; duration: number; steps: RouteStep[]; estimated?: boolean } | null> {
   const routed = await routeOnce(provider, a, b, mode);
-  if (routed || mode === "driving") return routed;
+  if (routed && mode === "transit") return { ...routed, estimated: true };
+  if (routed || mode !== "walking") return routed;
   const byRoad = await routeOnce(provider, a, b, "driving");
   if (!byRoad || !(byRoad.distance > 0)) return null;
   return {
@@ -197,7 +200,7 @@ async function routeOnce(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
-  mode: "walking" | "driving",
+  mode: LegMode,
 ): Promise<{ distance: number; duration: number; steps: RouteStep[] } | null> {
   const { routeOnce: route } = await import("@/lib/route-legs.server");
   return route(provider, a, b, mode);
@@ -228,6 +231,8 @@ const BuildRoutesInput = z.object({
    * of a journey, already on the map, on a day spent outside the trip's city.
    */
   near: z.object({ lat: z.number(), lon: z.number() }).optional(),
+  /** How the traveller gets around; "auto" walks what is close and drives the rest. */
+  travel: z.enum(["auto", "walk", "drive", "transit"]).optional(),
 });
 
 function mapsOnlyLeg(
@@ -236,7 +241,7 @@ function mapsOnlyLeg(
   area: string,
   opts?: {
     capped?: boolean;
-    mode?: "walking" | "driving";
+    mode?: LegMode;
     from?: { lat: number; lon: number } | null;
     to?: { lat: number; lon: number } | null;
   },
@@ -266,8 +271,13 @@ function mapsOnlyLeg(
 
 export const buildRoutes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: Stop[]; area?: string; near?: { lat: number; lon: number } }) =>
-    BuildRoutesInput.parse(input),
+  .inputValidator(
+    (input: {
+      stops: Stop[];
+      area?: string;
+      near?: { lat: number; lon: number };
+      travel?: TravelChoice;
+    }) => BuildRoutesInput.parse(input),
   )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
@@ -489,9 +499,10 @@ export const buildRoutes = createServerFn({ method: "POST" })
         });
         continue;
       }
-      // The same cut-off Optimize's route check uses, so the journeys it
-      // checked are the ones found in the shared cache here.
-      const mode: "walking" | "driving" = straight < DIRECTIONS_WALK_M ? "walking" : "driving";
+      // Asked of the traveller. Left on "auto", the same cut-off Optimize's
+      // route check uses, so the journeys it checked are the ones found in
+      // the shared cache here.
+      const mode = legModeFor(data.travel ?? "auto", straight);
       if (legsLeft <= 0 || Date.now() > deadline) {
         legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a, to: b, mode }));
         continue;

@@ -9,7 +9,10 @@
  *
  *   GEOAPIFY_API_KEY=… npm run map:check
  *
- * Costs a quarter of a credit. Nothing is stored. If it fails, the day map is
+ * It also routes one transit journey, to check the mode name directions use
+ * (GEOAPIFY_TRANSIT_MODE in src/lib/geoapify.ts).
+ *
+ * Costs a credit and a quarter. Nothing is stored. If it fails, the day map is
  * still safe — it falls back to the image tiles — but it will never draw the
  * vector map, and "Keep offline" will save only the day pictures.
  */
@@ -22,6 +25,7 @@ import {
   tileFor,
   vectorTileSourceUrl,
 } from "../src/lib/vector-tiles.ts";
+import { geoapifyRouteUrl, geoapifyToOsrm } from "../src/lib/geoapify.ts";
 
 const key = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
 if (!key) {
@@ -77,9 +81,31 @@ for (const font of VECTOR_FONTS) {
   }
 }
 
+// One transit journey across Lisbon, from Praça do Comércio to Belém: the
+// mode name was written from Geoapify's documentation, like the tiles.
+const transitUrl = geoapifyRouteUrl(
+  key,
+  "transit",
+  { lat: 38.7075, lon: -9.1364 },
+  { lat: 38.6916, lon: -9.216 },
+);
+const transitRes = await fetch(transitUrl);
+const transitBody: unknown = await transitRes.json().catch(() => null);
+const ride = geoapifyToOsrm(transitBody).routes[0];
+console.log(`transit ${transitRes.status}  ${hide(transitUrl)}`);
+if (ride) {
+  console.log(
+    `  ✓ ${(ride.distance / 1000).toFixed(1)} km in ${Math.round(ride.duration / 60)} min, ${ride.legs[0]?.steps.length ?? 0} steps`,
+  );
+} else {
+  console.log(`  ✗ no transit route: ${JSON.stringify(transitBody).slice(0, 300)}`);
+  console.log("  Transit journeys fall back to estimates until GEOAPIFY_TRANSIT_MODE is right.");
+  ok = false;
+}
+
 console.log(
   ok
-    ? "\nAll good: the day map can be drawn from vector tiles."
-    : "\nSomething above needs fixing in src/lib/vector-tiles.ts.",
+    ? "\nAll good: the day map can be drawn from vector tiles, and transit is routed."
+    : "\nSomething above needs fixing in src/lib/vector-tiles.ts or src/lib/geoapify.ts.",
 );
 process.exit(ok ? 0 : 1);

@@ -24,6 +24,7 @@ import {
   BookOpen as PhBookOpen,
   BookmarkSimple as PhBookmarkSimple,
   Briefcase as PhBriefcase,
+  Bus as PhBus,
   CalendarBlank as PhCalendarBlank,
   CalendarDots as PhCalendarDots,
   Camera as PhCamera,
@@ -176,6 +177,7 @@ export const BedDouble = icon(PhBed, "BedDouble");
 export const BookOpen = icon(PhBookOpen, "BookOpen");
 export const Bookmark = icon(PhBookmarkSimple, "Bookmark");
 export const Briefcase = icon(PhBriefcase, "Briefcase");
+export const Bus = icon(PhBus, "Bus");
 export const CalendarClock = icon(PhCalendarDots, "CalendarClock");
 export const CalendarDays = icon(PhCalendarBlank, "CalendarDays");
 export const Camera = icon(PhCamera, "Camera");

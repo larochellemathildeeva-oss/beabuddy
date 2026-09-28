@@ -2,6 +2,7 @@ import { useEffect, useState, type ComponentType, type CSSProperties, type React
 import {
   ArrowUp,
   Bookmark,
+  Bus,
   Car,
   Check,
   ChevronDown,
@@ -1260,7 +1261,7 @@ export function TravelConnector({
   onAddBetween?: (() => void) | undefined;
 }) {
   const [open, setOpen] = useState(false);
-  const mode = leg?.mode === "driving" ? "driving" : "walking";
+  const mode = leg?.mode ?? "walking";
   const href = leg?.mapUrl || mapsDirUrl(from, to, area, mode);
   const isMeasured = Boolean(leg && leg.distance > 0);
   const leave = showTime && leg ? leaveBy(to.time_label, leg) : null;
@@ -1270,7 +1271,9 @@ export function TravelConnector({
     showTime && isMeasured
       ? walking
         ? "Walk to next stop"
-        : "Drive to next stop"
+        : mode === "transit"
+          ? "Transit to next stop"
+          : "Drive to next stop"
       : `Travelling to ${to.title}`;
   const sub =
     showTime && isMeasured && leg
@@ -1287,6 +1290,8 @@ export function TravelConnector({
             {isMeasured && showTime ? (
               walking ? (
                 <Footprints className="size-5 shrink-0" aria-hidden />
+              ) : mode === "transit" ? (
+                <Bus className="size-5 shrink-0" aria-hidden />
               ) : (
                 <Car className="size-5 shrink-0" aria-hidden />
               )
@@ -1351,6 +1356,7 @@ export function TravelConnector({
                     : null
               }
               walking={walking}
+              transit={mode === "transit"}
               fromNumber={fromNumber}
             />
           )}
@@ -1386,17 +1392,19 @@ export function TravelConnector({
                   <ExternalLink className="size-3.5" aria-hidden />
                   Open in Maps
                 </a>
-                {/* Béa measures walks and drives only. Maps knows the metro:
-                    which line, which stop to get on and where to get off. */}
-                <a
-                  href={mapsDirUrl(from, to, area, "transit")}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
-                >
-                  <ExternalLink className="size-3.5" aria-hidden />
-                  Public transport in Maps
-                </a>
+                {/* Maps knows the metro: which line, which stop to get on and
+                    where to get off. A transit leg's own link already opens it. */}
+                {mode !== "transit" && (
+                  <a
+                    href={mapsDirUrl(from, to, area, "transit")}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
+                  >
+                    <ExternalLink className="size-3.5" aria-hidden />
+                    Public transport in Maps
+                  </a>
+                )}
                 {onAddBetween && (
                   <button
                     type="button"
@@ -1438,11 +1446,13 @@ function LegMiniMap({
   from,
   to,
   walking,
+  transit = false,
   fromNumber,
 }: {
   from: LatLon | null;
   to: LatLon | null;
   walking: boolean;
+  transit?: boolean;
   fromNumber?: number | undefined;
 }) {
   const [box, setBox] = useState<HTMLDivElement | null>(null);
@@ -1458,7 +1468,7 @@ function LegMiniMap({
   if (!from || !to) return null;
   const height = 136;
   const plan = width > 0 ? legMiniMap(from, to, width, height, 20) : null;
-  const Mode = walking ? Footprints : Car;
+  const Mode = walking ? Footprints : transit ? Bus : Car;
   const tone = (n: number) => `seq-${((n - 1) % 5) + 1}`;
   return (
     <div

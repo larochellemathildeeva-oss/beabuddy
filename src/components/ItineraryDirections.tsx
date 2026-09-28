@@ -5,6 +5,7 @@ import { Sheet } from "@/components/Sheet";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { legsToTimelineItems, placedFromLegs, type DirectionStop } from "@/lib/timeline-directions";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
+import { TRAVEL_CHOICES, type TravelChoice } from "@/lib/travel-mode";
 import { BeaRunning } from "@/components/BeaRunning";
 import { toast } from "sonner";
 
@@ -46,16 +47,19 @@ function writeChoice(choice: { timeline: boolean; phone: boolean }) {
 /**
  * Directions between stops, asked from the signpost on a day's header.
  *
- * It opens as a sheet with two boxes — add the walks and drives to the
- * timeline, keep them on this phone — so the choice is made once, before the
- * work, instead of in a panel at the foot of the list after it. The same
- * sheet takes them away again.
+ * It opens as a sheet that asks how the traveller gets around — walking,
+ * transit, a car — and has two boxes — add the journeys to the timeline,
+ * keep them on this phone — so the choice is made once, before the work,
+ * instead of in a panel at the foot of the list after it. The same sheet
+ * takes them away again.
  */
 export function ItineraryDirections({
   open,
   onClose,
   stops,
   area,
+  travel = "auto",
+  onTravel,
   existingTitles = [],
   onAddToTimeline,
   onKeepOffline,
@@ -72,6 +76,9 @@ export function ItineraryDirections({
   onClose: () => void;
   stops: DirectionStop[];
   area?: string;
+  /** How the traveller gets around on this trip; asked here, kept per trip. */
+  travel?: TravelChoice;
+  onTravel?: ((choice: TravelChoice) => void) | undefined;
   existingTitles?: string[];
   onAddToTimeline?: (items: TimelineAdd[]) => Promise<void>;
   /** Keep the legs just worked out for offline use. Returns false if storage failed. */
@@ -89,7 +96,7 @@ export function ItineraryDirections({
   savedSignature?: string | undefined;
   savedAt?: string | undefined;
   onBusy?: ((busy: boolean) => void) | undefined;
-  /** How many walks and drives are saved on the timeline now. */
+  /** How many journeys are saved on the timeline now. */
   timelineCount?: number;
   onRemoveFromTimeline?: (() => Promise<void>) | undefined;
   onForgetOffline?: (() => void) | undefined;
@@ -124,7 +131,7 @@ export function ItineraryDirections({
     setFound(null);
     try {
       const result = (await run({
-        data: { stops, ...(area ? { area } : {}) },
+        data: { stops, ...(area ? { area } : {}), travel },
       })) as { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] };
       setUnresolved(result.unresolved);
       setDeferred(result.deferred ?? []);
@@ -169,7 +176,7 @@ export function ItineraryDirections({
         saved.length ? `Directions ${saved.join(" and ")}` : "Directions are on screen",
         {
           description: saved.length
-            ? "Each walk or drive sits under the stop it leaves from."
+            ? "Each journey sits under the stop it leaves from."
             : "Not saved — they'll go when you leave this trip.",
         },
       );
@@ -210,10 +217,44 @@ export function ItineraryDirections({
       open={open}
       onClose={onClose}
       title="Directions between stops"
-      hint="Walks and drives for every day of the trip."
+      hint="How to get from each stop to the next, every day of the trip."
       width="sm"
     >
       <div data-guide="itinerary-directions" className="space-y-4">
+        {onTravel && (
+          <fieldset className="space-y-2">
+            <legend className="label-caps mb-1 text-foreground">Getting around</legend>
+            <div role="radiogroup" className="grid grid-cols-2 gap-2">
+              {TRAVEL_CHOICES.map((option) => {
+                const on = option.id === travel;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => onTravel(option.id)}
+                    className={`rounded-xl border p-2.5 text-left ${
+                      on ? "border-primary bg-primary-soft" : "border-border bg-elevated"
+                    }`}
+                  >
+                    <span className="block text-[13.5px] font-semibold">{option.label}</span>
+                    <span className="block text-[12px] leading-snug text-muted-foreground">
+                      {option.detail}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {travel === "transit" && (
+              <p className="text-[12px] text-muted-foreground">
+                Transit times are typical ones, not a timetable. Each journey opens in Maps for the
+                lines and departures.
+              </p>
+            )}
+          </fieldset>
+        )}
+
         <fieldset className="space-y-2">
           <legend className="label-caps mb-1 text-foreground">Once they're worked out</legend>
           {onAddToTimeline && (
@@ -221,7 +262,7 @@ export function ItineraryDirections({
               checked={choice.timeline}
               onChange={(on) => pick("timeline", on)}
               label="Add to timeline"
-              detail="Each walk or drive sits between its two stops, steps folded under it."
+              detail="Each journey sits between its two stops, steps folded under it."
             />
           )}
           {onKeepOffline && (
@@ -243,7 +284,7 @@ export function ItineraryDirections({
           {busy ? "Working…" : "Get directions"}
         </button>
 
-        {busy && <BeaRunning moment="plan.locating" status="Working out the walks and drives" />}
+        {busy && <BeaRunning moment="plan.locating" status="Working out the journeys" />}
 
         {error && <p className="text-[13px] text-destructive">{error}</p>}
 
@@ -276,7 +317,7 @@ export function ItineraryDirections({
               >
                 {removing
                   ? "Removing…"
-                  : `Remove from timeline (${timelineCount} ${timelineCount === 1 ? "walk or drive" : "walks and drives"})`}
+                  : `Remove from timeline (${timelineCount} ${timelineCount === 1 ? "journey" : "journeys"})`}
               </button>
             )}
             {savedAt && onForgetOffline && (

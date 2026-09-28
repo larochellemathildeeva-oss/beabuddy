@@ -23,7 +23,7 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
   {
     key: "walkTimes",
     label: "Walk times",
-    hint: "The walk or drive between stops on the Day tab, with directions.",
+    hint: "The walk, ride or drive between stops on the Day tab, with directions.",
   },
   {
     key: "nesting",

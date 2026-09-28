@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   Bed,
+  Bus,
   Car,
   Footprints,
   Landmark,
@@ -14,6 +15,7 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { isBooked } from "@/lib/bookings";
 import { PlacePicture } from "@/components/PlacePicture";
 import { seqClass } from "@/components/day/stop-words";
+import type { LegMode } from "@/lib/travel-mode";
 import { glyphChipLabel, timelineGlyph, type TimelineGlyph } from "@/lib/timeline-kind";
 
 const GLYPH_ICON: Record<TimelineGlyph, typeof Bed> = {
@@ -139,11 +141,15 @@ export function StopChips({
 
 export function LegIcon({
   walking,
+  mode,
   className = "size-4",
 }: {
   walking: boolean;
+  /** Transit draws a bus; otherwise `walking` picks feet or a car. */
+  mode?: LegMode | undefined;
   className?: string;
 }) {
+  if (mode === "transit") return <Bus className={className} aria-hidden />;
   return walking ? (
     <Footprints className={className} aria-hidden />
   ) : (
