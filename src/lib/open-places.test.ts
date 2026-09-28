@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { openPlacesUrl, pickOpenPlace, readOpenPlaces } from "./open-places.ts";
+import {
+  echoesName,
+  openPlacesNamed,
+  openPlacesUrl,
+  pickOpenPlace,
+  readOpenPlaces,
+} from "./open-places.ts";
 
 const barreiras = { lat: -12.1439, lon: -44.9968 };
 
@@ -82,4 +88,34 @@ test("a restaurant is found by the name inside an activity title", () => {
     ],
   });
   assert.equal(pickOpenPlace(places, ["Lunch at Cais e Porto"], barreiras)?.id, "cais");
+});
+
+test("a search typed as three words finds the restaurant spelt as one", () => {
+  const osaka = { lat: 34.6937, lon: 135.5023 };
+  const places = readOpenPlaces({
+    results: [
+      { place_id: "amano-far", name: "Amano", lat: 34.9, lon: 135.7, address: "Kyoto" },
+      {
+        place_id: "amano",
+        name: "Sushidokoro Amano",
+        lat: 34.653,
+        lon: 135.518,
+        address: { freeform: "Shitennoji", locality: "Osaka" },
+      },
+      { place_id: "other", name: "Sushi Zanmai", lat: 34.69, lon: 135.5 },
+    ],
+  });
+  const named = openPlacesNamed(places, ["sushido koro amano"], osaka);
+  assert.deepEqual(
+    named.map((p) => p.id),
+    ["amano", "amano-far"],
+  );
+});
+
+test("the map's own answer that is the place needs no second look", () => {
+  assert.equal(
+    echoesName("Sushidokoro Amano", { name: "Sushidokoro Amano", address: "Osaka, Japan" }),
+    true,
+  );
+  assert.equal(echoesName("Sushidokoro Amano", { name: "Tennoji Park", address: "Osaka" }), false);
 });
