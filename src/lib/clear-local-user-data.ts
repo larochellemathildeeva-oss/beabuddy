@@ -1,5 +1,6 @@
 import { sampleCtaDismissKey } from "./auto-seed.ts";
 import { clearAllOfflineMaps, OFFLINE_MAP_KEY_PREFIX } from "./offline-map.ts";
+import { TRAVEL_KEY_PREFIX } from "./travel-choice-store.ts";
 import { clearStoredVaultKeys } from "./vaultCrypto.ts";
 import { passkeyStorageKey } from "./vault-passkey.ts";
 
@@ -43,7 +44,8 @@ export function clearLocalUserData(uid: string) {
       if (
         key?.startsWith(DIRECTIONS_KEY_PREFIX) ||
         key?.startsWith(DAY_MAPS_KEY_PREFIX) ||
-        key?.startsWith(OFFLINE_MAP_KEY_PREFIX)
+        key?.startsWith(OFFLINE_MAP_KEY_PREFIX) ||
+        key?.startsWith(TRAVEL_KEY_PREFIX)
       ) {
         doomed.push(key);
       }

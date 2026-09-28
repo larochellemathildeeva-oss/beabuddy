@@ -26,6 +26,7 @@ import { stayLabel } from "@/lib/planned-stay";
 import { timeForRail } from "@/lib/timeline-kind";
 import { placed as hasPosition } from "@/lib/trip-map";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
+import type { LegMode } from "@/lib/travel-mode";
 
 const LAYOUT_KEY = "bea.mapLayout";
 
@@ -337,13 +338,14 @@ function between(
   from: ItineraryRow,
   to: ItineraryRow,
   legFor: LegFor | undefined,
-): { walking: boolean; text: string } | null {
+): { walking: boolean; mode?: LegMode; text: string } | null {
   const leg = legFor?.(from, to);
   if (measured(leg)) {
     const words = legWords(leg);
     return {
       walking: words.walking,
-      text: `${words.time}${words.walking ? " walk" : ""} · ${words.distance}`,
+      mode: words.mode,
+      text: `${words.time}${words.mode === "driving" ? "" : ` ${words.how}`} · ${words.distance}`,
     };
   }
   if (!hasPosition(from) || !hasPosition(to)) return null;
@@ -410,7 +412,11 @@ function SplitDay({
                   />
                   {leg ? (
                     <>
-                      <LegIcon walking={leg.walking} className="size-4 shrink-0 text-foreground" />
+                      <LegIcon
+                        walking={leg.walking}
+                        mode={leg.mode}
+                        className="size-4 shrink-0 text-foreground"
+                      />
                       {leg.text}
                     </>
                   ) : null}
@@ -697,7 +703,7 @@ function LiveLayout({
               <span className="flex min-w-0 flex-1 items-center gap-2 text-[13px]">
                 {trip ? (
                   <>
-                    <LegIcon walking={trip.walking} className="size-5 shrink-0" />
+                    <LegIcon walking={trip.walking} mode={trip.mode} className="size-5 shrink-0" />
                     <span className="min-w-0 leading-tight">
                       {next ? <span className="block truncate">Then {next.title}</span> : null}
                       <span className="block text-muted-foreground">{trip.text}</span>

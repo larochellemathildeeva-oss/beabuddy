@@ -1,13 +1,77 @@
 /**
  * Where tapping a saved rec takes you: the phone's maps app, on that place.
  *
- * A rec with a pin opens on the pin. One saved without a spot — typed in by
+ * A rec saved from a Google Maps link opens that link's place. Otherwise a
+ * rec with a pin opens on the pin. One saved without a spot — typed in by
  * hand because the search could not find it — opens a search for its name
  * with its address or city, which the maps app resolves the way a person
  * would. That is what makes saving an unfound place worth doing: it still
  * opens somewhere useful.
  */
 import { mapsPlaceUrl } from "./direction-stops.ts";
+
+/** Google's own sites: google.com, google.fr, maps.google.co.jp … */
+function isGoogleHost(host: string): boolean {
+  return /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
+}
+
+/**
+ * The Google Maps link a rec was saved from, as a link to that exact place.
+ *
+ * A pin and a name can open the wrong café next door, or a search. The link
+ * the traveller pasted names the place itself: Google's short share link,
+ * a `/maps/place/` page, or one carrying Google's place ID or feature ID.
+ * It is the traveller's own link, not an answer from Google's APIs, so it is
+ * kept like any other note on the rec and costs nothing to open. A place ID
+ * (`ChIJ…`) opens through Maps URLs' documented `query_place_id`; a feature
+ * ID (`0x…:0x…`) through its customer ID, the second half in decimal. Null
+ * for anything else, including the search links Béa writes itself.
+ */
+export function googlePlaceLink(url: string | null | undefined, name: string): string | null {
+  if (!url?.trim()) return null;
+  let u: URL;
+  try {
+    u = new URL(url.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  const host = u.hostname.toLowerCase().replace(/\.$/, "");
+  // Short share links resolve to the place they were shared from.
+  if (
+    host === "maps.app.goo.gl" ||
+    host === "share.google" ||
+    host === "g.page" ||
+    (host === "goo.gl" && u.pathname.startsWith("/maps"))
+  ) {
+    return u.toString();
+  }
+  const onMaps = isGoogleHost(host) && (host.startsWith("maps.") || u.pathname.startsWith("/maps"));
+  if (!onMaps) return null;
+  let path = u.pathname;
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    // A stray "%" in a hand-edited link: read it as it is.
+  }
+  const whole = path + u.search;
+  const placeId =
+    u.searchParams.get("query_place_id") ||
+    u.searchParams.get("place_id") ||
+    /!19s(ChIJ[\w-]+)/.exec(whole)?.[1];
+  if (placeId && /^ChIJ[\w-]+$/.test(placeId)) {
+    const params = new URLSearchParams({ api: "1", query: name.trim() || "Place" });
+    params.set("query_place_id", placeId);
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  }
+  const cid = u.searchParams.get("cid");
+  if (cid && /^\d{1,20}$/.test(cid)) return `https://maps.google.com/?cid=${cid}`;
+  const feature =
+    /^0x[0-9a-f]+:0x([0-9a-f]{1,16})$/i.exec(u.searchParams.get("ftid") ?? "")?.[1] ??
+    /!1s0x[0-9a-f]+:0x([0-9a-f]{1,16})/i.exec(whole)?.[1];
+  if (feature) return `https://maps.google.com/?cid=${BigInt(`0x${feature}`).toString()}`;
+  return /\/maps\/place\//.test(u.pathname) ? u.toString() : null;
+}
 
 export function recMapsUrl(rec: {
   name: string;
@@ -16,7 +80,11 @@ export function recMapsUrl(rec: {
   country?: string | null | undefined;
   lat?: number | null | undefined;
   lon?: number | null | undefined;
+  /** The link it was saved from; a Google Maps one opens that exact place. */
+  url?: string | null | undefined;
 }): string {
+  const exact = googlePlaceLink(rec.url, rec.name);
+  if (exact) return exact;
   if (rec.lat != null && rec.lon != null) {
     return mapsPlaceUrl(rec.name, { lat: rec.lat, lon: rec.lon }, rec.address);
   }

@@ -1,5 +1,6 @@
 import type { RouteLeg, RouteStep } from "./directions.functions.ts";
 import { isSavedDirectionItem, type DirectionStop } from "./direction-stops.ts";
+import { modeFromWord, modeWord } from "./travel-mode.ts";
 
 export type { DirectionStop } from "./direction-stops.ts";
 
@@ -25,7 +26,19 @@ export type TimelineDirectionItem = {
 };
 
 export function directionTitle(leg: Pick<RouteLeg, "mode" | "to">): string {
-  return `${leg.mode === "walking" ? "Walk" : "Drive"} to ${leg.to}`;
+  return `${modeWord(leg.mode)} to ${leg.to}`;
+}
+
+/**
+ * A row's title for matching, with a saved journey's mode taken off: asked
+ * again by transit, yesterday's "Walk to Hotel" is updated into "Transit to
+ * Hotel" rather than left beside it. Any other title is only lower-cased.
+ */
+export function directionTitleKey(title: string): string {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/^(walk|drive|transit) to /, "to ");
 }
 
 /** Google Maps / goo.gl maps links older builds appended to Transport detail. */
@@ -63,11 +76,9 @@ export function directionDetail(
   leg: Pick<RouteLeg, "mode" | "distance" | "duration" | "capped" | "unknownSpot" | "sameSpot">,
 ): string {
   if (leg.distance > 0) {
-    return [
-      leg.mode === "walking" ? "Walk" : "Drive",
-      prettyDistance(leg.distance),
-      prettyDuration(leg.duration),
-    ].join(" · ");
+    return [modeWord(leg.mode), prettyDistance(leg.distance), prettyDuration(leg.duration)].join(
+      " · ",
+    );
   }
   if (leg.sameSpot) return "Same place — no walk";
   if (leg.capped) return "Open in maps for this stretch";
@@ -141,7 +152,7 @@ function secondsFrom(text: string): number {
 }
 
 /**
- * A saved "Walk to X" / "Drive to X" row read back as a leg, so the
+ * A saved "Walk to X" / "Drive to X" / "Transit to X" row read back as a leg, so the
  * timeline draws it as the travel between two stops — with its steps
  * folded away — instead of as one more stop. Null for any other row.
  */
@@ -151,7 +162,7 @@ export function legFromDirectionRow(row: {
   lat?: number | null;
   lon?: number | null;
 }): RouteLeg | null {
-  const m = /^(walk|drive) to (.+)$/i.exec(row.title.trim());
+  const m = /^(walk|drive|transit) to (.+)$/i.exec(row.title.trim());
   if (!m) return null;
   const [head = "", ...lines] = (row.detail ?? "").split("\n").map((line) => line.trim());
   const source = directionSource(head);
@@ -168,7 +179,7 @@ export function legFromDirectionRow(row: {
   const leg: RouteLeg = {
     from: source,
     to: m[2]!.trim(),
-    mode: m[1]!.toLowerCase() === "walk" ? "walking" : "driving",
+    mode: modeFromWord(m[1]!) ?? "driving",
     distance: measured ? metresFrom(summary) : 0,
     duration: measured ? secondsFrom(summary) : 0,
     steps,

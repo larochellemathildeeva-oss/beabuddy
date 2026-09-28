@@ -16,3 +16,8 @@ test("never under a minute, and nothing for no distance", () => {
   assert.equal(estimatedLegSeconds(0, "walking"), 0);
   assert.equal(estimatedLegMeters(0, "driving"), 0);
 });
+
+test("a 5 km straight line is about half an hour on transit, waiting included", () => {
+  assert.equal(estimatedLegSeconds(5_000, "transit"), 28 * 60);
+  assert.equal(estimatedLegMeters(5_000, "transit"), 6500);
+});

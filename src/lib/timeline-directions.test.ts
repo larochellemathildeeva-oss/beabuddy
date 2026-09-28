@@ -4,6 +4,8 @@ import type { RouteLeg } from "./directions.functions.ts";
 import {
   directionDetail,
   directionTitle,
+  directionTitleKey,
+  legFromDirectionRow,
   legsToTimelineItems,
   placedFromLegs,
   stripEmbeddedMapsUrl,
@@ -23,6 +25,24 @@ const walk: RouteLeg = {
 test("directionTitle names the walk or drive", () => {
   assert.equal(directionTitle(walk), "Walk to Market");
   assert.equal(directionTitle({ ...walk, mode: "driving" }), "Drive to Market");
+});
+
+test("a transit journey is saved as one and read back as one", () => {
+  const ride: RouteLeg = { ...walk, mode: "transit", distance: 6500, duration: 1680 };
+  assert.equal(directionTitle(ride), "Transit to Market");
+  assert.equal(directionDetail(ride), "Transit · 6.5 km · 28 min");
+  const back = legFromDirectionRow({
+    title: "Transit to Market",
+    detail: "Transit · 6.5 km · 28 min",
+  });
+  assert.equal(back?.mode, "transit");
+  assert.equal(back?.distance, 6500);
+});
+
+test("the same journey by another mode matches the row already saved", () => {
+  assert.equal(directionTitleKey("Walk to Hotel"), directionTitleKey("Transit to hotel"));
+  assert.equal(directionTitleKey("Drive to Hotel"), "to hotel");
+  assert.equal(directionTitleKey("Dinner at Hotel"), "dinner at hotel");
 });
 
 test("directionDetail keeps a short summary without embedding the maps URL", () => {
