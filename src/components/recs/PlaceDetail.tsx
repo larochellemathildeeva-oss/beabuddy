@@ -17,7 +17,7 @@ import { recMapsUrl } from "@/lib/reco-open";
 import { directionsUrl } from "@/lib/recs-browse";
 import { tagsForSave } from "@/lib/reco-tags";
 import { isCityLevelPlace, isCountryLevelPlace } from "@/lib/reco-place";
-import { singlePlaceShareText } from "@/lib/reco-share";
+import { singlePlaceShareReco, singlePlaceShareText } from "@/lib/reco-share";
 import { createRecoShare } from "@/hooks/useRecoShares";
 import { PlaceArt, type RecsPlace } from "./RecsParts";
 
@@ -58,6 +58,8 @@ export function PlaceDetail({
   const [shared, setShared] = useState("");
   const [choosing, setChoosing] = useState(false);
   const [making, setMaking] = useState(false);
+  /** A code made and waiting to be sent. */
+  const [ready, setReady] = useState<string | null>(null);
   const saved = Boolean(row);
   const where = formatTripLocation(place.city, place.country);
   const metres =
@@ -77,48 +79,19 @@ export function PlaceDetail({
   /** Tapping Share asks how, when there is a choice; signed out it is the link. */
   const share = () => {
     setShared("");
+    setReady(null);
     if (uid) setChoosing((open) => !open);
-    else void send(false);
+    else void deliver(null);
   };
 
   /**
-   * Send the place on. With a code, the rec itself goes behind a one-place
-   * share, the same kind "Send places" makes, and the message carries both
-   * the Maps link and the code. Your note stays behind, as it does there.
+   * Open the share sheet, or copy when there is none. Only ever called
+   * straight from a tap: a browser refuses the share sheet once a network
+   * wait has used up the tap, which is why a code is made first and sent from
+   * a second tap.
    */
-  const send = async (withCode: boolean) => {
+  const deliver = async (code: string | null) => {
     const url = recMapsUrl(place);
-    let code: string | undefined;
-    if (withCode && uid) {
-      setMaking(true);
-      try {
-        const made = await createRecoShare(uid, {
-          recos: [
-            {
-              id: row?.id ?? "",
-              name: place.name,
-              city: place.city ?? null,
-              country: place.country ?? null,
-              address: row?.address ?? place.address ?? null,
-              category: place.category ?? null,
-              source: row?.source ?? null,
-              url: row?.url ?? null,
-              lat: place.lat ?? null,
-              lon: place.lon ?? null,
-            },
-          ],
-          title: place.name,
-          sharedByName: myName,
-        });
-        code = made.code;
-      } catch (e) {
-        setShared(e instanceof Error ? e.message : "Couldn't make a code for this place.");
-        return;
-      } finally {
-        setMaking(false);
-      }
-    }
-    setChoosing(false);
     const text = singlePlaceShareText({
       name: place.name,
       where,
@@ -134,14 +107,42 @@ export function PlaceDetail({
             ? { title: place.name, text }
             : { title: place.name, text: [place.name, where].filter(Boolean).join(", "), url },
         );
-        if (code) setShared(`Code ${code} — works for 30 days.`);
         return;
       }
       await navigator.clipboard.writeText(text);
-      setShared(code ? `Copied, with code ${code}.` : "Link copied.");
-    } catch {
-      // The share sheet was dismissed; a code already made is still worth showing.
-      if (code) setShared(`Code ${code} — works for 30 days.`);
+      setShared(code ? "Copied, with the code." : "Link copied.");
+    } catch (e) {
+      // Dismissing the sheet is not a failure; anything else falls back to copying.
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      try {
+        await navigator.clipboard.writeText(text);
+        setShared(code ? "Copied, with the code." : "Link copied.");
+      } catch {
+        setShared(code ? `Couldn't open sharing — the code is ${code}.` : "Couldn't share that.");
+      }
+    }
+  };
+
+  /**
+   * Put the rec itself behind a one-place share, the same kind "Send places"
+   * makes. Your note stays behind, as it does there.
+   */
+  const makeCode = async () => {
+    if (!uid) return;
+    setMaking(true);
+    setShared("");
+    try {
+      const made = await createRecoShare(uid, {
+        recos: [singlePlaceShareReco(place, row)],
+        title: place.name,
+        sharedByName: myName,
+      });
+      setReady(made.code);
+      setChoosing(false);
+    } catch (e) {
+      setShared(e instanceof Error ? e.message : "Couldn't make a code for this place.");
+    } finally {
+      setMaking(false);
     }
   };
 
@@ -238,7 +239,7 @@ export function PlaceDetail({
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
-            onClick={() => void send(true)}
+            onClick={() => void makeCode()}
             disabled={making}
             className="rounded-xl bg-primary px-3 py-2.5 text-[13.5px] font-semibold text-primary-foreground disabled:opacity-60"
           >
@@ -246,11 +247,31 @@ export function PlaceDetail({
           </button>
           <button
             type="button"
-            onClick={() => void send(false)}
+            onClick={() => {
+              setChoosing(false);
+              void deliver(null);
+            }}
             disabled={making}
             className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13.5px] font-semibold disabled:opacity-60"
           >
             Just the Maps link
+          </button>
+        </div>
+      )}
+      {ready && (
+        <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3">
+          <span className="min-w-0 flex-1">
+            <span className="block font-mono text-[16.5px] tracking-widest">{ready}</span>
+            <span className="block text-[12px] text-muted-foreground">
+              Works for 30 days. Sent with the Maps link.
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => void deliver(ready)}
+            className="shrink-0 rounded-xl bg-primary px-4 py-2 text-[13.5px] font-semibold text-primary-foreground"
+          >
+            Send it
           </button>
         </div>
       )}

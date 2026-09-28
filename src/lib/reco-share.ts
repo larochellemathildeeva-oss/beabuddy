@@ -245,3 +245,41 @@ export function singlePlaceShareText(place: {
   }
   return lines.join("\n");
 }
+
+/**
+ * What a one-place share snapshots. The saved row wins wherever it has a
+ * value: a saved place opened from Explore Nearby arrives with only a name, a
+ * pin and the nearby category, and the row is what knows its city. A place
+ * not saved yet — a parsed link, a search hit — gives what it has, its link
+ * and source included.
+ */
+export function singlePlaceShareReco(
+  place: {
+    name: string;
+    city?: string | undefined;
+    country?: string | undefined;
+    address?: string | undefined;
+    category?: string | undefined;
+    source?: string | undefined;
+    url?: string | undefined;
+    lat?: number | undefined;
+    lon?: number | undefined;
+  },
+  row?: ShareableReco | null,
+): ShareableReco {
+  const pick = <T>(saved: T | null | undefined, shown: T | undefined): T | null =>
+    saved != null && saved !== "" ? saved : (shown ?? null);
+  return {
+    id: row?.id ?? "",
+    name: row?.name?.trim() || place.name,
+    city: pick(row?.city, place.city),
+    country: pick(row?.country, place.country),
+    address: pick(row?.address, place.address),
+    category: pick(row?.category, place.category),
+    source: pick(row?.source, place.source),
+    url: pick(row?.url, place.url),
+    lat: pick(row?.lat, place.lat),
+    lon: pick(row?.lon, place.lon),
+    ...(row?.pin_type ? { pin_type: row.pin_type } : {}),
+  };
+}

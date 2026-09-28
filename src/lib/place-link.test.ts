@@ -200,3 +200,39 @@ test("stripPlusCode drops a leading Plus Code and nothing else", () => {
   // Only the code's letters, no digit: a name, not a code.
   assert.equal(stripPlusCode("CHXX PQR Bar"), "CHXX PQR Bar");
 });
+
+test("a /place/ name on a later hop beats an earlier search q=", () => {
+  const urls = placeUrlCandidates(
+    "https://www.google.com/maps?q=coffee+mile+end",
+    ["https://www.google.com/maps/place/Caf%C3%A9+Olimpico/@45.52,-73.6,17z"],
+    "https://www.google.com/maps/place/Caf%C3%A9+Olimpico/@45.52,-73.6,17z",
+  );
+  assert.equal(placeTextFromUrls(urls), "Café Olimpico");
+});
+
+test("a later hop's exact pin beats an earlier place URL's view", () => {
+  const coords = resolveChainCoords(
+    [
+      "https://maps.app.goo.gl/x",
+      "https://www.google.com/maps/place/X/@10,10,17z",
+      "https://www.google.com/maps/place/X/@10,10,17z/data=!3d45.52!4d-73.61",
+    ],
+    true,
+  );
+  assert.deepEqual(coords, { lat: 45.52, lon: -73.61 });
+});
+
+test("a redirect away from a map site cannot name the place or set its pin", () => {
+  assert.equal(
+    unwrapGoogleInterstitial(
+      "https://consent.google.com/ml?continue=https://evil.example/place/Fake/@1,1,17z",
+    ),
+    undefined,
+  );
+  const urls = placeUrlCandidates(
+    "https://maps.app.goo.gl/x",
+    ["https://evil.example/place/Fake/@1,1,17z"],
+    "https://evil.example/place/Fake/@1,1,17z",
+  );
+  assert.deepEqual(urls, ["https://maps.app.goo.gl/x"]);
+});

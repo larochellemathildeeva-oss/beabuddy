@@ -195,10 +195,43 @@ export function unwrapGoogleInterstitial(url: string): string | undefined {
   const next = parsed.searchParams.get("continue");
   if (!next) return undefined;
   try {
-    return new URL(next).toString();
+    const target = new URL(next);
+    // Only a Google page is worth unwrapping: a continue= pointing anywhere
+    // else is not a place Google was about to show.
+    return target.protocol === "https:" && isGoogleHost(target.hostname)
+      ? target.toString()
+      : undefined;
   } catch {
     return undefined;
   }
+}
+
+function isGoogleHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  return host === "google.com" || host.endsWith(".google.com");
+}
+
+/**
+ * Hosts whose URLs name a place structurally. What was pasted is always read,
+ * as it always was; a hop the server was redirected to is read only on one of
+ * these, so a redirect elsewhere cannot write the name or the pin.
+ */
+function isStructuredMapHost(url: string): boolean {
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase().replace(/\.$/, "");
+  } catch {
+    return false;
+  }
+  return (
+    isGoogleHost(host) ||
+    host === "maps.app.goo.gl" ||
+    host === "goo.gl" ||
+    host === "maps.apple.com" ||
+    host.endsWith(".maps.apple.com") ||
+    host === "openstreetmap.org" ||
+    host.endsWith(".openstreetmap.org")
+  );
 }
 
 /**
@@ -208,8 +241,9 @@ export function unwrapGoogleInterstitial(url: string): string | undefined {
  * the chain ended on a consent page, and saved the place as "Saved place".
  */
 export function placeUrlCandidates(pasted: string, visited: string[], finalUrl: string): string[] {
-  const out: string[] = [];
-  for (const url of [pasted, ...visited, finalUrl]) {
+  const out: string[] = [pasted];
+  for (const url of [...visited, finalUrl]) {
+    if (!isStructuredMapHost(url)) continue;
     const hidden = unwrapGoogleInterstitial(url);
     for (const candidate of hidden ? [url, hidden] : [url]) {
       if (candidate && !out.includes(candidate)) out.push(candidate);
@@ -218,10 +252,17 @@ export function placeUrlCandidates(pasted: string, visited: string[], finalUrl: 
   return out;
 }
 
-/** The name a Maps URL carries in its path or its q=, from the first that has one. */
+/**
+ * The name the chain carries. A `/place/` name on any hop beats a `q=` on any
+ * other: `q=` can be the search that led to the place rather than the place.
+ */
 export function placeTextFromUrls(urls: string[]): string {
   for (const url of urls) {
-    const text = placePathSegment(url) || googleQueryPlaceText(url);
+    const text = placePathSegment(url);
+    if (text) return text;
+  }
+  for (const url of urls) {
+    const text = googleQueryPlaceText(url);
     if (text) return text;
   }
   return "";
@@ -242,12 +283,19 @@ export function stripPlusCode(text: string): string {
 
 /**
  * `resolvePlaceCoords` across a whole redirect chain (`urls[0]` is what was
- * pasted): a pin or place coordinates on any hop, then the pasted link's own
+ * pasted): a pin on any hop, then place coordinates on any hop, then the pasted link's own
  * viewport, then — only when no name was found — the last hop's viewport.
  */
 export function resolveChainCoords(urls: string[], hasPlaceName: boolean): PlaceCoords | undefined {
   const pasted = urls[0] ?? "";
   const last = urls[urls.length - 1] ?? pasted;
+  // The exact pin on any hop first; a /place/ URL's @ pair is only its map
+  // view, so a later hop's pin must not lose to an earlier hop's view.
+  for (const url of urls) {
+    const pin = new RegExp(String.raw`!3d(${NUM})!4d(${NUM})`).exec(url);
+    const found = coords(pin?.[1], pin?.[2]);
+    if (found) return found;
+  }
   for (const url of urls) {
     const found = placeCoordsFromUrl(url);
     if (found) return found;
