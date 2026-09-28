@@ -145,6 +145,13 @@ const NEXT_KM = 30;
  */
 const BROAD_DEG = 3;
 
+/**
+ * Further than this from the stop before it, with no journey between, a find
+ * across a country is flagged rather than pinned: a day's stops sit within a
+ * city and its day trips.
+ */
+const DAY_REACH_KM = 60;
+
 function isBroad(box: AreaBox): boolean {
   return box.north - box.south > BROAD_DEG || box.east - box.west > BROAD_DEG;
 }
@@ -388,6 +395,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
     for (const [index, stop] of data.stops.entries()) {
       if (stop.fresh) lastPin = null;
+      /** Where the traveller was at the stop before, for judging a country-wide find. */
+      const anchor = lastPin;
       // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
       // then where the trip is that day, then the trip's area.
       const dayArea = stop.area?.trim() || area;
@@ -466,7 +475,16 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       /** Measured from the town, unless it was found beside the stop it is inside. */
       let besideParent = false;
       const farFrom = (hit: GeoHit): { farKm?: number } => {
-        if (besideParent || !centre || isAirport(hit)) return {};
+        if (besideParent || isAirport(hit)) return {};
+        // Across a whole country, far from the stop before it: a namesake,
+        // unless a journey came between. "Gion" answered from Chiba for a
+        // Kyoto afternoon, and every stop after it was looked for there.
+        if (broad && !centre) {
+          if (!anchor) return {};
+          const km = distanceKm(hit, anchor);
+          return km > DAY_REACH_KM ? { farKm: Math.round(km) } : {};
+        }
+        if (!centre) return {};
         const km = distanceKm(hit, centre);
         return km > TOWN_KM ? { farKm: Math.round(km) } : {};
       };
@@ -487,7 +505,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       let landed = false;
       if (broad && lastPin && !parent) {
         besideParent = true;
-        landed = await tryIn(where, boxAround(lastPin, NEXT_KM), lastPin);
+        // In the geocoder's own order, not nearest first: the nearest "Yasaka
+        // Shrine" to a Kyoto hotel is a neighbourhood shrine, not the one.
+        landed = await tryIn(where, boxAround(lastPin, NEXT_KM), null);
         besideParent = false;
         if (throttled) break;
       }
@@ -538,7 +558,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         // under Osaka is found around Hiroshima Station, not across Japan.
         if (countryBox && data.inOrder && lastPin) {
           besideParent = true;
-          landed = await tryIn(country, boxAround(lastPin, NEXT_KM), lastPin);
+          landed = await tryIn(country, boxAround(lastPin, NEXT_KM), null);
           besideParent = false;
         }
         if (countryBox && !landed && !throttled) await tryIn(country, countryBox, null);

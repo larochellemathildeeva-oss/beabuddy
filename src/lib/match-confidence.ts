@@ -273,7 +273,9 @@ function otherBranch(title: string, label: string, alsoNamed: readonly string[])
     const folded = foldAccents(text.toLowerCase());
     return asked.every((w) => folded.includes(w));
   };
-  if (covers(label) || alsoNamed.some(covers)) return null;
+  // The place's own names, not its address: "Osaka" in "…, Tennoji, Osaka"
+  // made Tennoji Station an answer for "Osaka Station".
+  if (covers(name) || alsoNamed.some(covers)) return null;
   const askedText = foldAccents(title.toLowerCase());
   const extra = meaningfulWords(name).some((w) => w.length >= 3 && !askedText.includes(w));
   return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;

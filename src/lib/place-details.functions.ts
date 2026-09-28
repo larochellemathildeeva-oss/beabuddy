@@ -28,21 +28,26 @@ export const placeDetails = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<PlaceDetails | null> => {
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
-    if (provider.name !== "geoapify") return null;
-    const { placeFactsFor } = await import("@/lib/place-facts.server");
-    const facts = await placeFactsFor(provider.token, data);
-    if (!facts) return null;
+    let facts: PlaceFacts | null = null;
+    if (provider.name === "geoapify") {
+      const { placeFactsFor } = await import("@/lib/place-facts.server");
+      facts = await placeFactsFor(provider.token, data);
+    }
     // Pexels first (a photo whose description names the place), then Commons.
+    // Pexels needs only the stop's name, so it is asked even when the map
+    // cannot confirm the place at the pin — otherwise most stops, which the
+    // map does not know by name, would never get a photo.
     const { pexelsPlacePhoto } = await import("@/lib/pexels.server");
-    let photo = await pexelsPlacePhoto(context.userId, [
-      data.name,
-      ...(facts.name ? [facts.name] : []),
-      ...facts.names,
-    ]);
-    if (!photo && facts.commons) {
+    let photo = await pexelsPlacePhoto(
+      context.userId,
+      [data.name, ...(facts?.name ? [facts.name] : []), ...(facts?.names ?? [])],
+      data,
+    );
+    if (!photo && facts?.commons) {
       const { commonsPhotoFor } = await import("@/lib/wikimedia.server");
       photo = await commonsPhotoFor(facts.commons);
     }
+    if (!facts) return photo ? { photo } : null;
     return {
       ...(facts.name ? { name: facts.name } : {}),
       ...(facts.openingHours ? { openingHours: facts.openingHours } : {}),

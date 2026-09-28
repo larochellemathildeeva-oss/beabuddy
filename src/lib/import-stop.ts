@@ -480,6 +480,16 @@ export function afterJourney(
   row: { detail?: string | null | undefined },
   previous: { kind: string; title: string; detail?: string | null | undefined } | undefined,
 ): boolean {
+  // Landing is a journey too: "Kansai International Airport — arrival", then
+  // a hotel in Kyoto, 90 km on. It was looked for beside the airport, and a
+  // namesake there was pinned for the hotel and its breakfasts.
+  if (
+    previous &&
+    /\b(?:airport|aeroport|aeropuerto|aeroporto|flughafen)\b/i.test(previous.title) &&
+    /\barriv/i.test(previous.detail ?? "")
+  ) {
+    return true;
+  }
   if (previous && (previous.kind === "flight" || previous.kind === "transport")) {
     return (
       previous.kind === "flight" || LONG_JOURNEY.test(`${previous.title} ${previous.detail ?? ""}`)
