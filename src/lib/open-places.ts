@@ -17,7 +17,8 @@
  */
 
 import { distanceKm } from "./geocode-plan.ts";
-import { scoreMatch } from "./match-confidence.ts";
+import { foldAccents } from "./fuzzy.ts";
+import { isNoiseWord, scoreMatch } from "./match-confidence.ts";
 
 export const OPEN_PLACES_ENDPOINT = "https://api.openplacesapi.com/v1/places";
 
@@ -164,4 +165,23 @@ export function echoesName(
       kind: place.placeType,
     }).confidence === "high"
   );
+}
+
+/**
+ * Has the map found the whole of what was typed, so there is no need to look
+ * further? One shared word is enough for `echoesName`, and too little here:
+ * "Sushidokoro Amano" was answered by an "amano" in Toyokawa and another in
+ * Linz, which echoed on "amano" and kept Béa from asking Overture at all.
+ * Every word of the name has to be in the place's name or address, spaces
+ * aside, so "sushido koro" still finds "Sushidokoro" — in any script, and
+ * numbers too: "Curry" is not the whole of "Curry 36".
+ */
+export function foundWhole(title: string, place: Parameters<typeof echoesName>[1]): boolean {
+  if (!echoesName(title, place)) return false;
+  const label = place.label || [place.name, place.address].filter(Boolean).join(" ");
+  const compact = foldAccents(label.toLowerCase()).replace(/[^\p{L}\p{N}]+/gu, "");
+  return foldAccents(title.toLowerCase())
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word.length > 1 && !isNoiseWord(word))
+    .every((word) => compact.includes(word));
 }
