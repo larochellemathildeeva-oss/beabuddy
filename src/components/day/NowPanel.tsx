@@ -33,6 +33,7 @@ import {
   undoArrivalWrite,
   type LeaveBy,
 } from "@/lib/companion";
+import type { TravelChoice } from "@/lib/travel-mode";
 
 type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "left_at">> };
 
@@ -50,6 +51,7 @@ export function NowPanel({
   tripStops,
   legs,
   area,
+  travel = "auto",
   onProgress,
   progress,
   onLook,
@@ -62,6 +64,8 @@ export function NowPanel({
   legs: readonly (RouteLeg | undefined)[] | null;
   /** The trip's area, so a stop without a pin can be looked up to time the journey. */
   area?: string | undefined;
+  /** How the traveller gets around, for a journey routed here. */
+  travel?: TravelChoice | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -92,7 +96,7 @@ export function NowPanel({
   // Maps" would otherwise stop Now from working the journey out itself.
   const saved = from && next ? legBetween(tripStops, legs, from.id, next.id) : null;
   const savedLeg = saved && (saved.duration > 0 || saved.sameSpot) ? saved : null;
-  const live = useLiveLeg(savedLeg, from, next, area);
+  const live = useLiveLeg(savedLeg, from, next, area, travel);
   const leg = savedLeg ?? live.leg;
   const leave = next ? leaveBy(next.time_label, leg) : null;
   // The one case worth explaining: the next stop has a time to aim for, but
@@ -390,7 +394,7 @@ function LegPill({ leg }: { leg: RouteLeg }) {
   const words = legWords(leg);
   return (
     <p className="tile-fill-2 flex shrink-0 items-center gap-1.5 rounded-xl border border-border/60 px-2.5 py-1.5 leading-tight">
-      <LegIcon walking={words.walking} className="size-5" />
+      <LegIcon walking={words.walking} mode={words.mode} className="size-5" />
       <span>
         <span className="block text-[14px] font-bold">{words.time}</span>
         <span className="block text-[11.5px] text-muted-foreground">{words.distance}</span>
@@ -441,7 +445,7 @@ function LeavePanel({
       target="_blank"
       rel="noreferrer"
       role={urgent ? "status" : undefined}
-      aria-label={`${label} ${big}${words ? `, ${words.time} ${words.walking ? "walk" : "drive"}` : ""} to ${nextTitle} — directions in maps`}
+      aria-label={`${label} ${big}${words ? `, ${words.time} ${words.how}` : ""} to ${nextTitle} — directions in maps`}
       className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 ${
         urgent ? "bg-primary text-primary-foreground" : "bg-primary-soft"
       }`}
@@ -462,10 +466,10 @@ function LeavePanel({
       {big && words ? <span aria-hidden className="h-9 w-px shrink-0 bg-border" /> : null}
       {words ? (
         <span className="flex min-w-0 flex-1 items-center gap-2">
-          <LegIcon walking={words.walking} className="size-6 shrink-0" />
+          <LegIcon walking={words.walking} mode={words.mode} className="size-6 shrink-0" />
           <span className="leading-tight">
             <span className="block text-[14px]">
-              {words.time} {words.walking ? "walk" : "drive"}
+              {words.time} {words.how}
             </span>
             <span className={`block text-[12px] ${urgent ? "" : "text-muted-foreground"}`}>
               {words.distance}
@@ -505,6 +509,7 @@ function useLiveLeg(
   from: ItineraryRow | null,
   to: ItineraryRow | null,
   area: string | undefined,
+  travel: TravelChoice,
 ): { leg: RouteLeg | null; loading: boolean } {
   const route = useServerFn(buildRoutes);
   // Where to look up an end without a pin: around the end that has one —
@@ -515,7 +520,9 @@ function useLiveLeg(
   );
   const canLookUp = Boolean(area) || Boolean(pinned);
   const wanted =
-    from && to && needsLiveLeg(savedLeg, from, to, canLookUp) ? liveLegKey(from, to) : null;
+    from && to && needsLiveLeg(savedLeg, from, to, canLookUp)
+      ? `${liveLegKey(from, to)}|${travel}`
+      : null;
   const [, rerender] = useState(0);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
@@ -536,6 +543,7 @@ function useLiveLeg(
           { title: to.title, address: to.address, day_date: to.day_date, lat: to.lat, lon: to.lon },
         ],
         ...(pinned ? { near: { lat: pinned.lat, lon: pinned.lon } } : area ? { area } : {}),
+        travel,
       },
     })
       .then((result) => {

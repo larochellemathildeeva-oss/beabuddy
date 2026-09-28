@@ -90,6 +90,16 @@ order:
    ceiling, `OPTIMIZE_DAILY_CREDITS` in `geo-budget.server.ts`, through the
    `geo_credit_usage` migration. That migration is applied by hand; until it
    is, the ceiling is skipped with one warning in the log.
+   **How the traveller gets around** is asked in the directions sheet
+   (`travel-mode.ts`, pure and tested; remembered per trip on the phone by
+   `travel-choice-store.ts`): walk what's close (the old default: walk under
+   `DIRECTIONS_WALK_M`, drive the rest), public transit, walk everywhere, or
+   car. Transit is routed only by Geoapify, with its `approximated_transit`
+   mode (`GEOAPIFY_TRANSIT_MODE`): typical times, not a timetable, so every
+   transit journey is marked as an estimate and opens Google Maps in transit
+   mode for the real lines. Any other provider, or a failed transit route,
+   gets a straight-line estimate (`route-estimate.ts`). `npm run map:check`
+   routes one transit journey to confirm the mode name.
 2. `LOCATIONIQ_TOKEN` set: LocationIQ, which speaks Nominatim's and OSRM's
    shapes directly, at two requests a second. A walk its router refuses is
    routed as a drive and timed at walking pace, marked as an estimate.
@@ -110,7 +120,7 @@ most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
 per trip (`offline-map.ts`). There is no service worker, so this helps an open
 day map when the signal drops, not opening Béa with none. The Geoapify URLs
 were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
-confirms them against the real thing.
+confirms them, and the transit mode, against the real thing.
 Labels ask for the browser's language first (`name:fr`, `name:ja` …), then
 Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 `@mapbox/mapbox-gl-rtl-text` (`rtl-text.ts`), served from Béa's own build and
@@ -124,7 +134,11 @@ Overture's place listings through the Open Places API (`open-places.ts`, pure
 and tested; `open-places.server.ts` holds the key). OpenStreetMap is thin
 outside big cities; Overture's listings are not, and are CDLA Permissive 2.0,
 so the pins may be saved and drawn on Béa's own map (Google Places may not be:
-its terms forbid its data on a non-Google map). A match must echo the stop's
+its terms forbid its data on a non-Google map). What Google does allow is
+a link: a rec saved from a pasted Google Maps link keeps that link, and
+"Open in Maps" opens its exact place (`googlePlaceLink` in `reco-open.ts`:
+the short link as is, a `ChIJ…` place ID through `query_place_id`, a
+feature ID through `?cid=`), with no API call. A match must echo the stop's
 name, closed places are skipped, and the nearest to the middle of town wins.
 Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for

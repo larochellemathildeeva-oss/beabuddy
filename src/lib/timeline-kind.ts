@@ -41,12 +41,14 @@ const BY_KIND: Record<string, TimelineGlyph> = {
 };
 
 /**
- * Béa writes its own directions rows as "Walk to X" / "Drive to X", so those
+ * Béa writes its own directions rows as "Walk to X" / "Drive to X" /
+ * "Transit to X", so those
  * read as movement even when the stored kind is something blander.
  */
 const TITLE_HINTS: [RegExp, TimelineGlyph][] = [
   [/^walk to /i, "walk"],
   [/^drive to /i, "transport"],
+  [/^transit to /i, "transport"],
   [/^(fly|flight) /i, "transport"],
   [/\bcheck[- ]?in\b/i, "lodging"],
 ];

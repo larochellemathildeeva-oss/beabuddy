@@ -1,6 +1,6 @@
 {
   "name": "tanstack_start_ts",
-  "version": "6.6.6",
+  "version": "6.6.8",
   "private": true,
   "sideEffects": [
     "src/styles.css"

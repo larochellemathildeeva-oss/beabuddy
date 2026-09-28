@@ -110,7 +110,7 @@ export function readOpenPlaces(json: unknown): OpenPlace[] {
 }
 
 /**
- * The place that is this stop, or nothing.
+ * The places that are this stop, nearest to the middle of town first.
  *
  * Its name has to echo one of the stop's names — a search for "Cais e Porto"
  * answers with whatever is nearby and sounds alike, and a nearby wrong place
@@ -118,18 +118,50 @@ export function readOpenPlaces(json: unknown): OpenPlace[] {
  * with the other lookups: a namesake further out is the village's, not the
  * town's.
  */
+export function openPlacesNamed(
+  places: readonly OpenPlace[],
+  names: readonly string[],
+  near: { lat: number; lon: number },
+): OpenPlace[] {
+  const asked = names.map((name) => name.trim()).filter(Boolean);
+  const matching = places.filter((place) => asked.some((title) => echoesName(title, place)));
+  return matching.sort((a, b) => distanceKm(a, near) - distanceKm(b, near));
+}
+
+/** The place that is this stop, or nothing. */
 export function pickOpenPlace(
   places: readonly OpenPlace[],
   names: readonly string[],
   near: { lat: number; lon: number },
 ): OpenPlace | null {
-  const asked = names.map((name) => name.trim()).filter(Boolean);
-  const matching = places.filter((place) =>
-    asked.some(
-      (title) =>
-        scoreMatch({ title, label: place.label, alsoNamed: [place.name] }).confidence === "high",
-    ),
+  return openPlacesNamed(places, names, near)[0] ?? null;
+}
+
+/**
+ * Is this found place what was typed? The place search asks Overture only
+ * when nothing the map found is: "Sushidokoro Amano" in Osaka came back as
+ * nothing, or as other Amanos, and a list of the wrong places reads the same
+ * as "it isn't there".
+ */
+export function echoesName(
+  title: string,
+  place: {
+    name: string;
+    label?: string | null | undefined;
+    address?: string | null | undefined;
+    /** OSM's class and type: a street named after the place is not the place. */
+    category?: string | null | undefined;
+    placeType?: string | null | undefined;
+  },
+): boolean {
+  const label = place.label || [place.name, place.address].filter(Boolean).join(", ");
+  return (
+    scoreMatch({
+      title,
+      label,
+      alsoNamed: [place.name],
+      category: place.category,
+      kind: place.placeType,
+    }).confidence === "high"
   );
-  matching.sort((a, b) => distanceKm(a, near) - distanceKm(b, near));
-  return matching[0] ?? null;
 }

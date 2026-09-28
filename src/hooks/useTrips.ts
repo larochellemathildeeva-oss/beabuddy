@@ -13,7 +13,7 @@ import {
   type DatesStatus,
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
-import { directionSource } from "@/lib/timeline-directions";
+import { directionSource, directionTitleKey } from "@/lib/timeline-directions";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
@@ -833,9 +833,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       // Matched by day, title and, for a walk or drive, the stop it leaves
       // from — not title alone: "Walk to Hotel" comes back every evening, and
       // a title-only match moved one row from day to day while every other
-      // day's walk home was never saved.
+      // day's walk home was never saved. The mode is left out of the match, so
+      // a walk asked again by transit replaces the walk.
       const keyOf = (row: { day_date?: string | null; title: string; detail?: string | null }) =>
-        `${row.day_date ?? ""}|${row.title.trim().toLowerCase()}|${directionSource(row.detail).toLowerCase()}`;
+        `${row.day_date ?? ""}|${directionTitleKey(row.title)}|${directionSource(row.detail).toLowerCase()}`;
       const existingByKey = new Map(items.map((row) => [keyOf(row), row]));
       const inserts: typeof additions = [];
       const queued = new Set<string>();
@@ -860,6 +861,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         const { error } = await supabase
           .from("itinerary_items")
           .update({
+            title: item.title,
             detail: item.detail ?? hit.detail,
             address: item.address ?? hit.address,
             lat: item.lat ?? hit.lat,
