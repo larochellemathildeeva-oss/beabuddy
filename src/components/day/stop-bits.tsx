@@ -11,7 +11,8 @@ import {
 } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isBooked } from "@/lib/bookings";
-import { seqClass, stopArtUrl } from "@/components/day/stop-words";
+import { PlacePicture } from "@/components/PlacePicture";
+import { seqClass } from "@/components/day/stop-words";
 import { glyphLabel, timelineGlyph, type TimelineGlyph } from "@/lib/timeline-kind";
 
 const GLYPH_ICON: Record<TimelineGlyph, typeof Bed> = {
@@ -26,7 +27,7 @@ const GLYPH_ICON: Record<TimelineGlyph, typeof Bed> = {
 
 /**
  * Small pieces the day views share — Companion, Map and Timeline — so a stop
- * reads the same wherever it appears: its painted picture, its kind as a
+ * reads the same wherever it appears: its picture, its kind as a
  * chip, the numbered disc, a leg as "9 min walk · 426 m", and Béa's bubble.
  */
 
@@ -34,15 +35,21 @@ export function StopArt({
   item,
   className,
 }: {
-  item: { kind?: string | null; title?: string | null };
+  item: {
+    kind?: string | null;
+    title?: string | null;
+    lat?: number | null;
+    lon?: number | null;
+  };
   className: string;
 }) {
   return (
-    <img
-      src={stopArtUrl(item)}
-      alt=""
-      loading="lazy"
-      className={`place-art art-dim shrink-0 object-cover ${className}`}
+    <PlacePicture
+      name={item.title}
+      kind={item.kind}
+      lat={item.lat}
+      lon={item.lon}
+      className={`shrink-0 ${className}`}
     />
   );
 }

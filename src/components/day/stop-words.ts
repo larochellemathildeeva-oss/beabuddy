@@ -1,18 +1,12 @@
 import type { RouteLeg } from "@/lib/directions.functions";
 import { dayDistance } from "@/lib/day-map";
 import { formatMetres } from "@/lib/geo";
-import { placeArtFor, placeArtUrl } from "@/lib/place-art";
 import { placed as hasPosition } from "@/lib/trip-map";
 
 /**
  * The words and classes the day views share (Companion, Map, Timeline), kept
  * apart from the components in `stop-bits.tsx`.
  */
-
-/** The painted picture for a stop, from its kind and name. */
-export function stopArtUrl(item: { kind?: string | null; title?: string | null }): string {
-  return placeArtUrl(placeArtFor({ category: item.kind, kind: item.kind, name: item.title }));
-}
 
 /** The numbered disc: a different accent per stop in Colorful. */
 export function seqClass(number: number): string {

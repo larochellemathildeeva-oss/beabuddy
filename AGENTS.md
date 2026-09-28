@@ -133,7 +133,11 @@ Wikimedia Commons (`wikimedia.ts`, pure and tested; `wikimedia.server.ts`
 fetches, keyless, cached in process). Never `brand:wikidata` — that is the
 chain, not the branch. Every photo is shown with its author and licence and
 a link to its Commons page, and files with extra restrictions are skipped.
-Only places already matched by name get one, like hours.
+Only places already matched by name get one, like hours. With "Real photos" chosen
+under You → Appearance (`stop-pictures.ts`), the same photo replaces the
+illustration on stop and place pictures (`PlacePicture.tsx`), one Place
+Details lookup per new placed stop; anything without a photo keeps its
+illustration.
 
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them

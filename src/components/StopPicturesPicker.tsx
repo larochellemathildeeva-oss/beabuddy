@@ -3,12 +3,13 @@ import type { StopPictures } from "@/lib/stop-pictures";
 
 const OPTIONS: { id: StopPictures; label: string; hint: string }[] = [
   { id: "illustrations", label: "Illustrations", hint: "Béa's painted pictures" },
+  { id: "photos", label: "Real photos", hint: "From Wikimedia Commons" },
   { id: "none", label: "No pictures", hint: "More compact lists" },
 ];
 
 /**
- * How stops and places are pictured. One choice for the whole app, never
- * mixed. Real photos join the list once each stop keeps its own photo.
+ * How stops and places are pictured. One choice for the whole app. With real
+ * photos, a place Wikimedia Commons has no photo of keeps its illustration.
  */
 export function StopPicturesPicker() {
   const [value, setValue] = useStopPictures();
@@ -16,7 +17,7 @@ export function StopPicturesPicker() {
     <div className="plain-card p-4">
       <p className="text-[14.5px] font-semibold">Stop pictures</p>
       <p className="text-[12.5px] text-muted-foreground">How stops and places are shown.</p>
-      <div role="radiogroup" aria-label="Stop pictures" className="mt-3 grid grid-cols-2 gap-2">
+      <div role="radiogroup" aria-label="Stop pictures" className="mt-3 grid grid-cols-3 gap-2">
         {OPTIONS.map((o) => {
           const on = value === o.id;
           return (
@@ -36,6 +37,12 @@ export function StopPicturesPicker() {
           );
         })}
       </div>
+      {value === "photos" && (
+        <p className="mt-2 text-[12px] text-muted-foreground">
+          Photos are shared by their authors on Wikimedia Commons and shown with their credit.
+          Places without one keep their illustration.
+        </p>
+      )}
     </div>
   );
 }
