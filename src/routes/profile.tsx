@@ -24,6 +24,7 @@ import {
 } from "@/components/icons";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { Sheet } from "@/components/Sheet";
 import { resumeOrReplayTour } from "@/components/Tour";
 import { PackingLists } from "@/components/PackingLists";
@@ -101,7 +102,10 @@ function ProfilePage() {
   const bea = useBeaSettings();
   const [interests, setInterests] = useState<string[]>([]);
   const [offlineTripIds, setOfflineTripIds] = useState<string[]>([]);
-  const [displayName, setDisplayName] = useState("");
+  const [displayName, setDisplayName] = useState(() =>
+    user ? rememberedProfileName(safeStorage(), user.id) : "",
+  );
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [homeCity, setHomeCity] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [placeCount, setPlaceCount] = useState<number | null>(null);
@@ -123,14 +127,18 @@ function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     let active = true;
+    setDisplayName((current) => current || rememberedProfileName(safeStorage(), user.id));
     supabase
       .from("profiles")
       .select("display_name, home_city, preferences, avatar_url")
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!active || !data) return;
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (!error) setProfileLoaded(true);
+        if (!data) return;
         setDisplayName(data.display_name ?? "");
+        rememberProfileName(safeStorage(), user.id, data.display_name ?? "");
         setHomeCity(data.home_city ?? "");
         setAvatarUrl(data.avatar_url ?? null);
         if (data.preferences?.length) setInterests(data.preferences);
@@ -155,6 +163,9 @@ function ProfilePage() {
   }) => {
     if (!user) return;
     await supabase.from("profiles").upsert({ id: user.id, ...patch });
+    if (patch.display_name !== undefined) {
+      rememberProfileName(safeStorage(), user.id, patch.display_name);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 1600);
   };
@@ -163,7 +174,9 @@ function ProfilePage() {
     setOfflineTripIds(listSavedDirectionTripIds());
   }, []);
 
-  const signedInName = displayName || user?.email?.split("@")[0] || "Traveller";
+  const signedInName =
+    shownName({ profileName: displayName, profileLoaded, email: user?.email }) ||
+    (profileLoaded ? "Traveller" : "");
   const offlineTrips = t.trips.filter((trip) => offlineTripIds.includes(trip.id));
   // A Google account brings its photo; one saved on the profile wins.
   const metaAvatar = user?.user_metadata?.["avatar_url"];
