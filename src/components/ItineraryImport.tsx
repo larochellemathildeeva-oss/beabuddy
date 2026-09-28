@@ -312,6 +312,17 @@ function ImportPanel({
     .map((_, i) => routeStopLine(named, i))
     .join("; ")
     .slice(0, 600);
+  /**
+   * Where to, asked when the trip names no place.
+   *
+   * A trip can be made without a city ("China, sometime in spring" titled
+   * only by its name), and Build used to send nothing about the place at all —
+   * so Béa picked one, and a trip called China came back planned in Brazil.
+   * Now Build waits until it knows where.
+   */
+  const [whereTo, setWhereTo] = useState("");
+  const place = tripCity?.trim() || whereTo.trim();
+  const needsPlace = !tripCity?.trim() && !routeLine;
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
@@ -477,7 +488,7 @@ function ImportPanel({
           pdfDataUrl: mode === "import" && pdf ? pdf.dataUrl : null,
           pageUrl: mode === "import" && link ? link : null,
           text: (mode === "import" && link ? "" : text.trim()) || null,
-          tripCity: tripCity || null,
+          tripCity: place || null,
           route: routeLine || null,
           startDate: startDate || null,
           endDate: endDate || null,
@@ -512,7 +523,7 @@ function ImportPanel({
     // A trip filed under one city, or none, can still be placed day by day
     // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
     // the whole of Japan.
-    const area = tripCity?.trim() || routeCountry(cities) || "";
+    const area = place || routeCountry(cities) || "";
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
     const stops = dated.map((item) => {
@@ -820,7 +831,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: tripCity || null,
+          tripCity: place || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -850,7 +861,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: tripCity || null,
+          tripCity: place || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -1073,6 +1084,22 @@ function ImportPanel({
         </p>
       )}
 
+      {mode === "build" && needsPlace && (
+        <label className="block text-[13px] text-muted-foreground">
+          Where are you going?
+          <input
+            value={whereTo}
+            onChange={(e) => setWhereTo(e.target.value)}
+            maxLength={120}
+            required
+            placeholder="A city or a country — Kyoto, or Japan"
+            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px] text-foreground outline-none"
+          />
+          <span className="mt-1 block text-[12px]">
+            This trip has no place yet. Béa needs one to plan it.
+          </span>
+        </label>
+      )}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -1107,7 +1134,11 @@ function ImportPanel({
       )}
       <button
         onClick={() => void read()}
-        disabled={busy || (mode === "import" && !hasFiles && text.trim().length < 10)}
+        disabled={
+          busy ||
+          (mode === "import" && !hasFiles && text.trim().length < 10) ||
+          (mode === "build" && needsPlace && !place)
+        }
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
