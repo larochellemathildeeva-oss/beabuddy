@@ -1266,6 +1266,7 @@ export function TripDetail({
                                           area={directionArea ?? ""}
                                           showTime={view.prefs.walkTimes}
                                           onAddBetween={() => openAddBetween(item, next)}
+                                          fromNumber={dayIndex + 1}
                                         />
                                       );
                                     })()}
@@ -1338,6 +1339,7 @@ export function TripDetail({
                               area={directionArea ?? ""}
                               showTime={view.prefs.walkTimes}
                               onAddBetween={() => openAddBetween(item, next)}
+                              fromNumber={i + 1}
                             />
                           );
                         })()}
