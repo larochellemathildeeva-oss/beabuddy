@@ -290,3 +290,54 @@ test("a hyphen between towns on a journey is not a note", () => {
   assert.ok(plan);
   assert.ok(plan.items.some((i) => /Paris - Lyon/.test(`${i.title} ${i.detail ?? ""}`)));
 });
+
+test("a day trip's towns come from its arrivals, departures and returns", () => {
+  const plan = read(`Day 7 — 2026-10-07
+07:11 Shin-Osaka Station, 5-16-1 Nishinakajima — Shinkansen departure — booked
+08:36 Hiroshima Station, 2-37 Matsubaracho — arrival
+09:00 Atomic Bomb Dome, 1-10 Otemachi — Peace Memorial Park
+12:35 Miyajima — island arrival
+13:30 Itsukushima Shrine, 1-1 Miyajimacho — waterfront shrine
+17:00 Miyajima Pier — return boat to Peace Park — booked
+18:10 Hiroshima Yume Plaza, 8-28 Hondori — regional foods
+20:36 Hiroshima Station, 2-37 Matsubaracho — Shinkansen departure — booked
+23:00 Citadines Namba Osaka, 3-5-25 Nipponbashi — hotel
+Day 9 — 2026-10-09
+07:30 Osaka Station, 3-1-1 Umeda — morning departure toward Himeji
+09:00 Himeji Castle, 68 Honmachi — castle interior and grounds
+12:15 Izakaya Toyo, 3-2-26 Higashinodamachi — arrive before service
+20:00 Osaka Station, 3-1-1 Umeda — return to Osaka
+20:30 Citadines Namba Osaka, 3-5-25 Nipponbashi — hotel`);
+  assert.ok(plan);
+  const towns = plan.items.map((i) => `${i.title.split(",")[0]}: ${i.city ?? "-"}`);
+  assert.deepEqual(towns, [
+    "Shin-Osaka Station: -",
+    "Hiroshima Station: Hiroshima",
+    "Atomic Bomb Dome: Hiroshima",
+    "Miyajima: Miyajima",
+    "Itsukushima Shrine: Miyajima",
+    "Miyajima Pier: Miyajima",
+    "Hiroshima Yume Plaza: Hiroshima",
+    "Hiroshima Station: Hiroshima",
+    "Citadines Namba Osaka: -",
+    "Osaka Station: -",
+    "Himeji Castle: Himeji",
+    // "Arrive before service" is not arriving in a town.
+    "Izakaya Toyo: Himeji",
+    "Osaka Station: Himeji",
+    "Citadines Namba Osaka: Osaka",
+  ]);
+});
+
+test("a long plan is still read line by line", () => {
+  const lines = ["Day 1 — 2026-10-01"];
+  for (let i = 0; i < 100; i++) {
+    const h = 6 + Math.floor(i / 6);
+    lines.push(
+      `${String(h).padStart(2, "0")}:${String((i % 6) * 10).padStart(2, "0")} Stop ${i} Museum`,
+    );
+  }
+  const plan = read(lines.join("\n"));
+  assert.ok(plan);
+  assert.equal(plan.items.length, 100);
+});
