@@ -84,7 +84,8 @@ import { toast } from "sonner";
 import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
-import { planTowns, type PlanCity } from "@/lib/plan-cities";
+import { planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
+import { countryNamedIn } from "@/lib/world-countries";
 import { lookupCoords } from "@/lib/places.functions";
 
 type NewItineraryItem = {
@@ -117,6 +118,7 @@ export function ItineraryImport({
   open,
   onClose,
   tripCity,
+  tripTitle,
   startDate,
   endDate,
   defaultTab = "start",
@@ -133,6 +135,8 @@ export function ItineraryImport({
   open: boolean;
   onClose: () => void;
   tripCity?: string | undefined;
+  /** The trip's name, only for the country it may name ("JAPAN TEST"). */
+  tripTitle?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
   defaultTab?: PlannerTab;
@@ -257,6 +261,7 @@ export function ItineraryImport({
           existingItems={existingItems}
           cities={cities}
           tripCity={tripCity}
+          tripTitle={tripTitle}
           startDate={startDate}
           endDate={endDate}
           onAddItems={onAddItems}
@@ -287,6 +292,7 @@ function ImportPanel({
   existingItems,
   cities,
   tripCity,
+  tripTitle,
   startDate,
   endDate,
   onAddItems,
@@ -303,6 +309,7 @@ function ImportPanel({
   /** The trip's route, so each day's stops are looked up in that day's city. */
   cities: OptimizeSourceCity[];
   tripCity?: string | undefined;
+  tripTitle?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
   /** Returns the inserted row ids, so a bulk save can be undone. */
@@ -429,6 +436,18 @@ function ImportPanel({
   const [rebuildReason, setRebuildReason] = useState("");
   const [plan, setPlan] = useState<Awaited<ReturnType<typeof run>> | null>(null);
   /**
+   * The country the plan is in, when something says so: the trip's place,
+   * its route, or a country its name or the plan's names ("JAPAN TEST",
+   * "Japan Master Itinerary"). A trip with no place is then searched as a
+   * country, each stop beside the one before it, instead of not at all.
+   */
+  const planCountry =
+    countryNamedIn(draftPlace.split(",").pop())?.name ||
+    routeCountry(cities) ||
+    countryNamedIn(tripTitle)?.name ||
+    countryNamedIn(plan?.trip_title)?.name ||
+    "";
+  /**
    * The date a "Day 1 / Day 2" plan begins.
    *
    * Only asked for when nothing else knows: the trip has no start date and
@@ -543,7 +562,10 @@ function ImportPanel({
     // A trip filed under one city, or none, can still be placed day by day
     // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
     // the whole of Japan.
-    const area = draftPlace || routeCountry(cities) || "";
+    // A trip with no place and no route still says its country in its name
+    // ("JAPAN TEST") or the plan's ("Japan Master Itinerary"): searched as a
+    // country, each stop is looked for beside the one before it.
+    const area = draftPlace || routeCountry(cities) || planCountry || "";
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
     const stops = dated.map((item, i) => {
@@ -826,7 +848,9 @@ function ImportPanel({
               const row = rows[i];
               if (!row) return [];
               const pin = savedPin(i);
-              return [pin ? { ...row, lat: pin.lat, lon: pin.lon } : row];
+              // "Hiroshima" from the plan's own words is "Hiroshima, Japan".
+              const placed = withCountry(row, planCountry);
+              return [pin ? { ...placed, lat: pin.lat, lon: pin.lon } : placed];
             }),
             cities,
             (at) => lookup({ data: at }),
