@@ -247,3 +247,43 @@ export function useStopDocumentCount(itemId: string | null, open: boolean) {
   }, [itemId, open]);
   return count;
 }
+
+/**
+ * The Trip documents filed to one trip, for its bookings: the Overview's
+ * counts and the trip menu's Flights, Hotels, Transport and Activities.
+ * Read again when Béa comes back to the front, so a booking added from
+ * You → Trip documents shows up on the trip. Empty, quietly, while the
+ * migration is not applied.
+ */
+export function useTripBookingDocuments(tripId: string | null) {
+  const [docs, setDocs] = useState<TripDocument[]>([]);
+
+  const load = useCallback(async () => {
+    if (!tripId) {
+      setDocs([]);
+      return;
+    }
+    const { data, error } = (await documentsTable()
+      .select(DOCUMENT_COLUMNS)
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false })
+      .limit(200)) as { data: TripDocument[] | null; error: unknown };
+    if (error) return;
+    setDocs((data ?? []).map((d) => ({ ...d, lines: d.lines ?? [] })));
+  }, [tripId]);
+
+  useEffect(() => {
+    void load();
+    const onShow = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("focus", onShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("focus", onShow);
+    };
+  }, [load]);
+
+  return { docs, reload: load };
+}

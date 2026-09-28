@@ -30,7 +30,7 @@ import { addRecommendationOnce } from "@/hooks/useRecommendations";
 import type { PlaceLike } from "@/lib/captured-place";
 import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
 import { supabase } from "@/integrations/supabase/client";
-import { ItineraryImport } from "@/components/ItineraryImport";
+import { ItineraryImport, type PlannerTab } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
@@ -50,8 +50,9 @@ import {
 } from "@/components/day/TripMenuSheet";
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { bookingKind } from "@/lib/trip-overview";
-import { isBooked } from "@/lib/bookings";
+import { countBookings, tripBookings } from "@/lib/trip-overview";
+import { TripBookingsSheet, type BookingFilter } from "@/components/day/TripBookingsSheet";
+import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import {
   ALL_DAYS,
   dayChips,
@@ -144,7 +145,7 @@ export function TripDetail({
   openPrep?: PrepTab | undefined;
 }) {
   const [plannerOpen, setPlannerOpen] = useState(false);
-  const [plannerTab, setPlannerTab] = useState<"import" | "optimize" | "compare">("import");
+  const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -560,6 +561,9 @@ export function TripDetail({
   const todayKey = toLocalISODate(new Date());
   /** Day the add form should land on, set by the per-day "Add here" buttons. */
   const [addDay, setAddDay] = useState("");
+  /** The trip's Bookings list, open on one kind, or null. */
+  const [bookingsOpen, setBookingsOpen] = useState<BookingFilter | null>(null);
+  const bookingDocs = useTripBookingDocuments(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
   const timelineGroups = groupTimelineByDay(stopItems);
   /**
@@ -735,16 +739,9 @@ export function TripDetail({
     ),
   );
   /** Booked stops by kind, for the trip menu's Flights, Hotels, Transport and Activities. */
-  const bookingCounts: Record<BookingTile, number> = {
-    flight: 0,
-    stay: 0,
-    transport: 0,
-    activity: 0,
-  };
-  for (const item of stopItems) {
-    const kind = isBooked(item) ? bookingKind(item) : null;
-    if (kind) bookingCounts[kind] += 1;
-  }
+  const bookingCounts: Record<BookingTile, number> = countBookings(
+    tripBookings(stopItems, bookingDocs.docs),
+  );
   /** "+ Add a stop between" on a connector: the form opens at the time between them. */
   const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
     insertAnchor.current = null;
@@ -814,7 +811,7 @@ export function TripDetail({
           data-guide="bea-plan"
           title="Let Béa plan this trip"
           onClick={() => {
-            setPlannerTab("import");
+            setPlannerTab("start");
             setPlannerOpen(true);
           }}
           className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
@@ -936,6 +933,8 @@ export function TripDetail({
             items={stopItems}
             cities={cities.stops.map((stop) => stop.city)}
             groups={timelineGroups}
+            bookingDocs={bookingDocs.docs}
+            onOpenBookings={setBookingsOpen}
             onOpenTimeline={(dayKey) => {
               if (dayKey !== undefined) setDayChoice(dayKey);
               setPerspective("timeline");
@@ -1098,7 +1097,7 @@ export function TripDetail({
                   title="Your itinerary"
                   line="Activities, meals, transport and notes."
                   onAdd={() => {
-                    setAddDay("");
+                    setAddDay(addToDay ?? "");
                     setAddingTimeline(true);
                   }}
                   addLabel="Add to the timeline"
@@ -1300,7 +1299,7 @@ export function TripDetail({
                     .filter(Boolean)
                     .join(" · ")}
                   onAdd={() => {
-                    setAddDay("");
+                    setAddDay(addToDay ?? "");
                     setAddingTimeline(true);
                   }}
                   addLabel="Add to the timeline"
@@ -1546,7 +1545,7 @@ export function TripDetail({
               setAddOpen(false);
               setPerspective("timeline");
               setTimelineOpen(true);
-              setAddDay("");
+              setAddDay(addToDay ?? "");
               setAddingTimeline(true);
             }}
             className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
@@ -1595,6 +1594,15 @@ export function TripDetail({
       </Sheet>
 
       <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly />
+
+      <TripBookingsSheet
+        open={bookingsOpen !== null}
+        onClose={() => setBookingsOpen(null)}
+        kind={bookingsOpen ?? "all"}
+        stops={stopItems}
+        docs={bookingDocs.docs}
+        onSaveBooking={(id, patch) => board.updateItem(id, patch)}
+      />
 
       <SavedPlacesSheet
         open={savedOpen}
@@ -1700,11 +1708,9 @@ export function TripDetail({
         onSection={setSheetSection}
         people={members.map((m) => m.display_name || "Traveller")}
         bookings={bookingCounts}
-        onBookings={() => {
+        onBookings={(kind) => {
           setSettingsOpen(false);
-          setTimelineByDay(true);
-          setDayChoice(ALL_DAYS);
-          setPerspective("timeline");
+          setBookingsOpen(kind);
         }}
         citiesCount={cities.stops.length}
         offlineNote={

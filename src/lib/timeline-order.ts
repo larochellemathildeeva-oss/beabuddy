@@ -69,3 +69,65 @@ export function insertAfter<T extends { id: string; position: number }>(
     .map((item) => ({ id: item.id, position: item.position + 1 }));
   return { position: anchor.position + 1, shifts };
 }
+
+/**
+ * Where a stop belongs by its day and time, for adding one or changing its
+ * time: straight after the last stop on that day at or before its time.
+ *
+ * A stop without a clock time goes to the end of its day. A timed stop goes
+ * before the first later-timed stop, stepping over untimed ones only when
+ * they sit after it. A day with nothing on it yet takes the place after the
+ * last stop of the days before it. Other stops keep their times; only their
+ * places in the list move, to make room.
+ */
+export function chronologicalSlot<
+  T extends { id: string; day_date: string | null; position: number; time_label: string | null },
+>(
+  items: readonly T[],
+  entry: { day_date?: string | null; time_label?: string | null },
+  minutesOf: (label: string | null | undefined) => number | null,
+  ignoreId?: string,
+): { position: number; shifts: { id: string; position: number }[] } {
+  const others = items.filter((item) => item.id !== ignoreId);
+  const day = entry.day_date ?? "";
+  const sameDay = others.filter((item) => (item.day_date ?? "") === day);
+  const at = minutesOf(entry.time_label);
+  let anchor: T | undefined;
+  if (sameDay.length > 0) {
+    if (at == null) {
+      anchor = sameDay[sameDay.length - 1];
+    } else {
+      const later = sameDay.findIndex((item) => {
+        const m = minutesOf(item.time_label);
+        return m != null && m > at;
+      });
+      if (later === 0) {
+        // Before everything on the day: after whatever comes just before it.
+        const first = sameDay[0]!;
+        const before = others.filter((item) => item.position < first.position);
+        anchor = before.sort((a, b) => a.position - b.position)[before.length - 1];
+        if (!anchor) return makeRoomAt(others, first.position);
+      } else {
+        anchor = later < 0 ? sameDay[sameDay.length - 1] : sameDay[later - 1];
+      }
+    }
+  } else if (day) {
+    // A new day: after the last stop on an earlier day.
+    const earlier = others.filter((item) => item.day_date && item.day_date < day);
+    anchor = earlier.sort((a, b) => a.position - b.position)[earlier.length - 1];
+    if (!anchor) return { position: nextPosition(others), shifts: [] };
+  } else {
+    return { position: nextPosition(others), shifts: [] };
+  }
+  return anchor ? insertAfter(others, anchor.id) : { position: nextPosition(others), shifts: [] };
+}
+
+function makeRoomAt<T extends { id: string; position: number }>(
+  items: readonly T[],
+  position: number,
+): { position: number; shifts: { id: string; position: number }[] } {
+  const shifts = items
+    .filter((item) => item.position >= position)
+    .map((item) => ({ id: item.id, position: item.position + 1 }));
+  return { position, shifts };
+}

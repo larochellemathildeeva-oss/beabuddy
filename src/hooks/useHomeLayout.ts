@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 export type HomeSectionKey = "trip" | "weather" | "waiting" | "future";
@@ -40,37 +40,69 @@ function read(userId: string | undefined): HomeLayout {
   }
 }
 
+/*
+ * One layout per account, shared by every screen that shows it. Each caller
+ * used to keep its own copy, read once on mount, so a switch flipped under
+ * You changed that sheet and nothing else until the page was reloaded.
+ */
+const listeners = new Set<() => void>();
+const cache = new Map<string, HomeLayout>();
+
+function current(userId: string | undefined): HomeLayout {
+  const key = keyFor(userId);
+  let layout = cache.get(key);
+  if (!layout) {
+    layout = read(userId);
+    cache.set(key, layout);
+  }
+  return layout;
+}
+
+function write(userId: string | undefined, next: HomeLayout | null): void {
+  const key = keyFor(userId);
+  try {
+    if (next) window.localStorage.setItem(key, JSON.stringify(next));
+    else window.localStorage.removeItem(key);
+  } catch {
+    /* storage unavailable: the choice lasts for this visit */
+  }
+  cache.set(key, next ?? DEFAULT_HOME_LAYOUT);
+  for (const listener of listeners) listener();
+}
+
+function subscribe(onChange: () => void): () => void {
+  listeners.add(onChange);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key?.startsWith("bea-home-layout-")) {
+      cache.delete(e.key);
+      onChange();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
 export function useHomeLayout() {
   const { user } = useAuth();
-  const [layout, setLayout] = useState<HomeLayout>(DEFAULT_HOME_LAYOUT);
-
-  useEffect(() => {
-    setLayout(read(user?.id));
-  }, [user?.id]);
+  const userId = user?.id;
+  const layout = useSyncExternalStore(
+    subscribe,
+    () => current(userId),
+    () => DEFAULT_HOME_LAYOUT,
+  );
 
   const toggle = useCallback(
     (key: HomeSectionKey) => {
-      setLayout((prev) => {
-        const next = { ...prev, [key]: !prev[key] };
-        try {
-          window.localStorage.setItem(keyFor(user?.id), JSON.stringify(next));
-        } catch {
-          /* storage unavailable */
-        }
-        return next;
-      });
+      const prev = current(userId);
+      write(userId, { ...prev, [key]: !prev[key] });
     },
-    [user?.id],
+    [userId],
   );
 
-  const reset = useCallback(() => {
-    setLayout(DEFAULT_HOME_LAYOUT);
-    try {
-      window.localStorage.removeItem(keyFor(user?.id));
-    } catch {
-      /* storage unavailable */
-    }
-  }, [user?.id]);
+  const reset = useCallback(() => write(userId, null), [userId]);
 
   return { layout, toggle, reset };
 }

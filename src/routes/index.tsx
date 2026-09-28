@@ -218,9 +218,11 @@ function SignedInHome() {
 
         {showTrip && <HomeShortcuts trip={trip} glance={glances[trip.id]} />}
 
-        <div className="pt-2">
-          <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
-        </div>
+        {layout.waiting && (
+          <div className="pt-2">
+            <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
+          </div>
+        )}
 
         {layout.trip && !trips.loading && <HomeYourTrips trips={others} photos={photos} />}
 

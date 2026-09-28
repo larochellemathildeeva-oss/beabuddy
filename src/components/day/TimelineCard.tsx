@@ -392,6 +392,30 @@ export function TimelineEntry({
               Booking
             </button>
           )}
+          {onMove && (
+            <>
+              <button
+                type="button"
+                disabled={!canMoveUp}
+                onClick={() => onMove(-1)}
+                aria-label={`Move ${item.title} up`}
+                className={quickButton}
+              >
+                <ChevronUp className="size-4" aria-hidden />
+                Up
+              </button>
+              <button
+                type="button"
+                disabled={!canMoveDown}
+                onClick={() => onMove(1)}
+                aria-label={`Move ${item.title} down`}
+                className={quickButton}
+              >
+                <ChevronDown className="size-4" aria-hidden />
+                Down
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={onRemove}
