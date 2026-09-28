@@ -229,14 +229,17 @@ export function timeFit<T extends MovableStop>(
   if ((prev == null || at >= prev) && (next == null || at <= next)) return null;
   let suggestion: number | null = null;
   if (prev != null && next != null) {
-    if (next >= prev) {
-      const mid = Math.round((prev + next) / 2 / 15) * 15;
-      suggestion = Math.min(next, Math.max(prev, mid));
-    }
+    const mid = Math.round((prev + next) / 2 / 15) * 15;
+    suggestion = Math.min(next, Math.max(prev, mid));
   } else if (prev != null) {
     suggestion = Math.min(prev + 60, 23 * 60 + 45);
   } else if (next != null) {
     suggestion = Math.max(next - 60, 0);
   }
-  return { time, suggestion: suggestion == null ? null : clock(suggestion) };
+  // Only a time that really sits between them: late at night there may be none.
+  const fits =
+    suggestion != null &&
+    (prev == null || suggestion >= prev) &&
+    (next == null || suggestion <= next);
+  return { time, suggestion: fits ? clock(suggestion!) : null };
 }

@@ -35,6 +35,7 @@ export function MoveStopSheet({
   const [index, setIndex] = useState(0);
   const [time, setTime] = useState("");
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
 
   const others = useMemo(() => (stop ? stopsOfDay(stops, day, stop.id) : []), [stops, day, stop]);
 
@@ -45,6 +46,7 @@ export function MoveStopSheet({
     const here = stopsOfDay(stops, stop.day_date).findIndex((s) => s.id === stop.id);
     setIndex(Math.max(0, here));
     setTime(stop.time_label ?? "");
+    setProblem("");
     // Only when a new stop opens, not on every reload of the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stop?.id]);
@@ -97,9 +99,13 @@ export function MoveStopSheet({
 
   const submit = async () => {
     setBusy(true);
+    setProblem("");
     try {
       await onMove(move);
       onClose();
+    } catch {
+      // Stays open with the choices made, so trying again is one tap.
+      setProblem("Couldn't move that. Check your connection and try again.");
     } finally {
       setBusy(false);
     }
@@ -189,6 +195,7 @@ export function MoveStopSheet({
           )}
         </div>
 
+        {problem && <p className="text-[13px] text-destructive">{problem}</p>}
         <button
           type="button"
           disabled={busy || unchanged}

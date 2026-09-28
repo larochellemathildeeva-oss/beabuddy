@@ -131,3 +131,11 @@ test("a time that no longer fits gets a suggestion between its neighbours", () =
   assert.equal(timeFit(plan, { id: "a", day_date: D2, at: "start" }, clockMinutes), null);
   assert.equal(timeFit(plan, { id: "e", day_date: D1, at: "start" }, clockMinutes), null);
 });
+
+test("no suggestion when nothing after the stop before still fits the day", () => {
+  const late = [stop("x", D1, 0, "23:50"), stop("y", D1, 1, "08:00")];
+  assert.deepEqual(timeFit(late, { id: "y", day_date: D1, at: "end" }, clockMinutes), {
+    time: "08:00",
+    suggestion: null,
+  });
+});

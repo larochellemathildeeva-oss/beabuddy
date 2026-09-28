@@ -993,21 +993,27 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (updates.length === 0) return;
       const authorId = await liveUserId(me.id);
       const known = new Set(items.map((item) => item.id));
-      for (const row of updates) {
-        if (!known.has(row.id)) continue;
-        const { error } = await supabase
-          .from("itinerary_items")
-          .update({
-            day_date: row.day_date,
-            time_label: row.time_label,
-            position: row.position,
-            updated_by: authorId,
-          })
-          .eq("id", row.id)
-          .eq("trip_id", id);
-        if (error) throw error;
+      // One write a row, not a transaction: when one fails part way, the
+      // list still reloads, so it shows what was saved rather than the plan
+      // before, and the error reaches the caller.
+      try {
+        for (const row of updates) {
+          if (!known.has(row.id)) continue;
+          const { error } = await supabase
+            .from("itinerary_items")
+            .update({
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+              updated_by: authorId,
+            })
+            .eq("id", row.id)
+            .eq("trip_id", id);
+          if (error) throw error;
+        }
+      } finally {
+        await load();
       }
-      await load();
     },
     [me.id, items, load],
   );

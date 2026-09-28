@@ -3,6 +3,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_CALL } from "@/lib/ai-errors";
+import { isSavedDirectionItem } from "@/lib/direction-stops";
 import {
   PLAN_EDIT_MAX_DAYS,
   PLAN_EDIT_MAX_MOVES,
@@ -11,25 +12,11 @@ import {
   planEditPrompt,
   readPlanEdit,
 } from "@/lib/plan-edit";
-import type { StopMove } from "@/lib/stop-move";
-
-const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+import { tripDays, type StopMove } from "@/lib/stop-move";
 
 const PlanEditInput = z.object({
+  tripId: z.string().uuid(),
   request: z.string().trim().min(1).max(PLAN_EDIT_MAX_REQUEST),
-  days: z.array(z.string().regex(ISO_DAY)).max(PLAN_EDIT_MAX_DAYS),
-  stops: z
-    .array(
-      z.object({
-        id: z.string().min(1).max(64),
-        title: z.string().max(200),
-        day_date: z.string().regex(ISO_DAY).nullable(),
-        time_label: z.string().max(40).nullable(),
-        kind: z.string().max(40).nullable().optional(),
-      }),
-    )
-    .min(1)
-    .max(PLAN_EDIT_MAX_STOPS),
 });
 
 const PlanEditSchema = z.object({
@@ -51,11 +38,43 @@ export type PlanEditAnswer = { moves: StopMove[]; reply: string };
 /**
  * Read a change to the plan in plain words as a list of moves. Saves
  * nothing: the traveller sees the moves first and applies them.
+ *
+ * The trip and its stops are read here, as the traveller (row security
+ * decides), never taken from the request, so the model only ever sees a
+ * trip its caller belongs to. Calls are capped per person.
  */
 export const askPlanEdit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PlanEditInput.parse(input))
-  .handler(async ({ data }): Promise<PlanEditAnswer> => {
+  .handler(async ({ data, context }): Promise<PlanEditAnswer> => {
+    const { allowPlanEdit } = await import("@/lib/plan-edit-limit.server");
+    if (!allowPlanEdit(context.userId)) {
+      throw new Error("Béa needs a short break. Try again in a few minutes.");
+    }
+
+    const [{ data: trip }, { data: rows, error }] = await Promise.all([
+      context.supabase
+        .from("trips")
+        .select("start_date, end_date")
+        .eq("id", data.tripId)
+        .maybeSingle(),
+      context.supabase
+        .from("itinerary_items")
+        .select("id, title, kind, day_date, time_label, position")
+        .eq("trip_id", data.tripId)
+        .order("day_date", { ascending: true })
+        .order("position", { ascending: true }),
+    ]);
+    if (!trip || error) throw new Error("Béa couldn't open this trip.");
+    const stops = (rows ?? []).filter((row) => row.title.trim() && !isSavedDirectionItem(row));
+    if (stops.length === 0) throw new Error("There's nothing on this trip to move yet.");
+    const days = tripDays(trip.start_date, trip.end_date, stops);
+    if (stops.length > PLAN_EDIT_MAX_STOPS || days.length > PLAN_EDIT_MAX_DAYS) {
+      throw new Error(
+        "This trip is too long for Béa to rearrange in one go. Move stops one by one.",
+      );
+    }
+
     const { withModelFallback } = await import("@/lib/ai.server");
     try {
       const result = await withModelFallback((model) =>
@@ -64,11 +83,11 @@ export const askPlanEdit = createServerFn({ method: "POST" })
           ...AI_CALL,
           output: Output.object({ schema: PlanEditSchema }),
           reasoning: "low",
-          prompt: planEditPrompt(data.request, data.stops, data.days),
+          prompt: planEditPrompt(data.request, stops, days),
         }),
       );
       return {
-        moves: readPlanEdit(result.output.moves, data.stops, data.days),
+        moves: readPlanEdit(result.output.moves, stops, days),
         reply: result.output.reply.trim().slice(0, 300),
       };
     } catch (error) {

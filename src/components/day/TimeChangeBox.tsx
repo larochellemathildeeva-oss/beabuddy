@@ -3,8 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { findStopForChange, readTimeChange } from "@/lib/stop-edit";
 import { askPlanEdit } from "@/lib/plan-edit.functions";
-import { PLAN_EDIT_MAX_REQUEST, PLAN_EDIT_MAX_STOPS } from "@/lib/plan-edit";
-import { indexFor, stopsOfDay, type StopMove } from "@/lib/stop-move";
+import { PLAN_EDIT_MAX_REQUEST } from "@/lib/plan-edit";
+import { rearrange, stopsOfDay, type StopMove } from "@/lib/stop-move";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { readableError } from "@/lib/optimistic";
 
@@ -27,13 +27,19 @@ type Stop = {
  * moves are shown first and only saved on Apply — a wrong stop moved quietly
  * is worse than a question.
  */
+/** The plan as Béa read it, to tell whether it changed before Apply. */
+const planKey = (stops: readonly Stop[]) =>
+  stops.map((s) => `${s.id}|${s.day_date ?? ""}|${s.time_label ?? ""}|${s.position}`).join("\n");
+
 export function TimeChangeBox({
+  tripId,
   stops,
   days,
   onChangeTime,
   onApply,
   onDone,
 }: {
+  tripId: string;
   stops: readonly Stop[];
   /** The trip's days in order: "day 2" is the second. */
   days: readonly string[];
@@ -45,32 +51,25 @@ export function TimeChangeBox({
   const [text, setText] = useState("");
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
-  const [proposal, setProposal] = useState<{ moves: StopMove[]; reply: string } | null>(null);
+  const [proposal, setProposal] = useState<{
+    moves: StopMove[];
+    reply: string;
+    /** `planKey` of the stops Béa was asked about. */
+    basis: string;
+  } | null>(null);
   const ask = useServerFn(askPlanEdit);
 
   const askBea = async () => {
-    if (stops.length > PLAN_EDIT_MAX_STOPS) {
-      setProblem("This trip is too long for Béa to rearrange in one go. Move stops one by one.");
-      return;
-    }
+    // The server reads the trip itself; only which trip and the words go.
+    const basis = planKey(stops);
     const answer = await ask({
-      data: {
-        request: text.trim().slice(0, PLAN_EDIT_MAX_REQUEST),
-        days: [...days],
-        stops: stops.map((stop) => ({
-          id: stop.id,
-          title: stop.title.slice(0, 200),
-          day_date: stop.day_date,
-          time_label: stop.time_label,
-          kind: stop.kind ?? null,
-        })),
-      },
+      data: { tripId, request: text.trim().slice(0, PLAN_EDIT_MAX_REQUEST) },
     });
     if (answer.moves.length === 0) {
       setProblem(answer.reply || "Béa didn't find anything to move for that.");
       return;
     }
-    setProposal(answer);
+    setProposal({ ...answer, basis });
   };
 
   const submit = async (e: FormEvent) => {
@@ -118,6 +117,13 @@ export function TimeChangeBox({
 
   const apply = async () => {
     if (!proposal) return;
+    // Someone changed the plan since Béa read it: her moves were worked out
+    // on the old one, so ask again rather than apply them to the new.
+    if (planKey(stops) !== proposal.basis) {
+      setProposal(null);
+      setProblem("The plan changed since Béa suggested this. Ask again.");
+      return;
+    }
     setBusy(true);
     try {
       await onApply(proposal.moves, proposal.reply);
@@ -136,15 +142,27 @@ export function TimeChangeBox({
     const index = days.indexOf(day);
     return index < 0 ? formatTimelineDayLabel(day) : `Day ${index + 1}`;
   };
-  /** "Day 3, after Orsay, 16:00" — where a move puts its stop. */
+  /**
+   * "Day 3, after Orsay, 16:00": where each stop ends up once every move is
+   * applied in order, the same way Apply saves them.
+   */
+  const landed = (() => {
+    if (!proposal) return null;
+    const updates = rearrange(stops, proposal.moves);
+    return stops.map((stop) => ({ ...stop, ...updates.find((u) => u.id === stop.id) }));
+  })();
   const describe = (move: StopMove) => {
-    const stop = stops.find((s) => s.id === move.id);
-    const list = stopsOfDay(stops, move.day_date, move.id);
-    const index = indexFor(list, move.at);
+    const stop = landed?.find((s) => s.id === move.id);
+    if (!landed || !stop) return "";
+    const list = stopsOfDay(landed, stop.day_date);
+    const index = list.findIndex((s) => s.id === move.id);
     const where =
-      index === 0 ? "first" : index >= list.length ? "last" : `after ${list[index - 1]!.title}`;
-    const time = move.time_label !== undefined ? move.time_label : stop?.time_label;
-    return `${dayName(move.day_date)}, ${where}${time ? `, ${time}` : ""}`;
+      index === 0
+        ? "first"
+        : index === list.length - 1
+          ? "last"
+          : `after ${list[index - 1]!.title}`;
+    return `${dayName(stop.day_date)}, ${where}${stop.time_label ? `, ${stop.time_label}` : ""}`;
   };
 
   return (

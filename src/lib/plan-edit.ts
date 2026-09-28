@@ -14,7 +14,8 @@ import type { StopMove } from "./stop-move.ts";
 export const PLAN_EDIT_MAX_REQUEST = 300;
 export const PLAN_EDIT_MAX_STOPS = 150;
 export const PLAN_EDIT_MAX_DAYS = 60;
-export const PLAN_EDIT_MAX_MOVES = 30;
+/** As many as there are stops, so swapping two full days is never cut short. */
+export const PLAN_EDIT_MAX_MOVES = PLAN_EDIT_MAX_STOPS;
 
 export type PlanEditStop = {
   id: string;

@@ -654,6 +654,8 @@ export function TripDetail({
     const stop = single ? stopItems.find((item) => item.id === single.id) : undefined;
     const crossedDay = single && stop && (stop.day_date ?? "") !== (single.day_date ?? "");
     await board.applySchedule(updates);
+    // Journeys worked out just now were for the old neighbours.
+    setLiveLegs(null);
     const undo = () =>
       void board.applySchedule(previous).then(
         () => toast.success("Back where it was"),
@@ -1651,13 +1653,7 @@ export function TripDetail({
             stop={movingStop}
             stops={stopItems}
             days={moveDays}
-            onMove={async (move) => {
-              try {
-                await moveStops([move]);
-              } catch {
-                toast.error("Couldn't move that. Check your connection.");
-              }
-            }}
+            onMove={(move) => moveStops([move])}
             onClose={() => setMovingId(null)}
           />
 
@@ -1674,6 +1670,7 @@ export function TripDetail({
             <div className="space-y-4">
               {stopItems.length > 0 && (
                 <TimeChangeBox
+                  tripId={trip.id}
                   stops={stopItems}
                   days={moveDays}
                   onChangeTime={async (id, time) => {
