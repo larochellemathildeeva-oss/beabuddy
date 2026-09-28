@@ -3,7 +3,7 @@ import { MoreHorizontal } from "lucide-react";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section } from "@/components/Section";
 import { Sheet } from "@/components/Sheet";
-import { useTripStops, type StopRow } from "@/hooks/useTripStops";
+import { useTripStops, type StopRow, type TripHome } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
 import { useUndo } from "@/hooks/useUndo";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
@@ -71,9 +71,12 @@ export function TripStops({
   uid,
   openSignal,
   formOnly = false,
+  home,
 }: {
   tripId: string;
   uid: string | null;
+  /** The trip's own city and dates, kept as the first city on the list. */
+  home?: TripHome | undefined;
   /**
    * Bumped by the pin button in the trip's action row. A counter rather than a
    * boolean so pressing it again re-opens the form after you have closed it —
@@ -83,7 +86,7 @@ export function TripStops({
   /** Render only the "Add a stop" sheet, for opening from the trip page. */
   formOnly?: boolean;
 }) {
-  const s = useTripStops(tripId, uid);
+  const s = useTripStops(tripId, uid, home);
   const { removeWithUndo } = useUndo();
   const [adding, setAdding] = useState(false);
   /** Stop id being edited, or "" while adding a new one. */
@@ -265,6 +268,37 @@ export function TripStops({
               {c}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* A one-city trip keeps its city on the trip, so it is shown here
+          rather than as an empty list. */}
+      {s.stops.length === 0 && home?.city?.trim() && (
+        <p className="border-y border-border/60 py-2.5 text-[14.5px] font-medium">
+          1. {home.city}
+          {home.country && home.country !== home.city ? `, ${home.country}` : ""}
+        </p>
+      )}
+
+      {/* Trips whose second city was added before the first one was kept. */}
+      {s.missingHome && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+          <p className="min-w-0 text-[13px]">
+            <strong>{s.missingHome.city}</strong> isn't on this list yet.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              void s
+                .addHome()
+                .catch((e: unknown) =>
+                  setError(e instanceof Error ? e.message : "Couldn't add that one"),
+                )
+            }
+            className="shrink-0 rounded-lg bg-primary px-2.5 py-1 text-[12.5px] font-semibold text-primary-foreground"
+          >
+            Add it first
+          </button>
         </div>
       )}
 

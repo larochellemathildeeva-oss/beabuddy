@@ -76,6 +76,7 @@ import { splitInsideNote, type InsideEntry } from "@/lib/inside-list";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
+import { planScope, type TripCity } from "@/lib/trip-cities";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import logo from "@/assets/bea-logo.png";
@@ -113,6 +114,8 @@ export function ItineraryImport({
   defaultTab = "import",
   existingItems = [],
   cities = [],
+  planCities = [],
+  defaultPlanCity = "",
   onAddItems,
   onRemoveItems,
   onAddCosts,
@@ -127,6 +130,10 @@ export function ItineraryImport({
   defaultTab?: PlannerTab;
   existingItems?: OptimizeSourceItem[];
   cities?: OptimizeSourceCity[];
+  /** The trip's cities, when it has several: a plan can be read for one of them. */
+  planCities?: TripCity[];
+  /** The city picked on the trip page, so the planner opens on it. */
+  defaultPlanCity?: string;
   /** Returns the inserted row ids, so a bulk save can be undone. */
   onAddItems: (items: NewItineraryItem[]) => Promise<string[] | void>;
   /** Takes a batch back out again, for that undo. */
@@ -143,10 +150,21 @@ export function ItineraryImport({
   ) => Promise<void>;
 }) {
   const [tab, setTab] = useState<PlannerTab>(defaultTab);
+  /** The city this plan is for, by id; "" for the whole trip. */
+  const [planCityId, setPlanCityId] = useState(defaultPlanCity);
 
   useEffect(() => {
-    if (open) setTab(defaultTab);
-  }, [open, defaultTab]);
+    if (open) {
+      setTab(defaultTab);
+      setPlanCityId(defaultPlanCity);
+    }
+  }, [open, defaultTab, defaultPlanCity]);
+
+  const planCity =
+    planCities.length > 1 ? (planCities.find((c) => c.id === planCityId) ?? null) : null;
+  // A plan for one city is read there and lands on its days. It never moves
+  // the whole trip's dates: one city's plan is not the trip's.
+  const scope = planScope({ city: tripCity, startDate, endDate }, planCity);
 
   return (
     <Sheet
@@ -184,17 +202,49 @@ export function ItineraryImport({
         </button>
       </div>
 
+      {tab === "import" && planCities.length > 1 && (
+        <fieldset className="mt-3">
+          <legend className="mb-1.5 text-[13px] font-semibold">Which city is this plan for?</legend>
+          <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 py-0.5">
+            {[{ id: "", city: "Whole trip" }, ...planCities].map((c) => {
+              const on = (planCity?.id ?? "") === c.id;
+              return (
+                <button
+                  key={c.id || "all"}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setPlanCityId(c.id ?? "")}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] ${
+                    on
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  {c.city}
+                </button>
+              );
+            })}
+          </div>
+          {planCity && (
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Béa looks the places up in {planCity.city}
+              {scope.startDate ? " and puts the plan on its days" : ""}.
+            </p>
+          )}
+        </fieldset>
+      )}
       {tab === "import" && (
         <ImportPanel
           existingItems={existingItems}
           cities={cities}
-          tripCity={tripCity}
-          startDate={startDate}
-          endDate={endDate}
+          tripCity={scope.city}
+          startDate={scope.startDate}
+          endDate={scope.endDate}
+          scopedTo={planCity?.city}
           onAddItems={onAddItems}
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
-          onApplyDates={onApplyDates}
+          onApplyDates={planCity ? undefined : onApplyDates}
         />
       )}
       {tab === "optimize" && (
@@ -222,11 +272,14 @@ function ImportPanel({
   onRemoveItems,
   onAddCosts,
   onApplyDates,
+  scopedTo,
 }: {
   existingItems: OptimizeSourceItem[];
   /** The trip's route, so each day's stops are looked up in that day's city. */
   cities: OptimizeSourceCity[];
   tripCity?: string | undefined;
+  /** Set when the plan is for one city: its dates stand in for the trip's. */
+  scopedTo?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
   /** Returns the inserted row ids, so a bulk save can be undone. */
@@ -241,6 +294,7 @@ function ImportPanel({
   /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
   const routeLine = cities
     .filter((c) => c.city.trim())
+    .filter((c) => !scopedTo || c.city.trim() === scopedTo.trim())
     .map((c) => {
       const dates = [c.arrive_on, c.depart_on].filter(Boolean).join(" – ");
       return `${[c.city, c.country].filter(Boolean).join(", ")}${dates ? ` (${dates})` : ""}`;
@@ -1120,15 +1174,22 @@ function ImportPanel({
                   <legend className="sr-only">Which dates are right</legend>
                   <p className="text-[13px]">
                     <CalendarDays className="mr-1 inline size-3.5 text-primary" aria-hidden />
-                    This plan is for <strong>{rangeLabel(datedRange)}</strong>, but the trip is{" "}
+                    This plan is for <strong>{rangeLabel(datedRange)}</strong>, but{" "}
+                    {scopedTo ? `your time in ${scopedTo}` : "the trip"} is{" "}
                     <strong>{rangeLabel(tripRange)}</strong>. Which is right?
                   </p>
                   <div className="mt-1.5 space-y-1">
-                    {(
-                      [
-                        ["move-trip", `The plan — move the trip to ${rangeLabel(movedTrip)}`],
-                        ["keep-trip", `The trip — put this plan on ${dayLabel(tripRange.start)}`],
-                      ] as const
+                    {(scopedTo
+                      ? ([
+                          [
+                            "keep-trip",
+                            `${scopedTo}'s dates — put this plan on ${dayLabel(tripRange.start)}`,
+                          ],
+                        ] as const)
+                      : ([
+                          ["move-trip", `The plan — move the trip to ${rangeLabel(movedTrip)}`],
+                          ["keep-trip", `The trip — put this plan on ${dayLabel(tripRange.start)}`],
+                        ] as const)
                     ).map(([value, label]) => (
                       <label
                         key={value}
