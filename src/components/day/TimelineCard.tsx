@@ -40,6 +40,7 @@ import {
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { SwipeRow } from "@/components/day/SwipeRow";
+import { Sheet } from "@/components/Sheet";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
@@ -247,7 +248,9 @@ export function TimelineEntry({
   const placed = item.lat != null && item.lon != null;
   // The front says where; a stop with no place says so, quietly.
   const where = item.address || (item.kind === "note" ? detail : "") || "";
-  const back = editing || flipped;
+  // Editing every stop turns every card over in place. One stop opens in a
+  // sheet over the day instead, so the list stays where it was.
+  const back = editing;
 
   const flip = (open: boolean) => {
     setFlipped(open);
@@ -257,7 +260,7 @@ export function TimelineEntry({
   // The front: the name in the serif; how long and the kind on one line; the
   // note; where, with a pin; and Map and Directions along the bottom.
   // The time sits on the card, and the numbered disc on the rail (see the <li>).
-  // Tapping the name turns the card over to edit it; ⋯ opens the rest (done,
+  // Tapping the name opens it in a sheet to edit; ⋯ opens the rest (done,
   // save, booking, order, delete), some of which the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
@@ -581,35 +584,28 @@ export function TimelineEntry({
     "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
   const caption = "mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground";
 
-  // The back: every change to this stop, and its booking, in one place. It
-  // opens across the whole width (the rail steps aside, see the <li>) and
-  // keeps each field to one short line, so a phone sees most of it at once.
-  const backSide = (
-    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3 shadow-sm">
-      <div className="flex min-w-0 items-center gap-1.5">
-        {number != null && (
-          <span className="grid h-8 min-w-8 place-items-center rounded-full bg-elevated px-2 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
-            #{number}
-          </span>
-        )}
-        <span
-          className={`kind-chip kind-${timelineGlyph(item)} grid size-8 place-items-center rounded-full`}
-        >
-          <KindIcon item={item} />
+  // The back: its # and kind over the fields. Each field is kept to one short
+  // line, so a phone sees most of it at once.
+  const backHeader = (
+    <div className="flex min-w-0 items-center gap-1.5">
+      {number != null && (
+        <span className="grid h-8 min-w-8 place-items-center rounded-full bg-elevated px-2 text-[12.5px] font-semibold tabular-nums text-muted-foreground">
+          #{number}
         </span>
-        <span className="label-caps whitespace-nowrap">Edit stop</span>
-        {!editing && (
-          <button
-            type="button"
-            onClick={() => flip(false)}
-            aria-label={`Close ${item.title}`}
-            className="ml-auto inline-flex min-h-9 items-center rounded-full bg-primary px-4 text-[13.5px] font-bold text-primary-foreground"
-          >
-            Done
-          </button>
-        )}
-      </div>
+      )}
+      <span
+        className={`kind-chip kind-${timelineGlyph(item)} grid size-8 place-items-center rounded-full`}
+      >
+        <KindIcon item={item} />
+      </span>
+      <span className="label-caps whitespace-nowrap">Edit stop</span>
+    </div>
+  );
 
+  // Every change to this stop, and its booking, in one place: in a sheet over
+  // the day for one stop, or on the card itself when editing every stop.
+  const backBody = (
+    <>
       <div className="mt-2.5 space-y-2">
         <div className="rounded-xl border border-border bg-elevated px-3 py-1">{titleInput}</div>
         <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
@@ -808,7 +804,9 @@ export function TimelineEntry({
           <Trash2 className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
           Delete
         </button>
-        {onMove && (
+        {/* Dragging the grip reorders a day; editing every stop at once has
+            no grip, so it keeps these. */}
+        {onMove && editing && (
           <>
             <button
               type="button"
@@ -844,6 +842,13 @@ export function TimelineEntry({
           </button>
         )}
       </div>
+    </>
+  );
+
+  const backSide = (
+    <article className="card-flip rounded-2xl border-2 border-primary/30 bg-card p-3 shadow-sm">
+      {backHeader}
+      {backBody}
     </article>
   );
 
@@ -904,6 +909,23 @@ export function TimelineEntry({
           )}
         </div>
       </div>
+      {!editing && (
+        <Sheet
+          open={flipped}
+          onClose={() => flip(false)}
+          title={item.title}
+          {...(number != null ? { hint: `Stop ${number}` } : {})}
+        >
+          {backBody}
+          <button
+            type="button"
+            onClick={() => flip(false)}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary text-[14.5px] font-bold text-primary-foreground"
+          >
+            Done
+          </button>
+        </Sheet>
+      )}
       {onSaveBooking && bookingOpen && (
         <BookingSheet
           item={item}

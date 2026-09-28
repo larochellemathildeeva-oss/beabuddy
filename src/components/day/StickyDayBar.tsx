@@ -115,7 +115,7 @@ export function StickyDayBar({
   return (
     <div className="sticky top-0 z-30 h-0" aria-hidden={!shown}>
       <div
-        className={`absolute -inset-x-4 top-0 flex items-center gap-1 border-b border-border bg-background/90 px-3 py-1.5 backdrop-blur-xl transition-[opacity,transform] duration-200 ${
+        className={`absolute -inset-x-3 top-0 flex items-center gap-1 border-b border-border bg-background/90 px-2 py-1.5 backdrop-blur-xl transition-[opacity,transform] duration-200 ${
           shown ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
         }`}
       >
