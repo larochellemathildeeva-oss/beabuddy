@@ -162,6 +162,18 @@ function isArrowJourney(kind: string, title: string): boolean {
  */
 const ARRIVAL = /^(?:arriv(?:e|al|ing)|get\s+(?:to|in)(?:to)?|reach)\b/i;
 
+/**
+ * "Train from Paris Gare de Lyon to Lyon Part-Dieu": a journey between two
+ * towns. It needs a ticket and fixes the day around it, so it stays a stop of
+ * its own rather than a "Getting there" note on the next one.
+ */
+const CITY_JOURNEY =
+  /^(?:(?:night|overnight|high[- ]speed|regional|intercity)\s+)?(?:train|ferry|bus|coach|shinkansen|eurostar|tgv|ice|flight|drive)\b.*\bfrom\s+\S.*\bto\s+\S/i;
+
+export function isCityJourney(title: string): boolean {
+  return CITY_JOURNEY.test(title.trim());
+}
+
 /** Kinds that are somewhere to be, however their title is worded. */
 const NEVER_A_LEG = new Set(["meal", "lodging", "hotel", "flight", "reservation"]);
 
@@ -174,6 +186,7 @@ export function isTravelLeg(row: {
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
   const title = row.title.trim();
+  if (isCityJourney(title)) return false;
   if (row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title))) return true;
   if (NEVER_A_LEG.has(row.kind)) return false;
   return isArrowJourney(row.kind, title) || ARRIVAL.test(title);

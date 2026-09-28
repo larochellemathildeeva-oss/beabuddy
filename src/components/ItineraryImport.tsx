@@ -83,6 +83,7 @@ import { toast } from "sonner";
 import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
+import { planCities, type PlanCity } from "@/lib/plan-cities";
 
 type NewItineraryItem = {
   day_date?: string;
@@ -124,6 +125,7 @@ export function ItineraryImport({
   onRemoveItems,
   onAddCosts,
   onApplyDates,
+  onAddCities,
   onApplySchedule,
 }: {
   open: boolean;
@@ -142,6 +144,8 @@ export function ItineraryImport({
   onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
+  /** Towns the plan goes through that the trip's route does not have yet. */
+  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
   onApplySchedule?: (
     updates: Array<{
       id: string;
@@ -257,6 +261,7 @@ export function ItineraryImport({
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
           onApplyDates={onApplyDates}
+          onAddCities={onAddCities}
         />
       )}
       {tab === "optimize" && (
@@ -286,6 +291,7 @@ function ImportPanel({
   onRemoveItems,
   onAddCosts,
   onApplyDates,
+  onAddCities,
 }: {
   /** Which job the panel opens on, chosen on the start screen. */
   initialMode?: "build" | "import";
@@ -303,6 +309,8 @@ function ImportPanel({
   onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
+  /** Towns the plan goes through that the trip's route does not have yet. */
+  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
@@ -794,6 +802,25 @@ function ImportPanel({
         const last = lastDayDate(rows) ?? dayOneDate;
         setSaveStatus("Updating the trip dates…");
         await onApplyDates({ start_date: dayOneDate, end_date: last });
+      }
+      // A plan through several towns puts them on the trip's route, so the
+      // days, the map and the directions look in the right one.
+      const newCities = onAddCities
+        ? planCities(
+            order.flatMap((i) => (rows[i] ? [rows[i]!] : [])),
+            cities,
+          )
+        : [];
+      if (onAddCities && newCities.length > 0) {
+        setSaveStatus("Adding the towns to the trip…");
+        try {
+          await onAddCities(newCities);
+          toast.success(
+            `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
+          );
+        } catch {
+          toast.error("The stops are saved, but the towns could not be added to Destinations.");
+        }
       }
       setItems(null);
       setText("");

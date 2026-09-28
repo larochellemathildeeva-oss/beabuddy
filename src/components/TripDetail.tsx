@@ -33,6 +33,9 @@ import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
 import { supabase } from "@/integrations/supabase/client";
 import { ItineraryImport, type PlannerTab } from "@/components/ItineraryImport";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
+import { TimeChangeBox } from "@/components/day/TimeChangeBox";
+import { itineraryPrintHtml } from "@/lib/itinerary-print";
+import { printHtml } from "@/lib/print-page";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
 import type { RouteLeg } from "@/lib/directions.functions";
 import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
@@ -548,6 +551,13 @@ export function TripDetail({
    * now all appear at once, from one pencil in the section header.
    */
   const [editingTimeline, setEditingTimeline] = useState(false);
+  /** The directions icon at the top of the timeline asks the panel at its foot. */
+  const [directionsAsk, setDirectionsAsk] = useState(0);
+  const [directionsBusy, setDirectionsBusy] = useState(false);
+  const directionsButton =
+    directionStops.length >= 2 && !editingTimeline
+      ? { onDirections: () => setDirectionsAsk((n) => n + 1), directionsBusy }
+      : {};
   /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
   const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
   /**
@@ -1172,7 +1182,7 @@ export function TripDetail({
               </>
             ) : timelineByDay ? (
               <div className="space-y-6">
-                {shownGroups.map((group) => {
+                {shownGroups.map((group, groupIndex) => {
                   const dayOpen = !collapsedDays[group.key];
                   const isToday = group.key === todayKey;
                   const divider = isToday ? nowDivider(group.items, minutesNow) : null;
@@ -1206,6 +1216,7 @@ export function TripDetail({
                         }}
                         addLabel={`Add something to ${group.label}`}
                         onMore={() => setTimelineMenuOpen(true)}
+                        {...(groupIndex === 0 ? directionsButton : {})}
                       >
                         {coming && (
                           <span className="mt-1 block text-[12.5px] font-semibold text-primary">
@@ -1369,6 +1380,7 @@ export function TripDetail({
                   }}
                   addLabel="Add to the timeline"
                   onMore={() => setTimelineMenuOpen(true)}
+                  {...directionsButton}
                 />
                 <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
                   <RailLine />
@@ -1454,6 +1466,8 @@ export function TripDetail({
                     void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
                   }
                 }}
+                runSignal={directionsAsk}
+                onBusy={setDirectionsBusy}
                 {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
                 {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
                 {...(directionArea ? { area: directionArea } : {})}
@@ -1518,6 +1532,16 @@ export function TripDetail({
             width="sm"
           >
             <div className="space-y-4">
+              {stopItems.length > 0 && (
+                <TimeChangeBox
+                  stops={stopItems}
+                  days={timelineGroups.map((group) => group.key).filter(Boolean)}
+                  onChangeTime={async (id, time) => {
+                    await board.updateItem(id, { time_label: time });
+                  }}
+                  onDone={() => setTimelineMenuOpen(false)}
+                />
+              )}
               <MenuChoice
                 label="Show"
                 value={hideDone}
@@ -1752,6 +1776,7 @@ export function TripDetail({
         onApplyDates={async (dates) => {
           await onUpdate(dates);
         }}
+        onAddCities={(list) => cities.addStops(list)}
       />
 
       <TripMenuSheet
@@ -1782,6 +1807,23 @@ export function TripDetail({
             : ""
         }
         budgetOn={Boolean(trip.budget_enabled)}
+        onPrint={() => {
+          setSettingsOpen(false);
+          printHtml(
+            itineraryPrintHtml(
+              {
+                title: trip.title,
+                subtitle: [
+                  formatTripLocation(trip.city?.split(",")[0], trip.country),
+                  tripDateLine(trip.start_date, trip.end_date),
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+              },
+              stopItems,
+            ),
+          );
+        }}
         footer={
           // Only the owner can delete (the "Owner deletes trips" policy). For
           // anyone else the delete matched no rows, said nothing, and sent
@@ -2025,6 +2067,8 @@ function TimelineHead({
   onAdd,
   addLabel,
   onMore,
+  onDirections,
+  directionsBusy = false,
   children,
 }: {
   title: string;
@@ -2034,6 +2078,9 @@ function TimelineHead({
   onAdd: () => void;
   addLabel: string;
   onMore?: () => void;
+  /** Work out the walks and drives between the stops, from the top of the list. */
+  onDirections?: () => void;
+  directionsBusy?: boolean;
   children?: ReactNode;
 }) {
   const heading = (
@@ -2065,6 +2112,18 @@ function TimelineHead({
       ) : (
         <div className="min-w-0 flex-1">{heading}</div>
       )}
+      {onDirections ? (
+        <button
+          type="button"
+          onClick={onDirections}
+          disabled={directionsBusy}
+          aria-label={directionsBusy ? "Working out directions" : "Get directions between stops"}
+          title="Get directions"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-xs disabled:opacity-60"
+        >
+          <Route className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={onAdd}

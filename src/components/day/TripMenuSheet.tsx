@@ -6,6 +6,7 @@ import {
   Bed,
   Car,
   ChevronRight,
+  FileText,
   MapIcon,
   MapPin,
   Pencil,
@@ -56,6 +57,7 @@ export function TripMenuSheet({
   citiesCount,
   offlineNote,
   budgetOn,
+  onPrint,
   footer,
   children,
 }: {
@@ -75,6 +77,8 @@ export function TripMenuSheet({
   /** "Saved 2 days ago", or empty. */
   offlineNote: string;
   budgetOn: boolean;
+  /** Print the plan, or save it as a PDF from the print dialog. */
+  onPrint?: (() => void) | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
@@ -189,6 +193,18 @@ export function TripMenuSheet({
       note: "What the trip page shows",
       onClick: () => onSection("customize"),
     },
+    ...(onPrint
+      ? [
+          {
+            key: "print",
+            icon: FileText,
+            title: "Print or PDF",
+            note: "A paper copy of the plan",
+            pill: "",
+            onClick: onPrint,
+          },
+        ]
+      : []),
   ];
 
   return createPortal(

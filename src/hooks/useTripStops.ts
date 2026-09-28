@@ -76,35 +76,42 @@ export function useTripStops(tripId: string | null, uid: string | null) {
     };
   }, [tripId, channelId, load]);
 
-  const addStop = useCallback(
-    async (s: NewStop) => {
+  /** Several at once, in order after the last: each gets its own position. */
+  const addStops = useCallback(
+    async (list: NewStop[]) => {
       if (!tripId) throw new Error("Open a trip first");
+      if (list.length === 0) return;
       const { data: auth } = await supabase.auth.getUser();
       const authorId = auth.user?.id ?? uid;
       if (!authorId) throw new Error("Sign in first");
-      const { error } = await supabase.from("trip_stops").insert({
-        trip_id: tripId,
-        kind: s.kind ?? "destination",
-        city: s.city,
-        country: s.country || null,
-        place_name: s.place_name || null,
-        address: s.address || null,
-        lat: s.lat ?? null,
-        lon: s.lon ?? null,
-        arrive_on: s.arrive_on || null,
-        depart_on: s.depart_on || null,
-        notes: s.notes || null,
-        // One past the highest, not stops.length: after a remove the list is
-        // shorter than its highest position, so two removes and two undos gave
-        // two rows the same position and left moveStop unable to separate them.
-        position: stops.reduce((max, stop) => Math.max(max, stop.position + 1), 0),
-        created_by: authorId,
-      });
+      // One past the highest, not stops.length: after a remove the list is
+      // shorter than its highest position, so two removes and two undos gave
+      // two rows the same position and left moveStop unable to separate them.
+      const next = stops.reduce((max, stop) => Math.max(max, stop.position + 1), 0);
+      const { error } = await supabase.from("trip_stops").insert(
+        list.map((s, i) => ({
+          trip_id: tripId,
+          kind: s.kind ?? "destination",
+          city: s.city,
+          country: s.country || null,
+          place_name: s.place_name || null,
+          address: s.address || null,
+          lat: s.lat ?? null,
+          lon: s.lon ?? null,
+          arrive_on: s.arrive_on || null,
+          depart_on: s.depart_on || null,
+          notes: s.notes || null,
+          position: next + i,
+          created_by: authorId,
+        })),
+      );
       if (error) throw error;
       await load();
     },
     [tripId, uid, stops, load],
   );
+
+  const addStop = useCallback((s: NewStop) => addStops([s]), [addStops]);
 
   const updateStop = useCallback(
     async (id: string, patch: Partial<Omit<StopRow, "id" | "trip_id">>) => {
@@ -146,5 +153,15 @@ export function useTripStops(tripId: string | null, uid: string | null) {
     new Set(stops.map((s) => s.country).filter((c): c is string => !!c)),
   );
 
-  return { stops, countries, loading, addStop, updateStop, removeStop, moveStop, reload: load };
+  return {
+    stops,
+    countries,
+    loading,
+    addStop,
+    addStops,
+    updateStop,
+    removeStop,
+    moveStop,
+    reload: load,
+  };
 }

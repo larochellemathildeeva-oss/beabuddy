@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Route as RouteIcon } from "@/components/icons";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
@@ -11,6 +11,7 @@ import {
 } from "@/lib/timeline-directions";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
 import { BeaRunning } from "@/components/BeaRunning";
+import { toast } from "sonner";
 
 type TimelineAdd = {
   day_date?: string;
@@ -33,6 +34,8 @@ export function ItineraryDirections({
   onLegs,
   savedSignature,
   savedAt,
+  runSignal = 0,
+  onBusy,
 }: {
   stops: DirectionStop[];
   area?: string;
@@ -57,6 +60,12 @@ export function ItineraryDirections({
   onLegs?: ((legs: RouteLeg[]) => void) | undefined;
   savedSignature?: string | undefined;
   savedAt?: string | undefined;
+  /**
+   * Bumped by the directions button at the top of the timeline: works the
+   * directions out from there, so nobody has to scroll to the foot to ask.
+   */
+  runSignal?: number;
+  onBusy?: ((busy: boolean) => void) | undefined;
 }) {
   const run = useServerFn(buildRoutes);
   const [legs, setLegs] = useState<RouteLeg[] | null>(null);
@@ -67,6 +76,20 @@ export function ItineraryDirections({
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [kept, setKept] = useState(false);
+
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const onBusyRef = useRef(onBusy);
+  onBusyRef.current = onBusy;
+  useEffect(() => {
+    onBusyRef.current?.(busy);
+  }, [busy]);
+  /** Asked from the top of the timeline, where this panel's messages are out of sight. */
+  const fromTop = useRef(false);
+  useEffect(() => {
+    if (runSignal <= 0) return;
+    fromTop.current = true;
+    void loadRef.current();
+  }, [runSignal]);
 
   if (stops.length < 2) return null;
 
@@ -104,12 +127,28 @@ export function ItineraryDirections({
       onLegs?.(result.legs);
       const placed = placedFromLegs(result.legs, stops);
       if (placed.length > 0) onPlaced?.(placed);
+      if (fromTop.current) {
+        if (result.legs.length > 0) {
+          toast.success("Directions are on the timeline", {
+            description: "Each walk or drive sits under the stop it leaves from.",
+          });
+        } else {
+          toast.message("Béa couldn't place these stops on the map yet", {
+            description: "Add an address to them and try again.",
+          });
+        }
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't work out the directions.");
+      const message = e instanceof Error ? e.message : "Couldn't work out the directions.";
+      setError(message);
+      if (fromTop.current) toast.error(message);
     } finally {
+      fromTop.current = false;
       setBusy(false);
     }
   };
+
+  loadRef.current = load;
 
   const showAddBanner = Boolean(legs && legs.length > 0 && onAddToTimeline);
   const stale = savedIsStale(savedSignature, stops);
