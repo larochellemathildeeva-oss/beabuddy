@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type TripPhotoRow = {
   id: string;
@@ -17,8 +18,9 @@ export type TripPhotoRow = {
  * Trip cards take their photo out of this one list.
  */
 export function useTripPhotos(uid: string | null) {
-  const [photos, setPhotos] = useState<TripPhotoRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [last] = useState(() => (uid ? lastLoaded<TripPhotoRow[]>(`photos:${uid}`) : undefined));
+  const [photos, setPhotos] = useState<TripPhotoRow[]>(last ?? []);
+  const [loading, setLoading] = useState(!last);
 
   const load = useCallback(async () => {
     if (!uid) {
@@ -26,6 +28,7 @@ export function useTripPhotos(uid: string | null) {
       setLoading(false);
       return;
     }
+    const since = screenGeneration();
     const { data, error } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, taken_at")
@@ -34,14 +37,18 @@ export function useTripPhotos(uid: string | null) {
       .limit(400);
     // A trip card without a photo is a fine trip card, so a failure here is
     // never surfaced — it just means monograms.
-    setPhotos(error ? [] : ((data ?? []) as TripPhotoRow[]));
+    const rows = error ? [] : ((data ?? []) as TripPhotoRow[]);
+    setPhotos(rows);
     setLoading(false);
+    if (!error) rememberLoaded(`photos:${uid}`, rows, since);
   }, [uid]);
 
   useEffect(() => {
-    setLoading(true);
+    const hit = uid ? lastLoaded<TripPhotoRow[]>(`photos:${uid}`) : undefined;
+    if (hit) setPhotos(hit);
+    setLoading(!hit);
     void load();
-  }, [load]);
+  }, [uid, load]);
 
   return { photos, loading };
 }

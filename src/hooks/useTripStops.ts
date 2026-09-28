@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type StopRow = {
   id: string;
@@ -34,8 +35,11 @@ const COLS =
   "id, trip_id, kind, city, country, place_name, address, lat, lon, arrive_on, depart_on, notes, position";
 
 export function useTripStops(tripId: string | null, uid: string | null) {
-  const [stops, setStops] = useState<StopRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // A card opens with the cities it last showed, not the trip's own city
+  // until its stops arrive.
+  const [last] = useState(() => (tripId ? lastLoaded<StopRow[]>(`stops:${tripId}`) : undefined));
+  const [stops, setStops] = useState<StopRow[]>(last ?? []);
+  const [loading, setLoading] = useState(!last);
   const [channelId] = useState(() => Math.random().toString(36).slice(2));
 
   const load = useCallback(async () => {
@@ -44,6 +48,7 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       setLoading(false);
       return;
     }
+    const since = screenGeneration();
     // Same rule as the timeline: a failed read is not an empty trip, and
     // blanking the stops would take the map, the directions and the day
     // grouping with it.
@@ -52,14 +57,20 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       .select(COLS)
       .eq("trip_id", tripId)
       .order("position", { ascending: true });
-    if (!error) setStops((data ?? []) as StopRow[]);
+    if (!error) {
+      const rows = (data ?? []) as StopRow[];
+      setStops(rows);
+      rememberLoaded(`stops:${tripId}`, rows, since);
+    }
     setLoading(false);
   }, [tripId]);
 
   useEffect(() => {
-    setLoading(true);
+    const hit = tripId ? lastLoaded<StopRow[]>(`stops:${tripId}`) : undefined;
+    if (hit) setStops(hit);
+    setLoading(!hit);
     void load();
-  }, [load]);
+  }, [tripId, load]);
 
   useEffect(() => {
     if (!tripId) return;

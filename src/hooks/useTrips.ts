@@ -15,6 +15,7 @@ import {
 import type { NewStop } from "@/hooks/useTripStops";
 import { directionSource } from "@/lib/timeline-directions";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -181,13 +182,18 @@ const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
 /** Columns that arrive with migrations applied by hand, asked for only while they answer. */
 const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES];
 
+type TripsSnapshot = { uid: string; trips: TripRow[]; members: MemberRow[] };
+
 export function useTrips() {
-  const [uid, setUid] = useState<string | null>(null);
-  const [trips, setTrips] = useState<TripRow[]>([]);
-  const [members, setMembers] = useState<MemberRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Home and Trips both open on the list they last showed, then refresh it.
+  const [last] = useState(() => lastLoaded<TripsSnapshot>("trips"));
+  const [uid, setUid] = useState<string | null>(last?.uid ?? null);
+  const [trips, setTrips] = useState<TripRow[]>(last?.trips ?? []);
+  const [members, setMembers] = useState<MemberRow[]>(last?.members ?? []);
+  const [loading, setLoading] = useState(!last);
 
   const load = useCallback(async () => {
+    const since = screenGeneration();
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
     setUid(user?.id ?? null);
@@ -198,12 +204,19 @@ export function useTrips() {
       return;
     }
     const rows = await selectTrips();
-    setTrips(rows);
     const { data: m } = await supabase
       .from("trip_members")
       .select("id, trip_id, user_id, role, display_name");
-    setMembers((m ?? []) as MemberRow[]);
+    const memberRows = (m ?? []) as MemberRow[];
+    // Together, so a card never draws with its trip but without its people.
+    setTrips(rows);
+    setMembers(memberRows);
     setLoading(false);
+    rememberLoaded<TripsSnapshot>(
+      "trips",
+      { uid: user.id, trips: rows, members: memberRows },
+      since,
+    );
   }, []);
 
   useEffect(() => {
