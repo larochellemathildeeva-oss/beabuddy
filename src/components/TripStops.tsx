@@ -72,6 +72,8 @@ export function TripStops({
   uid,
   openSignal,
   formOnly = false,
+  onFindCities,
+  findingCities = false,
 }: {
   tripId: string;
   uid: string | null;
@@ -83,6 +85,9 @@ export function TripStops({
   openSignal?: number | undefined;
   /** Render only the "Add a stop" sheet, for opening from the trip page. */
   formOnly?: boolean;
+  /** Offered when the trip has stops with pins but no destinations. */
+  onFindCities?: (() => void) | undefined;
+  findingCities?: boolean | undefined;
 }) {
   const s = useTripStops(tripId, uid);
   const { removeWithUndo } = useUndo();
@@ -256,6 +261,16 @@ export function TripStops({
             }`
       }
     >
+      {onFindCities && s.stops.length === 0 && (
+        <button
+          type="button"
+          onClick={onFindCities}
+          disabled={findingCities}
+          className="mb-2 rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-60"
+        >
+          {findingCities ? "Finding the cities…" : "Find the cities from my stops"}
+        </button>
+      )}
       {s.countries.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {s.countries.map((c) => (

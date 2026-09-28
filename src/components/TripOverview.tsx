@@ -43,6 +43,9 @@ export function TripOverview({
   tripId,
   items,
   cities,
+  country,
+  onFindCities,
+  findingCities = false,
   groups,
   bookingDocs,
   onOpenBookings,
@@ -52,7 +55,13 @@ export function TripOverview({
 }: {
   tripId: string;
   items: ItineraryRow[];
-  cities: string[];
+  /** The trip's destinations, in order. */
+  cities: { city: string; country: string | null }[];
+  /** The trip's own country, for a destination saved without one. */
+  country?: string | null;
+  /** Offered when the trip has stops with pins but no destinations. */
+  onFindCities?: (() => void) | undefined;
+  findingCities?: boolean | undefined;
   groups: TimelineDayGroup<ItineraryRow>[];
   /** Trip documents filed to this trip: they are bookings too. */
   bookingDocs: TripDocument[];
@@ -76,7 +85,23 @@ export function TripOverview({
   const bookings = tripBookings(items, bookingDocs);
   const bookedByKind = countBookings(bookings);
   const booked = bookings.length;
-  const names = [...new Set(cities.map((c) => (c.split(",")[0] ?? "").trim()).filter(Boolean))];
+  const names = [
+    ...new Set(cities.map((c) => (c.city.split(",")[0] ?? "").trim()).filter(Boolean)),
+  ];
+  const countries = new Set(
+    cities
+      .map((c) => (c.country || c.city.split(",").slice(1).pop() || country || "").trim())
+      .filter(Boolean)
+      .map((c) => c.toLowerCase()),
+  );
+  const where = names.length
+    ? [
+        `${names.length} ${names.length === 1 ? "city" : "cities"}`,
+        countries.size ? `${countries.size} ${countries.size === 1 ? "country" : "countries"}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "No cities yet";
   const todos = glance?.todos.open ?? 0;
   const packing = glance?.packing;
   const dated = groups.filter((g) => g.key);
@@ -127,10 +152,25 @@ export function TripOverview({
         <Stat
           icon={MapPin}
           value={`${items.length} ${items.length === 1 ? "stop" : "stops"}`}
-          label={`${names.length || 0} ${names.length === 1 ? "place" : "places"}`}
+          label={where}
         />
         <Stat icon={Ticket} value={`${booked} booked`} label="Bookings" />
       </div>
+      {onFindCities && names.length === 0 && (
+        <div className="plain-card flex items-center justify-between gap-3 p-3.5">
+          <p className="text-[13.5px] text-muted-foreground">
+            This trip has no cities yet. Béa can find them from your stops.
+          </p>
+          <button
+            type="button"
+            onClick={onFindCities}
+            disabled={findingCities}
+            className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {findingCities ? "Finding…" : "Find cities"}
+          </button>
+        </div>
+      )}
 
       <section>
         <Head title="Trip essentials" />

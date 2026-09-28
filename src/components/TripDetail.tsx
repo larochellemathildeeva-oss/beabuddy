@@ -89,6 +89,9 @@ import { directionKey, splitDirectionRows, unroutedLegCopy } from "@/lib/timelin
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { lookupCoords } from "@/lib/places.functions";
+import { planTowns } from "@/lib/plan-cities";
 import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
 import { DayRibbon } from "@/components/day/DayRibbon";
@@ -192,6 +195,41 @@ export function TripDetail({
     () => splitDirectionRows(board.items),
     [board.items],
   );
+  /**
+   * A trip with a timeline but no destinations — a plan saved before Béa
+   * added its towns — finds them from its pins, one lookup a day.
+   */
+  const lookupTown = useServerFn(lookupCoords);
+  const [findingCities, setFindingCities] = useState(false);
+  const canFindCities =
+    !cities.loading &&
+    cities.stops.length === 0 &&
+    stopItems.some((item) => item.day_date && item.lat != null && item.lon != null);
+  const findCities = async () => {
+    setFindingCities(true);
+    try {
+      const found = await planTowns(
+        stopItems.map((item) => ({
+          day_date: item.day_date,
+          kind: item.kind,
+          lat: item.lat,
+          lon: item.lon,
+        })),
+        cities.stops,
+        (at) => lookupTown({ data: at }),
+      );
+      if (found.length === 0) {
+        toast.error("Béa couldn't tell the cities from these stops. Add them with the pin button.");
+        return;
+      }
+      await cities.addStops(found);
+      toast.success(`Added ${found.map((c) => c.city).join(", ")} to the trip's destinations`);
+    } catch {
+      toast.error("Couldn't add the cities. Check your connection and try again.");
+    } finally {
+      setFindingCities(false);
+    }
+  };
   /**
    * One area, used by everything that looks a place up.
    *
@@ -1160,8 +1198,10 @@ export function TripDetail({
           <TripOverview
             tripId={trip.id}
             items={stopItems}
-            cities={cities.stops.map((stop) => stop.city)}
+            cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
+            country={trip.country}
             groups={timelineGroups}
+            {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
             onOpenBookings={openBookings}
             onOpenTimeline={(dayKey) => {
@@ -2274,7 +2314,13 @@ export function TripDetail({
         )}
 
         {/* The trip's cities, in order — the route the trip map draws. */}
-        {sheetSection === "cities" && <TripStops tripId={trip.id} uid={me.id} />}
+        {sheetSection === "cities" && (
+          <TripStops
+            tripId={trip.id}
+            uid={me.id}
+            {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
+          />
+        )}
 
         {sheetSection === "customize" && (
           <div className="plain-card px-3.5 py-1">
