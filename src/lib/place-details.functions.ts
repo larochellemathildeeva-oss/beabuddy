@@ -25,7 +25,7 @@ export const placeDetails = createServerFn({ method: "POST" })
   .inputValidator((data: { lat: number; lon: number; name: string }) =>
     z.object({ ...point, name: z.string().trim().min(1).max(200) }).parse(data),
   )
-  .handler(async ({ data }): Promise<PlaceDetails | null> => {
+  .handler(async ({ data, context }): Promise<PlaceDetails | null> => {
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
     if (provider.name !== "geoapify") return null;
@@ -34,7 +34,7 @@ export const placeDetails = createServerFn({ method: "POST" })
     if (!facts) return null;
     // Pexels first (a photo whose description names the place), then Commons.
     const { pexelsPlacePhoto } = await import("@/lib/pexels.server");
-    let photo = await pexelsPlacePhoto([
+    let photo = await pexelsPlacePhoto(context.userId, [
       data.name,
       ...(facts.name ? [facts.name] : []),
       ...facts.names,
@@ -102,9 +102,9 @@ export const townPhoto = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }): Promise<PlacePhoto | null> => {
+  .handler(async ({ data, context }): Promise<PlacePhoto | null> => {
     const { pexelsTownPhoto } = await import("@/lib/pexels.server");
-    const pexels = await pexelsTownPhoto(data.city, data.country);
+    const pexels = await pexelsTownPhoto(context.userId, data.city, data.country);
     if (pexels) return pexels;
     const { townPhotoFor } = await import("@/lib/wikimedia.server");
     return townPhotoFor(data.city, data.country);

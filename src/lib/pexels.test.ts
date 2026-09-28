@@ -1,7 +1,14 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { pexelsSearchUrl, pexelsTownQuery, readPexelsPhoto } from "./pexels.ts";
-import { photoCredit } from "./wikimedia.ts";
+import {
+  isGenericPlaceName,
+  namesOtherCountry,
+  pexelsSearchUrl,
+  pexelsTownQuery,
+  readPexelsPhoto,
+  takeFromHour,
+} from "./pexels.ts";
+import { creditedOnPhoto, photoCredit } from "./wikimedia.ts";
 
 const photo = (alt: string, extra: Record<string, unknown> = {}) => ({
   width: 4000,
@@ -65,7 +72,39 @@ test("answers from elsewhere or without a photographer are skipped", () => {
   assert.equal(readPexelsPhoto(null, ["Kyoto"], "place"), null);
 });
 
+test("a generic stop name never matches a stock photo", () => {
+  assert.equal(isGenericPlaceName("Cafe"), true);
+  assert.equal(isGenericPlaceName("The Old Town"), true);
+  assert.equal(isGenericPlaceName("Café de Flore"), false);
+  assert.equal(isGenericPlaceName("Louvre Museum"), false);
+  const json = { photos: [photo("A cozy cafe with wooden chairs")] };
+  assert.equal(readPexelsPhoto(json, ["Cafe"], "place"), null);
+});
+
+test("a town's photo must not name another country", () => {
+  assert.equal(namesOtherCountry("Eiffel Tower in Paris, France", "United States"), true);
+  assert.equal(namesOtherCountry("Paris, Texas, United States", "USA"), false);
+  assert.equal(namesOtherCountry("Paris in the rain", "United States"), false);
+  // "in" and "it" are country codes too, but not country names.
+  assert.equal(namesOtherCountry("Walking in it at night", "France"), false);
+  assert.equal(namesOtherCountry("Paris, France", null), false);
+  const json = { photos: [photo("Paris, France at dusk")] };
+  assert.equal(readPexelsPhoto(json, ["Paris"], "banner", "United States"), null);
+  assert.ok(readPexelsPhoto(json, ["Paris"], "banner", "France"));
+});
+
+test("searches are counted over a rolling hour", () => {
+  const times: number[] = [];
+  assert.equal(takeFromHour(times, 0, 2), true);
+  assert.equal(takeFromHour(times, 1_000, 2), true);
+  assert.equal(takeFromHour(times, 2_000, 2), false);
+  assert.equal(times.length, 2);
+  assert.equal(takeFromHour(times, 60 * 60_000 + 1, 2), true);
+});
+
 test("a Pexels photo is credited to its photographer on Pexels", () => {
+  assert.equal(creditedOnPhoto({ source: "pexels" }), false);
+  assert.equal(creditedOnPhoto({}), true);
   assert.equal(
     photoCredit({ author: "Jane Doe", license: "Pexels License", source: "pexels" }),
     "Photo: Jane Doe on Pexels",

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Accessibility, Clock, Globe, Phone } from "@/components/icons";
 import { usePlaceDetails } from "@/hooks/usePlaceDetails";
 import { closedWarning, isOpenAt } from "@/lib/opening-hours";
-import { photoCredit, type PlacePhoto } from "@/lib/wikimedia";
+import { creditedOnPhoto, photoCredit, type PlacePhoto } from "@/lib/wikimedia";
 
 /**
  * A photo of the place from Wikimedia Commons, always with its author and
@@ -23,16 +23,18 @@ function CommonsPhoto({ photo }: { photo: PlacePhoto }) {
         onError={() => setFailed(true)}
         className="h-28 w-full rounded-lg object-cover"
       />
-      <figcaption className="truncate text-[10.5px]">
-        <a
-          href={photo.page}
-          target="_blank"
-          rel="noreferrer"
-          className="underline underline-offset-2"
-        >
-          {photoCredit(photo)}
-        </a>
-      </figcaption>
+      {creditedOnPhoto(photo) ? (
+        <figcaption className="truncate text-[10.5px]">
+          <a
+            href={photo.page}
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2"
+          >
+            {photoCredit(photo)}
+          </a>
+        </figcaption>
+      ) : null}
     </figure>
   );
 }

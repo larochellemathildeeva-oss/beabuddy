@@ -151,9 +151,12 @@ reviewers rated (featured, quality, valued) are taken from a category.
 stop's photo are searched on Pexels first (`pexels.ts`, pure and tested;
 `pexels.server.ts` holds the key), and Commons is only the backup. Pexels is a
 stock library, so a photo is taken only when its description names the stop
-or town. Credit is "Photo: <photographer> on Pexels", linked to the photo's
-Pexels page, as its guidelines ask. The free plan is 200 searches an hour; a
-refusal pauses it for an hour and Commons answers meanwhile.
+or town (never a generic name like "Cafe"), and a town's must not name another
+country. Pexels photos carry no credit of their own: the privacy page credits
+Pexels, with a link, once. Commons photos keep theirs, as their licences
+require. The free plan is 200 searches an hour for the whole app, so Béa stays
+under 180, gives one traveller at most 40, and rests when Pexels says few are
+left; Commons answers meanwhile.
 
 Keys are read only in `*.server.ts` and imported lazily inside handlers,
 because `*.functions.ts` ships to the client bundle. Never prefix them

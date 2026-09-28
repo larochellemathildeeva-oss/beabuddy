@@ -388,6 +388,15 @@ export function readWikipediaItem(json: unknown, titles: string[]): string | nul
 }
 
 /** "Photo: Jane Doe · CC BY-SA 4.0 · Wikimedia Commons" */
+/**
+ * Whether a photo carries its own credit. Commons licences ask for the author
+ * and licence beside each picture; Pexels does not, and is credited once on
+ * the privacy page instead.
+ */
+export function creditedOnPhoto(photo: Pick<PlacePhoto, "source">): boolean {
+  return photo.source !== "pexels";
+}
+
 export function photoCredit(photo: Pick<PlacePhoto, "author" | "license" | "source">): string {
   if (photo.source === "pexels") return `Photo: ${photo.author} on Pexels`;
   return `Photo: ${photo.author} · ${photo.license} · Wikimedia Commons`;

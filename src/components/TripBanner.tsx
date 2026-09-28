@@ -8,7 +8,7 @@ import { useThemeName } from "@/hooks/useThemeName";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { useStopPictures } from "@/hooks/useStopPictures";
 import { useTownPhoto } from "@/hooks/useTownPhoto";
-import { photoCredit } from "@/lib/wikimedia";
+import { creditedOnPhoto, photoCredit } from "@/lib/wikimedia";
 
 /**
  * The painted scene behind a trip that has no photograph yet.
@@ -208,7 +208,7 @@ export function TripBanner({
         }}
       />
 
-      {commons && !own ? (
+      {commons && !own && creditedOnPhoto(commons) ? (
         <span
           title={photoCredit(commons)}
           className={`absolute right-2 z-10 max-w-[70%] truncate text-[9px] leading-tight text-white/75 ${

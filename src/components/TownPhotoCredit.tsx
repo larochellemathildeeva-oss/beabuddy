@@ -1,7 +1,8 @@
-import { photoCredit, type PlacePhoto } from "@/lib/wikimedia";
+import { creditedOnPhoto, photoCredit, type PlacePhoto } from "@/lib/wikimedia";
 
 /**
- * The credit a town photo on a trip picture always carries. Plain text: the
+ * The credit a Commons town photo on a trip picture always carries (Pexels
+ * photos are credited on the privacy page instead). Plain text: the
  * picture sits inside a link to the trip, and links cannot nest.
  */
 export function TownPhotoCredit({
@@ -11,6 +12,7 @@ export function TownPhotoCredit({
   photo: PlacePhoto;
   className?: string;
 }) {
+  if (!creditedOnPhoto(photo)) return null;
   const credit = photoCredit(photo);
   return (
     <span
