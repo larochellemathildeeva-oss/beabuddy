@@ -242,10 +242,10 @@ export function TimelineEntry({
   };
 
   // The front: the name in the serif; how long and the kind on one line; the
-  // note; where, with a pin; and Map, Save and Directions along the bottom.
+  // note; where, with a pin; and Map and Directions along the bottom.
   // The time sits on the card, and the numbered disc on the rail (see the <li>).
   // Tapping the name turns the card over to edit it; ⋯ opens the rest (done,
-  // booking, order, delete) that the swipe also gives.
+  // save, booking, order, delete), some of which the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
   const roundIcon =
@@ -405,10 +405,10 @@ export function TimelineEntry({
             : {})}
         />
       )}
-      {(canLocate || canKeep || canDirect) && (
-        <div className="@container mt-2 grid grid-cols-3 gap-1.5">
+      {/* Map and Directions only: Save lives under ⋯ and on swipe-left. */}
+      {(canLocate || canDirect) && (
+        <div className="@container mt-2 grid grid-cols-2 gap-1.5">
           {canLocate ? mapButton : <span />}
-          {canKeep ? saveButton : <span />}
           {canDirect ? (
             <a
               href={mapsDirToUrl(item, near ?? "")}
@@ -449,6 +449,18 @@ export function TimelineEntry({
             <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
             {done ? "Done" : "Mark done"}
           </button>
+          {canKeep && (
+            <button
+              type="button"
+              onClick={keep}
+              disabled={kept}
+              aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+              className={`${quickButton} ${kept ? "text-primary" : ""}`}
+            >
+              <Bookmark className="size-4" weight={kept ? "fill" : "regular"} aria-hidden />
+              {kept ? "Saved" : "Save"}
+            </button>
+          )}
           {onSaveBooking && (
             <button
               type="button"
