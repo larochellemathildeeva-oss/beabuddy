@@ -3,6 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "
 import {
   Bookmark,
   Check,
+  Coins,
   LocateFixed,
   Download,
   MapPin,
@@ -16,6 +17,7 @@ import {
   Plus,
 } from "@/components/icons";
 import { TripBudget } from "@/components/TripBudget";
+import { CurrencySheet } from "@/components/CurrencySheet";
 import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
@@ -598,6 +600,7 @@ export function TripDetail({
   const [packTemplateId, setPackTemplateId] = useState("");
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   /** Open the to-do or packing sheet on a given tab (arrival link, Overview). */
   const [prepAsk, setPrepAsk] = useState<{ tab: PrepTab; n: number } | null>(() =>
     openPrep ? { tab: openPrep, n: 1 } : null,
@@ -992,6 +995,8 @@ export function TripDetail({
     hasLodging: board.items.some((item) => timelineGlyph(item) === "lodging"),
     hasFlights: board.items.some((item) => timelineGlyph(item) === "transport"),
   };
+  // Whose money the currency sheet offers: the trip's country, then its cities'.
+  const tripCountries = [trip.country, ...cities.countries];
 
   const chips = dayChips(timelineGroups, todayKey);
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
@@ -1110,6 +1115,14 @@ export function TripDetail({
         >
           <ListChecks className="size-3.5 text-primary" aria-hidden />
           To do
+        </button>
+        <button
+          title="Convert prices into your money"
+          onClick={() => setCurrencyOpen(true)}
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+        >
+          <Coins className="size-3.5 text-primary" aria-hidden />
+          Currency
         </button>
         <button
           data-guide="add-stop"
@@ -1377,6 +1390,7 @@ export function TripDetail({
               value={chosenDay}
               onChange={setDayChoice}
               anchor={dayCardsRef}
+              onCurrency={() => setCurrencyOpen(true)}
             />
           )}
           <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
@@ -1927,6 +1941,15 @@ export function TripDetail({
           openSignal={prepSignal}
           openTab={prepAsk}
         />
+        {currencyOpen && (
+          <CurrencySheet
+            key={trip.id}
+            open
+            onClose={() => setCurrencyOpen(false)}
+            tripId={trip.id}
+            countries={tripCountries}
+          />
+        )}
       </div>
 
       <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to this trip" width="sm">

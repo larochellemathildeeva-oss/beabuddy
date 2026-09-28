@@ -448,11 +448,15 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
             hits = found;
           }
           const picked = pickHit(hits, bounds, stop);
-          if (picked?.trusted) {
-            placed.push({ index, ...picked.hit, ...farFrom(picked.hit) });
+          const far = picked ? farFrom(picked.hit) : {};
+          // The right name well out of town ("Itsukushima Shrine" in a
+          // village near Osaka, for the one on Miyajima) is a namesake until
+          // nothing better turns up: the search goes on, the country too.
+          if (picked?.trusted && !far.farKm) {
+            placed.push({ index, ...picked.hit });
             return true;
           }
-          if (picked) doubtful.push({ ...picked.hit, ...farFrom(picked.hit) });
+          if (picked) doubtful.push({ ...picked.hit, ...far });
         }
         return false;
       };
@@ -530,7 +534,14 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           throttled = true;
           break;
         }
-        if (countryBox) await tryIn(country, countryBox, null);
+        // Beside the stop before it first: a Hiroshima day on a trip filed
+        // under Osaka is found around Hiroshima Station, not across Japan.
+        if (countryBox && data.inOrder && lastPin) {
+          besideParent = true;
+          landed = await tryIn(country, boxAround(lastPin, NEXT_KM), lastPin);
+          besideParent = false;
+        }
+        if (countryBox && !landed && !throttled) await tryIn(country, countryBox, null);
       }
       // Still nowhere, but inside a stop that was found: pinned there.
       const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;

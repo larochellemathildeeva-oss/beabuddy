@@ -287,3 +287,28 @@ test("another branch of a chain, or a namesake with another number, is not the s
   });
   assert.equal(longer.confidence, "high");
 });
+
+test("an address found without its number is a district, not the address", () => {
+  // "68 Honmachi" is Himeji Castle; Osaka has a Honmachi too.
+  const district = scoreMatch({
+    title: "68 Honmachi",
+    label: "Honmachi, Chuo Ward, Osaka, 541-0053, Japan",
+    category: "place",
+    kind: "quarter",
+  });
+  assert.equal(district.confidence, "low");
+  const right = scoreMatch({
+    title: "68 Honmachi",
+    label: "68 Honmachi, Himeji, Hyogo 670-0012, Japan",
+    category: "building",
+    kind: "yes",
+  });
+  assert.notEqual(right.confidence, "low");
+  const german = scoreMatch({
+    title: "Poststraße 8",
+    label: "8, Poststraße, Gallus, Frankfurt am Main, Hessen, 60329, Germany",
+    category: "building",
+    kind: "hotel",
+  });
+  assert.notEqual(german.confidence, "low");
+});
