@@ -312,3 +312,22 @@ export function countriesStartingWith(query: string, limit = 3): WorldCountry[] 
   }
   return out;
 }
+
+/**
+ * The country a title names, if it names exactly one: "JAPAN TEST",
+ * "Japan Master Itinerary", "Two weeks in Portugal". Only a whole country
+ * name counts, so a title is never searched as a place ("Hiroshima Day Trip"
+ * matched nothing); it can only say which country a trip with no place of
+ * its own is in.
+ */
+export function countryNamedIn(text: string | null | undefined): WorldCountry | null {
+  const words = (text ?? "").split(/[^\p{L}\p{M}'’.-]+/u).filter(Boolean);
+  const found = new Set<WorldCountry>();
+  for (let size = 3; size >= 1; size--) {
+    for (let i = 0; i + size <= words.length; i++) {
+      const country = matchWorldCountry(words.slice(i, i + size).join(" "));
+      if (country) found.add(country);
+    }
+  }
+  return found.size === 1 ? [...found][0]! : null;
+}
