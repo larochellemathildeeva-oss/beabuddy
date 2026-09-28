@@ -21,6 +21,8 @@ describe("AI plan prompt", () => {
       ],
     );
     assert.equal(plan.items[1]!.end_time, "11:30");
+    // A place with no street number carries only its name.
+    assert.equal(plan.items[2]!.title, "Walk in Mile End");
     assert.equal(plan.items[0]!.day_date, "2026-10-12");
     // A getting-there tip must not turn a meal into a journey.
     assert.equal(plan.items[3]!.kind, "meal");
