@@ -1,3 +1,4 @@
+import { allowCall } from "./call-limit.ts";
 import { openPlacesUrl, readOpenPlaces, type OpenPlace } from "./open-places.ts";
 
 /**
@@ -15,6 +16,19 @@ let announced = false;
 const cache = new Map<string, OpenPlace[]>();
 const CACHE_MAX = 500;
 
+/**
+ * The place search asks on what people type, so it is held to a share of the
+ * free plan's 10,000 calls a month: SEARCH_PER_PERSON an hour for one
+ * account, SEARCH_PER_DAY for everyone. Placing a plan's stops is not
+ * counted here; it is already bounded per plan.
+ */
+export const SEARCH_PER_PERSON = 20;
+export const SEARCH_PER_DAY = 200;
+const HOUR_MS = 60 * 60_000;
+const DAY_MS = 24 * HOUR_MS;
+const searchesByPerson = new Map<string, number[]>();
+const searchesByDay = new Map<string, number[]>();
+
 function openPlacesKey(): string {
   return (process.env["OPEN_PLACES_API_KEY"] ?? "").trim();
 }
@@ -27,12 +41,19 @@ export function openPlacesReady(): boolean {
 export async function searchOpenPlaces(
   query: string,
   near: { lat: number; lon: number },
+  /** Set by the place search: whose search this is, so it can be held to a budget. */
+  searchedBy?: string,
 ): Promise<OpenPlace[]> {
   const key = openPlacesKey();
   if (!key || Date.now() < refusedUntil) return [];
   const url = openPlacesUrl(query, near);
   const hit = cache.get(url);
   if (hit) return hit;
+  if (searchedBy !== undefined) {
+    const now = Date.now();
+    if (!allowCall(searchesByPerson, searchedBy, now, SEARCH_PER_PERSON, HOUR_MS)) return [];
+    if (!allowCall(searchesByDay, "all", now, SEARCH_PER_DAY, DAY_MS)) return [];
+  }
   if (!announced) {
     announced = true;
     console.info(`[geo] Open Places API for stops the map misses (key ${key.length} chars)`);

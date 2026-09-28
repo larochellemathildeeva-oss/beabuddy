@@ -119,3 +119,15 @@ test("the map's own answer that is the place needs no second look", () => {
   );
   assert.equal(echoesName("Sushidokoro Amano", { name: "Tennoji Park", address: "Osaka" }), false);
 });
+
+test("a street named after the place does not stop the second look", () => {
+  assert.equal(
+    echoesName("Rio de Ondas", {
+      name: "Rua Rio de Ondas",
+      address: "Barreiras, Brazil",
+      category: "highway",
+      placeType: "residential",
+    }),
+    false,
+  );
+});

@@ -145,8 +145,23 @@ export function pickOpenPlace(
  */
 export function echoesName(
   title: string,
-  place: { name: string; label?: string | null; address?: string | null },
+  place: {
+    name: string;
+    label?: string | null | undefined;
+    address?: string | null | undefined;
+    /** OSM's class and type: a street named after the place is not the place. */
+    category?: string | null | undefined;
+    placeType?: string | null | undefined;
+  },
 ): boolean {
   const label = place.label || [place.name, place.address].filter(Boolean).join(", ");
-  return scoreMatch({ title, label, alsoNamed: [place.name] }).confidence === "high";
+  return (
+    scoreMatch({
+      title,
+      label,
+      alsoNamed: [place.name],
+      category: place.category,
+      kind: place.placeType,
+    }).confidence === "high"
+  );
 }

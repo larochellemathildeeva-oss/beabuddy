@@ -605,7 +605,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data: input }): Promise<ParsedPlace[]> => {
+  .handler(async ({ data: input, context }): Promise<ParsedPlace[]> => {
     const name = input.query;
     const within = (q: string) => (input.near ? `${q}, ${input.near}` : q);
     const data = { ...input, query: within(name) };
@@ -769,34 +769,40 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // Osaka found nothing, or other Amanos.
     const listed = input.areas
       ? []
-      : await overturePlaces(name, mapRanked, anchor, input.near ?? null, pace);
-    const ranked = listed.length
-      ? [
-          ...listed,
-          ...mapRanked.filter(
-            (p) =>
-              p.lat == null ||
-              p.lon == null ||
-              !listed.some(
-                (o) => haversine({ lat: o.lat!, lon: o.lon! }, { lat: p.lat!, lon: p.lon! }) < 0.15,
-              ),
-          ),
-        ].slice(0, 10)
-      : mapRanked;
+      : await overturePlaces(
+          name,
+          [...nearbyFirst, ...mapRanked],
+          anchor,
+          input.near ?? null,
+          pace,
+          context.userId,
+        );
     // Searching near you: the nearest branch is the answer, whatever order the
     // map service ranked them in. Sort is stable, so equal distances keep it.
     const at = data.at;
+    const away = (p: ParsedPlace) =>
+      at && p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
+    const byDistance = (list: ParsedPlace[]) =>
+      at ? [...list].sort((a, b) => away(a) - away(b)) : list;
     if (typedCountries.length) {
-      const rest = ranked.filter(
+      const rest = mapRanked.filter(
         (p) => !typedCountries.some((c) => c.name.toLowerCase() === p.name.toLowerCase()),
       );
       return [...typedCountries, ...rest].slice(0, 10);
     }
-    if (nearbyFirst.length) return mergeNearbyFirst(nearbyFirst, ranked);
-    if (!at) return ranked;
-    const away = (p: ParsedPlace) =>
-      p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
-    return [...ranked].sort((a, b) => away(a) - away(b));
+    const mapPart = nearbyFirst.length
+      ? mergeNearbyFirst(nearbyFirst, mapRanked)
+      : byDistance(mapRanked);
+    if (!listed.length) return mapPart;
+    // What is called what was typed goes first, nearest first; the map's
+    // look-alikes after it, less any that are the same place.
+    const sameSpot = (p: ParsedPlace) =>
+      p.lat != null &&
+      p.lon != null &&
+      listed.some(
+        (o) => haversine({ lat: o.lat!, lon: o.lon! }, { lat: p.lat!, lon: p.lon! }) < SAME_PLACE_M,
+      );
+    return [...byDistance(listed), ...mapPart.filter((p) => !sameSpot(p))].slice(0, 10);
   });
 
 /**
@@ -812,6 +818,7 @@ async function overturePlaces(
   anchor: { lat: number; lon: number } | null,
   near: string | null,
   pace: Pace,
+  userId: string,
 ): Promise<ParsedPlace[]> {
   if (found.some((place) => echoesName(name, place))) return [];
   const overture = await import("@/lib/open-places.server");
@@ -828,9 +835,16 @@ async function overturePlaces(
     }
   }
   if (!centre) return [];
-  const places = openPlacesNamed(await overture.searchOpenPlaces(name, centre), [name], centre);
+  const places = openPlacesNamed(
+    await overture.searchOpenPlaces(name, centre, userId),
+    [name],
+    centre,
+  );
   return places.slice(0, 5).map(overtureToPlace);
 }
+
+/** A listing and a map hit this close are the same place, shown once. */
+const SAME_PLACE_M = 150;
 
 function overtureToPlace(place: OpenPlace): ParsedPlace {
   const address = place.label.startsWith(`${place.name}, `)
