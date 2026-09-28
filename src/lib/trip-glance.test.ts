@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  documentHighlights,
   bannerPill,
   bannerScene,
   daysShort,
@@ -162,4 +163,16 @@ test("painted banners take the theme's colours but keep their hills", () => {
 test("stops count places to see, not travel, beds or notes", () => {
   const kinds = ["flight", "hotel", "sight", "meal", "transport", "lodging", "note", "reservation"];
   assert.equal(stopCount(kinds.map((kind) => ({ kind }))), 3);
+});
+
+test("a trip's documents stand in for a flight and a stay", () => {
+  const docs = [
+    { id: "d1", trip_id: "t", kind: "train", title: "Hakura train" },
+    { id: "d2", trip_id: "t", kind: "flight", title: "Flight to Toronto" },
+    { id: "d3", trip_id: "t", kind: "accommodation", title: "Casa Azul" },
+  ];
+  const found = documentHighlights(docs);
+  assert.equal(found.flight?.title, "Flight to Toronto");
+  assert.equal(found.lodging?.title, "Casa Azul");
+  assert.deepEqual(documentHighlights([]), { flight: null, lodging: null });
 });
