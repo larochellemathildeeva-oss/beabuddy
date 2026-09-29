@@ -206,6 +206,17 @@ are spelt one way when names are compared (`canonicalSpelling`: caffè →
 cafe). The import prompt (`ai-plan-prompt.ts`) asks for the local-script
 name in brackets as well.
 
+**Search credits.** A pause in typing (`typing: true`) runs only the
+type-ahead, or one plain search when it has nothing: no spelling variants,
+wider towns, name parts, Overture or Gemini. Pressing Search runs everything.
+Each search's answer is kept (`place-search-cache.server.ts`): in memory,
+then in `place_search_cache` for two weeks, keyed by a hash of the words,
+town and rounded position (`searchCacheKey`, tested), so the same search is
+paid for once across all travellers. Empty answers are kept an hour, in
+memory only. Bump `SEARCH_CACHE_VERSION` when a change to the search should
+not be answered from old results. The migration is applied by hand; until it
+is, memory only, with one warning in the log.
+
 ## Web check before planning
 
 When Béa drafts or reworks a plan (Build, Rebuild, Alternatives), it first

@@ -61,6 +61,7 @@ import { japaneseAddressQueries, namesJapan } from "@/lib/japan-address";
 import { askedNames, onlyAreaMatches, rankByName, stopTitleAddsToQuery } from "@/lib/place-match";
 import { localLanguageFor, worthTranslating } from "@/lib/local-name";
 import { countryCode } from "@/lib/country-names";
+import { searchCacheKey } from "@/lib/place-search-cache";
 
 export type ParsedPlace = {
   name: string;
@@ -673,8 +674,7 @@ async function smartPlaceSearch(input: PlaceSearch, userId: string): Promise<Par
     input.stop?.lat != null && input.stop.lon != null
       ? { lat: input.stop.lat, lon: input.stop.lon }
       : null;
-  const search = (query: string) =>
-    findPlaces({ ...input, query, stop: null, typing: null }, userId, pace);
+  const search = (query: string) => findPlaces({ ...input, query, stop: null }, userId, pace);
   // The extra searches only add: one that fails (a rate limit) never turns
   // results already found into "Couldn't reach the map".
   const searchMore = (query: string) => search(query).catch((): ParsedPlace[] => []);
@@ -793,10 +793,51 @@ function mergePlaces(first: readonly ParsedPlace[], then: readonly ParsedPlace[]
 }
 
 /**
+ * One search, as asked, kept for the next person who asks it
+ * (place-search-cache.server.ts): the same words in the same place are paid
+ * for once. What the server knows of each place beside it (its full label,
+ * its other names) is kept with it.
+ */
+async function findPlaces(
+  input: PlaceSearch,
+  userId: string,
+  shared?: Pace,
+): Promise<ParsedPlace[]> {
+  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const { cachedPlaceSearch } = await import("@/lib/place-search-cache.server");
+  const key = searchCacheKey({
+    provider: geoProvider().name,
+    query: input.query,
+    near: input.near,
+    at: input.at,
+    center: input.center,
+    areas: input.areas,
+    quick: input.typing,
+  });
+  const entry = await cachedPlaceSearch(key, async () => {
+    const places = await findPlacesFresh(input, userId, shared);
+    return {
+      places,
+      where: places.map((place) => fullWhere.get(place) ?? null),
+      names: places.map((place) => allNames.get(place) ?? null),
+    };
+  });
+  // Fresh objects each time: the lists are ranked and marked per search.
+  return entry.places.map((kept, i) => {
+    const place = { ...kept };
+    const where = entry.where[i];
+    const names = entry.names[i];
+    if (where) fullWhere.set(place, where);
+    if (names) allNames.set(place, names);
+    return place;
+  });
+}
+
+/**
  * One search, as asked: the geocoder, the tag search nearby and Overture.
  * `smartPlaceSearch` decides what to ask and how to order what comes back.
  */
-async function findPlaces(
+async function findPlacesFresh(
   input: PlaceSearch,
   userId: string,
   shared?: Pace,
@@ -871,10 +912,23 @@ async function findPlaces(
     areas: Boolean(input.areas),
     ...(area ? { area } : {}),
   });
+  // A pause in typing: the type-ahead's answer, or one plain search when it
+  // has none, and nothing more. Each step below costs a credit, and most
+  // pauses are half a name. Pressing Search runs the whole of it.
+  const quick = Boolean(input.typing);
+  if (quick && !hits.length) {
+    try {
+      hits = await nominatim(data.query, 10, area, pace);
+    } catch (error) {
+      if (!typedCountries.length) throw error;
+      return typedCountries;
+    }
+    if (input.areas) hits = hits.filter((hit) => !isVenueHit(hit));
+  }
   // Near you, a type-ahead that found one or two is not the answer to
   // "mcdonalds" — there are dozens in a city. The full search, bounded to
   // around you, runs as well and its branches join the list.
-  if (hits.length > 0 && hits.length < 3 && area && data.at) {
+  if (!quick && hits.length > 0 && hits.length < 3 && area && data.at) {
     try {
       const more = await nominatimVariants(data.query, area, pace, "venue");
       const seen = new Set(hits.map((h) => `${h.lat},${h.lon}`));
@@ -883,7 +937,7 @@ async function findPlaces(
       // What the type-ahead found still stands.
     }
   }
-  if (!hits.length && area) {
+  if (!quick && !hits.length && area) {
     try {
       hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");
     } catch {
@@ -893,7 +947,7 @@ async function findPlaces(
       hits = [];
     }
   }
-  if (!hits.length) {
+  if (!quick && !hits.length) {
     try {
       hits = await nominatimVariants(data.query, undefined, pace, input.areas ? "area" : "venue");
     } catch (error) {
@@ -912,7 +966,7 @@ async function findPlaces(
   // then anywhere, by the name alone.
   const venueNear = Boolean(input.near && !input.areas);
   if (venueNear) hits = dropBareAreas(hits, name);
-  if (!hits.length && venueNear && input.near) {
+  if (!quick && !hits.length && venueNear && input.near) {
     for (const wider of widerQueries(name, input.near)) {
       try {
         hits = dropBareAreas(await nominatimVariants(wider, undefined, pace, "venue"), name);
@@ -925,7 +979,7 @@ async function findPlaces(
       }
     }
   }
-  if (!hits.length) {
+  if (!quick && !hits.length) {
     // Each part in the trip's city, then — for a stop away from it — in
     // the trip's country.
     const places = (part: string) =>
@@ -956,16 +1010,17 @@ async function findPlaces(
   // where the search was looking. OpenStreetMap knows many restaurants only
   // by their local-script name, or not at all — "Sushidokoro Amano" in
   // Osaka found nothing, or other Amanos.
-  const listed = input.areas
-    ? []
-    : await overturePlaces(
-        name,
-        [...nearbyFirst, ...mapRanked],
-        anchor,
-        input.near ?? null,
-        pace,
-        userId,
-      );
+  const listed =
+    input.areas || quick
+      ? []
+      : await overturePlaces(
+          name,
+          [...nearbyFirst, ...mapRanked],
+          anchor,
+          input.near ?? null,
+          pace,
+          userId,
+        );
   // Searching near you: the nearest branch is the answer, whatever order the
   // map service ranked them in. Sort is stable, so equal distances keep it.
   const at = data.at;
