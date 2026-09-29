@@ -567,7 +567,10 @@ export function parentIndex(rows: readonly NestableRow[], i: number): number {
  * With a time of its own (the Cenotaph at 10:45, after the museum at 9:30),
  * a place inside another stays a stop — it is when you are there — and keeps
  * `within`, so it is looked up beside its parent rather than across the city.
- * Booked rows always stay.
+ * Booked rows always stay, and so does everything listed under an area
+ * (`isAreaStop`), or pinned to a venue of its own under anything that is not
+ * one site: the stalls of a market or the cafés of a neighbourhood are
+ * places of their own, to be pinned, not rooms of one building.
  */
 export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
   const out = rows.map((row) => ({ ...row }));
@@ -580,11 +583,86 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
     }
     row.within = out[parent]!.title;
     const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
-    if (ownTime || row.booked === true) return;
+    const area = out[parent]!;
+    if (ownTime || row.booked === true || isAreaStop(area)) return;
+    if (hasOwnVenue(row, area) && !isSiteStop(area)) return;
     out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
+}
+
+/**
+ * Words that make a stop an area rather than one site: somewhere with many
+ * separate places in it. Letters around the word are checked by hand, since
+ * `\b` does not see "é" as part of a word.
+ */
+const AREA_WORDS =
+  /(?<!\p{L})(?:neighbou?rhoods?|district|quarter|quartier|barrio|area|old town|downtown|chinatown|bazaar|souk|markets?|marché|mercado|mercato|markt|streets?|avenue|shotengai|arcade|yokocho|dori|dōri)(?!\p{L})/iu;
+
+/** One site, however long the stroll there: its monuments and halls fold into its list. */
+const SITE_WORDS =
+  /(?<!\p{L})(?:park|parc|parque|gardens?|jardin|jardín|temple|shrine|dera|jinja|taisha|jingu|church|cathedral|basilica|mosque|abbey|monastery|castle|palace|museum|musée|museo|gallery|hall|tower|fort|fortress|cemetery|trail|hike|beach|forest|island|lake|river|mountain|mount|waterfall|zoo|aquarium)(?!\p{L})/iu;
+
+const lastWord = (name: string) => name.trim().split(/\s+/).pop() ?? "";
+
+/**
+ * A neighbourhood, market or street, where each spot listed under it is a
+ * place of its own: a stop whose title or place names one ("Nishiki
+ * Market", "Gion district"), or a stroll through somewhere that is not one
+ * site ("Walk in Le Marais", but not "Walk in Jardin du Luxembourg"). The
+ * last word says what a place is, so "Old Town Hall" is a hall and "Temple
+ * Street Night Market" a market.
+ */
+export function isAreaStop(row: Pick<NestableRow, "kind" | "title" | "place">): boolean {
+  const names = [row.title, row.place ?? ""].filter((n) => n.trim());
+  if (names.some((n) => SITE_WORDS.test(lastWord(n)))) return false;
+  if (names.some((n) => AREA_WORDS.test(n))) return true;
+  return row.kind.toLowerCase() === "walk" && !names.some((n) => SITE_WORDS.test(n));
+}
+
+/** One site by name ("Peace Memorial Park", "Kiyomizu-dera"), whose parts fold into it. */
+function isSiteStop(row: Pick<NestableRow, "title" | "place">): boolean {
+  return SITE_WORDS.test(row.title) || SITE_WORDS.test(row.place ?? "");
+}
+
+/**
+ * A row pinned to a venue of its own ("Place des Vosges" under "Le
+ * Marais"), not to the stop it is inside: the model gives a gallery the
+ * museum as its place.
+ */
+function hasOwnVenue(row: NestableRow, parent: NestableRow): boolean {
+  const own = fold(row.place);
+  if (own.length < 3) return false;
+  return [parent.title, parent.place].every((name) => {
+    const n = fold(name);
+    return !n || !(n === own || n.includes(own) || own.includes(n));
+  });
+}
+
+/**
+ * Spots timed inside an area's span in a plain list ("16:00–19:00 Walk in
+ * Le Marais", then "16:10 Place des Vosges"): each is set `within` the
+ * area, so it is looked up beside it. The area's end then goes: its span
+ * holds those visits, and kept as the area's own stay it would count their
+ * time twice.
+ */
+export function linkAreaSpots<T extends NestableRow>(rows: readonly T[]): T[] {
+  const out = rows.map((row) => ({ ...row }));
+  out.forEach((area, i) => {
+    if (!area.time_label || !area.end_time || fold(area.within)) return;
+    if (!isAreaStop(area)) return;
+    let linked = false;
+    for (let j = i + 1; j < out.length && sameDay(out[j]!, area); j++) {
+      const spot = out[j]!;
+      if (!spot.time_label || spot.time_label < area.time_label) break;
+      if (spot.time_label >= area.end_time) break;
+      spot.within = area.title;
+      linked = true;
+    }
+    if (linked) area.end_time = null;
+  });
+  return out;
 }
 
 /** "Inside: East building · Main building", one note however many are added. */
