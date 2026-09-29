@@ -76,6 +76,7 @@ import { TripBookings, type BookingFilter } from "@/components/day/TripBookings"
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { TripCheckup } from "@/components/day/TripCheckup";
 import { tripCheckup } from "@/lib/trip-checkup";
+import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
   ALL_DAYS,
   dayChips,
@@ -2325,6 +2326,21 @@ export function TripDetail({
         }
         budgetOn={Boolean(trip.budget_enabled)}
         checkupCount={checkupCount}
+        onCalendar={() => {
+          setSettingsOpen(false);
+          const blob = new Blob([tripCalendar(trip, stopItems)], {
+            type: "text/calendar;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = calendarFileName(trip.title);
+          a.click();
+          URL.revokeObjectURL(url);
+          toast("Calendar file saved", {
+            description: "Open it to add the trip to your calendar. Times are the place's own.",
+          });
+        }}
         onPrint={() => {
           setSettingsOpen(false);
           printHtml(

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Backpack,
   Bed,
+  CalendarDays,
   Car,
   ChevronRight,
   CircleCheck,
@@ -60,6 +61,7 @@ export function TripMenuSheet({
   offlineNote,
   budgetOn,
   onPrint,
+  onCalendar,
   checkupCount,
   footer,
   children,
@@ -82,6 +84,8 @@ export function TripMenuSheet({
   budgetOn: boolean;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
+  /** Download the trip as a calendar file. */
+  onCalendar?: (() => void) | undefined;
   /** How many things Trip Checkup found, for its pill. */
   checkupCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
@@ -206,6 +210,18 @@ export function TripMenuSheet({
       note: "What the trip page shows",
       onClick: () => onSection("customize"),
     },
+    ...(onCalendar
+      ? [
+          {
+            key: "calendar",
+            icon: CalendarDays,
+            title: "Add to calendar",
+            note: "Every stop, as a calendar file",
+            pill: "",
+            onClick: onCalendar,
+          },
+        ]
+      : []),
     ...(onPrint
       ? [
           {
