@@ -6,6 +6,12 @@ import {
   cityOutsideTrip,
   citiesToStops,
   dayTripInsertAt,
+  destinationCities,
+  groupsInCity,
+  missingTripCity,
+  homeStopFollow,
+  planScope,
+  scopedRoute,
   dayTripOutsideBase,
   onePlaceStops,
   rangeTap,
@@ -153,4 +159,160 @@ test("the route tells the planner a day trip sleeps in its base", () => {
     routeStopLine(stops, 1),
     "Hiroshima, Japan (2026-10-04) — day trip from Kyoto; nights stay in Kyoto",
   );
+});
+
+const brazil = {
+  city: "Barreirinhas",
+  country: "Brazil",
+  start_date: "2026-10-01",
+  end_date: "2026-10-06",
+};
+
+test("missingTripCity brings back the city the trip was made for", () => {
+  const rio = { city: "Rio de Janeiro", country: "Brazil", arrive_on: "2026-10-04" };
+  assert.deepEqual(missingTripCity(brazil, [rio]), {
+    city: "Barreirinhas",
+    country: "Brazil",
+    arrive_on: "2026-10-01",
+    depart_on: "2026-10-04",
+  });
+});
+
+test("missingTripCity ends the first city where the next one starts", () => {
+  assert.equal(missingTripCity(brazil, [], { arrive_on: "2026-10-03" })?.depart_on, "2026-10-03");
+  assert.equal(missingTripCity(brazil, [])?.depart_on, "2026-10-06");
+});
+
+test("missingTripCity is quiet when the list already has it, in any spelling", () => {
+  assert.equal(missingTripCity(brazil, [{ city: "barreirinhas " }]), null);
+  assert.equal(
+    missingTripCity({ city: "São Paulo", country: "Brazil" }, [{ city: "Sao Paulo" }]),
+    null,
+  );
+  assert.equal(missingTripCity({ city: "" }, []), null);
+  assert.equal(missingTripCity({ city: "Brazil", country: "Brazil" }, []), null);
+});
+
+test("destinationCities leaves stopovers out", () => {
+  const stops = [
+    { city: "Lisbon", kind: "layover" },
+    { city: "Rio", kind: "destination" },
+    { city: " ", kind: "destination" },
+  ];
+  assert.deepEqual(
+    destinationCities(stops).map((s) => s.city),
+    ["Rio"],
+  );
+});
+
+test("groupsInCity keeps the days spent in that city", () => {
+  const a = { city: "Barreirinhas", arrive_on: "2026-10-01", depart_on: "2026-10-03" };
+  const b = { city: "Rio", arrive_on: "2026-10-03", depart_on: "2026-10-06" };
+  const group = (key: string) => ({ key, label: key, items: [{ day_date: key || null }] });
+  const groups = [group("2026-10-01"), group("2026-10-02"), group("2026-10-03"), group("")];
+  assert.deepEqual(
+    groupsInCity(groups, [a, b], a).map((g) => g.key),
+    ["2026-10-01", "2026-10-02"],
+  );
+  assert.deepEqual(
+    groupsInCity(groups, [a, b], b).map((g) => g.key),
+    ["2026-10-03"],
+  );
+});
+
+test("planScope reads a plan in the chosen city, on its dates", () => {
+  const trip = { city: "Barreirinhas, Brazil", startDate: "2026-10-01", endDate: "2026-10-06" };
+  assert.deepEqual(planScope(trip, null), trip);
+  assert.deepEqual(
+    planScope(trip, {
+      city: "Rio de Janeiro",
+      country: "Brazil",
+      arrive_on: "2026-10-04",
+      depart_on: "2026-10-06",
+    }),
+    { city: "Rio de Janeiro, Brazil", startDate: "2026-10-04", endDate: "2026-10-06" },
+  );
+});
+
+test("missingTripCity is not fooled by a stopover or a namesake abroad", () => {
+  const paris = { city: "Paris", country: "France", start_date: "2026-10-01" };
+  assert.equal(missingTripCity(paris, [{ city: "Paris", kind: "layover" }])?.city, "Paris");
+  assert.equal(
+    missingTripCity(paris, [{ city: "Paris", country: "United States" }])?.city,
+    "Paris",
+  );
+  assert.equal(missingTripCity(paris, [{ city: "Paris", country: "France" }]), null);
+  assert.equal(missingTripCity(paris, [{ city: "Paris" }]), null);
+});
+
+test("missingTripCity keeps the whole stay when the next stop is a day trip", () => {
+  assert.equal(
+    missingTripCity(brazil, [], { kind: "daytrip", arrive_on: "2026-10-03" })?.depart_on,
+    "2026-10-06",
+  );
+});
+
+test("planScope gives an undated city no dates of its own", () => {
+  const trip = { city: "Barreirinhas, Brazil", startDate: "2026-10-01", endDate: "2026-10-06" };
+  assert.deepEqual(planScope(trip, { city: "Rio", country: null }), { city: "Rio" });
+});
+
+test("scopedRoute places a city's plan in that city alone", () => {
+  const route = [
+    { city: "Barreirinhas", country: "Brazil", arrive_on: "2026-10-01" },
+    { city: "Rio", country: "Brazil", arrive_on: "2026-10-04" },
+    { city: "Salvador", country: "Brazil", arrive_on: null },
+  ];
+  assert.deepEqual(
+    scopedRoute(route, { city: "Rio", country: "Brazil", arrive_on: "2026-10-04" }).map(
+      (c) => c.city,
+    ),
+    ["Rio"],
+  );
+  const undated = scopedRoute(route, { city: "Salvador", country: "Brazil" });
+  assert.deepEqual(
+    undated.map((c) => c.city),
+    ["Salvador"],
+  );
+  assert.deepEqual(scopedRoute([], { city: "Recife", country: "Brazil" }), [
+    {
+      city: "Recife",
+      country: "Brazil",
+      arrive_on: null,
+      depart_on: null,
+      lat: null,
+      lon: null,
+    },
+  ]);
+});
+
+test("homeStopFollow moves the copied first city with the trip", () => {
+  const before = {
+    city: "Barreirinhas",
+    country: "Brazil",
+    start_date: "2026-10-01",
+    end_date: "2026-10-06",
+  };
+  const home = {
+    id: "a",
+    position: 0,
+    kind: "destination",
+    city: "Barreirinhas",
+    country: "Brazil",
+    arrive_on: "2026-10-01",
+    depart_on: "2026-10-04",
+  };
+  const rio = { ...home, id: "b", position: 1, city: "Rio", arrive_on: "2026-10-04" };
+  assert.deepEqual(homeStopFollow(before, { city: "Jericoacoara" }, [rio, home]), {
+    id: "a",
+    patch: { city: "Jericoacoara", country: "Brazil", lat: null, lon: null },
+  });
+  // Its own end date was set by the traveller, so only the start follows.
+  assert.deepEqual(
+    homeStopFollow(before, { start_date: "2026-09-30", end_date: "2026-10-07" }, [home, rio]),
+    { id: "a", patch: { arrive_on: "2026-09-30" } },
+  );
+  // A first stop that is not the trip's city is the traveller's own.
+  assert.equal(homeStopFollow(before, { city: "Jericoacoara" }, [rio]), null);
+  assert.equal(homeStopFollow(before, { title: "x" } as never, [home]), null);
 });

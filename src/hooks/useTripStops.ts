@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { missingTripCity } from "@/lib/trip-cities";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type StopRow = {
@@ -34,7 +35,15 @@ export type NewStop = {
 const COLS =
   "id, trip_id, kind, city, country, place_name, address, lat, lon, arrive_on, depart_on, notes, position";
 
-export function useTripStops(tripId: string | null, uid: string | null) {
+/** The trip's own city and dates, which a one-city trip keeps on the trip rather than as a stop. */
+export type TripHome = {
+  city?: string | null;
+  country?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+};
+
+export function useTripStops(tripId: string | null, uid: string | null, home?: TripHome) {
   // A card opens with the cities it last showed, not the trip's own city
   // until its stops arrive.
   const [last] = useState(() => (tripId ? lastLoaded<StopRow[]>(`stops:${tripId}`) : undefined));
@@ -95,12 +104,18 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       const { data: auth } = await supabase.auth.getUser();
       const authorId = auth.user?.id ?? uid;
       if (!authorId) throw new Error("Sign in first");
+      // The first city added to a one-city trip is its second city. The one
+      // the trip was made for goes in ahead of it, or the list — and every
+      // city switcher built on it — forgets where the trip starts.
+      // Checked against the new cities too: adding the trip's own city is not a second one.
+      const first = stops.length === 0 && home ? missingTripCity(home, list, list[0]) : null;
+      const rows = first ? [{ kind: "destination", ...first }, ...list] : list;
       // One past the highest, not stops.length: after a remove the list is
       // shorter than its highest position, so two removes and two undos gave
       // two rows the same position and left moveStop unable to separate them.
       const next = stops.reduce((max, stop) => Math.max(max, stop.position + 1), 0);
       const { error } = await supabase.from("trip_stops").insert(
-        list.map((s, i) => ({
+        rows.map((s, i) => ({
           trip_id: tripId,
           kind: s.kind ?? "destination",
           city: s.city,
@@ -119,10 +134,36 @@ export function useTripStops(tripId: string | null, uid: string | null) {
       if (error) throw error;
       await load();
     },
-    [tripId, uid, stops, load],
+    [tripId, uid, stops, load, home],
   );
 
   const addStop = useCallback((s: NewStop) => addStops([s]), [addStops]);
+
+  /**
+   * A trip whose second city was added before the first was kept: the city
+   * the trip was made for is missing from the list. Null when nothing is.
+   */
+  const missingHome = stops.length > 0 && home ? missingTripCity(home, stops) : null;
+
+  /** Put the trip's own city back, at the front of the list. */
+  const addHome = useCallback(async () => {
+    if (!tripId || !missingHome) return;
+    const { data: auth } = await supabase.auth.getUser();
+    const authorId = auth.user?.id ?? uid;
+    if (!authorId) throw new Error("Sign in first");
+    const { error } = await supabase.from("trip_stops").insert({
+      trip_id: tripId,
+      kind: "destination",
+      city: missingHome.city,
+      country: missingHome.country || null,
+      arrive_on: missingHome.arrive_on || null,
+      depart_on: missingHome.depart_on || null,
+      position: stops.reduce((min, stop) => Math.min(min, stop.position), 0) - 1,
+      created_by: authorId,
+    });
+    if (error) throw error;
+    await load();
+  }, [tripId, uid, missingHome, stops, load]);
 
   const updateStop = useCallback(
     async (id: string, patch: Partial<Omit<StopRow, "id" | "trip_id">>) => {
@@ -173,6 +214,8 @@ export function useTripStops(tripId: string | null, uid: string | null) {
     updateStop,
     removeStop,
     moveStop,
+    missingHome,
+    addHome,
     reload: load,
   };
 }
