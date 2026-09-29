@@ -150,9 +150,13 @@ async function place(fixture, items) {
   return placed;
 }
 
-const fixtures = [...lib.WORLD, ...lib.FRESH, ...lib.MORE, ...lib.OLD, ...TRUTH.extraFixtures].filter(
-  (f) => TRUTH.places[f.id] && (!only || only.split(",").some((o) => f.id.includes(o))),
-);
+const fixtures = [
+  ...lib.WORLD,
+  ...lib.FRESH,
+  ...lib.MORE,
+  ...lib.OLD,
+  ...TRUTH.extraFixtures,
+].filter((f) => TRUTH.places[f.id] && (!only || only.split(",").some((o) => f.id.includes(o))));
 /** right/wrong: saved unasked; …Flagged: shown as "check this one", not saved. */
 const tally = { right: 0, rightFlagged: 0, wrong: 0, wrongFlagged: 0, unplaced: 0, missingStop: 0 };
 const report = [];

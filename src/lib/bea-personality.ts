@@ -186,6 +186,49 @@ export const PLAIN_WORKING: Record<BeaWork, string> = {
   think: "Béa is comparing the options.",
 };
 
+/**
+ * What Béa is drawn doing next while she waits. Her own work comes up most,
+ * the other two kinds of work for variety, and — with surprises on and some
+ * play in the mix — chasing the ball or digging up a bone. Never the same
+ * side trip twice in a row. `jokes: false` keeps to the three kinds of work.
+ */
+export function nextPose(input: {
+  work: BeaWork;
+  previous: BeaAction;
+  settings: BeaSettings;
+  jokes?: boolean;
+  rand?: () => number;
+}): BeaAction {
+  const { work, previous, settings, jokes = true, rand = Math.random } = input;
+  const pool = poseWeights(work, settings, jokes).filter(
+    ([pose]) => pose === work || pose !== previous,
+  );
+  let r = rand() * pool.reduce((s, [, w]) => s + w, 0);
+  for (const [pose, w] of pool) {
+    r -= w;
+    if (r <= 0) return pose;
+  }
+  return work;
+}
+
+/** Every pose Béa may take while doing this work with these settings. */
+export function posesFor(work: BeaWork, settings: BeaSettings): BeaAction[] {
+  return poseWeights(work, settings, true).map(([pose]) => pose);
+}
+
+function poseWeights(work: BeaWork, settings: BeaSettings, jokes: boolean): [BeaAction, number][] {
+  const weights: [BeaAction, number][] = [
+    [work, 3],
+    ...(["run", "dig", "think"] as const)
+      .filter((w) => w !== work)
+      .map((w): [BeaAction, number] => [w, 1.5]),
+  ];
+  if (jokes && settings.surprises && normalizeMix(settings.mix).helpful < 0.8) {
+    weights.push(["ball", 1.5], ["bone", work === "dig" ? 1.5 : 0.75]);
+  }
+  return weights;
+}
+
 type Bank = Partial<Record<"generic" | BeaAction, readonly string[]>>;
 const LOADING = BEA_CHARACTER.loading as Record<BeaTrait, Bank>;
 
@@ -227,7 +270,7 @@ export function loadingLine(input: {
   if (!line) line = fresh(LOADING.helpful?.[action] ?? [], recent, rand);
   // An occasional credentials joke, only with surprises on and some humour in the mix.
   const playful = shares.funny + shares.sassy + shares.dramatic;
-  if (settings.surprises && playful > 0.2 && rand() < 0.08) {
+  if (settings.surprises && playful > 0.2 && rand() < 0.12) {
     return fresh(BEA_CHARACTER.lore, recent, rand) || line;
   }
   return line || PLAIN_WORKING[action];
