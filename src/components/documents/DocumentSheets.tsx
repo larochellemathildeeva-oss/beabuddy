@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Route,
   ShieldCheck,
+  Sparkles,
   Trash2,
   Unlink,
   Upload,
@@ -26,6 +27,12 @@ import {
   type TripLite,
 } from "@/components/documents/DocumentParts";
 import { useTripEvents, type EventOption } from "@/hooks/useTripDocuments";
+import { aiFailure } from "@/lib/ai-errors";
+import { readableAs, stopForRead, tripForDate, type DocumentRead } from "@/lib/document-read";
+import { readDocumentFile } from "@/lib/document-read.functions";
+import { downscaleImage } from "@/lib/image";
+import { MAX_PDF_BYTES, pdfProblem, type PdfProblem } from "@/lib/itinerary-pdf";
+import { toLocalISODate } from "@/lib/trip-dates";
 import {
   DOCUMENT_KINDS,
   KIND_LABEL,
@@ -270,7 +277,53 @@ export type AssignDraft = {
   trip_id: string | null;
   itinerary_item_id: string | null;
   notes: string;
+  /** New documents only: the two short lines and the booking reference. */
+  lines?: string[];
+  reference?: string;
 };
+
+/** Which fields "Fill in from this file" set, so each can say so until it is edited. */
+type FilledField = "title" | "kind" | "lines" | "reference" | "trip" | "event" | "notes";
+
+function FromFile({ show }: { show: boolean }) {
+  if (!show) return null;
+  return (
+    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-primary">
+      <Sparkles className="size-3" aria-hidden />
+      from file
+    </span>
+  );
+}
+
+/** Why a PDF cannot be read. It can still be saved; only the reading is off. */
+const PDF_UNREADABLE: Record<PdfProblem, string> = {
+  "not-pdf": "That file isn't a PDF Béa can read. Fill it in by hand.",
+  "too-big": `That PDF is over ${MAX_PDF_BYTES / 1024 / 1024} MB, too big for Béa to read. Fill it in by hand.`,
+  locked: "That PDF is password-protected, so Béa can't read it. Fill it in by hand.",
+  empty: "That PDF is empty. Try saving it again from where it came from.",
+};
+
+/** The picked file as the data URL the reader takes: a PDF as is, a photo made smaller. */
+async function fileForReading(
+  file: File,
+  as: "pdf" | "image",
+): Promise<{ pdfDataUrl: string | null; imageDataUrl: string | null }> {
+  if (as === "image") return { pdfDataUrl: null, imageDataUrl: await downscaleImage(file, 1600) };
+  const all = new Uint8Array(await file.arrayBuffer());
+  const problem = pdfProblem({
+    size: file.size,
+    head: all.subarray(0, 4096),
+    tail: all.subarray(Math.max(0, all.length - 4096)),
+  });
+  if (problem) throw new Error(PDF_UNREADABLE[problem]);
+  const pdfDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read that PDF."));
+    reader.readAsDataURL(new Blob([all], { type: "application/pdf" }));
+  });
+  return { pdfDataUrl, imageDataUrl: null };
+}
 
 function FilePreview({ file, kind }: { file: File | null; kind: string }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -335,16 +388,117 @@ export function AssignSheet({
   const [pickEvent, setPickEvent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { events, loading } = useTripEvents(open ? draft.trip_id : null);
+  const { events, loading, loadedFor } = useTripEvents(open ? draft.trip_id : null);
+  const readAs = isNew && file ? readableAs(file) : null;
+  const [reading, setReading] = useState(false);
+  const [readError, setReadError] = useState("");
+  const [filled, setFilled] = useState<ReadonlySet<FilledField>>(new Set());
+  /** A read waiting for its trip's stops to load, to pick the stop it is for. */
+  const [stopFor, setStopFor] = useState<{ read: DocumentRead; tripId: string } | null>(null);
+  /** Bumped each time the sheet opens, so a read that finishes after a close is dropped. */
+  const session = useRef(0);
+  /** Fields the traveller changed while a read was out: the read leaves them alone. */
+  const touched = useRef(new Set<FilledField>());
+  /** The draft as last rendered, for a read that finishes long after it began. */
+  const latest = useRef(draft);
+  latest.current = draft;
 
   useEffect(() => {
     if (open) {
       setDraft(initial);
       setLinkEvent(!!initial.itinerary_item_id);
       setError("");
+      setReadError("");
+      setFilled(new Set());
+      setStopFor(null);
+      setReading(false);
     }
+    session.current++;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const edited = (field: FilledField) => {
+    touched.current.add(field);
+    if (field === "trip" || field === "event") setStopFor(null);
+    setFilled((f) => {
+      if (!f.has(field)) return f;
+      const next = new Set(f);
+      next.delete(field);
+      return next;
+    });
+  };
+
+  const readFile = async () => {
+    if (!file || !readAs || reading) return;
+    const mine = session.current;
+    touched.current = new Set();
+    setReading(true);
+    setReadError("");
+    try {
+      const sent = await fileForReading(file, readAs);
+      const read = await readDocumentFile({
+        data: { ...sent, today: toLocalISODate(new Date()) },
+      });
+      if (mine !== session.current) return;
+      const skip = touched.current;
+      const set = new Set<FilledField>();
+      // Applied to the draft as it is now, not as it was when the read began.
+      const d = latest.current;
+      const next = { ...d };
+      if (read.title && !skip.has("title")) {
+        next.title = read.title;
+        set.add("title");
+      }
+      if (read.kind && !skip.has("kind")) {
+        next.kind = read.kind;
+        set.add("kind");
+      }
+      if (read.lines.length && !skip.has("lines")) {
+        next.lines = [read.lines[0] ?? "", read.lines[1] ?? ""];
+        set.add("lines");
+      }
+      if (read.reference && !skip.has("reference")) {
+        next.reference = read.reference;
+        set.add("reference");
+      }
+      if (read.notes && !d.notes.trim() && !skip.has("notes")) {
+        next.notes = read.notes;
+        set.add("notes");
+      }
+      const tripId = d.trip_id || skip.has("trip") ? null : tripForDate(read.date, trips);
+      if (tripId) {
+        next.trip_id = tripId;
+        next.itinerary_item_id = null;
+        set.add("trip");
+      }
+      const forTrip = tripId ?? d.trip_id;
+      setDraft(next);
+      setFilled(set);
+      if (forTrip && !next.itinerary_item_id && !skip.has("event") && read.date) {
+        setStopFor({ read, tripId: forTrip });
+      }
+    } catch (e) {
+      if (mine === session.current) setReadError(aiFailure(e).message);
+    } finally {
+      if (mine === session.current) setReading(false);
+    }
+  };
+
+  // Once that trip's own stops are in, link the one the file is for, if it is clear.
+  useEffect(() => {
+    if (!stopFor) return;
+    if (draft.trip_id !== stopFor.tripId) {
+      setStopFor(null);
+      return;
+    }
+    if (loading || loadedFor !== stopFor.tripId) return;
+    const id = stopForRead(stopFor.read, events);
+    setStopFor(null);
+    if (!id || draft.itinerary_item_id) return;
+    setDraft((d) => (d.trip_id === stopFor.tripId ? { ...d, itinerary_item_id: id } : d));
+    setLinkEvent(true);
+    setFilled((f) => new Set(f).add("event"));
+  }, [stopFor, loading, loadedFor, events, draft.trip_id, draft.itinerary_item_id]);
 
   const trip = trips.find((t) => t.id === draft.trip_id) ?? null;
   const event = events.find((e) => e.id === draft.itinerary_item_id) ?? null;
@@ -403,7 +557,10 @@ export function AssignSheet({
             {isNew ? (
               <input
                 value={draft.title}
-                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                onChange={(e) => {
+                  setDraft({ ...draft, title: e.target.value });
+                  edited("title");
+                }}
                 maxLength={TITLE_MAX}
                 placeholder="Name, e.g. Flight confirmation"
                 aria-label="Document name"
@@ -418,20 +575,112 @@ export function AssignSheet({
               </p>
             ))}
             {isNew && file && (
-              <p className="truncate text-[12px] text-muted-foreground">{file.name}</p>
+              <p className="truncate text-[12px] text-muted-foreground">
+                {file.name}
+                <FromFile show={filled.has("title")} />
+              </p>
             )}
           </div>
         </div>
 
+        {readAs && (
+          <div className="plain-card space-y-2 p-3">
+            <button
+              type="button"
+              disabled={reading}
+              onClick={() => void readFile()}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-4 text-[14.5px] font-semibold text-primary disabled:opacity-60"
+            >
+              <Sparkles className="size-4" aria-hidden />
+              {reading ? "Reading…" : filled.size ? "Read it again" : "Fill in from this file"}
+            </button>
+            {readError ? (
+              <p role="alert" className="text-[12.5px] font-semibold text-destructive">
+                {readError}
+              </p>
+            ) : filled.size ? (
+              <p className="text-[12.5px] text-muted-foreground">
+                Filled in from the file. Check it before you press Done.
+              </p>
+            ) : (
+              <p className="text-[12.5px] text-muted-foreground">
+                Béa sends this file to Google Gemini to read it. Nothing is saved until you press
+                Done.
+              </p>
+            )}
+          </div>
+        )}
+
         {isNew && (
           <div>
-            <p className="mb-1.5 text-[13px] font-semibold text-muted-foreground">Type</p>
-            <KindChips value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind })} />
+            <p className="mb-1.5 text-[13px] font-semibold text-muted-foreground">
+              Type
+              <FromFile show={filled.has("kind")} />
+            </p>
+            <KindChips
+              value={draft.kind}
+              onChange={(kind) => {
+                setDraft({ ...draft, kind });
+                edited("kind");
+              }}
+            />
+          </div>
+        )}
+
+        {isNew && (
+          <div className="space-y-3">
+            <label className="block space-y-1">
+              <span className="text-[13px] font-semibold text-muted-foreground">
+                Short lines (optional)
+                <FromFile show={filled.has("lines")} />
+              </span>
+              <input
+                value={draft.lines?.[0] ?? ""}
+                maxLength={LINE_MAX}
+                placeholder="Air Canada · AC872"
+                onChange={(e) => {
+                  setDraft({ ...draft, lines: [e.target.value, draft.lines?.[1] ?? ""] });
+                  edited("lines");
+                }}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+              />
+              <input
+                value={draft.lines?.[1] ?? ""}
+                maxLength={LINE_MAX}
+                placeholder="Montreal → Lisbon"
+                aria-label="Second line"
+                onChange={(e) => {
+                  setDraft({ ...draft, lines: [draft.lines?.[0] ?? "", e.target.value] });
+                  edited("lines");
+                }}
+                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-[13px] font-semibold text-muted-foreground">
+                Booking reference (optional)
+                <FromFile show={filled.has("reference")} />
+              </span>
+              <input
+                value={draft.reference ?? ""}
+                maxLength={REFERENCE_MAX}
+                placeholder="ABC123"
+                autoCapitalize="characters"
+                onChange={(e) => {
+                  setDraft({ ...draft, reference: e.target.value });
+                  edited("reference");
+                }}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+              />
+            </label>
           </div>
         )}
 
         <div>
-          <p className="mb-1.5 text-[15px] font-semibold">Assign to trip</p>
+          <p className="mb-1.5 text-[15px] font-semibold">
+            Assign to trip
+            <FromFile show={filled.has("trip")} />
+          </p>
           <div className="plain-card overflow-hidden">
             <LinkRow
               media={
@@ -457,8 +706,10 @@ export function AssignSheet({
             disabled={!draft.trip_id}
             onCheckedChange={(on) => {
               setLinkEvent(on);
-              if (!on) setDraft({ ...draft, itinerary_item_id: null });
-              else if (!draft.itinerary_item_id) setPickEvent(true);
+              if (!on) {
+                setDraft({ ...draft, itinerary_item_id: null });
+                edited("event");
+              } else if (!draft.itinerary_item_id) setPickEvent(true);
             }}
             aria-label="Link to specific event"
           />
@@ -466,7 +717,10 @@ export function AssignSheet({
 
         {linkEvent && draft.trip_id && (
           <div>
-            <p className="mb-1.5 text-[15px] font-semibold">Select event</p>
+            <p className="mb-1.5 text-[15px] font-semibold">
+              Select event
+              <FromFile show={filled.has("event")} />
+            </p>
             <div className="plain-card overflow-hidden">
               <LinkRow
                 media={<KindTile kind={eventKind(event?.kind ?? "")} size="sm" />}
@@ -479,10 +733,16 @@ export function AssignSheet({
         )}
 
         <label className="block">
-          <span className="mb-1.5 block text-[15px] font-semibold">Add notes (optional)</span>
+          <span className="mb-1.5 block text-[15px] font-semibold">
+            Add notes (optional)
+            <FromFile show={filled.has("notes")} />
+          </span>
           <textarea
             value={draft.notes}
-            onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+            onChange={(e) => {
+              setDraft({ ...draft, notes: e.target.value });
+              edited("notes");
+            }}
             maxLength={NOTES_MAX}
             rows={3}
             placeholder="E-ticket and confirmation."
@@ -510,6 +770,8 @@ export function AssignSheet({
             itinerary_item_id: tripId === draft.trip_id ? draft.itinerary_item_id : null,
           });
           if (!tripId) setLinkEvent(false);
+          edited("trip");
+          if (tripId !== draft.trip_id) edited("event");
           setPickTrip(false);
         }}
       />
@@ -525,6 +787,7 @@ export function AssignSheet({
         onPick={(e) => {
           setDraft({ ...draft, itinerary_item_id: e.id });
           setLinkEvent(true);
+          edited("event");
           setPickEvent(false);
         }}
       />
