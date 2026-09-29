@@ -36,6 +36,12 @@ describe("AI plan prompt", () => {
       ],
     );
     assert.equal(plan.items[1]!.end_time, "12:00");
+    // The spots of Le Marais are inside it; its span holds them, so it keeps no stay of its own.
+    assert.deepEqual(
+      plan.items.slice(4, 8).map((i) => i.within ?? null),
+      [null, "Walk in Le Marais", "Walk in Le Marais", "Walk in Le Marais"],
+    );
+    assert.equal(plan.items[4]!.end_time, null);
     assert.equal(plan.items[0]!.day_date, "2026-10-12");
     assert.equal(plan.items[9]!.day_date, "2026-10-13");
     // Food tips stay with the meal.
