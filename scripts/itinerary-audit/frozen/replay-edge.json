@@ -1,0 +1,10 @@
+{
+  "findings": {
+    "rome-passed-not-visited [extra-stops]": 2,
+    "rome-passed-not-visited [invented-times]": 2,
+    "rome-passed-not-visited [kept-dropped-plan]": 2,
+    "paris-beauvais-disneyland [invented-leg]": 1,
+    "niagara-both-sides [travel-leg]": 1
+  },
+  "declined": []
+}

@@ -572,6 +572,21 @@ test("clockTimesIn: the times a plan gives, however it writes them", () => {
   assert.equal(clockTimesIn("Day 5 — 2026-10-10").size, 0);
 });
 
+test("clockTimesIn: chat times — no am/pm, 'like 1', '9ish'", () => {
+  // From the WhatsApp fixtures: the model rightly read these, and the
+  // filter took them away.
+  const sf = clockTimesIn(
+    "3/6/26, 8:05 PM - Sam: lunch at the Ferry Building after, like 1\n" +
+      "Zuni Café at 7:30 instead\nLands End trail around 3:30 before dinner",
+  );
+  for (const t of ["13:00", "19:30", "15:30", "07:30"]) assert.ok(sf.has(t), t);
+  const cdmx = clockTimesIn("[07/03, 21:14] Ana: breakfast at Panadería Rosetta 9ish?");
+  assert.ok(cdmx.has("09:00"));
+  // A written "8:05 PM" stays evening only, and a date is still not a time.
+  assert.ok(!sf.has("08:05"));
+  assert.equal(clockTimesIn("3/6/26 and 07/03").size, 0);
+});
+
 test("withoutInventedTimes: a time the source never gave is dropped", () => {
   const rows = [
     { title: "Uffizi Gallery", time_label: "09:00", end_time: null },

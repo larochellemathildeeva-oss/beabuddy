@@ -1,0 +1,7 @@
+{
+  "findings": {
+    "osaka-departure [invented-leg]": 1,
+    "amsterdam-markdown [extra-stops]": 1
+  },
+  "declined": []
+}
