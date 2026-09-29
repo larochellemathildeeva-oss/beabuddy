@@ -184,6 +184,18 @@ Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for
 an hour. `OVERTURE_ATTRIBUTION` sits beside the other map credits.
 
+**Remembered places.** A stop the import finds by its name and trusts is
+remembered in `resolved_places` (`resolved-places.ts`, pure and tested;
+`resolved-places.server.ts`), and the next import of that stop near the same
+town gets the same pin without asking the map. A place a traveller picks for
+a stop with "Change place" (`rememberPlacePick`) is their vote; once two
+different travellers pick the same spot for a name, that spot wins, even over
+the map. A name matched at several spots in one town is a chain, and is
+looked up as before. Only hashes of names and travellers are stored, by the
+server alone. The migration is applied by hand; until it is, nothing is
+remembered, with one warning in the log. The audits run with no database
+(`no-database.ts`), so the pin check measures the lookup itself.
+
 **Place photos.** When a stop's Place Details carry a `wikimedia_commons`,
 `image` or `wikidata` tag, the stop card shows that place's photo from
 Wikimedia Commons (`wikimedia.ts`, pure and tested; `wikimedia.server.ts`

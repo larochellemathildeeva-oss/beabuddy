@@ -139,6 +139,11 @@ export type PlacedStop = {
   farKm?: number;
   /** Found in Overture's listings rather than on the map: its place id there. */
   overtureId?: string;
+  /**
+   * Worked out before and remembered (resolved-places.ts): by a trusted
+   * match, or by travellers who picked the same spot. Not looked up again.
+   */
+  remembered?: "match" | "traveller";
 };
 
 /** How far a spot listed inside a place may be from it, in km. */
@@ -376,6 +381,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     // Re-read before every lookup: Geoapify can rest mid-batch (geo-credits.ts).
     let provider = geoProvider();
     const overture = data.venues ? await import("@/lib/open-places.server") : null;
+    const memory = data.venues ? await import("@/lib/resolved-places.server") : null;
 
     // Every answer, not the chosen one: which answer is the stop depends on
     // the stop, and two stops can ask the same thing.
@@ -590,6 +596,24 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (throttled) break;
 
+      // Worked out before — found and trusted, or picked by two travellers
+      // who were there (resolved-places.ts): the same pin, with no lookup.
+      if (memory && centre && !parent) {
+        const known = await memory.findResolved([stop.place, stop.title], centre);
+        if (known) {
+          placed.push({
+            index,
+            lat: known.lat,
+            lon: known.lon,
+            label: known.label,
+            alsoNamed: known.alsoNamed,
+            remembered: known.source,
+          });
+          if (data.inOrder) lastPin = { lat: known.lat, lon: known.lon };
+          continue;
+        }
+      }
+
       // Only the country to go on: beside the stop before it first.
       let landed = false;
       if ((broad || away) && lastPin && !parent) {
@@ -703,6 +727,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         autoPinTrusted(stop, settled)
       ) {
         lastPin = { lat: settled.lat, lon: settled.lon };
+        // Remembered for the next traveller with this stop in this town.
+        if (memory && !settled.remembered)
+          void memory.rememberMatch(stop.place?.trim() || stop.title, settled);
       }
       // Nothing better than the doubtful answer: returned as before, so the
       // review can say what was found and let the person keep it.

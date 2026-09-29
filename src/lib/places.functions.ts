@@ -1291,3 +1291,27 @@ export const lookupCoords = createServerFn({ method: "POST" })
     z.object({ lat: z.number().gte(-90).lte(90), lon: z.number().gte(-180).lte(180) }).parse(data),
   )
   .handler(async ({ data }) => reverse(data.lat, data.lon));
+
+/**
+ * A traveller chose the place for a stop ("Change place"): their one vote
+ * for where that name is (resolved-places.ts). Once two travellers pick the
+ * same spot, imports of that stop use it. Stored as hashes only; a failure
+ * is silent, since the stop is already saved on the trip.
+ */
+export const rememberPlacePick = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        name: z.string().min(1).max(300),
+        lat: z.number().gte(-90).lte(90),
+        lon: z.number().gte(-180).lte(180),
+        label: z.string().min(1).max(300),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { rememberPick } = await import("@/lib/resolved-places.server");
+    await rememberPick(context.userId, data.name, data);
+    return { ok: true };
+  });
