@@ -1248,6 +1248,7 @@ export function TripDetail({
             setSettingsOpen(true);
             setSheetSection(null);
           }}
+          data-guide="trip-menu"
           title="Trip menu"
           aria-label="Trip menu"
           className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
@@ -1341,6 +1342,7 @@ export function TripDetail({
         {/* The master's segmented control, holding Béa's four views, with
             the chosen one filled in the theme accent. */}
         <nav
+          data-guide="trip-tabs"
           role="tablist"
           aria-label="How to look at this trip"
           className="mb-3 flex items-center gap-1 rounded-full bg-elevated p-1"

@@ -69,7 +69,7 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Your travel globe",
-    body: "Everywhere you've been, on one globe: the countries, their provinces or states, and a dot for each city. Drag to spin it. The + adds places by hand.",
+    body: "Everywhere you've been, on one globe: the countries, their provinces or states, and a dot for each city. Drag to spin it. Add places, beside it, fills in more.",
     to: "/world",
     search: { tab: "map" },
     selector: "[data-guide='globe']",
@@ -89,9 +89,9 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Ideas become trips",
-    body: "Each trip is one folder: days, stops, bookings, to-dos. Open one and Plan with Béa drafts it from the places you already saved. Nothing changes until you approve.",
+    body: "Each trip is one folder: days, stops, bookings, to-dos. Plan with Béa builds one from the places you already saved, or reads a plan you have. Nothing changes until you approve.",
     to: "/trips",
-    selector: "[data-guide='trip-list']",
+    selector: "[data-guide='plan-with-bea']",
   },
   {
     title: "Near something you saved",
@@ -174,7 +174,7 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "Ways to capture a tip",
-    body: "Type a name or paste a map link in the field. The + at the top adds from your trips, where you are, by hand, or a pasted list. You review before it saves.",
+    body: "Type a name or paste a map link in the field, or save From my trips or I'm here now just below. The + at the top adds by hand or a pasted list. You review before it saves.",
     to: "/recommendations",
     selector: "[data-guide='reco-add']",
   },
@@ -217,9 +217,9 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "Plan with Béa",
-    body: "Open a trip and tap Plan with Béa. She drafts days from what you saved, reads a plan you already have, can optimize the order or compare two drafts. You approve before anything saves.",
-    to: "/trips",
-    selector: "[data-guide='trip-list']",
+    body: "Build my trip drafts days from what you saved. Import reads a plan you already have. Optimize improves a trip's order; Compare weighs two plans. You approve before anything saves.",
+    to: "/trips/plan",
+    selector: "[data-guide='plan-cards']",
   },
 
   // —— Pillar 6: Travel Operating System ——
@@ -231,7 +231,7 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "Help on every page",
-    body: "The ? at the top right of each page says what it does and can show you around. Plan with Béa, on a trip, is the planner.",
+    body: "The ? at the top right of each page says what it does and can show you around. Plan with Béa, on Trips or inside a trip, is the planner.",
     to: "/help",
     selector: "[data-guide='help-faq']",
   },

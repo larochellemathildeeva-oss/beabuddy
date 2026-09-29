@@ -1355,6 +1355,7 @@ function RecommendationsPage() {
 
           <button
             type="button"
+            data-guide="explore-nearby"
             onClick={() => setScreen({ kind: "nearby", browse: "All" })}
             className="plain-card grid w-full grid-cols-[1fr_118px] overflow-hidden text-left"
           >

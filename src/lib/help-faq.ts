@@ -34,7 +34,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What's the difference between the ? button and Plan with Béa?",
-        a: "The ? at the top right of a page is help: it says what that page is for and what you can do there, and Show me around highlights each part of the screen.\n\nPlan with Béa is the button at the top of a trip: it drafts, imports or reworks a day-by-day itinerary for that trip.",
+        a: "The ? at the top right of a page is help: it says what that page is for and what you can do there, and Show me around highlights each part of the screen.\n\nPlan with Béa is the planner, at the top of Trips and on every trip: Build my trip, Import a plan, Optimize my trip or Compare options.",
       },
       {
         q: "Do I need an account?",
@@ -63,7 +63,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "How do I save a place?",
-        a: "One field on Recs takes whatever you have. Type a name and Béa looks it up as you pause — tap Save on a suggestion to keep it straight away, or tap the row to fill in the note, category, who told you and the exact map spot first. Paste a link from Maps, Instagram or a blog and Béa reads it the same way.\n\nThe + beside it opens the rest: From my trips, I'm here now, By hand, Paste a list, sending and opening shares, and pinning somewhere nearby on a live map.",
+        a: "One field on Recs takes whatever you have. Type a name and Béa looks it up as you pause — tap Save on a suggestion to keep it straight away, or tap the row to fill in the note, category, who told you and the exact map spot first. Paste a link from Maps, Instagram or a blog and Béa reads it the same way.\n\nFrom my trips and I'm here now sit just below the field, and Explore nearby opens a live map to pin somewhere around you. The + at the top holds the rest: By hand, Paste a list, and sending or opening shares.",
       },
     ],
   },
@@ -101,7 +101,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I bring in a plan from another assistant?",
-        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → I already have a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
+        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → Import a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
       },
       {
         q: "Does Béa automatically book anything?",
@@ -117,15 +117,15 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can friends edit a trip with me?",
-        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In trip settings you can revoke a code, remove someone (if you own the trip), or leave the trip yourself.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and download Saved directions in trip settings to keep turn-by-turn on this phone.",
+        a: "Yes. Share an invite code; whoever joins can edit the timeline, stops, and budget. Alone, the trip says Flying Solo. Join with a code accepts someone else's invite.\n\nCodes expire in about seven days and are designed to work once — create a new one if you need another join. In the trip menu (•••) → Invite and people you can revoke a code, remove someone (if you own the trip), or leave the trip yourself. The same place makes a read-only link for anyone who only needs to see the plan; turn it off whenever you like.\n\nDates can be Tentative or Confirmed. Packing lists live under You — attach a copy to a trip. Get directions between cities, and trip menu → Offline maps keeps the directions and the map on this phone.",
       },
       {
         q: "What is Things to do on a trip?",
-        a: "The errands a trip needs that are not places and not packing — renew the passport, book the transfer, tell the bank, print the tickets.\n\nOpen it from the checklist icon on a trip card, next to Béa's own button. Add something and give it a due date afterwards if it needs one; Start me off suggests the usual ones based on whether the trip is international, has flights, or has somewhere to stay.",
+        a: "The errands a trip needs that are not places and not packing — renew the passport, book the transfer, tell the bank, print the tickets.\n\nOpen it from To do at the top of a trip, beside Plan with Béa, or from To-do on Home. Add something and give it a due date afterwards if it needs one; Start me off suggests the usual ones based on whether the trip is international, has flights, or has somewhere to stay.",
       },
       {
         q: "Can Béa compare two plans?",
-        a: "Yes, and this is different from Help me choose.\n\nPlan with Béa → Compare takes two whole itineraries — a friend's plan and one from an AI, say — reads each, then goes day by day on what actually differs and what you trade for it. Tell it what matters to you and it commits to a pick, with two plain sentences on why, plus the one thing worth borrowing from the plan it did not choose.\n\nIt reports indoor share, active hours a day, walking distance and estimated spend by category. It will not invent travel times it cannot measure, and if one plan is shorter it says nothing planned for that day rather than filling it in.",
+        a: "Yes, and this is different from Help me choose.\n\nPlan with Béa → Compare options takes two whole itineraries — a friend's plan and one from an AI, say — reads each, then goes day by day on what actually differs and what you trade for it. Tell it what matters to you and it commits to a pick, with two plain sentences on why, plus the one thing worth borrowing from the plan it did not choose.\n\nIt reports indoor share, active hours a day, walking distance and estimated spend by category. It will not invent travel times it cannot measure, and if one plan is shorter it says nothing planned for that day rather than filling it in.",
       },
       {
         q: "Can Béa turn nearby saves into a day trip?",
@@ -257,7 +257,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Does Béa work without a connection?",
-        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. Where this phone can draw it, the map around each day's stops is kept too, so a day map that is already open keeps panning and zooming when the signal drops. You → Data & imports lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
+        a: "Partly. Installed on your home screen, Béa is designed to open without signal, and a trip you keep offline comes with it: in the trip menu (•••) → Offline maps, download its directions and Béa keeps its plan, the saved directions (walk or drive steps) and, where this phone can draw it, the map around each day's stops.\n\nEverything else — recommendations, photos, new searches and the vault — needs a connection. You → Data & imports lists the trips kept on this phone. Keep a screenshot or your maps app too, in case.",
       },
     ],
   },
