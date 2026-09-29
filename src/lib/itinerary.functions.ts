@@ -278,9 +278,24 @@ export async function runParse(
   });
   const out = result.output;
   onRaw?.(out.items);
-  const parsed: ParsedItinerary = { ...out, items: tidyModelItems(out.items, data.mode) };
+  // A plan longer than Béa keeps says so, rather than losing its last days
+  // without a word (it used to stop at 60 stops, about ten days).
+  const cut = out.items.length > MAX_PLAN_ITEMS;
+  const parsed: ParsedItinerary = {
+    ...out,
+    summary: cut
+      ? `${out.summary} Béa kept the first ${MAX_PLAN_ITEMS} of ${out.items.length} stops — import the rest as a second plan.`
+      : out.summary,
+    items: tidyModelItems(out.items, data.mode),
+  };
   return applyCostPolicy(parsed, Boolean(data.includeCosts));
 }
+
+/**
+ * The most stops one plan keeps, as the plain-list reader does: a three-week
+ * trip runs past a hundred, and the last days used to go missing unnoticed.
+ */
+export const MAX_PLAN_ITEMS = 150;
 
 /**
  * The model's rows as Béa keeps them. Exported for scripts/itinerary-audit,
@@ -298,7 +313,7 @@ export function tidyModelItems(
     // Then what is listed inside a place joins that visit (nestWithin).
     nestWithin(
       foldTravelLegs(
-        items.slice(0, 60).map((i) => ({
+        items.slice(0, MAX_PLAN_ITEMS).map((i) => ({
           // Kinds normalised before the tidy, which files a night as a stay.
           ...tidyImportedRow({ ...i, kind: normaliseKind(i.kind) }),
           // A time the timeline cannot sort is worse than none.
@@ -521,8 +536,16 @@ const ReviseInput = z
     currency: z.string().max(3).nullable(),
     includeCosts: z.boolean(),
     originalRequest: z.string().max(20_000).nullable(),
-    items: z.array(ReviseItemIn).min(1).max(60),
-    selectedIndexes: z.array(z.number().int().min(0).max(59)).max(40),
+    items: z.array(ReviseItemIn).min(1).max(MAX_PLAN_ITEMS),
+    selectedIndexes: z
+      .array(
+        z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_PLAN_ITEMS - 1),
+      )
+      .max(40),
     reason: z.string().trim().min(3).max(800),
     mode: z.enum(["alternatives", "rebuild"]),
     /** "Just for this trip": said once on the trip, ahead of the saved profile. */

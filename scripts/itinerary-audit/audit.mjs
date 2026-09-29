@@ -10,6 +10,7 @@
  *   … --model gemini-3.6-flash   that model only: no quiet step-down to another
  *   … --delay 4000          ms between model calls, under the rate limit (default 4000)
  *   … --only tokyo          one fixture
+ *   Paid requests are capped per day across runs: see spend-guard.mjs.
  *   … --fixtures fresh      fixtures-fresh.ts: ten plans not tuned against before
  *   … --save-baseline       write the trends to baseline.json for this engine
  *   … --compare             print what changed against baseline.json
@@ -25,10 +26,13 @@ import { createJiti } from "jiti";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { installSpendGuard } from "./spend-guard.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
 const jiti = createJiti(import.meta.url, { alias: { "@": join(root, "src") } });
+// Every paid request counted, across runs, and refused past the day's cap.
+const spend = await installSpendGuard(root);
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -510,3 +514,4 @@ mkdirSync(join(here, "out"), { recursive: true });
 const file = join(here, "out", `${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 writeFileSync(file, JSON.stringify({ ...summary, trends, results }, null, 2));
 console.log(`Raw answers: ${file}${modelCalls ? ` (${modelCalls} model calls)` : ""}`);
+spend.report();

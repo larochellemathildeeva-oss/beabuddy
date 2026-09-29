@@ -26,10 +26,13 @@ import { build } from "esbuild";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { installSpendGuard } from "./spend-guard.mjs";
 import { TRUTH } from "./pins-truth.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
+// Every paid request counted, across runs, and refused past the day's cap.
+const spend = await installSpendGuard(root);
 const bench = join(root, "scripts/places-bench");
 const out = join(here, "out");
 mkdirSync(out, { recursive: true });
@@ -239,3 +242,4 @@ console.log(
 const file = join(out, `pins-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 writeFileSync(file, JSON.stringify({ tally, report }, null, 2));
 console.log(`Report: ${file} · ${requests} map requests · throttled ${throttles}×`);
+spend.report();
