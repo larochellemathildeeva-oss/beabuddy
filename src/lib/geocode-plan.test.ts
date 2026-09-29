@@ -8,6 +8,7 @@ import {
   distanceKm,
   estimatedSeconds,
   labelAddress,
+  nameVariants,
   namesAirport,
   outingReachKm,
   pickHit,
@@ -415,4 +416,14 @@ test("pickHit: an airport named by more than its town must be that one", () => {
     }),
     null,
   );
+});
+
+test("nameVariants: the ways the map may name a place the plan romanises", () => {
+  assert.deepEqual(nameVariants("Togetsukyō Bridge"), ["Togetsukyo", "Togetsukyo Bridge"]);
+  assert.deepEqual(nameVariants("Ikuta Jinja"), ["Ikuta Shrine"]);
+  assert.deepEqual(nameVariants("Kōdai-ji"), ["Kodaiji Temple", "Kodai-ji"]);
+  assert.deepEqual(nameVariants("Ninenzaka"), ["Ninen-zaka"]);
+  assert.deepEqual(nameVariants("Daishō-in"), ["Daishoin Temple", "Daisho-in"]);
+  // Nothing to try for a plain English name.
+  assert.deepEqual(nameVariants("Grand Front Osaka"), []);
 });

@@ -225,7 +225,7 @@ for (const fixture of fixtures) {
           ? "low"
           : hit.farKm
             ? "low"
-            : [row.title, row.place, row.address]
+            : [row.title, row.place, row.address, hit.matchedAs]
                 .filter((n) => n && n.trim())
                 .map(
                   (title) =>
