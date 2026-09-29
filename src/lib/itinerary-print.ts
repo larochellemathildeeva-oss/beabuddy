@@ -65,9 +65,16 @@ export function escapeHtml(text: string): string {
 }
 
 const STAY_KINDS = new Set(["hotel", "lodging"]);
-/** Leaving, or dropping bags: things done at a stay, not the stay to book. */
+/**
+ * Leaving a stay, or coming back for the bags after: its booking is behind
+ * the traveller. Dropping bags on arrival is not: it is the stay starting,
+ * however the check-in is worded ("The Silo Hotel — drop bags").
+ */
 const STAY_ACTION =
-  /\bcheck[- ]?out\b|\b(?:luggage|bag)s? drop\b|\b(?:drop|collect|pick up|leave)(?: off)? (?:the |our |your )?(?:bags|luggage)\b/i;
+  /\bcheck[- ]?out\b|\b(?:collect|pick up|leave|get)(?: back)? (?:the |our |your )?(?:bags|luggage)\b/i;
+/** Dropping bags before the room is ready: the stay starting, marked on its check-in when one follows. */
+const BAG_DROP =
+  /\b(?:luggage|bag)s? drop\b|\bdrop (?:off )?(?:the |our |your )?(?:bags|luggage)\b/i;
 
 /** "Motel One Berlin-Hauptbahnhof" however the row puts it, for telling one stay from another. */
 function stayKey(row: PrintRow): string {
@@ -89,7 +96,11 @@ function stayKey(row: PrintRow): string {
 export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
   const out = new Set<PrintRow>();
   /** The stay the plan is in, and whether its booking has been said. */
-  let stay = null as { key: string; marked: boolean } | null;
+  let stay = null as { key: string; marked: boolean; drop?: PrintRow } | null;
+  /** A stay that only dropped its bags is still a stay to book: on that row. */
+  const settle = () => {
+    if (stay && !stay.marked && stay.drop) out.add(stay.drop);
+  };
   for (const row of rows) {
     if (!BOOKABLE.has(row.kind)) continue;
     if (!STAY_KINDS.has(row.kind)) {
@@ -97,14 +108,27 @@ export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
       continue;
     }
     const key = stayKey(row);
-    if (stay?.key !== key) stay = { key, marked: false };
+    if (stay?.key !== key) {
+      settle();
+      stay = { key, marked: false };
+    }
     if (row.booked) stay.marked = true;
     if (stay.marked) continue;
     const text = `${row.title} ${row.detail ?? ""}`;
-    if (STAY_ACTION.test(text) && !/\bcheck[- ]?in\b/i.test(text)) continue;
+    if (STAY_ACTION.test(text) && !/\bcheck[- ]?in\b/i.test(text)) {
+      // Checking out: the room was the nights before, booked or not, and
+      // coming back for the bags later is the same stay, not a new one.
+      if (/\bcheck[- ]?out\b/i.test(text)) stay.marked = true;
+      continue;
+    }
+    if (BAG_DROP.test(text) && !/\bcheck[- ]?in\b/i.test(text)) {
+      stay.drop ??= row;
+      continue;
+    }
     stay.marked = true;
     out.add(row);
   }
+  settle();
   return out;
 }
 

@@ -60,7 +60,7 @@ export function isSavedDirectionItem(item: {
  * It has to be there: "Curry 36" and "Terminal 5" are names ending in a number.
  */
 const STREET_WORD =
-  /(?:stra(?:ss|ß)e|gasse|weg|platz|damm|allee|ufer|kai|ring|markt|steig|chaussee|zeile|graben|straat|gracht|laan|plein|kade|singel|gatan|gata|v[äa]gen|gade|vej|veien|torget|ulica|utca|ulice)\b|str\.|^(?:via|viale|piazza|corso|largo|calle|carrer|passeig|avinguda|rambla|ronda|travessera|avenida|plaza|rua|travessa|pra[cç]a|rynek|n[aá]m[eě]st[ií])\s/i;
+  /(?:stra(?:ss|ß)e|gasse|weg|platz|damm|allee|ufer|kai|ring|markt|steig|chaussee|zeile|graben|straat|gracht|laan|plein|kade|singel|gatan|gata|v[äa]gen|gade|vej|veien|torget|ulica|utca|ulice|st[ií]gur|vegur|braut|str[æa]ti)\b|str\.|^(?:via|viale|piazza|corso|largo|calle|carrer|passeig|avinguda|rambla|ronda|travessera|avenida|plaza|rua|travessa|pra[cç]a|rynek|n[aá]m[eě]st[ií])\s/i;
 
 /** "Poststraße 8", "Neue Mainzer Straße 52-58": the street, then its number. */
 const NUMBER_LAST =

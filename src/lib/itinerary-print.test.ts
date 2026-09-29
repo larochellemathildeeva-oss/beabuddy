@@ -130,3 +130,17 @@ test("a stay is to book once, never on leaving it, and again on coming back", ()
     [true, false, false, true, false, true, false, true],
   );
 });
+
+test("a stay that only drops its bags is still to book; its check-out and bags after are not", () => {
+  const rows = [
+    row({ kind: "lodging", title: "The Silo Hotel", detail: "Drop bags." }),
+    row({ kind: "flight", title: "Flight FI 603", booked: true }),
+    row({ kind: "lodging", title: "Hotel Casa Fuster", detail: "check out" }),
+    row({ kind: "lodging", title: "Hotel Casa Fuster", detail: "collect bags" }),
+  ];
+  const marked = toBookRows(rows);
+  assert.deepEqual(
+    rows.map((r) => marked.has(r)),
+    [true, false, false, false],
+  );
+});

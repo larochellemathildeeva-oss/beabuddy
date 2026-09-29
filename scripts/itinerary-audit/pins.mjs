@@ -55,6 +55,7 @@ writeFileSync(
     `export { FIXTURES as OLD } from ${JSON.stringify(join(here, "fixtures.ts"))};`,
     `export { FIXTURES as FRESH } from ${JSON.stringify(join(here, "fixtures-fresh.ts"))};`,
     `export { FIXTURES as MORE } from ${JSON.stringify(join(here, "fixtures-more.ts"))};`,
+    `export { FIXTURES as WORLD } from ${JSON.stringify(join(here, "fixtures-world.ts"))};`,
   ].join("\n"),
 );
 await build({
@@ -148,7 +149,7 @@ async function place(fixture, items) {
   return placed;
 }
 
-const fixtures = [...lib.FRESH, ...lib.MORE, ...lib.OLD, ...TRUTH.extraFixtures].filter(
+const fixtures = [...lib.WORLD, ...lib.FRESH, ...lib.MORE, ...lib.OLD, ...TRUTH.extraFixtures].filter(
   (f) => TRUTH.places[f.id] && (!only || only.split(",").some((o) => f.id.includes(o))),
 );
 /** right/wrong: saved unasked; …Flagged: shown as "check this one", not saved. */

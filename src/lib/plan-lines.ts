@@ -353,7 +353,10 @@ function followTown(
       return { trail: { town: null, before: null }, leaving: true };
     }
     const town = dest.match(ARRIVAL_PLACE)?.[1] ?? dest;
-    if (BARE_TOWN.test(town)) return { trail: { town, before: trail.town }, leaving: true };
+    // A second hop (train to Machu Picchu Station, then the bus up) keeps
+    // where the day trip started, so the train back goes home, not a hop back.
+    const before = trail.town ? trail.before : null;
+    if (BARE_TOWN.test(town)) return { trail: { town, before }, leaving: true };
   }
   const heading = /\b(?:depart|departure|return|back)\b/i.test(note)
     ? note.match(HEADING_TO)
