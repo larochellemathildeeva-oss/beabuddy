@@ -4,6 +4,7 @@ import {
   cleanDocumentRead,
   documentReadPrompt,
   isEmptyRead,
+  looksLikeCardNumber,
   passesLuhn,
   readableAs,
   stopForRead,
@@ -77,12 +78,26 @@ test("impossible dates and times are dropped", () => {
 test("card numbers are dropped, e-ticket numbers kept", () => {
   assert.ok(passesLuhn("4111111111111111"));
   assert.ok(!passesLuhn("0142345678901"));
+  assert.ok(looksLikeCardNumber("378282246310005"));
+  assert.ok(looksLikeCardNumber("5555555555554444"));
+  // Passes the checksum, but 13 digits is no card's length: an e-ticket stays.
+  assert.ok(passesLuhn("0142345678908"));
+  assert.ok(!looksLikeCardNumber("0142345678908"));
+  // Passes the checksum, 16 digits, but no issuer starts with 9.
+  assert.ok(!looksLikeCardNumber("9111111111111110"));
+  const kept = cleanDocumentRead({ ...empty, notes: "E-ticket 0142345678908" });
+  assert.match(kept.notes, /0142345678908/);
   const read = cleanDocumentRead({
     ...empty,
     notes: "Paid with 4111 1111 1111 1111. E-ticket 0142345678901.",
   });
   assert.doesNotMatch(read.notes, /4111/);
   assert.match(read.notes, /0142345678901/);
+});
+
+test("the reference is kept as printed, even a long number", () => {
+  const read = cleanDocumentRead({ ...empty, reference: "4111 1111 1111 1111" });
+  assert.equal(read.reference, "4111 1111 1111 1111");
 });
 
 test("reference is capped", () => {
@@ -142,6 +157,36 @@ test("stopForRead matches by name on the same day", () => {
 test("stopForRead falls back to the only stop of the same kind", () => {
   const read = { date: "2026-04-14", kind: "flight" as const, place: "YUL", title: "AC872" };
   assert.equal(stopForRead(read, stops), "flight");
+});
+
+test("stopForRead never links a stop of another kind over a shared word", () => {
+  const day = [
+    { id: "stay", day_date: "2026-04-14", kind: "hotel", title: "Avenida Palace" },
+    { id: "bistro", day_date: "2026-04-14", kind: "food", title: "Hotel Bistro" },
+  ];
+  const read = {
+    date: "2026-04-14",
+    kind: "accommodation" as const,
+    place: "",
+    title: "Hotel booking",
+  };
+  assert.equal(stopForRead(read, day), "stay");
+  const dinner = {
+    date: "2026-04-14",
+    kind: "restaurant" as const,
+    place: "",
+    title: "Palace dinner",
+  };
+  assert.equal(stopForRead(dinner, day), "bistro");
+});
+
+test("stopForRead ignores words every booking shares", () => {
+  const day = [
+    { id: "a", day_date: "2026-04-15", kind: "sight", title: "Tickets for the castle" },
+    { id: "b", day_date: "2026-04-15", kind: "sight", title: "Oceanarium" },
+  ];
+  const read = { date: "2026-04-15", kind: "ticket" as const, place: "", title: "Tickets" };
+  assert.equal(stopForRead(read, day), null);
 });
 
 test("stopForRead leaves it to the traveller when unsure", () => {

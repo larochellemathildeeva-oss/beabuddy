@@ -81,7 +81,32 @@ export function documentReadPrompt(today: string): string {
 /** 13–19 digits, with spaces or dashes between: maybe a card number. */
 const LONG_NUMBER = /\b(?:\d[ -]?){12,18}\d\b/g;
 
-/** The card checksum. An airline's 13-digit e-ticket number mostly fails it, so it stays. */
+/**
+ * Card issuers' opening digits and lengths: Visa, Mastercard, Amex, Discover,
+ * Diners, JCB, UnionPay, Maestro. None is 13 digits long, so an airline's
+ * 13-digit e-ticket number is never taken for a card.
+ */
+const CARD_SHAPES: readonly [RegExp, readonly number[]][] = [
+  [/^4/, [16, 19]],
+  [/^(5[1-5]|222[1-9]|22[3-9]\d|2[3-6]\d\d|27[01]\d|2720)/, [16]],
+  [/^3[47]/, [15]],
+  [/^(6011|65|64[4-9])/, [16, 17, 18, 19]],
+  [/^(36|38|30[0-5])/, [14, 15, 16]],
+  [/^35(2[89]|[3-8]\d)/, [16, 17, 18, 19]],
+  [/^62/, [16, 17, 18, 19]],
+  [/^(50|5[6-8])/, [16, 17, 18, 19]],
+];
+
+/** A card number by its issuer's shape and its checksum; both, so few real references match. */
+export function looksLikeCardNumber(digits: string): boolean {
+  return (
+    CARD_SHAPES.some(
+      ([prefix, lengths]) => prefix.test(digits) && lengths.includes(digits.length),
+    ) && passesLuhn(digits)
+  );
+}
+
+/** The card checksum. */
 export function passesLuhn(digits: string): boolean {
   let sum = 0;
   for (let i = 0; i < digits.length; i++) {
@@ -96,11 +121,14 @@ export function passesLuhn(digits: string): boolean {
 }
 
 function dropCardNumbers(text: string): string {
-  return text.replace(LONG_NUMBER, (run) => (passesLuhn(run.replace(/\D/g, "")) ? "" : run));
+  return text.replace(LONG_NUMBER, (run) =>
+    looksLikeCardNumber(run.replace(/\D/g, "")) ? "" : run,
+  );
 }
 
-function scrub(value: string | null | undefined, max: number): string {
-  return dropCardNumbers(value ?? "")
+function scrub(value: string | null | undefined, max: number, keepNumbers = false): string {
+  const text = value ?? "";
+  return (keepNumbers ? text : dropCardNumbers(text))
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim()
@@ -128,7 +156,8 @@ export function cleanDocumentRead(raw: RawDocumentRead): DocumentRead {
     kind: kindText ? asKind(kindText) : null,
     title: scrub(raw.title, TITLE_MAX).replace(/\s+/g, " "),
     lines: cleanLines([scrub(raw.line1, LINE_MAX), scrub(raw.line2, LINE_MAX)]),
-    reference: scrub(raw.reference, REFERENCE_MAX).replace(/\s+/g, " "),
+    // The booking reference is kept exactly: a long numeric one is no card.
+    reference: scrub(raw.reference, REFERENCE_MAX, true).replace(/\s+/g, " "),
     notes: scrub(raw.notes, NOTES_MAX),
     date: isoDate(raw.date),
     time: clockTime(raw.time),
@@ -171,6 +200,13 @@ export function tripForDate(
   return null;
 }
 
+/** Words any booking may share with any stop; they say nothing about which stop. */
+const GENERIC = new Set(
+  "hotel hostel booking reservation confirmation ticket tickets flight train bus restaurant dinner lunch breakfast tour visit the and for with".split(
+    " ",
+  ),
+);
+
 function words(text: string): Set<string> {
   return new Set(
     text
@@ -178,21 +214,26 @@ function words(text: string): Set<string> {
       .replace(/[̀-ͯ]/g, "")
       .toLowerCase()
       .split(/[^\p{L}\p{N}]+/u)
-      .filter((w) => w.length >= 3),
+      .filter((w) => w.length >= 3 && !GENERIC.has(w)),
   );
 }
 
 /**
- * The stop a document is for: on its day, the one sharing the most words with
- * what was read (its place and title), else the only one of the same kind.
- * Nothing on that day, or no clear winner: null — the traveller picks.
+ * The stop a document is for: on its day, and of its kind when the kind is
+ * known, the one sharing the most words with what was read (its place and
+ * title), else the only one of that kind. Nothing on that day, or no clear
+ * winner: null — the traveller picks.
  */
 export function stopForRead(
   read: Pick<DocumentRead, "date" | "kind" | "place" | "title">,
   stops: readonly { id: string; day_date: string | null; kind: string; title: string }[],
 ): string | null {
   if (!read.date) return null;
-  const sameDay = stops.filter((s) => s.day_date === read.date);
+  const kindKnown = !!read.kind && read.kind !== "other" && read.kind !== "ticket";
+  // A hotel booking never links to the dinner, however the names overlap.
+  const sameDay = stops.filter(
+    (s) => s.day_date === read.date && (!kindKnown || eventKind(s.kind) === read.kind),
+  );
   if (!sameDay.length) return null;
   const wanted = words(`${read.place} ${read.title}`);
   let best: string | null = null;
@@ -210,7 +251,6 @@ export function stopForRead(
     }
   }
   if (best && !tie) return best;
-  if (!read.kind || read.kind === "other" || read.kind === "ticket") return null;
-  const sameKind = sameDay.filter((s) => eventKind(s.kind) === read.kind);
-  return sameKind.length === 1 ? sameKind[0]!.id : null;
+  if (!kindKnown) return null;
+  return sameDay.length === 1 ? sameDay[0]!.id : null;
 }

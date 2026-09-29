@@ -388,13 +388,20 @@ export function AssignSheet({
   const [pickEvent, setPickEvent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const { events, loading } = useTripEvents(open ? draft.trip_id : null);
+  const { events, loading, loadedFor } = useTripEvents(open ? draft.trip_id : null);
   const readAs = isNew && file ? readableAs(file) : null;
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState("");
   const [filled, setFilled] = useState<ReadonlySet<FilledField>>(new Set());
   /** A read waiting for its trip's stops to load, to pick the stop it is for. */
-  const [stopFor, setStopFor] = useState<DocumentRead | null>(null);
+  const [stopFor, setStopFor] = useState<{ read: DocumentRead; tripId: string } | null>(null);
+  /** Bumped each time the sheet opens, so a read that finishes after a close is dropped. */
+  const session = useRef(0);
+  /** Fields the traveller changed while a read was out: the read leaves them alone. */
+  const touched = useRef(new Set<FilledField>());
+  /** The draft as last rendered, for a read that finishes long after it began. */
+  const latest = useRef(draft);
+  latest.current = draft;
 
   useEffect(() => {
     if (open) {
@@ -404,20 +411,27 @@ export function AssignSheet({
       setReadError("");
       setFilled(new Set());
       setStopFor(null);
+      setReading(false);
     }
+    session.current++;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const edited = (field: FilledField) =>
+  const edited = (field: FilledField) => {
+    touched.current.add(field);
+    if (field === "trip" || field === "event") setStopFor(null);
     setFilled((f) => {
       if (!f.has(field)) return f;
       const next = new Set(f);
       next.delete(field);
       return next;
     });
+  };
 
   const readFile = async () => {
     if (!file || !readAs || reading) return;
+    const mine = session.current;
+    touched.current = new Set();
     setReading(true);
     setReadError("");
     try {
@@ -425,54 +439,66 @@ export function AssignSheet({
       const read = await readDocumentFile({
         data: { ...sent, today: toLocalISODate(new Date()) },
       });
+      if (mine !== session.current) return;
+      const skip = touched.current;
       const set = new Set<FilledField>();
-      const next = { ...draft };
-      if (read.title) {
+      // Applied to the draft as it is now, not as it was when the read began.
+      const d = latest.current;
+      const next = { ...d };
+      if (read.title && !skip.has("title")) {
         next.title = read.title;
         set.add("title");
       }
-      if (read.kind) {
+      if (read.kind && !skip.has("kind")) {
         next.kind = read.kind;
         set.add("kind");
       }
-      if (read.lines.length) {
+      if (read.lines.length && !skip.has("lines")) {
         next.lines = [read.lines[0] ?? "", read.lines[1] ?? ""];
         set.add("lines");
       }
-      if (read.reference) {
+      if (read.reference && !skip.has("reference")) {
         next.reference = read.reference;
         set.add("reference");
       }
-      if (read.notes && !draft.notes.trim()) {
+      if (read.notes && !d.notes.trim() && !skip.has("notes")) {
         next.notes = read.notes;
         set.add("notes");
       }
-      const tripId = draft.trip_id ? null : tripForDate(read.date, trips);
+      const tripId = d.trip_id || skip.has("trip") ? null : tripForDate(read.date, trips);
       if (tripId) {
         next.trip_id = tripId;
         next.itinerary_item_id = null;
         set.add("trip");
       }
-      if ((tripId ?? draft.trip_id) && !draft.itinerary_item_id && read.date) setStopFor(read);
+      const forTrip = tripId ?? d.trip_id;
       setDraft(next);
       setFilled(set);
+      if (forTrip && !next.itinerary_item_id && !skip.has("event") && read.date) {
+        setStopFor({ read, tripId: forTrip });
+      }
     } catch (e) {
-      setReadError(aiFailure(e).message);
+      if (mine === session.current) setReadError(aiFailure(e).message);
     } finally {
-      setReading(false);
+      if (mine === session.current) setReading(false);
     }
   };
 
-  // Once the trip's stops are in, link the one the file is for, if it is clear.
+  // Once that trip's own stops are in, link the one the file is for, if it is clear.
   useEffect(() => {
-    if (!stopFor || loading || !draft.trip_id) return;
-    const id = stopForRead(stopFor, events);
+    if (!stopFor) return;
+    if (draft.trip_id !== stopFor.tripId) {
+      setStopFor(null);
+      return;
+    }
+    if (loading || loadedFor !== stopFor.tripId) return;
+    const id = stopForRead(stopFor.read, events);
     setStopFor(null);
     if (!id || draft.itinerary_item_id) return;
-    setDraft((d) => ({ ...d, itinerary_item_id: id }));
+    setDraft((d) => (d.trip_id === stopFor.tripId ? { ...d, itinerary_item_id: id } : d));
     setLinkEvent(true);
     setFilled((f) => new Set(f).add("event"));
-  }, [stopFor, loading, events, draft.trip_id, draft.itinerary_item_id]);
+  }, [stopFor, loading, loadedFor, events, draft.trip_id, draft.itinerary_item_id]);
 
   const trip = trips.find((t) => t.id === draft.trip_id) ?? null;
   const event = events.find((e) => e.id === draft.itinerary_item_id) ?? null;
