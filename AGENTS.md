@@ -155,7 +155,7 @@ Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 fetched only when such a label is drawn. A saved map keeps the fonts for the
 traveller's own script as well (`LANGUAGE_GLYPH_STARTS`).
 
-**Stops the map misses.** With `OPEN_PLACES_API_KEY` set, a stop the
+**Stops the map misses.** With `OPEN_PLACES_API_KEY` (or `OVERTURE_API_KEY`) set, a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
 under another name — is looked up by name near the middle of town in
 Overture's place listings through the Open Places API (`open-places.ts`, pure
@@ -211,7 +211,7 @@ because `*.functions.ts` ships to the client bundle. Never prefix them
 the browser:
 
 ```
-npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY|PEXELS_API_KEY" .output/public/   # must print nothing
+npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY|OVERTURE_API_KEY|PEXELS_API_KEY" .output/public/   # must print nothing
 ```
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
