@@ -221,7 +221,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Five ways to look at the trip",
-        body: "Overview is the dashboard. Now follows one day with you: tap I'm here and Leaving, and Béa says when to set off. Map draws the day. Timeline is where you reorder and edit. Bookings keeps flights, stays and tickets together.",
+        body: "Overview is the dashboard. Now follows one day with you: tap I'm here and Leaving, and Béa says when to set off. Map draws the day, and can show where you are. Timeline is where you reorder and edit. Bookings keeps flights, stays and tickets together.",
         selector: "[data-guide='trip-tabs']",
       },
       {
@@ -231,7 +231,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "The trip menu",
-        body: "Invite people or share a read-only link, set a budget, run a Trip checkup for clashes and tight gaps, set preferences just for this trip, keep maps offline, copy the trip to new dates, add it to your calendar, or print it.",
+        body: "Invite people or share a read-only link, set a budget, run a Trip checkup for clashes, tight gaps and a passport that runs out, set preferences just for this trip, keep maps offline, copy the trip to new dates, add it to your calendar, or print it.",
         selector: "[data-guide='trip-menu']",
       },
     ],
