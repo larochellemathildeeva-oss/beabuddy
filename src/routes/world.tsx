@@ -43,6 +43,7 @@ import {
   type CountryVisits,
 } from "@/lib/world-visits";
 import { countryWorldShare } from "@/lib/travel-stats";
+import { continentOf, visitedContinents } from "@/lib/continents";
 import { isCityLevelPlace } from "@/lib/reco-place";
 import { beaLine } from "@/lib/bea-voice";
 import { emptyLine } from "@/lib/bea-personality";
@@ -52,7 +53,7 @@ import { foldAccents } from "@/lib/fuzzy";
 type ItineraryCounts = { flights: number; hotels: number; restaurants: number };
 
 /** Which level of the map is showing: everything, or only one of the three counts. */
-type WorldView = "all" | "cities" | "provinces" | "countries";
+type WorldView = "all" | "cities" | "provinces" | "countries" | "continents";
 
 /** The four views of the tab, as in the master. */
 type WorldTab = "map" | "bucket" | "been" | "stats";
@@ -189,6 +190,9 @@ function WorldPage() {
     () => visitsByCountry(places, cities, provinces),
     [places, cities, provinces],
   );
+  // Montreal counts Québec, Canada and North America: the continents come
+  // from the countries, as the countries come from the cities.
+  const continents = useMemo(() => visitedContinents(byCountry), [byCountry]);
   const globeCities = useMemo(() => cityPins(cities), [cities]);
   const namedCountries = useMemo(() => countryMarks(places, byCountry), [places, byCountry]);
   const shadedCountries = useMemo(() => visitedCountryKeys(places, provinces), [places, provinces]);
@@ -201,7 +205,7 @@ function WorldPage() {
   const show = {
     cities: view === "all" || view === "cities",
     provinces: view === "all" || view === "provinces",
-    countries: view === "all" || view === "countries",
+    countries: view === "all" || view === "countries" || view === "continents",
   };
   const cityOf = (pin: Pin) => cities.find((c) => `city:${c.key}` === pin.id);
 
@@ -402,6 +406,14 @@ function WorldPage() {
               }
             : null,
           { id: "countries" as const, n: byCountry.length, one: "Country", many: "Countries" },
+          continents.length > 0
+            ? {
+                id: "continents" as const,
+                n: continents.length,
+                one: "Continent",
+                many: "Continents",
+              }
+            : null,
         ]
           .filter((s) => s !== null)
           .map((stat) => {
@@ -466,6 +478,7 @@ function WorldPage() {
               {[
                 cities.length > 0 ? plural(cities.length, "city", "cities") : "",
                 plural(byCountry.length, "country", "countries"),
+                continents.length > 0 ? plural(continents.length, "continent", "continents") : "",
               ]
                 .filter(Boolean)
                 .join(", ")}
@@ -767,82 +780,105 @@ function WorldPage() {
                   <h2 className="font-display text-[27px] leading-none">Where you've been</h2>
                   <span className="text-[13px] text-muted-foreground">Tap a city to see it</span>
                 </div>
-                <ul className="plain-card divide-y divide-border">
-                  {byCountry
-                    .filter((visit) =>
-                      view === "provinces"
-                        ? visit.provinces.length > 0
-                        : view === "cities"
-                          ? visit.cities.length > 0
-                          : true,
-                    )
-                    .map((visit, i) => {
-                      const expanded = openCountry === visit.key;
-                      const sub =
-                        view !== "cities" && view !== "countries" && visit.provinces.length > 0
-                          ? visit.provinces.map((p) => p.name).join(" · ")
-                          : visit.cities
-                              .slice(0, 4)
-                              .map((c) => c.city)
-                              .join(" · ");
-                      const placeCount = visit.cities.reduce((n, c) => n + c.places, 0);
-                      return (
-                        <PlaceRow
-                          key={visit.key}
-                          picture={bannerArtUrl(
-                            bannerSceneFor(
-                              [visit.country, ...visit.cities.map((c) => c.city)],
-                              visit.country,
-                            ),
-                          )}
-                          title={visit.country}
-                          sub={sub}
-                          count={
-                            visit.cities.length > 0
-                              ? `${plural(visit.cities.length, "city", "cities")} · ${plural(placeCount, "place", "places")}`
-                              : "The whole country"
-                          }
-                          onOpen={
-                            show.cities && visit.cities.length > 0
-                              ? () => setOpenCountry(expanded ? null : visit.key)
-                              : undefined
-                          }
-                          expanded={expanded}
-                          pin={
-                            <button
-                              type="button"
-                              onClick={() => showCountry(visit)}
-                              aria-label={`Show ${visit.country} on the globe`}
-                              className="grid size-10 place-items-center rounded-full"
-                            >
-                              <MapPin
-                                className={`seq-text-${(i % 5) + 1} size-6`}
-                                weight="fill"
-                                aria-hidden
-                              />
-                            </button>
-                          }
-                          extra={
-                            expanded ? (
-                              <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-                                {visit.cities.map((city) => (
-                                  <button
-                                    key={city.key}
-                                    type="button"
-                                    onClick={() => showCity(city.key)}
-                                    className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px]"
-                                  >
-                                    <span className="size-2 rounded-full bg-visited" aria-hidden />
-                                    {city.city}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : null
-                          }
-                        />
-                      );
-                    })}
-                </ul>
+                {(view === "continents"
+                  ? [
+                      ...continents.map((c) => ({
+                        heading: `${c.continent} · ${plural(c.countries.length, "country", "countries")}`,
+                        visits: byCountry.filter((v) => continentOf(v.key) === c.continent),
+                      })),
+                      {
+                        heading: "Elsewhere",
+                        visits: byCountry.filter((v) => !continentOf(v.key)),
+                      },
+                    ].filter((group) => group.visits.length > 0)
+                  : [
+                      {
+                        heading: "",
+                        visits: byCountry.filter((visit) =>
+                          view === "provinces"
+                            ? visit.provinces.length > 0
+                            : view === "cities"
+                              ? visit.cities.length > 0
+                              : true,
+                        ),
+                      },
+                    ]
+                ).map((group) => (
+                  <div key={group.heading || "all"} className="space-y-2">
+                    {group.heading && <h3 className="label-caps px-1">{group.heading}</h3>}
+                    <ul className="plain-card divide-y divide-border">
+                      {group.visits.map((visit, i) => {
+                        const expanded = openCountry === visit.key;
+                        const sub =
+                          view !== "cities" && view !== "countries" && visit.provinces.length > 0
+                            ? visit.provinces.map((p) => p.name).join(" · ")
+                            : visit.cities
+                                .slice(0, 4)
+                                .map((c) => c.city)
+                                .join(" · ");
+                        const placeCount = visit.cities.reduce((n, c) => n + c.places, 0);
+                        return (
+                          <PlaceRow
+                            key={visit.key}
+                            picture={bannerArtUrl(
+                              bannerSceneFor(
+                                [visit.country, ...visit.cities.map((c) => c.city)],
+                                visit.country,
+                              ),
+                            )}
+                            title={visit.country}
+                            sub={sub}
+                            count={
+                              visit.cities.length > 0
+                                ? `${plural(visit.cities.length, "city", "cities")} · ${plural(placeCount, "place", "places")}`
+                                : "The whole country"
+                            }
+                            onOpen={
+                              show.cities && visit.cities.length > 0
+                                ? () => setOpenCountry(expanded ? null : visit.key)
+                                : undefined
+                            }
+                            expanded={expanded}
+                            pin={
+                              <button
+                                type="button"
+                                onClick={() => showCountry(visit)}
+                                aria-label={`Show ${visit.country} on the globe`}
+                                className="grid size-10 place-items-center rounded-full"
+                              >
+                                <MapPin
+                                  className={`seq-text-${(i % 5) + 1} size-6`}
+                                  weight="fill"
+                                  aria-hidden
+                                />
+                              </button>
+                            }
+                            extra={
+                              expanded ? (
+                                <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+                                  {visit.cities.map((city) => (
+                                    <button
+                                      key={city.key}
+                                      type="button"
+                                      onClick={() => showCity(city.key)}
+                                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px]"
+                                    >
+                                      <span
+                                        className="size-2 rounded-full bg-visited"
+                                        aria-hidden
+                                      />
+                                      {city.city}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : null
+                            }
+                          />
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
               </section>
             )}
             <button
