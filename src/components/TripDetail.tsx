@@ -118,6 +118,8 @@ import {
 } from "@/lib/companion";
 import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
+import { TripCheckup } from "@/components/day/TripCheckup";
+import { checkupPill, tripCheckup } from "@/lib/trip-checkup";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { useOfflineMap } from "@/hooks/useOfflineMap";
 import { prettyMegabytes } from "@/lib/vector-tiles";
@@ -884,6 +886,22 @@ export function TripDetail({
       ),
     );
   };
+  /** Open a stop on the timeline from somewhere else (the trip checkup). */
+  const jumpToStop = (stopId: string) => {
+    const stop = stopItems.find((item) => item.id === stopId);
+    if (!stop) return;
+    setPerspective("timeline");
+    const day = stop.day_date ?? "";
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
+    setCollapsedDays((prev) => ({ ...prev, [day]: false }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${stopId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
   /** The day cards, for the sticky day bar to know when they scroll away. */
   const dayCardsRef = useRef<HTMLDivElement>(null);
   const offerDays = shouldOfferDays(timelineGroups);
@@ -1125,6 +1143,28 @@ export function TripDetail({
     },
     toLocalISODate(new Date()),
   );
+
+  /**
+   * Trip checkup, worked out only while the menu is open: pure arithmetic on
+   * the stops, reusing routes already measured, so it costs no lookups. Null
+   * with nothing planned, which hides its card.
+   */
+  const checkup =
+    settingsOpen && stopItems.length > 0
+      ? tripCheckup({
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          items: stopItems,
+          strayIds,
+          travelMinutes: (from, to) => {
+            const a = itemsById.get(from.id);
+            const b = itemsById.get(to.id);
+            const leg = a && b ? travelInto(a, b, true) : undefined;
+            if (!leg || leg.unknownSpot || leg.capped || !(leg.duration > 0)) return null;
+            return Math.round(leg.duration / 60);
+          },
+        })
+      : null;
 
   return (
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
@@ -2289,6 +2329,7 @@ export function TripDetail({
             : ""
         }
         budgetOn={Boolean(trip.budget_enabled)}
+        checkupNote={checkup ? checkupPill(checkup) : ""}
         onPrint={() => {
           setSettingsOpen(false);
           printHtml(
@@ -2524,6 +2565,17 @@ export function TripDetail({
             uid={me.id}
             home={trip}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
+          />
+        )}
+
+        {sheetSection === "checkup" && checkup && (
+          <TripCheckup
+            findings={checkup}
+            onOpenStop={(id) => {
+              setSettingsOpen(false);
+              setSheetSection(null);
+              jumpToStop(id);
+            }}
           />
         )}
 
