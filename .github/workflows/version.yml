@@ -1,0 +1,102 @@
+name: Version
+
+# Branches no longer bump package.json's version: two branches that both did
+# always conflicted on that one line. Instead, each push to main (a merged pull
+# request) bumps it here and commits the new number back to main, so Canner's
+# next deploy shows it in the app header.
+#
+# The step comes from the merged pull request's label: version:enhance for a
+# big feature, version:feature for a major overhaul (only when the owner asks),
+# version:skip for none. No label: a patch.
+#
+# A push made with GITHUB_TOKEN does not start another workflow run, so the
+# bump commit does not bump again (nor re-run CI; it changes only the version).
+
+on:
+  push:
+    branches: [main]
+
+# One at a time, in order: two quick merges each get their own bump.
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: write
+
+jobs:
+  bump:
+    name: bump version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # So the labels exist to be picked in a pull request's sidebar.
+      - name: Make sure the labels exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create "version:enhance" --color 0E8A16 --description "Bump the middle number when merged (a big feature)" 2>/dev/null || true
+          gh label create "version:feature" --color B60205 --description "Bump the first number when merged (only when the owner asks)" 2>/dev/null || true
+          gh label create "version:skip" --color C5DEF5 --description "Do not bump the version when merged" 2>/dev/null || true
+
+      - name: Choose the step
+        id: step
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          version_at() { git show "$1:package.json" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{console.log(JSON.parse(s).version)}catch{}})'; }
+          before=$(version_at "$BEFORE")
+          after=$(version_at "$AFTER")
+          # A branch that still bumped the version by hand (the old way) has
+          # already chosen its number; keep it rather than bumping twice.
+          if [ -n "$before" ] && [ "$before" != "$after" ]; then
+            echo "The push changed the version itself ($before -> $after); leaving it."
+            echo "step=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          labels=$(gh api "repos/${{ github.repository }}/commits/$AFTER/pulls" --jq '[.[] | select(.merged_at != null) | .labels[].name] | join(" ")' 2>/dev/null || true)
+          echo "Merged pull request labels: ${labels:-none}"
+          case " $labels " in
+            *" version:skip "*) step=none ;;
+            *" version:feature "*) step=major ;;
+            *" version:enhance "*) step=minor ;;
+            *) step=patch ;;
+          esac
+          echo "step=$step" >> "$GITHUB_OUTPUT"
+
+      - name: Bump and commit
+        if: steps.step.outputs.step != 'none'
+        env:
+          STEP: ${{ steps.step.outputs.step }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Retry if someone merges while this runs: start again from the new main.
+          for attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            npm version "$STEP" --no-git-tag-version
+            version=$(node -p 'require("./package.json").version')
+            git commit -am "Version $version"
+            if git push origin HEAD:main; then
+              echo "Bumped to $version"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "Could not push the version bump to main." >&2
+          exit 1
