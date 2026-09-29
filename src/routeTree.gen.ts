@@ -31,6 +31,7 @@ import { Route as AuthenticatedPhotosRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedStoryRouteImport } from './routes/_authenticated/story'
 import { Route as ProfileBeaRouteImport } from './routes/profile_.bea'
 import { Route as ProfileDocumentsRouteImport } from './routes/profile_.documents'
+import { Route as SharedTokenRouteImport } from './routes/shared.$token'
 import { Route as TripsTripIdRouteImport } from './routes/trips_.$tripId'
 import { Route as TripsPlanRouteImport } from './routes/trips_.plan'
 
@@ -143,6 +144,11 @@ const ProfileDocumentsRoute = ProfileDocumentsRouteImport.update({
   path: '/profile/documents',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SharedTokenRoute = SharedTokenRouteImport.update({
+  id: '/shared/$token',
+  path: '/shared/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TripsTripIdRoute = TripsTripIdRouteImport.update({
   id: '/trips_/$tripId',
   path: '/trips/$tripId',
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/story': typeof AuthenticatedStoryRoute
   '/profile/bea': typeof ProfileBeaRoute
   '/profile/documents': typeof ProfileDocumentsRoute
+  '/shared/$token': typeof SharedTokenRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/plan': typeof TripsPlanRoute
 }
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/story': typeof AuthenticatedStoryRoute
   '/profile/bea': typeof ProfileBeaRoute
   '/profile/documents': typeof ProfileDocumentsRoute
+  '/shared/$token': typeof SharedTokenRoute
   '/trips/$tripId': typeof TripsTripIdRoute
   '/trips/plan': typeof TripsPlanRoute
 }
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/_authenticated/story': typeof AuthenticatedStoryRoute
   '/profile_/bea': typeof ProfileBeaRoute
   '/profile_/documents': typeof ProfileDocumentsRoute
+  '/shared/$token': typeof SharedTokenRoute
   '/trips_/$tripId': typeof TripsTripIdRoute
   '/trips_/plan': typeof TripsPlanRoute
 }
@@ -255,6 +264,7 @@ export interface FileRouteTypes {
     | '/story'
     | '/profile/bea'
     | '/profile/documents'
+    | '/shared/$token'
     | '/trips/$tripId'
     | '/trips/plan'
   fileRoutesByTo: FileRoutesByTo
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/story'
     | '/profile/bea'
     | '/profile/documents'
+    | '/shared/$token'
     | '/trips/$tripId'
     | '/trips/plan'
   id:
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/_authenticated/story'
     | '/profile_/bea'
     | '/profile_/documents'
+    | '/shared/$token'
     | '/trips_/$tripId'
     | '/trips_/plan'
   fileRoutesById: FileRoutesById
@@ -328,6 +340,7 @@ export interface RootRouteChildren {
   WorldRoute: typeof WorldRoute
   ProfileBeaRoute: typeof ProfileBeaRoute
   ProfileDocumentsRoute: typeof ProfileDocumentsRoute
+  SharedTokenRoute: typeof SharedTokenRoute
   TripsTripIdRoute: typeof TripsTripIdRoute
   TripsPlanRoute: typeof TripsPlanRoute
 }
@@ -488,6 +501,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileDocumentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/shared/$token': {
+      id: '/shared/$token'
+      path: '/shared/$token'
+      fullPath: '/shared/$token'
+      preLoaderRoute: typeof SharedTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trips_/$tripId': {
       id: '/trips_/$tripId'
       path: '/trips/$tripId'
@@ -542,6 +562,7 @@ const rootRouteChildren: RootRouteChildren = {
   WorldRoute: WorldRoute,
   ProfileBeaRoute: ProfileBeaRoute,
   ProfileDocumentsRoute: ProfileDocumentsRoute,
+  SharedTokenRoute: SharedTokenRoute,
   TripsTripIdRoute: TripsTripIdRoute,
   TripsPlanRoute: TripsPlanRoute,
 }

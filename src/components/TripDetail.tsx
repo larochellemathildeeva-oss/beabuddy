@@ -77,6 +77,7 @@ import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { TripCheckup } from "@/components/day/TripCheckup";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
+import { ShareLinkCard } from "@/components/day/ShareLinkCard";
 import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
 import { useTripPreferences } from "@/hooks/useTripPreferences";
 import { tripCheckup } from "@/lib/trip-checkup";
@@ -2385,6 +2386,11 @@ export function TripDetail({
           ) : null
         }
       >
+        {sheetSection === "invite" && (
+          <div className="mb-3">
+            <ShareLinkCard tripId={trip.id} />
+          </div>
+        )}
         {sheetSection === "invite" && (
           <TripPeople
             trip={trip}
