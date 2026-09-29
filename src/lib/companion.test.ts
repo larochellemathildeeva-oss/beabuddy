@@ -10,6 +10,8 @@ import {
   companionStops,
   leaveBy,
   leaveCountdown,
+  placeClock,
+  placeClockNote,
   liveSummary,
   leavingWrite,
   legBetween,
@@ -277,6 +279,28 @@ test("leave countdown speaks up only in the last ten minutes", () => {
   assert.equal(leaveCountdown("00:05", at(23, 58)), null);
   assert.equal(leaveCountdown("09:00", at(14, 0)), null);
   assert.equal(leaveCountdown("soon", at(14, 0)), null);
+});
+
+test("the place's clock, not the phone's, when the place's offset is known", () => {
+  const instant = new Date(Date.UTC(2026, 8, 26, 22, 30)); // 22:30 UTC
+  // Tokyo (+9) is already on the 27th at 07:30.
+  assert.deepEqual(placeClock(instant, 9 * 3600), { day: "2026-09-27", minutes: 7 * 60 + 30 });
+  // Montréal (−4) is on the 26th at 18:30.
+  assert.deepEqual(placeClock(instant, -4 * 3600), { day: "2026-09-26", minutes: 18 * 60 + 30 });
+  // Countdown read against the place: 07:35 in Tokyo is five minutes away.
+  assert.equal(leaveCountdown("07:35", instant, 10, 9 * 3600), 5);
+  // Without an offset, the phone's clock.
+  const phone = new Date(2026, 8, 26, 14, 5);
+  assert.deepEqual(placeClock(phone, null), { day: "2026-09-26", minutes: 14 * 60 + 5 });
+});
+
+test("the place's clock is mentioned only when it differs from the phone's", () => {
+  const now = new Date(Date.UTC(2026, 8, 26, 12, 0));
+  const phoneOffset = -now.getTimezoneOffset() * 60;
+  assert.equal(placeClockNote(now, phoneOffset), null);
+  assert.equal(placeClockNote(now, null), null);
+  const elsewhere = phoneOffset === 9 * 3600 ? 3600 : 9 * 3600;
+  assert.match(placeClockNote(now, elsewhere) ?? "", /^Times are local\. It's \d\d:\d\d there\.$/);
 });
 
 test("live summary: where you are in today, and nothing on other days", () => {

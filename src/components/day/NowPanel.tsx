@@ -10,7 +10,6 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
 import { timeForRail } from "@/lib/timeline-kind";
-import { toLocalISODate } from "@/lib/trip-dates";
 import { lookupRain } from "@/lib/weather.functions";
 import {
   rainDayMayBeAhead,
@@ -27,6 +26,8 @@ import {
   leaveCountdown,
   leavingWrite,
   legBetween,
+  placeClock,
+  placeClockNote,
   liveLegKey,
   needsLiveLeg,
   stayLine,
@@ -75,6 +76,10 @@ export function NowPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const now = useMinuteClock();
+  const forecast = useDayForecast(dayStops);
+  // The plan's times are the place's; read "now" there when the forecast
+  // says what the place's clock is.
+  const offset = forecast?.utcOffsetSeconds ?? null;
 
   const state = companionState(dayStops);
   const { phase, current, previous, next } = state;
@@ -118,8 +123,10 @@ export function NowPanel({
       : null;
 
   // The countdown only means something on today's plan, once the clock is known.
-  const isToday = Boolean(now && next?.day_date === toLocalISODate(now));
-  const countdown = isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now) : null;
+  const isToday = Boolean(now && next?.day_date === placeClock(now, offset).day);
+  const countdown =
+    isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now, 10, offset) : null;
+  const clockNote = isToday && now ? placeClockNote(now, offset) : null;
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
@@ -155,7 +162,13 @@ export function NowPanel({
 
   return (
     <div className="space-y-3">
-      {phase !== "done" && <RainAhead stops={dayStops} now={now} />}
+      {phase !== "done" && <RainAhead stops={dayStops} forecast={forecast} now={now} />}
+      {clockNote && phase !== "done" && (
+        <p className="plain-card flex items-center gap-2 px-3 py-2 text-[13px]">
+          <Clock className="size-3.5 shrink-0 text-primary" aria-hidden />
+          {clockNote}
+        </p>
+      )}
 
       {phase === "at" && current && (
         <section className="plain-card space-y-3 p-3.5" aria-labelledby="now-here">
@@ -579,7 +592,44 @@ function useLiveLeg(
  * then moves the notice on as spells pass. Offline, or with no forecast for
  * the day, it shows nothing — the plan never waits on the weather.
  */
-function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) {
+function RainAhead({
+  stops,
+  forecast,
+  now,
+}: {
+  stops: ItineraryRow[];
+  forecast: RainForecast | null;
+  now: Date | null;
+}) {
+  const day = stops.find((s) => s.day_date)?.day_date ?? null;
+  const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
+  if (!notice) return null;
+  return (
+    <p role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
+      <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+      <span className="min-w-0">
+        {rainLine(notice)}{" "}
+        <a
+          href="https://open-meteo.com/"
+          target="_blank"
+          rel="noreferrer"
+          title={WEATHER_ATTRIBUTION}
+          className="text-[10px] text-muted-foreground underline underline-offset-2 sm:text-xs"
+        >
+          Open-Meteo
+        </a>
+      </span>
+    </p>
+  );
+}
+
+/**
+ * The hour-by-hour forecast for the day, where the day is: the first pinned
+ * stop still ahead (or the first pinned stop of the day). Asked once per
+ * place and day. It carries the place's offset from UTC as well as the rain,
+ * so Now can read the clock at the place.
+ */
+function useDayForecast(stops: ItineraryRow[]): RainForecast | null {
   // 0,0 is a missing place, not the Gulf of Guinea.
   const pinned = (s: ItineraryRow) =>
     s.lat != null && s.lon != null && !(s.lat === 0 && s.lon === 0);
@@ -607,25 +657,7 @@ function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) 
     };
   }, [ask, lat, lon, day]);
 
-  const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
-  if (!notice) return null;
-  return (
-    <p role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
-      <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
-      <span className="min-w-0">
-        {rainLine(notice)}{" "}
-        <a
-          href="https://open-meteo.com/"
-          target="_blank"
-          rel="noreferrer"
-          title={WEATHER_ATTRIBUTION}
-          className="text-[10px] text-muted-foreground underline underline-offset-2 sm:text-xs"
-        >
-          Open-Meteo
-        </a>
-      </span>
-    </p>
-  );
+  return forecast;
 }
 
 function useMinuteClock(): Date | null {
