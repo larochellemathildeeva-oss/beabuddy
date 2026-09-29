@@ -21,7 +21,7 @@
  */
 
 import { looksLikeStreetAddress } from "./direction-stops.ts";
-import { foldAccents } from "./fuzzy.ts";
+import { canonicalSpelling } from "./fuzzy.ts";
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -115,7 +115,7 @@ export function isNoiseWord(word: string): boolean {
 }
 
 function meaningfulWords(text: string): string[] {
-  return foldAccents(text.toLowerCase())
+  return canonicalSpelling(text.toLowerCase())
     .split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/)
     .filter((word) => word.length > 1 && !NOISE.has(word));
 }
@@ -129,9 +129,9 @@ function meaningfulWords(text: string): string[] {
  */
 export function nameEchoes(title: string, label: string): boolean {
   const asked = meaningfulWords(title);
-  const got = foldAccents(label.toLowerCase());
+  const got = canonicalSpelling(label.toLowerCase());
   if (asked.length === 0) {
-    const bare = foldAccents(title.toLowerCase().trim());
+    const bare = canonicalSpelling(title.toLowerCase().trim());
     return bare.length > 1 && got.includes(bare);
   }
   return asked.some((word) => got.includes(word));
@@ -162,7 +162,7 @@ export function hitName(label: string): string {
  */
 function identityWords(title: string, label: string): string[] {
   const asked = meaningfulWords(title);
-  const where = foldAccents(label.split(",").slice(1).join(",").toLowerCase());
+  const where = canonicalSpelling(label.split(",").slice(1).join(",").toLowerCase());
   const own = asked.filter((word) => !where.includes(word));
   return own.length > 0 ? own : asked;
 }
@@ -182,7 +182,7 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
 
   const areaish = AREA_TYPES.has(kind) || category === "boundary";
   const names = [hitName(label), ...(evidence.alsoNamed ?? [])]
-    .map((name) => foldAccents(name.trim().toLowerCase()))
+    .map((name) => canonicalSpelling(name.trim().toLowerCase()))
     .filter(Boolean);
   const words = identityWords(evidence.title, label);
   // A street address is matched against the whole label, which is where the
@@ -270,13 +270,13 @@ function otherBranch(title: string, label: string, alsoNamed: readonly string[])
   }
   const asked = meaningfulWords(title).filter((w) => w.length >= 3 && !/^\d+$/.test(w));
   const covers = (text: string) => {
-    const folded = foldAccents(text.toLowerCase());
+    const folded = canonicalSpelling(text.toLowerCase());
     return asked.every((w) => folded.includes(w));
   };
   // The place's own names, not its address: "Osaka" in "…, Tennoji, Osaka"
   // made Tennoji Station an answer for "Osaka Station".
   if (covers(name) || alsoNamed.some(covers)) return null;
-  const askedText = foldAccents(title.toLowerCase());
+  const askedText = canonicalSpelling(title.toLowerCase());
   const extra = meaningfulWords(name).some((w) => w.length >= 3 && !askedText.includes(w));
   return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;
 }
@@ -294,7 +294,7 @@ const STREET_LAST =
   /(?:^|[\s-])(?:street|st\.?|road|rd\.?|avenue|ave\.?|boulevard|blvd\.?|lane|ln\.?|drive|dr\.?|way|highway|dori|tori)$|(?:strasse|straße)$/;
 
 function namesAStreet(title: string): boolean {
-  const name = foldAccents(title.toLowerCase()).replace(/\s+/g, " ").trim();
+  const name = canonicalSpelling(title.toLowerCase()).replace(/\s+/g, " ").trim();
   return looksLikeStreetAddress(name) || STREET_FIRST.test(name) || STREET_LAST.test(name);
 }
 

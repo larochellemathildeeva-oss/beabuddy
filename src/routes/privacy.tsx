@@ -176,6 +176,11 @@ function PrivacyPage() {
             sources are shown with the plan.
           </p>
           <p>
+            When a place search finds nothing by that name in a country that writes in another
+            script (Japan or Korea, for example), Béa may ask Gemini how the name is written there
+            and search again. Only the name you searched and the country are sent.
+          </p>
+          <p>
             This content is used only to generate your result; it is not sold and not used for
             advertising by Béa. The AI provider may process or retain prompts under their own policy
             — see Google&apos;s Gemini / Generative AI terms. Photos from your photo memories are

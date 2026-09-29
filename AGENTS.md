@@ -190,6 +190,22 @@ OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and
 `GEOAPIFY_ATTRIBUTION` beside it on the maps, as Geoapify's free plan asks.
 
+**Smarter place search.** The search box's `searchPlaces` runs
+`smartPlaceSearch` around the plain lookup (`findPlaces`), each step only
+when the one before found nothing that is the place: a Japanese block
+address ("2-3-23 Shinsaibashisuji") is asked as the map reads it,
+"Shinsaibashisuji 2-chome 3-23" (`japan-address.ts`, also used by plan
+lookups in `planStopQueries`); results sharing only the area's words with
+the search ("Shinsaibashi Mocha Cat Cafe" for "Caffé Shinsaibashi") go last,
+marked `weak` (`place-match.ts`); "Change place" sends the stop's name and
+pin, so a shortened search is also asked by the full name; and in a country
+mapped in another script, Gemini gives the name in that script and it is
+searched too (`local-name.ts`, `local-name.server.ts`: only the name and
+country are sent, cached in process, 30 an hour per traveller). Kind words
+are spelt one way when names are compared (`canonicalSpelling`: caffè →
+cafe). The import prompt (`ai-plan-prompt.ts`) asks for the local-script
+name in brackets as well.
+
 ## Web check before planning
 
 When Béa drafts or reworks a plan (Build, Rebuild, Alternatives), it first

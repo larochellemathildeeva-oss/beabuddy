@@ -1175,6 +1175,7 @@ function TimelinePlaceEditor({
         placeholder={`Where is ${item.title}?`}
         {...(near ? { near } : {})}
         {...(center ? { center } : {})}
+        stop={{ title: item.title, lat: item.lat, lon: item.lon }}
       />
       <button
         type="button"

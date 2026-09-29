@@ -55,8 +55,12 @@ import {
   readGeoJson,
   type GeoProvider,
 } from "@/lib/geo-endpoints";
-import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { looksLikeStreetAddress, mapsPlaceUrl } from "@/lib/direction-stops";
 import { foundWhole, openPlacesNamed, type OpenPlace } from "@/lib/open-places";
+import { japaneseAddressQueries, namesJapan } from "@/lib/japan-address";
+import { onlyAreaMatches, rankByName, stopTitleAddsToQuery } from "@/lib/place-match";
+import { localLanguageFor, worthTranslating } from "@/lib/local-name";
+import { countryCode } from "@/lib/country-names";
 
 export type ParsedPlace = {
   name: string;
@@ -92,6 +96,12 @@ export type ParsedPlace = {
   unlocated?: boolean;
   /** OSM's opening_hours, when the place carries it. Not stored yet. */
   openingHours?: string;
+  /**
+   * A search result that shares only the area's words with what was asked
+   * ("Shinsaibashi Mocha Cat Cafe" for "Caffé Shinsaibashi"). Listed after
+   * the real matches and marked as such. Never saved.
+   */
+  weak?: true;
 };
 
 /**
@@ -312,7 +322,24 @@ async function nominatim(
   return Array.isArray(json) ? json : [];
 }
 
+/**
+ * Where each search result is, in full ("…, Higashi-Shinsaibashi 1-chome,
+ * Chūō Ward, Osaka…"): a result's own address is only its town, and telling
+ * a name from its neighbourhood (place-match.ts) needs the district.
+ * Server-side only, never sent.
+ */
+const fullWhere = new WeakMap<ParsedPlace, string>();
+/** Every name a result carries (name:ja, name:en…), for the same check. */
+const allNames = new WeakMap<ParsedPlace, string[]>();
+
 function hitToPlace(h: NominatimHit): ParsedPlace {
+  const place = hitToPlaceOnly(h);
+  if (h.display_name) fullWhere.set(place, h.display_name);
+  if (h.namedetails) allNames.set(place, Object.values(h.namedetails));
+  return place;
+}
+
+function hitToPlaceOnly(h: NominatimHit): ParsedPlace {
   const found = placeFromNominatim(h);
   return {
     ...found,
@@ -570,240 +597,380 @@ function mergeNearbyFirst(nearby: ParsedPlace[], rest: ParsedPlace[]): ParsedPla
   return out.slice(0, 10);
 }
 
+const PlaceSearchInput = z.object({
+  query: z.string().min(2).max(200),
+  /**
+   * Where the person is, so a search for a chain finds the branch they
+   * mean. "Subway" is thousands of identical places and an unanchored
+   * lookup answers with one on another continent, or with nothing
+   * recognisable — which reads as "there isn't one" while they are
+   * standing outside it.
+   */
+  at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+  /**
+   * The trip's city and country, sent apart from the name so that when
+   * the name is several names ("Peace Park / Atomic Bomb Dome", "Shrine
+   * (厳島神社)") each part can be asked for in the same place.
+   */
+  near: z.string().max(200).nullish(),
+  /**
+   * Choosing where a trip goes: countries and towns, not venues. Adds
+   * countries that start with what is typed, skips the tag search, and
+   * drops shops and restaurants from the geocoder's answer.
+   */
+  areas: z.boolean().nullish(),
+  /**
+   * The middle of the trip, when there is no position: where "coffee"
+   * or "subway" should be looked for while planning from home.
+   */
+  center: z.object({ lat: z.number(), lon: z.number() }).nullish(),
+  /**
+   * The stop whose place is being changed: its full name and its pin. A
+   * shortened search ("Caffé Shinsaibashi") is also looked up by the
+   * stop's name, and places beside its pin lead the list.
+   */
+  stop: z
+    .object({
+      title: z.string().max(200),
+      lat: z.number().nullish(),
+      lon: z.number().nullish(),
+    })
+    .nullish(),
+});
+
+type PlaceSearch = z.infer<typeof PlaceSearchInput>;
+
 /** Search the web for a place by name, so anything can be saved without a link. */
 export const searchPlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data) =>
-    z
-      .object({
-        query: z.string().min(2).max(200),
-        /**
-         * Where the person is, so a search for a chain finds the branch they
-         * mean. "Subway" is thousands of identical places and an unanchored
-         * lookup answers with one on another continent, or with nothing
-         * recognisable — which reads as "there isn't one" while they are
-         * standing outside it.
-         */
-        at: z.object({ lat: z.number(), lon: z.number() }).nullish(),
-        /**
-         * The trip's city and country, sent apart from the name so that when
-         * the name is several names ("Peace Park / Atomic Bomb Dome", "Shrine
-         * (厳島神社)") each part can be asked for in the same place.
-         */
-        near: z.string().max(200).nullish(),
-        /**
-         * Choosing where a trip goes: countries and towns, not venues. Adds
-         * countries that start with what is typed, skips the tag search, and
-         * drops shops and restaurants from the geocoder's answer.
-         */
-        areas: z.boolean().nullish(),
-        /**
-         * The middle of the trip, when there is no position: where "coffee"
-         * or "subway" should be looked for while planning from home.
-         */
-        center: z.object({ lat: z.number(), lon: z.number() }).nullish(),
-      })
-      .parse(data),
-  )
-  .handler(async ({ data: input, context }): Promise<ParsedPlace[]> => {
-    const name = input.query;
-    const within = (q: string) => (input.near ? `${q}, ${input.near}` : q);
-    const data = { ...input, query: within(name) };
-    const local = localPlaceHits(data.query);
-    if (local.length) return local;
-    const typedCountries = input.areas
-      ? countriesStartingWith(name).map(placeFromWorldCountry)
-      : [];
+  .inputValidator((data) => PlaceSearchInput.parse(data))
+  .handler(async ({ data: input, context }): Promise<ParsedPlace[]> =>
+    smartPlaceSearch(input, context.userId),
+  );
 
-    // A chain or a kind of place, with somewhere to look around: ask OSM's
-    // tags first (see poi-search.ts). A category is answered by its tags
-    // alone; a name is, when the answer is that exact brand or name —
-    // otherwise its nearby look-alikes go first and the geocoder still runs.
-    const anchor = input.at ?? input.center ?? null;
-    const intent = anchor && !input.areas ? poiIntent(name) : null;
-    let nearbyFirst: ParsedPlace[] = [];
-    if (anchor && intent) {
-      const radius = input.at ? RADIUS_NEAR_YOU_M : RADIUS_AROUND_TRIP_M;
-      const found = await overpassPlaces(intent, anchor, radius);
-      if (found.length) {
-        const places = found.slice(0, 10).map(poiToPlace);
-        if (intent.kind === "category") return places;
-        if (found.some((hit) => isExactPoiMatch(hit, intent.text))) {
-          return found
-            .filter((hit) => isExactPoiMatch(hit, intent.text))
-            .slice(0, 10)
-            .map(poiToPlace);
-        }
-        nearbyFirst = places.slice(0, 5);
+/**
+ * The search box's search, made smarter around `findPlaces`:
+ *
+ * 1. A Japanese block address ("2-3-23 Shinsaibashisuji") is asked the way
+ *    the map reads it, "Shinsaibashisuji 2-chome 3-23" (japan-address.ts).
+ * 2. Results that share only the area's words with what was typed go after
+ *    the real matches, marked `weak` (place-match.ts).
+ * 3. Changing a stop's place, a shortened search is also asked by the
+ *    stop's full name, and places beside its pin lead.
+ * 4. Nothing that is the place, in a country whose map is in another script:
+ *    the name in that script, from Gemini, is searched too (local-name.ts).
+ *
+ * Each step runs only when the one before found nothing that is the place,
+ * so a search that works costs what it did.
+ */
+async function smartPlaceSearch(input: PlaceSearch, userId: string): Promise<ParsedPlace[]> {
+  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const pace: Pace = { provider: geoProvider(), sent: [] };
+  const near = input.near ?? null;
+  const pin =
+    input.stop?.lat != null && input.stop.lon != null
+      ? { lat: input.stop.lat, lon: input.stop.lon }
+      : null;
+  const search = (query: string) => findPlaces({ ...input, query, stop: null }, userId, pace);
+  if (input.areas) return search(input.query);
+
+  const addressForms = japaneseAddressQueries(input.query, namesJapan(near));
+  for (const form of addressForms) {
+    const found = await search(form);
+    if (found.length) return found;
+  }
+  // An address, or a kind of place ("coffee"): the words are not a name.
+  if (looksLikeStreetAddress(input.query) || poiIntent(input.query)?.kind === "category")
+    return search(input.query);
+
+  const found = rankByName(await search(input.query), input.query, { near, pin, whereOf, namesOf });
+  if (found.some((place) => !place.weak)) return found;
+
+  // The stop's full name, when the search was a part of it or another.
+  const title = input.stop?.title.trim() ?? "";
+  let named = input.query;
+  if (title && stopTitleAddsToQuery(input.query, title)) {
+    named = title;
+    const byTitle = rankByName(await search(title), title, { near, pin, whereOf, namesOf }).filter(
+      (place) => !place.weak,
+    );
+    if (byTitle.length) return mergePlaces(byTitle, found);
+  }
+
+  const local = await localScriptSearch(named, found, input, userId, search);
+  return local.length ? mergePlaces(local, found) : found;
+}
+
+/**
+ * The name in the local script, searched, keeping only what is the place.
+ * Empty where the map is in Latin letters, without Gemini, or on any failure.
+ */
+async function localScriptSearch(
+  named: string,
+  found: readonly ParsedPlace[],
+  input: PlaceSearch,
+  userId: string,
+  search: (query: string) => Promise<ParsedPlace[]>,
+): Promise<ParsedPlace[]> {
+  if (!worthTranslating(named)) return [];
+  const { localName, countryAtPoint } = await import("@/lib/local-name.server");
+  const where = input.at ?? input.center ?? null;
+  const fromNear = countryCode((input.near ?? "").split(",").pop()?.trim());
+  const code =
+    fromNear ??
+    (input.stop?.lat != null && input.stop.lon != null
+      ? countryAtPoint(input.stop.lat, input.stop.lon)
+      : null) ??
+    (where ? countryAtPoint(where.lat, where.lon) : null) ??
+    mostCommonCountry(found);
+  const language = localLanguageFor(code);
+  if (!code || !language) return [];
+  const country = found.find((p) => countryCode(p.country) === code)?.country ?? code;
+  const local = await localName(userId, named, language, country);
+  if (!local) return [];
+  try {
+    const hits = await search(local);
+    // In the local script, the place's own name is often only its name:ja.
+    return hits.filter((place) =>
+      [place.name, ...(allNames.get(place) ?? [])].some((name) => {
+        const asNamed = { ...place, name };
+        return (
+          !onlyAreaMatches(named, asNamed, input.near, whereOf(place)) ||
+          !onlyAreaMatches(local, asNamed, input.near, whereOf(place))
+        );
+      }),
+    );
+  } catch {
+    return [];
+  }
+}
+
+const whereOf = (place: ParsedPlace) => fullWhere.get(place);
+const namesOf = (place: ParsedPlace) => allNames.get(place);
+
+function mostCommonCountry(places: readonly ParsedPlace[]): string | null {
+  const counts = new Map<string, number>();
+  for (const place of places) {
+    const code = countryCode(place.country);
+    if (code) counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
+  let best: string | null = null;
+  for (const [code, n] of counts) if (!best || n > counts.get(best)!) best = code;
+  return best;
+}
+
+/** `first`, then the rest of `then` that is not already in it. */
+function mergePlaces(first: readonly ParsedPlace[], then: readonly ParsedPlace[]): ParsedPlace[] {
+  const same = (a: ParsedPlace, b: ParsedPlace) =>
+    a.lat != null &&
+    a.lon != null &&
+    b.lat != null &&
+    b.lon != null &&
+    haversine({ lat: a.lat, lon: a.lon }, { lat: b.lat, lon: b.lon }) < SAME_PLACE_M;
+  return [...first, ...then.filter((p) => !first.some((q) => same(p, q)))].slice(0, 10);
+}
+
+/**
+ * One search, as asked: the geocoder, the tag search nearby and Overture.
+ * `smartPlaceSearch` decides what to ask and how to order what comes back.
+ */
+async function findPlaces(
+  input: PlaceSearch,
+  userId: string,
+  shared?: Pace,
+): Promise<ParsedPlace[]> {
+  const name = input.query;
+  const within = (q: string) => (input.near ? `${q}, ${input.near}` : q);
+  const data = { ...input, query: within(name) };
+  const local = localPlaceHits(data.query);
+  if (local.length) return local;
+  const typedCountries = input.areas ? countriesStartingWith(name).map(placeFromWorldCountry) : [];
+
+  // A chain or a kind of place, with somewhere to look around: ask OSM's
+  // tags first (see poi-search.ts). A category is answered by its tags
+  // alone; a name is, when the answer is that exact brand or name —
+  // otherwise its nearby look-alikes go first and the geocoder still runs.
+  const anchor = input.at ?? input.center ?? null;
+  const intent = anchor && !input.areas ? poiIntent(name) : null;
+  let nearbyFirst: ParsedPlace[] = [];
+  if (anchor && intent) {
+    const radius = input.at ? RADIUS_NEAR_YOU_M : RADIUS_AROUND_TRIP_M;
+    const found = await overpassPlaces(intent, anchor, radius);
+    if (found.length) {
+      const places = found.slice(0, 10).map(poiToPlace);
+      if (intent.kind === "category") return places;
+      if (found.some((hit) => isExactPoiMatch(hit, intent.text))) {
+        return found
+          .filter((hit) => isExactPoiMatch(hit, intent.text))
+          .slice(0, 10)
+          .map(poiToPlace);
       }
+      nearbyFirst = places.slice(0, 5);
     }
-    // Server-only: the token must not be compiled into the client bundle.
-    const { geoProvider } = await import("@/lib/geo-provider.server");
-    const categoryHere = Boolean(anchor && intent?.kind === "category");
-    // Shared across every variant tried below, nearby and worldwide alike, so
-    // a search that needs several attempts paces them instead of bursting
-    // past the provider's own rate limit.
-    const pace: Pace = { provider: geoProvider(), sent: [] };
-    // Nearby first, and actually bounded — a soft viewbox is ignored for
-    // chains. If the box is empty (Eiffel Tower while standing in Montreal,
-    // or a chain that is not in this city), fall back to the world so
-    // turning location on does not make every other search go blank.
-    // Planning from home, with the trip (or that day of it) on the map: the
-    // answers lean towards it, not held to it — "Sushidokoro Amano" on an
-    // Osaka day offered Berlin, Madrid and Prague first. A trip with a town
-    // already has it in the query (`near`).
-    const lean =
-      !data.at && !input.near && !input.areas && input.center
-        ? { viewbox: viewboxAround(input.center.lat, input.center.lon), bounded: false }
-        : undefined;
-    const area = data.at
-      ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
-      : lean;
-    let hits: NominatimHit[] = [];
-    // "coffee" near you is a kind of place, not a word to look for: with
-    // nothing tagged nearby, the geocoder may look only around the same
-    // point, never worldwide — where "coffee" found a school called "CofE"
-    // in Chester for someone standing in Montreal.
-    if (categoryHere && anchor) {
+  }
+  // Server-only: the token must not be compiled into the client bundle.
+  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const categoryHere = Boolean(anchor && intent?.kind === "category");
+  // Shared across every variant tried below, nearby and worldwide alike, so
+  // a search that needs several attempts paces them instead of bursting
+  // past the provider's own rate limit.
+  const pace: Pace = shared ?? { provider: geoProvider(), sent: [] };
+  // Nearby first, and actually bounded — a soft viewbox is ignored for
+  // chains. If the box is empty (Eiffel Tower while standing in Montreal,
+  // or a chain that is not in this city), fall back to the world so
+  // turning location on does not make every other search go blank.
+  // Planning from home, with the trip (or that day of it) on the map: the
+  // answers lean towards it, not held to it — "Sushidokoro Amano" on an
+  // Osaka day offered Berlin, Madrid and Prague first. A trip with a town
+  // already has it in the query (`near`).
+  const lean =
+    !data.at && !input.near && !input.areas && input.center
+      ? { viewbox: viewboxAround(input.center.lat, input.center.lon), bounded: false }
+      : undefined;
+  const area = data.at ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true } : lean;
+  let hits: NominatimHit[] = [];
+  // "coffee" near you is a kind of place, not a word to look for: with
+  // nothing tagged nearby, the geocoder may look only around the same
+  // point, never worldwide — where "coffee" found a school called "CofE"
+  // in Chester for someone standing in Montreal.
+  if (categoryHere && anchor) {
+    try {
+      const around = { viewbox: viewboxAround(anchor.lat, anchor.lon), bounded: true };
+      hits = await nominatimVariants(data.query, around, pace);
+    } catch {
+      hits = [];
+    }
+    return hits.length ? refineNominatimHits(hits, data.query).map(hitToPlace) : [];
+  }
+  // Search-as-you-type first, where the provider has it (LocationIQ): it
+  // understands a half-typed name and can be held to towns and countries.
+  // Nothing from it, or no such service, and the full search below runs.
+  hits = await autocompleteHits(data.query, pace, {
+    areas: Boolean(input.areas),
+    ...(area ? { area } : {}),
+  });
+  // Near you, a type-ahead that found one or two is not the answer to
+  // "mcdonalds" — there are dozens in a city. The full search, bounded to
+  // around you, runs as well and its branches join the list.
+  if (hits.length > 0 && hits.length < 3 && area && data.at) {
+    try {
+      const more = await nominatimVariants(data.query, area, pace, "venue");
+      const seen = new Set(hits.map((h) => `${h.lat},${h.lon}`));
+      hits = [...hits, ...more.filter((h) => !seen.has(`${h.lat},${h.lon}`))];
+    } catch {
+      // What the type-ahead found still stands.
+    }
+  }
+  if (!hits.length && area) {
+    try {
+      hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");
+    } catch {
+      // A rate limit or outage on the *bounded* attempt must not skip the
+      // worldwide fallback below — only a worldwide failure should reach
+      // the caller as "couldn't reach the map."
+      hits = [];
+    }
+  }
+  if (!hits.length) {
+    try {
+      hits = await nominatimVariants(data.query, undefined, pace, input.areas ? "area" : "venue");
+    } catch (error) {
+      // "Jap" still has Japan to offer when the map service is busy.
+      if (!typedCountries.length) throw error;
+      return typedCountries;
+    }
+  }
+  // Still nothing: the name may be a list, or carry its local-script name in
+  // brackets. One plain request per part, in the same place, first answer
+  // wins. A failure here returns what there is rather than an error: the
+  // full name was already asked for successfully.
+  let asked = data.query;
+  // A venue that is not in the trip's city (a day trip away): the answers
+  // above are the city itself, so set them aside and look in the country,
+  // then anywhere, by the name alone.
+  const venueNear = Boolean(input.near && !input.areas);
+  if (venueNear) hits = dropBareAreas(hits, name);
+  if (!hits.length && venueNear && input.near) {
+    for (const wider of widerQueries(name, input.near)) {
       try {
-        const around = { viewbox: viewboxAround(anchor.lat, anchor.lon), bounded: true };
-        hits = await nominatimVariants(data.query, around, pace);
+        hits = dropBareAreas(await nominatimVariants(wider, undefined, pace, "venue"), name);
       } catch {
-        hits = [];
+        break;
       }
-      return hits.length ? refineNominatimHits(hits, data.query).map(hitToPlace) : [];
-    }
-    // Search-as-you-type first, where the provider has it (LocationIQ): it
-    // understands a half-typed name and can be held to towns and countries.
-    // Nothing from it, or no such service, and the full search below runs.
-    hits = await autocompleteHits(data.query, pace, {
-      areas: Boolean(input.areas),
-      ...(area ? { area } : {}),
-    });
-    // Near you, a type-ahead that found one or two is not the answer to
-    // "mcdonalds" — there are dozens in a city. The full search, bounded to
-    // around you, runs as well and its branches join the list.
-    if (hits.length > 0 && hits.length < 3 && area && data.at) {
-      try {
-        const more = await nominatimVariants(data.query, area, pace, "venue");
-        const seen = new Set(hits.map((h) => `${h.lat},${h.lon}`));
-        hits = [...hits, ...more.filter((h) => !seen.has(`${h.lat},${h.lon}`))];
-      } catch {
-        // What the type-ahead found still stands.
+      if (hits.length) {
+        asked = wider;
+        break;
       }
     }
-    if (!hits.length && area) {
-      try {
-        hits = await nominatimVariants(data.query, area, pace, input.areas ? "area" : "venue");
-      } catch {
-        // A rate limit or outage on the *bounded* attempt must not skip the
-        // worldwide fallback below — only a worldwide failure should reach
-        // the caller as "couldn't reach the map."
-        hits = [];
-      }
-    }
-    if (!hits.length) {
-      try {
-        hits = await nominatimVariants(data.query, undefined, pace, input.areas ? "area" : "venue");
-      } catch (error) {
-        // "Jap" still has Japan to offer when the map service is busy.
-        if (!typedCountries.length) throw error;
-        return typedCountries;
-      }
-    }
-    // Still nothing: the name may be a list, or carry its local-script name in
-    // brackets. One plain request per part, in the same place, first answer
-    // wins. A failure here returns what there is rather than an error: the
-    // full name was already asked for successfully.
-    let asked = data.query;
-    // A venue that is not in the trip's city (a day trip away): the answers
-    // above are the city itself, so set them aside and look in the country,
-    // then anywhere, by the name alone.
-    const venueNear = Boolean(input.near && !input.areas);
-    if (venueNear) hits = dropBareAreas(hits, name);
-    if (!hits.length && venueNear && input.near) {
-      for (const wider of widerQueries(name, input.near)) {
+  }
+  if (!hits.length) {
+    // Each part in the trip's city, then — for a stop away from it — in
+    // the trip's country.
+    const places = (part: string) =>
+      venueNear && input.near ? [within(part), widerQueries(part, input.near)[0]!] : [within(part)];
+    search: for (const part of placeQueryParts(name, 3)) {
+      for (const q of places(part)) {
         try {
-          hits = dropBareAreas(await nominatimVariants(wider, undefined, pace, "venue"), name);
+          hits = dropBareAreas(await nominatim(q, 10, undefined, pace), part);
         } catch {
-          break;
+          break search;
         }
         if (hits.length) {
-          asked = wider;
-          break;
+          asked = q;
+          break search;
         }
       }
     }
-    if (!hits.length) {
-      // Each part in the trip's city, then — for a stop away from it — in
-      // the trip's country.
-      const places = (part: string) =>
-        venueNear && input.near
-          ? [within(part), widerQueries(part, input.near)[0]!]
-          : [within(part)];
-      search: for (const part of placeQueryParts(name, 3)) {
-        for (const q of places(part)) {
-          try {
-            hits = dropBareAreas(await nominatim(q, 10, undefined, pace), part);
-          } catch {
-            break search;
-          }
-          if (hits.length) {
-            asked = q;
-            break search;
-          }
-        }
-      }
-    }
-    const refined = refineNominatimHits(hits, asked);
-    const places = (refined.length ? refined : hits).map(hitToPlace);
-    const mapRanked = fuzzyRank(
-      places,
-      asked,
-      (place) => [place.name, place.address, place.city, place.country],
-      0,
+  }
+  const refined = refineNominatimHits(hits, asked);
+  const places = (refined.length ? refined : hits).map(hitToPlace);
+  const mapRanked = fuzzyRank(
+    places,
+    asked,
+    (place) => [place.name, place.address, place.city, place.country],
+    0,
+  );
+  // Nothing the map found is what was typed: Overture's listings, around
+  // where the search was looking. OpenStreetMap knows many restaurants only
+  // by their local-script name, or not at all — "Sushidokoro Amano" in
+  // Osaka found nothing, or other Amanos.
+  const listed = input.areas
+    ? []
+    : await overturePlaces(
+        name,
+        [...nearbyFirst, ...mapRanked],
+        anchor,
+        input.near ?? null,
+        pace,
+        userId,
+      );
+  // Searching near you: the nearest branch is the answer, whatever order the
+  // map service ranked them in. Sort is stable, so equal distances keep it.
+  const at = data.at;
+  const away = (p: ParsedPlace) =>
+    at && p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
+  const byDistance = (list: ParsedPlace[]) =>
+    at ? [...list].sort((a, b) => away(a) - away(b)) : list;
+  if (typedCountries.length) {
+    const rest = mapRanked.filter(
+      (p) => !typedCountries.some((c) => c.name.toLowerCase() === p.name.toLowerCase()),
     );
-    // Nothing the map found is what was typed: Overture's listings, around
-    // where the search was looking. OpenStreetMap knows many restaurants only
-    // by their local-script name, or not at all — "Sushidokoro Amano" in
-    // Osaka found nothing, or other Amanos.
-    const listed = input.areas
-      ? []
-      : await overturePlaces(
-          name,
-          [...nearbyFirst, ...mapRanked],
-          anchor,
-          input.near ?? null,
-          pace,
-          context.userId,
-        );
-    // Searching near you: the nearest branch is the answer, whatever order the
-    // map service ranked them in. Sort is stable, so equal distances keep it.
-    const at = data.at;
-    const away = (p: ParsedPlace) =>
-      at && p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
-    const byDistance = (list: ParsedPlace[]) =>
-      at ? [...list].sort((a, b) => away(a) - away(b)) : list;
-    if (typedCountries.length) {
-      const rest = mapRanked.filter(
-        (p) => !typedCountries.some((c) => c.name.toLowerCase() === p.name.toLowerCase()),
-      );
-      return [...typedCountries, ...rest].slice(0, 10);
-    }
-    const mapPart = nearbyFirst.length
-      ? mergeNearbyFirst(nearbyFirst, mapRanked)
-      : byDistance(mapRanked);
-    if (!listed.length) return mapPart;
-    // What is called what was typed goes first, nearest first; the map's
-    // look-alikes after it, less any that are the same place.
-    const sameSpot = (p: ParsedPlace) =>
-      p.lat != null &&
-      p.lon != null &&
-      listed.some(
-        (o) => haversine({ lat: o.lat!, lon: o.lon! }, { lat: p.lat!, lon: p.lon! }) < SAME_PLACE_M,
-      );
-    return [...byDistance(listed), ...mapPart.filter((p) => !sameSpot(p))].slice(0, 10);
-  });
+    return [...typedCountries, ...rest].slice(0, 10);
+  }
+  const mapPart = nearbyFirst.length
+    ? mergeNearbyFirst(nearbyFirst, mapRanked)
+    : byDistance(mapRanked);
+  if (!listed.length) return mapPart;
+  // What is called what was typed goes first, nearest first; the map's
+  // look-alikes after it, less any that are the same place.
+  const sameSpot = (p: ParsedPlace) =>
+    p.lat != null &&
+    p.lon != null &&
+    listed.some(
+      (o) => haversine({ lat: o.lat!, lon: o.lon! }, { lat: p.lat!, lon: p.lon! }) < SAME_PLACE_M,
+    );
+  return [...byDistance(listed), ...mapPart.filter((p) => !sameSpot(p))].slice(0, 10);
+}
 
 /**
  * Overture's places named like `name`, when nothing the map found is.

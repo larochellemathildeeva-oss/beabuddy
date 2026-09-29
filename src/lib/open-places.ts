@@ -17,7 +17,7 @@
  */
 
 import { distanceKm } from "./geocode-plan.ts";
-import { foldAccents } from "./fuzzy.ts";
+import { canonicalSpelling } from "./fuzzy.ts";
 import { isNoiseWord, scoreMatch } from "./match-confidence.ts";
 
 export const OPEN_PLACES_ENDPOINT = "https://api.openplacesapi.com/v1/places";
@@ -179,8 +179,8 @@ export function echoesName(
 export function foundWhole(title: string, place: Parameters<typeof echoesName>[1]): boolean {
   if (!echoesName(title, place)) return false;
   const label = place.label || [place.name, place.address].filter(Boolean).join(" ");
-  const compact = foldAccents(label.toLowerCase()).replace(/[^\p{L}\p{N}]+/gu, "");
-  return foldAccents(title.toLowerCase())
+  const compact = canonicalSpelling(label.toLowerCase()).replace(/[^\p{L}\p{N}]+/gu, "");
+  return canonicalSpelling(title.toLowerCase())
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word.length > 1 && !isNoiseWord(word))
     .every((word) => compact.includes(word));
