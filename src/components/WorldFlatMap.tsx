@@ -19,19 +19,23 @@ const H = 188;
 /**
  * The World tab's Stats view: the same places as the globe, laid flat so the
  * whole world is seen at once. Countries you have been to are shaded, your
- * provinces or states filled, and each city gets a pin. Not interactive —
+ * provinces or states filled, each city gets a pin and each country a ring,
+ * as on the globe. Not interactive —
  * the globe on the Map tab is the one to explore.
  */
 export function WorldFlatMap({
   pins,
   visitedCountries,
   regions,
+  countryMarks,
 }: {
   pins: Pin[];
   visitedCountries: ReadonlySet<string>;
   regions?: { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> }[];
+  /** Every country you have been to, as the globe marks it. */
+  countryMarks?: { key: string; name: string; lat: number; lon: number }[] | undefined;
 }) {
-  const { countries, regionPaths, points } = useMemo(() => {
+  const { countries, regionPaths, points, rings } = useMemo(() => {
     const projection = geoNaturalEarth1().fitExtent(
       [
         [4, 4],
@@ -54,8 +58,14 @@ export function WorldFlatMap({
           return p ? { id: pin.id, name: pin.city || pin.name, x: p[0], y: p[1] } : null;
         })
         .filter((p): p is { id: string; name: string; x: number; y: number } => p !== null),
+      rings: (countryMarks ?? [])
+        .map((mark) => {
+          const p = projection([mark.lon, mark.lat]);
+          return p ? { key: mark.key, name: mark.name, x: p[0], y: p[1] } : null;
+        })
+        .filter((p): p is { key: string; name: string; x: number; y: number } => p !== null),
     };
-  }, [pins, visitedCountries, regions]);
+  }, [pins, visitedCountries, regions, countryMarks]);
 
   return (
     <svg
@@ -81,6 +91,19 @@ export function WorldFlatMap({
       {regionPaths.map((r) =>
         r.d ? <path key={r.id} d={r.d} fill="var(--visited)" opacity={0.9} /> : null,
       )}
+      {rings.map((r) => (
+        <circle
+          key={`country-${r.key}`}
+          cx={r.x}
+          cy={r.y}
+          r={2.4}
+          fill="var(--card)"
+          stroke="var(--visited)"
+          strokeWidth={1.2}
+        >
+          <title>{r.name}</title>
+        </circle>
+      ))}
       {points.map((p) => (
         <g key={p.id} transform={`translate(${p.x} ${p.y})`}>
           <title>{p.name}</title>

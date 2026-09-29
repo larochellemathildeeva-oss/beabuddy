@@ -864,6 +864,7 @@ function WorldPage() {
                 pins={globeCities}
                 visitedCountries={shadedCountries}
                 regions={provinces}
+                countryMarks={namedCountries}
               />
               <button
                 type="button"

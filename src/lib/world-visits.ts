@@ -19,6 +19,7 @@ import type { Pin } from "@/data/atlas";
 import { countryCode, countryDisplayName, countryKey } from "./country-names.ts";
 import { foldAccents } from "./fuzzy.ts";
 import { haversine } from "./geo.ts";
+import { WORLD_COUNTRIES } from "./world-countries.ts";
 
 /** A pin that records somewhere you have been. */
 export function isVisitedPin(pin: Pick<Pin, "type" | "visited">): boolean {
@@ -386,11 +387,21 @@ export function provinceFilesFor(
 
 export type CountryMark = { key: string; name: string; lat: number; lon: number };
 
+const realPoint = (lat: number, lon: number) =>
+  Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
+
 /**
- * Where to name a country on the globe: every country you have been to that
- * has no city dot of its own — one added by hand as "Iceland", say. Its
- * shading alone was too quiet to find, especially a small country, so it
- * gets a marker and its name at the point it was saved with.
+ * Where to name a country on the globe: every country you have been to.
+ *
+ * Only countries with no city dot used to get one — one added by hand as
+ * "Iceland", say — so France added as a country was named and Canada, full
+ * of city dots, was not, which read as Canada missing. Now each has its
+ * ring and name.
+ *
+ * A country added by hand is marked where it was saved. One with cities is
+ * marked at its middle (from the country list), so its ring does not sit on
+ * a city dot; failing that, where it was added by hand, else the middle of
+ * its cities. A country saved with no real point (0, 0) takes its middle.
  */
 export function countryMarks(
   pins: readonly Pin[],
@@ -398,16 +409,21 @@ export function countryMarks(
 ): CountryMark[] {
   const marks: CountryMark[] = [];
   for (const visit of visits) {
-    if (visit.cities.length > 0) continue;
-    const pin = pins.find(
-      (p) =>
-        isVisitedPin(p) &&
-        countryKey(pinCountry(p)) === visit.key &&
-        Number.isFinite(p.lat) &&
-        Number.isFinite(p.lon) &&
-        !(p.lat === 0 && p.lon === 0),
+    const saved = pins.filter(
+      (p) => isVisitedPin(p) && countryKey(pinCountry(p)) === visit.key && realPoint(p.lat, p.lon),
     );
-    if (pin) marks.push({ key: visit.key, name: visit.country, lat: pin.lat, lon: pin.lon });
+    const middle = WORLD_COUNTRIES.find((c) => countryKey(c.name) === visit.key);
+    const byHand = saved.find((p) => isCountryOnly(p));
+    const n = visit.cities.length;
+    const point =
+      n === 0
+        ? (saved[0] ?? middle)
+        : (middle ??
+          byHand ?? {
+            lat: visit.cities.reduce((sum, c) => sum + c.lat, 0) / n,
+            lon: visit.cities.reduce((sum, c) => sum + c.lon, 0) / n,
+          });
+    if (point) marks.push({ key: visit.key, name: visit.country, lat: point.lat, lon: point.lon });
   }
   return marks;
 }

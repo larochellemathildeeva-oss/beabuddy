@@ -122,8 +122,7 @@ export function Globe({
   shadePinCountries?: boolean | undefined;
   /**
    * Countries to name on the globe, with a ring marker: the World tab's
-   * countries you have been to with no city dot of their own, whose shading
-   * alone was too quiet to find.
+   * countries you have been to, each one, whether or not it has city dots.
    */
   countryMarks?: { key: string; name: string; lat: number; lon: number }[] | undefined;
   selectedId?: string | null | undefined;
@@ -594,8 +593,8 @@ export function Globe({
               </g>
             );
           })}
-          {/* Countries with no city of their own: a ring, not a dot, and the
-              name in small capitals, so it never reads as a city. */}
+          {/* Countries you have been to: a ring, not a dot, and the name in
+              small capitals, so it never reads as a city. */}
           {countryLabels.map(({ mark, x, y, side }) => (
             <g key={`country-${mark.key}`} className="pointer-events-none">
               <circle
