@@ -1,23 +1,23 @@
 {
- "note": "Where each stop really is. 'near' within 'km', or a saved pin's label must match 'label'. Reviewed by hand from each pin's name and ward on 2026-09-29; RYŌ-SHŌ, Men-ya Inoichi and Rikuro's were saved wrong then.",
+ "note": "Where each stop really is: 'near' within 'km', or a saved pin's label must match 'label'. Sights with an English Wikipedia article use its coordinates; the rest were reviewed by hand from each pin's name and ward (2026-09-29). RYŌ-SHŌ, Men-ya Inoichi and Rikuro's were saved wrong when this was written.",
  "stops": {
   "0": {
    "title": "Arrival at Kansai International Airport",
    "near": [
-    34.4342,
-    135.22252
+    34.43056,
+    135.23028
    ],
-   "km": 0.35,
-   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+   "km": 2.5,
+   "why": "Wikipedia: Kansai International Airport (an island ~4 km long)"
   },
   "1": {
    "title": "Train from Kansai International Airport to Kyoto Station",
    "near": [
-    34.4342,
-    135.22252
+    34.43056,
+    135.23028
    ],
-   "km": 0.35,
-   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+   "km": 2.5,
+   "why": "Wikipedia: Kansai International Airport (an island ~4 km long)"
   },
   "2": {
    "title": "Mitsui Garden Hotel Kyoto Kawaramachi Jokyo-ji",
@@ -30,20 +30,20 @@
   "4": {
    "title": "Fushimi Inari Taisha",
    "near": [
-    34.96752,
-    135.77971
+    34.96722,
+    135.77278
    ],
-   "km": 0.35,
-   "why": "reviewed: Fushimi Inari-taisha, Fushimi Ward, Kyoto, Kyoto Prefecture, 612-0882,"
+   "km": 0.8,
+   "why": "Wikipedia: Fushimi Inari-taisha"
   },
   "5": {
    "title": "Nishiki Market",
    "near": [
-    35.00502,
-    135.76557
+    35.00503,
+    135.76614
    ],
-   "km": 0.35,
-   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+   "km": 0.8,
+   "why": "Wikipedia: Nishiki Market"
   },
   "6": {
    "title": "Miki Keiran",
@@ -114,20 +114,20 @@
   "15": {
    "title": "Yasaka Shrine",
    "near": [
-    35.0036,
-    135.77826
+    35.00361,
+    135.77861
    ],
    "km": 0.35,
-   "why": "reviewed: Yasaka Shrine, Higashioji Street, Giommachi-Kitagawa, 辰巳町, Higashiyama"
+   "why": "Wikipedia: Yasaka Shrine"
   },
   "16": {
    "title": "Gion",
    "near": [
-    35.00469,
-    135.7784
+    35.0035,
+    135.77505
    ],
-   "km": 0.35,
-   "why": "reviewed: Gion, Higashiyama Ward, Kyoto, Kyoto Prefecture, Japan"
+   "km": 0.8,
+   "why": "Wikipedia: Gion"
   },
   "17": {
    "title": "Hanamikoji Street",
@@ -141,11 +141,11 @@
   "18": {
    "title": "Kennin-ji",
    "near": [
-    35.00117,
-    135.77404
+    35.00099,
+    135.77366
    ],
    "km": 0.35,
-   "why": "reviewed: Kennin Ji, Donguri Street, Giommachi-Minamigawa, 辰巳町, Higashiyama Ward"
+   "why": "Wikipedia: Kennin-ji"
   },
   "19": {
    "title": "Shinbashi-dori",
@@ -177,20 +177,20 @@
   "23": {
    "title": "Kinkaku-ji",
    "near": [
-    35.03953,
-    135.72954
+    35.0395,
+    135.7285
    ],
    "km": 0.35,
-   "why": "reviewed: Kinkaku-ji, Kinkakuji-chō, Kita Ward, Kyoto, Kyoto Prefecture, 603-836"
+   "why": "Wikipedia: Kinkaku-ji"
   },
   "24": {
    "title": "Golden Pavilion",
    "near": [
-    35.03953,
-    135.72954
+    35.0395,
+    135.7285
    ],
    "km": 0.35,
-   "why": "reviewed: Kinkaku-ji, Kinkakuji-chō, Kita Ward, Kyoto, Kyoto Prefecture, 603-836"
+   "why": "Wikipedia: Kinkaku-ji"
   },
   "25": {
    "title": "Kyōko-chi / Mirror Pond",
@@ -213,11 +213,11 @@
   "27": {
    "title": "Ryōan-ji",
    "near": [
-    35.03346,
-    135.71809
+    35.03444,
+    135.71833
    ],
    "km": 0.35,
-   "why": "reviewed: Ryōan-ji, Kitsuji street, Hirano-Kamiyanagicho, Ukyō Ward, Kyoto, Kyot"
+   "why": "Wikipedia: Ryōan-ji"
   },
   "28": {
    "title": "Hōjō",
@@ -244,20 +244,20 @@
   "31": {
    "title": "Arashiyama Bamboo Grove",
    "near": [
-    35.01674,
-    135.67115
+    35.0168,
+    135.6716
    ],
-   "km": 0.35,
-   "why": "reviewed: Arashiyama Bamboo Grove, Ukyō Ward, Kyoto, Kyoto Prefecture, 616-0000,"
+   "km": 0.8,
+   "why": "Wikipedia: Sagano Bamboo Forest"
   },
   "32": {
    "title": "Tenryū-ji",
    "near": [
-    35.01622,
-    135.67294
+    35.01596,
+    135.67377
    ],
    "km": 0.35,
-   "why": "reviewed: Tenryū Temple, Saga Arashiyama Station Line, Sagatenryuji-Kitatsukurim"
+   "why": "Wikipedia: Tenryū-ji"
   },
   "33": {
    "title": "Sōgenchi Garden",
@@ -271,11 +271,11 @@
   "34": {
    "title": "Togetsukyō Bridge",
    "near": [
-    35.01863,
-    135.68124
+    35.0129,
+    135.6777
    ],
    "km": 0.35,
-   "why": "reviewed: 渡月橋 / Togetsukyo Bridge, Arashiyama, Kyoto, 京都市, 京都市右京区"
+   "why": "Togetsukyō over the Katsura River, below Tenryū-ji (Wikipedia's article; its API was rate-limited when this was written)"
   },
   "35": {
    "title": "Arashiyama streets",
@@ -289,11 +289,11 @@
   "36": {
    "title": "Pontochō Alley",
    "near": [
-    35.00606,
-    135.77108
+    35.00797,
+    135.77111
    ],
-   "km": 0.35,
-   "why": "reviewed: Pontocho Alley, Shimokorikicho, 京都市東山区"
+   "km": 0.8,
+   "why": "Wikipedia: Pontochō"
   },
   "37": {
    "title": "Men-ya Inoichi",
@@ -311,11 +311,11 @@
   "39": {
    "title": "Kiyomizu-dera",
    "near": [
-    34.9943,
-    135.78444
+    34.995,
+    135.785
    ],
-   "km": 0.35,
-   "why": "reviewed: Kiyomizu-dera, Kiyomizu Slope, Kiyomizu 1-chōme, 辰巳町, Higashiyama Ward"
+   "km": 0.8,
+   "why": "Wikipedia: Kiyomizu-dera"
   },
   "40": {
    "title": "Kiyomizu-zaka",
@@ -365,29 +365,29 @@
   "45": {
    "title": "Kōdai-ji",
    "near": [
-    35.00051,
-    135.77996
+    35.00076,
+    135.78111
    ],
    "km": 0.35,
-   "why": "reviewed: Kodai-ji, Daidokoro Slope, Shimogawara-chō, 辰巳町, Higashiyama Ward, Kyo"
+   "why": "Wikipedia: Kōdai-ji"
   },
   "46": {
    "title": "Maruyama Park",
    "near": [
-    35.00376,
-    135.78148
+    35.00333,
+    135.78139
    ],
-   "km": 0.35,
-   "why": "reviewed: Maruyama Park, Higashiyama Ward, Kyoto, Kyoto Prefecture, Japan"
+   "km": 0.8,
+   "why": "Wikipedia: Maruyama Park"
   },
   "47": {
    "title": "Yasaka Shrine",
    "near": [
-    35.0036,
-    135.77826
+    35.00361,
+    135.77861
    ],
    "km": 0.35,
-   "why": "reviewed: Yasaka Shrine, Higashioji Street, Giommachi-Kitagawa, 辰巳町, Higashiyama"
+   "why": "Wikipedia: Yasaka Shrine"
   },
   "48": {
    "title": "Lunch in Gion",
@@ -400,11 +400,11 @@
   "50": {
    "title": "Train from Kyoto Station to Shin-Osaka Station",
    "near": [
-    34.98664,
-    135.75847
+    34.98556,
+    135.75861
    ],
    "km": 0.35,
-   "why": "reviewed: Kyoto Station, Shio-koji dori, Higashishiokojicho, Shimogyo Ward, Kyot"
+   "why": "Wikipedia: Kyoto Station"
   },
   "51": {
    "title": "Hotel Agora Regency Osaka Sakai",
@@ -431,11 +431,11 @@
   "54": {
    "title": "Dotonbori",
    "near": [
-    34.66903,
-    135.50157
+    34.66871,
+    135.50131
    ],
-   "km": 0.35,
-   "why": "reviewed: Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Prefecture, 542-0071, "
+   "km": 0.8,
+   "why": "Wikipedia: Dōtonbori"
   },
   "55": {
    "title": "Glico Running Man",
@@ -503,20 +503,20 @@
   "62": {
    "title": "Hozenji Temple",
    "near": [
-    34.66802,
-    135.50242
+    34.66787,
+    135.50261
    ],
    "km": 0.35,
-   "why": "reviewed: Hozenji Temple, Hōzen-ji Sandō, Nanba 1-chōme, Chūō Ward, Osaka, Osaka"
+   "why": "Wikipedia: Hōzen-ji (Osaka)"
   },
   "63": {
    "title": "Dotonbori",
    "near": [
-    34.66903,
-    135.50157
+    34.66871,
+    135.50131
    ],
-   "km": 0.35,
-   "why": "reviewed: Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Prefecture, 542-0071, "
+   "km": 0.8,
+   "why": "Wikipedia: Dōtonbori"
   },
   "64": {
    "title": "HOKKYOKUSEI SHINSAIBASHI",
@@ -539,11 +539,11 @@
   "66": {
    "title": "Amerikamura",
    "near": [
-    34.67201,
-    135.4988
+    34.67209,
+    135.49796
    ],
-   "km": 0.35,
-   "why": "reviewed: American Village, Suomachi-dori, Nishi-Shinsaibashi 1-chome, Chūō Ward"
+   "km": 0.8,
+   "why": "Wikipedia: Amerikamura"
   },
   "67": {
    "title": "Triangle Park / Sankaku Kōen",
@@ -574,20 +574,20 @@
   "71": {
    "title": "Osaka Castle Park",
    "near": [
-    34.68653,
-    135.52725
+    34.68738,
+    135.52584
    ],
-   "km": 0.35,
-   "why": "reviewed: Osaka Castle Park, Osaka, Osaka Prefecture, 540-0002, Japan"
+   "km": 0.8,
+   "why": "Wikipedia: Osaka Castle Park"
   },
   "72": {
    "title": "Osaka Castle",
    "near": [
-    34.68737,
-    135.52586
+    34.68722,
+    135.52583
    ],
    "km": 0.35,
-   "why": "reviewed: Osaka Castle, 1, Osakajo, Chūō Ward, Osaka, Osaka Prefecture, 540-0002"
+   "why": "Wikipedia: Osaka Castle"
   },
   "73": {
    "title": "Kyobashi",
@@ -641,29 +641,29 @@
   "79": {
    "title": "Atomic Bomb Dome",
    "near": [
-    34.39549,
-    132.45353
+    34.39556,
+    132.45361
    ],
    "km": 0.35,
-   "why": "reviewed: Atomic Bomb Dome, 1-10 Otemachi, 広島市中区"
+   "why": "Wikipedia: Hiroshima Peace Memorial"
   },
   "80": {
    "title": "Hiroshima Peace Memorial Park",
    "near": [
-    34.39317,
-    132.4523
+    34.3927,
+    132.4524
    ],
-   "km": 0.35,
-   "why": "reviewed: Hiroshima Peace Memorial Park, Naka Ward, Hiroshima, Hiroshima Prefect"
+   "km": 0.8,
+   "why": "Wikipedia: Hiroshima Peace Memorial Park"
   },
   "81": {
    "title": "Hiroshima Peace Memorial Museum",
    "near": [
-    34.39181,
-    132.4521
+    34.39167,
+    132.45194
    ],
    "km": 0.35,
-   "why": "reviewed: Hiroshima Peace Memorial Museum Main Building, Peace Boulevard, Nakaji"
+   "why": "Wikipedia: Hiroshima Peace Memorial Museum"
   },
   "82": {
    "title": "Ferry from Motoyasubashi Pier to Miyajima Pier",
@@ -707,11 +707,11 @@
   "88": {
    "title": "Daishō-in",
    "near": [
-    34.29173,
-    132.31858
+    34.29195,
+    132.31848
    ],
    "km": 0.35,
-   "why": "reviewed: Daishō Temple, 萬福橋, Miyajima, Hatsukaichi, Hiroshima Prefecture, 739-0"
+   "why": "Wikipedia: Daishō-in"
   },
   "89": {
    "title": "FUJIIYA",
@@ -746,11 +746,11 @@
   "94": {
    "title": "Train from Hiroshima Station to Shin-Osaka Station",
    "near": [
-    34.39783,
-    132.47558
+    34.39833,
+    132.47583
    ],
    "km": 0.35,
-   "why": "reviewed: Hiroshima Station, Hiroshima Station Pedestrian Walkway, Enkobashicho,"
+   "why": "Wikipedia: Hiroshima Station"
   },
   "95": {
    "title": "Kuromon Ichiba Market",
@@ -764,29 +764,29 @@
   "96": {
    "title": "Shitennō-ji",
    "near": [
-    34.65472,
-    135.5168
+    34.6539,
+    135.51645
    ],
    "km": 0.35,
-   "why": "reviewed: Shitennoji, 18, Shitennoji 1-chome, Tennōji Ward, Osaka, Osaka Prefect"
+   "why": "Wikipedia: Shitennō-ji"
   },
   "97": {
    "title": "Tsūtenkaku",
    "near": [
-    34.65254,
-    135.50631
+    34.65222,
+    135.50611
    ],
    "km": 0.35,
-   "why": "reviewed: Tsūtenkaku, 6, Shinsekai Market, Ebisu-higashi 1-chome, Naniwa Ward, O"
+   "why": "Wikipedia: Tsūtenkaku"
   },
   "98": {
    "title": "Shinsekai",
    "near": [
-    34.65209,
-    135.50619
+    34.65222,
+    135.50611
    ],
-   "km": 0.35,
-   "why": "reviewed: Shinsekai, Shinsekai-hondori Higashi-nakano cho, Ebisu-higashi 2-chome"
+   "km": 0.8,
+   "why": "Wikipedia: Shinsekai"
   },
   "99": {
    "title": "Janjan Yokocho",
@@ -804,11 +804,11 @@
   "101": {
    "title": "Den Den Town",
    "near": [
-    34.65922,
-    135.50582
+    34.65972,
+    135.50583
    ],
-   "km": 0.35,
-   "why": "reviewed: Den Den Town, Nipponbashi 4, Naniwa Ward, Osaka, Osaka Prefecture, 556"
+   "km": 0.8,
+   "why": "Wikipedia: Den Den Town"
   },
   "102": {
    "title": "mookEN",
@@ -829,38 +829,38 @@
   "106": {
    "title": "Train from Osaka Station to Himeji Station",
    "near": [
-    34.70251,
-    135.49618
+    34.7025,
+    135.49611
    ],
    "km": 0.35,
-   "why": "reviewed: Osaka Station, Mizu-no-michi Path, Umeda 3-chome, Kita Ward, Osaka, Os"
+   "why": "Wikipedia: Ōsaka Station"
   },
   "107": {
    "title": "Himeji Castle",
    "near": [
-    34.83933,
-    134.69402
+    34.83944,
+    134.69389
    ],
-   "km": 0.35,
-   "why": "reviewed: Himeji Castle, 68, 女坂, Honmachi, Himeji, Hyogo Prefecture, 670-0012, J"
+   "km": 0.8,
+   "why": "Wikipedia: Himeji Castle"
   },
   "108": {
    "title": "Kōko-en Garden",
    "near": [
-    34.83706,
-    134.69041
+    34.83806,
+    134.68972
    ],
-   "km": 0.35,
-   "why": "reviewed: Koko-en Garden, Himeji City Main Road No. 5, Tatsunomachi 1-chome, Zai"
+   "km": 0.8,
+   "why": "Wikipedia: Kōko-en"
   },
   "109": {
    "title": "Train from Himeji Station to Sannomiya Station",
    "near": [
-    34.8264,
-    134.6908
+    34.82764,
+    134.69085
    ],
    "km": 0.35,
-   "why": "reviewed: Himeji, 東側自由通路, Hojoguchi 1-chome, Minamiekimaecho, Himeji, Hyogo Pref"
+   "why": "Wikipedia: Himeji Station"
   },
   "110": {
    "title": "KOBE BEEF KISSHOKICHI SANKITA STREET",
@@ -869,11 +869,11 @@
   "111": {
    "title": "Ikuta Jinja",
    "near": [
-    34.69461,
-    135.19062
+    34.695,
+    135.19056
    ],
    "km": 0.35,
-   "why": "reviewed: Ikuta Shrine, 生田北７９号線, Shimoyamatedori 2-chome, Chuo Ward, Kobe, Hyogo"
+   "why": "Wikipedia: Ikuta Shrine"
   },
   "112": {
    "title": "Rōshōki",
@@ -914,11 +914,11 @@
   "116": {
    "title": "Meriken Park",
    "near": [
-    34.68331,
-    135.18932
+    34.68167,
+    135.18833
    ],
-   "km": 0.35,
-   "why": "reviewed: Meriken Park, Chuo Ward, Kobe, Hyogo Prefecture, 650-0042, Japan"
+   "km": 0.8,
+   "why": "Wikipedia: Meriken Park"
   },
   "117": {
    "title": "Kobe Harborland",
@@ -959,11 +959,11 @@
   "121": {
    "title": "Umeda Sky Building",
    "near": [
-    34.70529,
-    135.49053
+    34.70528,
+    135.48972
    ],
    "km": 0.35,
-   "why": "reviewed: Umeda Sky Building, Osaka Itami Line, Ōyodo-Naka 1, Kita Ward, Osaka, "
+   "why": "Wikipedia: Umeda Sky Building"
   },
   "122": {
    "title": "Grand Front Osaka",
@@ -986,11 +986,11 @@
   "124": {
    "title": "Nakanoshima Park",
    "near": [
-    34.6924,
-    135.50776
+    34.69306,
+    135.50643
    ],
-   "km": 0.35,
-   "why": "reviewed: Nakanoshima Park, Kita Ward, Osaka, Osaka Prefecture, Japan"
+   "km": 0.8,
+   "why": "Wikipedia: Nakanoshima Park"
   },
   "125": {
    "title": "Citadines Namba Osaka",
@@ -1004,11 +1004,11 @@
   "126": {
    "title": "Flight KIX to Vancouver",
    "near": [
-    34.4342,
-    135.22252
+    34.43056,
+    135.23028
    ],
-   "km": 0.35,
-   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+   "km": 2.5,
+   "why": "Wikipedia: Kansai International Airport (an island ~4 km long)"
   }
  }
 }

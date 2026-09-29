@@ -1,7 +1,7 @@
 {
  "counts": {
-  "savedRight": 97,
-  "savedWrong": 3,
+  "savedRight": 96,
+  "savedWrong": 4,
   "savedUnverified": 6,
   "flagged": 3,
   "notPlaced": 18
@@ -174,7 +174,7 @@
   },
   "34": {
    "title": "Togetsukyō Bridge",
-   "outcome": "saved right",
+   "outcome": "saved wrong",
    "label": "渡月橋 / Togetsukyo Bridge, Arashiyama, Kyoto, 京都市, 京都市右京区"
   },
   "35": {
