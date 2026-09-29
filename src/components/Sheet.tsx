@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "@/components/icons";
+import { ArrowLeft, X } from "@/components/icons";
 
 /** How far the sheet must be pulled down before letting go closes it. */
 const PULL_CLOSE_PX = 90;
@@ -26,6 +26,7 @@ export function Sheet({
   title,
   hint,
   icon,
+  onBack,
   actions,
   width = "md",
   showClose = true,
@@ -40,6 +41,8 @@ export function Sheet({
   hint?: ReactNode;
   /** A mark before the title, for the planner's logo and its like. */
   icon?: ReactNode;
+  /** A back arrow at the header's left, for a sheet with screens inside it. */
+  onBack?: (() => void) | undefined;
   /** Header actions, right of the title and left of the close button. */
   actions?: ReactNode;
   width?: "sm" | "md";
@@ -119,6 +122,16 @@ export function Sheet({
             <span className="h-1 w-10 rounded-full bg-border" />
           </div>
           <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                aria-label="Back"
+                className="grid size-8 shrink-0 place-items-center self-center rounded-full border border-border text-muted-foreground"
+              >
+                <ArrowLeft className="size-4" aria-hidden />
+              </button>
+            )}
             {icon && <div className="shrink-0">{icon}</div>}
             <div className="min-w-0 flex-1">
               <p className="font-display text-[19px] leading-tight text-foreground">{title}</p>

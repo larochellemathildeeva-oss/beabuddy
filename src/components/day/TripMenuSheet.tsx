@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Car,
   ChevronRight,
-  CircleCheck,
   Copy,
   FileText,
   MapIcon,
@@ -15,6 +14,7 @@ import {
   Pencil,
   Plane,
   Settings2,
+  ShieldCheck,
   Sparkles,
   Ticket,
   Users,
@@ -46,7 +46,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   packing: "Packing",
   cities: "Destinations",
   customize: "Customize trip",
-  checkup: "Trip Checkup",
+  checkup: "Trip checkup",
   again: "Do it again",
   preferences: "Just for this trip",
 };
@@ -73,9 +73,9 @@ export function TripMenuSheet({
   citiesCount,
   offlineNote,
   budgetOn,
+  checkupNote,
   onPrint,
   onCalendar,
-  checkupCount,
   preferencesCount,
   footer,
   children,
@@ -96,12 +96,12 @@ export function TripMenuSheet({
   /** "Saved 2 days ago", or empty. */
   offlineNote: string;
   budgetOn: boolean;
+  /** "3 to check" or "All clear"; the card is hidden when empty (nothing planned). */
+  checkupNote: string;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
   /** Download the trip as a calendar file. */
   onCalendar?: (() => void) | undefined;
-  /** How many things Trip Checkup found, for its pill. */
-  checkupCount?: number | undefined;
   /** How many "just for this trip" preferences are set. */
   preferencesCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
@@ -211,14 +211,18 @@ export function TripMenuSheet({
     },
   ];
   const tools = [
-    {
-      key: "checkup",
-      icon: CircleCheck,
-      title: "Trip Checkup",
-      note: "Mistakes worth catching before you go",
-      pill: checkupCount ? `${checkupCount} to check` : checkupCount === 0 ? "All good" : "",
-      onClick: () => onSection("checkup"),
-    },
+    ...(checkupNote
+      ? [
+          {
+            key: "checkup",
+            icon: ShieldCheck,
+            title: "Trip checkup",
+            note: "Clashes, tight gaps, missing bookings",
+            pill: checkupNote,
+            onClick: () => onSection("checkup"),
+          },
+        ]
+      : []),
     {
       key: "offline",
       icon: MapIcon,

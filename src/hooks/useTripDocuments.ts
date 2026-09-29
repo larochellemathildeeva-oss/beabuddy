@@ -199,10 +199,13 @@ export async function documentFileBlob(path: string): Promise<Blob> {
 export function useTripEvents(tripId: string | null) {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [loading, setLoading] = useState(false);
+  /** The trip `events` belong to: until it equals `tripId`, they are another trip's. */
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!tripId) {
       setEvents([]);
+      setLoadedFor(null);
       return;
     }
     let cancelled = false;
@@ -216,6 +219,7 @@ export function useTripEvents(tripId: string | null) {
         .order("position", { ascending: true });
       if (cancelled) return;
       setEvents((data ?? []) as EventOption[]);
+      setLoadedFor(tripId);
       setLoading(false);
     })();
     return () => {
@@ -223,7 +227,7 @@ export function useTripEvents(tripId: string | null) {
     };
   }, [tripId]);
 
-  return { events, loading };
+  return { events, loading, loadedFor };
 }
 
 /**

@@ -19,17 +19,25 @@ locally first.
 
 ## App version (Canner)
 
-`package.json` `version` is the number shown in the app header. Bump it on
-every push that will deploy to Canner.
+`package.json` `version` is the number shown in the app header. **Do not
+change it in a branch.** Every branch that did conflicted with every other on
+that one line. After each merge, `.github/workflows/version.yml` bumps it on
+`main` and commits it back, so the deploy shows the new number.
 
-| Change | Command | Example |
+The step is chosen by a label on the pull request, set before it is merged:
+
+| Change | Label | Example |
 | --- | --- | --- |
-| Almost every change: fixes, improvements, small new tools | `npm run version:fix` | 1.0.0 → 1.0.1 |
-| A big feature | `npm run version:enhance` | 1.0.0 → 1.1.0 |
-| A major overhaul, only when asked | `npm run version:feature` | 1.0.0 → 2.0.0 |
+| Almost every change: fixes, improvements, small new tools | none | 1.0.0 → 1.0.1 |
+| A big feature | `version:enhance` | 1.0.0 → 1.1.0 |
+| A major overhaul, only when the owner asks | `version:feature` | 1.0.0 → 2.0.0 |
+| No bump (docs, CI only) | `version:skip` | stays 1.0.0 |
 
-Default to the patch step. Move the middle number only for a big feature, and
-never the first unless the owner asks.
+Default to no label. When you open a pull request for a big feature, add
+`version:enhance` to it and say so in its description. A pull request that
+changes the version itself is left as it is, not bumped again. The
+`version:fix` / `version:enhance` / `version:feature` scripts stay for bumping
+by hand on `main`, which is rarely needed.
 
 ## Database
 
@@ -261,6 +269,18 @@ its own. Google bills each search, and its terms ask that a grounded answer is
 shown with its Search Suggestions, unaltered, and its sources:
 `SearchGroundingNote` does that under the plan. `GEMINI_SEARCH_GROUNDING=off`
 turns it off. A failed check never stops the plan.
+
+## Reading a booking file
+
+In Trip documents, a new PDF or photo can be read with **"Fill in from this
+file"** (`AssignSheet` in `DocumentSheets.tsx`). Only when tapped: the file
+goes to Gemini (`document-read.server.ts`, at most `DOCUMENT_READS_PER_HOUR`
+per traveller), and the answer is cleaned in `document-read.ts` (pure and
+tested): capped to the columns, card numbers (Luhn-checked, so 13-digit
+e-ticket numbers stay) dropped, and its date used to pick the trip
+(`tripForDate`) and stop (`stopForRead`) only when the choice is clear. It
+fills the form, marks each field "from file" until it is edited, and saves
+nothing. Other file types (.pkpass, .eml, .docx) do not offer it.
 
 ## World globe data
 

@@ -1,126 +1,78 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, CircleCheck, Info } from "@/components/icons";
-import { supabase } from "@/integrations/supabase/client";
-import {
-  checkupHeadline,
-  tripCheckup,
-  type CheckupDocument,
-  type CheckupIdDocument,
-  type CheckupItem,
-} from "@/lib/trip-checkup";
+import { ChevronRight, Info, ShieldCheck } from "@/components/icons";
+import { checkupHeadline, type CheckupFinding } from "@/lib/trip-checkup";
 
 /**
- * Trip Checkup, in the trip menu: everything Béa found worth a second look,
- * the things that can spoil a day first. A finding about a stop or a day
- * opens it on the timeline.
- *
- * Passports and visas are read from Protected by kind, name and expiry only —
- * the three columns that are never encrypted — so the checkup works with the
- * vault locked and never asks for the passcode.
+ * The Trip checkup section of the trip menu: one line from Béa, then each
+ * thing worth a second look, tappable when it is about a stop. A plan the
+ * checks cannot fault says so and nothing more.
  */
 export function TripCheckup({
-  trip,
-  items,
-  documents,
-  onOpen,
+  findings,
+  onOpenStop,
 }: {
-  trip: { start_date: string | null; end_date: string | null };
-  items: readonly CheckupItem[];
-  documents: readonly CheckupDocument[];
-  onOpen: (target: { itemId?: string; day?: string }) => void;
+  findings: readonly CheckupFinding[];
+  onOpenStop: (stopId: string) => void;
 }) {
-  const idDocuments = useIdDocuments();
-  const findings = useMemo(
-    () => tripCheckup({ trip, items, documents, idDocuments }),
-    [trip, items, documents, idDocuments],
-  );
-
   return (
     <div className="space-y-3">
-      <p className="plain-card flex items-start gap-2 p-3.5 text-[14.5px]">
-        {findings.length === 0 ? (
-          <CircleCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-        ) : null}
-        <span>{checkupHeadline(findings)}</span>
-      </p>
+      <div className="plain-card flex items-start gap-3 p-3.5">
+        <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold leading-snug">{checkupHeadline(findings)}</p>
+          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+            Worked out from the times, pins and bookings already on the plan. Béa only flags what
+            she can measure, so a stop with no time or no pin is left alone.
+          </p>
+        </div>
+      </div>
+
       {findings.length > 0 && (
         <ul className="plain-card divide-y divide-border overflow-hidden">
           {findings.map((finding) => {
-            const target = finding.itemId || finding.day;
             const body = (
               <>
                 <span
                   aria-hidden
-                  className={`mt-1.5 size-2.5 shrink-0 rounded-full ${
-                    finding.level === "warn" ? "bg-destructive" : "bg-primary"
+                  className={`mt-1.5 size-2 shrink-0 rounded-full ${
+                    finding.tone === "warn" ? "bg-destructive" : "bg-muted-foreground/50"
                   }`}
                 />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14.5px] font-semibold leading-snug">
-                    <span className="sr-only">
-                      {finding.level === "warn" ? "Needs fixing: " : "Worth a look: "}
+                  {finding.dayLabel ? (
+                    <span className="block text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                      {finding.dayLabel}
                     </span>
-                    {finding.title}
-                  </span>
-                  <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                    {finding.detail}
-                  </span>
+                  ) : null}
+                  <span className="block text-[14.5px] leading-snug">{finding.text}</span>
                 </span>
-                {target ? (
-                  <ChevronRight
-                    className="mt-1 size-4 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                ) : null}
               </>
             );
+            const stopId = finding.stopId;
             return (
-              <li key={finding.id}>
-                {target ? (
+              <li key={finding.key}>
+                {stopId ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      onOpen({
-                        ...(finding.itemId ? { itemId: finding.itemId } : {}),
-                        ...(finding.day ? { day: finding.day } : {}),
-                      })
-                    }
-                    className="flex w-full items-start gap-2.5 px-3.5 py-3 text-left"
+                    onClick={() => onOpenStop(stopId)}
+                    className="flex w-full items-start gap-3 px-3.5 py-3 text-left"
                   >
                     {body}
+                    <ChevronRight
+                      className="mt-1 size-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
                   </button>
                 ) : (
-                  <div className="flex items-start gap-2.5 px-3.5 py-3">{body}</div>
+                  <div className="flex items-start gap-3 px-3.5 py-3">
+                    {body}
+                    <Info className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </div>
                 )}
               </li>
             );
           })}
         </ul>
       )}
-      <p className="flex items-start gap-1.5 px-0.5 text-[12px] text-muted-foreground">
-        <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-        Journey times here are estimated from the pins, so a clash is only flagged when it is clear.
-        Opening hours are checked on each stop's own card.
-      </p>
     </div>
   );
-}
-
-/** Passports and visas in Protected: kind, name and expiry, never the contents. */
-function useIdDocuments(): CheckupIdDocument[] {
-  const [docs, setDocs] = useState<CheckupIdDocument[]>([]);
-  useEffect(() => {
-    let active = true;
-    void supabase
-      .from("vault_documents")
-      .select("kind, label, expires_on")
-      .in("kind", ["Passport", "Visa"])
-      .then(({ data }) => {
-        if (active) setDocs((data ?? []) as CheckupIdDocument[]);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  return docs;
 }

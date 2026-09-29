@@ -74,14 +74,12 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
-import { TripCheckup } from "@/components/day/TripCheckup";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
 import { ShareLinkCard } from "@/components/day/ShareLinkCard";
 import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
 import { useTripPreferences } from "@/hooks/useTripPreferences";
 import { forgetOfflineTrip, saveOfflineTrip } from "@/lib/offline-trip";
-import { tripCheckup } from "@/lib/trip-checkup";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
   ALL_DAYS,
@@ -132,6 +130,8 @@ import {
 } from "@/lib/companion";
 import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
+import { TripCheckup } from "@/components/day/TripCheckup";
+import { checkupPill, tripCheckup } from "@/lib/trip-checkup";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { useOfflineMap } from "@/hooks/useOfflineMap";
 import { prettyMegabytes } from "@/lib/vector-tiles";
@@ -926,6 +926,26 @@ export function TripDetail({
       ),
     );
   };
+  /** Open a stop on the timeline from somewhere else (the trip checkup). */
+  const jumpToStop = (stopId: string) => {
+    const stop = stopItems.find((item) => item.id === stopId);
+    if (!stop) return;
+    setPerspective("timeline");
+    // Filters that could leave the stop off the page: another city picked,
+    // or visited stops hidden.
+    if (cityChoice) setCityChoice("");
+    setHideDone(false);
+    const day = stop.day_date ?? "";
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
+    setCollapsedDays((prev) => ({ ...prev, [day]: false }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${stopId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
   /** The day cards, for the sticky day bar to know when they scroll away. */
   const dayCardsRef = useRef<HTMLDivElement>(null);
   const offerDays = shouldOfferDays(timelineGroups);
@@ -1150,10 +1170,6 @@ export function TripDetail({
   const bookingCounts: Record<BookingTile, number> = countBookings(
     tripBookings(stopItems, bookingDocs.docs),
   );
-  /** What Trip Checkup finds, for its pill — worked out only while the menu is open. */
-  const checkupCount = settingsOpen
-    ? tripCheckup({ trip, items: board.items, documents: bookingDocs.docs }).length
-    : undefined;
   /** "+ Add a stop between" on a connector: the form opens at the time between them. */
   const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
     insertAnchor.current = null;
@@ -1171,6 +1187,30 @@ export function TripDetail({
     },
     toLocalISODate(new Date()),
   );
+
+  /**
+   * Trip checkup, worked out only while the menu is open: pure arithmetic on
+   * the stops, reusing routes already measured, so it costs no lookups. Null
+   * with nothing planned, which hides its card.
+   */
+  const checkup =
+    settingsOpen && stopItems.length > 0
+      ? tripCheckup({
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          items: stopItems,
+          // Judged from real pins only: a failed geocode at 0,0 would skew
+          // the middle of the trip and hide a genuinely distant stop.
+          strayIds: strayStopIds(stopItems.filter((i) => !(i.lat === 0 && i.lon === 0))),
+          travelMinutes: (from, to) => {
+            const a = itemsById.get(from.id);
+            const b = itemsById.get(to.id);
+            const leg = a && b ? travelInto(a, b, true) : undefined;
+            if (!leg || leg.unknownSpot || leg.capped || !(leg.duration > 0)) return null;
+            return Math.round(leg.duration / 60);
+          },
+        })
+      : null;
 
   return (
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
@@ -2357,7 +2397,7 @@ export function TripDetail({
             : ""
         }
         budgetOn={Boolean(trip.budget_enabled)}
-        checkupCount={checkupCount}
+        checkupNote={checkup ? checkupPill(checkup) : ""}
         preferencesCount={tripPrefs.list.length}
         onCalendar={() => {
           setSettingsOpen(false);
@@ -2386,6 +2426,14 @@ export function TripDetail({
                 ]
                   .filter(Boolean)
                   .join(" · "),
+                start_date: trip.start_date,
+                end_date: trip.end_date,
+                // The owner's membership carries no display name; this device knows its own.
+                travellers: members.map(
+                  (m) => m.display_name || (m.user_id === me.id ? me.name : "") || "Traveller",
+                ),
+                link: `${window.location.origin}/trips/${trip.id}`,
+                printedAt: new Date(),
               },
               stopItems,
             ),
@@ -2611,15 +2659,13 @@ export function TripDetail({
           />
         )}
 
-        {sheetSection === "checkup" && (
+        {sheetSection === "checkup" && checkup && (
           <TripCheckup
-            trip={trip}
-            items={board.items}
-            documents={bookingDocs.docs}
-            onOpen={({ day }) => {
+            findings={checkup}
+            onOpenStop={(id) => {
               setSettingsOpen(false);
-              setPerspective("timeline");
-              if (day) setDayChoice(day);
+              setSheetSection(null);
+              jumpToStop(id);
             }}
           />
         )}

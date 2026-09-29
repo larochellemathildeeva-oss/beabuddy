@@ -180,6 +180,8 @@ function DocumentsPage() {
       const created = await d.addDocument({
         title: draft.title.slice(0, TITLE_MAX),
         kind: draft.kind,
+        lines: cleanLines(draft.lines ?? []),
+        reference: cleanText(draft.reference ?? "", REFERENCE_MAX),
         trip_id: draft.trip_id,
         itinerary_item_id: draft.itinerary_item_id,
         notes,

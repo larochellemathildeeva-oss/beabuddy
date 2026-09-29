@@ -473,7 +473,15 @@ export const parseItinerary = createServerFn({ method: "POST" })
     if (data.mode === "import" && data.pageUrl) {
       const page = await readItineraryLink(data.pageUrl);
       // A calendar feed is read as a calendar: exactly, and without AI.
-      if (page.kind === "calendar") return page.plan;
+      if (page.kind === "calendar") {
+        // Read exactly, so notes typed beside the link cannot change it: say so.
+        return data.text?.trim()
+          ? {
+              ...page.plan,
+              summary: `${page.plan.summary} Your notes weren't used: a calendar is read exactly as it is.`,
+            }
+          : page.plan;
+      }
       data = {
         ...data,
         text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
@@ -911,7 +919,7 @@ const OptimizeInput = z.object({
   startDate: z.string().max(20).nullable(),
   endDate: z.string().max(20).nullable(),
   goals: OptimizeGoals.min(1).max(4),
-  note: z.string().max(400).nullable(),
+  note: z.string().max(500).nullable(),
   items: z.array(OptimizeItemIn).min(2).max(OPTIMIZE_MAX_ITEMS),
   cities: z.array(OptimizeCityIn).max(20),
   /** "Just for this trip": said once on the trip, ahead of the saved profile. */

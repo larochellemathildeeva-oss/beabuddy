@@ -253,8 +253,8 @@ See `docs/UI_PORT_PLAN.md`. In short:
   `ai.studio` are both blocked by the network egress policy. The dev server
   also may not bind — it listens on port 8080.
   Run it locally to look at it.
-- CI gates every push: typecheck, lint, test, build. Bump the version per the
-  table in `AGENTS.md`.
+- CI gates every push: typecheck, lint, test, build. The version is bumped on
+  `main` after merge, never in a branch (see "App version" in `AGENTS.md`).
 - The prototype source is in `docs/prototype/` (AI Studio export, lockfile
   dropped). It is reference only: outside `tsconfig`, ignored by lint and
   prettier, never imported. Leaflet map: `components/InteractiveMap.tsx`.

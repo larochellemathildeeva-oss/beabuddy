@@ -12,6 +12,8 @@ import {
   loadingLine,
   mixPercents,
   modeName,
+  nextPose,
+  posesFor,
   normalizeMix,
   presetOf,
   seededRandom,
@@ -144,4 +146,65 @@ test("a stop aside follows the mix and the 'Béa says' switch", () => {
   assert.equal(stopAside({ mood: "meal", settings: plain, rand: () => 0 }), null);
   const early = stopAside({ mood: "sight", hour: 5, settings: playful, rand: () => 0 });
   assert.match(early ?? "", /early|mornings/);
+});
+
+test("while waiting Béa switches what she is doing, mostly her own work", () => {
+  const seen = new Map<string, number>();
+  let previous: ReturnType<typeof nextPose> = "run";
+  const rand = seededRandom(11);
+  for (let i = 0; i < 400; i++) {
+    const pose = nextPose({ work: "run", previous, settings: DEFAULT_SETTINGS, rand });
+    assert.ok(pose === "run" || pose !== previous, `${pose} twice in a row`);
+    seen.set(pose, (seen.get(pose) ?? 0) + 1);
+    previous = pose;
+  }
+  for (const pose of ["run", "dig", "think", "ball", "bone"]) assert.ok(seen.has(pose), pose);
+  assert.ok((seen.get("run") ?? 0) > (seen.get("dig") ?? 0));
+});
+
+test("no ball or bone without surprises, between lines, or for a plain Béa", () => {
+  const plain = { ...DEFAULT_SETTINGS, mix: mix({ helpful: 100 }) };
+  const quiet = { ...DEFAULT_SETTINGS, surprises: false };
+  for (let seed = 0; seed < 50; seed++) {
+    for (const [settings, jokes] of [
+      [plain, true],
+      [quiet, true],
+      [DEFAULT_SETTINGS, false],
+    ] as const) {
+      const pose = nextPose({
+        work: "dig",
+        previous: "dig",
+        settings,
+        jokes,
+        rand: seededRandom(seed),
+      });
+      assert.ok(["run", "dig", "think"].includes(pose), pose);
+    }
+  }
+});
+
+test("every trait with jokes has something to say about the ball and the bone", () => {
+  for (const trait of BEA_TRAITS.filter((t) => t !== "helpful")) {
+    const bank = BEA_CHARACTER.loading[trait] as {
+      ball?: readonly string[];
+      bone?: readonly string[];
+    };
+    assert.ok((bank.ball?.length ?? 0) >= 3, trait);
+    assert.ok((bank.bone?.length ?? 0) >= 3, trait);
+  }
+});
+
+test("only the poses she may take are fetched ahead", () => {
+  assert.deepEqual(posesFor("run", { ...DEFAULT_SETTINGS, surprises: false }), [
+    "run",
+    "dig",
+    "think",
+  ]);
+  assert.deepEqual(posesFor("dig", DEFAULT_SETTINGS).sort(), [
+    "ball",
+    "bone",
+    "dig",
+    "run",
+    "think",
+  ]);
 });
