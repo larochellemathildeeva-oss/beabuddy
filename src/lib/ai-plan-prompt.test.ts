@@ -24,6 +24,11 @@ describe("AI plan prompt", () => {
           "17 Boulevard Poissonnière",
           "Paris, France",
         ],
+        // An area, then each spot in it on its own line: all of them stops.
+        ["16:00", "walk", "Marais", null, "Paris, France"],
+        ["16:10", "activity", "Place des Vosges", null, "Paris, France"],
+        ["17:00", "sight", "Marché des Enfants Rouges", "39 Rue de Bretagne", "Paris, France"],
+        ["18:15", "meal", "L'As du Fallafel", "34 Rue des Rosiers", "Paris, France"],
         ["08:30", "walk", "Jardin du Luxembourg", null, "Paris, France"],
         ["11:00", "transport", "Paris Gare de Lyon", null, "Paris, France"],
         ["13:30", "lodging", "Hôtel Carlton Lyon", "4 Rue Jussieu", "Lyon, France"],
@@ -32,11 +37,11 @@ describe("AI plan prompt", () => {
     );
     assert.equal(plan.items[1]!.end_time, "12:00");
     assert.equal(plan.items[0]!.day_date, "2026-10-12");
-    assert.equal(plan.items[5]!.day_date, "2026-10-13");
+    assert.equal(plan.items[9]!.day_date, "2026-10-13");
     // Food tips stay with the meal.
     assert.equal(plan.items[2]!.detail, "cheap classic bistro; order the steak frites");
     // A getting-there tip must not turn a walk into a journey.
-    assert.equal(plan.items[4]!.detail, "getting there: metro line 4, 15 min");
+    assert.equal(plan.items[8]!.detail, "getting there: metro line 4, 15 min");
     assert.ok(plan.items.every((i) => i.booked === false));
   });
 

@@ -348,6 +348,49 @@ test("siblings that name their parent as their place are not each other's parent
   );
 });
 
+test("spots listed under a neighbourhood or market stay stops of their own", async () => {
+  const { nestWithin, isAreaStop } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-05",
+    day_number: 1 as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const out = nestWithin([
+    row("Nishiki Market", { time_label: "10:00" }),
+    row("Aritsugu", { within: "Nishiki Market", place: "Aritsugu" }),
+    row("Konnamonja", { within: "Nishiki Market", place: "Konnamonja" }),
+    row("Walk in Le Marais", { kind: "walk", time_label: "16:00", place: "Le Marais" }),
+    row("Place des Vosges", { within: "Walk in Le Marais" }),
+    row("Walk in Jardin du Luxembourg", { kind: "walk", time_label: "18:00" }),
+    row("Medici Fountain", { within: "Walk in Jardin du Luxembourg" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => [r.title, r.within ?? null]),
+    [
+      ["Nishiki Market", null],
+      ["Aritsugu", "Nishiki Market"],
+      ["Konnamonja", "Nishiki Market"],
+      ["Walk in Le Marais", null],
+      ["Place des Vosges", "Walk in Le Marais"],
+      ["Walk in Jardin du Luxembourg", null],
+    ],
+  );
+  assert.equal(out[5]!.detail, "Inside: Medici Fountain", "a garden is one site");
+  assert.equal(
+    isAreaStop({ kind: "sight", title: "Marché des Enfants Rouges", place: null }),
+    true,
+  );
+  assert.equal(isAreaStop({ kind: "sight", title: "Gion district", place: null }), true);
+  assert.equal(isAreaStop({ kind: "walk", title: "Peace Memorial Park", place: null }), false);
+  assert.equal(isAreaStop({ kind: "sight", title: "Kiyomizu-dera", place: null }), false);
+  assert.equal(isAreaStop({ kind: "sight", title: "Supermarket run", place: null }), false);
+});
+
 test("afterJourney: a train between towns starts afresh, a city hop does not", () => {
   assert.equal(
     afterJourney({ detail: "luggage drop · getting there: direct ICE, about 4h" }, undefined),

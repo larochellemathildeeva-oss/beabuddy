@@ -567,7 +567,9 @@ export function parentIndex(rows: readonly NestableRow[], i: number): number {
  * With a time of its own (the Cenotaph at 10:45, after the museum at 9:30),
  * a place inside another stays a stop — it is when you are there — and keeps
  * `within`, so it is looked up beside its parent rather than across the city.
- * Booked rows always stay.
+ * Booked rows always stay, and so does everything listed under an area
+ * (`isAreaStop`): the stalls of a market or the cafés of a neighbourhood are
+ * places of their own, to be pinned, not rooms of one building.
  */
 export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
   const out = rows.map((row) => ({ ...row }));
@@ -580,11 +582,35 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
     }
     row.within = out[parent]!.title;
     const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
-    if (ownTime || row.booked === true) return;
+    if (ownTime || row.booked === true || isAreaStop(out[parent]!)) return;
     out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
+}
+
+/**
+ * Words that make a stop an area rather than one site: somewhere with many
+ * separate places in it. Letters around the word are checked by hand, since
+ * `\b` does not see "é" as part of a word.
+ */
+const AREA_WORDS =
+  /(?<!\p{L})(?:neighbou?rhoods?|district|quarter|quartier|barrio|area|old town|downtown|chinatown|bazaar|souk|markets?|marché|mercado|mercato|markt|streets?|avenue|shotengai|arcade|yokocho|dori|dōri)(?!\p{L})/iu;
+
+/** One site, however long the stroll there: its monuments and halls fold into its list. */
+const SITE_WORDS =
+  /(?<!\p{L})(?:park|parc|parque|garden|gardens|jardin|jardín|temple|shrine|castle|palace|museum|musée|cemetery|trail|hike|beach|forest|island|lake|river|mountain|mount|waterfall|zoo)(?!\p{L})/iu;
+
+/**
+ * A neighbourhood, market or street, where each spot listed under it is a
+ * place of its own: a stop whose title or place names one ("Nishiki
+ * Market", "Gion district"), or a stroll through somewhere that is not one
+ * site ("Walk in Le Marais", but not "Walk in Jardin du Luxembourg").
+ */
+export function isAreaStop(row: Pick<NestableRow, "kind" | "title" | "place">): boolean {
+  const names = `${row.title} ${row.place ?? ""}`;
+  if (AREA_WORDS.test(names)) return true;
+  return row.kind.toLowerCase() === "walk" && !SITE_WORDS.test(names);
 }
 
 /** "Inside: East building · Main building", one note however many are added. */

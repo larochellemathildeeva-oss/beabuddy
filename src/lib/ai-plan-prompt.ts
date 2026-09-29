@@ -33,6 +33,10 @@ export const AI_PLAN_EXAMPLE = `Day 1 — 2026-10-12 — Paris, France
 10:00–12:00 Musée d'Orsay, 1 Rue de la Légion d'Honneur — book ahead
 12:30 Lunch at Bouillon Chartier, 7 Rue du Faubourg Montmartre — cheap classic bistro; order the steak frites
 15:00 Check in at Hôtel des Grands Boulevards, 17 Boulevard Poissonnière
+16:00–19:00 Walk in Le Marais — old mansions and small shops
+16:10 Place des Vosges
+17:00 Marché des Enfants Rouges, 39 Rue de Bretagne — covered market; try the Moroccan stall
+18:15 Dinner at L'As du Fallafel, 34 Rue des Rosiers — falafel to take away
 Day 2 — 2026-10-13 — Paris, France → Lyon, France
 08:30 Walk in Jardin du Luxembourg (getting there: metro line 4, 15 min)
 11:00 Train from Paris Gare de Lyon to Lyon Part-Dieu — book ahead
@@ -41,7 +45,7 @@ Day 2 — 2026-10-13 — Paris, France → Lyon, France
 
 export const AI_PLAN_PROMPT = `Write my itinerary for [CITIES OR COUNTRIES] from [START DATE] to [END DATE]. [Where I fly in from and out to.] [What I'd like to do.]
 
-Give ONLY the itinerary, in this exact format. No intro, no tips, no summary, no other lines.
+Give ONLY the itinerary, in this exact format. No intro, no tips, no summary, no other lines. Keep every place, shop, stall and sight I name, including the ones I list under a neighbourhood or area: never leave one out to fit the format.
 
 Day 1 — YYYY-MM-DD — City, Country
 HH:MM Place name, street number and street — short note
@@ -49,7 +53,7 @@ HH:MM–HH:MM Place name, street number and street — short note
 
 Rules:
 1. Every day starts with its heading: "Day N — YYYY-MM-DD — City, Country", naming the town you are in that day. On a day you move to another town, name both, in order: "Day 4 — YYYY-MM-DD — Paris, France → Lyon, France". The same on the day you fly in or out: the town you fly from comes first.
-2. One line = one place. If an activity covers two places (for example "walk through a park and a neighbourhood"), write two lines, each with its own time.
+2. One line = one place. If an activity covers two places (for example "walk through a park and a neighbourhood"), write two lines, each with its own time. A neighbourhood, market or street with several spots in it: one line for the area with its time span ("16:00–19:00 Walk in Le Marais"), then one line for each spot, shop or stall in it, each with its own time inside that span. Never put them as sub-bullets.
 3. Every line starts with a 24-hour time (09:00, 14:30). Times go up within each day. Write HH:MM–HH:MM when you know the end time.
 4. After the time, write the place's real, official name as it appears on a map. For meals: "Lunch at [restaurant name], [address]". In a country that writes in another script (Japan, China, Korea, Thailand, Greece, Russia, the Arab world…), add the name as written locally in brackets right after it: "Kuromon Market (黒門市場), 2-4-1 Nipponbashi".
 5. After a comma, give the real street address, starting with the number. A park, neighbourhood or other place with no street number gets no address: write just its name. Never invent an address; if you are not sure, leave it out.
@@ -63,7 +67,7 @@ Rules:
 9. Anything extra goes after " — " (space, long dash, space) on the same line: for food, what to order or what the place is known for; "book ahead" when a place, train or hotel needs booking. A tip about the whole day goes on that day's first line. Never write a note, tip or "Note:" on a line of its own. Keep each line under 150 characters.
 10. Add "booked" at the end of a line only if it really is booked.
 11. Do not use the words skip, instead, actually, cancel, tickets, seats, pass, reservation or paid.
-12. Every place must really exist and be open at that time. If you are not sure a place exists, choose one you are sure of.
+12. Every place you add must really exist and be open at that time. If you are not sure a place exists, choose one you are sure of. Keep the places I named myself even if you cannot check them.
 
 Example:
 ${AI_PLAN_EXAMPLE}`;
