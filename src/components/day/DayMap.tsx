@@ -19,6 +19,9 @@ import {
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import { LocateFixed } from "@/components/icons";
 
+/** OpenFreeMap's credit, as it asks for it: linked, beside OpenMapTiles'. */
+const OPENFREEMAP_CREDIT =
+  '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a>';
 const OSM_CREDIT =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
 
@@ -164,7 +167,7 @@ export function DayMap({
             enableRtlText(maplibregl);
             const style = journalStyle(labelLanguage(navigator.language));
             const base = new MaplibreGL({ style, attributionControl: false }).addTo(m);
-            const credit = `${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`;
+            const credit = `${OPENFREEMAP_CREDIT} · ${OSM_CREDIT} · ${GEOAPIFY_ATTRIBUTION}`;
             m.attributionControl.addAttribution(credit);
             setVector(true);
             // The server started refusing tiles or fonts after the first

@@ -4,9 +4,12 @@
  * Vector tiles are the map's data rather than a picture of it: Béa styles
  * them in the browser, so the map stays sharp at any zoom, and a whole city
  * is a few hundred small tiles rather than thousands of images. They come
- * from Geoapify (OpenMapTiles' schema, which its terms allow storing) through
- * Béa's own `/api/vtile` path, like the image tiles — the key stays on the
- * server, and the path is parsed rather than trusted.
+ * through Béa's own `/api/vtile` path, like the image tiles, and the path is
+ * parsed rather than trusted. OpenFreeMap answers first: the same
+ * OpenMapTiles schema as Geoapify's, free, keyless, with no limit on requests
+ * and commercial use and offline copies allowed. Geoapify (whose terms also
+ * allow storing its tiles) answers when OpenFreeMap does not, at a quarter
+ * credit a tile, and its key stays on the server.
  *
  * Label fonts come the same way, through `/api/glyphs`. Pure, so the paths,
  * the upstream URLs and the offline plan are tested.
@@ -51,6 +54,31 @@ export function vectorTileSourceUrl({ z, x, y }: TileCoords, geoapifyKey: string
   return `https://maps.geoapify.com/v1/tile/${GEOAPIFY_STYLE}/${z}/${x}/${y}.pbf?apiKey=${encodeURIComponent(geoapifyKey)}`;
 }
 
+/**
+ * OpenFreeMap's TileJSON. Its tile URLs carry the week's build
+ * ("planet/20260927_080001_pt/{z}/{x}/{y}.pbf"), so the current one is read
+ * from here rather than written down.
+ */
+export const OPENFREEMAP_TILEJSON = "https://tiles.openfreemap.org/planet";
+const OPENFREEMAP_ORIGIN = "https://tiles.openfreemap.org/";
+
+/**
+ * The tile URL template in OpenFreeMap's TileJSON, or null when the answer is
+ * not one: only an https URL on OpenFreeMap's own host with all three
+ * placeholders, so nothing else can be made to reach the server's fetch.
+ */
+export function readOpenFreeMapTemplate(tilejson: unknown): string | null {
+  const tiles = (tilejson as { tiles?: unknown } | null)?.tiles;
+  const first = Array.isArray(tiles) ? tiles[0] : undefined;
+  if (typeof first !== "string" || !first.startsWith(OPENFREEMAP_ORIGIN)) return null;
+  if (!["{z}", "{x}", "{y}"].every((p) => first.includes(p))) return null;
+  return first;
+}
+
+export function openFreeMapTileUrl(template: string, { z, x, y }: TileCoords): string {
+  return template.replace("{z}", String(z)).replace("{x}", String(x)).replace("{y}", String(y));
+}
+
 export type GlyphRequest = { font: (typeof VECTOR_FONTS)[number]; start: number };
 
 /**
@@ -82,6 +110,11 @@ export function glyphPath({ font, start }: GlyphRequest): string {
 
 export function glyphSourceUrl({ font, start }: GlyphRequest, geoapifyKey: string): string {
   return `https://maps.geoapify.com/v1/styles/${GEOAPIFY_STYLE}/fonts/${encodeURIComponent(font)}/${start}-${start + 255}.pbf?apiKey=${encodeURIComponent(geoapifyKey)}`;
+}
+
+/** OpenFreeMap serves the same Noto Sans fonts, block for block. */
+export function openFreeMapGlyphUrl({ font, start }: GlyphRequest): string {
+  return `${OPENFREEMAP_ORIGIN}fonts/${encodeURIComponent(font)}/${start}-${start + 255}.pbf`;
 }
 
 /**
@@ -233,8 +266,9 @@ export const OFFLINE_PAD_KM = 2;
  */
 export const OFFLINE_ZOOM_MIN = 1;
 /**
- * At most this many tiles per trip. Each costs Geoapify a quarter credit, so
- * this is 150 credits at worst; an ordinary city trip needs well under half.
+ * At most this many tiles per trip. OpenFreeMap's cost nothing; each one
+ * Geoapify serves instead costs a quarter credit, so this is 150 credits at
+ * worst; an ordinary city trip needs well under half.
  */
 export const OFFLINE_TILE_MAX = 600;
 

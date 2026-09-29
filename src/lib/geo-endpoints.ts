@@ -280,6 +280,9 @@ export const OSM_ATTRIBUTION = "Places and routes © OpenStreetMap contributors"
 /** Geoapify's own credit, which its free plan asks for beside its results. */
 export const GEOAPIFY_ATTRIBUTION = "Powered by Geoapify";
 
+/** The day map's vector tiles, which OpenFreeMap asks to be credited with OpenMapTiles. */
+export const OPENFREEMAP_ATTRIBUTION = "Map tiles by OpenFreeMap © OpenMapTiles";
+
 /** Stops the map misses are found in Overture's listings (CDLA Permissive 2.0). */
 export const OVERTURE_ATTRIBUTION = "Places © Overture Maps Foundation";
 
