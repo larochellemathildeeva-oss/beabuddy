@@ -836,21 +836,23 @@ function ImportPanel({
         // shown for checking and not pinned unless the person keeps it.
         const { confidence, reason } = hit.inside
           ? { confidence: "medium" as const, reason: `Pinned at ${hit.inside}, where it is` }
-          : airportMatch(row, hit)
-            ? { confidence: "high" as const, reason: "An airport, as the plan says" }
-            : outsideAddressDistrict(row.address, hit.label)
-              ? {
-                  confidence: "low" as const,
-                  reason: `Not in ${outsideAddressDistrict(row.address, hit.label)}, where the plan's address is — maybe a namesake.`,
-                }
-              : hit.farKm
+          : hit.remembered === "traveller"
+            ? { confidence: "high" as const, reason: "Where travellers who went there put it" }
+            : airportMatch(row, hit)
+              ? { confidence: "high" as const, reason: "An airport, as the plan says" }
+              : outsideAddressDistrict(row.address, hit.label)
                 ? {
                     confidence: "low" as const,
-                    reason: `This is ${hit.farKm} km from the middle of town — maybe a namesake.`,
+                    reason: `Not in ${outsideAddressDistrict(row.address, hit.label)}, where the plan's address is — maybe a namesake.`,
                   }
-                : scored.reduce((best, next) =>
-                    rank[next.confidence] > rank[best.confidence] ? next : best,
-                  );
+                : hit.farKm
+                  ? {
+                      confidence: "low" as const,
+                      reason: `This is ${hit.farKm} km from the middle of town — maybe a namesake.`,
+                    }
+                  : scored.reduce((best, next) =>
+                      rank[next.confidence] > rank[best.confidence] ? next : best,
+                    );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,

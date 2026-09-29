@@ -43,6 +43,7 @@ export async function buildPinsBundle() {
     alias: {
       "@tanstack/react-start": join(bench, "fake-start.ts"),
       "@/integrations/supabase/auth-middleware": join(bench, "fake-auth.ts"),
+      "@/integrations/supabase/client.server": join(here, "no-database.ts"),
     },
   });
   return import(join(out, "pins.bundle.mjs"));

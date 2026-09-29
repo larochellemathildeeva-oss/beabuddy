@@ -49,7 +49,7 @@ import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone, leaveBy } from "@/lib/companion";
 import type { RouteLeg } from "@/lib/directions.functions";
 import { mapsDirToUrl, mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
-import type { ParsedPlace } from "@/lib/places.functions";
+import { rememberPlacePick, type ParsedPlace } from "@/lib/places.functions";
 import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
@@ -1170,6 +1170,7 @@ function TimelinePlaceEditor({
         onChange={setQuery}
         onPick={(place) => {
           onPick(place);
+          rememberPick(item.title, place);
           setOpen(false);
         }}
         placeholder={`Where is ${item.title}?`}
@@ -1186,6 +1187,20 @@ function TimelinePlaceEditor({
       </button>
     </div>
   );
+}
+
+/**
+ * The traveller's choice of place for a stop, remembered as their vote for
+ * where that name is (resolved-places.ts). Never in the way: the stop is
+ * already saved, and a failure is dropped.
+ */
+function rememberPick(title: string, place: ParsedPlace) {
+  if (place.lat == null || place.lon == null) return;
+  const label = [place.name, place.address].filter(Boolean).join(", ").slice(0, 300);
+  if (!title.trim() || !label) return;
+  void rememberPlacePick({
+    data: { name: title.slice(0, 300), lat: place.lat, lon: place.lon, label },
+  }).catch(() => {});
 }
 
 /** Keeps the detail draft while focused so a realtime row refresh cannot wipe it. */

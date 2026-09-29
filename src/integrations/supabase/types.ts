@@ -277,6 +277,42 @@ export type Database = {
         }
         Relationships: []
       }
+      resolved_places: {
+        Row: {
+          also_named: Json | null
+          created_at: string
+          id: number
+          label: string
+          lat: number
+          lon: number
+          name_key: string
+          source: string
+          voter: string | null
+        }
+        Insert: {
+          also_named?: Json | null
+          created_at?: string
+          id?: number
+          label: string
+          lat: number
+          lon: number
+          name_key: string
+          source: string
+          voter?: string | null
+        }
+        Update: {
+          also_named?: Json | null
+          created_at?: string
+          id?: number
+          label?: string
+          lat?: number
+          lon?: number
+          name_key?: string
+          source?: string
+          voter?: string | null
+        }
+        Relationships: []
+      }
       packing_items: {
         Row: {
           created_at: string
