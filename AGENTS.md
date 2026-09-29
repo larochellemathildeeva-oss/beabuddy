@@ -258,6 +258,18 @@ shown with its Search Suggestions, unaltered, and its sources:
 `SearchGroundingNote` does that under the plan. `GEMINI_SEARCH_GROUNDING=off`
 turns it off. A failed check never stops the plan.
 
+## Reading a booking file
+
+In Trip documents, a new PDF or photo can be read with **"Fill in from this
+file"** (`AssignSheet` in `DocumentSheets.tsx`). Only when tapped: the file
+goes to Gemini (`document-read.server.ts`, at most `DOCUMENT_READS_PER_HOUR`
+per traveller), and the answer is cleaned in `document-read.ts` (pure and
+tested): capped to the columns, card numbers (Luhn-checked, so 13-digit
+e-ticket numbers stay) dropped, and its date used to pick the trip
+(`tripForDate`) and stop (`stopForRead`) only when the choice is clear. It
+fills the form, marks each field "from file" until it is edited, and saves
+nothing. Other file types (.pkpass, .eml, .docx) do not offer it.
+
 ## World globe data
 
 The World tab shades provinces and states from `public/geo/admin1/` — one
