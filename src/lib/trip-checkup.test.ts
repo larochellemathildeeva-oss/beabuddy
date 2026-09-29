@@ -194,3 +194,24 @@ test("keys are stable and unique", () => {
     tripCheckup({ ...trip, items }).map((f) => f.key),
   );
 });
+
+test("a flight with no pin is flagged like any other stop", () => {
+  const items = [
+    hotel(),
+    stop({ kind: "flight", title: "TP 123", booked: true, booking_ref: "X", lat: null, lon: null }),
+  ];
+  assert.deepEqual(
+    tripCheckup({ ...trip, items }).map((f) => f.text),
+    ["TP 123 isn't on the map yet."],
+  );
+});
+
+test("a malformed clock time is not a time, so it cannot clash", () => {
+  const items = [
+    hotel(),
+    stop({ title: "Imported", time_label: "10:99" }),
+    stop({ title: "Real", time_label: "11:39" }),
+    stop({ title: "Late", time_label: "25:00" }),
+  ];
+  assert.deepEqual(tripCheckup({ ...trip, items }), []);
+});
