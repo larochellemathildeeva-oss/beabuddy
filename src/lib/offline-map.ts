@@ -119,7 +119,7 @@ let available: Promise<boolean> | null = null;
 /**
  * Whether the day map can be drawn from vector tiles here: the phone can draw
  * them, and either a map was saved on it or Béa's server hands one out (it
- * does only with a Geoapify key). Asked once per page load; the world tile it
+ * does from OpenFreeMap, or with a Geoapify key). Asked once per page load; the world tile it
  * asks for is cached by the browser for a day.
  */
 export function vectorMapAvailable(): Promise<boolean> {

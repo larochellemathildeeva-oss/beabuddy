@@ -8,10 +8,13 @@ import {
   LANGUAGE_GLYPH_STARTS,
   offlineGlyphPaths,
   offlineTilePlan,
+  openFreeMapGlyphUrl,
+  openFreeMapTileUrl,
   parseGlyphPath,
   prettyMegabytes,
   parseVectorTilePath,
   protocolToPath,
+  readOpenFreeMapTemplate,
   tileFor,
   tilesInBox,
   vectorTilePath,
@@ -34,6 +37,38 @@ test("the upstream tile URL carries the key only on the server side", () => {
   assert.equal(url.host, "maps.geoapify.com");
   assert.ok(url.pathname.endsWith("/3/4/2.pbf"));
   assert.equal(url.searchParams.get("apiKey"), "k&y");
+});
+
+test("OpenFreeMap's weekly tile template is read from its TileJSON, and only its own", () => {
+  const template = "https://tiles.openfreemap.org/planet/20260927_080001_pt/{z}/{x}/{y}.pbf";
+  assert.equal(readOpenFreeMapTemplate({ tilejson: "3.0.0", tiles: [template] }), template);
+  assert.equal(
+    openFreeMapTileUrl(template, { z: 14, x: 8185, y: 5448 }),
+    "https://tiles.openfreemap.org/planet/20260927_080001_pt/14/8185/5448.pbf",
+  );
+  assert.equal(readOpenFreeMapTemplate({ tiles: ["https://evil.example/{z}/{x}/{y}.pbf"] }), null);
+  assert.equal(
+    readOpenFreeMapTemplate({ tiles: ["https://tiles.openfreemap.org.evil.example/{z}/{x}/{y}"] }),
+    null,
+  );
+  assert.equal(
+    readOpenFreeMapTemplate({ tiles: ["http://tiles.openfreemap.org/{z}/{x}/{y}"] }),
+    null,
+  );
+  assert.equal(
+    readOpenFreeMapTemplate({ tiles: ["https://tiles.openfreemap.org/planet/{z}/{x}"] }),
+    null,
+  );
+  assert.equal(readOpenFreeMapTemplate({ tiles: [] }), null);
+  assert.equal(readOpenFreeMapTemplate(null), null);
+  assert.equal(readOpenFreeMapTemplate("nope"), null);
+});
+
+test("OpenFreeMap's fonts are asked for by the same names and blocks", () => {
+  assert.equal(
+    openFreeMapGlyphUrl({ font: "Noto Sans Italic", start: 256 }),
+    "https://tiles.openfreemap.org/fonts/Noto%20Sans%20Italic/256-511.pbf",
+  );
 });
 
 test("glyph paths accept only the style's fonts and real blocks", () => {

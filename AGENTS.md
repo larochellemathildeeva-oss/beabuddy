@@ -128,20 +128,28 @@ minute. While it rests, `geoFetch` sends nothing to Geoapify (a 503 instead),
 batches re-ask `geoProvider()` before each lookup, and it answers with
 LocationIQ, else the public servers,
 Geoapify-only extras (hours, photos by place, nearby categories, static
-maps) are skipped, and `/api/vtile` 404s so the day map draws image tiles.
+maps) are skipped, and the day map's vector tiles come from OpenFreeMap alone
+(below).
 The count is kept in the server's memory, so a restart starts it again at 0.
 
-**The day map and its offline copy.** With a Geoapify key the day map
-(`DayMap.tsx`) draws OpenMapTiles vector tiles in Béa's journal palette
-(`journal-style.ts`), through `/api/vtile` and `/api/glyphs` in `server.ts`,
-using MapLibre inside Leaflet (`@maplibre/maplibre-gl-leaflet`); the pins and
-everything else stay Leaflet's. Paths are parsed in `vector-tiles.ts` (pure,
-tested). Without a key, without WebGL, or when the server does not answer, it
-draws the `/api/tile` image tiles as before — a 404 from `/api/vtile` is how
-it knows, and it also checks a label font answers. "Keep offline" on saved
-directions also saves the tiles around each day's stops (`offlineTilePlan`, at
-most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
-per trip (`offline-map.ts`). `public/sw.js` (registered in production only)
+**The day map and its offline copy.** The day map (`DayMap.tsx`) draws
+OpenMapTiles vector tiles in Béa's journal palette (`journal-style.ts`),
+through `/api/vtile` and `/api/glyphs` in `server.ts`, using MapLibre inside
+Leaflet (`@maplibre/maplibre-gl-leaflet`); the pins and everything else stay
+Leaflet's. Paths are parsed in `vector-tiles.ts` (pure, tested). The server
+asks **OpenFreeMap** first (`open-free-map.server.ts`: free, keyless, no
+request limit, commercial use and offline copies allowed, same schema and
+Noto Sans fonts; its weekly build's URL is read from its TileJSON), and
+Geoapify, at a quarter credit a tile, only for what OpenFreeMap does not
+answer; after a failure OpenFreeMap rests five minutes. `OPENFREEMAP=off`
+leaves the map on Geoapify alone. OpenFreeMap asks to be credited with
+OpenMapTiles: `OPENFREEMAP_ATTRIBUTION`, on the day map and the privacy page.
+Without WebGL, or when neither answers, it draws the `/api/tile` image tiles
+as before — a 404 or 502 from `/api/vtile` is how it knows, and it also
+checks a label font answers. "Keep offline" on saved directions also saves
+the tiles around each day's stops (`offlineTilePlan`, at most
+`OFFLINE_TILE_MAX`) into Cache Storage, one cache per trip
+(`offline-map.ts`). `public/sw.js` (registered in production only)
 keeps each page and the built files, so an installed Béa opens with no signal;
 server functions, Supabase and tiles are never answered from it. A trip whose
 directions are kept offline also keeps its plan on the phone

@@ -1,6 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
+import {
+  OPENFREEMAP_ATTRIBUTION,
+  OSM_ATTRIBUTION,
+  OVERTURE_ATTRIBUTION,
+} from "@/lib/geo-endpoints";
 
 export const Route = createFileRoute("/privacy")({
   staticData: { plane: "detail" },
@@ -215,7 +219,8 @@ function PrivacyPage() {
             OpenStreetMap's own geocoder and router, or a hosted OpenStreetMap service where one is
             configured. Your identity is not sent with those requests, and your device does not
             contact that service directly. The small map under Near and the map of a trip's day load
-            their picture tiles the same way: through Béa's server, from that map service.
+            their tiles the same way: through Béa's server, from that map service or, for the day's
+            map, first from OpenFreeMap, which is asked only for the map tiles and fonts.
           </p>
           <p>
             When a stop is not on that map, Béa's server looks its name up in Overture Maps' open
@@ -242,6 +247,7 @@ function PrivacyPage() {
             . All credit for them goes to their photographers, whose work is shared free on Pexels.
           </p>
           <p>{OSM_ATTRIBUTION}, available under the Open Database License.</p>
+          <p>{OPENFREEMAP_ATTRIBUTION}.</p>
           <p>
             {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
             Permissive 2.0.
