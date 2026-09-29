@@ -3,9 +3,12 @@ import { test } from "node:test";
 import {
   HERE_ACCURACY_MAX_M,
   accuracyRadius,
+  farFromDay,
+  framesWithDay,
+  hereBesideDay,
   hereFix,
-  hereFraming,
   locationTrouble,
+  lonsBeside,
 } from "./live-location.ts";
 
 const montreal = { lat: 45.5231, lon: -73.5817 };
@@ -30,17 +33,45 @@ test("a reading off the globe is not a fix", () => {
   assert.equal(hereFix({ latitude: 91, longitude: 0 }), null);
 });
 
+const fixAt = (at: { lat: number; lon: number }) => ({ ...at, accuracy: 10 });
+
 test("near the day, you are framed with its stops", () => {
-  assert.equal(hereFraming(montreal, [oldPort]), "with-day");
+  assert.equal(framesWithDay(hereBesideDay(fixAt(montreal), [oldPort]).nearestM), true);
 });
 
-test("far from the day, the map goes to you alone", () => {
-  assert.equal(hereFraming(montreal, [quebec]), "alone");
-  assert.equal(hereFraming(montreal, []), "alone");
+test("far from the day, the map stays put and says how far", () => {
+  const { nearestM } = hereBesideDay(fixAt(montreal), [quebec]);
+  assert.equal(framesWithDay(nearestM), false);
+  assert.match(farFromDay(nearestM), /^You're \d+ km from this day's stops\.$/);
+  assert.equal(framesWithDay(hereBesideDay(fixAt(montreal), []).nearestM), false);
 });
 
 test("the nearest stop decides, not the first", () => {
-  assert.equal(hereFraming(montreal, [quebec, oldPort]), "with-day");
+  assert.equal(framesWithDay(hereBesideDay(fixAt(montreal), [quebec, oldPort]).nearestM), true);
+});
+
+test("across the date line you are drawn beside the stop, not a world away", () => {
+  const { at, nearestM } = hereBesideDay(fixAt({ lat: -16.8, lon: -179.9 }), [
+    { lat: -16.8, lon: 179.9 },
+  ]);
+  assert.ok(Math.abs(at.lon - 180.1) < 1e-9);
+  assert.ok(nearestM < 25_000);
+});
+
+test("a day on both sides of the date line is fitted as the short span", () => {
+  const here = { lat: -16.8, lon: 179.95 };
+  const lons = lonsBeside(
+    [
+      { lat: -16.8, lon: 179.9 },
+      { lat: -16.8, lon: -179.9 },
+    ],
+    here,
+  ).map((p) => p.lon);
+  assert.ok(Math.max(...lons) - Math.min(...lons) < 1);
+});
+
+test("on the same side of the date line nothing moves", () => {
+  assert.equal(hereBesideDay(fixAt(montreal), [oldPort]).at.lon, montreal.lon);
 });
 
 test("a vague fix gets no circle", () => {

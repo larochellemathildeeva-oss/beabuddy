@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { hereFix, locationTrouble, type HereFix } from "@/lib/live-location";
+import { HERE_STALE_MS, hereFix, locationTrouble, type HereFix } from "@/lib/live-location";
 
 /**
  * "Where am I?" on the day maps, shared by every map on screen.
@@ -7,9 +7,9 @@ import { hereFix, locationTrouble, type HereFix } from "@/lib/live-location";
  * Split draws one map per day, and switching layout swaps them for another:
  * turning it on in one turns it on in all of them, from one watch on the
  * phone's position rather than one per map. It is off until asked for on
- * each visit, nothing is stored, nothing is sent to Béa's server, and the
- * watch stops when the last map is closed, so it does not run the battery
- * down from another screen.
+ * each visit, nothing is stored, the position is not sent to Béa's server,
+ * and the watch stops when the last map is closed, so it does not run the
+ * battery down from another screen.
  */
 
 export type LiveLocation = {
@@ -17,13 +17,16 @@ export type LiveLocation = {
   /** A position has not arrived since it was turned on. */
   locating: boolean;
   fix: HereFix | null;
+  /** No new position for a while: the dot is where the phone was, not is. */
+  stale: boolean;
   error: string;
 };
 
-const OFF: LiveLocation = { on: false, locating: false, fix: null, error: "" };
+const OFF: LiveLocation = { on: false, locating: false, fix: null, stale: false, error: "" };
 
 let snapshot: LiveLocation = OFF;
 let watchId: number | null = null;
+let staleTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
 
 function set(next: LiveLocation) {
@@ -34,6 +37,17 @@ function set(next: LiveLocation) {
 function clearWatch() {
   if (watchId !== null) navigator.geolocation.clearWatch(watchId);
   watchId = null;
+  if (staleTimer !== null) clearTimeout(staleTimer);
+  staleTimer = null;
+}
+
+/** Marks the dot as old unless a new position arrives first. */
+function armStale() {
+  if (staleTimer !== null) clearTimeout(staleTimer);
+  staleTimer = setTimeout(() => {
+    staleTimer = null;
+    if (snapshot.fix) set({ ...snapshot, stale: true });
+  }, HERE_STALE_MS);
 }
 
 export function startLiveLocation() {
@@ -42,16 +56,22 @@ export function startLiveLocation() {
     return;
   }
   clearWatch();
-  set({ on: true, locating: true, fix: null, error: "" });
+  set({ on: true, locating: true, fix: null, stale: false, error: "" });
   watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const fix = hereFix(pos.coords);
-      if (fix) set({ on: true, locating: false, fix, error: "" });
+      if (!fix) return;
+      set({ on: true, locating: false, fix, stale: false, error: "" });
+      armStale();
     },
     (err) => {
       // A dropped reading once a position is known keeps the last one: a
-      // tunnel is not a reason to lose the dot. A refusal always stops.
-      if (err.code !== 1 && snapshot.fix) return;
+      // tunnel is not a reason to lose the dot. It is shown as old, though,
+      // until a new one arrives. A refusal always stops.
+      if (err.code !== 1 && snapshot.fix) {
+        if (!snapshot.stale) set({ ...snapshot, stale: true });
+        return;
+      }
       clearWatch();
       const framed = typeof window !== "undefined" && window.self !== window.top;
       set({ ...OFF, error: locationTrouble(err.code, framed) });
