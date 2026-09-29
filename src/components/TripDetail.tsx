@@ -1443,6 +1443,7 @@ export function TripDetail({
                   {...(directionArea ? { area: directionArea } : {})}
                   travel={travel}
                   bookingDocs={bookingDocs.docs}
+                  reminderItems={board.items}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);

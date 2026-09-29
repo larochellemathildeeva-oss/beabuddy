@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
 import { bookingAtHand } from "@/lib/bookings";
+import { remindersFor, type ReminderItem } from "@/lib/reminders";
 import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
@@ -55,6 +56,7 @@ export function NowPanel({
   area,
   travel = "auto",
   bookingDocs = [],
+  reminderItems = [],
   onProgress,
   progress,
   onLook,
@@ -75,6 +77,8 @@ export function NowPanel({
     reference: string | null;
     title: string;
   }[];
+  /** Every entry on the trip, for the bookings and departures coming up. */
+  reminderItems?: readonly ReminderItem[];
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -135,6 +139,7 @@ export function NowPanel({
   const countdown =
     isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now, 10, offset) : null;
   const clockNote = isToday && now ? placeClockNote(now, offset) : null;
+  const reminders = now ? remindersFor(reminderItems, placeClock(now, offset)) : [];
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
@@ -170,6 +175,23 @@ export function NowPanel({
 
   return (
     <div className="space-y-3">
+      {reminders.length > 0 && (
+        <ul role="status" aria-label="Coming up" className="space-y-1.5">
+          {reminders.map((r) => (
+            <li
+              key={r.id}
+              className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-[13.5px] font-semibold ${
+                r.when === "soon"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary-soft text-primary"
+              }`}
+            >
+              <Clock className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0">{r.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
       {phase !== "done" && <RainAhead stops={dayStops} forecast={forecast} now={now} />}
       {clockNote && phase !== "done" && (
         <p className="plain-card flex items-center gap-2 px-3 py-2 text-[13px]">
