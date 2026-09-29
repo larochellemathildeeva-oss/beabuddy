@@ -313,12 +313,26 @@ function countryOf(area: string): string {
 /** At most this many Overture searches per stop: its name, then its title. */
 const OVERTURE_QUERIES = 2;
 
-/** The stop in Overture's listings near `centre`, or nothing that only looks like it. */
+/**
+ * How near the stop before has to be to the middle of town to choose between
+ * branches: inside the town Overture is searched in, not the town before.
+ */
+const BRANCH_KM = 15;
+
+/**
+ * The stop in Overture's listings near `centre`, or nothing that only looks
+ * like it. Of several that match, the nearest to `closeTo` — the stop before
+ * — when there is one: a chain has branches all over a city, and a Rikuro's
+ * after an afternoon in Amerikamura is the Namba shop, not the one in
+ * Shin-Osaka station that is nearer the middle of town.
+ */
 async function askOverture(
   search: (query: string, near: { lat: number; lon: number }) => Promise<OpenPlace[]>,
   stop: { title: string; place?: string | null | undefined; address?: string | null | undefined },
   centre: { lat: number; lon: number },
+  closeTo: { lat: number; lon: number } | null,
 ): Promise<OpenPlace | null> {
+  const rankFrom = closeTo && distanceKm(closeTo, centre) <= BRANCH_KM ? closeTo : centre;
   const names = [
     stop.title,
     stop.place ?? "",
@@ -329,7 +343,7 @@ async function askOverture(
     ...placeQueryCandidates(stop.title, null),
   ].filter((query, i, all) => all.findIndex((q) => q.toLowerCase() === query.toLowerCase()) === i);
   for (const query of queries.slice(0, OVERTURE_QUERIES)) {
-    const found = pickOpenPlace(await search(query, centre), names, centre);
+    const found = pickOpenPlace(await search(query, centre), names, rankFrom);
     if (found) return found;
   }
   return null;
@@ -622,7 +636,12 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           address: stop.address ?? null,
         };
         if (!hit || hit.farKm || !autoPinTrusted(names, hit)) {
-          const found = await askOverture(overture.searchOpenPlaces, stop, venueCentre);
+          const found = await askOverture(
+            overture.searchOpenPlaces,
+            stop,
+            venueCentre,
+            parent ? { lat: parent.lat, lon: parent.lon } : anchor,
+          );
           if (found) {
             if (mine >= 0) placed.splice(mine, 1);
             placed.push({

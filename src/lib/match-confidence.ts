@@ -121,6 +121,20 @@ function meaningfulWords(text: string): string[] {
 }
 
 /**
+ * Is this word of the stop in the place's name? A short word has to start one
+ * of the name's words: "ryo" and "sho" of "RYŌ-SHŌ" are both inside
+ * "Kisshokaryo", another restaurant, and it was saved as the booked dinner.
+ * A longer word may sit inside one ("sushidokoro" for "Sushido Koro"), and a
+ * script written without spaces has no words to start, so is looked for
+ * anywhere.
+ */
+export function wordInName(word: string, name: string): boolean {
+  if (!name.includes(word)) return false;
+  if (word.length >= 5 || !/^[a-z0-9]+$/.test(word)) return true;
+  return name.split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/).some((part) => part.startsWith(word));
+}
+
+/**
  * Does the geocoder's name contain the distinctive part of what we asked for?
  *
  * Compared on the words that carry identity: "Gourmando" decides a match,
@@ -196,7 +210,9 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
       : // A whole area answering for a venue has to be the whole of what was
         // asked: "Miyajimacho" for "Fujiiya Miyajima" is the island, not the shop.
         names.some((name) =>
-          areaish ? words.every((w) => name.includes(w)) : words.some((w) => name.includes(w)),
+          areaish
+            ? words.every((w) => wordInName(w, name))
+            : words.some((w) => wordInName(w, name)),
         );
 
   // A street named after the place ("Rua Rio de Ondas" for the Rio de
