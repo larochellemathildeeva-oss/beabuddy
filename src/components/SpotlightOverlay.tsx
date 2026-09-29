@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { guideTargetLooksVisible } from "@/lib/guide-target";
 
 export type SpotlightBox = { top: number; left: number; width: number; height: number };
@@ -57,8 +57,9 @@ export function trackGuideTargetSettle(
   };
 }
 
-/** Roughly the tallest tour or guide sheet, with its margin. */
-const SHEET_ROOM = 300;
+/** Space kept between the sheet and the target, and from the screen's edge. */
+const SHEET_GAP = 14;
+const EDGE = 8;
 
 /**
  * Dimmed cutout around a target (PageGuide / welcome tour). The hole has no
@@ -73,11 +74,27 @@ export function SpotlightOverlay({
   onDismiss?: () => void;
   children: ReactNode;
 }) {
+  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const [sheetHeight, setSheetHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = sheetRef.current;
+    if (!el) return;
+    // scrollHeight: the whole sheet, even while it is clamped below.
+    const read = () => setSheetHeight(el.scrollHeight);
+    read();
+    if (typeof ResizeObserver !== "function") return;
+    const observer = new ResizeObserver(read);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const belowTarget = box ? box.top + box.height < window.innerHeight * 0.55 : true;
   // A target low on the screen (the last card on a page cannot scroll to the
   // middle) gets the sheet above it when there is room, not pinned to the
   // bottom on top of the very thing it is pointing at.
-  const aboveTarget = !belowTarget && !!box && box.top >= SHEET_ROOM;
+  // Measured, not guessed, so a tall sheet never runs off the top.
+  const aboveTarget =
+    !belowTarget && !!box && sheetHeight > 0 && box.top >= sheetHeight + SHEET_GAP + EDGE;
 
   return (
     <div role="presentation" className="pointer-events-none fixed inset-0 z-[60]">
@@ -113,17 +130,27 @@ export function SpotlightOverlay({
       )}
 
       <div
-        className="pointer-events-auto absolute inset-x-0 flex justify-center px-4"
-        style={
-          belowTarget
-            ? { top: (box ? box.top + box.height : 0) + 14 }
-            : aboveTarget && box
-              ? { bottom: window.innerHeight - box.top + 14 }
-              : { bottom: 90 }
-        }
+        ref={sheetRef}
+        className="pointer-events-auto absolute inset-x-0 flex justify-center overflow-y-auto px-4"
+        style={sheetPlacement(box, belowTarget, aboveTarget)}
       >
         {children}
       </div>
     </div>
   );
+}
+
+/** Where the sheet sits, clamped so its header and close button stay on screen. */
+function sheetPlacement(
+  box: SpotlightBox | null,
+  belowTarget: boolean,
+  aboveTarget: boolean,
+): CSSProperties {
+  const vh = window.innerHeight;
+  if (belowTarget) {
+    const top = Math.max((box ? box.top + box.height : 0) + SHEET_GAP, EDGE);
+    return { top, maxHeight: Math.max(vh - top - EDGE, 160) };
+  }
+  const bottom = aboveTarget && box ? vh - box.top + SHEET_GAP : 90;
+  return { bottom, maxHeight: Math.max(vh - bottom - EDGE, 160) };
 }
