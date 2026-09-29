@@ -88,8 +88,8 @@ export function Tour({
   const [mode, setMode] = useState<TourMode | null>(null);
   const [box, setBox] = useState<SpotlightBox | null>(null);
   const [clicked, setClicked] = useState(false);
-  /** False while a selector step is still waiting for a painted target. */
-  const [targetReady, setTargetReady] = useState(true);
+  /** The step's control never painted: an empty vault, or a view with nothing in it yet. */
+  const [targetMissing, setTargetMissing] = useState(false);
   const [watching, setWatching] = useState(false);
   // Null on a deploy with no VITE_DEMO_VIDEO_URL, and then the written walk
   // stays exactly as it was — an unset variable is never a dead button.
@@ -115,20 +115,6 @@ export function Tour({
   const dismissSoft = useCallback(() => {
     onCloseRef.current();
   }, []);
-
-  const skipMissingTarget = useCallback(() => {
-    setI((n) => {
-      if (n >= steps.length - 1) {
-        // Defer finish so we don't mark seen during render/effect races.
-        queueMicrotask(() => finish());
-        return n;
-      }
-      return n + 1;
-    });
-  }, [steps.length, finish]);
-
-  const skipMissingRef = useRef(skipMissingTarget);
-  skipMissingRef.current = skipMissingTarget;
 
   useEffect(() => {
     if (!open) return;
@@ -197,8 +183,11 @@ export function Tour({
   measureRef.current = measure;
 
   // Spotlight: wait for a painted target after navigation, then track it.
-  // Missing targets skip ahead (or finish on the last step) — never leave
-  // awaitClick with Next disabled and nothing to tap.
+  // The copy shows straight away and Next never waits on the search. A target
+  // that never paints keeps its step, without a spotlight and with a line
+  // saying why: skipping it silently made the walk jump from 3 of 7 to 5 of 7
+  // after four seconds of "Finding…", and ended it early when the last step
+  // was the one missing.
   //
   // Critically: do NOT depend on measure/skip callbacks here. Parent re-renders
   // (e.g. unstable onClose) used to cancel the poll every frame and leave the
@@ -206,13 +195,12 @@ export function Tour({
   useEffect(() => {
     if (!open || !mode) return;
     setClicked(false);
+    setTargetMissing(false);
     if (!stepSelector) {
       setBox(null);
-      setTargetReady(true);
       return;
     }
 
-    setTargetReady(false);
     setBox(null);
     let cancelled = false;
     let tries = 0;
@@ -228,7 +216,7 @@ export function Tour({
         stopSettle = trackGuideTargetSettle(el, (next) => {
           if (!cancelled) setBox(next);
         });
-        setTargetReady(true);
+        setTargetMissing(false);
         return;
       }
       setBox(null);
@@ -236,8 +224,7 @@ export function Tour({
         retryTimer = window.setTimeout(tick, TARGET_RETRY_MS);
         return;
       }
-      setTargetReady(true);
-      skipMissingRef.current();
+      setTargetMissing(true);
     };
     const frame = window.requestAnimationFrame(tick);
     window.addEventListener("resize", onResizeOrScroll);
@@ -353,7 +340,6 @@ export function Tour({
   }
 
   const last = i === steps.length - 1;
-  const showCopy = targetReady;
 
   const sheet = (
     <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
@@ -366,28 +352,27 @@ export function Tour({
         </button>
       </div>
 
-      {showCopy ? (
-        <>
-          <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
-          <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step!.body}</p>
-          {blocked && (
-            <p className="mt-1.5 text-[12px] italic text-muted-foreground">
-              This screen opens once you're signed in — for now, picture it here.
-            </p>
-          )}
-          {step?.awaitClick && box && !clicked && (
-            <p className="mt-1.5 text-[12px] font-medium text-primary">
-              {step.actionHint ?? "Tap the highlighted bit, then Next"}
-            </p>
-          )}
-          {step?.awaitClick && box && clicked && (
-            <p className="mt-1.5 text-[12px] font-medium text-primary">
-              {step.actionDoneHint ?? "Got it — tap Next"}
-            </p>
-          )}
-        </>
-      ) : (
-        <p className="mt-2 text-[14.5px] text-muted-foreground">Finding that bit of the screen…</p>
+      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step!.title}</h2>
+      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step!.body}</p>
+      {blocked && (
+        <p className="mt-1.5 text-[12px] italic text-muted-foreground">
+          This screen opens once you're signed in — for now, picture it here.
+        </p>
+      )}
+      {step?.awaitClick && box && !clicked && (
+        <p className="mt-1.5 text-[12px] font-medium text-primary">
+          {step.actionHint ?? "Tap the highlighted bit, then Next"}
+        </p>
+      )}
+      {step?.awaitClick && box && clicked && (
+        <p className="mt-1.5 text-[12px] font-medium text-primary">
+          {step.actionDoneHint ?? "Got it — tap Next"}
+        </p>
+      )}
+      {!blocked && targetMissing && (
+        <p className="mt-1.5 text-[12px] italic text-muted-foreground">
+          Nothing here to point at yet — it fills in as you save places, trips and photos.
+        </p>
       )}
 
       {mode === "deep" ? (
@@ -422,7 +407,7 @@ export function Tour({
           Back
         </button>
         <button
-          disabled={needsClick || !showCopy}
+          disabled={needsClick}
           onClick={() => (last ? finish() : setI(i + 1))}
           className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >

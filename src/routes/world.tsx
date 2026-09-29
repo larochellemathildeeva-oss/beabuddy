@@ -79,8 +79,17 @@ const TABS: { id: WorldTab; label: string; subtitle: string }[] = [
   },
 ];
 
+const WORLD_TABS: readonly WorldTab[] = ["map", "bucket", "been", "stats"];
+
+type WorldSearch = {
+  /** Open on one view, so the tour and links can point at a control on it. */
+  tab?: WorldTab;
+};
+
 export const Route = createFileRoute("/world")({
   staticData: { plane: "tab" },
+  validateSearch: (search: Record<string, unknown>): WorldSearch =>
+    WORLD_TABS.includes(search["tab"] as WorldTab) ? { tab: search["tab"] as WorldTab } : {},
   head: () => ({
     meta: [
       { title: "World — Béa" },
@@ -132,7 +141,12 @@ function destinationsOf(rows: RecoRowDB[]): Destination[] {
 }
 
 function WorldPage() {
-  const [tab, setTab] = useState<WorldTab>("map");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<WorldTab>(search.tab ?? "map");
+  // A link that names a view opens it, even when World is already showing.
+  useEffect(() => {
+    if (search.tab) setTab(search.tab);
+  }, [search.tab]);
   const [selected, setSelected] = useState<Pin | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -504,7 +518,12 @@ function WorldPage() {
           </div>
         )}
 
-        <div role="tablist" aria-label="World views" className="grid grid-cols-4 gap-1.5">
+        <div
+          role="tablist"
+          aria-label="World views"
+          data-guide="world-tabs"
+          className="grid grid-cols-4 gap-1.5"
+        >
           {TABS.map((x) => (
             <button
               key={x.id}
