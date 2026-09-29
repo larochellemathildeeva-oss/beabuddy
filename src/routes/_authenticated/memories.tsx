@@ -164,12 +164,22 @@ function MemoriesPage() {
                   groups.length === 1 ? "" : "s"
                 }.`}
           </p>
-          <Link
-            to="/photos"
-            className="shrink-0 rounded-xl border border-border px-3 py-2 text-[13px] font-semibold"
-          >
-            Import photos
-          </Link>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {groups.length > 0 && (
+              <Link
+                to="/story"
+                className="rounded-xl bg-primary px-3 py-2 text-center text-[13px] font-semibold text-primary-foreground"
+              >
+                Play your story
+              </Link>
+            )}
+            <Link
+              to="/photos"
+              className="rounded-xl border border-border px-3 py-2 text-center text-[13px] font-semibold"
+            >
+              Import photos
+            </Link>
+          </div>
         </div>
 
         {loading && groups.length === 0 && <ContentCardSkeleton media />}

@@ -57,6 +57,9 @@ export function trackGuideTargetSettle(
   };
 }
 
+/** Roughly the tallest tour or guide sheet, with its margin. */
+const SHEET_ROOM = 300;
+
 /**
  * Dimmed cutout around a target (PageGuide / welcome tour). The hole has no
  * hit target so clicks reach the page underneath — needed for interactive steps.
@@ -71,6 +74,10 @@ export function SpotlightOverlay({
   children: ReactNode;
 }) {
   const belowTarget = box ? box.top + box.height < window.innerHeight * 0.55 : true;
+  // A target low on the screen (the last card on a page cannot scroll to the
+  // middle) gets the sheet above it when there is room, not pinned to the
+  // bottom on top of the very thing it is pointing at.
+  const aboveTarget = !belowTarget && !!box && box.top >= SHEET_ROOM;
 
   return (
     <div role="presentation" className="pointer-events-none fixed inset-0 z-[60]">
@@ -107,7 +114,13 @@ export function SpotlightOverlay({
 
       <div
         className="pointer-events-auto absolute inset-x-0 flex justify-center px-4"
-        style={belowTarget ? { top: (box ? box.top + box.height : 0) + 14 } : { bottom: 90 }}
+        style={
+          belowTarget
+            ? { top: (box ? box.top + box.height : 0) + 14 }
+            : aboveTarget && box
+              ? { bottom: window.innerHeight - box.top + 14 }
+              : { bottom: 90 }
+        }
       >
         {children}
       </div>

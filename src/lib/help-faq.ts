@@ -30,11 +30,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Where should I start?",
-        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in (Load sample travel data on Home or You, until you remove it). Replay under You offers three: See how Béa works (the whole story on one page), a quick walk around the block where Béa points at the real screens, or the Deep Dive.",
+        a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in: Load sample travel data on an empty Home, or You → Data & imports, where you can also remove it. You → About Béa → Replay offers three: See how Béa works (the whole story on one page), a quick walk around the block where Béa points at the real screens, or the Deep Dive.",
       },
       {
-        q: "What's the difference between Ask Béa and Let Béa plan?",
-        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it.\n\nLet Béa plan is the sparkle on a trip: it builds or imports a day-by-day itinerary onto that trip.",
+        q: "What's the difference between Ask Béa and Plan with Béa?",
+        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it.\n\nPlan with Béa is the button at the top of a trip: it drafts, imports or reworks a day-by-day itinerary for that trip.",
       },
       {
         q: "Do I need an account?",
@@ -84,11 +84,11 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "What is Playback?",
-        a: "Playback is your travel story — also called Travel story on Home.\n\nBéa can walk through cities you've visited, in order, using photos and memories to create a timeline of your adventures. Think of it as a personal travel highlight reel.",
+        a: "Playback is your travel story — Play your story, on City memories.\n\nBéa can walk through cities you've visited, in order, using photos and memories to create a timeline of your adventures. Think of it as a personal travel highlight reel.",
       },
       {
         q: "How do I customize Home?",
-        a: "On You → Profile settings, open Customize home. You can hide the trip card, Travel story and City memories shortcuts, Waiting for you, Recent memories, or a Future Me note. The choice is saved on this device.",
+        a: "On You → Appearance, under Customize home. You can hide Weather, Trips, Saved places or the Future me note. The choice is saved on this device.",
       },
     ],
   },
@@ -101,7 +101,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I bring in a plan from another assistant?",
-        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Let Béa plan → I already have a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
+        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Plan with Béa → I already have a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
       },
       {
         q: "Does Béa automatically book anything?",
@@ -125,7 +125,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can Béa compare two plans?",
-        a: "Yes, and this is different from Help me choose.\n\nLet Béa plan → Compare takes two whole itineraries — a friend's plan and one from an AI, say — reads each, then goes day by day on what actually differs and what you trade for it. Tell it what matters to you and it commits to a pick, with two plain sentences on why, plus the one thing worth borrowing from the plan it did not choose.\n\nIt reports indoor share, active hours a day, walking distance and estimated spend by category. It will not invent travel times it cannot measure, and if one plan is shorter it says nothing planned for that day rather than filling it in.",
+        a: "Yes, and this is different from Help me choose.\n\nPlan with Béa → Compare takes two whole itineraries — a friend's plan and one from an AI, say — reads each, then goes day by day on what actually differs and what you trade for it. Tell it what matters to you and it commits to a pick, with two plain sentences on why, plus the one thing worth borrowing from the plan it did not choose.\n\nIt reports indoor share, active hours a day, walking distance and estimated spend by category. It will not invent travel times it cannot measure, and if one plan is shorter it says nothing planned for that day rather than filling it in.",
       },
       {
         q: "Can Béa turn nearby saves into a day trip?",
@@ -257,7 +257,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Does Béa work without a connection?",
-        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. Where this phone can draw it, the map around each day's stops is kept too, so a day map that is already open keeps panning and zooming when the signal drops. You → What is kept on this phone lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
+        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. Where this phone can draw it, the map around each day's stops is kept too, so a day map that is already open keeps panning and zooming when the signal drops. You → Data & imports lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
       },
     ],
   },
@@ -270,7 +270,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Who owns Béa?",
-        a: "Béa — the app, its name, design, features and original ideas — is Mathilde E. Larochelle's work. You keep what you save in it. The copyright notice lives under You → Legal, next to privacy and terms.",
+        a: "Béa — the app, its name, design, features and original ideas — is Mathilde E. Larochelle's work. You keep what you save in it. The copyright notice lives under You → Privacy & legal, next to privacy and terms.",
       },
     ],
   },

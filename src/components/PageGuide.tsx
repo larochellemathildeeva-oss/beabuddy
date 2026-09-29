@@ -26,12 +26,12 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "What's around you",
-        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you say so, and you pick for how long — tap Show all to change the distance or build a day trip.",
+        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you tap Share, and you pick for how long. Plan a day trip strings a few of them together.",
         selector: "[data-guide='home-near']",
       },
       {
         title: "Your trip right now",
-        body: "The trip you're on, or the next one coming, sits here with its dates and the first few things on the plan. Tap it to open the whole folder.",
+        body: "The trip you're on, or the next one coming, sits here with its dates and where it goes. Tap it to open the whole folder.",
         selector: "[data-guide='home-trip']",
       },
       {
@@ -46,7 +46,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "An empty vault",
-        body: "Nothing saved yet. Import photos or save a recommendation and Home will fill in.",
+        body: "Nothing saved yet. Save a place, import photos, or load the sample travel data to try things out — you can remove it later from You → Data & imports.",
         selector: "[data-guide='home-empty']",
       },
     ],
@@ -76,7 +76,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Add a city by hand",
-        body: "The round + on the globe adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
+        body: "The + on the globe adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
         selector: "[data-guide='add-city']",
       },
     ],
@@ -110,8 +110,8 @@ const guides: Record<string, Guide> = {
     name: "Inside a trip",
     steps: [
       {
-        title: "Let Béa plan",
-        body: "The sparkle is Béa's planner, not the page tour. It can build a plan, import one, rearrange the stops you already have, or compare two drafts. Costs are optional. After a draft you can ask for alternatives or rebuild the trip. Béa does not book or check availability — you reserve hotels, tables and tickets yourself.",
+        title: "Plan with Béa",
+        body: "Béa's planner, not the page tour. It can draft a plan from what you saved, read one you already have, optimize the order of your stops, or compare two drafts. You approve before anything saves. Béa does not book or check availability — you reserve hotels, tables and tickets yourself.",
         selector: "[data-guide='bea-plan']",
       },
       {
@@ -125,11 +125,6 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='trip-timeline']",
       },
       {
-        title: "Optimize the timeline",
-        body: "Once a trip has a couple of stops, Optimize asks Béa to reshuffle them — closest together, rainy-day indoor, easy mornings, a rest day, even pace, or meals first. You approve the new order before it saves.",
-        selector: "[data-guide='optimize-trip']",
-      },
-      {
         title: "To do",
         body: "To do opens everything still to be done, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
         selector: "[data-guide='trip-prep']",
@@ -141,7 +136,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Find anything you've saved",
-        body: "Search by the place, the city, or the person who told you about it. A typo or a missing accent still finds a match.",
+        body: "This opens everything you saved. Search by the place, the city, or the person who told you about it — a typo or a missing accent still finds a match — then filter by City and Type.",
         selector: "[data-guide='reco-search']",
       },
       {
@@ -161,7 +156,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Ways to save something",
-        body: "Type a name or paste a link in the field. The + beside it holds the rest: places from your trips, where you are, by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
+        body: "Type a name or paste a link in the field. The + at the top holds the rest: places from your trips, where you are, by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
         selector: "[data-guide='reco-add']",
       },
       {
@@ -171,12 +166,12 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Share places with someone",
-        body: "Under the +, Send places lets you tick a few saved places and Béa makes a code you can send; Open a share takes in one sent to you. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
+        body: "Under the + at the top, Send places lets you tick a few saved places and Béa makes a code you can send; Open a share takes in one sent to you. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
         selector: "[data-guide='reco-add']",
       },
       {
         title: "Your vault",
-        body: "Everything saved, newest first, with who recommended it, the note you left, and the travel tags Béa guessed. Tap Remove to let one go.",
+        body: "Your collections — Recommendations, Wishlist, Next time — and what you saved most recently. Open one to see who recommended it, the note you left, and the travel tags Béa guessed.",
         selector: "[data-guide='reco-list']",
       },
     ],
@@ -186,7 +181,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Welcome to Béa",
-        body: "A conversation, not a manual — start here, then open any question. Ask Béa (the page sparkle) still walks the screen you're on.",
+        body: "A conversation, not a manual — start here, then open any question. The sparkle at the top of any page walks the screen you're on.",
         selector: "[data-guide='help-faq']",
       },
     ],
@@ -196,22 +191,22 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Your account",
-        body: "Sign in here to keep everything synced across your phone and laptop.",
+        body: "Your name, home city, and how many trips and places you've saved. Edit profile changes them; everything stays synced across your phone and laptop.",
         selector: "[data-guide='profile-account']",
       },
       {
-        title: "Your travel preferences",
-        body: "Open Profile settings for your name, home city, travel style, and the appearance switch — warm cream by day, black and light grey at night. Those preferences are what Béa plans with. Customize home lives in here too.",
+        title: "Settings",
+        body: "Your name, home city and travel tags. Travel preferences, just below, holds your style, pace and budget — what Béa plans with. Appearance, further down, sets the theme and what Home shows.",
         selector: "[data-guide='profile-settings']",
       },
       {
-        title: "Replay the full tour",
-        body: "The story walk and the Deep Dive live here. Sample travel data is a separate button under Your account — Béa will not load either until you ask.",
+        title: "Replay the tour",
+        body: "About Béa holds How Béa works, the quick walk and the Deep Dive. Sample travel data is under Data & imports — Béa will not load either until you ask.",
         selector: "[data-guide='replay-tour']",
       },
       {
         title: "Customize home",
-        body: "Hide the trip card, Waiting for you, or a Future Me note. Saved on this device.",
+        body: "Under Appearance: hide Weather, Trips, Saved places or the Future me note on Home. Saved on this device.",
         selector: "[data-guide='home-customize']",
       },
       {
@@ -220,8 +215,8 @@ const guides: Record<string, Guide> = {
         selector: "[data-guide='packing-lists']",
       },
       {
-        title: "What is kept on this phone",
-        body: "Béa needs a connection to open, so nothing here is a no-signal app yet. What is kept locally: trip settings → Saved directions puts the steps between stops on this phone so you do not fetch them twice. This list shows which trips already have them.",
+        title: "Data & imports",
+        body: "Import photos, open the trip calendar, load or remove sample data, and see what is kept on this phone. Béa needs a connection to open; trip settings → Saved directions keeps the steps between stops here so you do not fetch them twice.",
         selector: "[data-guide='offline-options']",
       },
       {
@@ -231,7 +226,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Feedback",
-        body: "This banner at the bottom is always yours. Pick a category — it broke, a missing stat, a wish, the map has opinions — then write it. If Béa dropped the ball, throw it back.",
+        body: "Always yours. Pick a category — it broke, a missing stat, a wish, the map has opinions — then write it. If Béa dropped the ball, throw it back.",
         selector: "[data-guide='feedback']",
       },
     ],
@@ -241,7 +236,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Travel style",
-        body: "Comfort seeker, explorer, food led — pick as many as feel true. Let Béa plan reads these.",
+        body: "Comfort seeker, explorer, food led — pick as many as feel true. Plan with Béa reads these.",
         selector: "[data-guide='pref-style']",
       },
       {
@@ -261,7 +256,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "Interests — travel tags",
-        body: "The same tags that land on your recs. They weight Near and Let Béa plan.",
+        body: "The same tags that land on your recs. They weight Near and Plan with Béa.",
         selector: "[data-guide='pref-interests']",
       },
       {
@@ -291,7 +286,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "A page per city",
-        body: "Photos are grouped by city and visit. Import more from Photos any time.",
+        body: "Photos are grouped by city and visit. Import more any time, or play your story — the cities in the order you were there.",
         selector: "[data-guide='city-memories']",
       },
       {
@@ -306,7 +301,7 @@ const guides: Record<string, Guide> = {
     steps: [
       {
         title: "Play it back",
-        body: "The cities you've photographed, in the order you were there. Play, pause, or skip a stop. This is a story of places you already lived, not a new itinerary.",
+        body: "The cities you've photographed, in the order you were there. Play, pause, or skip a stop. This is a story of places you already lived, not a new itinerary. It fills in once you import photos.",
         selector: "[data-guide='story-play']",
       },
     ],
@@ -418,9 +413,7 @@ export function PageGuide() {
     );
   }
 
-  if (!step) return null;
-
-  const last = i === steps.length - 1;
+  const last = i >= steps.length - 1;
 
   return (
     <>
@@ -439,7 +432,7 @@ export function PageGuide() {
             <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
               <div className="flex items-center justify-between">
                 <p className="label-caps">
-                  {guide.name} · {i + 1} of {steps.length}
+                  {steps.length > 0 ? `${guide.name} · ${i + 1} of ${steps.length}` : guide.name}
                 </p>
                 <button
                   onClick={() => setOpen(false)}
@@ -449,11 +442,16 @@ export function PageGuide() {
                   <X className="size-4" />
                 </button>
               </div>
-              <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step?.title}</h2>
+              {/* Nothing on this screen to point at yet (no photos on Story, say):
+                  say so, rather than closing the button with no answer. */}
+              <h2 className="mt-1.5 font-display text-[20px] leading-tight">
+                {step?.title ?? guide.name}
+              </h2>
               <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">
-                {step?.body}
+                {step?.body ??
+                  "Nothing here to point at yet. This screen fills in as you save places, trips and photos."}
               </p>
-              {!box && (
+              {step && !box && (
                 <p className="mt-1.5 text-[12px] italic text-muted-foreground">
                   This part isn't on screen right now.
                 </p>

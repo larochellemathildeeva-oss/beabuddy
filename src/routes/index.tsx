@@ -91,8 +91,9 @@ function LandingPage() {
           </Link>
         </div>
         <p className="text-[13px] text-muted-foreground">
-          The globe above is sample data. After you sign in, tap Load sample travel data on Home or
-          You to fill an account for a live walkthrough.
+          The globe above is sample data. After you sign in, Load sample travel data on Home (or You
+          → Data & imports) fills your account to try things out, and You → About Béa → Replay walks
+          you around.
         </p>
       </div>
     </AppShell>
