@@ -919,7 +919,7 @@ const OptimizeInput = z.object({
   startDate: z.string().max(20).nullable(),
   endDate: z.string().max(20).nullable(),
   goals: OptimizeGoals.min(1).max(4),
-  note: z.string().max(500).nullable(),
+  note: z.string().max(700).nullable(),
   items: z.array(OptimizeItemIn).min(2).max(OPTIMIZE_MAX_ITEMS),
   cities: z.array(OptimizeCityIn).max(20),
   /** "Just for this trip": said once on the trip, ahead of the saved profile. */

@@ -6,7 +6,7 @@ import {
   Leaf,
   MapPin,
   PiggyBank,
-  Settings2,
+  Plus,
   Sun,
   BedDouble,
   Utensils,
@@ -15,74 +15,74 @@ import {
 import { PLAN_PRIORITIES, type PlanPriorityId } from "@/lib/plan-priorities";
 
 /*
- * The pieces the Plan with Béa forms are drawn with: a big title and its
- * lede, tinted panels with a round badge, the "What should Béa prioritize?"
- * tiles, and the one wide button at the bottom.
+ * The pieces the Plan with Béa forms are drawn with: a title and one line
+ * under it, light tinted panels, the priority chips with a box for your own,
+ * and the one wide button at the bottom. Drawn compact, so each form fits on
+ * one screen without scrolling.
  */
 
 export type PanelTone = "rose" | "mint" | "sky" | "butter";
 
-/** "Optimize my trip", large, and a sentence or two under it. */
+/** "Optimize my trip", and one line under it. */
 export function PlanTitle({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <header>
-      <h2 className="font-display text-[34px] leading-[1.05]">{title}</h2>
+      <h2 className="font-display text-[26px] leading-[1.05]">{title}</h2>
       {children ? (
-        <p className="mt-1.5 text-[14px] leading-snug text-muted-foreground">{children}</p>
+        <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{children}</p>
       ) : null}
     </header>
   );
 }
 
-/** A tinted panel: a badge, its title (with an optional "(optional)"), a hint, then the fields. */
+/** A light tinted panel: a small badge, its title (and "(optional)"), then the fields. */
 export function PlanPanel({
   tone,
   icon: Icon,
   title,
   optional = false,
-  hint,
+  aside,
   children,
 }: {
   tone: PanelTone;
   icon?: ComponentType<{ className?: string }>;
   title: ReactNode;
   optional?: boolean;
-  hint?: ReactNode;
+  /** Something small at the title's right, like a character count. */
+  aside?: ReactNode;
   children?: ReactNode;
 }) {
   return (
-    <section className={`plan-panel plan-${tone} space-y-2.5 p-3`}>
-      <div className="flex items-center gap-3">
+    <section className={`plan-panel plan-${tone} space-y-2 px-3 py-2`}>
+      <div className="flex items-center gap-2">
         {Icon ? (
-          <span className="plan-badge grid size-11 shrink-0 place-items-center rounded-full">
-            <Icon className="size-5" aria-hidden />
+          <span className="plan-badge grid size-7 shrink-0 place-items-center rounded-full">
+            <Icon className="size-4" aria-hidden />
           </span>
         ) : null}
-        <div className="min-w-0">
-          <h3 className="font-display text-[20px] leading-tight">
-            {title}
-            {optional ? <span className="text-muted-foreground"> (optional)</span> : null}
-          </h3>
-          {hint ? <p className="text-[12.5px] leading-snug text-muted-foreground">{hint}</p> : null}
-        </div>
+        <h3 className="min-w-0 flex-1 font-display text-[17px] leading-tight">
+          {title}
+          {optional ? <span className="text-muted-foreground"> (optional)</span> : null}
+        </h3>
+        {aside}
       </div>
       {children}
     </section>
   );
 }
 
-/** "0/500" under a box, right-aligned. */
+/** "0/500", small, for a panel's title row. */
 export function CharCount({ value, max }: { value: string; max: number }) {
   return (
-    <p className="text-right text-[12px] tabular-nums text-muted-foreground">
+    <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
       {value.length.toLocaleString()}/{max.toLocaleString()}
-    </p>
+    </span>
   );
 }
 
 /** The class a panel's text box wears. */
 export const PLAN_FIELD =
-  "w-full rounded-2xl border border-border bg-card px-3.5 py-3 text-[14.5px] outline-none placeholder:text-muted-foreground/70 focus:border-primary";
+  "w-full rounded-xl border border-border bg-card px-3 py-2 text-[14px] outline-none placeholder:text-muted-foreground/70 focus:border-primary";
 
 const PRIORITY_ICON: Record<
   PlanPriorityId,
@@ -100,30 +100,42 @@ const PRIORITY_ICON: Record<
 };
 
 /**
- * "What should Béa prioritize?": tiles two by two with a round tick
- * (`tiles`), or wrapping pills (`chips`, as Compare draws them).
+ * "What should Béa prioritize?": the chips, then a box for anything the
+ * chips don't cover, so a traveller is never limited to the list.
  */
 export function PriorityPicker({
   title = "What should Béa prioritize?",
-  hint = "Select as many as you like.",
+  hint,
   options,
   selected,
   onToggle,
-  variant = "tiles",
+  custom,
+  onCustom,
+  customMax = 200,
   children,
 }: {
   title?: string;
+  /** A few words at the title's right, like "Up to four". */
   hint?: string;
   options: readonly PlanPriorityId[];
   selected: readonly PlanPriorityId[];
   onToggle: (id: PlanPriorityId) => void;
-  variant?: "tiles" | "chips";
+  /** The traveller's own priorities, typed. */
+  custom: string;
+  onCustom: (value: string) => void;
+  customMax?: number;
   children?: ReactNode;
 }) {
   const list = PLAN_PRIORITIES.filter((p) => options.includes(p.id));
   return (
-    <PlanPanel tone="butter" icon={Settings2} title={title} hint={hint}>
-      <div className={variant === "tiles" ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
+    <PlanPanel
+      tone="butter"
+      title={title}
+      aside={
+        hint ? <span className="shrink-0 text-[11.5px] text-muted-foreground">{hint}</span> : null
+      }
+    >
+      <div className="flex flex-wrap gap-1.5">
         {list.map((p) => {
           const on = selected.includes(p.id);
           const { icon: Icon, color } = PRIORITY_ICON[p.id];
@@ -133,26 +145,32 @@ export function PriorityPicker({
               type="button"
               aria-pressed={on}
               onClick={() => onToggle(p.id)}
-              className={`flex min-h-12 items-center gap-2.5 border bg-card text-left transition-colors ${
-                variant === "tiles" ? "rounded-2xl px-3 py-2.5" : "rounded-full px-3 py-2"
-              } ${on ? "border-primary bg-primary-soft" : "border-border"}`}
+              className={`flex items-center gap-1 rounded-full border px-2 py-[5px] text-[12.5px] leading-none transition-colors ${
+                on
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground"
+              }`}
             >
-              <Icon className={`size-5 shrink-0 ${color}`} aria-hidden />
-              <span className="min-w-0 flex-1 text-[13.5px] leading-tight">{p.label}</span>
-              {variant === "tiles" ? (
-                <span
-                  aria-hidden
-                  className={`grid size-5 shrink-0 place-items-center rounded-full border ${
-                    on ? "border-primary bg-primary" : "border-border"
-                  }`}
-                >
-                  {on ? <span className="size-2 rounded-full bg-primary-foreground" /> : null}
-                </span>
-              ) : null}
+              <Icon className={`size-3.5 shrink-0 ${on ? "" : color}`} aria-hidden />
+              {p.label}
             </button>
           );
         })}
       </div>
+      <label className="relative block">
+        <span className="sr-only">Your own priorities</span>
+        <Plus
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <input
+          value={custom}
+          onChange={(e) => onCustom(e.target.value)}
+          maxLength={customMax}
+          placeholder="Add your own: vegetarian food, kid-friendly, no early starts…"
+          className={`${PLAN_FIELD} py-1.5 pl-9 text-[13px]`}
+        />
+      </label>
       {children}
     </PlanPanel>
   );
@@ -173,7 +191,7 @@ export function PlanAction({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex min-h-13 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-[16px] font-semibold text-primary-foreground shadow-sm disabled:opacity-50"
+      className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-[15px] font-semibold text-primary-foreground shadow-sm disabled:opacity-50"
     >
       {children}
       <ArrowRight className="size-5" aria-hidden />

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, Sparkles } from "@/components/icons";
+import { Check, ChevronRight, Copy, Sparkles } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { AI_PLAN_PROMPT } from "@/lib/ai-plan-prompt";
 
@@ -51,22 +51,42 @@ export function AiPromptCopy() {
 export function AiPromptButton({
   className = "",
   label = "Planning with ChatGPT or another AI? Get the prompt",
+  variant = "pill",
 }: {
   className?: string;
   /** The button's words; Plan with Béa's forms use a shorter "Get the prompt". */
   label?: string;
+  /** `banner`: a full-width row that says what the prompt is for, hard to miss. */
+  variant?: "pill" | "banner";
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[13px] font-semibold text-primary ${className}`}
-      >
-        <Sparkles className="size-4" aria-hidden />
-        {label}
-      </button>
+      {variant === "banner" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`plan-panel plan-sky flex w-full items-center gap-2.5 px-3 py-2 text-left ${className}`}
+        >
+          <span className="plan-badge grid size-7 shrink-0 place-items-center rounded-full">
+            <Sparkles className="size-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="text-[14px] font-semibold text-primary">{label}</span>
+            <span className="text-[12px] text-muted-foreground"> to use in ChatGPT or any AI</span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[13px] font-semibold text-primary ${className}`}
+        >
+          <Sparkles className="size-4" aria-hidden />
+          {label}
+        </button>
+      )}
       <Sheet
         open={open}
         onClose={() => setOpen(false)}

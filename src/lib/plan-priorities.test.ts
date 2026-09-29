@@ -15,6 +15,11 @@ test("prioritiesLine lists the picks in the tiles' order", () => {
     "What matters most to me: places close together, little backtracking; easy on the budget.",
   );
   assert.equal(prioritiesLine([]), "");
+  assert.equal(
+    prioritiesLine(["rest"], "  vegetarian food "),
+    "What matters most to me: one clearly quieter day; vegetarian food.",
+  );
+  assert.equal(prioritiesLine([], "kid-friendly"), "What matters most to me: kid-friendly.");
 });
 
 test("withPriorities puts the line after the traveller's words", () => {
