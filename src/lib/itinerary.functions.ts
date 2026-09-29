@@ -903,7 +903,7 @@ const OptimizeInput = z.object({
   startDate: z.string().max(20).nullable(),
   endDate: z.string().max(20).nullable(),
   goals: OptimizeGoals.min(1).max(4),
-  note: z.string().max(400).nullable(),
+  note: z.string().max(500).nullable(),
   items: z.array(OptimizeItemIn).min(2).max(OPTIMIZE_MAX_ITEMS),
   cities: z.array(OptimizeCityIn).max(20),
 });

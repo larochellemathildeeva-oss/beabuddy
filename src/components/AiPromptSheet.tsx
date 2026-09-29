@@ -48,7 +48,14 @@ export function AiPromptCopy() {
 }
 
 /** A button on the planner screens that opens the prompt over them. */
-export function AiPromptButton({ className = "" }: { className?: string }) {
+export function AiPromptButton({
+  className = "",
+  label = "Planning with ChatGPT or another AI? Get the prompt",
+}: {
+  className?: string;
+  /** The button's words; Plan with Béa's forms use a shorter "Get the prompt". */
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -58,7 +65,7 @@ export function AiPromptButton({ className = "" }: { className?: string }) {
         className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[13px] font-semibold text-primary ${className}`}
       >
         <Sparkles className="size-4" aria-hidden />
-        Planning with ChatGPT or another AI? Get the prompt
+        {label}
       </button>
       <Sheet
         open={open}
