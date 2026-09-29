@@ -7,7 +7,7 @@ const trip = { id: "t1", title: "Lisbon, again", start_date: "2026-10-05", end_d
 const now = new Date(Date.UTC(2026, 8, 29, 12, 0, 0));
 
 test("text is escaped and long lines are folded", () => {
-  assert.equal(icsText("a,b;c\\d\ne"), "a\\,b\;c\\\\d\\ne");
+  assert.equal(icsText("a,b;c\\d\ne"), "a\\,b\\;c\\\\d\\ne");
   const long = `SUMMARY:${"é".repeat(60)}`;
   const folded = foldLine(long);
   for (const line of folded.split("\r\n")) {
