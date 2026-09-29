@@ -13,6 +13,21 @@ test("planAsText groups stops under their day, with times and details", () => {
   );
 });
 
+test("planAsText keeps where each stop is, once", () => {
+  assert.equal(
+    planAsText([
+      {
+        title: "Dinner",
+        address: "Le Train Bleu, Place Louis-Armand, Paris",
+        place: "Le Train Bleu",
+      },
+      { title: "Louvre", place: "Louvre" },
+      { title: "Lunch", detail: "book ahead", place: "Café Marly" },
+    ]),
+    "Dinner — at Le Train Bleu, Place Louis-Armand, Paris\nLouvre\nLunch — book ahead · at Café Marly",
+  );
+});
+
 test("planAsText prefers a real date and leaves undated stops bare", () => {
   assert.equal(
     planAsText([

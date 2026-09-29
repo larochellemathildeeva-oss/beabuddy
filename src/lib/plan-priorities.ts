@@ -55,13 +55,25 @@ export function budgetFor(ids: readonly PlanPriorityId[]): "value" | null {
   return ids.includes("budget") ? "value" : null;
 }
 
-/** Compare's "what matters": the picks as a short list, then anything typed. At most `max` characters. */
+/**
+ * Compare's "what matters": the picks as a short list, then anything typed,
+ * in at most `max` characters. The typed words always arrive whole; a pick
+ * that no longer fits is the one left out.
+ */
 export function comparePriorities(
   ids: readonly PlanPriorityId[],
   typed: string,
   max = 400,
 ): string {
-  const picked = PLAN_PRIORITIES.filter((p) => ids.includes(p.id)).map((p) => p.ask);
-  const extra = typed.trim();
-  return [...picked, ...(extra ? [extra] : [])].join("; ").slice(0, max);
+  const extra = typed.trim().slice(0, max);
+  const parts: string[] = [];
+  let room = max - (extra ? extra.length + 2 : 0);
+  for (const p of PLAN_PRIORITIES) {
+    if (!ids.includes(p.id)) continue;
+    const cost = p.ask.length + (parts.length ? 2 : 0);
+    if (cost > room) break;
+    parts.push(p.ask);
+    room -= cost;
+  }
+  return [...parts, ...(extra ? [extra] : [])].join("; ");
 }
