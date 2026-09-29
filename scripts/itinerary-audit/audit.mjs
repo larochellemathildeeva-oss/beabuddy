@@ -16,6 +16,8 @@
  *   … --compare             print what changed against baseline.json
  *   … --rescore out/<file>.json   score saved answers again, no calls: after changing the scorer
  *   … --rescore out/<file>.json --replay   and put the model's rows through today's clean-up
+ *   … --check frozen/expected-<set>.json   fail if any finding is new (what CI runs)
+ *   … --save-expected frozen/expected-<set>.json   accept today's findings as the bar
  *   node scripts/itinerary-audit/audit.mjs --mock --only paris   # checks the harness, no key
  *
  * Writes scripts/itinerary-audit/out/<timestamp>.json — every answer, the
@@ -55,7 +57,12 @@ if (!["auto", "model", "rules"].includes(engine)) {
   console.error(`--engine is auto, model or rules, not ${engine}.`);
   process.exit(1);
 }
-if (!mock && engine !== "rules" && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+if (
+  !mock &&
+  engine !== "rules" &&
+  !value("--rescore", null) &&
+  !process.env.GOOGLE_GENERATIVE_AI_API_KEY
+) {
   console.error("Set GOOGLE_GENERATIVE_AI_API_KEY first, or use --engine rules.");
   process.exit(1);
 }
@@ -70,7 +77,7 @@ const { runParse, readPlainAsList, tidyModelItems } = await jiti.import(
   join(root, "src/lib/itinerary.functions.ts"),
 );
 const { withModelFallback } =
-  engine === "rules"
+  engine === "rules" || value("--rescore", null)
     ? { withModelFallback: null }
     : mock
       ? { withModelFallback: await mockModel() }
@@ -497,6 +504,46 @@ if (flag("--compare")) {
   }
 }
 
+// --check / --save-expected: the frozen gate CI runs. Every finding a
+// fixture has today (in how many answers), and which fixtures the list
+// reader handed on; a check fails on any finding it did not have, or a
+// fixture the reader read before and hands on now.
+const tally = (rs) => {
+  const findings = {};
+  const declined = new Set();
+  for (const r of rs)
+    for (const t of new Set(r.findings.map((x) => x.trend))) {
+      if (t === "declined") declined.add(r.id);
+      else findings[`${r.id} [${t}]`] = (findings[`${r.id} [${t}]`] ?? 0) + 1;
+    }
+  return { findings, declined: [...declined].sort() };
+};
+const expectFile = value("--save-expected", null) ?? value("--check", null);
+if (value("--save-expected", null)) {
+  writeFileSync(resolve(here, expectFile), `${JSON.stringify(tally(results), null, 2)}\n`);
+  console.log(`\nExpected findings saved: ${expectFile}`);
+}
+let checkFailed = false;
+if (value("--check", null)) {
+  const was = JSON.parse(readFileSync(resolve(here, expectFile), "utf8"));
+  const now = tally(results);
+  const worse = [];
+  for (const [k, n] of Object.entries(now.findings))
+    if (n > (was.findings[k] ?? 0)) worse.push(`${k} ${was.findings[k] ?? 0} → ${n}`);
+  for (const id of now.declined)
+    if (!was.declined.includes(id)) worse.push(`${id} is no longer read by the list reader`);
+  const better = Object.entries(was.findings)
+    .filter(([k, n]) => (now.findings[k] ?? 0) < n)
+    .map(([k, n]) => `${k} ${n} → ${now.findings[k] ?? 0}`);
+  if (!results.length) worse.push("no answers were scored");
+  console.log(`\nCheck against ${expectFile}:`);
+  for (const line of worse) console.log(`  ✗ worse  ${line}`);
+  for (const line of better)
+    console.log(`  ✓ better ${line} (save it: --save-expected ${expectFile})`);
+  if (!worse.length) console.log("  ✓ nothing got worse");
+  checkFailed = worse.length > 0;
+}
+
 if (flag("--save-baseline")) {
   const errors = results.filter((r) => r.findings.some((f) => f.trend === "error")).length;
   if (only) console.log("\nNot saving a baseline from --only: it would drop the other fixtures.");
@@ -516,3 +563,4 @@ const file = join(here, "out", `${new Date().toISOString().replace(/[:.]/g, "-")
 writeFileSync(file, JSON.stringify({ ...summary, trends, results }, null, 2));
 console.log(`Raw answers: ${file}${modelCalls ? ` (${modelCalls} model calls)` : ""}`);
 spend.report();
+if (checkFailed) process.exit(1);

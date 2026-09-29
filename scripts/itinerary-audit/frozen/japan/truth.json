@@ -1,0 +1,1014 @@
+{
+ "note": "Where each stop really is. 'near' within 'km', or a saved pin's label must match 'label'. Reviewed by hand from each pin's name and ward on 2026-09-29; RYŌ-SHŌ, Men-ya Inoichi and Rikuro's were saved wrong then.",
+ "stops": {
+  "0": {
+   "title": "Arrival at Kansai International Airport",
+   "near": [
+    34.4342,
+    135.22252
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+  },
+  "1": {
+   "title": "Train from Kansai International Airport to Kyoto Station",
+   "near": [
+    34.4342,
+    135.22252
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+  },
+  "2": {
+   "title": "Mitsui Garden Hotel Kyoto Kawaramachi Jokyo-ji",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "3": {
+   "title": "SANGA ONO KYOTO JOKYO-JI",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "4": {
+   "title": "Fushimi Inari Taisha",
+   "near": [
+    34.96752,
+    135.77971
+   ],
+   "km": 0.35,
+   "why": "reviewed: Fushimi Inari-taisha, Fushimi Ward, Kyoto, Kyoto Prefecture, 612-0882,"
+  },
+  "5": {
+   "title": "Nishiki Market",
+   "near": [
+    35.00502,
+    135.76557
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+  },
+  "6": {
+   "title": "Miki Keiran",
+   "near": [
+    35.00502,
+    135.76557
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+  },
+  "7": {
+   "title": "Yubakichi",
+   "near": [
+    35.00502,
+    135.76557
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+  },
+  "8": {
+   "title": "Hanayori Kiyoe",
+   "near": [
+    35.00502,
+    135.76557
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+  },
+  "9": {
+   "title": "Fufusa",
+   "near": [
+    35.00502,
+    135.76557
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishiki Market, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyot"
+  },
+  "10": {
+   "title": "Aritsugu",
+   "near": [
+    35.00509,
+    135.76623
+   ],
+   "km": 0.35,
+   "why": "reviewed: Aritsugu, Nishikikōji Street, Higashiuoyachō, Nakagyo Ward, Kyoto, Kyo"
+  },
+  "11": {
+   "title": "Teramachi Shopping Arcade",
+   "near": [
+    35.01049,
+    135.76716
+   ],
+   "km": 0.35,
+   "why": "reviewed: Teramachi Shopping Arcade, 京都市中京区"
+  },
+  "12": {
+   "title": "Shinkyogoku Shopping Street",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "13": {
+   "title": "Nishiki Tenmangu",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "14": {
+   "title": "Mitsui Garden Hotel Kyoto Kawaramachi Jokyo-ji",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "15": {
+   "title": "Yasaka Shrine",
+   "near": [
+    35.0036,
+    135.77826
+   ],
+   "km": 0.35,
+   "why": "reviewed: Yasaka Shrine, Higashioji Street, Giommachi-Kitagawa, 辰巳町, Higashiyama"
+  },
+  "16": {
+   "title": "Gion",
+   "near": [
+    35.00469,
+    135.7784
+   ],
+   "km": 0.35,
+   "why": "reviewed: Gion, Higashiyama Ward, Kyoto, Kyoto Prefecture, Japan"
+  },
+  "17": {
+   "title": "Hanamikoji Street",
+   "near": [
+    35.00312,
+    135.77457
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nishi-Hanamikoji Street, 570-123 Gionmachi Minamigawa, 京都市東山区"
+  },
+  "18": {
+   "title": "Kennin-ji",
+   "near": [
+    35.00117,
+    135.77404
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kennin Ji, Donguri Street, Giommachi-Minamigawa, 辰巳町, Higashiyama Ward"
+  },
+  "19": {
+   "title": "Shinbashi-dori",
+   "near": [
+    35.0058,
+    135.77376
+   ],
+   "km": 0.35,
+   "why": "reviewed: Shinbashi Street, Motoyoshicho, Higashiyama Ward, Kyoto, Kyoto Prefect"
+  },
+  "20": {
+   "title": "Tatsumi Bridge",
+   "near": [
+    35.00557,
+    135.77451
+   ],
+   "km": 0.35,
+   "why": "reviewed: Gion Tatsumi Bridge, Kiyomotocho, 372 祇園巽橋, 京都市東山区"
+  },
+  "21": {
+   "title": "RYŌ-SHŌ",
+   "label": "ry[oō]-?sh[oō]|料庄",
+   "why": "a Michelin kaiseki; 'Kisshokaryo' is another restaurant"
+  },
+  "22": {
+   "title": "SANGA ONO KYOTO JOKYO-JI",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "23": {
+   "title": "Kinkaku-ji",
+   "near": [
+    35.03953,
+    135.72954
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kinkaku-ji, Kinkakuji-chō, Kita Ward, Kyoto, Kyoto Prefecture, 603-836"
+  },
+  "24": {
+   "title": "Golden Pavilion",
+   "near": [
+    35.03953,
+    135.72954
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kinkaku-ji, Kinkakuji-chō, Kita Ward, Kyoto, Kyoto Prefecture, 603-836"
+  },
+  "25": {
+   "title": "Kyōko-chi / Mirror Pond",
+   "near": [
+    35.03921,
+    135.72815
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kyōko-chi Pond, Kita Ward, Kyoto, Kyoto Prefecture, Japan"
+  },
+  "26": {
+   "title": "Sekkatei area",
+   "near": [
+    35.04014,
+    135.72928
+   ],
+   "km": 0.35,
+   "why": "reviewed: The Sekka-tei Tea House, 衣笠経35号線, Kinugasa-Nishibabacho, Kita Ward, Ky"
+  },
+  "27": {
+   "title": "Ryōan-ji",
+   "near": [
+    35.03346,
+    135.71809
+   ],
+   "km": 0.35,
+   "why": "reviewed: Ryōan-ji, Kitsuji street, Hirano-Kamiyanagicho, Ukyō Ward, Kyoto, Kyot"
+  },
+  "28": {
+   "title": "Hōjō",
+   "near": [
+    35.03392,
+    135.71889
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hosei Pound, Ukyō Ward, Kyoto, Kyoto Prefecture, 616-0000, Japan"
+  },
+  "29": {
+   "title": "Kyōyōchi Pond",
+   "near": [
+    35.03327,
+    135.71853
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kyoyochi Pond, Ukyō Ward, Kyoto, Kyoto Prefecture, 616-0000, Japan"
+  },
+  "30": {
+   "title": "Arashiyama soba lunch",
+   "unverified": "a soba lunch somewhere in Arashiyama"
+  },
+  "31": {
+   "title": "Arashiyama Bamboo Grove",
+   "near": [
+    35.01674,
+    135.67115
+   ],
+   "km": 0.35,
+   "why": "reviewed: Arashiyama Bamboo Grove, Ukyō Ward, Kyoto, Kyoto Prefecture, 616-0000,"
+  },
+  "32": {
+   "title": "Tenryū-ji",
+   "near": [
+    35.01622,
+    135.67294
+   ],
+   "km": 0.35,
+   "why": "reviewed: Tenryū Temple, Saga Arashiyama Station Line, Sagatenryuji-Kitatsukurim"
+  },
+  "33": {
+   "title": "Sōgenchi Garden",
+   "near": [
+    35.01581,
+    135.67328
+   ],
+   "km": 0.35,
+   "why": "reviewed: Sōgenchi Garden, Ukyō Ward, Kyoto, Kyoto Prefecture, 616-0000, Japan"
+  },
+  "34": {
+   "title": "Togetsukyō Bridge",
+   "near": [
+    35.01863,
+    135.68124
+   ],
+   "km": 0.35,
+   "why": "reviewed: 渡月橋 / Togetsukyo Bridge, Arashiyama, Kyoto, 京都市, 京都市右京区"
+  },
+  "35": {
+   "title": "Arashiyama streets",
+   "near": [
+    35.01004,
+    135.68191
+   ],
+   "km": 0.35,
+   "why": "reviewed: Arashiyama, Arashiyama Station Line, Arashiyama-Nishiichikawacho, Nish"
+  },
+  "36": {
+   "title": "Pontochō Alley",
+   "near": [
+    35.00606,
+    135.77108
+   ],
+   "km": 0.35,
+   "why": "reviewed: Pontocho Alley, Shimokorikicho, 京都市東山区"
+  },
+  "37": {
+   "title": "Men-ya Inoichi",
+   "near": [
+    35.0008,
+    135.7668
+   ],
+   "km": 0.35,
+   "why": "Men-ya Inoichi (猪一), Shimogyo — not the ramen floor at Kyoto Station"
+  },
+  "38": {
+   "title": "SANGA ONO KYOTO JOKYO-JI",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "39": {
+   "title": "Kiyomizu-dera",
+   "near": [
+    34.9943,
+    135.78444
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kiyomizu-dera, Kiyomizu Slope, Kiyomizu 1-chōme, 辰巳町, Higashiyama Ward"
+  },
+  "40": {
+   "title": "Kiyomizu-zaka",
+   "near": [
+    34.99708,
+    135.78019
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kiyomizuzaka Park, 205-2 Kiyomizu, 京都市東山区"
+  },
+  "41": {
+   "title": "Sannenzaka",
+   "near": [
+    34.99648,
+    135.78132
+   ],
+   "km": 0.35,
+   "why": "reviewed: 鈴 三年坂夢子 Rinn Sannenzaka Yumeko, Three-year Slope, Kiyomizu 3-chome, 辰巳"
+  },
+  "42": {
+   "title": "Ninenzaka",
+   "near": [
+    34.99887,
+    135.78075
+   ],
+   "km": 0.35,
+   "why": "reviewed: Ninenzaka KAMANZA, 363-12 Masuyacho, 京都市東山区"
+  },
+  "43": {
+   "title": "Hōkan-ji / Yasaka Pagoda",
+   "near": [
+    34.99849,
+    135.77932
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hōkan Temple, 三年坂, Yasakakami, 辰巳町, Higashiyama Ward, Kyoto, Kyoto Pre"
+  },
+  "44": {
+   "title": "Nene-no-Michi",
+   "near": [
+    35.00053,
+    135.77995
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nene's path, Daidokoro Slope, Shimogawara-chō, 辰巳町, Higashiyama Ward, "
+  },
+  "45": {
+   "title": "Kōdai-ji",
+   "near": [
+    35.00051,
+    135.77996
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kodai-ji, Daidokoro Slope, Shimogawara-chō, 辰巳町, Higashiyama Ward, Kyo"
+  },
+  "46": {
+   "title": "Maruyama Park",
+   "near": [
+    35.00376,
+    135.78148
+   ],
+   "km": 0.35,
+   "why": "reviewed: Maruyama Park, Higashiyama Ward, Kyoto, Kyoto Prefecture, Japan"
+  },
+  "47": {
+   "title": "Yasaka Shrine",
+   "near": [
+    35.0036,
+    135.77826
+   ],
+   "km": 0.35,
+   "why": "reviewed: Yasaka Shrine, Higashioji Street, Giommachi-Kitagawa, 辰巳町, Higashiyama"
+  },
+  "48": {
+   "title": "Lunch in Gion",
+   "unverified": "a lunch somewhere in Gion"
+  },
+  "49": {
+   "title": "Mitsui Garden Hotel Kyoto Kawaramachi Jokyo-ji",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "50": {
+   "title": "Train from Kyoto Station to Shin-Osaka Station",
+   "near": [
+    34.98664,
+    135.75847
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kyoto Station, Shio-koji dori, Higashishiokojicho, Shimogyo Ward, Kyot"
+  },
+  "51": {
+   "title": "Hotel Agora Regency Osaka Sakai",
+   "near": [
+    34.58253,
+    135.46786
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hotel Agora Regency Osaka Sakai, 4 Chome-45-1 Ebisujimacho, 堺市堺区"
+  },
+  "52": {
+   "title": "Conference registration",
+   "unverified": "where the conference registers is not in the plan"
+  },
+  "53": {
+   "title": "AJINOYA HONTEN",
+   "near": [
+    34.6681,
+    135.501
+   ],
+   "km": 0.35,
+   "why": "Ajinoya Honten, Namba — found but only flagged"
+  },
+  "54": {
+   "title": "Dotonbori",
+   "near": [
+    34.66903,
+    135.50157
+   ],
+   "km": 0.35,
+   "why": "reviewed: Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Prefecture, 542-0071, "
+  },
+  "55": {
+   "title": "Glico Running Man",
+   "near": [
+    34.66903,
+    135.50157
+   ],
+   "km": 0.35,
+   "why": "reviewed: Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Prefecture, 542-0071, "
+  },
+  "56": {
+   "title": "Ebisu Bridge",
+   "near": [
+    34.66907,
+    135.5013
+   ],
+   "km": 0.35,
+   "why": "reviewed: Ebisu Bridge, Tonbori River Walk, Sōemon, Chūō Ward, Osaka, Osaka Pref"
+  },
+  "57": {
+   "title": "Kani Doraku",
+   "near": [
+    34.66879,
+    135.5015
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kani Doraku Crab, Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Pref"
+  },
+  "58": {
+   "title": "Excelsior Caffé Shinsaibashi",
+   "near": [
+    34.66984,
+    135.50143
+   ],
+   "km": 0.35,
+   "why": "reviewed: EXCELSIOR CAFE, Shinsaibashisuji Shopping Street, Shinsaibashisuji 2, "
+  },
+  "59": {
+   "title": "Kuromon Ichiba Market",
+   "near": [
+    34.66627,
+    135.50704
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kuromon Ichiba Market, Kuromon-Ichiba Market, Nipponbashi 1, Chūō Ward"
+  },
+  "60": {
+   "title": "Sennichimae Doguyasuji",
+   "near": [
+    34.66398,
+    135.50349
+   ],
+   "km": 0.35,
+   "why": "reviewed: Sennichimae Doguyasuji, Sennichimae Doguyasuji Shopping St, Nanba-Senn"
+  },
+  "61": {
+   "title": "Hozenji Yokocho",
+   "near": [
+    34.66816,
+    135.50265
+   ],
+   "km": 0.35,
+   "why": "reviewed: Katsudon Hozenjiyokocho, 1 Chome-1-17 Namba, 大阪市中央区"
+  },
+  "62": {
+   "title": "Hozenji Temple",
+   "near": [
+    34.66802,
+    135.50242
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hozenji Temple, Hōzen-ji Sandō, Nanba 1-chōme, Chūō Ward, Osaka, Osaka"
+  },
+  "63": {
+   "title": "Dotonbori",
+   "near": [
+    34.66903,
+    135.50157
+   ],
+   "km": 0.35,
+   "why": "reviewed: Dōtonbori, Dotonbori 1, Chūō Ward, Osaka, Osaka Prefecture, 542-0071, "
+  },
+  "64": {
+   "title": "HOKKYOKUSEI SHINSAIBASHI",
+   "near": [
+    34.66963,
+    135.49874
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hokkyokusei - Shinsaibashi, 新屋敷筋, Nishi-Shinsaibashi 2, Chūō Ward, Osa"
+  },
+  "65": {
+   "title": "Shinsaibashi-suji",
+   "near": [
+    34.67788,
+    135.50118
+   ],
+   "km": 0.35,
+   "why": "reviewed: belle-ville Shinsaibashi Suji, 大阪府大阪市中央区南船場３丁目９−２, 大阪市中央区"
+  },
+  "66": {
+   "title": "Amerikamura",
+   "near": [
+    34.67201,
+    135.4988
+   ],
+   "km": 0.35,
+   "why": "reviewed: American Village, Suomachi-dori, Nishi-Shinsaibashi 1-chome, Chūō Ward"
+  },
+  "67": {
+   "title": "Triangle Park / Sankaku Kōen",
+   "near": [
+    34.67217,
+    135.49792
+   ],
+   "km": 0.35,
+   "why": "reviewed: Sankaku Triangle Park, 大阪市中央区"
+  },
+  "68": {
+   "title": "KAWACHI Artist Materials",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "69": {
+   "title": "Rikuro's Cheesecake",
+   "near": [
+    34.6661,
+    135.5016
+   ],
+   "km": 0.35,
+   "why": "Rikuro's Namba main shop: that day is Shinsaibashi and Amerikamura, not Shin-Osaka"
+  },
+  "70": {
+   "title": "SUSHIDOKORO AMANO",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "71": {
+   "title": "Osaka Castle Park",
+   "near": [
+    34.68653,
+    135.52725
+   ],
+   "km": 0.35,
+   "why": "reviewed: Osaka Castle Park, Osaka, Osaka Prefecture, 540-0002, Japan"
+  },
+  "72": {
+   "title": "Osaka Castle",
+   "near": [
+    34.68737,
+    135.52586
+   ],
+   "km": 0.35,
+   "why": "reviewed: Osaka Castle, 1, Osakajo, Chūō Ward, Osaka, Osaka Prefecture, 540-0002"
+  },
+  "73": {
+   "title": "Kyobashi",
+   "near": [
+    34.69758,
+    135.5305
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kyobashi, Keihan-kokudo, Higashi-Nodamachi 2-chome, Miyakojima Ward, O"
+  },
+  "74": {
+   "title": "Izakaya Toyo",
+   "near": [
+    34.69719,
+    135.53511
+   ],
+   "km": 0.35,
+   "why": "reviewed: Izakaya Toyo, 京橋駅前商店会, Higashi-Nodamachi 3-chome, Miyakojima Ward, Osa"
+  },
+  "75": {
+   "title": "Izakaya Toyo lunch",
+   "near": [
+    34.69719,
+    135.53511
+   ],
+   "km": 0.35,
+   "why": "reviewed: Izakaya Toyo, 京橋駅前商店会, Higashi-Nodamachi 3-chome, Miyakojima Ward, Osa"
+  },
+  "76": {
+   "title": "Citadines Namba Osaka",
+   "near": [
+    34.66206,
+    135.50626
+   ],
+   "km": 0.35,
+   "why": "reviewed: Citadines Namba Osaka, 25, Nipponbashi 3, Naniwa Ward, Osaka, Osaka Pr"
+  },
+  "77": {
+   "title": "DEEP OSAKA FOOD TOUR",
+   "unverified": "the tour's meeting point is not in the plan"
+  },
+  "78": {
+   "title": "Train from Shin-Osaka Station to Hiroshima Station",
+   "near": [
+    34.7329,
+    135.49854
+   ],
+   "km": 0.35,
+   "why": "reviewed: Shin-Osaka, shin-midousuji, Nishinakajima 5-chome, Yodogawa Ward, Osak"
+  },
+  "79": {
+   "title": "Atomic Bomb Dome",
+   "near": [
+    34.39549,
+    132.45353
+   ],
+   "km": 0.35,
+   "why": "reviewed: Atomic Bomb Dome, 1-10 Otemachi, 広島市中区"
+  },
+  "80": {
+   "title": "Hiroshima Peace Memorial Park",
+   "near": [
+    34.39317,
+    132.4523
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hiroshima Peace Memorial Park, Naka Ward, Hiroshima, Hiroshima Prefect"
+  },
+  "81": {
+   "title": "Hiroshima Peace Memorial Museum",
+   "near": [
+    34.39181,
+    132.4521
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hiroshima Peace Memorial Museum Main Building, Peace Boulevard, Nakaji"
+  },
+  "82": {
+   "title": "Ferry from Motoyasubashi Pier to Miyajima Pier",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "83": {
+   "title": "KAKIYA",
+   "near": [
+    34.29856,
+    132.3217
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kakiya, Itsukushima Port Itsukushima Shrine Line, Miyajima, Hatsukaich"
+  },
+  "84": {
+   "title": "Itsukushima Shrine",
+   "near": [
+    34.29491,
+    132.31864
+   ],
+   "km": 0.35,
+   "why": "reviewed: Itsukushima Shrine Museum, 反橋, Miyajima, Hatsukaichi, Hiroshima Prefec"
+  },
+  "85": {
+   "title": "Great Torii Gate",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "86": {
+   "title": "Miyajima Omotesando Shopping Street",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "87": {
+   "title": "MOMIJIDO MAIN STORE",
+   "near": [
+    34.29781,
+    132.32094
+   ],
+   "km": 0.35,
+   "why": "reviewed: Momijido Main Store, Itsukushima Port Itsukushima Shrine Line, Miyajim"
+  },
+  "88": {
+   "title": "Daishō-in",
+   "near": [
+    34.29173,
+    132.31858
+   ],
+   "km": 0.35,
+   "why": "reviewed: Daishō Temple, 萬福橋, Miyajima, Hatsukaichi, Hiroshima Prefecture, 739-0"
+  },
+  "89": {
+   "title": "FUJIIYA",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "90": {
+   "title": "Ferry from Miyajima Pier to Motoyasubashi Pier",
+   "near": [
+    34.30239,
+    132.32104
+   ],
+   "km": 0.35,
+   "why": "reviewed: Miyajima Pier, Itsukushima Park Line, Miyajima, Hatsukaichi, Hiroshima"
+  },
+  "91": {
+   "title": "Hondori Shopping Street",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "92": {
+   "title": "Hiroshima Yume Plaza",
+   "near": [
+    34.39292,
+    132.4593
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hiroshima Yume Plaza, 28, Hondori, Naka Ward, Hiroshima, Hiroshima Pre"
+  },
+  "93": {
+   "title": "NEGIAN KAMIYACHO",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "94": {
+   "title": "Train from Hiroshima Station to Shin-Osaka Station",
+   "near": [
+    34.39783,
+    132.47558
+   ],
+   "km": 0.35,
+   "why": "reviewed: Hiroshima Station, Hiroshima Station Pedestrian Walkway, Enkobashicho,"
+  },
+  "95": {
+   "title": "Kuromon Ichiba Market",
+   "near": [
+    34.66627,
+    135.50704
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kuromon Ichiba Market, Kuromon-Ichiba Market, Nipponbashi 1, Chūō Ward"
+  },
+  "96": {
+   "title": "Shitennō-ji",
+   "near": [
+    34.65472,
+    135.5168
+   ],
+   "km": 0.35,
+   "why": "reviewed: Shitennoji, 18, Shitennoji 1-chome, Tennōji Ward, Osaka, Osaka Prefect"
+  },
+  "97": {
+   "title": "Tsūtenkaku",
+   "near": [
+    34.65254,
+    135.50631
+   ],
+   "km": 0.35,
+   "why": "reviewed: Tsūtenkaku, 6, Shinsekai Market, Ebisu-higashi 1-chome, Naniwa Ward, O"
+  },
+  "98": {
+   "title": "Shinsekai",
+   "near": [
+    34.65209,
+    135.50619
+   ],
+   "km": 0.35,
+   "why": "reviewed: Shinsekai, Shinsekai-hondori Higashi-nakano cho, Ebisu-higashi 2-chome"
+  },
+  "99": {
+   "title": "Janjan Yokocho",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "100": {
+   "title": "Yaekatsu",
+   "near": [
+    34.64968,
+    135.506
+   ],
+   "km": 0.35,
+   "why": "reviewed: Yaekatsu, Janjan alley, Ebisu-higashi 3-chome, Naniwa Ward, Osaka, Osa"
+  },
+  "101": {
+   "title": "Den Den Town",
+   "near": [
+    34.65922,
+    135.50582
+   ],
+   "km": 0.35,
+   "why": "reviewed: Den Den Town, Nipponbashi 4, Naniwa Ward, Osaka, Osaka Prefecture, 556"
+  },
+  "102": {
+   "title": "mookEN",
+   "unverified": "mookEN's shop not confirmed"
+  },
+  "103": {
+   "title": "U-ARTS",
+   "unverified": "U-ARTS not confirmed"
+  },
+  "104": {
+   "title": "IKEMAN SEMBA",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "105": {
+   "title": "SUSHI HOSHIYAMA",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "106": {
+   "title": "Train from Osaka Station to Himeji Station",
+   "near": [
+    34.70251,
+    135.49618
+   ],
+   "km": 0.35,
+   "why": "reviewed: Osaka Station, Mizu-no-michi Path, Umeda 3-chome, Kita Ward, Osaka, Os"
+  },
+  "107": {
+   "title": "Himeji Castle",
+   "near": [
+    34.83933,
+    134.69402
+   ],
+   "km": 0.35,
+   "why": "reviewed: Himeji Castle, 68, 女坂, Honmachi, Himeji, Hyogo Prefecture, 670-0012, J"
+  },
+  "108": {
+   "title": "Kōko-en Garden",
+   "near": [
+    34.83706,
+    134.69041
+   ],
+   "km": 0.35,
+   "why": "reviewed: Koko-en Garden, Himeji City Main Road No. 5, Tatsunomachi 1-chome, Zai"
+  },
+  "109": {
+   "title": "Train from Himeji Station to Sannomiya Station",
+   "near": [
+    34.8264,
+    134.6908
+   ],
+   "km": 0.35,
+   "why": "reviewed: Himeji, 東側自由通路, Hojoguchi 1-chome, Minamiekimaecho, Himeji, Hyogo Pref"
+  },
+  "110": {
+   "title": "KOBE BEEF KISSHOKICHI SANKITA STREET",
+   "unverified": "not placed or flagged when the key was written"
+  },
+  "111": {
+   "title": "Ikuta Jinja",
+   "near": [
+    34.69461,
+    135.19062
+   ],
+   "km": 0.35,
+   "why": "reviewed: Ikuta Shrine, 生田北７９号線, Shimoyamatedori 2-chome, Chuo Ward, Kobe, Hyogo"
+  },
+  "112": {
+   "title": "Rōshōki",
+   "near": [
+    34.68825,
+    135.18823
+   ],
+   "km": 0.35,
+   "why": "reviewed: ROSHOKI, 14, Sakaemachidori 2-chome, Chuo Ward, Kobe, Hyogo Prefecture"
+  },
+  "113": {
+   "title": "YUNYUN",
+   "near": [
+    34.68804,
+    135.18865
+   ],
+   "km": 0.35,
+   "why": "reviewed: YUNYUN, 17, Sakaemachidōri 1, Chuo Ward, Kobe, Hyogo Prefecture, 650-0"
+  },
+  "114": {
+   "title": "KOBE CROQUETTE",
+   "near": [
+    34.68788,
+    135.18722
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kobe Croquette, 2 Chome-4-1 Motomachidori, 神戸市中央区"
+  },
+  "115": {
+   "title": "Nankinmachi",
+   "near": [
+    34.68811,
+    135.18838
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nankinmachi, Chuo Ward, Kobe, Hyogo Prefecture, 650-0023, Japan"
+  },
+  "116": {
+   "title": "Meriken Park",
+   "near": [
+    34.68331,
+    135.18932
+   ],
+   "km": 0.35,
+   "why": "reviewed: Meriken Park, Chuo Ward, Kobe, Hyogo Prefecture, 650-0042, Japan"
+  },
+  "117": {
+   "title": "Kobe Harborland",
+   "near": [
+    34.67851,
+    135.18031
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kobe Harborland, 3, Higashi-Kawasakicho 1-chome, Chuo Ward, Kobe, Hyog"
+  },
+  "118": {
+   "title": "Train from Sannomiya Station to Osaka Station",
+   "near": [
+    34.69308,
+    135.19382
+   ],
+   "km": 0.35,
+   "why": "reviewed: Sannomiya Station, Kobe Akashi Line, Onoedori 8-chome, Chuo Ward, Kobe"
+  },
+  "119": {
+   "title": "Citadines Namba Osaka",
+   "near": [
+    34.66206,
+    135.50626
+   ],
+   "km": 0.35,
+   "why": "reviewed: Citadines Namba Osaka, 25, Nipponbashi 3, Naniwa Ward, Osaka, Osaka Pr"
+  },
+  "120": {
+   "title": "Citadines Namba Osaka",
+   "near": [
+    34.66206,
+    135.50626
+   ],
+   "km": 0.35,
+   "why": "reviewed: Citadines Namba Osaka, 25, Nipponbashi 3, Naniwa Ward, Osaka, Osaka Pr"
+  },
+  "121": {
+   "title": "Umeda Sky Building",
+   "near": [
+    34.70529,
+    135.49053
+   ],
+   "km": 0.35,
+   "why": "reviewed: Umeda Sky Building, Osaka Itami Line, Ōyodo-Naka 1, Kita Ward, Osaka, "
+  },
+  "122": {
+   "title": "Grand Front Osaka",
+   "near": [
+    34.70396,
+    135.49474
+   ],
+   "km": 0.35,
+   "why": "reviewed: Grand Front Osaka, Kita Ward, Osaka, Osaka Prefecture, Japan"
+  },
+  "123": {
+   "title": "Osaka Station City",
+   "near": [
+    34.70181,
+    135.49633
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kobe Rengatei Osaka Station City, Umeda, 3 Chome−1−1 サウスゲートビルディング 16F,"
+  },
+  "124": {
+   "title": "Nakanoshima Park",
+   "near": [
+    34.6924,
+    135.50776
+   ],
+   "km": 0.35,
+   "why": "reviewed: Nakanoshima Park, Kita Ward, Osaka, Osaka Prefecture, Japan"
+  },
+  "125": {
+   "title": "Citadines Namba Osaka",
+   "near": [
+    34.66206,
+    135.50626
+   ],
+   "km": 0.35,
+   "why": "reviewed: Citadines Namba Osaka, 25, Nipponbashi 3, Naniwa Ward, Osaka, Osaka Pr"
+  },
+  "126": {
+   "title": "Flight KIX to Vancouver",
+   "near": [
+    34.4342,
+    135.22252
+   ],
+   "km": 0.35,
+   "why": "reviewed: Kansai International Airport, バス専用, Izumisano, Osaka Prefecture, 549-0"
+  }
+ }
+}

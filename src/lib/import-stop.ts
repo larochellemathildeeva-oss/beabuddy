@@ -58,12 +58,17 @@ export function clockTimesIn(text: string): Set<string> {
     /\b\d{1,2}(?:\s*[:.h]\s*\d{2}|\s*h\b)?\s*(?:am|pm|a\.m\.|p\.m\.)?|\bnoon\b|\bmidday\b|\bmidnight\b/gi;
   for (const m of text.matchAll(written)) {
     const time = normalizeClock(m[0]);
-    if (time) out.add(time);
+    if (!time) continue;
+    out.add(time);
+    // "Zuni at 7:30" is as likely 19:30: without am or pm, both are given.
+    const hour = Number(time.slice(0, 2));
+    if (!/[ap]\.?m/i.test(m[0]) && hour >= 1 && hour < 12)
+      out.add(`${pad(hour + 12).slice(0, 2)}${time.slice(2)}`);
   }
   const bare =
-    /\b(?:at|around|about|by|until|till|from|las|à|vers|um|gegen|alle|ore)\s+(\d{1,2})\b|(?<![\d\-–/.])\b(\d{1,2})(?=\s*(?:-|–|to)\s*\d{1,2}(?:[:.h]\d{2}|\s*(?:am|pm|a\.m\.|p\.m\.)))/gi;
+    /\b(?:at|around|about|by|until|till|from|like|las|à|vers|um|gegen|alle|ore)\s+(\d{1,2})\b(?![:.]\d)|(?<![\d\-–/.])\b(\d{1,2})(?=\s*(?:-|–|to)\s*\d{1,2}(?:[:.h]\d{2}|\s*(?:am|pm|a\.m\.|p\.m\.)))|(?<![\d\-–/.:])\b(\d{1,2})\s*-?\s*ish\b/gi;
   for (const m of text.matchAll(bare)) {
-    const hour = Number(m[1] ?? m[2]);
+    const hour = Number(m[1] ?? m[2] ?? m[3]);
     if (hour > 23) continue;
     out.add(pad(hour));
     if (hour < 12) out.add(pad(hour + 12));

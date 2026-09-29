@@ -248,6 +248,26 @@ is, memory only, with one warning in the log.
 
 ## Import audit
 
+**The frozen gate (CI).** `npm run audit:ci` runs on every pull request, with
+no keys and no calls, and fails when the import reads or pins anything worse
+than the saved bar in `scripts/itinerary-audit/frozen/`:
+
+- `ci.mjs`: every fixture set through the list reader, and every frozen
+  Gemini answer (`frozen/answers-<set>.json`) through today's clean-up
+  (`audit.mjs --rescore … --replay --check`). A new finding fails.
+- `pins-japan.mjs`: a traveller's real 10-day Japan plan (127 stops,
+  `frozen/japan`, shared with their consent) placed from frozen map answers
+  (`frozen/japan/geo`) and scored against an answer key reviewed by hand
+  (`truth.json`). More pins saved wrong, or fewer saved right, fails.
+
+Do not loosen a rule to fix one plan without running `npm run audit:ci`: it
+is how a fix for one plan is kept from quietly breaking another. When a
+change is right and the bar should move, re-save it (`ci.mjs --save`,
+`pins-japan.mjs --save`) in the same pull request and say why. When a change
+asks the map something new, the replay reports it: run
+`NODE_USE_ENV_PROXY=1 node scripts/itinerary-audit/pins-japan.mjs --record`
+(LocationIQ and Open Places keys, spend-capped), then `--save`.
+
 `scripts/itinerary-audit/` puts sample plans through the real import and
 scores the answer: `audit.mjs` for stops, times, kinds, bookings and towns
 (`--fixtures fresh` or `more` for the newer sets; `--engine rules` needs no
