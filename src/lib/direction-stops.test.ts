@@ -333,3 +333,12 @@ test("a far pair of namesakes is not kept on a day already pinned at home", () =
   // Without the day's own pins the pair still backs itself, as before.
   assert.equal(wideDayPinsToKeep(wide).size, 2);
 });
+
+test("a German street named with its preposition is a street address", () => {
+  assert.equal(looksLikeStreetAddress("Unter den Linden 77"), true);
+  assert.equal(looksLikeStreetAddress("Am Kupfergraben 6"), true);
+  assert.equal(looksLikeStreetAddress("An der Alster 72"), true);
+  // A name ending in a number still is not.
+  assert.equal(looksLikeStreetAddress("Curry 36"), false);
+  assert.equal(looksLikeStreetAddress("Terminal 5"), false);
+});

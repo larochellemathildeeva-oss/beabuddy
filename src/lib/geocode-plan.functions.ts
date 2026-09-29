@@ -9,6 +9,7 @@ import {
   distanceKm,
   inBox,
   namesAirport,
+  outingReachKm,
   pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -59,6 +60,11 @@ const StopIn = z.object({
    * stop, so it is not beside the stop before it.
    */
   fresh: z.boolean().nullish(),
+  /**
+   * Any ride comes just before this stop (a train back to town, a bus), so a
+   * day out that the stop before it was on may be over.
+   */
+  rode: z.boolean().nullish(),
 });
 
 type StopInput = {
@@ -70,6 +76,7 @@ type StopInput = {
   area?: string | null;
   within?: number | null;
   fresh?: boolean | null;
+  rode?: boolean | null;
 };
 
 const Input = z.object({
@@ -451,21 +458,41 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
        */
       const metro = broad && namesTown(where) && namedTowns.has(where.toLowerCase());
       const centre = broad && !metro ? null : (centres.get(where.toLowerCase()) ?? null);
+      /** How far from the middle of town the stop may be: further on a drive out. */
+      const townKm = metro ? METRO_KM : TOWN_KM;
+      const reachKm = Math.max(townKm, outingReachKm(stop.detail) ?? 0);
+      /**
+       * The stop before it was out of town, with no ride since: a day out
+       * (the Golden Circle, the Cape peninsula) goes on from there, and is
+       * looked for and measured from that stop rather than from town.
+       */
+      const away =
+        !broad && !stop.rode && anchor && centre && distanceKm(anchor, centre) > townKm
+          ? anchor
+          : null;
 
       // An answer that is probably not the stop (the town, for a park the
       // geocoder could not find). Kept only if nothing better turns up.
       const doubtful: GeoHit[] = [];
+      // The right name, too far out to pin unasked: shown before the town.
+      const farNamed: GeoHit[] = [];
 
       /** The stop's queries inside one area; true once one of them lands on the stop. */
       const tryIn = async (
         inWhere: string,
         bounds: AreaBox,
         near: { lat: number; lon: number } | null,
+        bare = false,
       ): Promise<boolean> => {
-        const queries = planStopQueries(
+        const asked = planStopQueries(
           { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
           inWhere,
         ).slice(0, QUERIES_PER_STOP);
+        // The name alone, bounded to the box: Geoapify finds "Gullfoss" but
+        // not "Gullfoss, Iceland".
+        const queries = bare
+          ? asked.slice(0, 1).map((query) => query.slice(0, -`, ${inWhere}`.length))
+          : asked;
         for (const query of queries) {
           // Per box: a miss beside the parent is not a miss across the city.
           // And per centre: the nearest namesake to one town is not the
@@ -494,7 +521,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
             placed.push({ index, ...picked.hit });
             return true;
           }
-          if (picked) doubtful.push({ ...picked.hit, ...far });
+          if (picked?.trusted) farNamed.push({ ...picked.hit, ...far });
+          else if (picked) doubtful.push({ ...picked.hit, ...far });
         }
         return false;
       };
@@ -515,7 +543,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         }
         if (!centre) return {};
         const km = distanceKm(hit, centre);
-        return km > (metro ? METRO_KM : TOWN_KM) ? { farKm: Math.round(km) } : {};
+        if (km <= reachKm) return {};
+        if (away && distanceKm(hit, away) <= DAY_REACH_KM) return {};
+        return { farKm: Math.round(km) };
       };
 
       const parent =
@@ -532,7 +562,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
 
       // Only the country to go on: beside the stop before it first.
       let landed = false;
-      if (broad && lastPin && !parent) {
+      if ((broad || away) && lastPin && !parent) {
         besideParent = true;
         // In the geocoder's own order, not nearest first: the nearest "Yasaka
         // Shrine" to a Kyoto hotel is a neighbourhood shrine, not the one.
@@ -599,7 +629,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           landed = await tryIn(country, boxAround(lastPin, NEXT_KM), null);
           besideParent = false;
         }
-        if (countryBox && !landed && !throttled) await tryIn(country, countryBox, null);
+        if (countryBox && !landed && !throttled) landed = await tryIn(country, countryBox, null);
+        if (countryBox && !landed && !throttled) await tryIn(country, countryBox, null, true);
       }
       // Still nowhere, but inside a stop that was found: pinned there.
       const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;
@@ -625,7 +656,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       // Nothing better than the doubtful answer: returned as before, so the
       // review can say what was found and let the person keep it.
-      const fallback = doubtful[0];
+      const fallback = farNamed[0] ?? doubtful[0];
       if (fallback && !placed.some((hit) => hit.index === index))
         placed.push({ index, ...fallback });
       // The inner break only leaves this stop's queries. Without this the

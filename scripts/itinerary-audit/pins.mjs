@@ -48,7 +48,7 @@ writeFileSync(
   [
     `export { geocodePlanStops } from ${JSON.stringify(join(root, "src/lib/geocode-plan.functions.ts"))};`,
     `export { readPlainAsList } from ${JSON.stringify(join(root, "src/lib/itinerary.functions.ts"))};`,
-    `export { afterJourney, parentIndex, pinIsSaved, placeBatches } from ${JSON.stringify(join(root, "src/lib/import-stop.ts"))};`,
+    `export { afterJourney, afterRide, parentIndex, pinIsSaved, placeBatches } from ${JSON.stringify(join(root, "src/lib/import-stop.ts"))};`,
     `export { scoreMatch } from ${JSON.stringify(join(root, "src/lib/match-confidence.ts"))};`,
     `export { outsideAddressDistrict } from ${JSON.stringify(join(root, "src/lib/japan-address.ts"))};`,
     `export { airportMatch } from ${JSON.stringify(join(root, "src/lib/geocode-plan.ts"))};`,
@@ -120,6 +120,7 @@ async function place(fixture, items) {
     address: item.address ?? null,
     city: item.city ?? null,
     ...(lib.afterJourney(item, items[i - 1]) ? { fresh: true } : {}),
+    ...(lib.afterRide(items[i - 1]) ? { rode: true } : {}),
   }));
   const placed = [];
   let near = null;

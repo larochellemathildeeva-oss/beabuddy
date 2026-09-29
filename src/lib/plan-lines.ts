@@ -117,6 +117,19 @@ const DURATION =
 const ADDRESS = /^\d+[\d\-–/]*[a-z]?\s+\p{L}/u;
 const isAddress = (seg: string) => ADDRESS.test(seg) || looksLikeStreetAddress(seg);
 
+/**
+ * A town or district named after a street address: one to three capitalised
+ * words, no number, nothing that is a note ("booked", "2nd floor").
+ */
+function isTownAfterAddress(seg: string): boolean {
+  return (
+    /^\p{Lu}[\p{L}\p{M}'’.-]*(?:\s+\p{Lu}[\p{L}\p{M}'’.-]*){0,2}$/u.test(seg) &&
+    !/\b(?:floor|level|suite|unit|booked|entrance|gate|room|building|tower|station|terminal)\b/i.test(
+      seg,
+    )
+  );
+}
+
 const FLIGHT_WORDS =
   /✈|\bflight\b|\b(?:fly|land|landing|arrive|arrival|depart|departure)\b.*\b(?:airport|terminal)\b/i;
 /** "AC 764", "BA2490", "NH5": an airline's code, then the flight's number. Case matters. */
@@ -462,7 +475,12 @@ function readStop(
   const addrAt = segments.findIndex((seg, i) => i > 0 && isAddress(seg));
   if (addrAt > 0) {
     address = segments[addrAt]!;
-    segments.splice(addrAt, 1);
+    // "Leura Garage, 84 Railway Parade, Leura": the town after the street is
+    // where the street is. Railway Parade runs through Katoomba too.
+    const town = segments[addrAt + 1];
+    const tail = addrAt + 2 === segments.length && town && isTownAfterAddress(town);
+    if (tail) address = `${address}, ${town}`;
+    segments.splice(addrAt, tail ? 2 : 1);
     main = segments.join(", ");
   }
   if (!main) return null;

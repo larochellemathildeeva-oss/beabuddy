@@ -3,7 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { chronologicalSlot, insertAfter, nextPosition } from "@/lib/timeline-order";
+import { chronologicalPositions, chronologicalSlot, insertAfter } from "@/lib/timeline-order";
 import { clockMinutes } from "@/lib/companion";
 import { isMissingColumn } from "@/lib/bookings";
 import { insideNote, readInside, type InsideEntry } from "@/lib/inside-list";
@@ -794,6 +794,14 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       // for want of it is made again without it — the stops matter more than
       // the mark.
       const anyBooked = additions.some((item) => item.booked === true);
+      // Into a trip that already has stops, each goes in by its day and time,
+      // as a stop added by hand does: a hotel asked for on day 1 at 15:00 was
+      // saved after the last stop of the trip. Into an empty trip, in order.
+      const placed =
+        items.length > 0
+          ? chronologicalPositions(items, additions, clockMinutes)
+          : { positions: additions.map((_, index) => index), shifts: [] };
+      await shiftPositions(placed.shifts, authorId);
       const rowFor = (item: (typeof additions)[number], index: number) => ({
         trip_id: id,
         day_date: item.day_date || null,
@@ -805,7 +813,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         lat: item.lat ?? null,
         lon: item.lon ?? null,
         planned_stay_minutes: item.planned_stay_minutes ?? null,
-        position: nextPosition(items) + index,
+        position: placed.positions[index]!,
         created_by: authorId,
         updated_by: authorId,
       });
@@ -836,7 +844,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       await load();
       return (data ?? []).map((row) => row.id);
     },
-    [tripId, me.id, items.length, load],
+    [tripId, me.id, items, load, shiftPositions],
   );
 
   /** Take a whole batch back out — the undo half of addItems. */
@@ -913,6 +921,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         if (error) throw error;
       }
       if (inserts.length > 0) {
+        // In by day and time, like any other addition: a walk between two
+        // stops belongs between them, not after the last day.
+        const placed = chronologicalPositions(items, inserts, clockMinutes);
+        await shiftPositions(placed.shifts, authorId);
         const { error } = await supabase.from("itinerary_items").insert(
           inserts.map((item, index) => ({
             trip_id: id,
@@ -924,7 +936,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
             address: item.address || null,
             lat: item.lat ?? null,
             lon: item.lon ?? null,
-            position: nextPosition(items) + index,
+            position: placed.positions[index]!,
             created_by: authorId,
             updated_by: authorId,
           })),
@@ -933,7 +945,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       }
       await load();
     },
-    [tripId, me.id, items, load],
+    [tripId, me.id, items, load, shiftPositions],
   );
 
   const updateItem = useCallback(

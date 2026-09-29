@@ -363,3 +363,77 @@ test("scoreMatch: a local name in brackets, a hyphen or a building part is the s
     "low",
   );
 });
+
+test("the stop's words strewn through a longer name are a namesake", () => {
+  const seaPoint = scoreMatch({
+    title: "Cape Point",
+    label: "Protea Hotel Cape Town Sea Point, Arthurs Road, Cape Town, 8005, South Africa",
+    category: "tourism",
+    kind: "hotel",
+  });
+  assert.equal(seaPoint.confidence, "low");
+  const university = scoreMatch({
+    title: "Sydney Central Station",
+    label: "Central Queensland University Sydney, 400 Kent Street, Sydney NSW 2000, Australia",
+    category: "place",
+    kind: "amenity",
+  });
+  assert.equal(university.confidence, "low");
+  // Held together, with a part after it, it is the place.
+  const deck = scoreMatch({
+    title: "Kyoto Tower",
+    label: "Kyoto Tower Main Deck, Karasuma-dori, Shimogyo Ward, Kyoto, Japan",
+    category: "tourism",
+    kind: "attraction",
+  });
+  assert.equal(deck.confidence, "high");
+});
+
+test("a business named after a landmark is not the landmark", () => {
+  const vineyards = scoreMatch({
+    title: "Cape Point",
+    label: "Cape Point Vineyards, Silvermine Road, Cape Town, 7985, South Africa",
+    category: "amenity",
+    kind: "restaurant",
+  });
+  assert.equal(vineyards.confidence, "low");
+  const building = scoreMatch({
+    title: "Cape Point",
+    label: "Cape Point Vineyards Restaurant, Silvermine Road, Cape Town, South Africa",
+    category: "building",
+    kind: "building",
+  });
+  assert.equal(building.confidence, "low");
+  const hotel = scoreMatch({
+    title: "Sydney Central Station",
+    label: "Sydney Central Hotel, 169-179 Thomas Street, Haymarket NSW 2000, Australia",
+    category: "tourism",
+    kind: "hotel",
+  });
+  assert.equal(hotel.confidence, "low");
+  // A meal is answered by a restaurant, whatever else it is called.
+  const lunch = scoreMatch({
+    title: "Lunch at Geysir Glíma",
+    label: "Geysir Glíma Restaurant, Biskupstungnabraut, Bláskógabyggð, Iceland",
+    category: "amenity",
+    kind: "restaurant",
+  });
+  assert.equal(lunch.confidence, "high");
+});
+
+test("an address matched by its number alone is another address", () => {
+  const otherBlock = scoreMatch({
+    title: "160 Kasuganocho",
+    label: "160-6 雑司町, Nara, NR 630-8201, Japan",
+    category: "place",
+    kind: "building",
+  });
+  assert.equal(otherBlock.confidence, "low");
+  const right = scoreMatch({
+    title: "160 Kasuganocho",
+    label: "160 Kasuganochō, Nara, 630-8212, Japan",
+    category: "place",
+    kind: "building",
+  });
+  assert.equal(right.confidence, "high");
+});

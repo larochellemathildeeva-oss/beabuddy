@@ -19,7 +19,7 @@ import {
   placeHintFromDetail,
   placeQueryCandidates,
 } from "./direction-stops.ts";
-import { autoPinTrusted } from "./match-confidence.ts";
+import { autoPinTrusted, isNoiseWord } from "./match-confidence.ts";
 import { japaneseAddressQueries, namesJapan, outsideAddressDistrict } from "./japan-address.ts";
 
 export type PlanStop = {
@@ -198,6 +198,45 @@ export function namesAirport(stop: { title: string; place?: string | null | unde
   );
 }
 
+/** Words that name nothing but an airport. */
+const AIRPORT_ONLY = new Set([
+  "airport",
+  "aeroporto",
+  "aeropuerto",
+  "aeroport",
+  "flughafen",
+  "luchthaven",
+  "international",
+  "intl",
+  "arrive",
+  "arrival",
+  "arrivals",
+  "depart",
+  "departure",
+  "departures",
+  "at",
+  "the",
+  "from",
+  "to",
+  "terminal",
+]);
+
+/**
+ * The words that say which airport: "narita" of "Narita International
+ * Airport", "rome" and "fiumicino" of "Rome Fiumicino Airport". None for a
+ * code ("JFK"), which the airport's own name rarely carries.
+ */
+export function airportNameWords(stop: {
+  title: string;
+  place?: string | null | undefined;
+}): string[] {
+  const place = stop.place?.trim() ?? "";
+  if (AIRPORT_CODE.test(place)) return [];
+  return foldArea((place || stop.title).replace(/\s*[(（][^()（）]*[)）]/g, ""))
+    .split(" ")
+    .filter((word) => word.length > 1 && !AIRPORT_ONLY.has(word) && !/^t?\d+$/.test(word));
+}
+
 /** An answer that is an airport, or somewhere in one ("Kansai Airport Station"). */
 export function isAirportHit(hit: Pick<CandidateHit, "label" | "category" | "kind">): boolean {
   return (
@@ -233,14 +272,31 @@ const foldArea = (s: string) =>
  * was all of Mexico, and a "Casa Azul" 400 km away was inside it.
  * Null when none is; callers fall back to the first answer.
  */
-export function areaHitFor<T extends { display_name?: string | undefined }>(
-  hits: readonly T[],
-  where: string,
-): T | null {
+export function areaHitFor<
+  T extends {
+    display_name?: string | undefined;
+    class?: string | undefined;
+    type?: string | undefined;
+    namedetails?: Record<string, string> | undefined;
+  },
+>(hits: readonly T[], where: string): T | null {
   const town = foldArea(where.split(",")[0] ?? "");
   if (!town) return null;
+  // By any of its names: LocationIQ calls the city "Cuzco" and the region
+  // around it "Cusco", so matching the label alone chose the region, and
+  // every stop in town was flagged 126 km from its middle.
+  const named = hits.filter((hit) =>
+    [(hit.display_name ?? "").split(",")[0] ?? "", ...Object.values(hit.namedetails ?? {})].some(
+      (name) => foldArea(name) === town,
+    ),
+  );
+  return named.find(isSettlement) ?? named[0] ?? null;
+}
+
+/** A city, town or village, not the region or province of the same name. */
+function isSettlement(hit: { class?: string | undefined; type?: string | undefined }): boolean {
   return (
-    hits.find((hit) => foldArea((hit.display_name ?? "").split(",")[0] ?? "") === town) ?? null
+    hit.class === "place" && /^(?:city|town|village|hamlet|municipality)$/.test(hit.type ?? "")
   );
 }
 
@@ -286,17 +342,87 @@ export function pickHit(
         Number.isFinite(hit.lat) &&
         Number.isFinite(hit.lon) &&
         inBox(box, hit.lat, hit.lon) &&
-        (!airport || isAirportHit(hit)),
+        (!airport || (isAirportHit(hit) && !isTransitStop(hit))),
     );
   // A Japanese address names its district, and so does every label there:
   // a find in another district is a namesake, however well its name matches.
-  const trusted = inside.find((hit) =>
-    airport
-      ? isAirportHit(hit)
-      : autoPinTrusted(stop, hit) && !outsideAddressDistrict(stop.address, hit.label),
-  );
+  // An airport named by more than its town must be that one: "Tokyo
+  // International Airport" is Haneda, 60 km from Narita.
+  const airportName = airport ? airportNameWords(stop) : [];
+  const airportScore = (hit: CandidateHit) => {
+    const names = [hit.label?.split(",")[0] ?? "", ...(hit.alsoNamed ?? [])].map(foldArea);
+    return airportName.filter((word) => names.some((name) => name.includes(word))).length;
+  };
+  const trustedHits = airport
+    ? airportName.length
+      ? inside
+          .filter((hit) => airportScore(hit) > 0)
+          .sort((a, b) => airportScore(b) - airportScore(a))
+      : inside
+    : inside.filter(
+        (hit) => autoPinTrusted(stop, hit) && !outsideAddressDistrict(stop.address, hit.label),
+      );
+  // Of the answers that pass, the one named for all of the stop over one
+  // sharing a word of it: "Geysir Glíma Restaurant", not the souvenir shop
+  // "Geysir" in Akureyri. And for an airport, the airport over the hotel
+  // named after it.
+  const trusted = airport
+    ? (trustedHits.find(
+        (hit) =>
+          hit.category !== "tourism" &&
+          (!airportName.length || airportScore(hit) === airportScore(trustedHits[0]!)),
+      ) ?? trustedHits[0])
+    : (trustedHits.find((hit) => namesAllOf(stop, hit)) ??
+      trustedHits.find((hit) => placesWholeAddress(stop.address, hit)) ??
+      trustedHits[0]);
   if (trusted) return { hit: trusted, trusted: true };
   return inside[0] ? { hit: inside[0], trusted: false } : null;
+}
+
+/**
+ * How far out of town a stop may be, in km, when its note says it is a ride
+ * away: "getting there: drive, 45 min" puts Þingvellir 40 km from
+ * Reykjavík, and Boulders Beach 30 km from Cape Town. Straight-line, about
+ * what a road covers at 80 km/h. Null for a walk, the metro or a short hop,
+ * which keep a stop in town.
+ */
+export function outingReachKm(detail: string | null | undefined): number | null {
+  const note = (detail ?? "").split(" · ").find((part) => /^getting there\b/i.test(part.trim()));
+  if (!note || !/\b(?:drive|driving|car|taxi|bus|coach|train|rail|ferry|boat)\b/i.test(note))
+    return null;
+  const hours = note.match(/(\d+(?:[.,]\d+)?)\s*(?:h|hrs?|hours?)\b/i);
+  const mins = note.match(/(\d+)\s*(?:min|mins|minutes?)\b/i);
+  const minutes =
+    (hours ? Number(hours[1]!.replace(",", ".")) * 60 : 0) + (mins ? Number(mins[1]) : 0);
+  if (minutes < 20) return null;
+  return Math.round(minutes * 1.3);
+}
+
+/**
+ * Every word of a street address in the answer's label, town and all: "84
+ * Railway Parade, Leura" is the one in Leura, not the Railway Parade in
+ * Katoomba with the same number.
+ */
+function placesWholeAddress(address: string | null | undefined, hit: CandidateHit): boolean {
+  if (!address || !looksLikeStreetAddress(address) || !address.includes(",")) return false;
+  const label = foldArea(hit.label ?? "");
+  return foldArea(address)
+    .split(" ")
+    .filter((word) => word.length > 1)
+    .every((word) => label.includes(word));
+}
+
+/** Every word of the stop's venue (or title) in the answer's own name. */
+function namesAllOf(
+  stop: { title: string; place?: string | null | undefined },
+  hit: CandidateHit,
+): boolean {
+  const words = foldArea((stop.place?.trim() || stop.title).replace(/\s*[(（][^()（）]*[)）]/g, ""))
+    .split(" ")
+    .filter((word) => word.length > 1 && !isNoiseWord(word));
+  if (words.length < 2) return false;
+  const names = [hit.label?.split(",")[0] ?? "", ...(hit.alsoNamed ?? [])].map(foldArea);
+  return names.some((name) => words.every((word) => name.includes(word)));
 }
 
 /**

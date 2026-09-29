@@ -190,7 +190,7 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   // A street address is matched against the whole label, which is where the
   // street is; a name only against the place's own names.
   const echoes = looksLikeStreetAddress(evidence.title)
-    ? nameEchoes(evidence.title, label) && sameNumber(evidence.title, label)
+    ? streetEchoes(evidence.title, label) && sameNumber(evidence.title, label)
     : words.length === 0
       ? names.some((name) => nameEchoes(evidence.title, name))
       : // A whole area answering for a venue has to be the whole of what was
@@ -213,6 +213,11 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
       ? otherBranch(evidence.title, label, evidence.alsoNamed ?? [])
       : null;
   if (other) return { confidence: "low", reason: other };
+  const business =
+    echoes && !looksLikeStreetAddress(evidence.title)
+      ? businessNamesake(evidence.title, label, category, kind)
+      : null;
+  if (business) return { confidence: "low", reason: business };
   if (areaish && !echoes) {
     return {
       confidence: "low",
@@ -226,6 +231,18 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/**
+ * The street of an address in the label, not only its number. "160
+ * Kasuganocho" echoed "160-6 雑司町" on "160" alone: another block, another
+ * district, and every house numbered 160 in town would have done the same.
+ */
+function streetEchoes(address: string, label: string): boolean {
+  const words = meaningfulWords(address).filter((word) => !/^\d/.test(word));
+  if (words.length === 0) return nameEchoes(address, label);
+  const got = canonicalSpelling(label.toLowerCase());
+  return words.some((word) => got.includes(word));
 }
 
 /**
@@ -296,12 +313,91 @@ function otherBranch(rawTitle: string, label: string, alsoNamed: readonly string
   };
   // The place's own names, not its address: "Osaka" in "…, Tennoji, Osaka"
   // made Tennoji Station an answer for "Osaka Station".
-  if (covers(name) || alsoNamed.some(covers)) return null;
+  const names = [name, ...alsoNamed];
+  if (names.some((n) => covers(n) && !scattered(asked, n))) return null;
+  // Every word there, but strewn through a longer name: "Protea Hotel Cape
+  // Town Sea Point" for Cape Point, "Central Queensland University Sydney"
+  // for Sydney Central Station. A name that is the place holds its words
+  // together.
+  if (names.some(covers)) return `Béa found ${name} — maybe a namesake.`;
   const askedText = canonicalSpelling(title.toLowerCase());
   const extra = meaningfulWords(name).some(
     (w) => w.length >= 3 && !PART_WORDS.has(w) && !askedText.includes(w),
   );
   return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;
+}
+
+/** A restaurant, a shop, a hotel: a business, which is often named after a landmark. */
+function isBusiness(category: string, kind: string): boolean {
+  return (
+    (category === "amenity" &&
+      /^(?:restaurant|cafe|bar|pub|fast_food|ice_cream|food_court|biergarten)$/.test(kind)) ||
+    (category === "tourism" &&
+      /^(?:hotel|guest_house|hostel|motel|apartment|chalet)$/.test(kind)) ||
+    category === "shop" ||
+    category === "craft" ||
+    category === "office"
+  );
+}
+
+/** A stop that is itself somewhere to eat, drink, sleep or shop. */
+const BUSINESS_STOP =
+  /\b(?:lunch|dinner|breakfast|brunch|supper|coffee|drinks?|eat|meal|check[- ]?in|check[- ]?out|stay|hotel|hostel|inn|lodge|restaurant|caf[eé]|bar|pub|bistro|winery|vineyards?|wine|tasting|shop|store|boutique|bakery)\b/i;
+
+/** Where you catch something: never answered by a hotel or a café named after it. */
+const STATION_STOP = /\b(?:station|terminal|pier|wharf)\b|駅/i;
+
+/**
+ * A business named after the landmark the stop is: "Cape Point Vineyards" for
+ * Cape Point, 30 km short of the lighthouse; "Sydney Central Hotel" for
+ * Sydney Central Station. The whole of the stop's name is in it, so nothing
+ * else notices. A stop that is itself a meal, a stay or a shop may be one.
+ */
+function businessNamesake(
+  rawTitle: string,
+  label: string,
+  category: string,
+  kind: string,
+): string | null {
+  const name = hitName(label);
+  if (!name) return null;
+  // By its class, or by its own name when it is mapped as a building.
+  if (!isBusiness(category, kind) && !BUSINESS_STOP.test(name)) return null;
+  const title = rawTitle.replace(/\s*[(（][^()（）]*[)）]/g, "").trim() || rawTitle;
+  if (STATION_STOP.test(title) && !STATION_STOP.test(name)) {
+    return `Béa found ${name}, which is named after it but is not the station.`;
+  }
+  if (BUSINESS_STOP.test(title)) return null;
+  const askedText = canonicalSpelling(title.toLowerCase());
+  // The town in a branch's name is where it is, not another place:
+  // "Starbucks Reserve Roastery Tokyo".
+  const where = canonicalSpelling(label.split(",").slice(1).join(",").toLowerCase());
+  const extra = meaningfulWords(name).some(
+    (w) => w.length >= 3 && !PART_WORDS.has(w) && !askedText.includes(w) && !where.includes(w),
+  );
+  return extra ? `Béa found ${name}, a business named after it — maybe not the place.` : null;
+}
+
+/**
+ * The stop's words spread through `name` with two or more of its own words
+ * between them: another place that happens to share them.
+ * "Kyoto Tower Main Deck" holds "Kyoto Tower" together; "Cape Town Sea
+ * Point" does not hold "Cape Point".
+ */
+function scattered(asked: readonly string[], name: string): boolean {
+  if (asked.length < 2) return false;
+  const words = canonicalSpelling(name.toLowerCase())
+    .split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/)
+    .filter(Boolean);
+  const at = asked.map((w) => words.findIndex((word) => word.startsWith(w) || w.startsWith(word)));
+  // A word joined to another ("okonomimura") has no place of its own to measure.
+  if (at.some((i) => i < 0)) return false;
+  const between = words
+    .slice(Math.min(...at) + 1, Math.max(...at))
+    .filter(
+      (word) => !asked.some((w) => word.startsWith(w)) && !NOISE.has(word) && word.length > 1,
+    );
+  return between.length >= 2;
 }
 
 /**

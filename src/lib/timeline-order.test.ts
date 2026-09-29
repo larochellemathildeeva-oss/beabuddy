@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { clockMinutes } from "./companion.ts";
 import {
   canMove,
+  chronologicalPositions,
   chronologicalSlot,
   insertAfter,
   neighbourInDay,
@@ -171,4 +172,44 @@ test("clearing a stop's time moves it to the end of its day", () => {
     slot.shifts.map((s) => s.id),
     ["d"],
   );
+});
+
+test("chronologicalPositions: a stop asked for on a day goes in by its time", () => {
+  const minutes = (label: string | null | undefined) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(label ?? "");
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  };
+  const items = [
+    { id: "a", day_date: "2026-10-01", position: 0, time_label: "09:00" },
+    { id: "b", day_date: "2026-10-01", position: 1, time_label: "12:30" },
+    { id: "c", day_date: "2026-10-01", position: 2, time_label: "18:00" },
+    { id: "d", day_date: "2026-10-02", position: 3, time_label: "10:00" },
+  ];
+  // "Add the hotel on day 1 at 15:00": between 12:30 and 18:00, not last.
+  const hotel = chronologicalPositions(
+    items,
+    [{ day_date: "2026-10-01", time_label: "15:00" }],
+    minutes,
+  );
+  assert.deepEqual(hotel.positions, [2]);
+  assert.deepEqual(hotel.shifts, [
+    { id: "c", position: 3 },
+    { id: "d", position: 4 },
+  ]);
+  // Several at once: each by its time, an untimed one after the new one before it.
+  const two = chronologicalPositions(
+    items,
+    [
+      { day_date: "2026-10-01", time_label: "10:00" },
+      { day_date: "2026-10-01", time_label: null },
+      { day_date: "2026-10-02", time_label: "08:00" },
+    ],
+    minutes,
+  );
+  assert.deepEqual(two.positions, [1, 2, 5]);
+  assert.deepEqual(two.shifts, [
+    { id: "b", position: 3 },
+    { id: "c", position: 4 },
+    { id: "d", position: 6 },
+  ]);
 });

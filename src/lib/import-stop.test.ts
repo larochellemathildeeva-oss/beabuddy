@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   afterJourney,
+  afterRide,
   tidyImportedRow,
   normalizeClock,
   pinIsSaved,
@@ -426,4 +427,11 @@ test("afterJourney: landing at an airport starts afresh", () => {
     ),
     false,
   );
+});
+
+test("afterRide: any train, bus or flight before a stop may end a day out", () => {
+  assert.equal(afterRide({ kind: "transport" }), true);
+  assert.equal(afterRide({ kind: "flight" }), true);
+  assert.equal(afterRide({ kind: "meal" }), false);
+  assert.equal(afterRide(undefined), false);
 });
