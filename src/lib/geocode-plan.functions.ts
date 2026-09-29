@@ -7,6 +7,7 @@ import {
   boxViewbox,
   distanceKm,
   inBox,
+  namesAirport,
   pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -128,6 +129,9 @@ export type PlacedStop = {
   /** Found in Overture's listings rather than on the map: its place id there. */
   overtureId?: string;
 };
+
+/** How far from the middle of town an airport is looked for, in km. */
+const AIRPORT_KM = 70;
 
 /** How far from the stop it is inside a place is looked for, in km. */
 const INSIDE_KM = 2;
@@ -511,6 +515,15 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         // In the geocoder's own order, not nearest first: the nearest "Yasaka
         // Shrine" to a Kyoto hotel is a neighbourhood shrine, not the one.
         landed = await tryIn(where, boxAround(lastPin, NEXT_KM), null);
+        besideParent = false;
+        if (throttled) break;
+      }
+      // An airport is rarely inside its city's box: Kansai's is on an island
+      // 40 km out, Narita 60 km. Looked for around the town first, and only
+      // an airport is taken (pickHit).
+      if (!landed && centre && namesAirport(stop) && !throttled) {
+        besideParent = true;
+        landed = await tryIn(where, boxAround(centre, AIRPORT_KM), null);
         besideParent = false;
         if (throttled) break;
       }

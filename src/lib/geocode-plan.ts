@@ -162,6 +162,33 @@ export function inBox(box: AreaBox, lat: number, lon: number): boolean {
   return lat >= box.south && lat <= box.north && lon >= box.west && lon <= box.east;
 }
 
+const AIRPORT_WORDS =
+  /\b(?:airport|aeroporto|aeropuerto|a[ée]roport|flughafen|luchthaven)\b|空港|공항|机场|機場/i;
+
+/** A stop that is an airport, by its name or its place: "Arrive at Kansai International Airport". */
+export function namesAirport(stop: { title: string; place?: string | null | undefined }): boolean {
+  // The airport itself, not "Airport Museum" or "Airport Road Market".
+  const name = (stop.place?.trim() || stop.title)
+    .replace(/\s*[(（][^()（）]*[)）]/g, "")
+    .replace(/\s+(?:terminal\s*\w*|t\d)$/i, "")
+    .trim();
+  return (
+    /(?:airport|aeroporto|aeropuerto|a[ée]roport|flughafen|luchthaven|空港|공항|机场|機場)$/i.test(
+      name,
+    ) || /^(?:aeroporto|aeropuerto|a[ée]roport)\b/i.test(name)
+  );
+}
+
+/** An answer that is an airport, or somewhere in one ("Kansai Airport Station"). */
+export function isAirportHit(hit: Pick<CandidateHit, "label" | "category" | "kind">): boolean {
+  return (
+    hit.category === "aeroway" ||
+    hit.kind === "aerodrome" ||
+    hit.kind === "terminal" ||
+    AIRPORT_WORDS.test(hit.label?.split(",")[0] ?? "")
+  );
+}
+
 /** One answer from the geocoder, as the plan lookup reads it. */
 export type CandidateHit = {
   lat: number;
@@ -191,8 +218,15 @@ export function pickHit(
     address?: string | null | undefined;
   },
 ): { hit: CandidateHit; trusted: boolean } | null {
+  // An airport is only ever an airport: "Hotel Kansai" shares a word with
+  // Kansai International Airport, and was pinned for it 30 km away.
+  const airport = namesAirport(stop);
   const inside = hits.filter(
-    (hit) => Number.isFinite(hit.lat) && Number.isFinite(hit.lon) && inBox(box, hit.lat, hit.lon),
+    (hit) =>
+      Number.isFinite(hit.lat) &&
+      Number.isFinite(hit.lon) &&
+      inBox(box, hit.lat, hit.lon) &&
+      (!airport || isAirportHit(hit)),
   );
   const trusted = inside.find((hit) => autoPinTrusted(stop, hit));
   if (trusted) return { hit: trusted, trusted: true };

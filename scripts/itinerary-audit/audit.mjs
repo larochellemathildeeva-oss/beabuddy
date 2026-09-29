@@ -10,6 +10,7 @@
  *   … --model gemini-3.6-flash   that model only: no quiet step-down to another
  *   … --delay 4000          ms between model calls, under the rate limit (default 4000)
  *   … --only tokyo          one fixture
+ *   … --fixtures fresh      fixtures-fresh.ts: ten plans not tuned against before
  *   … --save-baseline       write the trends to baseline.json for this engine
  *   … --compare             print what changed against baseline.json
  *   … --rescore out/<file>.json   score saved answers again, no calls: after changing the scorer
@@ -40,7 +41,10 @@ const engine = value("--engine", "auto");
 const pinnedModel = value("--model", null);
 const delayMs = Number(value("--delay", "4000"));
 const mock = flag("--mock");
-const baselineFile = join(here, "baseline.json");
+const baselineFile = join(
+  here,
+  value("--fixtures", null) ? `baseline-${value("--fixtures", null)}.json` : "baseline.json",
+);
 
 if (!["auto", "model", "rules"].includes(engine)) {
   console.error(`--engine is auto, model or rules, not ${engine}.`);
@@ -51,7 +55,12 @@ if (!mock && engine !== "rules" && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
   process.exit(1);
 }
 
-const { FIXTURES } = await jiti.import(join(here, "fixtures.ts"));
+const fixtureSet = value("--fixtures", null);
+const { FIXTURES } = await jiti.import(
+  join(here, fixtureSet ? `fixtures-${fixtureSet}.ts` : "fixtures.ts"),
+);
+const { toBookRows } = await jiti.import(join(root, "src/lib/itinerary-print.ts"));
+const { isCityJourney } = await jiti.import(join(root, "src/lib/import-stop.ts"));
 const { runParse, readPlainAsList } = await jiti.import(
   join(root, "src/lib/itinerary.functions.ts"),
 );
@@ -203,6 +212,33 @@ function score(fixture, out) {
     if (stop && !fold(stop.place).includes(fold(pin.place)))
       add("pin", `${pin.match} pinned on "${stop.place ?? "nothing"}", want ${pin.place}`);
   }
+  if (e.flights != null) {
+    const flights = items.filter((i) => i.kind === "flight");
+    if (flights.length !== e.flights)
+      add(
+        "flights",
+        `flights: got ${flights.length} (${flights.map((i) => i.title).join("; ")}), want ${e.flights}`,
+      );
+  }
+  if (e.toBook != null) {
+    const toBook = [...toBookRows(items.map((i) => ({ ...i, address: i.address ?? null })))];
+    if (toBook.length !== e.toBook)
+      add(
+        "to-book",
+        `"To book": got ${toBook.length} (${toBook.map((i) => i.title).join("; ")}), want ${e.toBook}`,
+      );
+  }
+  for (const k of e.kinds ?? []) {
+    const stop = items.find((i) => hay(i).includes(fold(k.match)));
+    if (stop && !k.kind.includes(stop.kind))
+      add("kind", `${k.match} is ${stop.kind}, want ${k.kind.join(" or ")}`);
+  }
+  for (const c of e.cities ?? []) {
+    const stop = items.find((i) => hay(i).includes(fold(c.match)));
+    // No town of its own: it is looked up in the trip's.
+    if (stop && !fold(stop.city ?? fixture.tripCity).includes(fold(c.city)))
+      add("city", `${c.match} looked up in "${stop.city ?? fixture.tripCity}", want ${c.city}`);
+  }
   for (const a of e.addresses ?? []) {
     if (!items.some((i) => (i.address ?? "").includes(a)))
       add("address", `address not kept verbatim: ${a}`);
@@ -214,7 +250,9 @@ function score(fixture, out) {
     if (!i.place && i.kind !== "note") add("no-place", `no place: ${i.title}`);
     // Any journey left on the timeline, however it is worded ("Hibiya Line
     // to Ginza" starts with no verb). A booked one is a stop.
-    if (i.kind === "transport" && !i.booked) add("travel-leg", `leg left as a stop: ${i.title}`);
+    // A train between towns ("Train from Stirling back to Edinburgh") is a stop.
+    if (i.kind === "transport" && !i.booked && !isCityJourney(i.title))
+      add("travel-leg", `leg left as a stop: ${i.title}`);
     if (i.estimated_cost != null) add("costs", `cost on import: ${i.title}`);
 
     const notes = legNotes(i.detail);

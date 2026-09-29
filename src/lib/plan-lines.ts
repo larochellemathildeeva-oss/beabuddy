@@ -18,7 +18,7 @@
  * does, so review, placing and saving are the same whichever way it came in.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
-import { foldTravelLegs, normalizeClock } from "./import-stop.ts";
+import { foldTravelLegs, isAirportArrival, isCityJourney, normalizeClock } from "./import-stop.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 import type { TimelineKind } from "./timeline-kind.ts";
 
@@ -119,6 +119,10 @@ const isAddress = (seg: string) => ADDRESS.test(seg) || looksLikeStreetAddress(s
 
 const FLIGHT_WORDS =
   /✈|\bflight\b|\b(?:fly|land|landing|arrive|arrival|depart|departure)\b.*\b(?:airport|terminal)\b/i;
+/** "AC 764", "BA2490", "NH5": an airline's code, then the flight's number. Case matters. */
+const FLIGHT_NUMBER = /\b(?:[A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d{1,4}\b/;
+/** "Land at JFK on AC 764": landing or leaving, with an airport code or a flight number. */
+const FLIGHT_BY_CODE = /^(?:land|landing|arrive|arrival|depart|departure|fly)\b/i;
 /** "LHR T5", "JFK T4": an airport code with its terminal. Case matters. */
 const AIRPORT_TERMINAL = /\b[A-Z]{3}\s+T\d\b/;
 const HOTEL_WORDS =
@@ -174,13 +178,21 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
       lastTime = entry.time;
       const stop = readStop(entry);
       if (!stop) return null;
-      const moved = followTown(away, stop, entry.rest);
+      const dayHome =
+        dayCities.length === 1 ? dayCities[0]! : dayCities.length ? null : opts.tripCity;
+      // A travel day's heading already says where its journey goes.
+      const moved = followTown(away, stop, entry.rest, dayCities.length > 1 ? undefined : dayHome);
       // Leaving is still where you leave from; arriving is already there.
       const here = moved.leaving ? away.town : moved.trail.town;
       away = moved.trail;
       const city = here ?? dayCities[Math.min(cityAt, dayCities.length - 1)] ?? null;
       // On a travel day, the stops after the journey are in the next town.
-      if ((stop.kind === "transport" || stop.kind === "flight") && cityAt < dayCities.length - 1) {
+      // Getting to the airport is not the journey: the flight after it is.
+      const journey =
+        (stop.kind === "transport" && !TO_AIRPORT.test(stop.title)) ||
+        (stop.kind === "flight" &&
+          !(isAirportArrival(stop.title) && flightLater(lines, index, year, opts.startDate)));
+      if (journey && cityAt < dayCities.length - 1) {
         cityAt++;
       }
       items.push({
@@ -244,6 +256,26 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
   };
 }
 
+/** Whether a flight leaves after line `index`, before the next day starts. */
+function flightLater(
+  lines: readonly string[],
+  index: number,
+  year: number,
+  startDate: string | null,
+): boolean {
+  for (const raw of lines.slice(index + 1)) {
+    const entry = readEntry(raw);
+    if (!entry) {
+      const heading = readHeading(raw, year, startDate);
+      if (heading && (heading.dayNumber != null || heading.date || dayOnly(raw))) return false;
+      continue;
+    }
+    const stop = readStop(entry);
+    if (stop?.kind === "flight" && !isAirportArrival(stop.title)) return true;
+  }
+  return false;
+}
+
 /**
  * A table row as a plain line: "| 09:00–09:40 | Brandenburg Gate | stop |"
  * or the same with tabs, as a table copied out of a chat comes. The time
@@ -266,6 +298,11 @@ function tableRow(raw: string): string | null {
 }
 
 type TownTrail = { town: string | null; before: string | null };
+
+/** "Take the Haruka to Kansai Airport": still the town it leaves; the flight is the journey. */
+const TO_AIRPORT = /\bto\s+(?:\S+\s+){0,3}(?:airport|terminal)\b|空港/i;
+/** "Train from Edinburgh Waverley to Stirling": where a journey between towns goes. */
+const JOURNEY_TO = /\bfrom\s+.+?\s+(?:back\s+)?to\s+(.+)$/i;
 
 /** Arriving by rail or boat names the town: "Hiroshima Station — arrival". */
 const ARRIVAL_PLACE = /^(.+?)\s+(?:station|pier|port|ferry terminal)$/i;
@@ -291,9 +328,27 @@ function followTown(
   trail: TownTrail,
   stop: { kind: string; title: string; detail: string | null },
   rest: string,
+  /** The town the day is in; undefined on a travel day, whose heading names the journey. */
+  home: string | null | undefined,
 ): { trail: TownTrail; leaving: boolean } {
   const note = (stop.detail ?? "").trim();
   const journey = stop.kind === "transport" || stop.kind === "flight";
+  // "Train from Edinburgh Waverley to Stirling": a day trip, on a day whose
+  // heading names one town. The stops after it are in Stirling until the
+  // train back to the town the day is in ("… back to Edinburgh Waverley").
+  const to =
+    home !== undefined && stop.kind === "transport" && isCityJourney(stop.title)
+      ? stop.title.match(JOURNEY_TO)
+      : null;
+  if (to) {
+    const dest = cleanText(to[1]!.replace(/\s*[(（].*$/, ""));
+    const homeTown = (home ?? "").split(",")[0]!.trim().toLowerCase();
+    if (homeTown && dest.toLowerCase().includes(homeTown)) {
+      return { trail: { town: null, before: null }, leaving: true };
+    }
+    const town = dest.match(ARRIVAL_PLACE)?.[1] ?? dest;
+    if (BARE_TOWN.test(town)) return { trail: { town, before: trail.town }, leaving: true };
+  }
   const heading = /\b(?:depart|departure|return|back)\b/i.test(note)
     ? note.match(HEADING_TO)
     : null;
@@ -460,9 +515,12 @@ function placeFor(main: string, kind: TimelineKind): string {
     first = first.split(/\s*(?:→|->)\s*/)[0]!;
     // "Eurostar 9O 9031 London St Pancras": the service, then where it leaves.
     first = first.replace(/^(?:\p{L}+\s+)?(?:[A-Z0-9]{1,3}\s*\d{2,5}\s+)+/u, "");
-    first = first.replace(/^(?:land|arrive|depart)\s+(?:at\s+|from\s+)?/i, "");
+    first = first.replace(/^(?:land|arrive|depart)\s+(?:at\s+|from\s+|in\s+)?/i, "");
+    // "JFK on AC 764": the airport, not the flight that lands there.
+    first = first.replace(/\s+(?:on|with|via)\s+(?:[A-Z]{2}|[A-Z]\d|\d[A-Z])\s?\d{1,4}\b.*$/, "");
     // "Train from Paris Gare de Lyon to Lyon Part-Dieu": where it leaves.
-    const from = first.match(/\bfrom\s+(.+?)\s+to\s+\S/i);
+    // "Train from Stirling back to Edinburgh": Stirling, not "Stirling back".
+    const from = first.match(/\bfrom\s+(.+?)\s+(?:back\s+)?to\s+\S/i);
     if (from) first = from[1]!;
   }
   return trimPlace(first.replace(WALK_LEAD, ""));
@@ -484,6 +542,9 @@ function kindFor(text: string, raw: string, booked: boolean): TimelineKind {
   // A flight is fixed in the day and needs a ticket, booked or not: kept as
   // a flight, it stays a stop at the airport and counts as a plan to book.
   if (FLIGHT_WORDS.test(text) || AIRPORT_TERMINAL.test(raw)) return "flight";
+  if (FLIGHT_BY_CODE.test(text) && (FLIGHT_NUMBER.test(raw) || /\b[A-Z]{3}\b/.test(text))) {
+    return "flight";
+  }
   // "Breakfast at the Hotel Adlon" is a meal, wherever it is eaten.
   if (/^(?:breakfast|brunch|lunch|dinner|supper)\b/i.test(text)) return "meal";
   if (HOTEL_WORDS.test(text)) return booked ? "hotel" : "lodging";
