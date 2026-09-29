@@ -7,9 +7,9 @@ const SHOW_AFTER_MS = 300;
 /** Once shown, it stays at least this long, so it never flickers. */
 const MIN_VISIBLE_MS = 650;
 /** A new line no sooner than this. */
-const ROTATE_MS = 4200;
+const ROTATE_MS = 9000;
 /** A long wait may earn the rare ball (or, while digging, bone) once. */
-const EASTER_EGG_AFTER_MS = 9000;
+const EASTER_EGG_AFTER_MS = 20000;
 const EASTER_EGG_CHANCE = 0.08;
 
 function useReducedMotion(): boolean {
