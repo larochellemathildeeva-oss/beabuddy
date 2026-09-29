@@ -132,6 +132,7 @@ import { CustomizeOptions } from "@/components/day/CustomizeTrip";
 import { SavedPlacesSheet } from "@/components/day/SavedPlacesSheet";
 import { TripCheckup } from "@/components/day/TripCheckup";
 import { checkupPill, tripCheckup } from "@/lib/trip-checkup";
+import { useIdDocuments } from "@/hooks/useIdDocuments";
 import { useOfflineDayMaps } from "@/hooks/useOfflineDayMaps";
 import { useOfflineMap } from "@/hooks/useOfflineMap";
 import { prettyMegabytes } from "@/lib/vector-tiles";
@@ -1193,6 +1194,7 @@ export function TripDetail({
    * the stops, reusing routes already measured, so it costs no lookups. Null
    * with nothing planned, which hides its card.
    */
+  const idDocuments = useIdDocuments(settingsOpen);
   const checkup =
     settingsOpen && stopItems.length > 0
       ? tripCheckup({
@@ -1202,6 +1204,7 @@ export function TripDetail({
           // Judged from real pins only: a failed geocode at 0,0 would skew
           // the middle of the trip and hide a genuinely distant stop.
           strayIds: strayStopIds(stopItems.filter((i) => !(i.lat === 0 && i.lon === 0))),
+          idDocuments,
           travelMinutes: (from, to) => {
             const a = itemsById.get(from.id);
             const b = itemsById.get(to.id);

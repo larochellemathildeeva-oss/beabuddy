@@ -20,8 +20,9 @@ export function TripCheckup({
         <div className="min-w-0">
           <p className="text-[15px] font-semibold leading-snug">{checkupHeadline(findings)}</p>
           <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-            Worked out from the times, pins and bookings already on the plan. Béa only flags what
-            she can measure, so a stop with no time or no pin is left alone.
+            Worked out from the times, pins and bookings already on the plan, and the expiry dates
+            of passports and visas in Protected. Béa only flags what she can measure, so a stop with
+            no time or no pin is left alone.
           </p>
         </div>
       </div>
