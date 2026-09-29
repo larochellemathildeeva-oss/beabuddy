@@ -67,11 +67,13 @@ export function escapeHtml(text: string): string {
 const STAY_KINDS = new Set(["hotel", "lodging"]);
 /** Leaving, or dropping bags: things done at a stay, not the stay to book. */
 const STAY_ACTION =
-  /\bcheck[- ]?out\b|\b(?:luggage|bag)s? drop\b|\bdrop (?:the |our |off )?(?:bags|luggage)\b/i;
+  /\bcheck[- ]?out\b|\b(?:luggage|bag)s? drop\b|\b(?:drop|collect|pick up|leave)(?: off)? (?:the |our |your )?(?:bags|luggage)\b/i;
 
 /** "Motel One Berlin-Hauptbahnhof" however the row puts it, for telling one stay from another. */
 function stayKey(row: PrintRow): string {
+  // "Hotel Granvia Osaka (ホテルグランヴィア大阪)" is the same stay as "Hotel Granvia Osaka".
   return row.title
+    .replace(/\s*[(（][^()（）]*[)）]/g, "")
     .split(/\s+[-–—]\s+|,/)[0]!
     .toLowerCase()
     .replace(/\s+/g, " ")

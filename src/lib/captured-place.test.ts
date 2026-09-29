@@ -9,6 +9,7 @@ import {
   isSamePlace,
   normalizePlaceName,
   partitionNew,
+  repeatsTimelineStop,
   previewKind,
   toNewReco,
   toNewStop,
@@ -257,4 +258,33 @@ test("a rec removed and restored keeps its address and pin", () => {
   assert.equal(restored.source, "yelp.com");
   assert.equal(restored.lat, 43.6559);
   assert.equal(restored.category, "Bar");
+});
+
+test("repeatsTimelineStop: the same airport, worded again, is not a new stop", () => {
+  const timeline = [
+    { title: "Kansai International Airport", day_date: "2026-10-10", time_label: "15:30" },
+    { title: "Kansai International Airport", day_date: "2026-10-10", time_label: "18:00" },
+    { title: "Umeda Sky Building", day_date: "2026-10-10", time_label: "09:15" },
+  ];
+  const again = (title: string, time_label: string, place?: string) =>
+    repeatsTimelineStop(timeline, { title, place, day_date: "2026-10-10", time_label });
+  assert.equal(
+    again("Arrive at Kansai International Airport", "15:30", "Kansai International Airport"),
+    timeline[0],
+  );
+  assert.equal(
+    again("Flight from Kansai International Airport to Vancouver International Airport", "18:00"),
+    timeline[1],
+  );
+  assert.equal(again("Umeda Sky Building (梅田スカイビル)", "09:15"), timeline[2]);
+  // Another place at the same time, or the same place on another day, is new.
+  assert.equal(again("Grand Front Osaka", "15:30"), undefined);
+  assert.equal(
+    repeatsTimelineStop(timeline, {
+      title: "Arrive at Kansai International Airport",
+      day_date: "2026-10-11",
+      time_label: "15:30",
+    }),
+    undefined,
+  );
 });

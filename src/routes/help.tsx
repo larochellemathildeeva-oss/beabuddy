@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Check, ChevronDown, Copy } from "@/components/icons";
+import { ChevronDown } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
-import { AI_PLAN_PROMPT } from "@/lib/ai-plan-prompt";
+import { AiPromptCopy } from "@/components/AiPromptSheet";
 import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME, type Faq } from "@/lib/help-faq";
 
 export const Route = createFileRoute("/help")({
@@ -64,39 +64,10 @@ function Item({ q, a }: Faq) {
 
 /** The prompt to copy into another assistant, so its plan imports cleanly. */
 function PlanPrompt() {
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState("");
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(AI_PLAN_PROMPT);
-      setError("");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError("Couldn't copy — select the text and copy it yourself.");
-    }
-  };
   return (
     <section id="plan-prompt" className="card-soft space-y-3 p-4">
       <p className="font-display text-[19px] leading-snug">Planning with another assistant?</p>
-      <Answer
-        padded={false}
-        text={
-          "Copy this into ChatGPT, Gemini, Claude or whichever you use, fill in the brackets, and paste its answer into Let Béa plan → I already have a plan.\n\nIt asks for one place per line with a time and a street address, and no travel lines — the shape Béa reads straight, so each stop gets its own pin."
-        }
-      />
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-3 text-[12.5px] leading-relaxed text-foreground">
-        {AI_PLAN_PROMPT}
-      </pre>
-      <button
-        type="button"
-        onClick={copy}
-        className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-[14px] font-medium text-primary-foreground"
-      >
-        {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-        {copied ? "Copied" : "Copy the prompt"}
-      </button>
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
+      <AiPromptCopy />
     </section>
   );
 }

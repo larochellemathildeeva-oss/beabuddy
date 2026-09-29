@@ -41,7 +41,7 @@ import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
 import { printHtml } from "@/lib/print-page";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
-import type { RouteLeg } from "@/lib/directions.functions";
+import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
 import { destinationCities, groupsInCity } from "@/lib/trip-cities";
@@ -88,7 +88,12 @@ import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
-import { directionKey, splitDirectionRows, unroutedLegCopy } from "@/lib/timeline-directions";
+import {
+  directionKey,
+  legsToTimelineItems,
+  splitDirectionRows,
+  unroutedLegCopy,
+} from "@/lib/timeline-directions";
 import { modeWord, type TravelChoice } from "@/lib/travel-mode";
 import { readTravelChoice, writeTravelChoice } from "@/lib/travel-choice-store";
 import { tripStillEditableNote } from "@/lib/trip-copy";
@@ -273,6 +278,46 @@ export function TripDetail({
     stops: cities.stops,
   });
   const directionArea = lookupArea || undefined;
+  const routeRun = useServerFn(buildRoutes);
+  /**
+   * Stops an import saved with "Add directions between stops" ticked. They
+   * are routed once they are on the board, for their own days only, and the
+   * journeys are added as the directions sheet adds them.
+   */
+  const [directionsFor, setDirectionsFor] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!directionsFor) return;
+    const saved = board.items.filter((item) => directionsFor.includes(item.id));
+    if (saved.length < directionsFor.length) return;
+    setDirectionsFor(null);
+    const days = new Set(saved.map((item) => item.day_date ?? ""));
+    const stops = directionStops.filter((stop) => days.has(stop.day_date ?? ""));
+    if (stops.length < 2) return;
+    const pending = toast.loading("Adding directions between your stops…");
+    void (async () => {
+      try {
+        const result = (await routeRun({
+          data: { stops, ...(directionArea ? { area: directionArea } : {}), travel },
+        })) as { legs: RouteLeg[] };
+        const items = legsToTimelineItems(
+          result.legs,
+          stops,
+          board.items.map((item) => item.title),
+        );
+        if (items.length > 0) await board.upsertItems(items);
+        toast.success(
+          items.length > 0
+            ? `${items.length} ${items.length === 1 ? "journey" : "journeys"} added between your stops`
+            : "Béa couldn't route between these stops yet — add addresses and try Directions",
+          { id: pending },
+        );
+      } catch {
+        toast.error("Couldn't add the directions — try Directions on the day", { id: pending });
+      }
+    })();
+    // Runs when the board catches up with the saved stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.items, directionsFor]);
   /**
    * Where to look a stop up: the city the route has you in that day, then
    * the trip's area. A multi-city trip used to search every stop around its
@@ -2170,6 +2215,7 @@ export function TripDetail({
         {...(trip.end_date ? { endDate: trip.end_date } : {})}
         onAddItems={board.addItems}
         onRemoveItems={board.removeItems}
+        onAddDirections={setDirectionsFor}
         onAddCosts={async (items) => {
           if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
           await budget.addItems(items);

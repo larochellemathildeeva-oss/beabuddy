@@ -181,9 +181,11 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   }
 
   const areaish = AREA_TYPES.has(kind) || category === "boundary";
+  // "Okonomi-mura" is Okonomimura: each name also without its hyphens.
   const names = [hitName(label), ...(evidence.alsoNamed ?? [])]
     .map((name) => canonicalSpelling(name.trim().toLowerCase()))
-    .filter(Boolean);
+    .filter(Boolean)
+    .flatMap((name) => (name.includes("-") ? [name, name.replace(/-/g, "")] : [name]));
   const words = identityWords(evidence.title, label);
   // A street address is matched against the whole label, which is where the
   // street is; a name only against the place's own names.
@@ -255,9 +257,27 @@ function sameNumber(address: string, label: string): boolean {
  * the stop never said. A name the place is also known by that holds the whole
  * of the stop's clears it.
  */
-function otherBranch(title: string, label: string, alsoNamed: readonly string[]): string | null {
+/** Parts of one place, not another place: "…Museum Main Building", "Basilica Cistern (Exit)". */
+const PART_WORDS = new Set([
+  "main",
+  "building",
+  "annex",
+  "wing",
+  "entrance",
+  "exit",
+  "gate",
+  "east",
+  "west",
+  "north",
+  "south",
+]);
+
+function otherBranch(rawTitle: string, label: string, alsoNamed: readonly string[]): string | null {
   const name = hitName(label);
   if (!name) return null;
+  // The local name in brackets is the same place in its own script, never in
+  // an English label: "Hiroshima Peace Memorial Museum (広島平和記念資料館)".
+  const title = rawTitle.replace(/\s*[(（][^()（）]*[)）]/g, "").trim() || rawTitle;
   const numbers = (text: string): string[] => text.match(/\b\d{1,4}\b/g) ?? [];
   const askedNumbers = numbers(title);
   const gotNumbers = numbers(name);
@@ -271,13 +291,16 @@ function otherBranch(title: string, label: string, alsoNamed: readonly string[])
   const asked = meaningfulWords(title).filter((w) => w.length >= 3 && !/^\d+$/.test(w));
   const covers = (text: string) => {
     const folded = canonicalSpelling(text.toLowerCase());
-    return asked.every((w) => folded.includes(w));
+    const joined = folded.replace(/-/g, "");
+    return asked.every((w) => folded.includes(w) || joined.includes(w));
   };
   // The place's own names, not its address: "Osaka" in "…, Tennoji, Osaka"
   // made Tennoji Station an answer for "Osaka Station".
   if (covers(name) || alsoNamed.some(covers)) return null;
   const askedText = canonicalSpelling(title.toLowerCase());
-  const extra = meaningfulWords(name).some((w) => w.length >= 3 && !askedText.includes(w));
+  const extra = meaningfulWords(name).some(
+    (w) => w.length >= 3 && !PART_WORDS.has(w) && !askedText.includes(w),
+  );
   return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;
 }
 

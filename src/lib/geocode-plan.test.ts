@@ -1,9 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  airportMatch,
+  areaHitFor,
+  boxAround,
   distanceKm,
   estimatedSeconds,
   labelAddress,
+  namesAirport,
   pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -228,4 +232,63 @@ test("planStopQueries keeps the chōme alone as the last address try", async () 
   assert.equal(queries[0], "Shinsaibashisuji 2-chome 3-23, Osaka, Japan");
   assert.ok(queries.includes("Shinsaibashisuji 2-chome, Osaka, Japan"));
   assert.ok(queries.length <= QUERIES_PER_STOP);
+});
+
+test("pickHit: an airport stop takes only an airport", () => {
+  const osaka = { south: 34.48, north: 34.85, west: 135.3, east: 135.65 };
+  const hotel = {
+    lat: 34.70055,
+    lon: 135.50341,
+    label: "Hotel Kansai, Ōsaka, Osaka, Japan",
+    category: "tourism",
+    kind: "hotel",
+  };
+  const stop = {
+    title: "Arrive at Kansai International Airport",
+    place: "Kansai International Airport",
+  };
+  assert.equal(pickHit([hotel], osaka, stop), null);
+  const kix = {
+    lat: 34.4347,
+    lon: 135.244,
+    label: "Kansai International Airport, Izumisano, Osaka, Japan",
+    category: "aeroway",
+    kind: "aerodrome",
+  };
+  const around = boxAround({ lat: 34.6937, lon: 135.5023 }, 70);
+  assert.equal(pickHit([hotel, kix], around, stop)?.hit, kix);
+  // A museum about flying is not an airport stop, and keeps its own matches.
+  assert.equal(namesAirport({ title: "Airport Museum" }), false);
+  assert.equal(
+    namesAirport({ title: "Flight AC 16", place: "Kansai International Airport (関西国際空港)" }),
+    true,
+  );
+  assert.equal(namesAirport({ title: "Arrive", place: "Aeropuerto de Barajas T4" }), true);
+});
+
+test("an airport written as its code is searched as an airport and trusted as one", () => {
+  const stop = { title: "Land at JFK on AC 764", place: "JFK" };
+  assert.equal(planStopQueries(stop, "New York, USA")[0], "JFK Airport, New York, USA");
+  const jfk = {
+    lat: 40.6429,
+    lon: -73.7794,
+    label: "John F. Kennedy International Airport, JFK Access Road, Queens, New York, USA",
+    category: "aeroway",
+    kind: "aerodrome",
+  };
+  const nyc = { south: 40.4, north: 41, west: -74.3, east: -73.6 };
+  assert.deepEqual(pickHit([jfk], nyc, stop), { hit: jfk, trusted: true });
+  assert.equal(airportMatch(stop, jfk), true);
+  assert.equal(airportMatch({ title: "Katz's Delicatessen" }, jfk), false);
+});
+
+test("areaHitFor: the town the trip names, not the country answered first", () => {
+  const country = { display_name: "Mexico" };
+  const city = { display_name: "Mexico City, Mexico" };
+  assert.equal(areaHitFor([country, city], "Mexico City, Mexico"), city);
+  assert.equal(
+    areaHitFor([{ display_name: "Kyōto, Kyoto Prefecture, Japan" }], "Kyoto, Japan")?.display_name,
+    "Kyōto, Kyoto Prefecture, Japan",
+  );
+  assert.equal(areaHitFor([country], "Mexico City, Mexico"), null);
 });
