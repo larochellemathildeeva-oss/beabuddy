@@ -4,6 +4,7 @@ import {
   locationIqProvider,
   type GeoProvider,
 } from "./geo-endpoints.ts";
+import { CreditGuard, GEOAPIFY_DAILY_CREDITS, geoapifyCredits } from "./geo-credits.ts";
 
 /**
  * The geocoding token, on the server and nowhere else.
@@ -19,21 +20,79 @@ import {
  * configuring this, which is what makes the switch safe to make and safe to
  * undo.
  */
-let announced = false;
+let announced = "";
+
+/**
+ * One guard for the whole server, on `globalThis` so the tile handler in
+ * `server.ts` and the server functions count into the same day even if the
+ * build gives each its own copy of this module.
+ */
+const GUARD_KEY = Symbol.for("bea.geoapifyCreditGuard");
+function guard(): CreditGuard {
+  const store = globalThis as { [GUARD_KEY]?: CreditGuard };
+  if (!store[GUARD_KEY]) {
+    const ceiling = Number(process.env["GEOAPIFY_DAILY_CREDITS"]);
+    store[GUARD_KEY] = new CreditGuard(
+      Number.isFinite(ceiling) && ceiling > 0 ? ceiling : GEOAPIFY_DAILY_CREDITS,
+    );
+  }
+  return store[GUARD_KEY];
+}
+
+/** The Geoapify key, or empty when it is not set or resting for today. */
+export function geoapifyKey(): string {
+  const key = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
+  return key && !guard().resting(Date.now()) ? key : "";
+}
+
+/**
+ * `fetch`, counting what Geoapify charges for it.
+ *
+ * Every request that may reach Geoapify goes through here, so the day's count
+ * is Béa's own and the switch to LocationIQ happens before Geoapify's
+ * allowance is gone rather than after. Other services pass straight through.
+ */
+export async function geoFetch(url: string, init?: RequestInit): Promise<Response> {
+  const credits = geoapifyCredits(url);
+  if (!credits) return fetch(url, init);
+  const g = guard();
+  // A URL built before Geoapify rested (a batch, a request in flight) is not
+  // sent: callers read a 503 as "try later", and pick the fallback next time.
+  if (g.resting(Date.now())) return new Response(null, { status: 503 });
+  if (g.spend(credits, Date.now())) {
+    console.warn(
+      `[geo] Geoapify: ${Math.round(g.credits(Date.now()))} credits today, the ceiling is ${g.ceiling}; lookups move to ${fallbackName()} until midnight UTC`,
+    );
+  }
+  const res = await fetch(url, init);
+  const retryAfter = Number(res.headers.get("retry-after"));
+  if (g.answered(res.status, Date.now(), Number.isFinite(retryAfter) ? retryAfter : undefined)) {
+    console.warn(
+      `[geo] Geoapify answered ${res.status}; lookups move to ${fallbackName()} ${g.reason === "rate-limited" ? "for a while" : "until midnight UTC"}`,
+    );
+  }
+  return res;
+}
+
+function fallbackName(): string {
+  return (process.env["LOCATIONIQ_TOKEN"] ?? "").trim() ? "LocationIQ" : "OpenStreetMap";
+}
 
 export function geoProvider(): GeoProvider {
   // Geoapify first when both are set: its terms allow keeping what it finds,
-  // and it routes walks, which LocationIQ's hosted router may not.
-  const geoapifyKey = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
-  const token = geoapifyKey || (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
-  const provider = geoapifyKey
-    ? geoapifyProvider(geoapifyKey)
+  // and it routes walks, which LocationIQ's hosted router may not. While it
+  // rests (see geo-credits.ts), LocationIQ, then the public servers.
+  const key = geoapifyKey();
+  const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
+  const provider = key
+    ? geoapifyProvider(key)
     : token
       ? locationIqProvider(token)
       : PUBLIC_PROVIDER;
 
   /**
-   * Say once, in the server log, which service is answering.
+   * Say in the server log which service is answering, once and again
+   * whenever it changes.
    *
    * Setting the token is a deploy-time change with no visible effect beyond
    * "things feel quicker", which is not something anyone should have to judge
@@ -41,14 +100,14 @@ export function geoProvider(): GeoProvider {
    * logged — only its length, which is enough to tell a real token from an
    * empty string or a stray pair of quotes.
    */
-  if (!announced) {
-    announced = true;
+  if (announced !== provider.name) {
+    announced = provider.name;
     console.info(
-      geoapifyKey
-        ? `[geo] Geoapify (key ${geoapifyKey.length} chars, ${provider.gapMs}ms between lookups)`
+      key
+        ? `[geo] Geoapify (key ${key.length} chars, ${provider.gapMs}ms between lookups)`
         : token
           ? `[geo] LocationIQ (token ${token.length} chars, ${provider.gapMs}ms between lookups)`
-          : "[geo] OpenStreetMap public endpoints — no GEOAPIFY_API_KEY or LOCATIONIQ_TOKEN set, 1.1s between lookups",
+          : "[geo] OpenStreetMap public endpoints — no GEOAPIFY_API_KEY or LOCATIONIQ_TOKEN answering, 1.1s between lookups",
     );
   }
   return provider;

@@ -1,5 +1,6 @@
 import { geoapifyDetailsUrl, readPlaceDetails, type PlaceFacts } from "./geoapify.ts";
 import { nameEchoes } from "./match-confidence.ts";
+import { geoFetch } from "./geo-provider.server.ts";
 
 /**
  * What Geoapify's Place Details knows about the place at a point, shared by
@@ -34,7 +35,7 @@ export async function placeFactsAt(
   const cached = factsCache.get(at);
   if (cached !== undefined) return cached;
   try {
-    const res = await fetch(geoapifyDetailsUrl(key, lat, lon), {
+    const res = await geoFetch(geoapifyDetailsUrl(key, lat, lon), {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(6_000),
     });

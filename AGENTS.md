@@ -107,6 +107,22 @@ order:
    keyless, one request a second, and not really intended for systematic
    geocoding.
 
+**When Geoapify's day runs out.** Geoapify does not refuse the call that goes
+over the free plan's 3,000 credits (one day of itinerary testing counted
+8,728), so Béa keeps its own count. Every request that may reach Geoapify goes
+through `geoFetch` in `geo-provider.server.ts`, which adds what Geoapify
+charges for it (`geoapifyCredits` in `geo-credits.ts`, pure and tested: a
+geocode, route or place search 1, Place Details 2, a tile or font ¼, a static
+map 1 plus 1 per marker). At `GEOAPIFY_DAILY_CREDITS` (2,700 unless the env
+var of that name says otherwise), or when Geoapify answers 401, 402 or 403,
+Geoapify rests until midnight UTC; a 429 rests it for its `Retry-After`, or a
+minute. While it rests, `geoFetch` sends nothing to Geoapify (a 503 instead),
+batches re-ask `geoProvider()` before each lookup, and it answers with
+LocationIQ, else the public servers,
+Geoapify-only extras (hours, photos by place, nearby categories, static
+maps) are skipped, and `/api/vtile` 404s so the day map draws image tiles.
+The count is kept in the server's memory, so a restart starts it again at 0.
+
 **The day map and its offline copy.** With a Geoapify key the day map
 (`DayMap.tsx`) draws OpenMapTiles vector tiles in Béa's journal palette
 (`journal-style.ts`), through `/api/vtile` and `/api/glyphs` in `server.ts`,

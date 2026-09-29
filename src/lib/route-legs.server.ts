@@ -6,6 +6,7 @@ import {
   type GeoProvider,
 } from "./geo-endpoints.ts";
 import type { LegMode } from "./travel-mode.ts";
+import { geoFetch } from "./geo-provider.server.ts";
 
 /**
  * One journey from the router, shared by directions (directions.functions.ts)
@@ -73,7 +74,7 @@ export async function routeOnce(
   // two names, and the wrong one 400s every walking leg without saying so.
   const url = routeUrl(provider, routeProfile(provider, mode), a, b);
   try {
-    const res = await fetch(url, {
+    const res = await geoFetch(url, {
       headers: { "User-Agent": UA },
       signal: AbortSignal.timeout(8_000),
     });
