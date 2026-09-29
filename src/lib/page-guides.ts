@@ -45,7 +45,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Before you go",
-        body: "How much is left on the trip's to-do list, and the next thing due. Once the trip starts, it shows the next stop on the plan instead.",
+        body: "How much is left on the trip's to-do list, and the next thing due. Once the trip starts, it shows the next stop on the plan instead, when there is one.",
         selector: "[data-guide='home-next']",
       },
       {
@@ -65,7 +65,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Weather",
-        body: "Tap Show for the weather where you are. Béa asks for your location only when you tap.",
+        body: "The weather where you are. Until you have shared your location, tap Show; Béa asks for it only when you tap.",
         selector: "[data-guide='home-weather']",
       },
       {
@@ -231,7 +231,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "The trip menu",
-        body: "Invite people or share a read-only link, set a budget, run a Trip checkup for clashes, tight gaps and a passport that runs out, set preferences just for this trip, keep maps offline, copy the trip to new dates, add it to your calendar, or print it.",
+        body: "Invite people or share a read-only link, set a budget, run a Trip checkup for clashes, tight gaps and a passport that runs out (once stops are planned), set preferences just for this trip, keep maps offline, copy the trip to new dates, add it to your calendar, or print it.",
         selector: "[data-guide='trip-menu']",
       },
     ],
