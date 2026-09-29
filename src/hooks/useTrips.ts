@@ -17,6 +17,7 @@ import { directionSource, directionTitleKey } from "@/lib/timeline-directions";
 import { homeStopFollow } from "@/lib/trip-cities";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
+import { readOfflineTrip, readOfflineTrips } from "@/lib/offline-trip";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -227,11 +228,24 @@ export function useTrips() {
       setLoading(false);
       return;
     }
-    const rows = await selectTrips();
-    const { data: m } = await supabase
-      .from("trip_members")
-      .select("id, trip_id, user_id, role, display_name");
-    const memberRows = (m ?? []) as MemberRow[];
+    let rows: TripRow[];
+    let memberRows: MemberRow[];
+    try {
+      rows = await selectTrips();
+      const { data: m, error: memberError } = await supabase
+        .from("trip_members")
+        .select("id, trip_id, user_id, role, display_name");
+      if (memberError) throw memberError;
+      memberRows = (m ?? []) as MemberRow[];
+    } catch {
+      // No signal: the trips kept on this phone, if any, rather than an
+      // endless "Opening…". What is already on screen stays.
+      const kept = readOfflineTrips<TripRow, MemberRow, ItineraryRow>(localStorage, user.id);
+      setTrips((cur) => (cur.length ? cur : kept.map((k) => k.trip)));
+      setMembers((cur) => (cur.length ? cur : kept.flatMap((k) => k.members)));
+      setLoading(false);
+      return;
+    }
     // Together, so a card never draws with its trip but without its people.
     setTrips(rows);
     setMembers(memberRows);
@@ -532,7 +546,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       groups = groups.filter((group) => group !== missing);
       ({ data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", ")));
     }
-    if (error) return;
+    if (error) {
+      // No signal on a trip kept offline: its plan as last saved on this
+      // phone, and only while nothing better is on screen.
+      if (me.id) {
+        const kept = readOfflineTrip<TripRow, MemberRow, ItineraryRow>(localStorage, tripId, me.id);
+        if (kept) setItems((cur) => (cur.length ? cur : kept.items));
+      }
+      return;
+    }
     nestingReady.current = groups.includes(NESTING_COLUMN_NAMES);
     setItems(
       ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
@@ -546,7 +568,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       .order("created_at", { ascending: false });
     if (invError) return;
     setInvites(inv ?? []);
-  }, [tripId]);
+  }, [tripId, me.id]);
 
   useEffect(() => {
     setItems([]);

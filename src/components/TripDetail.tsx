@@ -80,6 +80,7 @@ import { TripAgain } from "@/components/day/TripAgain";
 import { ShareLinkCard } from "@/components/day/ShareLinkCard";
 import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
 import { useTripPreferences } from "@/hooks/useTripPreferences";
+import { forgetOfflineTrip, saveOfflineTrip } from "@/lib/offline-trip";
 import { tripCheckup } from "@/lib/trip-checkup";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -779,6 +780,19 @@ export function TripDetail({
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
   const tripPrefs = useTripPreferences(trip.id);
+  // A trip kept offline keeps its plan on the phone too, so it opens with no
+  // signal: written each time the plan loads, and only for that trip.
+  const keptOffline = Boolean(dir.saved);
+  useEffect(() => {
+    if (!keptOffline || !me.id || board.items.length === 0) return;
+    saveOfflineTrip(localStorage, {
+      uid: me.id,
+      savedAt: new Date().toISOString(),
+      trip,
+      members,
+      items: board.items,
+    });
+  }, [keptOffline, me.id, trip, members, board.items]);
   const others = board.present.filter((p) => p.userId !== me.id);
   const allDayGroups = groupTimelineByDay(stopItems);
   // With a city picked, the days, the map and Now all follow that city.
@@ -1929,6 +1943,7 @@ export function TripDetail({
               onRemoveFromTimeline={removeDirectionRows}
               onForgetOffline={() => {
                 dir.clear();
+                forgetOfflineTrip(localStorage, trip.id);
                 dayMaps.clear();
                 offlineMap.clear();
                 setLiveLegs(null);
@@ -2465,8 +2480,9 @@ export function TripDetail({
           <div className="plain-card p-3.5">
             <p className="text-[13px] text-muted-foreground">
               Download the journeys between stops and Béa keeps the steps on this phone, so you
-              never work them out twice. Béa still needs a connection to open, so this is not a
-              no-signal map yet. Adding directions to the timeline saves the summary only.
+              never work them out twice. The trip's plan is kept on this phone too, so once Béa has
+              been opened here with a connection, this trip opens with no signal. Adding directions
+              to the timeline saves the summary only.
             </p>
             <p className="mt-1 text-[13px] text-muted-foreground">
               {cities.stops.length >= 2
@@ -2565,6 +2581,7 @@ export function TripDetail({
                 <button
                   onClick={() => {
                     dir.clear();
+                    forgetOfflineTrip(localStorage, trip.id);
                     dayMaps.clear();
                     offlineMap.clear();
                   }}
