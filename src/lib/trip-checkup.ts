@@ -32,15 +32,25 @@ export type CheckupStop = {
 };
 
 export type CheckupKind =
+  | "id-expiry"
   | "outside"
   | "overlap"
   | "tight"
+  | "untimed"
   | "not-booked"
   | "no-ref"
   | "unplaced"
   | "stray"
   | "undated"
-  | "no-stay";
+  | "no-stay"
+  | "long-walk";
+
+/** A document in Protected: only its kind, name and expiry are ever read. */
+export type CheckupIdDocument = {
+  kind: string;
+  label: string | null;
+  expires_on: string | null;
+};
 
 export type CheckupFinding = {
   /** Stable across renders: the check and the stop(s) it names. */
@@ -68,6 +78,8 @@ export type CheckupInput = {
   travelMinutes?: ((from: CheckupStop, to: CheckupStop) => number | null) | undefined;
   /** Stops pinned far from the rest of the trip (`strayStopIds`). */
   strayIds?: ReadonlySet<string> | undefined;
+  /** Passports and visas in Protected, by kind, name and expiry only. */
+  idDocuments?: readonly CheckupIdDocument[] | undefined;
 };
 
 /** Kinds that are a booking first, so "not booked" means something. */
@@ -103,16 +115,33 @@ const TIGHT_MARGIN_MIN = 10;
 const MAX_GAP_MIN = 4 * 60;
 
 const ORDER: readonly CheckupKind[] = [
+  "id-expiry",
   "outside",
   "overlap",
   "tight",
+  "untimed",
   "not-booked",
   "no-ref",
   "unplaced",
   "stray",
   "undated",
   "no-stay",
+  "long-walk",
 ];
+
+/**
+ * A transport row that leaves at a set time: a flight always, other
+ * transport only when it names something with a timetable or a pickup.
+ * "Travel to the park" is a way of getting somewhere, not a departure.
+ */
+const DEPARTS =
+  /\b(?:flight|train|bus|coach|ferry|boat|transfer|shuttle|taxi|pick-?up|rental|shinkansen|eurostar)\b/i;
+/** A day with more walking than this between its stops is worth a word. */
+const LONG_WALK_METRES = 12_000;
+/** Streets do not run straight: a walk is this much longer than the line. */
+const STREET_DETOUR = 1.3;
+/** Many countries ask for this long left on a passport. */
+const PASSPORT_MONTHS = 6;
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -156,6 +185,14 @@ function shortDay(day: string): string {
 
 function dayLabelOf(day: string | null | undefined): string {
   return day && DAY_RE.test(day) ? formatTimelineDayLabel(day) : "";
+}
+
+/** "2027-03-31" plus six months, as a date; null for anything else. */
+function monthsAfter(day: string, months: number): string | null {
+  if (!DAY_RE.test(day)) return null;
+  const [y, m, d] = day.split("-").map(Number) as [number, number, number];
+  const at = new Date(Date.UTC(y, m - 1 + months, d));
+  return at.toISOString().slice(0, 10);
 }
 
 /** Everything worth a second look, most pressing first, then in plan order. */
@@ -292,6 +329,65 @@ export function tripCheckup(input: CheckupInput): CheckupFinding[] {
     } else if (input.strayIds?.has(item.id)) {
       add("stray", item, `${titleOf(item)} is pinned far from the rest of the trip.`, "info");
     }
+  }
+
+  // Departures with no time: the one kind of stop that leaves without you.
+  for (const { item, kind } of items) {
+    const departs = kind === "flight" || (kind === "transport" && DEPARTS.test(item.title ?? ""));
+    if (!departs || clockMinutes(item.time_label) !== null) continue;
+    add("untimed", item, `${titleOf(item)} has no departure or pickup time yet.`, "warn");
+  }
+
+  // Passports and visas.
+  if (start && end) {
+    const sixMonths = monthsAfter(end, PASSPORT_MONTHS);
+    for (const doc of input.idDocuments ?? []) {
+      const kind = doc.kind.trim().toLowerCase();
+      const expires = doc.expires_on ?? "";
+      if ((kind !== "passport" && kind !== "visa") || !DAY_RE.test(expires)) continue;
+      const name = (doc.label ?? "").trim() || doc.kind.trim();
+      const key = `:${kind}:${name}`;
+      let text = "";
+      let tone: "warn" | "info" = "warn";
+      if (expires < start) {
+        text = `${name} expires on ${shortDay(expires)}, before the trip starts.`;
+      } else if (expires <= end) {
+        text = `${name} expires on ${shortDay(expires)}, during the trip.`;
+      } else if (kind === "passport" && sixMonths && expires < sixMonths) {
+        text = `${name} expires on ${shortDay(expires)}. Many countries ask for six months left — check the rules for where you are going.`;
+        tone = "info";
+      }
+      if (text) add("id-expiry", null, text, tone, key);
+    }
+  }
+
+  // Long days on foot: the walks between a day's pinned stops, in plan
+  // order, stretched for streets. Hops too long to walk are left out.
+  const walks = new Map<string, number>();
+  const lastPin = new Map<string, { lat: number; lon: number }>();
+  for (const { item, kind } of items) {
+    if (!item.day_date || !DAY_RE.test(item.day_date) || !SEQUENCED.has(kind)) continue;
+    const here = pointOf(item);
+    if (!here) continue;
+    const before = lastPin.get(item.day_date);
+    if (before) {
+      const metres = haversine(before, here);
+      if (metres <= MAX_WALK_METRES) {
+        walks.set(item.day_date, (walks.get(item.day_date) ?? 0) + metres * STREET_DETOUR);
+      }
+    }
+    lastPin.set(item.day_date, here);
+  }
+  for (const [day, metres] of [...walks].sort(([a], [b]) => a.localeCompare(b))) {
+    if (metres < LONG_WALK_METRES) continue;
+    out.push({
+      key: `long-walk:${day}`,
+      kind: "long-walk",
+      tone: "info",
+      stopId: null,
+      dayLabel: dayLabelOf(day),
+      text: `About ${Math.round(metres / 1000)} km on foot between stops on ${shortDay(day)}. Worth a ride for part of it, or a lighter day.`,
+    });
   }
 
   // The trip as a whole.

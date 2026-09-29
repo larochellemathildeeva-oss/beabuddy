@@ -132,7 +132,7 @@ test("hotels and flights are not part of the day's sequence", () => {
 
 test("bookings: not marked booked, or booked with no confirmation number", () => {
   const items = [
-    stop({ kind: "flight", title: "Flight to Lisbon", booked: false }),
+    stop({ kind: "flight", title: "Flight to Lisbon", booked: false, time_label: "07:40" }),
     stop({ kind: "hotel", title: "Casa", booked: true, booking_ref: "  " }),
     stop({ kind: "transport", title: "Metro", booked: false }),
     stop({ kind: "meal", title: "Dinner", booked: false }),
@@ -198,7 +198,15 @@ test("keys are stable and unique", () => {
 test("a flight with no pin is flagged like any other stop", () => {
   const items = [
     hotel(),
-    stop({ kind: "flight", title: "TP 123", booked: true, booking_ref: "X", lat: null, lon: null }),
+    stop({
+      kind: "flight",
+      title: "TP 123",
+      booked: true,
+      booking_ref: "X",
+      time_label: "09:15",
+      lat: null,
+      lon: null,
+    }),
   ];
   assert.deepEqual(
     tripCheckup({ ...trip, items }).map((f) => f.text),
@@ -214,4 +222,76 @@ test("a malformed clock time is not a time, so it cannot clash", () => {
     stop({ title: "Late", time_label: "25:00" }),
   ];
   assert.deepEqual(tripCheckup({ ...trip, items }), []);
+});
+
+test("a flight or a timed transfer with no time is flagged; a way of getting somewhere is not", () => {
+  const items = [
+    hotel(),
+    stop({ kind: "flight", title: "TP 123", booked: true, booking_ref: "X" }),
+    stop({ kind: "transport", title: "Airport transfer", booked: true, booking_ref: "Y" }),
+    stop({ kind: "transport", title: "Travel to the park" }),
+    stop({ kind: "transport", title: "Train to Sintra", time_label: "09:10" }),
+  ];
+  const found = tripCheckup({ ...trip, items }).filter((f) => f.kind === "untimed");
+  assert.deepEqual(
+    found.map((f) => [f.text, f.tone]),
+    [
+      ["TP 123 has no departure or pickup time yet.", "warn"],
+      ["Airport transfer has no departure or pickup time yet.", "warn"],
+    ],
+  );
+});
+
+test("passports and visas that run out before, during or soon after the trip", () => {
+  const doc = (kind: string, expires_on: string, label = `${kind} A`) => ({
+    kind,
+    label,
+    expires_on,
+  });
+  const check = (d: ReturnType<typeof doc>) =>
+    tripCheckup({ ...trip, items: [hotel()], idDocuments: [d] }).map((f) => [
+      f.kind,
+      f.tone,
+      f.text,
+    ]);
+  assert.deepEqual(check(doc("Passport", "2026-09-20")), [
+    ["id-expiry", "warn", "Passport A expires on Sep 20, before the trip starts."],
+  ]);
+  assert.deepEqual(check(doc("Visa", "2026-10-03")), [
+    ["id-expiry", "warn", "Visa A expires on Oct 3, during the trip."],
+  ]);
+  assert.equal(check(doc("Passport", "2027-02-01"))[0]?.[1], "info");
+  // A visa only has to last the trip; six months clear is fine; other kinds are not read.
+  assert.deepEqual(check(doc("Visa", "2027-02-01")), []);
+  assert.deepEqual(check(doc("Passport", "2027-06-01")), []);
+  assert.deepEqual(check(doc("Insurance", "2026-09-01")), []);
+  // They come first: a passport outranks everything else.
+  const found = tripCheckup({
+    ...trip,
+    items: [hotel(), stop({ title: "Late", day_date: "2026-10-09" })],
+    idDocuments: [doc("Passport", "2026-09-20")],
+  });
+  assert.equal(found[0]?.kind, "id-expiry");
+});
+
+test("a long day on foot is mentioned once, for its day; hops too far to walk are left out", () => {
+  // Seven stops zig-zagging ~2.2 km apart in Lisbon: about 17 km of streets.
+  const zigzag = [0, 1, 2, 3, 4, 5, 6, 7].map((k) =>
+    stop({ title: `Z${k}`, lat: 38.7 + (k % 2) * 0.02, lon: -9.14, day_date: "2026-10-03" }),
+  );
+  const found = tripCheckup({ ...trip, items: [hotel(), ...zigzag] }).filter(
+    (f) => f.kind === "long-walk",
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0]?.dayLabel, "Sat · Oct 3");
+  assert.match(found[0]?.text ?? "", /^About \d+ km on foot between stops on Oct 3\./);
+  // Lisbon to Porto is a train, not a walk.
+  const far = [
+    stop({ title: "Lisbon", lat: 38.7, lon: -9.14 }),
+    stop({ title: "Porto", lat: 41.15, lon: -8.61 }),
+  ];
+  assert.deepEqual(
+    tripCheckup({ ...trip, items: [hotel(), ...far] }).filter((f) => f.kind === "long-walk"),
+    [],
+  );
 });
