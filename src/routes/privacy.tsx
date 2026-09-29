@@ -154,10 +154,10 @@ function PrivacyPage() {
           <p>
             When you invite someone to a trip with a code, that person can see and edit that trip's
             itinerary and see when you are viewing it. Invite codes are designed to expire and to
-            work a limited number of times; you can revoke a code from trip settings. They cannot
-            see your photos, your recommendations, your notes or your trip documents. From trip
-            settings, the owner can remove a person, and a guest can leave — access ends when they
-            are removed or leave.
+            work a limited number of times; you can revoke a code from the trip menu. They cannot
+            see your photos, your recommendations, your notes or your trip documents. From the trip
+            menu, the owner can remove a person, and a guest can leave — access ends when they are
+            removed or leave.
           </p>
           <p>
             Anyone on a trip can also make a read-only link for someone without an account. It shows

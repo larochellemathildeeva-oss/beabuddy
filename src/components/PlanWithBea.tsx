@@ -119,7 +119,7 @@ export function PlanCards({
     },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div data-guide="plan-cards" className="grid grid-cols-2 gap-2.5">
       {cards.map((card) => (
         <button
           key={card.key}
@@ -177,7 +177,7 @@ const PLAN_EXAMPLES: {
 /** "Not sure? Try an example" — each one starts a build with its words. */
 export function PlanExamples({ onPick }: { onPick: (ask: string) => void }) {
   return (
-    <section>
+    <section data-guide="plan-examples">
       <p className="mb-2 font-display text-[22px] leading-none">Not sure? Try an example</p>
       <div className="grid grid-cols-3 gap-2">
         {PLAN_EXAMPLES.map((ex) => (
@@ -205,6 +205,7 @@ export function PlanAsk({ onSend }: { onSend: (ask: string) => void }) {
         e.preventDefault();
         if (ask.trim()) onSend(ask.trim());
       }}
+      data-guide="plan-ask"
       className="plain-card flex items-center gap-2 rounded-full p-1.5"
     >
       <span

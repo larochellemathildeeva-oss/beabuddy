@@ -311,6 +311,7 @@ function ProfilePage() {
               title="Work travel"
               hint="Receipts, expenses and reports"
               to="/expenses"
+              guide="work-travel"
             />
             <Tile
               icon={FileText}
@@ -319,13 +320,18 @@ function ProfilePage() {
               title="Trip documents"
               hint="Bookings, confirmations and trip files"
               href="/profile/documents"
+              guide="trip-documents"
             />
           </div>
         </div>
 
         <div className="space-y-3">
           <SectionTitle>Your Béa</SectionTitle>
-          <Link to="/profile/bea" className={`${PLAIN} flex items-center gap-3 p-3.5`}>
+          <Link
+            to="/profile/bea"
+            data-guide="your-bea"
+            className={`${PLAIN} flex items-center gap-3 p-3.5`}
+          >
             <img
               src="/bea/bea-think-static.png"
               alt=""
@@ -562,14 +568,13 @@ function ProfilePage() {
           <div>
             <p className="label-caps text-foreground">What is kept on this phone</p>
             <p className="mt-1.5 text-[13px] text-muted-foreground">
-              Béa needs a connection to open, so she is not a no-signal app yet. Maps, photos,
-              recommendations, itineraries and the vault all load fresh each time.
+              Installed on your home screen, Béa is designed to open without signal. Photos,
+              recommendations, new searches and the vault still need a connection.
             </p>
             <p className="mt-2 text-[13px] text-muted-foreground">
-              What is kept locally: open a trip → settings → Saved directions. That stores the walk
-              or drive steps here, so they cost nothing to open again once you have them — and,
-              where this phone can draw it, the map around each day's stops, so a day map that is
-              already open keeps panning and zooming when the signal drops.
+              What is kept locally: open a trip → trip menu (•••) → Offline maps, and download its
+              directions. That keeps the trip's plan, the walk or drive steps, and, where this phone
+              can draw it, the map around each day's stops.
             </p>
             {offlineTrips.length > 0 ? (
               <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
@@ -584,7 +589,7 @@ function ProfilePage() {
               </ul>
             ) : (
               <p className="mt-3 text-[13px] text-muted-foreground">
-                None yet. Open a trip and download Saved directions there.
+                None yet. Open a trip and download its directions under Offline maps.
               </p>
             )}
             <Link

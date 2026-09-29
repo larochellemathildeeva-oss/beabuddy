@@ -262,7 +262,11 @@ export function HomeShortcuts({ trip, glance }: { trip: TripRow; glance: TripGla
     "relative flex min-h-[78px] flex-col items-center justify-center gap-1.5 px-1 py-2.5 text-center text-[12px] font-semibold transition-shadow hover:shadow-md";
   const icon = "size-[22px] text-primary";
   return (
-    <nav aria-label="Trip shortcuts" className="rise grid grid-cols-4 gap-2">
+    <nav
+      data-guide="home-shortcuts"
+      aria-label="Trip shortcuts"
+      className="rise grid grid-cols-4 gap-2"
+    >
       <Link to="/trips/$tripId" params={{ tripId: trip.id }} className={`tile-card-3 ${tile}`}>
         <CalendarDays className={icon} aria-hidden />
         Itinerary

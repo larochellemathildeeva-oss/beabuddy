@@ -29,6 +29,8 @@ export const guides: Record<string, Guide> = {
       "Your day at a glance: the trip you're on or the next one, and the places you saved that are near you right now.",
     features: [
       "See your current or next trip, with its dates and a shortcut into it",
+      "Before your trip: what is left to do, or the next stop once you're there",
+      "Jump straight to the trip's itinerary, to-dos, packing or your saved places",
       "Share your location to list your saved places within reach, nearest first",
       "Get directions to one, or snooze it when it's not the moment",
       "Tick a few nearby places and let Béa arrange a day trip",
@@ -37,19 +39,34 @@ export const guides: Record<string, Guide> = {
     ],
     steps: [
       {
-        title: "What's around you",
-        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you tap Share, and you pick for how long. Plan a day trip strings a few of them together.",
-        selector: "[data-guide='home-near']",
-      },
-      {
         title: "Your trip right now",
         body: "The trip you're on, or the next one coming, sits here with its dates and where it goes. Tap it to open the whole folder.",
         selector: "[data-guide='home-trip']",
       },
       {
+        title: "Before you go",
+        body: "How much is left on the trip's to-do list, and the next thing due. Once the trip starts, it shows the next stop on the plan instead.",
+        selector: "[data-guide='home-next']",
+      },
+      {
+        title: "Shortcuts into the trip",
+        body: "Itinerary, To-do and Packing open that part of the trip; Saved places opens your recommendations.",
+        selector: "[data-guide='home-shortcuts']",
+      },
+      {
+        title: "What's around you",
+        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you tap Share, and you pick for how long. Plan a day trip strings a few of them together.",
+        selector: "[data-guide='home-near']",
+      },
+      {
         title: "Waiting for you",
         body: "A saved recommendation Béa is holding onto. Tap through to see what's near you.",
         selector: "[data-guide='home-waiting']",
+      },
+      {
+        title: "Weather",
+        body: "Tap Show for the weather where you are. Béa asks for your location only when you tap.",
+        selector: "[data-guide='home-weather']",
       },
       {
         title: "Future Me",
@@ -68,7 +85,8 @@ export const guides: Record<string, Guide> = {
     about: "Everywhere you've been and everywhere you want to go, on one globe.",
     features: [
       "Map: spin the globe of the countries, provinces and cities you've visited",
-      "Add places you've been by hand, or paste a whole list",
+      "Search your world for a place, and show cities, provinces or countries",
+      "Add places you've been: one by hand, a pasted list, or a file",
       "Bucket list: keep destinations you want to visit",
       "Help me choose: compare two to five saved places and get a pick with reasons",
       "Been there: every country, province and city, grouped",
@@ -96,8 +114,8 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='travel-stats']",
       },
       {
-        title: "Add a city by hand",
-        body: "The + on the globe adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
+        title: "Add places",
+        body: "Add places, beside the globe, adds a city or country you have been to. Type one, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
         selector: "[data-guide='add-city']",
       },
     ],
@@ -106,13 +124,20 @@ export const guides: Record<string, Guide> = {
     name: "Trips",
     about: "Every trip you're planning, on, or back from — each one its own folder.",
     features: [
-      "Start a trip with a name, a city and dates (confirmed or tentative)",
+      "Plan with Béa: build a trip, import your plan, optimize it or compare options",
+      "Start a trip with the +: a name, a city and dates (confirmed or tentative)",
       "Join a friend's trip with their invite code",
-      "Switch between upcoming and past trips",
+      "Switch between Upcoming, Past, Drafts (no dates yet) and All",
+      "See every trip on the Calendar",
       "Open a trip to plan its days, stops, budget and packing",
       "Keep bookings and tickets in Trip documents, shared with the trip",
     ],
     steps: [
+      {
+        title: "Plan with Béa",
+        body: "Béa's planner: build a trip from what you saved, import a plan you already have, optimize the order of a trip's stops, or compare options. You approve before anything saves.",
+        selector: "[data-guide='plan-with-bea']",
+      },
       {
         title: "Start a trip",
         body: "Name it, search the starting city, pick your dates if you know them, mark them Tentative or Confirmed, and tick a budget only if you want one. You can still change all of this after the trip exists.",
@@ -120,12 +145,12 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Join with a code",
-        body: "Someone already made the folder? Type their invite code here. A trip with only you says Flying Solo until a friend joins.",
+        body: "Someone already made the folder? Type their invite code here. A trip with only you says Flying Solo until a friend joins. Calendar, beside it, shows every trip month by month.",
         selector: "[data-guide='join-trip']",
       },
       {
         title: "Open a trip",
-        body: "Tap any trip to open its own page: where you're going city by city, the shared timeline, who's invited, the budget, Béa's planner, things to do, and packing. Everything about one trip lives there rather than unfolding here.",
+        body: "Next up, then the rest. Each card shows the flight, to-dos and packing at a glance. Tap one to open its own page: the plan, the people, bookings and everything still to do.",
         selector: "[data-guide='trip-list']",
       },
       {
@@ -135,16 +160,48 @@ export const guides: Record<string, Guide> = {
       },
     ],
   },
+  "/trips/plan": {
+    name: "Plan with Béa",
+    about:
+      "Béa's planner: start a trip from what you saved, or improve one you already have. You approve before anything saves.",
+    features: [
+      "Build my trip: a day-by-day plan from your saved places and preferences",
+      "Import a plan: a photo, PDF, calendar or pasted text becomes a trip",
+      "Optimize my trip: a better order for a trip's stops, with less travel",
+      "Compare options: two plans side by side, with pros and cons",
+      "Planning in ChatGPT or another assistant? Get the prompt, then import its answer",
+      "Béa does not book or check availability; you reserve yourself",
+    ],
+    steps: [
+      {
+        title: "Four ways to start",
+        body: "Build a new plan, import one you already have, optimize the order of a trip's stops, or compare two plans. Béa asks which trip when it matters, and you approve before anything saves.",
+        selector: "[data-guide='plan-cards']",
+      },
+      {
+        title: "Try an example",
+        body: "Not sure what to ask? Each example starts a build with its words, which you can change before Béa drafts.",
+        selector: "[data-guide='plan-examples']",
+      },
+      {
+        title: "In your own words",
+        body: "Anything else: a pace, a budget, who is coming. Béa takes it into the build.",
+        selector: "[data-guide='plan-ask']",
+      },
+    ],
+  },
   "/trips/$tripId": {
     name: "Inside a trip",
     about: "One trip, day by day: the plan, the people, and everything still to do.",
     features: [
-      "Plan with Béa: draft a plan from your saved places, or bring in one you already have",
+      "Plan with Béa: build, import, optimize or compare, and approve before it saves",
       "Add stops, saved places, or another city on the route",
-      "Edit the shared timeline; everyone invited sees the same plan live",
-      "Get directions between stops and keep them on this phone",
+      "Overview: bookings, essentials and the days at a glance, with notes Past You left",
+      "Now, on the day: where you are, what's next, when to leave, and reminders",
+      "Map and Timeline: see the day, reorder, retime and edit; everyone invited sees it live",
+      "Bookings: flights, stays, transport and tickets, with the documents filed to the trip",
       "Track to-dos and packing, and convert prices into your money",
-      "The trip menu (•••): invite people, budget, flights, hotels, print or save as PDF, offline maps",
+      "Trip menu (•••): invite or share a link, budget, checkup, offline maps, copy, calendar, PDF",
     ],
     steps: [
       {
@@ -158,14 +215,24 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='add-stop']",
       },
       {
-        title: "The shared timeline",
-        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn is kept on this phone only if you download it in trip settings.",
-        selector: "[data-guide='trip-timeline']",
-      },
-      {
         title: "To do",
         body: "To do opens everything still to be done, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
         selector: "[data-guide='trip-prep']",
+      },
+      {
+        title: "Five ways to look at the trip",
+        body: "Overview is the dashboard. Now follows one day with you: tap I'm here and Leaving, and Béa says when to set off. Map draws the day. Timeline is where you reorder and edit. Bookings keeps flights, stays and tickets together.",
+        selector: "[data-guide='trip-tabs']",
+      },
+      {
+        title: "The shared timeline",
+        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Offline maps, in the trip menu, keeps the directions and map on this phone.",
+        selector: "[data-guide='trip-timeline']",
+      },
+      {
+        title: "The trip menu",
+        body: "Invite people or share a read-only link, set a budget, run a Trip checkup for clashes and tight gaps, set preferences just for this trip, keep maps offline, copy the trip to new dates, add it to your calendar, or print it.",
+        selector: "[data-guide='trip-menu']",
       },
     ],
   },
@@ -174,8 +241,10 @@ export const guides: Record<string, Guide> = {
     about: "Every place someone told you about, kept with who said it and why.",
     features: [
       "Search a name or paste a map link to save a place",
-      "The + at the top: add from your trips, where you are, by hand, or a pasted list",
-      "Open map to pin somewhere near you",
+      "Save from your trips, or from where you are with I'm here now",
+      "The + at the top: add by hand, paste a list, send or open a share",
+      "Jump to Restaurants, Cafés, Things to do or Stays",
+      "Explore nearby: a map of what's around you, to pin and save",
       "Browse your collections: Recommendations, Wishlist, Next time",
       "Search and filter everything you saved by city and type",
       "Send places to a friend, or open a share someone sent you",
@@ -197,14 +266,14 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='reco-categories']",
       },
       {
-        title: "Pin something nearby",
-        body: "Open the map of where you are and drop a pin on a suggested place, or tap anywhere to save that exact spot.",
-        selector: "[data-guide='pin-nearby']",
+        title: "Ways to save something",
+        body: "Type a name or paste a link in the field. From my trips and I'm here now sit just below. The + at the top holds the rest: by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
+        selector: "[data-guide='reco-add']",
       },
       {
-        title: "Ways to save something",
-        body: "Type a name or paste a link in the field. The + at the top holds the rest: places from your trips, where you are, by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
-        selector: "[data-guide='reco-add']",
+        title: "Explore nearby",
+        body: "Open the map of where you are and drop a pin on a suggested place, or tap anywhere to save that exact spot.",
+        selector: "[data-guide='explore-nearby']",
       },
       {
         title: "Pick the exact spot",
@@ -246,10 +315,12 @@ export const guides: Record<string, Guide> = {
       "Edit your name, photo, home city and travel tags",
       "Set travel preferences: style, pace, budget, interests and diet",
       "Keep reusable packing lists",
+      "Work travel: receipts and an expense spreadsheet",
+      "Trip documents: bookings, confirmations and private files",
       "Choose Béa's personality and how much she suggests",
       "Change the theme and what Home shows (Appearance)",
       "Import photos, open the calendar, load sample data (Data & imports)",
-      "Send feedback, read privacy and terms, replay the tour (About Béa)",
+      "Privacy & legal, Help & FAQ, Feedback, and replay the tour under About Béa",
     ],
     steps: [
       {
@@ -259,18 +330,13 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Settings",
-        body: "Your name, home city and travel tags. Travel preferences, just below, holds your style, pace and budget — what Béa plans with. Appearance, further down, sets the theme and what Home shows.",
+        body: "The gear at the top: your name and home city, the details Béa plans from.",
         selector: "[data-guide='profile-settings']",
       },
       {
-        title: "Replay the tour",
-        body: "About Béa holds How Béa works, the quick walk and the Deep Dive. Sample travel data is under Data & imports — Béa will not load either until you ask.",
-        selector: "[data-guide='replay-tour']",
-      },
-      {
-        title: "Customize home",
-        body: "Under Appearance: hide Weather, Trips, Saved places or the Future me note on Home. Saved on this device.",
-        selector: "[data-guide='home-customize']",
+        title: "Travel preferences",
+        body: "Your style, pace, budget, interests and diet — what Béa plans and ranks with.",
+        selector: "[data-guide='travel-preferences']",
       },
       {
         title: "Packing lists",
@@ -278,12 +344,27 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='packing-lists']",
       },
       {
+        title: "Work travel",
+        body: "Photograph receipts, tag the trip, and download a spreadsheet for accounting.",
+        selector: "[data-guide='work-travel']",
+      },
+      {
+        title: "Trip documents",
+        body: "Bookings, confirmations and tickets, shared with the people on each trip. Protected holds what only you should see.",
+        selector: "[data-guide='trip-documents']",
+      },
+      {
+        title: "Your Béa",
+        body: "Her personality, and how much she suggests and helps. The pill shows the preset you picked.",
+        selector: "[data-guide='your-bea']",
+      },
+      {
         title: "Data & imports",
-        body: "Import photos, open the trip calendar, load or remove sample data, and see what is kept on this phone. Béa needs a connection to open; trip settings → Saved directions keeps the steps between stops here so you do not fetch them twice.",
+        body: "Import photos, open the trip calendar, load or remove sample data, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
         selector: "[data-guide='offline-options']",
       },
       {
-        title: "Legal and copyright",
+        title: "Privacy & legal",
         body: "Privacy policy, terms, and a note that Béa is Mathilde E. Larochelle's work. You keep what you save in it.",
         selector: "[data-guide='legal']",
       },
@@ -291,6 +372,11 @@ export const guides: Record<string, Guide> = {
         title: "Feedback",
         body: "Always yours. Pick a category — it broke, a missing stat, a wish, the map has opinions — then write it. If Béa dropped the ball, throw it back.",
         selector: "[data-guide='feedback']",
+      },
+      {
+        title: "Replay the tour",
+        body: "About Béa holds How Béa works, the quick walk and the Deep Dive. Sample travel data is under Data & imports — Béa will not load either until you ask.",
+        selector: "[data-guide='replay-tour']",
       },
     ],
   },
@@ -426,6 +512,7 @@ export const guides: Record<string, Guide> = {
     features: [
       "See trips, flights, hotels and reservations month by month",
       "Tap a day to see what's on it",
+      "Coming up: the next stops from every trip, in order",
     ],
     steps: [
       {
