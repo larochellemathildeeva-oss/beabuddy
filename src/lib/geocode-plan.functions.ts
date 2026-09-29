@@ -8,6 +8,7 @@ import {
   boxViewbox,
   distanceKm,
   inBox,
+  nameVariants,
   namesAirport,
   outingReachKm,
   pickHit,
@@ -112,6 +113,8 @@ const Input = z.object({
  */
 export type PlacedStop = {
   index: number;
+  /** Found under another name than the plan's ("Ikuta Shrine" for "Ikuta Jinja"). */
+  matchedAs?: string;
   lat: number;
   lon: number;
   /** The geocoder's full name for it: "Olive et Gourmando, Rue Saint-Paul…". */
@@ -137,6 +140,9 @@ export type PlacedStop = {
   /** Found in Overture's listings rather than on the map: its place id there. */
   overtureId?: string;
 };
+
+/** How far a spot listed inside a place may be from it, in km. */
+const WITHIN_KM = 3;
 
 /** How far from the middle of town an airport is looked for, in km. */
 const AIRPORT_KM = 70;
@@ -483,9 +489,13 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         bounds: AreaBox,
         near: { lat: number; lon: number } | null,
         bare = false,
+        /** Another name for the stop ("Ikuta Shrine", "渡月橋"), searched and matched instead. */
+        alias?: string,
       ): Promise<boolean> => {
         const asked = planStopQueries(
-          { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
+          alias
+            ? { title: alias, detail: stop.detail, place: alias, address: stop.address }
+            : { title: stop.title, detail: stop.detail, place: stop.place, address: stop.address },
           inWhere,
         ).slice(0, QUERIES_PER_STOP);
         // The name alone, bounded to the box: Geoapify finds "Gullfoss" but
@@ -512,13 +522,13 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
             cache.set(key, found);
             hits = found;
           }
-          const picked = pickHit(hits, bounds, stop);
+          const picked = pickHit(hits, bounds, alias ? { ...stop, place: alias } : stop);
           const far = picked ? farFrom(picked.hit) : {};
           // The right name well out of town ("Itsukushima Shrine" in a
           // village near Osaka, for the one on Miyajima) is a namesake until
           // nothing better turns up: the search goes on, the country too.
           if (picked?.trusted && !far.farKm) {
-            placed.push({ index, ...picked.hit });
+            placed.push({ index, ...picked.hit, ...(alias ? { matchedAs: alias } : {}) });
             return true;
           }
           if (picked?.trusted) farNamed.push({ ...picked.hit, ...far });
@@ -533,6 +543,12 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       let besideParent = false;
       const farFrom = (hit: GeoHit): { farKm?: number } => {
         if (besideParent || isAirport(hit)) return {};
+        // A spot listed inside a place stays near it: "Triangle Park" under
+        // Amerikamura was saved at a namesake park 8 km north.
+        if (parent) {
+          const km = distanceKm(hit, parent);
+          return km > WITHIN_KM ? { farKm: Math.round(km) } : {};
+        }
         // Across a whole country, far from the stop before it: a namesake,
         // unless a journey came between. "Gion" answered from Chiba for a
         // Kyoto afternoon, and every stop after it was looked for there.
@@ -580,6 +596,17 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         if (throttled) break;
       }
       if (!landed) landed = await tryIn(where, box, null);
+
+      // Not found by the name the plan gives, the same place as the map may
+      // name it: without macrons, "Shrine" for "Jinja", "Togetsukyo" for
+      // "Togetsukyō Bridge" (nameVariants). Asking Gemini for the local-script
+      // name as well was tried on a real Japan plan: 30 calls, no stop found.
+      if (!landed && !throttled) {
+        for (const alias of nameVariants(stop.place?.trim() || stop.title)) {
+          landed = await tryIn(where, box, null, false, alias);
+          if (landed || throttled) break;
+        }
+      }
 
       // The map missed it, or found something that is not it (a namesake out
       // of town, another name): Overture's listings, near the middle of town.

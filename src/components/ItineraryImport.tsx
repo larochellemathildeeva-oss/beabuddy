@@ -817,7 +817,8 @@ function ImportPanel({
         // Scored against the stop's venue as well as its title: "Arrive
         // Hiroshima Station" is about the station, and the lookup was made by
         // the venue name when the plan gave one.
-        const scored = [row.title, row.place, row.address]
+        // Also by the name it was found under ("Ikuta Shrine", "渡月橋").
+        const scored = [row.title, row.place, row.address, hit.matchedAs]
           .filter((name): name is string => Boolean(name && name.trim()))
           .map((title) =>
             scoreMatch({

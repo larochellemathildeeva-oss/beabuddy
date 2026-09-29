@@ -488,3 +488,55 @@ export function labelAddress(label: string | null | undefined, parts = 4): strin
     .slice(0, parts);
   return kept.length > 0 ? kept.join(", ") : null;
 }
+
+const MACRONS: Record<string, string> = {
+  ā: "a",
+  ē: "e",
+  ī: "i",
+  ō: "o",
+  ū: "u",
+  Ā: "A",
+  Ē: "E",
+  Ī: "I",
+  Ō: "O",
+  Ū: "U",
+};
+
+/**
+ * Other ways the map may name a place the plan names in romanised Japanese,
+ * tried only when the plan's own name finds nothing that is it: without
+ * macrons ("Togetsukyō" → "Togetsukyo"), a shrine or temple by its English
+ * word ("Ikuta Jinja" → "Ikuta Shrine", "Kōdai-ji" → "Kodaiji Temple"), a
+ * bridge whose name already says bridge ("Togetsukyo Bridge" → "Togetsukyo"),
+ * and a slope with its hyphen ("Ninenzaka" → "Ninen-zaka"). At most three,
+ * none the same as the name itself. Pure, so it is tested.
+ */
+export function nameVariants(name: string): string[] {
+  const base = name
+    .replace(/\s*[(（][^()（）]*[)）]/g, "")
+    .replace(/\s*\/.*$/, "")
+    .trim();
+  if (!base) return [];
+  const plain = base.replace(/[āēīōūĀĒĪŌŪ]/g, (c) => MACRONS[c] ?? c);
+  const out: string[] = [];
+  const add = (v: string) => {
+    const t = v.replace(/\s+/g, " ").trim();
+    if (
+      t &&
+      t.toLowerCase() !== base.toLowerCase() &&
+      !out.some((o) => o.toLowerCase() === t.toLowerCase())
+    )
+      out.push(t);
+  };
+  const shrine = plain.match(/^(.+?)[\s-]*(?:jinja|jingu|jingū|taisha)$/i);
+  if (shrine) add(`${shrine[1]} Shrine`);
+  const temple = plain.match(/^(.+?)-(?:ji|dera|in)$/i);
+  if (temple) add(`${temple[1]}${plain.match(/-(ji|dera|in)$/i)![1]!.toLowerCase()} Temple`);
+  const bridge = plain.match(/^(.+?(?:kyo|bashi|hashi))\s+bridge$/i);
+  if (bridge) add(bridge[1]!);
+  // One word ending in -zaka: "Ninenzaka", "Sannenzaka"; never "Osaka".
+  const slope = plain.match(/^(\p{L}{3,}?)(zaka)$/iu);
+  if (slope) add(`${slope[1]}-${slope[2]}`);
+  add(plain);
+  return out.slice(0, 3);
+}
