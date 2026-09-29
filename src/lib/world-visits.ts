@@ -387,6 +387,17 @@ export function provinceFilesFor(
 
 export type CountryMark = { key: string; name: string; lat: number; lon: number };
 
+/**
+ * The middle of some longitudes the short way round: 179° and −179° meet at
+ * 180°, not at 0° on the other side of the world.
+ */
+function middleLongitude(lons: readonly number[]): number {
+  const toRad = Math.PI / 180;
+  const x = lons.reduce((sum, lon) => sum + Math.cos(lon * toRad), 0);
+  const y = lons.reduce((sum, lon) => sum + Math.sin(lon * toRad), 0);
+  return Math.atan2(y, x) / toRad;
+}
+
 const realPoint = (lat: number, lon: number) =>
   Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
 
@@ -421,7 +432,7 @@ export function countryMarks(
         : (middle ??
           byHand ?? {
             lat: visit.cities.reduce((sum, c) => sum + c.lat, 0) / n,
-            lon: visit.cities.reduce((sum, c) => sum + c.lon, 0) / n,
+            lon: middleLongitude(visit.cities.map((c) => c.lon)),
           });
     if (point) marks.push({ key: visit.key, name: visit.country, lat: point.lat, lon: point.lon });
   }

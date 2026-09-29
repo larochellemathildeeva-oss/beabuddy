@@ -343,7 +343,18 @@ test("a country missing from the country list is named at its cities' middle", a
   const cities = visitedCities(pins);
   const marks = countryMarks(pins, visitsByCountry(pins, cities, []));
   assert.deepEqual(
-    marks.map((m) => [m.name, m.lat, m.lon]),
+    marks.map((m) => [m.name, m.lat, Number(m.lon.toFixed(6))]),
     [["Atlantis", 11, 22]],
   );
+});
+
+test("a country's cities either side of the date line are named between them", async () => {
+  const { countryMarks } = await import("./world-visits.ts");
+  const pins = [
+    pin({ name: "A", city: "Westend", country: "Atlantis", lat: -17, lon: 179 }),
+    pin({ name: "B", city: "Eastend", country: "Atlantis", lat: -17, lon: -179 }),
+  ];
+  const cities = visitedCities(pins);
+  const [mark] = countryMarks(pins, visitsByCountry(pins, cities, []));
+  assert.ok(mark && Math.abs(Math.abs(mark.lon) - 180) < 1e-9, `lon ${mark?.lon}`);
 });
