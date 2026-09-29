@@ -51,7 +51,7 @@ describe("guide and tour targets", () => {
     assert.ok(declared.size > 20, `only found ${declared.size} data-guide targets; walk broke`);
   });
 
-  for (const file of ["lib/tour.ts", "components/PageGuide.tsx"]) {
+  for (const file of ["lib/tour.ts", "lib/page-guides.ts"]) {
     it(`${file} only points at targets that exist`, () => {
       const missing = [...new Set(selectorsIn(file))].filter((s) => !declared.has(s));
       assert.deepEqual(

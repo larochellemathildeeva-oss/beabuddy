@@ -230,8 +230,8 @@ export const DEEP_STEPS: TourStep[] = [
     selector: "[data-guide='home-near']",
   },
   {
-    title: "Ask Béa anytime",
-    body: "The sparkle at the top of each page explains the screen you're on. Plan with Béa, on a trip, is the planner. Same companion, different jobs.",
+    title: "Help on every page",
+    body: "The ? at the top right of each page says what it does and can show you around. Plan with Béa, on a trip, is the planner.",
     to: "/help",
     selector: "[data-guide='help-faq']",
   },
