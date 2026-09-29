@@ -1,22 +1,29 @@
-import { haversine, isLatLon, type LatLon } from "./geo.ts";
+import { formatMetres, haversine, isLatLon, type LatLon } from "./geo.ts";
 
 /**
  * "Where am I?" on the day map: the pure parts.
  *
  * The position is read by the browser and drawn by the browser. It is never
- * sent to Béa's server, never saved, and forgotten when the map is closed —
- * the same promise the Near list makes, kept shorter still.
+ * sent to Béa's server, never saved, and forgotten when the map is closed.
+ * The map tiles are the one way it could leak: a map moved to you asks the
+ * tile server for the squares around you. So the map only moves to you when
+ * you are near the day, whose area the trip already names, and never to
+ * somewhere else entirely.
  */
 
 /** Where you are, and how sure the phone is of it. */
 export type HereFix = LatLon & { accuracy: number };
 
 /**
- * Nearer the day than this and the map frames you with its stops; further,
- * and it goes to you alone. Someone across town from the day wants both on
- * screen; someone at home planning next month's trip wants to see home.
+ * Nearer the day than this and the map frames you with its stops. Further,
+ * and the map stays where it is and says how far away you are: someone at
+ * home planning next month's trip does not need the map, or its tile server,
+ * to go to their home.
  */
 export const HERE_WITH_DAY_M = 25_000;
+
+/** No new position for this long and the dot is shown as old. */
+export const HERE_STALE_MS = 60_000;
 
 /** Wider than this and the circle says nothing a dot does not. */
 export const HERE_ACCURACY_MAX_M = 3_000;
@@ -36,11 +43,38 @@ export function hereFix(coords: {
   return { ...at, accuracy };
 }
 
-/** Whether the first fix is framed with the day's stops, or on its own. */
-export function hereFraming(here: LatLon, pins: readonly LatLon[]): "with-day" | "alone" {
-  if (pins.length === 0) return "alone";
-  const nearest = Math.min(...pins.map((pin) => haversine(here, pin)));
-  return nearest <= HERE_WITH_DAY_M ? "with-day" : "alone";
+/**
+ * Where to draw you beside the day, and how far you are from its nearest
+ * stop. Across the date line a longitude is moved by a whole turn to sit
+ * beside that stop, so -179.9 next to 179.9 is framed as the few metres it
+ * is, not as the whole world.
+ */
+export function hereBesideDay(
+  here: HereFix,
+  pins: readonly LatLon[],
+): { at: HereFix; nearestM: number } {
+  let nearest: LatLon | null = null;
+  let nearestM = Infinity;
+  for (const pin of pins) {
+    const metres = haversine(here, pin);
+    if (metres < nearestM) {
+      nearestM = metres;
+      nearest = pin;
+    }
+  }
+  if (!nearest) return { at: here, nearestM };
+  const turns = Math.round((nearest.lon - here.lon) / 360);
+  return { at: { ...here, lon: here.lon + turns * 360 }, nearestM };
+}
+
+/** Whether the map moves to frame you with the day. */
+export function framesWithDay(nearestM: number): boolean {
+  return nearestM <= HERE_WITH_DAY_M;
+}
+
+/** What the map says when you are too far from the day to be shown beside it. */
+export function farFromDay(nearestM: number): string {
+  return `You're ${formatMetres(nearestM)} from this day's stops.`;
 }
 
 /** The accuracy circle's radius in metres, or 0 when it is not worth drawing. */
