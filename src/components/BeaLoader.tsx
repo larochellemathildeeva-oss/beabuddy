@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { loadingLine, nextPose, type BeaAction, type BeaWork } from "@/lib/bea-personality";
+import {
+  loadingLine,
+  nextPose,
+  posesFor,
+  type BeaAction,
+  type BeaWork,
+} from "@/lib/bea-personality";
 import { beaRecent, rememberBeaLine, useBeaSettings } from "@/hooks/useBeaSettings";
 
 /** Not shown for waits shorter than this, so a quick answer never flashes it. */
@@ -10,7 +16,8 @@ const MIN_VISIBLE_MS = 650;
 const ROTATE_MS = 9000;
 /** She changes what she is doing twice as often as she says something new. */
 const POSE_MS = ROTATE_MS / 2;
-const POSES: readonly BeaAction[] = ["run", "dig", "think", "ball", "bone"];
+/** The other poses are fetched this long before the first change, not for a short wait. */
+const PRELOAD_BEFORE_MS = 1500;
 const isSideTrip = (pose: BeaAction) => pose === "ball" || pose === "bone";
 
 function useReducedMotion(): boolean {
@@ -91,25 +98,27 @@ export function BeaLoader({
     };
     setPose(action);
     say(action);
-    if (reduce) return;
-    if (!serious) {
-      for (const p of POSES) new Image().src = `/bea/bea-${p}.webp`;
-    }
+    // A serious wait keeps her plain line and her own task.
+    if (reduce || serious) return;
+    const preload = window.setTimeout(() => {
+      for (const p of posesFor(action, settings)) {
+        if (p !== action) new Image().src = `/bea/bea-${p}.webp`;
+      }
+    }, POSE_MS - PRELOAD_BEFORE_MS);
     let tick = 0;
     const timer = window.setInterval(() => {
       tick += 1;
       const newLine = tick % 2 === 0;
-      if (serious) {
-        if (newLine) say(action);
-        return;
-      }
       // Between lines she only switches work, so a ball joke keeps its ball.
       if (!newLine && isSideTrip(current)) return;
       current = nextPose({ work: action, previous: current, settings, jokes: newLine });
       setPose(current);
       if (newLine) say(current);
     }, POSE_MS);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearTimeout(preload);
+      window.clearInterval(timer);
+    };
   }, [shown, action, serious, reduce, settings]);
 
   if (!shown) return null;

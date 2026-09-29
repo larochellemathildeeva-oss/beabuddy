@@ -13,6 +13,7 @@ import {
   mixPercents,
   modeName,
   nextPose,
+  posesFor,
   normalizeMix,
   presetOf,
   seededRandom,
@@ -191,4 +192,19 @@ test("every trait with jokes has something to say about the ball and the bone", 
     assert.ok((bank.ball?.length ?? 0) >= 3, trait);
     assert.ok((bank.bone?.length ?? 0) >= 3, trait);
   }
+});
+
+test("only the poses she may take are fetched ahead", () => {
+  assert.deepEqual(posesFor("run", { ...DEFAULT_SETTINGS, surprises: false }), [
+    "run",
+    "dig",
+    "think",
+  ]);
+  assert.deepEqual(posesFor("dig", DEFAULT_SETTINGS).sort(), [
+    "ball",
+    "bone",
+    "dig",
+    "run",
+    "think",
+  ]);
 });
