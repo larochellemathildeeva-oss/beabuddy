@@ -2303,7 +2303,10 @@ export function TripDetail({
                   .join(" · "),
                 start_date: trip.start_date,
                 end_date: trip.end_date,
-                travellers: members.map((m) => m.display_name || "Traveller"),
+                // The owner's membership carries no display name; this device knows its own.
+                travellers: members.map(
+                  (m) => m.display_name || (m.user_id === me.id ? me.name : "") || "Traveller",
+                ),
                 link: `${window.location.origin}/trips/${trip.id}`,
                 printedAt: new Date(),
               },

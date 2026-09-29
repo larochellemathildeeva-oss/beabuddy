@@ -136,11 +136,15 @@ export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
 }
 
 function bookingCell(row: PrintRow, toBook: ReadonlySet<PrintRow>): string {
+  return bookingStatus(row, toBook.has(row));
+}
+
+function bookingStatus(row: PrintRow, stillToBook: boolean): string {
   if (row.booked) {
     const ref = row.booking_ref?.trim();
     return `<span class="booked">Booked${ref ? ` · ${escapeHtml(ref)}` : ""}</span>`;
   }
-  return toBook.has(row) ? `<span class="tobook">To book</span>` : "";
+  return stillToBook ? `<span class="tobook">To book</span>` : "";
 }
 
 /** "09:00–09:40" when the stop's length is known, else its start. */
@@ -301,34 +305,79 @@ export function tripNights(
   return nights >= 0 ? nights : null;
 }
 
-/** The first row of each stay, in order: where the traveller sleeps. */
-export function staysOf(rows: readonly PrintRow[]): PrintRow[] {
-  const seen = new Set<string>();
-  const out: PrintRow[] = [];
-  for (const row of rows) {
-    if (!STAY_KINDS.has(row.kind)) continue;
-    const text = `${row.title} ${row.detail ?? ""}`;
-    if (STAY_ACTION.test(text) && !/\bcheck[- ]?in\b/i.test(text)) continue;
-    const key = stayKey(row);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(row);
-  }
-  return out;
+function isStayAction(row: PrintRow): boolean {
+  const text = `${row.title} ${row.detail ?? ""}`;
+  return STAY_ACTION.test(text) && !/\bcheck[- ]?in\b/i.test(text);
 }
 
-/** Rows worth a line under Bookings: booked, carrying a reference, or still to book. */
-export function bookingRows(rows: readonly PrintRow[], toBook: ReadonlySet<PrintRow>): PrintRow[] {
-  const stays = new Set<string>();
-  return rows.filter((row) => {
-    if (!(row.booked || row.booking_ref?.trim() || toBook.has(row))) return false;
-    if (!STAY_KINDS.has(row.kind)) return true;
-    // One line per stay, not one per night.
-    const key = stayKey(row);
-    if (stays.has(key)) return false;
-    stays.add(key);
-    return true;
-  });
+/**
+ * The stay rows grouped into stays: the nights at one hotel in a row, until
+ * the plan moves to another. Coming back to the same hotel after a night
+ * somewhere else is a stay of its own, as in `toBookRows`.
+ */
+export function stayRuns(rows: readonly PrintRow[]): PrintRow[][] {
+  const runs: PrintRow[][] = [];
+  let key: string | null = null;
+  for (const row of rows) {
+    if (!STAY_KINDS.has(row.kind)) continue;
+    const next = stayKey(row);
+    if (next !== key || !runs.length) runs.push([]);
+    key = next;
+    runs[runs.length - 1]!.push(row);
+  }
+  return runs;
+}
+
+/** A stay as one row: its first night, with the address, booking and reference any night carries. */
+function mergedStay(run: readonly PrintRow[]): PrintRow {
+  const first = run.find((row) => !isStayAction(row)) ?? run[0]!;
+  const pick = (get: (row: PrintRow) => string | null | undefined) =>
+    run.map((row) => get(row)?.trim()).find(Boolean) ?? null;
+  return {
+    ...first,
+    address: first.address?.trim() || pick((row) => row.address),
+    booked: run.some((row) => row.booked),
+    booking_ref: pick((row) => row.booking_ref),
+    booking_details: pick((row) => row.booking_details),
+  };
+}
+
+/** Each stay once, in order: where the traveller sleeps. A stay that is only its check-out is left out. */
+export function staysOf(rows: readonly PrintRow[]): PrintRow[] {
+  return stayRuns(rows)
+    .filter((run) => run.some((row) => !isStayAction(row)))
+    .map(mergedStay);
+}
+
+export type BookingLine = { row: PrintRow; toBook: boolean };
+
+/**
+ * Lines under Bookings: whatever is booked, carries a reference, or is still
+ * to book. A stay is one line however many nights it has, with the
+ * reference from whichever night it was written on.
+ */
+export function bookingRows(
+  rows: readonly PrintRow[],
+  toBook: ReadonlySet<PrintRow>,
+): BookingLine[] {
+  const runStart = new Map<PrintRow, PrintRow[]>();
+  for (const run of stayRuns(rows)) runStart.set(run[0]!, run);
+  const out: BookingLine[] = [];
+  for (const row of rows) {
+    if (STAY_KINDS.has(row.kind)) {
+      const run = runStart.get(row);
+      if (!run) continue;
+      const stay = mergedStay(run);
+      const still = run.some((night) => toBook.has(night));
+      if (stay.booked || stay.booking_ref || still)
+        out.push({ row: stay, toBook: still && !stay.booked });
+      continue;
+    }
+    if (row.booked || row.booking_ref?.trim() || toBook.has(row)) {
+      out.push({ row, toBook: toBook.has(row) });
+    }
+  }
+  return out;
 }
 
 function whenText(row: PrintRow): string {
@@ -336,13 +385,13 @@ function whenText(row: PrintRow): string {
   return [day, row.time_label?.trim()].filter(Boolean).join(" · ");
 }
 
-function bookingLineHtml(source: PrintRow, toBook: ReadonlySet<PrintRow>): string {
+function bookingLineHtml({ row: source, toBook: still }: BookingLine): string {
   const row = tidyPrintRow(source);
   const kind = KIND_LABEL[row.kind] ?? "Booking";
   const details = source.booking_details?.trim();
   return `<tr><td class="bkind">${kind}</td><td><div class="title">${escapeHtml(row.title)}</div>${
     whenText(row) ? `<div class="detail">${escapeHtml(whenText(row))}</div>` : ""
-  }${details ? `<div class="detail">${escapeHtml(details)}</div>` : ""}</td><td class="status">${bookingCell(source, toBook)}</td></tr>`;
+  }${details ? `<div class="detail">${escapeHtml(details)}</div>` : ""}</td><td class="status">${bookingStatus(source, still)}</td></tr>`;
 }
 
 function legHtml(leg: PrintLeg): string {
@@ -431,13 +480,15 @@ export function itineraryPrintHtml(trip: PrintTrip, rows: readonly PrintRow[]): 
     : "";
   const bookings = bookingRows(ordered, toBook);
   const bookingList = bookings.length
-    ? `<div class="block"><h3>Bookings</h3><table>${bookings.map((row) => bookingLineHtml(row, toBook)).join("")}</table></div>`
+    ? `<div class="block"><h3>Bookings</h3><table>${bookings.map(bookingLineHtml).join("")}</table></div>`
     : "";
   const printed = trip.printedAt
     ? `<p class="muted small">Prepared in Béa · ${escapeHtml(printedText(trip.printedAt))}</p>`
     : "";
 
-  const refs = bookings.filter((row) => row.booked && row.booking_ref?.trim());
+  const refs = bookings
+    .map((line) => line.row)
+    .filter((row) => row.booked && row.booking_ref?.trim());
   const keyInfo = [
     stays.length
       ? `<div class="block"><h3>Where you are staying</h3>${stays

@@ -188,8 +188,67 @@ test("a stay is listed once, and never by its check-out", () => {
     staysOf(rows).map((r) => r.title),
     ["Hotel A", "Hotel C"],
   );
-  const listed = bookingRows(rows, toBookRows(rows)).map((r) => r.title);
+  const listed = bookingRows(rows, toBookRows(rows)).map((line) => line.row.title);
   assert.deepEqual(listed, ["Hotel A", "Hotel C"]);
+});
+
+test("coming back to a hotel after another is a stay and a booking of its own", () => {
+  const rows = [
+    row({
+      day_date: "2026-10-12",
+      kind: "hotel",
+      title: "Hotel A",
+      booked: true,
+      booking_ref: "A1",
+    }),
+    row({
+      day_date: "2026-10-13",
+      kind: "hotel",
+      title: "Hotel B",
+      booked: true,
+      booking_ref: "B1",
+    }),
+    row({
+      day_date: "2026-10-14",
+      kind: "hotel",
+      title: "Hotel A",
+      booked: true,
+      booking_ref: "A2",
+    }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.day_date),
+    ["2026-10-12", "2026-10-13", "2026-10-14"],
+  );
+  const lines = bookingRows(rows, toBookRows(rows));
+  assert.deepEqual(
+    lines.map((line) => line.row.booking_ref),
+    ["A1", "B1", "A2"],
+  );
+});
+
+test("a stay's reference is kept whichever night it was written on", () => {
+  const rows = [
+    row({ day_date: "2026-10-12", kind: "hotel", title: "Hotel A", booked: true }),
+    row({
+      day_date: "2026-10-13",
+      kind: "hotel",
+      title: "Hotel A",
+      booked: true,
+      booking_ref: "A1",
+      booking_details: "Room 204",
+      address: "1 Main St",
+    }),
+  ];
+  const [line, ...rest] = bookingRows(rows, toBookRows(rows));
+  assert.equal(rest.length, 0);
+  assert.equal(line!.row.day_date, "2026-10-12");
+  assert.equal(line!.row.booking_ref, "A1");
+  assert.equal(line!.row.booking_details, "Room 204");
+  assert.equal(staysOf(rows)[0]!.address, "1 Main St");
+  const html = itineraryPrintHtml({ title: "T" }, rows);
+  assert.ok(html.includes("Confirmation numbers"));
+  assert.ok(html.includes(">A1</td>"));
 });
 
 test("between two pinned stops, a walk when it is close and a ride when it is not", () => {
