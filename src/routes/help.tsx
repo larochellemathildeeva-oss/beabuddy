@@ -105,7 +105,8 @@ function HelpPage() {
         <section className="card-soft p-4">
           <p className="text-[15px] font-medium">Still stuck?</p>
           <p className="mt-1 text-[14.5px] text-muted-foreground">
-            Tap Ask Béa (the sparkle) on any page for a walkthrough of that screen. Or read the{" "}
+            Tap the ? at the top right of any page to see what it does, or for a walkthrough of that
+            screen. Or read the{" "}
             <Link to="/privacy" className="text-primary underline">
               privacy policy
             </Link>{" "}

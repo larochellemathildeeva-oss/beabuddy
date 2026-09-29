@@ -1,5 +1,5 @@
 /**
- * Pure visibility check for tour / Ask Béa targets. Empty shells (e.g. a
+ * Pure visibility check for tour / page help targets. Empty shells (e.g. a
  * data-guide wrapper whose children haven't painted yet) must not count —
  * otherwise awaitClick steps soft-lock with Next disabled and nothing to tap.
  * Near-zero opacity (e.g. mid `rise` animation) must also fail — otherwise the

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { guideKeyForPath } from "@/lib/guide-key";
-import { Sparkles, X } from "@/components/icons";
+import { guides } from "@/lib/page-guides";
+import { HelpCircle, X } from "@/components/icons";
 import {
   findGuideTarget,
   measureGuideTarget,
@@ -11,332 +12,19 @@ import {
   type SpotlightBox,
 } from "./SpotlightOverlay";
 
-type GuideStep = {
-  title: string;
-  body: string;
-  /** CSS selector for the element to highlight. */
-  selector?: string;
-};
-
-type Guide = { name: string; steps: GuideStep[] };
-
-const guides: Record<string, Guide> = {
-  "/": {
-    name: "Home",
-    steps: [
-      {
-        title: "What's around you",
-        body: "The places you already saved, sorted by how close you are right now, with directions one tap away. Béa only looks when you tap Share, and you pick for how long. Plan a day trip strings a few of them together.",
-        selector: "[data-guide='home-near']",
-      },
-      {
-        title: "Your trip right now",
-        body: "The trip you're on, or the next one coming, sits here with its dates and where it goes. Tap it to open the whole folder.",
-        selector: "[data-guide='home-trip']",
-      },
-      {
-        title: "Waiting for you",
-        body: "A saved recommendation Béa is holding onto. Tap through to see what's near you.",
-        selector: "[data-guide='home-waiting']",
-      },
-      {
-        title: "Future Me",
-        body: "The newest note you left for yourself. It surfaces again when you come back to that city.",
-        selector: "[data-guide='home-future']",
-      },
-      {
-        title: "An empty vault",
-        body: "Nothing saved yet. Save a place, import photos, or load the sample travel data to try things out — you can remove it later from You → Data & imports.",
-        selector: "[data-guide='home-empty']",
-      },
-    ],
-  },
-  "/world": {
-    name: "World",
-    steps: [
-      {
-        title: "The map itself",
-        body: "Drag to spin the globe, pinch or scroll to zoom. It shows where you've been: the countries, the provinces or states inside them, and a dot for each city.",
-        selector: "[data-guide='globe']",
-      },
-      {
-        title: "Where you've been",
-        body: "Every country you've visited, its provinces or states, and your cities. Tap a city and the globe spins to it. A place saved as Japon or 日本 is still Japan.",
-        selector: "[data-guide='places-list']",
-      },
-      {
-        title: "Help me choose",
-        body: "Tick a few saved places and Béa weighs them against each other — warmth, cost, how long you've got — and gives you a pick with the honest trade-offs.",
-        selector: "[data-guide='compare-pins']",
-      },
-      {
-        title: "Travel statistics",
-        body: "Open this to see your counters — countries, cities, trips and pins. Choose which ones to show, and turn countries into a share of the world (1 of 195, as a percent). Want a number Béa does not count yet? Ask her on You → Feedback — she is here to make you happy.",
-        selector: "[data-guide='travel-stats']",
-      },
-      {
-        title: "Add a city by hand",
-        body: "The + on the globe adds a city or country you have been to. Type one city or country, or paste / upload a list from your notes. Country names are recognised straight away. Other names are looked up so you can pick the pin before anything lands on the globe. If one name is not recognised, tap Correct it and type the usual name. Those places count in your travel stats too.",
-        selector: "[data-guide='add-city']",
-      },
-    ],
-  },
-  "/trips": {
-    name: "Trips",
-    steps: [
-      {
-        title: "Start a trip",
-        body: "Name it, search the starting city, pick your dates if you know them, mark them Tentative or Confirmed, and tick a budget only if you want one. You can still change all of this after the trip exists.",
-        selector: "[data-guide='new-trip']",
-      },
-      {
-        title: "Join with a code",
-        body: "Someone already made the folder? Type their invite code here. A trip with only you says Flying Solo until a friend joins.",
-        selector: "[data-guide='join-trip']",
-      },
-      {
-        title: "Open a trip",
-        body: "Tap any trip to open its own page: where you're going city by city, the shared timeline, who's invited, the budget, Béa's planner, things to do, and packing. Everything about one trip lives there rather than unfolding here.",
-        selector: "[data-guide='trip-list']",
-      },
-      {
-        title: "Trip documents",
-        body: "Reservations, tickets, and confirmations for the trip — encrypted on your device and locked behind a passcode.",
-        selector: "[data-guide='document-vault']",
-      },
-    ],
-  },
-  "/trips/$tripId": {
-    name: "Inside a trip",
-    steps: [
-      {
-        title: "Plan with Béa",
-        body: "Béa's planner, not the page tour. It can draft a plan from what you saved, read one you already have, optimize the order of your stops, or compare two drafts. You approve before anything saves. Béa does not book or check availability — you reserve hotels, tables and tickets yourself.",
-        selector: "[data-guide='bea-plan']",
-      },
-      {
-        title: "Add a stop quickly",
-        body: "Add stop offers three ways in: a stop on the itinerary, in the Timeline Editor; a place from Saved, keeping its address and map pin; or another city or location on the trip's route.",
-        selector: "[data-guide='add-stop']",
-      },
-      {
-        title: "The shared timeline",
-        body: "Day by day, and live: anyone invited sees the same plan as you edit it. After Get directions you can add those legs straight to the timeline. Turn-by-turn is kept on this phone only if you download it in trip settings.",
-        selector: "[data-guide='trip-timeline']",
-      },
-      {
-        title: "To do",
-        body: "To do opens everything still to be done, in two views. To do holds the errands — renew the passport, book the transfer, tell the bank. Packing holds the list; add a copy of a pack you saved under You, then tick things off.",
-        selector: "[data-guide='trip-prep']",
-      },
-    ],
-  },
-  "/recommendations": {
-    name: "Recommendation vault",
-    steps: [
-      {
-        title: "Find anything you've saved",
-        body: "This opens everything you saved. Search by the place, the city, or the person who told you about it — a typo or a missing accent still finds a match — then filter by City and Type.",
-        selector: "[data-guide='reco-search']",
-      },
-      {
-        title: "Filter by city",
-        body: "Pick a city from your saved recs to see every restaurant, hotel or spot there.",
-        selector: "[data-guide='reco-places']",
-      },
-      {
-        title: "Filter by kind",
-        body: "Narrow to one category — restaurants, bars, hotels, whatever you've been tagging.",
-        selector: "[data-guide='reco-categories']",
-      },
-      {
-        title: "Pin something nearby",
-        body: "Open the map of where you are and drop a pin on a suggested place, or tap anywhere to save that exact spot.",
-        selector: "[data-guide='pin-nearby']",
-      },
-      {
-        title: "Ways to save something",
-        body: "Type a name or paste a link in the field. The + at the top holds the rest: places from your trips, where you are, by hand, or a pasted list — names from your notes, or a page of things to do. Béa reads the suggestions, looks each one up, and you can edit them before anything is saved. She guesses travel tags so she can pick them when you ask her to plan.",
-        selector: "[data-guide='reco-add']",
-      },
-      {
-        title: "Pick the exact spot",
-        body: "On the details card, search a place or address and tap the right result. Use this when Béa missed the pin, or when you typed a rec by hand. Near and trip directions need that spot.",
-        selector: "[data-guide='reco-location']",
-      },
-      {
-        title: "Share places with someone",
-        body: "Under the + at the top, Send places lets you tick a few saved places and Béa makes a code you can send; Open a share takes in one sent to you. Whoever opens it keeps the ones they want, with your name on them. They never see the rest of your vault, and your own notes stay private unless you tick the box.",
-        selector: "[data-guide='reco-add']",
-      },
-      {
-        title: "Your vault",
-        body: "Your collections — Recommendations, Wishlist, Next time — and what you saved most recently. Open one to see who recommended it, the note you left, and the travel tags Béa guessed.",
-        selector: "[data-guide='reco-list']",
-      },
-    ],
-  },
-  "/help": {
-    name: "Help",
-    steps: [
-      {
-        title: "Welcome to Béa",
-        body: "A conversation, not a manual — start here, then open any question. The sparkle at the top of any page walks the screen you're on.",
-        selector: "[data-guide='help-faq']",
-      },
-    ],
-  },
-  "/profile": {
-    name: "You",
-    steps: [
-      {
-        title: "Your account",
-        body: "Your name, home city, and how many trips and places you've saved. Edit profile changes them; everything stays synced across your phone and laptop.",
-        selector: "[data-guide='profile-account']",
-      },
-      {
-        title: "Settings",
-        body: "Your name, home city and travel tags. Travel preferences, just below, holds your style, pace and budget — what Béa plans with. Appearance, further down, sets the theme and what Home shows.",
-        selector: "[data-guide='profile-settings']",
-      },
-      {
-        title: "Replay the tour",
-        body: "About Béa holds How Béa works, the quick walk and the Deep Dive. Sample travel data is under Data & imports — Béa will not load either until you ask.",
-        selector: "[data-guide='replay-tour']",
-      },
-      {
-        title: "Customize home",
-        body: "Under Appearance: hide Weather, Trips, Saved places or the Future me note on Home. Saved on this device.",
-        selector: "[data-guide='home-customize']",
-      },
-      {
-        title: "Packing lists",
-        body: "Reusable templates — weekend, beach, ski, work. Attach a copy to a trip; ticking things off stays on that trip only.",
-        selector: "[data-guide='packing-lists']",
-      },
-      {
-        title: "Data & imports",
-        body: "Import photos, open the trip calendar, load or remove sample data, and see what is kept on this phone. Béa needs a connection to open; trip settings → Saved directions keeps the steps between stops here so you do not fetch them twice.",
-        selector: "[data-guide='offline-options']",
-      },
-      {
-        title: "Legal and copyright",
-        body: "Privacy policy, terms, and a note that Béa is Mathilde E. Larochelle's work. You keep what you save in it.",
-        selector: "[data-guide='legal']",
-      },
-      {
-        title: "Feedback",
-        body: "Always yours. Pick a category — it broke, a missing stat, a wish, the map has opinions — then write it. If Béa dropped the ball, throw it back.",
-        selector: "[data-guide='feedback']",
-      },
-    ],
-  },
-  "/preferences": {
-    name: "Travel preferences",
-    steps: [
-      {
-        title: "Travel style",
-        body: "Comfort seeker, explorer, food led — pick as many as feel true. Plan with Béa reads these.",
-        selector: "[data-guide='pref-style']",
-      },
-      {
-        title: "Budget and currency",
-        body: "How you like to spend, and which currency prices should speak.",
-        selector: "[data-guide='pref-budget']",
-      },
-      {
-        title: "Daily pace",
-        body: "Slow, balanced, or full. Plan a day trip and Optimize both lean on this.",
-        selector: "[data-guide='pref-pace']",
-      },
-      {
-        title: "Countries you love",
-        body: "Béa leans on these when she suggests where to go next.",
-        selector: "[data-guide='pref-countries']",
-      },
-      {
-        title: "Interests — travel tags",
-        body: "The same tags that land on your recs. They weight Near and Plan with Béa.",
-        selector: "[data-guide='pref-interests']",
-      },
-      {
-        title: "Hard rules",
-        body: "Food needs, allergies, mobility, anything you refuse. Béa will not plan around these.",
-        selector: "[data-guide='pref-rules']",
-      },
-    ],
-  },
-  "/photos": {
-    name: "Photos",
-    steps: [
-      {
-        title: "Privacy first",
-        body: "You'll see this note before every upload. Photos stay private to your account.",
-        selector: "[data-guide='photo-privacy']",
-      },
-      {
-        title: "What Béa keeps",
-        body: "Keep the pictures on your city memory pages, or choose Locations only — Béa reads where each one was taken and stores nothing from the photo itself.",
-        selector: "[data-guide='photo-keep']",
-      },
-    ],
-  },
-  "/memories": {
-    name: "City memories",
-    steps: [
-      {
-        title: "A page per city",
-        body: "Photos are grouped by city and visit. Import more any time, or play your story — the cities in the order you were there.",
-        selector: "[data-guide='city-memories']",
-      },
-      {
-        title: "Future Me notes",
-        body: "Open a city and leave a note to your future self. Béa hands it back when you return.",
-        selector: "[data-guide='future-me']",
-      },
-    ],
-  },
-  "/story": {
-    name: "Travel story",
-    steps: [
-      {
-        title: "Play it back",
-        body: "The cities you've photographed, in the order you were there. Play, pause, or skip a stop. This is a story of places you already lived, not a new itinerary. It fills in once you import photos.",
-        selector: "[data-guide='story-play']",
-      },
-    ],
-  },
-  "/calendar": {
-    name: "Calendar",
-    steps: [
-      {
-        title: "Every trip on one page",
-        body: "Month by month: trips, flights, hotels and reservations from every timeline. Tap a day to see what's on it.",
-        selector: "[data-guide='calendar-month']",
-      },
-    ],
-  },
-  "/expenses": {
-    name: "Receipts",
-    steps: [
-      {
-        title: "Photograph a receipt",
-        body: "Béa can read the merchant and amount. Tag the trip so the spend lands on that budget. Fill it in by hand if the photo is unclear.",
-        selector: "[data-guide='new-receipt']",
-      },
-      {
-        title: "Send it to accounting",
-        body: "Download a spreadsheet with every amount, date, category and its value in your home currency. Not tax advice, and not an official document.",
-        selector: "[data-guide='expense-export']",
-      },
-    ],
-  },
-};
-
+/**
+ * The "?" at the top right of a page: what this page is for and what you can
+ * do on it, then — if you want it — a spotlight walk of the parts on screen.
+ *
+ * It used to be a sparkle, the same mark as Béa's AI features, so nobody read
+ * it as help. The overview comes first because a walk can only point at what
+ * is on screen, and an empty page has little to point at.
+ */
 export function PageGuide() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
-  const [i, setI] = useState(0);
+  /** -1 is the overview; 0 and up are the spotlight steps. */
+  const [i, setI] = useState(-1);
   const [box, setBox] = useState<SpotlightBox | null>(null);
 
   const guide = useMemo(() => {
@@ -348,9 +36,11 @@ export function PageGuide() {
       !guide || typeof document === "undefined"
         ? []
         : guide.steps.filter((candidate) => findGuideTarget(candidate.selector)),
+    // `open` re-reads the page: targets appear as data loads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [guide, open],
   );
-  const step = steps[i];
+  const step = i >= 0 ? steps[i] : undefined;
 
   const measure = useCallback(() => {
     if (!step) return;
@@ -363,7 +53,10 @@ export function PageGuide() {
   }, [step]);
 
   useEffect(() => {
-    if (!open || !step) return;
+    if (!open || !step) {
+      setBox(null);
+      return;
+    }
     const el = findGuideTarget(step.selector);
     el?.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
     const stopSettle = el
@@ -383,7 +76,7 @@ export function PageGuide() {
 
   useEffect(() => {
     setOpen(false);
-    setI(0);
+    setI(-1);
   }, [pathname]);
 
   useEffect(() => {
@@ -397,91 +90,134 @@ export function PageGuide() {
 
   if (!guide) return null;
 
-  if (!open) {
-    return (
-      <button
-        onClick={() => {
-          setI(0);
-          setOpen(true);
-        }}
-        className="grid size-7 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-        aria-label={`Ask Béa about ${guide.name}`}
-        title="Ask Béa"
-      >
-        <Sparkles className="size-3" />
-      </button>
-    );
-  }
+  const toggle = (
+    <button
+      onClick={() => {
+        if (open) {
+          setOpen(false);
+          return;
+        }
+        setI(-1);
+        setOpen(true);
+      }}
+      className={`grid size-7 place-items-center rounded-full border bg-card transition-colors ${
+        open
+          ? "border-primary text-primary"
+          : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+      }`}
+      aria-label={open ? "Close help" : `Help: what you can do on ${guide.name}`}
+      aria-expanded={open}
+      title={open ? "Close help" : "Help for this page"}
+    >
+      <HelpCircle className="size-4" />
+    </button>
+  );
+
+  if (!open) return toggle;
 
   const last = i >= steps.length - 1;
+  const onHelpPage = pathname === "/help";
+
+  const overview = (
+    <>
+      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{guide.name}</h2>
+      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{guide.about}</p>
+      <p className="label-caps mt-3 text-foreground">What you can do here</p>
+      <ul className="mt-1.5 max-h-[40dvh] space-y-1.5 overflow-y-auto text-[14px] leading-snug">
+        {guide.features.map((feature) => (
+          <li key={feature} className="flex gap-2">
+            <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-primary" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      {!onHelpPage && (
+        <Link
+          to="/help"
+          onClick={() => setOpen(false)}
+          className="mt-3 inline-block text-[13px] font-semibold text-primary underline underline-offset-2"
+        >
+          More questions? Help & FAQ
+        </Link>
+      )}
+      <div className="mt-3 flex gap-2">
+        {steps.length > 0 && (
+          <button
+            onClick={() => setI(0)}
+            className="flex-1 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+          >
+            Show me around
+          </button>
+        )}
+        <button
+          onClick={() => setOpen(false)}
+          className={`flex-1 rounded-xl px-4 py-2 text-[14.5px] font-semibold ${
+            steps.length > 0 ? "border border-border" : "bg-primary text-primary-foreground"
+          }`}
+        >
+          Got it
+        </button>
+      </div>
+    </>
+  );
+
+  const walk = step ? (
+    <>
+      <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step.title}</h2>
+      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step.body}</p>
+      {!box && (
+        <p className="mt-1.5 text-[12px] italic text-muted-foreground">
+          This part isn't on screen right now.
+        </p>
+      )}
+
+      <div className="mt-3 flex gap-1">
+        {steps.map((_, n) => (
+          <span
+            key={n}
+            className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
+          />
+        ))}
+      </div>
+
+      <div className="mt-3 flex gap-2">
+        <button
+          onClick={() => setI(i - 1)}
+          className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
+        >
+          Back
+        </button>
+        <button
+          onClick={() => (last ? setOpen(false) : setI(i + 1))}
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+        >
+          {last ? "Got it" : "Next"}
+        </button>
+      </div>
+    </>
+  ) : null;
 
   return (
     <>
-      <button
-        onClick={() => setOpen(false)}
-        className="grid size-7 place-items-center rounded-full border border-primary bg-card text-primary"
-        aria-label="Close Ask Béa"
-        title="Close Ask Béa"
-      >
-        <Sparkles className="size-3" />
-      </button>
+      {toggle}
 
       {createPortal(
-        <div role="dialog" aria-label={`${guide.name} walkthrough`}>
-          <SpotlightOverlay box={box} onDismiss={() => setOpen(false)}>
+        <div role="dialog" aria-label={`Help: ${guide.name}`}>
+          <SpotlightOverlay box={step ? box : null} onDismiss={() => setOpen(false)}>
             <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
               <div className="flex items-center justify-between">
                 <p className="label-caps">
-                  {steps.length > 0 ? `${guide.name} · ${i + 1} of ${steps.length}` : guide.name}
+                  {step ? `${guide.name} · ${i + 1} of ${steps.length}` : "Help"}
                 </p>
                 <button
                   onClick={() => setOpen(false)}
-                  aria-label="Close walkthrough"
+                  aria-label="Close help"
                   className="text-muted-foreground"
                 >
                   <X className="size-4" />
                 </button>
               </div>
-              {/* Nothing on this screen to point at yet (no photos on Story, say):
-                  say so, rather than closing the button with no answer. */}
-              <h2 className="mt-1.5 font-display text-[20px] leading-tight">
-                {step?.title ?? guide.name}
-              </h2>
-              <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">
-                {step?.body ??
-                  "Nothing here to point at yet. This screen fills in as you save places, trips and photos."}
-              </p>
-              {step && !box && (
-                <p className="mt-1.5 text-[12px] italic text-muted-foreground">
-                  This part isn't on screen right now.
-                </p>
-              )}
-
-              <div className="mt-3 flex gap-1">
-                {steps.map((_, n) => (
-                  <span
-                    key={n}
-                    className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
-                  />
-                ))}
-              </div>
-
-              <div className="mt-3 flex gap-2">
-                {i > 0 && (
-                  <button
-                    onClick={() => setI(i - 1)}
-                    className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
-                  >
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={() => (last ? setOpen(false) : setI(i + 1))}
-                  className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
-                >
-                  {last ? "Got it" : "Next"}
-                </button>
-              </div>
+              {walk ?? overview}
             </div>
           </SpotlightOverlay>
         </div>,

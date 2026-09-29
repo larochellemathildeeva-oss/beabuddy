@@ -165,7 +165,8 @@ function MemoriesPage() {
                 }.`}
           </p>
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-            {groups.length > 0 && (
+            {/* Story plays only photos with a position, as its stops need one. */}
+            {rows.some((r) => r.lat != null && r.lon != null) && (
               <Link
                 to="/story"
                 className="rounded-xl bg-primary px-3 py-2 text-center text-[13px] font-semibold text-primary-foreground"

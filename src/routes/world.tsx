@@ -143,11 +143,16 @@ function destinationsOf(rows: RecoRowDB[]): Destination[] {
 
 function WorldPage() {
   const search = Route.useSearch();
-  const [tab, setTab] = useState<WorldTab>(search.tab ?? "map");
-  // A link that names a view opens it, even when World is already showing.
-  useEffect(() => {
-    if (search.tab) setTab(search.tab);
-  }, [search.tab]);
+  const navigateWorld = Route.useNavigate();
+  // The view lives in the URL, so a link opens it, the World tab (no ?tab=)
+  // comes back to Map, and a copied link names the view on screen.
+  const tab: WorldTab = search.tab ?? "map";
+  const setTab = (next: WorldTab) => {
+    void navigateWorld({
+      search: next === "map" ? {} : { tab: next },
+      replace: true,
+    });
+  };
   const [selected, setSelected] = useState<Pin | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);

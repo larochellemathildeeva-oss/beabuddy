@@ -33,8 +33,8 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
         a: "Try this: save a recommendation, add a city you've visited, explore your globe, try Help me choose, or let Béa build a sample trip.\n\nYou'll understand the app much faster by using it than by reading about it. Sample data is opt-in: Load sample travel data on an empty Home, or You → Data & imports, where you can also remove it. You → About Béa → Replay offers three: See how Béa works (the whole story on one page), a quick walk around the block where Béa points at the real screens, or the Deep Dive.",
       },
       {
-        q: "What's the difference between Ask Béa and Plan with Béa?",
-        a: "Ask Béa is the sparkle at the top of a page — it highlights each part of that screen and explains it.\n\nPlan with Béa is the button at the top of a trip: it drafts, imports or reworks a day-by-day itinerary for that trip.",
+        q: "What's the difference between the ? button and Plan with Béa?",
+        a: "The ? at the top right of a page is help: it says what that page is for and what you can do there, and Show me around highlights each part of the screen.\n\nPlan with Béa is the button at the top of a trip: it drafts, imports or reworks a day-by-day itinerary for that trip.",
       },
       {
         q: "Do I need an account?",
