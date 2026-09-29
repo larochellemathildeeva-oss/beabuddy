@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, Clock, CloudRain, MapPin } from "@/components/icons";
+import { ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
+import { bookingAtHand } from "@/lib/bookings";
 import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
@@ -53,6 +54,7 @@ export function NowPanel({
   legs,
   area,
   travel = "auto",
+  bookingDocs = [],
   onProgress,
   progress,
   onLook,
@@ -67,6 +69,12 @@ export function NowPanel({
   area?: string | undefined;
   /** How the traveller gets around, for a journey routed here. */
   travel?: TravelChoice | undefined;
+  /** Trip documents, so a confirmation filed to a stop is at hand there. */
+  bookingDocs?: readonly {
+    itinerary_item_id: string | null;
+    reference: string | null;
+    title: string;
+  }[];
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -211,6 +219,7 @@ export function NowPanel({
               <StayLine stop={current} now={now} />
             </div>
           </div>
+          <BookingAtHandCard stop={current} docs={bookingDocs} />
           {says && <BeaSays line={says} />}
           {/* When to set off belongs where you are standing, not on the next card. */}
           {leavePanel}
@@ -281,6 +290,7 @@ export function NowPanel({
             </div>
             {phase === "at" && measured(leg) && <LegPill leg={leg} />}
           </div>
+          <BookingAtHandCard stop={next} docs={bookingDocs} />
           <PlaceFacts
             name={next.title}
             lat={next.lat}
@@ -398,6 +408,47 @@ export function NowPanel({
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The confirmation number and booking notes, where you will need them: at
+ * the door. Said only for a stop that is booked or has a document filed to it.
+ */
+function BookingAtHandCard({
+  stop,
+  docs,
+}: {
+  stop: ItineraryRow;
+  docs: readonly { itinerary_item_id: string | null; reference: string | null; title: string }[];
+}) {
+  const booking = bookingAtHand(stop, docs);
+  if (!booking) return null;
+  return (
+    <div className="tile-fill-3 flex items-start gap-2.5 rounded-2xl border border-border/60 px-3 py-2.5">
+      <Ticket className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+      <div className="min-w-0 flex-1 text-[13.5px] leading-snug">
+        <p className="font-semibold">
+          Booked
+          {booking.reference ? (
+            <>
+              {" · "}
+              <span className="select-all font-mono tabular-nums">{booking.reference}</span>
+            </>
+          ) : null}
+        </p>
+        {booking.details ? (
+          <p className="mt-0.5 whitespace-pre-line break-words text-muted-foreground">
+            {booking.details}
+          </p>
+        ) : null}
+        {booking.documents.length ? (
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+            In Bookings: {booking.documents.join(", ")}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

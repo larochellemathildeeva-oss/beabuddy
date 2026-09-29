@@ -1442,6 +1442,7 @@ export function TripDetail({
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
                   travel={travel}
+                  bookingDocs={bookingDocs.docs}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);

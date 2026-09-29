@@ -35,3 +35,38 @@ export function cleanBookingText(value: string, max: number): string | null {
   const text = value.trim().slice(0, max);
   return text ? text : null;
 }
+
+export type BookingAtHand = {
+  /** The confirmation number, from the stop or a document filed to it. */
+  reference: string | null;
+  /** The stop's own booking notes ("Table for 4, ask for the terrace"). */
+  details: string | null;
+  /** Titles of Trip documents filed to the stop, to open from Bookings. */
+  documents: string[];
+};
+
+/**
+ * What to have ready at the door of a stop: its confirmation number and
+ * notes, and any Trip documents filed to it. Null when the stop is not
+ * booked and nothing is filed to it — Companion then says nothing.
+ */
+export function bookingAtHand(
+  stop: {
+    id: string;
+    booked?: boolean | null;
+    booking_ref?: string | null;
+    booking_details?: string | null;
+  },
+  documents: readonly {
+    itinerary_item_id?: string | null;
+    reference?: string | null;
+    title: string;
+  }[] = [],
+): BookingAtHand | null {
+  const filed = documents.filter((d) => d.itinerary_item_id === stop.id);
+  const reference =
+    stop.booking_ref?.trim() || filed.map((d) => d.reference?.trim()).find(Boolean) || null;
+  const details = stop.booking_details?.trim() || null;
+  if (!isBooked(stop) && !reference && !details && !filed.length) return null;
+  return { reference, details, documents: filed.map((d) => d.title.trim()).filter(Boolean) };
+}
