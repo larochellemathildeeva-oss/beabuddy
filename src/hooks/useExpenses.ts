@@ -1,3 +1,4 @@
+import { toLocalISODate } from "@/lib/trip-dates";
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -100,7 +101,7 @@ export function useExpenses() {
         category: input.category ?? "Other",
         amount: input.amount ?? 0,
         currency: input.currency ?? "CAD",
-        spent_on: input.spent_on ?? new Date().toISOString().slice(0, 10),
+        spent_on: input.spent_on ?? toLocalISODate(new Date()),
         billable: input.billable ?? true,
         notes: input.notes ?? null,
         city: input.city ?? null,

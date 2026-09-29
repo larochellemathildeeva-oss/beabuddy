@@ -35,7 +35,12 @@ import { addRecommendationOnce } from "@/hooks/useRecommendations";
 import type { PlaceLike } from "@/lib/captured-place";
 import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
 import { supabase } from "@/integrations/supabase/client";
-import { ItineraryImport, type PlannerTab } from "@/components/ItineraryImport";
+import {
+  ItineraryImport,
+  type OptimizePreset,
+  type PlannerTab,
+} from "@/components/ItineraryImport";
+import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
@@ -69,6 +74,13 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
+import { PastYouCard } from "@/components/day/PastYouCard";
+import { TripAgain } from "@/components/day/TripAgain";
+import { ShareLinkCard } from "@/components/day/ShareLinkCard";
+import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
+import { useTripPreferences } from "@/hooks/useTripPreferences";
+import { forgetOfflineTrip, saveOfflineTrip } from "@/lib/offline-trip";
+import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
   ALL_DAYS,
   dayChips,
@@ -185,6 +197,20 @@ export function TripDetail({
   const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
   /** Words carried into Build from the Plan with Béa page. */
   const [plannerAsk, setPlannerAsk] = useState("");
+  /** A one-tap "make this day easier" request, run in Optimize on that day. */
+  const [optimizePreset, setOptimizePreset] = useState<OptimizePreset | null>(null);
+  const easeDay = (preset: EasePreset, day: string, dayLabel: string) => {
+    setOptimizePreset((cur) => ({
+      goals: preset.goals,
+      note: preset.note,
+      label: preset.label,
+      day,
+      dayLabel,
+      n: (cur?.n ?? 0) + 1,
+    }));
+    setPlannerTab("optimize");
+    setPlannerOpen(true);
+  };
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -753,6 +779,20 @@ export function TripDetail({
   /** Which kind the Bookings tab shows. */
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
+  const tripPrefs = useTripPreferences(trip.id);
+  // A trip kept offline keeps its plan on the phone too, so it opens with no
+  // signal: written each time the plan loads, and only for that trip.
+  const keptOffline = Boolean(dir.saved);
+  useEffect(() => {
+    if (!keptOffline || !me.id || board.items.length === 0) return;
+    saveOfflineTrip(localStorage, {
+      uid: me.id,
+      savedAt: new Date().toISOString(),
+      trip,
+      members,
+      items: board.items,
+    });
+  }, [keptOffline, me.id, trip, members, board.items]);
   const others = board.present.filter((p) => p.userId !== me.id);
   const allDayGroups = groupTimelineByDay(stopItems);
   // With a city picked, the days, the map and Now all follow that city.
@@ -1412,6 +1452,16 @@ export function TripDetail({
           <p className="mb-3 px-0.5 text-[12px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
+        {/* Past You, for a trip still ahead or under way: not one already over. */}
+        {perspective === "overview" &&
+          todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
+            <div className="mb-3">
+              <PastYouCard
+                trip={trip}
+                places={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
+              />
+            </div>
+          )}
         {perspective === "overview" && (
           <TripOverview
             tripId={trip.id}
@@ -1482,6 +1532,14 @@ export function TripDetail({
                   legs={nowLegs}
                   {...(directionArea ? { area: directionArea } : {})}
                   travel={travel}
+                  bookingDocs={bookingDocs.docs}
+                  reminderItems={board.items}
+                  nextDay={
+                    timelineGroups.find(
+                      (group) => group.key !== "" && companionDay && group.key > companionDay.key,
+                    )?.key ?? null
+                  }
+                  onEase={easeDay}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);
@@ -1925,6 +1983,7 @@ export function TripDetail({
               onRemoveFromTimeline={removeDirectionRows}
               onForgetOffline={() => {
                 dir.clear();
+                forgetOfflineTrip(localStorage, trip.id);
                 dayMaps.clear();
                 offlineMap.clear();
                 setLiveLegs(null);
@@ -2227,7 +2286,10 @@ export function TripDetail({
         onClose={() => {
           setPlannerOpen(false);
           setPlannerAsk("");
+          setOptimizePreset(null);
         }}
+        optimizePreset={optimizePreset}
+        tripPreferences={tripPrefs.list}
         defaultTab={plannerTab}
         initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
@@ -2336,6 +2398,22 @@ export function TripDetail({
         }
         budgetOn={Boolean(trip.budget_enabled)}
         checkupNote={checkup ? checkupPill(checkup) : ""}
+        preferencesCount={tripPrefs.list.length}
+        onCalendar={() => {
+          setSettingsOpen(false);
+          const blob = new Blob([tripCalendar(trip, stopItems)], {
+            type: "text/calendar;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = calendarFileName(trip.title);
+          a.click();
+          URL.revokeObjectURL(url);
+          toast("Calendar file saved", {
+            description: "Open it to add the trip to your calendar. Times are the place's own.",
+          });
+        }}
         onPrint={() => {
           setSettingsOpen(false);
           printHtml(
@@ -2371,6 +2449,11 @@ export function TripDetail({
           ) : null
         }
       >
+        {sheetSection === "invite" && (
+          <div className="mb-3">
+            <ShareLinkCard tripId={trip.id} />
+          </div>
+        )}
         {sheetSection === "invite" && (
           <TripPeople
             trip={trip}
@@ -2445,8 +2528,9 @@ export function TripDetail({
           <div className="plain-card p-3.5">
             <p className="text-[13px] text-muted-foreground">
               Download the journeys between stops and Béa keeps the steps on this phone, so you
-              never work them out twice. Béa still needs a connection to open, so this is not a
-              no-signal map yet. Adding directions to the timeline saves the summary only.
+              never work them out twice. The trip's plan is kept on this phone too, so once Béa has
+              been opened here with a connection, this trip opens with no signal. Adding directions
+              to the timeline saves the summary only.
             </p>
             <p className="mt-1 text-[13px] text-muted-foreground">
               {cities.stops.length >= 2
@@ -2545,6 +2629,7 @@ export function TripDetail({
                 <button
                   onClick={() => {
                     dir.clear();
+                    forgetOfflineTrip(localStorage, trip.id);
                     dayMaps.clear();
                     offlineMap.clear();
                   }}
@@ -2582,6 +2667,27 @@ export function TripDetail({
               setSheetSection(null);
               jumpToStop(id);
             }}
+          />
+        )}
+
+        {sheetSection === "preferences" && (
+          <TripPreferencesPanel
+            list={tripPrefs.list}
+            onPhone={tripPrefs.onPhone}
+            onSave={tripPrefs.save}
+          />
+        )}
+
+        {sheetSection === "again" && (
+          <TripAgain
+            trip={trip}
+            items={board.items}
+            stops={cities.stops}
+            onOpenTrip={(id) => {
+              setSettingsOpen(false);
+              void navigate({ to: "/trips/$tripId", params: { tripId: id } });
+            }}
+            onCopiedHere={() => void board.reload()}
           />
         )}
 

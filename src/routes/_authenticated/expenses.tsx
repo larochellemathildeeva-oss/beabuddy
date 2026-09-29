@@ -1,3 +1,4 @@
+import { toLocalISODate } from "@/lib/trip-dates";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -46,7 +47,7 @@ function ExpensesPage() {
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("CAD");
   const [category, setCategory] = useState<string>("Meals");
-  const [spentOn, setSpentOn] = useState(new Date().toISOString().slice(0, 10));
+  const [spentOn, setSpentOn] = useState(toLocalISODate(new Date()));
   const [billable, setBillable] = useState(true);
   const [tripId, setTripId] = useState("");
   const [notes, setNotes] = useState("");
@@ -105,7 +106,7 @@ function ExpensesPage() {
     setNotes("");
     setBillable(true);
     setTripId("");
-    setSpentOn(new Date().toISOString().slice(0, 10));
+    setSpentOn(toLocalISODate(new Date()));
     if (camera.current) camera.current.value = "";
     if (library.current) library.current.value = "";
   };
@@ -166,7 +167,7 @@ function ExpensesPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `bea-expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `bea-expenses-${toLocalISODate(new Date())}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };

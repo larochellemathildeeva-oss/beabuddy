@@ -141,8 +141,12 @@ draws the `/api/tile` image tiles as before — a 404 from `/api/vtile` is how
 it knows, and it also checks a label font answers. "Keep offline" on saved
 directions also saves the tiles around each day's stops (`offlineTilePlan`, at
 most `OFFLINE_TILE_MAX`, a quarter credit each) into Cache Storage, one cache
-per trip (`offline-map.ts`). There is no service worker, so this helps an open
-day map when the signal drops, not opening Béa with none. The Geoapify URLs
+per trip (`offline-map.ts`). `public/sw.js` (registered in production only)
+keeps each page and the built files, so an installed Béa opens with no signal;
+server functions, Supabase and tiles are never answered from it. A trip whose
+directions are kept offline also keeps its plan on the phone
+(`offline-trip.ts`), which the trip list and the trip read back when the
+network fails. Bump `VERSION` in `sw.js` to drop old copies. The Geoapify URLs
 were written from its documentation; `GEOAPIFY_API_KEY=… npm run map:check`
 confirms them, and the transit mode, against the real thing.
 Labels ask for the browser's language first (`name:fr`, `name:ja` …), then

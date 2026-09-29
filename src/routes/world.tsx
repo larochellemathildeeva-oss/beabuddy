@@ -1,3 +1,4 @@
+import { toLocalISODate } from "@/lib/trip-dates";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -212,7 +213,7 @@ function WorldPage() {
 
   const [counts, setCounts] = useState<ItineraryCounts>({ flights: 0, hotels: 0, restaurants: 0 });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toLocalISODate(new Date());
   const tripsCompleted = useMemo(
     () =>
       t.trips.filter((tr) => tr.status === "past" || (tr.end_date && tr.end_date < today)).length,

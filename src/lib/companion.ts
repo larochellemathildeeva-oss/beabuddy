@@ -209,11 +209,55 @@ export function liveSummary<T extends CompanionStop & { day_date?: string | null
  * made a 23:55 departure look overdue at 00:10. Once it is more than two
  * hours past, it goes quiet rather than nag.
  */
-export function leaveCountdown(at: string, now: Date, soonMinutes = 10): number | null {
+export function leaveCountdown(
+  at: string,
+  now: Date,
+  soonMinutes = 10,
+  utcOffsetSeconds: number | null = null,
+): number | null {
   const due = clockMinutes(at);
   if (due == null) return null;
-  const left = due - (now.getHours() * 60 + now.getMinutes());
+  const left = due - placeClock(now, utcOffsetSeconds).minutes;
   return left <= soonMinutes && left >= -120 ? left : null;
+}
+
+/**
+ * The date and time of day at the place, not on the phone.
+ *
+ * A plan's times are the place's own ("dinner at 19:30" in Lisbon), and a
+ * phone that has not switched zones yet — still on home time after landing,
+ * or opened at home the night before — would count down to the wrong
+ * moment and call the wrong day "today". With the place's offset from UTC
+ * (the forecast sends it), the place's clock is read from UTC; without it,
+ * the phone's own clock is the best there is.
+ */
+export function placeClock(
+  now: Date,
+  utcOffsetSeconds: number | null | undefined,
+): { day: string; minutes: number } {
+  if (utcOffsetSeconds == null || !Number.isFinite(utcOffsetSeconds)) {
+    const day = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    return { day, minutes: now.getHours() * 60 + now.getMinutes() };
+  }
+  const there = new Date(now.getTime() + utcOffsetSeconds * 1000);
+  return {
+    day: there.toISOString().slice(0, 10),
+    minutes: there.getUTCHours() * 60 + there.getUTCMinutes(),
+  };
+}
+
+/**
+ * "It's 14:05 in the place" — said only when the phone's clock and the
+ * place's disagree, so the plan's times are not read against the wrong one.
+ */
+export function placeClockNote(
+  now: Date,
+  utcOffsetSeconds: number | null | undefined,
+): string | null {
+  if (utcOffsetSeconds == null || !Number.isFinite(utcOffsetSeconds)) return null;
+  const phoneOffset = -now.getTimezoneOffset() * 60;
+  if (Math.abs(phoneOffset - utcOffsetSeconds) < 60) return null;
+  return `Times are local. It's ${formatClock(placeClock(now, utcOffsetSeconds).minutes)} there.`;
 }
 
 /**

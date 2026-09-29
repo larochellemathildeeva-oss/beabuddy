@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { cleanBookingText, isBooked, isMissingColumn } from "./bookings.ts";
+import { bookingAtHand, cleanBookingText, isBooked, isMissingColumn } from "./bookings.ts";
 
 const cols = ["booked", "booking_ref", "booking_details"];
 
@@ -42,4 +42,22 @@ test("booking text is trimmed, capped and empty becomes null", () => {
   assert.equal(cleanBookingText("  MBAM-4471 ", 200), "MBAM-4471");
   assert.equal(cleanBookingText("   ", 200), null);
   assert.equal(cleanBookingText("x".repeat(250), 200)!.length, 200);
+});
+
+test("booking at hand: the stop's reference first, then a filed document's", () => {
+  const docs = [
+    { itinerary_item_id: "a", reference: "DOC-1", title: "Confirmation.pdf" },
+    { itinerary_item_id: "b", reference: "DOC-2", title: "Other" },
+  ];
+  assert.deepEqual(bookingAtHand({ id: "a", booked: true, booking_ref: " X9 " }, docs), {
+    reference: "X9",
+    details: null,
+    documents: ["Confirmation.pdf"],
+  });
+  assert.equal(bookingAtHand({ id: "a", booked: true }, docs)?.reference, "DOC-1");
+  assert.equal(
+    bookingAtHand({ id: "c", booked: true, booking_details: "Table for 4" })?.details,
+    "Table for 4",
+  );
+  assert.equal(bookingAtHand({ id: "c" }, docs), null);
 });

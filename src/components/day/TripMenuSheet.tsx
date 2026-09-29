@@ -4,8 +4,10 @@ import {
   ArrowLeft,
   Backpack,
   Bed,
+  CalendarDays,
   Car,
   ChevronRight,
+  Copy,
   FileText,
   MapIcon,
   MapPin,
@@ -13,6 +15,7 @@ import {
   Plane,
   Settings2,
   ShieldCheck,
+  Sparkles,
   Ticket,
   Users,
   Wallet,
@@ -20,7 +23,16 @@ import {
 } from "@/components/icons";
 
 export type TripMenuSection =
-  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | "checkup";
+  | "invite"
+  | "budget"
+  | "edit"
+  | "offline"
+  | "packing"
+  | "cities"
+  | "customize"
+  | "checkup"
+  | "again"
+  | "preferences";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -35,6 +47,8 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   cities: "Destinations",
   customize: "Customize trip",
   checkup: "Trip checkup",
+  again: "Do it again",
+  preferences: "Just for this trip",
 };
 
 /**
@@ -61,6 +75,8 @@ export function TripMenuSheet({
   budgetOn,
   checkupNote,
   onPrint,
+  onCalendar,
+  preferencesCount,
   footer,
   children,
 }: {
@@ -84,6 +100,10 @@ export function TripMenuSheet({
   checkupNote: string;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
+  /** Download the trip as a calendar file. */
+  onCalendar?: (() => void) | undefined;
+  /** How many "just for this trip" preferences are set. */
+  preferencesCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
@@ -159,6 +179,14 @@ export function TripMenuSheet({
       onClick: () => onBookings("activity"),
     },
     {
+      key: "preferences",
+      icon: Sparkles,
+      title: "Just for this trip",
+      note: "Late mornings, less walking…",
+      pill: preferencesCount ? `${preferencesCount} set` : "",
+      onClick: () => onSection("preferences"),
+    },
+    {
       key: "budget",
       icon: Wallet,
       title: "Budget",
@@ -210,6 +238,26 @@ export function TripMenuSheet({
       note: "What the trip page shows",
       onClick: () => onSection("customize"),
     },
+    {
+      key: "again",
+      icon: Copy,
+      title: "Do it again",
+      note: "Copy the trip, or one day, to new dates",
+      pill: "",
+      onClick: () => onSection("again"),
+    },
+    ...(onCalendar
+      ? [
+          {
+            key: "calendar",
+            icon: CalendarDays,
+            title: "Add to calendar",
+            note: "Every stop, as a calendar file",
+            pill: "",
+            onClick: onCalendar,
+          },
+        ]
+      : []),
     ...(onPrint
       ? [
           {

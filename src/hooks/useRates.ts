@@ -1,3 +1,4 @@
+import { toLocalISODate } from "@/lib/trip-dates";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRates, HOME_CURRENCIES, type RateTable } from "@/lib/rates.functions";
@@ -58,7 +59,7 @@ export function useRates() {
   const load = useCallback(
     async (base: string) => {
       const cacheKey = `bea-rates-${base}`;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = toLocalISODate(new Date());
       try {
         const cached = window.localStorage.getItem(cacheKey);
         if (cached) {

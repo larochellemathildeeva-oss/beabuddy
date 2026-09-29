@@ -95,6 +95,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Béa" },
+      { name: "theme-color", content: "#f7f2e9" },
     ],
     links: [
       {
@@ -104,6 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "icon", href: `/favicon.ico?v=${APP_VERSION}`, sizes: "any" },
       { rel: "icon", href: `/favicon.png?v=${APP_VERSION}`, type: "image/png", sizes: "32x32" },
       { rel: "apple-touch-icon", href: `/apple-touch-icon.png?v=${APP_VERSION}` },
+      { rel: "manifest", href: "/manifest.webmanifest" },
     ],
   }),
   shellComponent: RootShell,
@@ -128,12 +130,26 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Béa's service worker (public/sw.js), so an installed Béa opens with no
+ * signal. Production only: in development it would serve yesterday's build.
+ */
+function useServiceWorker() {
+  useEffect(() => {
+    if (!import.meta.env.PROD || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Not supported here, or blocked: Béa works as before, online.
+    });
+  }, []);
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { open, setOpen, intent } = useTourControl();
   // Stable close handler — a new inline fn every render restarted the tour's
   // "Finding that bit…" wait forever (effect cleanup cancelled every poll).
   const closeTour = useCallback(() => setOpen(false), [setOpen]);
+  useServiceWorker();
 
   return (
     <QueryClientProvider client={queryClient}>

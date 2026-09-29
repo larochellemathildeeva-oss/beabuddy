@@ -48,6 +48,7 @@ import {
   type OptimizeTravel,
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
+import { deltaLine, optimizeDelta } from "@/lib/day-ease";
 import { aiFailure } from "@/lib/ai-errors";
 import { repeatsTimelineStop } from "@/lib/captured-place";
 import { useUndo } from "@/hooks/useUndo";
@@ -162,6 +163,17 @@ const COMPARE_PRIORITIES: PlanPriorityId[] = [
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
 type PanelTab = "start" | "import" | "optimize" | "compare";
+
+export type OptimizePreset = {
+  goals: OptimizeGoalId[];
+  note: string;
+  label: string;
+  /** The day to rearrange; the rest of the trip is left alone. */
+  day: string;
+  /** Words for the day: "tomorrow", "today", "Tue, Oct 6". */
+  dayLabel: string;
+  n: number;
+};
 /** Where the planner opens: its start screen, a panel, or Build / Import straight away. */
 export type PlannerTab = PanelTab | "build";
 
@@ -185,6 +197,8 @@ export function ItineraryImport({
   onAddCities,
   onAddDirections,
   onApplySchedule,
+  optimizePreset,
+  tripPreferences = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -220,6 +234,13 @@ export function ItineraryImport({
       position: number;
     }>,
   ) => Promise<void>;
+  /**
+   * A one-tap request ("Less walking" for tomorrow): Optimize opens with its
+   * goal and note, on that one day, and runs at once. `n` changes each tap.
+   */
+  optimizePreset?: OptimizePreset | null | undefined;
+  /** "Just for this trip", sent with every plan asked for here. */
+  tripPreferences?: string[];
 }) {
   const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
   /** The city this plan is for, by id; "" for the whole trip. */
@@ -331,13 +352,28 @@ export function ItineraryImport({
           onAddItems={onAddItems}
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
+          tripPreferences={tripPreferences}
           onApplyDates={planCity ? undefined : onApplyDates}
           onAddCities={planCity ? undefined : onAddCities}
           {...(onAddDirections ? { onAddDirections } : {})}
         />
       )}
-      {tab === "optimize" && (
+      {tab === "optimize" && optimizePreset && (
         <OptimizePanel
+          key={`preset:${optimizePreset.n}`}
+          preset={optimizePreset}
+          tripPreferences={tripPreferences}
+          tripCity={tripCity}
+          startDate={optimizePreset.day}
+          endDate={optimizePreset.day}
+          items={existingItems.filter((item) => item.day_date === optimizePreset.day)}
+          cities={cities}
+          onApplySchedule={onApplySchedule}
+        />
+      )}
+      {tab === "optimize" && !optimizePreset && (
+        <OptimizePanel
+          tripPreferences={tripPreferences}
           tripCity={tripCity}
           startDate={startDate}
           endDate={endDate}
@@ -352,6 +388,7 @@ export function ItineraryImport({
 }
 
 function ImportPanel({
+  tripPreferences = [],
   initialMode = "build",
   initialText = "",
   existingItems,
@@ -369,6 +406,8 @@ function ImportPanel({
   onAddCities,
   onAddDirections,
 }: {
+  /** "Just for this trip", sent with every plan asked for here. */
+  tripPreferences?: string[];
   /** "Which city is this plan for?", for a trip with several. */
   cityPicker?: ReactNode;
   /** Which job the panel opens on, chosen on the start screen. */
@@ -654,6 +693,7 @@ function ImportPanel({
           budgetLevel,
           currency,
           includeCosts,
+          tripPreferences,
         },
       });
       setDraftPlace(sentPlace);
@@ -1081,6 +1121,7 @@ function ImportPanel({
           selectedIndexes: picked,
           reason: altReason.trim(),
           mode: "alternatives",
+          tripPreferences,
         },
       });
       applyRevision(out);
@@ -1111,6 +1152,7 @@ function ImportPanel({
           selectedIndexes: [],
           reason: rebuildReason.trim(),
           mode: "rebuild",
+          tripPreferences,
         },
       });
       applyRevision(out);
@@ -1800,6 +1842,8 @@ function PlacementNote({
 }
 
 function OptimizePanel({
+  preset,
+  tripPreferences = [],
   tripCity,
   startDate,
   endDate,
@@ -1807,6 +1851,8 @@ function OptimizePanel({
   cities,
   onApplySchedule,
 }: {
+  preset?: OptimizePreset | undefined;
+  tripPreferences?: string[];
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
@@ -1824,8 +1870,9 @@ function OptimizePanel({
     | undefined;
 }) {
   const run = useServerFn(optimizeItinerary);
-  const [goals, setGoals] = useState<OptimizeGoalId[]>(["closest"]);
-  const [note, setNote] = useState("");
+  const [goals, setGoals] = useState<OptimizeGoalId[]>(preset?.goals ?? ["closest"]);
+  const [note, setNote] = useState(preset?.note ?? "");
+  const [showStayed, setShowStayed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<OptimizeItinerary | null>(null);
@@ -1860,6 +1907,7 @@ function OptimizePanel({
           endDate: endDate || null,
           goals,
           note: note.trim() || null,
+          tripPreferences,
           items: items.map((item) => ({
             ...item,
             detail: stripEmbeddedMapsUrl(item.detail) || null,
@@ -1891,7 +1939,27 @@ function OptimizePanel({
     }
   };
 
+  // A one-tap request runs as soon as it opens: the tap was the asking.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (!preset || autoRan.current || items.length < 2) return;
+    autoRan.current = true;
+    void rearrange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, on opening
+  }, []);
+
   const byId = new Map(items.map((item) => [item.id, item]));
+  const delta = plan ? optimizeDelta(items, plan.items, plan.travel) : null;
+  const stayedRows = plan
+    ? plan.items.filter((row) => {
+        const was = byId.get(row.id);
+        return (
+          was &&
+          (was.day_date ?? "") === (row.day_date ?? "") &&
+          (was.time_label ?? "") === (row.time_label ?? "")
+        );
+      })
+    : [];
 
   return (
     <div className="mt-1 space-y-3">
@@ -1900,6 +1968,11 @@ function OptimizePanel({
         moving things and adjusting timing. She does not check whether a reservation is still
         available.
       </PlanTitle>
+      {preset && (
+        <p className="rounded-xl bg-primary-soft px-3 py-2 text-[13.5px] font-semibold text-primary">
+          {preset.label} for {preset.dayLabel}
+        </p>
+      )}
 
       {items.length < 2 ? (
         <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] text-muted-foreground">
@@ -1948,6 +2021,11 @@ function OptimizePanel({
 
       {plan && (
         <div className="rise space-y-2 rounded-xl border border-border bg-elevated p-3">
+          {delta && (
+            <p className="rounded-lg bg-card px-2.5 py-1.5 text-[13.5px] font-semibold">
+              {deltaLine(delta)}
+            </p>
+          )}
           <p className="text-[14.5px] font-medium">{plan.summary}</p>
           <p className="text-[13px] text-muted-foreground">{plan.changes}</p>
           {plan.travel && <p className="text-[13px] text-foreground">{travelLine(plan.travel)}</p>}
@@ -1973,6 +2051,7 @@ function OptimizePanel({
             {plan.items.map((row) => {
               const original = byId.get(row.id);
               if (!original) return null;
+              if (!showStayed && stayedRows.includes(row)) return null;
               const when = [row.day_date, row.time_label].filter(Boolean).join(" · ");
               const before = [original.day_date, original.time_label].filter(Boolean).join(" · ");
               const moved = when !== before;
@@ -1991,6 +2070,18 @@ function OptimizePanel({
               );
             })}
           </ol>
+          {stayedRows.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowStayed((v) => !v)}
+              aria-expanded={showStayed}
+              className="text-[13px] font-semibold text-primary underline underline-offset-2"
+            >
+              {showStayed
+                ? "Hide the stops that stayed"
+                : `Show the ${stayedRows.length} ${stayedRows.length === 1 ? "stop" : "stops"} that stayed`}
+            </button>
+          )}
           <button
             onClick={() => void apply()}
             disabled={busy || !onApplySchedule}

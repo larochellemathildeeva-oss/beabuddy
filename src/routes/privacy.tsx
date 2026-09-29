@@ -159,6 +159,13 @@ function PrivacyPage() {
             settings, the owner can remove a person, and a guest can leave — access ends when they
             are removed or leave.
           </p>
+          <p>
+            Anyone on a trip can also make a read-only link for someone without an account. It shows
+            the trip's name, place and dates, and each stop's day, time, name and address — not
+            bookings, confirmation numbers, notes, documents or who is going. Anyone who has the
+            link can open it, so share it like you would the plan itself. A link is designed to stop
+            working after 90 days, and anyone on the trip can turn it off sooner.
+          </p>
         </Section>
 
         <Section title="AI processing">

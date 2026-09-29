@@ -1,6 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, Clock, CloudRain, MapPin } from "@/components/icons";
+import { Bed, ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
+import { bookingAtHand } from "@/lib/bookings";
+import { remindersFor, type ReminderItem } from "@/lib/reminders";
+import { EASE_PRESETS, rainPreset, type EasePreset } from "@/lib/day-ease";
+import { parseLocalDate } from "@/lib/trip-dates";
 import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
@@ -8,9 +12,9 @@ import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
-import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
+import { arrivalHelp, type ArrivalStop } from "@/lib/arrival-help";
 import { timeForRail } from "@/lib/timeline-kind";
-import { toLocalISODate } from "@/lib/trip-dates";
 import { lookupRain } from "@/lib/weather.functions";
 import {
   rainDayMayBeAhead,
@@ -27,6 +31,8 @@ import {
   leaveCountdown,
   leavingWrite,
   legBetween,
+  placeClock,
+  placeClockNote,
   liveLegKey,
   needsLiveLeg,
   stayLine,
@@ -52,6 +58,10 @@ export function NowPanel({
   legs,
   area,
   travel = "auto",
+  bookingDocs = [],
+  reminderItems = [],
+  nextDay = null,
+  onEase,
   onProgress,
   progress,
   onLook,
@@ -66,6 +76,18 @@ export function NowPanel({
   area?: string | undefined;
   /** How the traveller gets around, for a journey routed here. */
   travel?: TravelChoice | undefined;
+  /** Trip documents, so a confirmation filed to a stop is at hand there. */
+  bookingDocs?: readonly {
+    itinerary_item_id: string | null;
+    reference: string | null;
+    title: string;
+  }[];
+  /** Every entry on the trip, for the bookings and departures coming up. */
+  reminderItems?: readonly (ReminderItem & ArrivalStop & { position: number })[];
+  /** The trip's next day with stops after this one, for "Make tomorrow easier". */
+  nextDay?: string | null;
+  /** Run one of Optimize's one-tap requests on a day. */
+  onEase?: ((preset: EasePreset, day: string, dayLabel: string) => void) | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -75,6 +97,10 @@ export function NowPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const now = useMinuteClock();
+  const forecast = useDayForecast(dayStops);
+  // The plan's times are the place's; read "now" there when the forecast
+  // says what the place's clock is.
+  const offset = forecast?.utcOffsetSeconds ?? null;
 
   const state = companionState(dayStops);
   const { phase, current, previous, next } = state;
@@ -118,8 +144,25 @@ export function NowPanel({
       : null;
 
   // The countdown only means something on today's plan, once the clock is known.
-  const isToday = Boolean(now && next?.day_date === toLocalISODate(now));
-  const countdown = isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now) : null;
+  const isToday = Boolean(now && next?.day_date === placeClock(now, offset).day);
+  const countdown =
+    isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now, 10, offset) : null;
+  const clockNote = isToday && now ? placeClockNote(now, offset) : null;
+  const reminders = now ? remindersFor(reminderItems, placeClock(now, offset)) : [];
+  const thisDay = dayStops.find((s) => s.day_date)?.day_date ?? null;
+  const placeDay = now ? placeClock(now, offset).day : null;
+  // Once today is done, the easing is for the next day; before that, this one.
+  const easeTarget = phase === "done" ? nextDay : thisDay;
+  // The way in from the airport or station, on a day that lands somewhere to sleep.
+  const arrival = thisDay
+    ? arrivalHelp(
+        [...reminderItems]
+          .filter((i) => i.day_date === thisDay)
+          .sort((a, b) => a.position - b.position),
+      )
+    : null;
+  const arrivalOpen = arrival && !dayStops.find((s) => s.id === arrival.stay.id)?.arrived_at;
+  const easeLabel = easeTarget ? dayLabelFor(easeTarget, placeDay) : "";
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
@@ -155,7 +198,75 @@ export function NowPanel({
 
   return (
     <div className="space-y-3">
-      {phase !== "done" && <RainAhead stops={dayStops} now={now} />}
+      {reminders.length > 0 && (
+        <ul role="status" aria-label="Coming up" className="space-y-1.5">
+          {reminders.map((r) => (
+            <li
+              key={r.id}
+              className={`flex items-center gap-2 rounded-2xl px-3 py-2 text-[13.5px] font-semibold ${
+                r.when === "soon"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary-soft text-primary"
+              }`}
+            >
+              <Clock className="size-4 shrink-0" aria-hidden />
+              <span className="min-w-0">{r.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {arrival && arrivalOpen && (
+        <section aria-labelledby="now-arrival" className="plain-card space-y-2 p-3.5">
+          <p
+            id="now-arrival"
+            className="flex items-center gap-2 text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            <Bed className="size-4 text-primary" aria-hidden />
+            Arrival
+          </p>
+          <p className="text-[14.5px] leading-snug">
+            From <span className="font-semibold">{arrival.from.title}</span> to{" "}
+            <span className="font-semibold">{arrival.stay.title}</span>
+            {arrival.checkIn ? (
+              <span className="text-muted-foreground"> · check-in from {arrival.checkIn}</span>
+            ) : null}
+          </p>
+          {arrival.stay.address?.trim() && (
+            <p className="flex items-start gap-1 text-[12.5px] text-muted-foreground">
+              <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0">{arrival.stay.address}</span>
+            </p>
+          )}
+          <a
+            href={mapsDirUrl(arrival.from, arrival.stay, area ?? "", "transit")}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center gap-1 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground"
+          >
+            The way there, by transit
+            <ChevronRight className="size-4" aria-hidden />
+          </a>
+        </section>
+      )}
+      {phase !== "done" && (
+        <RainAhead
+          stops={dayStops}
+          forecast={forecast}
+          now={now}
+          {...(onEase && thisDay
+            ? {
+                onIndoors: (from: string, until: string | null) =>
+                  onEase(rainPreset(from, until), thisDay, dayLabelFor(thisDay, placeDay)),
+              }
+            : {})}
+        />
+      )}
+      {clockNote && phase !== "done" && (
+        <p className="plain-card flex items-center gap-2 px-3 py-2 text-[13px]">
+          <Clock className="size-3.5 shrink-0 text-primary" aria-hidden />
+          {clockNote}
+        </p>
+      )}
 
       {phase === "at" && current && (
         <section className="plain-card space-y-3 p-3.5" aria-labelledby="now-here">
@@ -198,6 +309,7 @@ export function NowPanel({
               <StayLine stop={current} now={now} />
             </div>
           </div>
+          <BookingAtHandCard stop={current} docs={bookingDocs} />
           {says && <BeaSays line={says} />}
           {/* When to set off belongs where you are standing, not on the next card. */}
           {leavePanel}
@@ -268,6 +380,7 @@ export function NowPanel({
             </div>
             {phase === "at" && measured(leg) && <LegPill leg={leg} />}
           </div>
+          <BookingAtHandCard stop={next} docs={bookingDocs} />
           <PlaceFacts
             name={next.title}
             lat={next.lat}
@@ -318,6 +431,30 @@ export function NowPanel({
       )}
 
       {progress}
+
+      {onEase && easeTarget && (
+        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-3.5">
+          <p id="now-ease" className="text-[13.5px] font-semibold">
+            Make {easeLabel} easier
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {EASE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => onEase(preset, easeTarget, easeLabel)}
+                className="min-h-9 rounded-full border border-border bg-card px-3 text-[13px] font-medium"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Béa rearranges that day only, keeps every booking where it is, and shows you the change
+            before anything is saved.
+          </p>
+        </section>
+      )}
 
       {later.length > 0 && (
         <section aria-labelledby="now-later">
@@ -385,6 +522,47 @@ export function NowPanel({
           {error}
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The confirmation number and booking notes, where you will need them: at
+ * the door. Said only for a stop that is booked or has a document filed to it.
+ */
+function BookingAtHandCard({
+  stop,
+  docs,
+}: {
+  stop: ItineraryRow;
+  docs: readonly { itinerary_item_id: string | null; reference: string | null; title: string }[];
+}) {
+  const booking = bookingAtHand(stop, docs);
+  if (!booking) return null;
+  return (
+    <div className="tile-fill-3 flex items-start gap-2.5 rounded-2xl border border-border/60 px-3 py-2.5">
+      <Ticket className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+      <div className="min-w-0 flex-1 text-[13.5px] leading-snug">
+        <p className="font-semibold">
+          Booked
+          {booking.reference ? (
+            <>
+              {" · "}
+              <span className="select-all font-mono tabular-nums">{booking.reference}</span>
+            </>
+          ) : null}
+        </p>
+        {booking.details ? (
+          <p className="mt-0.5 whitespace-pre-line break-words text-muted-foreground">
+            {booking.details}
+          </p>
+        ) : null}
+        {booking.documents.length ? (
+          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
+            In Bookings: {booking.documents.join(", ")}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -579,7 +757,68 @@ function useLiveLeg(
  * then moves the notice on as spells pass. Offline, or with no forecast for
  * the day, it shows nothing — the plan never waits on the weather.
  */
-function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) {
+function RainAhead({
+  stops,
+  forecast,
+  now,
+  onIndoors,
+}: {
+  stops: ItineraryRow[];
+  forecast: RainForecast | null;
+  now: Date | null;
+  /** Rearrange the day so the indoor stops fall in the rain. */
+  onIndoors?: ((from: string, until: string | null) => void) | undefined;
+}) {
+  const day = stops.find((s) => s.day_date)?.day_date ?? null;
+  const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
+  if (!notice) return null;
+  return (
+    <div role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
+      <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+      <span className="min-w-0">
+        {rainLine(notice)}{" "}
+        <a
+          href="https://open-meteo.com/"
+          target="_blank"
+          rel="noreferrer"
+          title={WEATHER_ATTRIBUTION}
+          className="text-[10px] text-muted-foreground underline underline-offset-2 sm:text-xs"
+        >
+          Open-Meteo
+        </a>
+        {onIndoors && (
+          <button
+            type="button"
+            onClick={() => onIndoors(notice.from, notice.until)}
+            className="mt-1 block min-h-8 text-[13px] font-semibold text-primary underline underline-offset-2"
+          >
+            Put the indoor stops in the rain
+          </button>
+        )}
+      </span>
+    </div>
+  );
+}
+
+/** "today", "tomorrow", or "Tue, Oct 6", against the place's own date. */
+function dayLabelFor(day: string, placeDay: string | null): string {
+  if (placeDay && day === placeDay) return "today";
+  const date = parseLocalDate(day);
+  const today = placeDay ? parseLocalDate(placeDay) : undefined;
+  if (date && today && Math.round((date.getTime() - today.getTime()) / 86_400_000) === 1)
+    return "tomorrow";
+  return date
+    ? date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+    : day;
+}
+
+/**
+ * The hour-by-hour forecast for the day, where the day is: the first pinned
+ * stop still ahead (or the first pinned stop of the day). Asked once per
+ * place and day. It carries the place's offset from UTC as well as the rain,
+ * so Now can read the clock at the place.
+ */
+function useDayForecast(stops: ItineraryRow[]): RainForecast | null {
   // 0,0 is a missing place, not the Gulf of Guinea.
   const pinned = (s: ItineraryRow) =>
     s.lat != null && s.lon != null && !(s.lat === 0 && s.lon === 0);
@@ -607,25 +846,7 @@ function RainAhead({ stops, now }: { stops: ItineraryRow[]; now: Date | null }) 
     };
   }, [ask, lat, lon, day]);
 
-  const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
-  if (!notice) return null;
-  return (
-    <p role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
-      <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
-      <span className="min-w-0">
-        {rainLine(notice)}{" "}
-        <a
-          href="https://open-meteo.com/"
-          target="_blank"
-          rel="noreferrer"
-          title={WEATHER_ATTRIBUTION}
-          className="text-[10px] text-muted-foreground underline underline-offset-2 sm:text-xs"
-        >
-          Open-Meteo
-        </a>
-      </span>
-    </p>
-  );
+  return forecast;
 }
 
 function useMinuteClock(): Date | null {
