@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
 import { bookingAtHand } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
+import { EASE_PRESETS, rainPreset, type EasePreset } from "@/lib/day-ease";
+import { parseLocalDate } from "@/lib/trip-dates";
 import { useBeaSays } from "@/components/day/bea-says";
 import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
@@ -57,6 +59,8 @@ export function NowPanel({
   travel = "auto",
   bookingDocs = [],
   reminderItems = [],
+  nextDay = null,
+  onEase,
   onProgress,
   progress,
   onLook,
@@ -79,6 +83,10 @@ export function NowPanel({
   }[];
   /** Every entry on the trip, for the bookings and departures coming up. */
   reminderItems?: readonly ReminderItem[];
+  /** The trip's next day with stops after this one, for "Make tomorrow easier". */
+  nextDay?: string | null;
+  /** Run one of Optimize's one-tap requests on a day. */
+  onEase?: ((preset: EasePreset, day: string, dayLabel: string) => void) | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -140,6 +148,11 @@ export function NowPanel({
     isToday && now && leave?.kind === "time" ? leaveCountdown(leave.at, now, 10, offset) : null;
   const clockNote = isToday && now ? placeClockNote(now, offset) : null;
   const reminders = now ? remindersFor(reminderItems, placeClock(now, offset)) : [];
+  const thisDay = dayStops.find((s) => s.day_date)?.day_date ?? null;
+  const placeDay = now ? placeClock(now, offset).day : null;
+  // Once today is done, the easing is for the next day; before that, this one.
+  const easeTarget = phase === "done" ? nextDay : thisDay;
+  const easeLabel = easeTarget ? dayLabelFor(easeTarget, placeDay) : "";
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
@@ -192,7 +205,19 @@ export function NowPanel({
           ))}
         </ul>
       )}
-      {phase !== "done" && <RainAhead stops={dayStops} forecast={forecast} now={now} />}
+      {phase !== "done" && (
+        <RainAhead
+          stops={dayStops}
+          forecast={forecast}
+          now={now}
+          {...(onEase && thisDay
+            ? {
+                onIndoors: (from: string, until: string | null) =>
+                  onEase(rainPreset(from, until), thisDay, dayLabelFor(thisDay, placeDay)),
+              }
+            : {})}
+        />
+      )}
       {clockNote && phase !== "done" && (
         <p className="plain-card flex items-center gap-2 px-3 py-2 text-[13px]">
           <Clock className="size-3.5 shrink-0 text-primary" aria-hidden />
@@ -363,6 +388,30 @@ export function NowPanel({
       )}
 
       {progress}
+
+      {onEase && easeTarget && (
+        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-3.5">
+          <p id="now-ease" className="text-[13.5px] font-semibold">
+            Make {easeLabel} easier
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {EASE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => onEase(preset, easeTarget, easeLabel)}
+                className="min-h-9 rounded-full border border-border bg-card px-3 text-[13px] font-medium"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Béa rearranges that day only, keeps every booking where it is, and shows you the change
+            before anything is saved.
+          </p>
+        </section>
+      )}
 
       {later.length > 0 && (
         <section aria-labelledby="now-later">
@@ -669,16 +718,19 @@ function RainAhead({
   stops,
   forecast,
   now,
+  onIndoors,
 }: {
   stops: ItineraryRow[];
   forecast: RainForecast | null;
   now: Date | null;
+  /** Rearrange the day so the indoor stops fall in the rain. */
+  onIndoors?: ((from: string, until: string | null) => void) | undefined;
 }) {
   const day = stops.find((s) => s.day_date)?.day_date ?? null;
   const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
   if (!notice) return null;
   return (
-    <p role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
+    <div role="status" className="plain-card flex items-start gap-2 px-3 py-2 text-[13px]">
       <CloudRain className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
       <span className="min-w-0">
         {rainLine(notice)}{" "}
@@ -691,9 +743,30 @@ function RainAhead({
         >
           Open-Meteo
         </a>
+        {onIndoors && (
+          <button
+            type="button"
+            onClick={() => onIndoors(notice.from, notice.until)}
+            className="mt-1 block min-h-8 text-[13px] font-semibold text-primary underline underline-offset-2"
+          >
+            Put the indoor stops in the rain
+          </button>
+        )}
       </span>
-    </p>
+    </div>
   );
+}
+
+/** "today", "tomorrow", or "Tue, Oct 6", against the place's own date. */
+function dayLabelFor(day: string, placeDay: string | null): string {
+  if (placeDay && day === placeDay) return "today";
+  const date = parseLocalDate(day);
+  const today = placeDay ? parseLocalDate(placeDay) : undefined;
+  if (date && today && Math.round((date.getTime() - today.getTime()) / 86_400_000) === 1)
+    return "tomorrow";
+  return date
+    ? date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
+    : day;
 }
 
 /**

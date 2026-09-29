@@ -35,7 +35,12 @@ import { addRecommendationOnce } from "@/hooks/useRecommendations";
 import type { PlaceLike } from "@/lib/captured-place";
 import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
 import { supabase } from "@/integrations/supabase/client";
-import { ItineraryImport, type PlannerTab } from "@/components/ItineraryImport";
+import {
+  ItineraryImport,
+  type OptimizePreset,
+  type PlannerTab,
+} from "@/components/ItineraryImport";
+import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
@@ -185,6 +190,20 @@ export function TripDetail({
   const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
   /** Words carried into Build from the Plan with Béa page. */
   const [plannerAsk, setPlannerAsk] = useState("");
+  /** A one-tap "make this day easier" request, run in Optimize on that day. */
+  const [optimizePreset, setOptimizePreset] = useState<OptimizePreset | null>(null);
+  const easeDay = (preset: EasePreset, day: string, dayLabel: string) => {
+    setOptimizePreset((cur) => ({
+      goals: preset.goals,
+      note: preset.note,
+      label: preset.label,
+      day,
+      dayLabel,
+      n: (cur?.n ?? 0) + 1,
+    }));
+    setPlannerTab("optimize");
+    setPlannerOpen(true);
+  };
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -1444,6 +1463,12 @@ export function TripDetail({
                   travel={travel}
                   bookingDocs={bookingDocs.docs}
                   reminderItems={board.items}
+                  nextDay={
+                    timelineGroups.find(
+                      (group) => group.key !== "" && companionDay && group.key > companionDay.key,
+                    )?.key ?? null
+                  }
+                  onEase={easeDay}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);
@@ -2189,7 +2214,9 @@ export function TripDetail({
         onClose={() => {
           setPlannerOpen(false);
           setPlannerAsk("");
+          setOptimizePreset(null);
         }}
+        optimizePreset={optimizePreset}
         defaultTab={plannerTab}
         initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
