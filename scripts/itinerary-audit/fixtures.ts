@@ -33,6 +33,14 @@ export type Fixture = {
      * a place containing `place` (the restaurant, not the street it is on).
      */
     pins?: { match: string; place: string }[];
+    /** How many stops are flights: getting to an airport is not one. */
+    flights?: number;
+    /** How many rows the printed plan marks "To book". */
+    toBook?: number;
+    /** The stop that mentions `match` must be one of these kinds. */
+    kinds?: { match: string; kind: string[] }[];
+    /** The stop that mentions `match` must be looked up in this town. */
+    cities?: { match: string; city: string }[];
   };
 };
 

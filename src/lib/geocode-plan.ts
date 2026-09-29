@@ -20,7 +20,7 @@ import {
   placeQueryCandidates,
 } from "./direction-stops.ts";
 import { autoPinTrusted } from "./match-confidence.ts";
-import { japaneseAddressQueries, namesJapan } from "./japan-address.ts";
+import { japaneseAddressQueries, namesJapan, outsideAddressDistrict } from "./japan-address.ts";
 
 export type PlanStop = {
   title: string;
@@ -55,7 +55,10 @@ export function planStopQueries(stop: PlanStop, area: string | null | undefined)
   // A Japanese block address ("2-3-23 Shinsaibashisuji") as the map reads
   // it: as written, it found an address in Tokyo for an Osaka café.
   const japanese = address ? japaneseAddressQueries(address, namesJapan(where)) : [];
+  const code = AIRPORT_CODE.test(place) ? place : null;
   const candidates = [
+    // "JFK" alone finds a JFK Boulevard; "JFK Airport" finds the airport.
+    ...(code ? [`${code} Airport`] : []),
     ...(japanese.length ? japanese.slice(0, 1) : []),
     ...(!japanese.length && address && looksLikeStreetAddress(address) ? [address] : []),
     ...(place ? placeQueryCandidates(place, null) : []),
@@ -162,6 +165,85 @@ export function inBox(box: AreaBox, lat: number, lon: number): boolean {
   return lat >= box.south && lat <= box.north && lon >= box.west && lon <= box.east;
 }
 
+const AIRPORT_WORDS =
+  /\b(?:airport|aeroporto|aeropuerto|a[ée]roport|flughafen|luchthaven)\b|空港|공항|机场|機場/i;
+
+/** A stop that is an airport, by its name or its place: "Arrive at Kansai International Airport". */
+/** "JFK", "LHR": a place written as an airport's three-letter code. */
+const AIRPORT_CODE = /^[A-Z]{3}$/;
+
+/**
+ * An airport stop answered by an airport: right, whatever it is called. "JFK"
+ * never matches "John F. Kennedy International Airport" by name, and Kansai
+ * International Airport's pin is labelled by the road it sits on.
+ */
+export function airportMatch(
+  stop: { title: string; place?: string | null | undefined },
+  hit: Pick<CandidateHit, "label" | "category" | "kind">,
+): boolean {
+  return namesAirport(stop) && isAirportHit(hit);
+}
+
+export function namesAirport(stop: { title: string; place?: string | null | undefined }): boolean {
+  if (AIRPORT_CODE.test(stop.place?.trim() ?? "")) return true;
+  // The airport itself, not "Airport Museum" or "Airport Road Market".
+  const name = (stop.place?.trim() || stop.title)
+    .replace(/\s*[(（][^()（）]*[)）]/g, "")
+    .replace(/\s+(?:terminal\s*\w*|t\d)$/i, "")
+    .trim();
+  return (
+    /(?:airport|aeroporto|aeropuerto|a[ée]roport|flughafen|luchthaven|空港|공항|机场|機場)$/i.test(
+      name,
+    ) || /^(?:aeroporto|aeropuerto|a[ée]roport)\b/i.test(name)
+  );
+}
+
+/** An answer that is an airport, or somewhere in one ("Kansai Airport Station"). */
+export function isAirportHit(hit: Pick<CandidateHit, "label" | "category" | "kind">): boolean {
+  return (
+    hit.category === "aeroway" ||
+    hit.kind === "aerodrome" ||
+    hit.kind === "terminal" ||
+    AIRPORT_WORDS.test(hit.label?.split(",")[0] ?? "")
+  );
+}
+
+const TRANSIT_WORDS = /\b(?:station|stop|stn|platform|pier|wharf|terminal)\b|駅|停/i;
+
+/** A bus, tram or train stop, or a platform: where you catch something, not the place it is named for. */
+function isTransitStop(hit: Pick<CandidateHit, "category" | "kind">): boolean {
+  return (
+    (hit.category === "highway" && hit.kind === "bus_stop") ||
+    (hit.category === "railway" && (hit.kind === "tram_stop" || hit.kind === "platform")) ||
+    hit.category === "public_transport"
+  );
+}
+
+const foldArea = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+/**
+ * Of the geocoder's answers for a trip's town, the one named for it. Asked
+ * for "Mexico City, Mexico", LocationIQ answers the country first: its box
+ * was all of Mexico, and a "Casa Azul" 400 km away was inside it.
+ * Null when none is; callers fall back to the first answer.
+ */
+export function areaHitFor<T extends { display_name?: string | undefined }>(
+  hits: readonly T[],
+  where: string,
+): T | null {
+  const town = foldArea(where.split(",")[0] ?? "");
+  if (!town) return null;
+  return (
+    hits.find((hit) => foldArea((hit.display_name ?? "").split(",")[0] ?? "") === town) ?? null
+  );
+}
+
 /** One answer from the geocoder, as the plan lookup reads it. */
 export type CandidateHit = {
   lat: number;
@@ -191,10 +273,28 @@ export function pickHit(
     address?: string | null | undefined;
   },
 ): { hit: CandidateHit; trusted: boolean } | null {
-  const inside = hits.filter(
-    (hit) => Number.isFinite(hit.lat) && Number.isFinite(hit.lon) && inBox(box, hit.lat, hit.lon),
+  // An airport is only ever an airport: "Hotel Kansai" shares a word with
+  // Kansai International Airport, and was pinned for it 30 km away.
+  const airport = namesAirport(stop);
+  // The place before the bus stop named after it ("原爆ドーム前", Atomic Bomb
+  // Dome stop): same spot, but not the place, so never trusted for it.
+  const stopWanted = TRANSIT_WORDS.test(`${stop.title} ${stop.place ?? ""}`);
+  const inside = [...hits]
+    .sort((a, b) => (stopWanted ? 0 : Number(isTransitStop(a)) - Number(isTransitStop(b))))
+    .filter(
+      (hit) =>
+        Number.isFinite(hit.lat) &&
+        Number.isFinite(hit.lon) &&
+        inBox(box, hit.lat, hit.lon) &&
+        (!airport || isAirportHit(hit)),
+    );
+  // A Japanese address names its district, and so does every label there:
+  // a find in another district is a namesake, however well its name matches.
+  const trusted = inside.find((hit) =>
+    airport
+      ? isAirportHit(hit)
+      : autoPinTrusted(stop, hit) && !outsideAddressDistrict(stop.address, hit.label),
   );
-  const trusted = inside.find((hit) => autoPinTrusted(stop, hit));
   if (trusted) return { hit: trusted, trusted: true };
   return inside[0] ? { hit: inside[0], trusted: false } : null;
 }

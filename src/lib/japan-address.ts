@@ -78,3 +78,32 @@ export function japaneseAddressQueries(text: string, inJapan = false): string[] 
 export function namesJapan(area: string | null | undefined): boolean {
   return /\bjapan\b|日本/i.test(area ?? "");
 }
+
+/** The district a Japanese block address names: "Yoyogi" for "2-14-3 Yoyogi", else null. */
+export function japaneseDistrict(text: string, inJapan = false): string | null {
+  const block = japaneseAddressQueries(text, inJapan)[1];
+  return block ? block.replace(/\s+\d{1,2}-chome.*$/, "").trim() || null : null;
+}
+
+const foldDistrict = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+/**
+ * A find in Japan whose label names another district than the plan's address:
+ * a namesake across town. Japanese labels always name the district ("…,
+ * Kabukichō 1, Kabukichō, Shinjuku, Tokyo"), so "Fuunji" at 2-14-3 Yoyogi
+ * found in Kichijoji, 11 km away, is caught; one in Yoyogi is not.
+ */
+export function outsideAddressDistrict(
+  address: string | null | undefined,
+  label: string | null | undefined,
+): string | null {
+  if (!address || !label || !/\bjapan\b/i.test(label)) return null;
+  const district = japaneseDistrict(address, true);
+  if (!district) return null;
+  return foldDistrict(label).includes(foldDistrict(district)) ? null : district;
+}

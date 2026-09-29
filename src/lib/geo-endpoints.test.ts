@@ -73,7 +73,7 @@ test("routing keeps OSRM's lon,lat order on both providers", () => {
 
 test("the paid provider is allowed to go faster, within the same minute cap", () => {
   assert.equal(PUBLIC_PROVIDER.gapMs, 1_100);
-  assert.equal(locationIqProvider("t").gapMs, 500);
+  assert.equal(locationIqProvider("t").gapMs, 600);
   // Two a second, but sixty a minute — the minute is what binds on a long plan.
   assert.equal(locationIqProvider("t").perMinute, 60);
 });
@@ -99,9 +99,9 @@ test("a rate limit is not the same answer as 'no such place'", () => {
 test("nextDelayMs keeps the burst rate between requests", () => {
   const p = locationIqProvider("t");
   assert.equal(nextDelayMs(p, [], 10_000), 0, "nothing sent yet");
-  assert.equal(nextDelayMs(p, [10_000], 10_000), 500, "just sent one");
-  assert.equal(nextDelayMs(p, [10_000], 10_300), 200, "part way through the gap");
-  assert.equal(nextDelayMs(p, [10_000], 10_600), 0, "gap already elapsed");
+  assert.equal(nextDelayMs(p, [10_000], 10_000), 600, "just sent one");
+  assert.equal(nextDelayMs(p, [10_000], 10_300), 300, "part way through the gap");
+  assert.equal(nextDelayMs(p, [10_000], 10_700), 0, "gap already elapsed");
 });
 
 test("nextDelayMs waits out the minute cap, which the burst rate would blow through", () => {

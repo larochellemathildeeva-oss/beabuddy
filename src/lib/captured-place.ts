@@ -111,6 +111,39 @@ export function findDuplicate<T extends PlaceLike>(
   return existing.find((item) => isSamePlace(item, candidate));
 }
 
+type TimedStop = {
+  title: string;
+  place?: string | null | undefined;
+  day_date?: string | null | undefined;
+  time_label?: string | null | undefined;
+};
+
+/**
+ * Is this imported stop already on the timeline? By name, as before; or, on
+ * the same day at the same time, by the place either one names. Re-reading a
+ * day worded differently ("Arrive at Kansai International Airport" against
+ * "Kansai International Airport — airport arrival", "Flight from Kansai
+ * International Airport to Vancouver") doubled every stop whose title changed.
+ */
+export function repeatsTimelineStop<T extends TimedStop>(
+  existing: readonly T[],
+  row: TimedStop,
+): T | undefined {
+  const byName = findDuplicate(existing, { name: row.title });
+  if (byName) return byName;
+  if (!row.day_date || !row.time_label) return undefined;
+  const names = [row.title, row.place]
+    .map((n) => comparableName(n ?? "").replace(/\s*\([^)]*\)/g, ""))
+    .filter((n) => n.length >= 5);
+  return existing.find((item) => {
+    if (item.day_date !== row.day_date || item.time_label !== row.time_label) return false;
+    const theirs = [item.title, item.place]
+      .map((n) => comparableName(n ?? "").replace(/\s*\([^)]*\)/g, ""))
+      .filter((n) => n.length >= 5);
+    return names.some((a) => theirs.some((b) => a.includes(b) || b.includes(a)));
+  });
+}
+
 /** Split a batch into the ones already present and the ones that are new. */
 export function partitionNew<C extends PlaceLike>(
   existing: readonly PlaceLike[],

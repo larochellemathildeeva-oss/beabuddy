@@ -66,7 +66,9 @@ export function locationIqProvider(token: string): GeoProvider {
     searchBase: "https://us1.locationiq.com/v1",
     routeBase: "https://us1.locationiq.com/v1/directions",
     token,
-    gapMs: 500,
+    // Two a second is the plan's limit, counted by the second: exactly 500 ms
+    // apart, network jitter put two in one second and it answered 429.
+    gapMs: 600,
     perMinute: 60,
   };
 }

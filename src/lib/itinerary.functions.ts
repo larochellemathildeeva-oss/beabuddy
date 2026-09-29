@@ -276,15 +276,27 @@ export async function runParse(
   });
   const out = result.output;
   onRaw?.(out.items);
-  const parsed: ParsedItinerary = {
-    ...out,
+  const parsed: ParsedItinerary = { ...out, items: tidyModelItems(out.items, data.mode) };
+  return applyCostPolicy(parsed, Boolean(data.includeCosts));
+}
+
+/**
+ * The model's rows as Béa keeps them. Exported for scripts/itinerary-audit,
+ * which replays saved answers through it after a change, with no model call.
+ */
+export function tidyModelItems(
+  items: readonly ParsedItineraryItem[],
+  mode: "import" | "build",
+): ParsedItineraryItem[] {
+  const data = { mode };
+  return (
     // Travel legs the model made anyway become notes on the stop they lead to.
     // Kinds normalised first, so the fold sees "transport" however it was
     // spelt; the times too, so a folded note carries a readable time.
     // Then what is listed inside a place joins that visit (nestWithin).
-    items: nestWithin(
+    nestWithin(
       foldTravelLegs(
-        out.items.slice(0, 60).map((i) => ({
+        items.slice(0, 60).map((i) => ({
           // Kinds normalised before the tidy, which files a night as a stay.
           ...tidyImportedRow({ ...i, kind: normaliseKind(i.kind) }),
           // A time the timeline cannot sort is worse than none.
@@ -301,9 +313,8 @@ export async function runParse(
                 : null,
         })),
       ),
-    ),
-  };
-  return applyCostPolicy(parsed, Boolean(data.includeCosts));
+    )
+  );
 }
 
 type PlanContext = {
