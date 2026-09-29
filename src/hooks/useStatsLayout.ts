@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { statsLayoutKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
 export type StatKey =
   "countries" | "cities" | "trips" | "flights" | "hotels" | "restaurants" | "travelDays" | "pins";
@@ -37,7 +39,7 @@ export const DEFAULT_STATS_LAYOUT: StatsLayout = {
   countryShare: true,
 };
 
-const keyFor = (userId: string | undefined) => `bea-stats-layout-${userId ?? "anon"}`;
+const keyFor = statsLayoutKey;
 
 function read(userId: string | undefined): StatsLayout {
   try {
@@ -56,6 +58,11 @@ export function useStatsLayout() {
 
   useEffect(() => {
     setLayout(read(user?.id));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === keyFor(user?.id) || e.key === null) setLayout(read(user?.id));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [user?.id]);
 
   const toggle = useCallback(
@@ -67,6 +74,7 @@ export function useStatsLayout() {
         } catch {
           /* storage unavailable */
         }
+        if (user?.id) saveAccountSetting("statsLayout", JSON.stringify(next));
         return next;
       });
     },
@@ -82,6 +90,7 @@ export function useStatsLayout() {
         } catch {
           /* storage unavailable */
         }
+        if (user?.id) saveAccountSetting("statsLayout", JSON.stringify(next));
         return next;
       });
     },
@@ -95,6 +104,7 @@ export function useStatsLayout() {
     } catch {
       /* storage unavailable */
     }
+    if (user?.id) saveAccountSetting("statsLayout", null);
   }, [user?.id]);
 
   return { layout, toggle, setCountryShare, reset };

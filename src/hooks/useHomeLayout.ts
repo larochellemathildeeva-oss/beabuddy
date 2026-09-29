@@ -1,5 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { homeLayoutKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
 export type HomeSectionKey = "trip" | "weather" | "waiting" | "future";
 
@@ -27,7 +29,7 @@ export const DEFAULT_HOME_LAYOUT: HomeLayout = {
   future: true,
 };
 
-const keyFor = (userId: string | undefined) => `bea-home-layout-${userId ?? "anon"}`;
+const keyFor = homeLayoutKey;
 
 function read(userId: string | undefined): HomeLayout {
   try {
@@ -82,6 +84,7 @@ function write(userId: string | undefined, next: HomeLayout | null): void {
     /* storage unavailable: the choice lasts for this visit */
   }
   cache.set(key, { raw, layout: next ?? DEFAULT_HOME_LAYOUT });
+  if (userId) saveAccountSetting("homeLayout", raw);
   for (const listener of listeners) listener();
 }
 

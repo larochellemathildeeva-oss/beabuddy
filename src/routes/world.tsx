@@ -1020,7 +1020,7 @@ function WorldPage() {
                   {statsEdit && (
                     <div className="space-y-2 border-t border-border pt-3">
                       <p className="text-[13px] text-muted-foreground">
-                        Pick what Béa counts. Saved on this phone.
+                        Pick what Béa counts. Saved to your account.
                       </p>
                       {STAT_OPTIONS.map((option) => (
                         <div key={option.key} className="flex items-center justify-between gap-3">

@@ -6,9 +6,11 @@ import {
   type BeaSettings,
   type SuccessKind,
 } from "@/lib/bea-personality";
+import { PERSONALITY_KEY } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
-/** Béa's personality lives on the device, like the theme: a preference, not account data. */
-export const BEA_SETTINGS_KEY = "bea-personality";
+/** Béa's personality follows the account, like the theme (account-settings.ts). */
+export const BEA_SETTINGS_KEY = PERSONALITY_KEY;
 
 const listeners = new Set<() => void>();
 let cached: BeaSettings | null = null;
@@ -31,6 +33,7 @@ export function saveBeaSettings(next: BeaSettings): void {
   } catch {
     /* private mode: kept for this visit */
   }
+  saveAccountSetting("personality", JSON.stringify(cached));
   for (const listener of listeners) listener();
 }
 

@@ -2,8 +2,10 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getRates, HOME_CURRENCIES, type RateTable } from "@/lib/rates.functions";
+import { HOME_CURRENCY_KEY } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
-const HOME_KEY = "bea-home-currency";
+const HOME_KEY = HOME_CURRENCY_KEY;
 
 export const homeCurrencies = HOME_CURRENCIES;
 const ALLOWED_HOME = new Set<string>(HOME_CURRENCIES);
@@ -54,6 +56,11 @@ export function useRates() {
 
   useEffect(() => {
     setHome(guessHome());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === HOME_KEY || e.key === null) setHome(guessHome());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const load = useCallback(
@@ -89,6 +96,7 @@ export function useRates() {
   const setHomeCurrency = useCallback((next: string) => {
     if (!ALLOWED_HOME.has(next)) return;
     window.localStorage.setItem(HOME_KEY, next);
+    saveAccountSetting("homeCurrency", next);
     setHome(next);
   }, []);
 

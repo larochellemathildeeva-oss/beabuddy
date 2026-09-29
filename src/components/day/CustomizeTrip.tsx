@@ -29,7 +29,7 @@ export function CustomizeTrip({
         open={open}
         onClose={() => setOpen(false)}
         title="Customize"
-        hint="Choose what the trip page shows. Your choice is saved on this device."
+        hint="Choose what the trip page shows. Your choice follows you to every device you sign in on."
         width="sm"
       >
         <div className="divide-y divide-border">

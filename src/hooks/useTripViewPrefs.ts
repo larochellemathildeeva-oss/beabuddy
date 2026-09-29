@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { tripViewKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
 /**
  * What the trip page shows, chosen by the traveller.
  *
  * Three switches, not the prototype's eight. A preference is for something
  * someone may not want to see; something absent because the data is not
- * there is a conditional render, not a setting. Kept on this device, the
+ * there is a conditional render, not a setting. Kept with the account, the
  * same way the Home layout is.
  */
 export type TripViewKey = "ribbon" | "journey" | "walkTimes" | "nesting";
@@ -39,7 +41,7 @@ export const DEFAULT_TRIP_VIEW: TripViewPrefs = {
   nesting: true,
 };
 
-const keyFor = (userId: string | undefined) => `bea-trip-view-${userId ?? "anon"}`;
+const keyFor = tripViewKey;
 
 function read(userId: string | undefined): TripViewPrefs {
   try {
@@ -57,6 +59,11 @@ export function useTripViewPrefs() {
 
   useEffect(() => {
     setPrefs(read(user?.id));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === keyFor(user?.id) || e.key === null) setPrefs(read(user?.id));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [user?.id]);
 
   const toggle = useCallback(
@@ -68,6 +75,7 @@ export function useTripViewPrefs() {
         } catch {
           /* storage unavailable: the choice lasts for this visit */
         }
+        if (user?.id) saveAccountSetting("tripView", JSON.stringify(next));
         return next;
       });
     },

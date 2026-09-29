@@ -8,7 +8,7 @@
  * stop card). A place with no photo, or one not yet on the map, keeps its
  * illustration, so a list is never left with holes.
  *
- * Kept on this device, like the theme. Applied as `data-pictures` on <html>;
+ * Kept with the account, like the theme (account-settings.ts). Applied as `data-pictures` on <html>;
  * `.place-art` images are hidden by CSS when it is "none".
  */
 export const STOP_PICTURES = ["illustrations", "photos", "none"] as const;

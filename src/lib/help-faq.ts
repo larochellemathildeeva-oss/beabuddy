@@ -88,7 +88,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "How do I customize Home?",
-        a: "On You → Appearance, under Customize home. You can hide Weather, Trips, Saved places or the Future me note. The choice is saved on this device.",
+        a: "On You → Appearance, under Customize home. You can hide Weather, Trips, Saved places or the Future me note. The choice is saved to your account, so it follows you to every device you sign in on.",
       },
     ],
   },

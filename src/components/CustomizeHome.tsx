@@ -49,7 +49,8 @@ export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" }
         <SheetHeader className="text-left">
           <SheetTitle>Customize home</SheetTitle>
           <SheetDescription>
-            Choose which sections appear on your Home screen. Your choice is saved on this device.
+            Choose which sections appear on your Home screen. Your choice follows you to every
+            device you sign in on.
           </SheetDescription>
         </SheetHeader>
         <div className="mt-2 divide-y divide-border">

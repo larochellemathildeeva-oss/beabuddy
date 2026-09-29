@@ -1,5 +1,6 @@
 /**
- * Béa's three looks, picked on the You page and kept on this device.
+ * Béa's three looks, picked on the You page and kept with the account
+ * (account-settings.ts), with a copy on each device for first paint.
  *
  *   calm     — white, cream and light beige (the default)
  *   colorful — cheerful pastels (lilac, sky, teal, cyan, pink) with a violet accent

@@ -121,7 +121,7 @@ function previewLines(mix: BeaMix, round: number): { trait: BeaTrait; line: stri
  * Presets are starting points; moving any slider makes the mix Custom (or
  * whatever it now leans towards). The sliders are intensities — they need not
  * add to 100, and the share each one gets is shown beside it. Everything saves
- * as it changes, on this device.
+ * as it changes, to the account.
  *
  * What the mix never touches is said on the page: facts, plans and
  * recommendations are the same whatever Béa sounds like, and serious moments
