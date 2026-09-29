@@ -186,6 +186,39 @@ export const PLAIN_WORKING: Record<BeaWork, string> = {
   think: "Béa is comparing the options.",
 };
 
+/**
+ * What Béa is drawn doing next while she waits. Her own work comes up most,
+ * the other two kinds of work for variety, and — with surprises on and some
+ * play in the mix — chasing the ball or digging up a bone. Never the same
+ * side trip twice in a row. `jokes: false` keeps to the three kinds of work.
+ */
+export function nextPose(input: {
+  work: BeaWork;
+  previous: BeaAction;
+  settings: BeaSettings;
+  jokes?: boolean;
+  rand?: () => number;
+}): BeaAction {
+  const { work, previous, settings, jokes = true, rand = Math.random } = input;
+  const shares = normalizeMix(settings.mix);
+  const weights: [BeaAction, number][] = [
+    [work, 3],
+    ...(["run", "dig", "think"] as const)
+      .filter((w) => w !== work)
+      .map((w): [BeaAction, number] => [w, 1.5]),
+  ];
+  if (jokes && settings.surprises && shares.helpful < 0.8) {
+    weights.push(["ball", 1.5], ["bone", work === "dig" ? 1.5 : 0.75]);
+  }
+  const pool = weights.filter(([pose]) => pose === work || pose !== previous);
+  let r = rand() * pool.reduce((s, [, w]) => s + w, 0);
+  for (const [pose, w] of pool) {
+    r -= w;
+    if (r <= 0) return pose;
+  }
+  return work;
+}
+
 type Bank = Partial<Record<"generic" | BeaAction, readonly string[]>>;
 const LOADING = BEA_CHARACTER.loading as Record<BeaTrait, Bank>;
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { loadingLine, type BeaAction, type BeaWork } from "@/lib/bea-personality";
+import { loadingLine, nextPose, type BeaAction, type BeaWork } from "@/lib/bea-personality";
 import { beaRecent, rememberBeaLine, useBeaSettings } from "@/hooks/useBeaSettings";
 
 /** Not shown for waits shorter than this, so a quick answer never flashes it. */
@@ -8,9 +8,10 @@ const SHOW_AFTER_MS = 300;
 const MIN_VISIBLE_MS = 650;
 /** A new line no sooner than this. */
 const ROTATE_MS = 9000;
-/** A long wait may earn the rare ball (or, while digging, bone) once. */
-const EASTER_EGG_AFTER_MS = 20000;
-const EASTER_EGG_CHANCE = 0.08;
+/** She changes what she is doing twice as often as she says something new. */
+const POSE_MS = ROTATE_MS / 2;
+const POSES: readonly BeaAction[] = ["run", "dig", "think", "ball", "bone"];
+const isSideTrip = (pose: BeaAction) => pose === "ball" || pose === "bone";
 
 function useReducedMotion(): boolean {
   const [reduce, setReduce] = useState(false);
@@ -55,7 +56,9 @@ function useShown(active: boolean): boolean {
  *
  * `status` is the real step, when the work has one ("Placing your stops…"):
  * the joke is never the only word on what is happening. `serious` keeps the
- * line plain. Reduce Motion gets the still picture and no rotation.
+ * line plain and Béa on her own task. Otherwise she switches between running,
+ * digging, thinking and, now and then, chasing a ball, while the line stays
+ * about the real work. Reduce Motion gets the still picture and no rotation.
  */
 export function BeaLoader({
   active,
@@ -78,29 +81,34 @@ export function BeaLoader({
 
   useEffect(() => {
     if (!shown) return;
-    const start = Date.now();
-    let egged = false;
-    const say = (a: BeaAction) => {
-      const next = loadingLine({ action: a, settings, recent: beaRecent(), serious });
+    let current: BeaAction = action;
+    const say = (shownPose: BeaAction) => {
+      // The line is about the real work; only a ball or a bone gets its own.
+      const about = isSideTrip(shownPose) ? shownPose : action;
+      const next = loadingLine({ action: about, settings, recent: beaRecent(), serious });
       rememberBeaLine(next);
       setLine(next);
     };
     setPose(action);
     say(action);
     if (reduce) return;
+    if (!serious) {
+      for (const p of POSES) new Image().src = `/bea/bea-${p}.webp`;
+    }
+    let tick = 0;
     const timer = window.setInterval(() => {
-      const long = Date.now() - start > EASTER_EGG_AFTER_MS;
-      if (!egged && long && !serious && settings.surprises && Math.random() < EASTER_EGG_CHANCE) {
-        egged = true;
-        const egg: BeaAction = action === "dig" && Math.random() < 0.5 ? "bone" : "ball";
-        setPose(egg);
-        say(egg);
+      tick += 1;
+      const newLine = tick % 2 === 0;
+      if (serious) {
+        if (newLine) say(action);
         return;
       }
-      // After the Easter egg, straight back to the work.
-      setPose(action);
-      say(action);
-    }, ROTATE_MS);
+      // Between lines she only switches work, so a ball joke keeps its ball.
+      if (!newLine && isSideTrip(current)) return;
+      current = nextPose({ work: action, previous: current, settings, jokes: newLine });
+      setPose(current);
+      if (newLine) say(current);
+    }, POSE_MS);
     return () => window.clearInterval(timer);
   }, [shown, action, serious, reduce, settings]);
 
