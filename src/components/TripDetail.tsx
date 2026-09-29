@@ -75,6 +75,7 @@ import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { TripCheckup } from "@/components/day/TripCheckup";
+import { PastYouCard } from "@/components/day/PastYouCard";
 import { tripCheckup } from "@/lib/trip-checkup";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -1392,6 +1393,16 @@ export function TripDetail({
           <p className="mb-3 px-0.5 text-[12px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
+        {/* Past You, for a trip still ahead or under way: not one already over. */}
+        {perspective === "overview" &&
+          todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
+            <div className="mb-3">
+              <PastYouCard
+                trip={trip}
+                places={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
+              />
+            </div>
+          )}
         {perspective === "overview" && (
           <TripOverview
             tripId={trip.id}
