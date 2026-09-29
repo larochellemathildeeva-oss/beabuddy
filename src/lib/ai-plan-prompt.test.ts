@@ -74,6 +74,26 @@ describe("AI plan prompt", () => {
     );
   });
 
+  it("reads a flight written on one line, landing time and all, as one flight", () => {
+    const plan = readPlainPlan(
+      `Day 1 — 2026-10-11 — Montréal, Canada → Paris, France
+09:00 Breakfast at Olive et Gourmando, 351 Rue Saint-Paul Ouest
+18:30 Flight AC 870 from Montréal-Trudeau Airport to Paris-Charles de Gaulle Airport — lands next day 07:30; book ahead
+Day 2 — 2026-10-12 — Paris, France
+10:00 Check in at Hôtel des Grands Boulevards, 17 Boulevard Poissonnière`,
+      { startDate: null, tripCity: null },
+    );
+    assert.ok(plan);
+    assert.deepEqual(
+      plan.items.map((i) => [i.kind, i.time_label, i.place, i.detail]),
+      [
+        ["meal", "09:00", "Olive et Gourmando", null],
+        ["flight", "18:30", "Montréal-Trudeau Airport", "lands next day 07:30; book ahead"],
+        ["lodging", "10:00", "Hôtel des Grands Boulevards", null],
+      ],
+    );
+  });
+
   it("keeps flights and airports as stops of their own", () => {
     const plan = readPlainPlan(
       `Day 1 — 2026-10-11 — Montréal, Canada → Paris, France

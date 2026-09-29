@@ -16,7 +16,13 @@ import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import type { SearchGrounding } from "@/lib/search-grounding";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
-import { foldTravelLegs, nestWithin, normalizeClock, tidyImportedRow } from "@/lib/import-stop";
+import {
+  foldTravelLegs,
+  nestWithin,
+  normalizeClock,
+  tidyImportedRow,
+  withoutInventedTimes,
+} from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
 import { routeStopLine } from "@/lib/trip-cities";
 
@@ -169,6 +175,7 @@ const instructions = (
       : 'city: the town or city the stop is in, as "City, Country" when the country is known, whenever the source says or the day and the stops around it make it plain (a day trip to Miyajima, a night in Kyoto). The trip learns its destinations from it. Null only when there is no way to tell.',
     "within: when the source names a place and then lists things to see in or at it (a museum's galleries, the monuments of a park, the halls of a temple), give each of those its own item and set within to the title of that earlier item, exactly as you wrote it. Keep their times only when the source gives them. The same for a neighbourhood, market or street and the shops, stalls, cafés or sights listed under it: each its own item with within set, and place set to that spot's own name. Never leave out a place listed under another. Null for everything else.",
     'One item per thing to do. When one line joins different activities ("Visit Peace Memorial Museum / stroll along the Motoyasu River", "Museum, then lunch at Okonomimura"), return an item for each, in order; the line\'s time goes on the first, and the others get a time only when the source gives one. A list of places seen in one visit ("Peace Park / Atomic Bomb Dome / Cenotaph") stays one item.',
+    'Leave out places the traveller did not visit: ones they only walked or drove past, did not go into, or say they skipped or missed ("walked past the Colosseum, didn\'t go in", "skipped the summit"). A backup ("or Sorbillo if the line is too long") is not an item of its own: keep it in the detail of the place it backs up.',
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
     tripCity ? `The trip is around ${tripCity}.` : "",
     route
@@ -278,9 +285,30 @@ export async function runParse(
   });
   const out = result.output;
   onRaw?.(out.items);
-  const parsed: ParsedItinerary = { ...out, items: tidyModelItems(out.items, data.mode) };
+  // A plan longer than Béa keeps says so, rather than losing its last days
+  // without a word (it used to stop at 60 stops, about ten days).
+  const cut = out.items.length > MAX_PLAN_ITEMS;
+  const parsed: ParsedItinerary = {
+    ...out,
+    summary: cut
+      ? `${out.summary} Béa kept the first ${MAX_PLAN_ITEMS} of ${out.items.length} stops — import the rest as a second plan.`
+      : out.summary,
+    items: tidyModelItems(
+      out.items,
+      data.mode,
+      // A pasted plan's own times are the only ones a stop may have; a photo
+      // or PDF has no text to check them against.
+      data.mode === "import" && importFiles.length === 0 ? (data.text ?? undefined) : undefined,
+    ),
+  };
   return applyCostPolicy(parsed, Boolean(data.includeCosts));
 }
+
+/**
+ * The most stops one plan keeps, as the plain-list reader does: a three-week
+ * trip runs past a hundred, and the last days used to go missing unnoticed.
+ */
+export const MAX_PLAN_ITEMS = 150;
 
 /**
  * The model's rows as Béa keeps them. Exported for scripts/itinerary-audit,
@@ -289,8 +317,18 @@ export async function runParse(
 export function tidyModelItems(
   items: readonly ParsedItineraryItem[],
   mode: "import" | "build",
+  /** The pasted plan, when there is one: a time it never gave is dropped. */
+  source?: string,
 ): ParsedItineraryItem[] {
   const data = { mode };
+  const kept = tidyAll(items, data);
+  return source ? withoutInventedTimes(kept, source) : kept;
+}
+
+function tidyAll(
+  items: readonly ParsedItineraryItem[],
+  data: { mode: "import" | "build" },
+): ParsedItineraryItem[] {
   return (
     // Travel legs the model made anyway become notes on the stop they lead to.
     // Kinds normalised first, so the fold sees "transport" however it was
@@ -298,7 +336,7 @@ export function tidyModelItems(
     // Then what is listed inside a place joins that visit (nestWithin).
     nestWithin(
       foldTravelLegs(
-        items.slice(0, 60).map((i) => ({
+        items.slice(0, MAX_PLAN_ITEMS).map((i) => ({
           // Kinds normalised before the tidy, which files a night as a stay.
           ...tidyImportedRow({ ...i, kind: normaliseKind(i.kind) }),
           // A time the timeline cannot sort is worse than none.
@@ -521,8 +559,16 @@ const ReviseInput = z
     currency: z.string().max(3).nullable(),
     includeCosts: z.boolean(),
     originalRequest: z.string().max(20_000).nullable(),
-    items: z.array(ReviseItemIn).min(1).max(60),
-    selectedIndexes: z.array(z.number().int().min(0).max(59)).max(40),
+    items: z.array(ReviseItemIn).min(1).max(MAX_PLAN_ITEMS),
+    selectedIndexes: z
+      .array(
+        z
+          .number()
+          .int()
+          .min(0)
+          .max(MAX_PLAN_ITEMS - 1),
+      )
+      .max(40),
     reason: z.string().trim().min(3).max(800),
     mode: z.enum(["alternatives", "rebuild"]),
     /** "Just for this trip": said once on the trip, ahead of the saved profile. */

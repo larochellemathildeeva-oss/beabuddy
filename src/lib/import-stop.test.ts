@@ -2,6 +2,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   afterJourney,
+  foldTravelLegs,
+  clockTimesIn,
+  withoutInventedTimes,
   afterRide,
   tidyImportedRow,
   normalizeClock,
@@ -546,4 +549,71 @@ test("afterRide: any train, bus or flight before a stop may end a day out", () =
   assert.equal(afterRide({ kind: "flight" }), true);
   assert.equal(afterRide({ kind: "meal" }), false);
   assert.equal(afterRide(undefined), false);
+});
+
+test("clockTimesIn: the times a plan gives, however it writes them", () => {
+  const times = clockTimesIn(
+    "08:30 Café de Flore. 9.45 museum, lunch 1pm, 13h30 walk, dinner at 7 p.m., drinks till midnight, llegamos a eso de las 11, tour 9–11am",
+  );
+  for (const t of [
+    "08:30",
+    "09:45",
+    "13:00",
+    "13:30",
+    "19:00",
+    "00:00",
+    "11:00",
+    "23:00",
+    "09:00",
+    "21:00",
+  ])
+    assert.ok(times.has(t), t);
+  // Dates and day numbers are not times.
+  assert.equal(clockTimesIn("Day 5 — 2026-10-10").size, 0);
+});
+
+test("withoutInventedTimes: a time the source never gave is dropped", () => {
+  const rows = [
+    { title: "Uffizi Gallery", time_label: "09:00", end_time: null },
+    { title: "Lunch", time_label: "13:30", end_time: null },
+    { title: "Ponte Vecchio", time_label: "21:00", end_time: "22:00" },
+  ];
+  const out = withoutInventedTimes(
+    rows,
+    "Morning: Uffizi Gallery. Lunch around 1:30 PM. Late evening: stroll around Ponte Vecchio.",
+  );
+  assert.deepEqual(
+    out.map((r) => [r.time_label, r.end_time]),
+    [
+      [null, null],
+      ["13:30", null],
+      [null, null],
+    ],
+  );
+});
+
+test("foldTravelLegs: a boat to a sight is the visit; a boat to an island folds", () => {
+  const r = (title: string, kind = "sight", time_label: string | null = null) => ({
+    kind,
+    title,
+    detail: null,
+    time_label,
+    day_date: "2026-12-05",
+    day_number: 1,
+  });
+  assert.deepEqual(
+    foldTravelLegs([
+      r("Wat Pho"),
+      r("Ferry to Wat Arun", "transport", "11:30"),
+      r("Jay Fai", "meal"),
+    ]).map((x) => x.title),
+    ["Wat Pho", "Wat Arun", "Jay Fai"],
+  );
+  assert.deepEqual(
+    foldTravelLegs([
+      r("Take the ferry to Miyajima", "transport", "10:30"),
+      r("Itsukushima Shrine"),
+    ]).map((x) => x.title),
+    ["Itsukushima Shrine"],
+  );
 });

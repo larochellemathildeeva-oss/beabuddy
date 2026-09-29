@@ -26,10 +26,13 @@ import { build } from "esbuild";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { installSpendGuard } from "./spend-guard.mjs";
 import { TRUTH } from "./pins-truth.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
+// Every paid request counted, across runs, and refused past the day's cap.
+const spend = await installSpendGuard(root);
 const bench = join(root, "scripts/places-bench");
 const out = join(here, "out");
 mkdirSync(out, { recursive: true });
@@ -85,6 +88,19 @@ const km = (a, b) => {
 const fold = (s) => (s ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 const PLACE_BATCH = 8;
 let requests = 0;
+/** A city venue's margin once its point is checked, as Gemini's review asked. */
+const TIGHT_KM = 0.25;
+/** Places whose point Wikipedia agrees with (out/truth-check.json), keyed plan|name. */
+const verified = new Map();
+try {
+  for (const row of JSON.parse(readFileSync(join(out, "truth-check.json"), "utf8"))) {
+    if (row.verdict === "agrees") verified.set(`${row.id}|${row.match}`, row);
+  }
+} catch {
+  console.log(
+    "No out/truth-check.json: run check-truth.mjs first to score against checked points.",
+  );
+}
 /** One pace for the whole run: the provider's minute cap is the app's, not a plan's. */
 let recent = [];
 let throttles = 0;
@@ -182,11 +198,22 @@ for (const fixture of fixtures) {
     if (!hit) {
       tally.unplaced++;
       console.log(`  · ${truth.match}: not placed`);
-      report.push({ id: fixture.id, ...truth, result: "unplaced" });
+      report.push({
+        id: fixture.id,
+        ...truth,
+        result: "unplaced",
+        verified: verified.has(`${fixture.id}|${truth.match}`),
+      });
       continue;
     }
-    const off = km(hit, truth);
-    const ok = off <= (truth.km ?? 0.7);
+    // Checked against Wikipedia (check-truth.mjs): its point, and a city
+    // venue's margin tightened to 250 m. Unchecked: the key as written, at
+    // its own margin, and reported as unverified.
+    const checked = verified.get(`${fixture.id}|${truth.match}`);
+    const target = checked ? checked.wiki : truth;
+    const margin = checked ? ((truth.km ?? 0.7) > 0.7 ? truth.km : TIGHT_KM) : (truth.km ?? 0.7);
+    const off = km(hit, target);
+    const ok = off <= margin;
     // Whether the import screen would save this pin unasked, as it decides.
     const row = rows.items[index];
     const rank = { high: 2, medium: 1, low: 0 };
@@ -224,12 +251,22 @@ for (const fixture of fixtures) {
       result: verdict,
       confidence,
       offKm: Number(off.toFixed(2)),
+      verified: Boolean(checked),
+      marginKm: margin,
+      pin: { lat: hit.lat, lon: hit.lon },
       label: hit.label ?? null,
       farKm: hit.farKm ?? null,
     });
   }
 }
 const total = Object.values(tally).reduce((a, b) => a + b, 0);
+const tier = (v) => {
+  const rs = report.filter((r) => r.verified === v && r.result !== "no stop");
+  const n = (k) => rs.filter((r) => r.result === k).length;
+  return `${n("right")}/${rs.length} saved right, ${n("wrong")} saved WRONG, ${n("rightFlagged") + n("wrongFlagged")} flagged, ${n("unplaced")} not placed`;
+};
+console.log(`\nChecked against Wikipedia (250 m for city venues): ${tier(true)}`);
+console.log(`Unchecked answer key (old margins): ${tier(false)}`);
 console.log(
   `\nSaved right ${tally.right}/${total} · saved WRONG ${tally.wrong} · right but flagged ${tally.rightFlagged} · wrong and flagged ${tally.wrongFlagged} · not placed ${tally.unplaced} · no such stop ${tally.missingStop}`,
 );
@@ -239,3 +276,4 @@ console.log(
 const file = join(out, `pins-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
 writeFileSync(file, JSON.stringify({ tally, report }, null, 2));
 console.log(`Report: ${file} · ${requests} map requests · throttled ${throttles}×`);
+spend.report();
