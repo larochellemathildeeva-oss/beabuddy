@@ -118,8 +118,9 @@ async function geocode(
     nameDetails: true,
     ...(box ? { viewbox: boxViewbox(box), bounded: true } : {}),
   });
+  const { geoFetch } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(url, {
+    const res = await geoFetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
