@@ -115,8 +115,10 @@ charges for it (`geoapifyCredits` in `geo-credits.ts`, pure and tested: a
 geocode, route or place search 1, Place Details 2, a tile or font ¼, a static
 map 1 plus 1 per marker). At `GEOAPIFY_DAILY_CREDITS` (2,700 unless the env
 var of that name says otherwise), or when Geoapify answers 401, 402 or 403,
-Geoapify rests until midnight UTC; a 429 rests it for ten minutes. While it
-rests, `geoProvider()` answers with LocationIQ, else the public servers,
+Geoapify rests until midnight UTC; a 429 rests it for its `Retry-After`, or a
+minute. While it rests, `geoFetch` sends nothing to Geoapify (a 503 instead),
+batches re-ask `geoProvider()` before each lookup, and it answers with
+LocationIQ, else the public servers,
 Geoapify-only extras (hours, photos by place, nearby categories, static
 maps) are skipped, and `/api/vtile` 404s so the day map draws image tiles.
 The count is kept in the server's memory, so a restart starts it again at 0.

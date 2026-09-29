@@ -333,7 +333,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     // rather than at the top of the file: this module ships to the client
     // bundle, and the token must not go with it.
     const { geoProvider } = await import("@/lib/geo-provider.server");
-    const provider = geoProvider();
+    // Re-read before every lookup: Geoapify can rest mid-batch (geo-credits.ts).
+    let provider = geoProvider();
     const overture = data.venues ? await import("@/lib/open-places.server") : null;
 
     // Every answer, not the chosen one: which answer is the stop depends on
@@ -351,6 +352,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     /** Waits its turn, then counts the request. False when out of time or budget. */
     const takeTurn = async (): Promise<boolean> => {
       if (budget <= 0 || Date.now() > deadline) return false;
+      provider = geoProvider();
       // The gap goes before every request but the first, so a one-stop plan
       // does not sit still for a second before it starts. The delay honours
       // the minute cap too: two a second empties sixty a minute in thirty

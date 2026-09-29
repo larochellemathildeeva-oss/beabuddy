@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { CreditGuard, RATE_LIMIT_REST_MS, geoapifyCredits, nextUtcDay } from "./geo-credits.ts";
+import {
+  CreditGuard,
+  RATE_LIMIT_REST_MAX_MS,
+  RATE_LIMIT_REST_MS,
+  geoapifyCredits,
+  nextUtcDay,
+} from "./geo-credits.ts";
 import { geoapifyDetailsUrl, geoapifyPlacesUrl, geoapifyStaticMapUrl } from "./geoapify.ts";
 
 const noon = Date.UTC(2026, 8, 28, 12);
@@ -51,7 +57,7 @@ test("reaching the ceiling rests Geoapify until the next UTC day", () => {
   assert.equal(guard.credits(tomorrow), 0);
 });
 
-test("a refusal rests it for the day, a 429 for ten minutes", () => {
+test("a refusal rests it for the day, a 429 for a minute", () => {
   const refused = new CreditGuard();
   assert.equal(refused.answered(200, noon), false);
   assert.equal(refused.answered(404, noon), false);
@@ -65,4 +71,23 @@ test("a refusal rests it for the day, a 429 for ten minutes", () => {
   assert.equal(busy.resting(noon + RATE_LIMIT_REST_MS - 1), true);
   assert.equal(busy.resting(noon + RATE_LIMIT_REST_MS), false);
   assert.equal(busy.reason, null);
+});
+
+test("a 429 honours Retry-After, up to ten minutes", () => {
+  const short = new CreditGuard();
+  short.answered(429, noon, 5);
+  assert.equal(short.resting(noon + 4_999), true);
+  assert.equal(short.resting(noon + 5_000), false);
+
+  const long = new CreditGuard();
+  long.answered(429, noon, 86_400);
+  assert.equal(long.resting(noon + RATE_LIMIT_REST_MAX_MS - 1), true);
+  assert.equal(long.resting(noon + RATE_LIMIT_REST_MAX_MS), false);
+});
+
+test("the request that reaches the ceiling is the last one counted", () => {
+  const guard = new CreditGuard(2);
+  assert.equal(guard.resting(noon), false);
+  assert.equal(guard.spend(2, noon), true);
+  assert.equal(guard.resting(noon), true, "geoFetch sends nothing after this");
 });

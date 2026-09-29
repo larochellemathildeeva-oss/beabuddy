@@ -235,7 +235,15 @@ type NominatimHit = NominatimHitLike;
  */
 type Pace = { provider: GeoProvider; sent: number[] };
 
+/** Whoever answers now: Geoapify can rest mid-search (geo-credits.ts). */
+async function refresh(pace: Pace) {
+  const { geoProvider } = await import("@/lib/geo-provider.server");
+  pace.provider = geoProvider();
+}
+
 async function wait(pace: Pace) {
+  // At the pace of whoever answers now.
+  await refresh(pace);
   const delay = nextDelayMs(pace.provider, pace.sent, Date.now());
   if (delay > 0) await new Promise((r) => setTimeout(r, delay));
   pace.sent.push(Date.now());
@@ -258,8 +266,8 @@ async function nominatim(
   // Server-only: the token must not be compiled into the client bundle.
   const { geoProvider, geoFetch } = await import("@/lib/geo-provider.server");
   const { PUBLIC_PROVIDER } = await import("@/lib/geo-endpoints");
-  const provider = geoProvider();
   if (pace) await wait(pace);
+  const provider = pace?.provider ?? geoProvider();
   const options = {
     query: q,
     limit,
@@ -517,6 +525,7 @@ async function autocompleteHits(
   pace: Pace,
   opts: { areas: boolean; area?: { viewbox: string; bounded: boolean } },
 ): Promise<NominatimHit[]> {
+  await refresh(pace);
   const url = autocompleteUrl(pace.provider, {
     query,
     limit: 10,

@@ -56,15 +56,19 @@ export async function geoFetch(url: string, init?: RequestInit): Promise<Respons
   const credits = geoapifyCredits(url);
   if (!credits) return fetch(url, init);
   const g = guard();
+  // A URL built before Geoapify rested (a batch, a request in flight) is not
+  // sent: callers read a 503 as "try later", and pick the fallback next time.
+  if (g.resting(Date.now())) return new Response(null, { status: 503 });
   if (g.spend(credits, Date.now())) {
     console.warn(
       `[geo] Geoapify: ${Math.round(g.credits(Date.now()))} credits today, the ceiling is ${g.ceiling}; lookups move to ${fallbackName()} until midnight UTC`,
     );
   }
   const res = await fetch(url, init);
-  if (g.answered(res.status, Date.now())) {
+  const retryAfter = Number(res.headers.get("retry-after"));
+  if (g.answered(res.status, Date.now(), Number.isFinite(retryAfter) ? retryAfter : undefined)) {
     console.warn(
-      `[geo] Geoapify answered ${res.status}; lookups move to ${fallbackName()} ${g.reason === "rate-limited" ? "for ten minutes" : "until midnight UTC"}`,
+      `[geo] Geoapify answered ${res.status}; lookups move to ${fallbackName()} ${g.reason === "rate-limited" ? "for a while" : "until midnight UTC"}`,
     );
   }
   return res;

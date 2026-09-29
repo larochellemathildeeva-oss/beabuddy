@@ -13,8 +13,13 @@
 /** Under the plan's 3,000, leaving room for what was spent before a restart. */
 export const GEOAPIFY_DAILY_CREDITS = 2_700;
 
-/** How long a 429 rests Geoapify: too fast and too many look the same. */
-export const RATE_LIMIT_REST_MS = 10 * 60_000;
+/**
+ * How long a 429 rests Geoapify when it does not say: long enough for its
+ * five-a-second limit to clear, short enough that one busy moment does not
+ * cut short an offline map save. A `Retry-After` is honoured up to the cap.
+ */
+export const RATE_LIMIT_REST_MS = 60_000;
+export const RATE_LIMIT_REST_MAX_MS = 10 * 60_000;
 
 /**
  * What one request to `url` costs, from Geoapify's pricing and its own usage
@@ -55,7 +60,7 @@ export type RestReason = "ceiling" | "refused" | "rate-limited";
  * `spend` adds a request's credits and rests Geoapify for the rest of the day
  * once the ceiling is reached. `answered` reads Geoapify's status: 401, 402
  * and 403 (no credit left, or a key it will not take) rest it for the day,
- * a 429 for ten minutes, then it is asked again.
+ * a 429 for its `Retry-After` or a minute, then it is asked again.
  */
 export class CreditGuard {
   private day = 0;
@@ -100,14 +105,15 @@ export class CreditGuard {
   }
 
   /** True when this answer put Geoapify to rest. */
-  answered(status: number, now: number): boolean {
+  answered(status: number, now: number, retryAfterS?: number): boolean {
     if (this.resting(now)) return false;
     if (status === 401 || status === 402 || status === 403) {
       this.rest(nextUtcDay(now), "refused");
       return true;
     }
     if (status === 429) {
-      this.rest(now + RATE_LIMIT_REST_MS, "rate-limited");
+      const asked = retryAfterS && retryAfterS > 0 ? retryAfterS * 1000 : RATE_LIMIT_REST_MS;
+      this.rest(now + Math.min(asked, RATE_LIMIT_REST_MAX_MS), "rate-limited");
       return true;
     }
     return false;
