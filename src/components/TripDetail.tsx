@@ -891,6 +891,10 @@ export function TripDetail({
     const stop = stopItems.find((item) => item.id === stopId);
     if (!stop) return;
     setPerspective("timeline");
+    // Filters that could leave the stop off the page: another city picked,
+    // or visited stops hidden.
+    if (cityChoice) setCityChoice("");
+    setHideDone(false);
     const day = stop.day_date ?? "";
     if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
     setCollapsedDays((prev) => ({ ...prev, [day]: false }));
@@ -1155,7 +1159,9 @@ export function TripDetail({
           start_date: trip.start_date,
           end_date: trip.end_date,
           items: stopItems,
-          strayIds,
+          // Judged from real pins only: a failed geocode at 0,0 would skew
+          // the middle of the trip and hide a genuinely distant stop.
+          strayIds: strayStopIds(stopItems.filter((i) => !(i.lat === 0 && i.lon === 0))),
           travelMinutes: (from, to) => {
             const a = itemsById.get(from.id);
             const b = itemsById.get(to.id);

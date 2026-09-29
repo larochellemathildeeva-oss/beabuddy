@@ -15,8 +15,7 @@
  */
 
 import { haversine } from "./geo.ts";
-import { minutesOfDay } from "./day-shape.ts";
-import { normaliseKind, type TimelineKind } from "./timeline-kind.ts";
+import { normaliseKind, timeForRail, type TimelineKind } from "./timeline-kind.ts";
 import { formatTimelineDayLabel } from "./timeline-groups.ts";
 
 export type CheckupStop = {
@@ -75,8 +74,12 @@ export type CheckupInput = {
 const MUST_BOOK = new Set<TimelineKind>(["flight", "hotel", "lodging", "reservation"]);
 /** Kinds whose confirmation number is worth having at the door. */
 const HAS_REF = new Set<TimelineKind>(["flight", "hotel", "lodging", "reservation", "transport"]);
-/** Kinds you go to, so a missing pin matters. A walk is often a route, not a point. */
+/**
+ * Kinds you go to, so a missing pin matters (a flight's is its airport).
+ * A walk is often a route, not a point.
+ */
 const PLACED = new Set<TimelineKind>([
+  "flight",
   "hotel",
   "lodging",
   "reservation",
@@ -125,6 +128,19 @@ function pointOf(stop: CheckupStop): { lat: number; lon: number } | null {
   // 0,0 is where a failed geocode lands, not a stop.
   if (lat === 0 && lon === 0) return null;
   return { lat, lon };
+}
+
+/**
+ * Minutes past midnight for a real clock time, or null. "10:99" from an
+ * import is not a time, and treating it as 11:39 would invent a clash.
+ */
+function clockMinutes(label: string | null | undefined): number | null {
+  const m = /^(\d{2}):(\d{2})$/.exec(timeForRail(label));
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
 }
 
 function clock(minutes: number): string {
@@ -192,7 +208,7 @@ export function tripCheckup(input: CheckupInput): CheckupFinding[] {
   const byDay = new Map<string, { item: CheckupStop; at: number }[]>();
   for (const { item, kind } of items) {
     if (!item.day_date || !SEQUENCED.has(kind)) continue;
-    const at = minutesOfDay(item.time_label);
+    const at = clockMinutes(item.time_label);
     if (at === null) continue;
     const list = byDay.get(item.day_date) ?? [];
     list.push({ item, at });
