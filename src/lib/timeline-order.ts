@@ -131,3 +131,58 @@ function makeRoomAt<T extends { id: string; position: number }>(
     .map((item) => ({ id: item.id, position: item.position + 1 }));
   return { position, shifts };
 }
+
+/**
+ * Places for several new rows at once, each by its day and time among the
+ * rows already there, as chronologicalSlot places one: a hotel asked for on
+ * day 1 at 15:00 goes between 12:30 and 16:00, not after the last day.
+ *
+ * The new rows keep their own order where they say nothing else: an untimed
+ * row straight after the new row before it on the same day, not at the end
+ * of the day. Returns each new row's position, in the order given, and the
+ * rows already there whose position changes, each once, at its final place.
+ */
+export function chronologicalPositions<
+  T extends { id: string; day_date: string | null; position: number; time_label: string | null },
+>(
+  items: readonly T[],
+  additions: readonly { day_date?: string | null; time_label?: string | null }[],
+  minutesOf: (label: string | null | undefined) => number | null,
+): { positions: number[]; shifts: { id: string; position: number }[] } {
+  type Row = { id: string; day_date: string | null; position: number; time_label: string | null };
+  const rows: Row[] = items.map((item) => ({
+    id: item.id,
+    day_date: item.day_date,
+    position: item.position,
+    time_label: item.time_label,
+  }));
+  const newIds = additions.map((_, index) => `\u0000new-${index}`);
+  for (const [index, addition] of additions.entries()) {
+    const day = addition.day_date ?? null;
+    const previous = index > 0 ? additions[index - 1] : undefined;
+    const sorted = [...rows].sort((a, b) => a.position - b.position);
+    const slot =
+      minutesOf(addition.time_label) == null && previous && (previous.day_date ?? null) === day
+        ? insertAfter(sorted, newIds[index - 1]!)
+        : chronologicalSlot(
+            sorted,
+            { day_date: day, time_label: addition.time_label ?? null },
+            minutesOf,
+          );
+    const moved = new Map(slot.shifts.map((shift) => [shift.id, shift.position]));
+    for (const row of rows) row.position = moved.get(row.id) ?? row.position;
+    rows.push({
+      id: newIds[index]!,
+      day_date: day,
+      position: slot.position,
+      time_label: addition.time_label ?? null,
+    });
+  }
+  const at = new Map(rows.map((row) => [row.id, row.position]));
+  return {
+    positions: newIds.map((id) => at.get(id)!),
+    shifts: items
+      .filter((item) => at.get(item.id) !== item.position)
+      .map((item) => ({ id: item.id, position: at.get(item.id)! })),
+  };
+}

@@ -341,3 +341,19 @@ test("a long plan is still read line by line", () => {
   assert.ok(plan);
   assert.equal(plan.items.length, 100);
 });
+
+test("a town after a street address stays with the address", () => {
+  const plan = read(`Day 2 — Katoomba
+10:30 Echo Point Lookout
+14:30 Lunch at Leura Garage, 84 Railway Parade, Leura
+16:00 Scenic World, Violet Street`);
+  const lunch = plan?.items.find((i) => i.title.includes("Leura Garage"));
+  assert.equal(lunch?.address, "84 Railway Parade, Leura");
+  assert.equal(lunch?.title, "Lunch at Leura Garage");
+  // A note after it is not a town.
+  const floor = read(`Day 1
+09:00 Breakfast at Café de Flore
+13:00 Lunch at Le Train Bleu, 1 Place Louis-Armand, 2nd floor
+15:00 Musée d'Orsay`);
+  assert.equal(floor?.items[1]?.address, "1 Place Louis-Armand");
+});

@@ -48,13 +48,14 @@ writeFileSync(
   [
     `export { geocodePlanStops } from ${JSON.stringify(join(root, "src/lib/geocode-plan.functions.ts"))};`,
     `export { readPlainAsList } from ${JSON.stringify(join(root, "src/lib/itinerary.functions.ts"))};`,
-    `export { afterJourney, parentIndex, pinIsSaved, placeBatches } from ${JSON.stringify(join(root, "src/lib/import-stop.ts"))};`,
+    `export { afterJourney, afterRide, parentIndex, pinIsSaved, placeBatches } from ${JSON.stringify(join(root, "src/lib/import-stop.ts"))};`,
     `export { scoreMatch } from ${JSON.stringify(join(root, "src/lib/match-confidence.ts"))};`,
     `export { outsideAddressDistrict } from ${JSON.stringify(join(root, "src/lib/japan-address.ts"))};`,
     `export { airportMatch } from ${JSON.stringify(join(root, "src/lib/geocode-plan.ts"))};`,
     `export { FIXTURES as OLD } from ${JSON.stringify(join(here, "fixtures.ts"))};`,
     `export { FIXTURES as FRESH } from ${JSON.stringify(join(here, "fixtures-fresh.ts"))};`,
     `export { FIXTURES as MORE } from ${JSON.stringify(join(here, "fixtures-more.ts"))};`,
+    `export { FIXTURES as WORLD } from ${JSON.stringify(join(here, "fixtures-world.ts"))};`,
   ].join("\n"),
 );
 await build({
@@ -119,6 +120,7 @@ async function place(fixture, items) {
     address: item.address ?? null,
     city: item.city ?? null,
     ...(lib.afterJourney(item, items[i - 1]) ? { fresh: true } : {}),
+    ...(lib.afterRide(items[i - 1]) ? { rode: true } : {}),
   }));
   const placed = [];
   let near = null;
@@ -148,9 +150,13 @@ async function place(fixture, items) {
   return placed;
 }
 
-const fixtures = [...lib.FRESH, ...lib.MORE, ...lib.OLD, ...TRUTH.extraFixtures].filter(
-  (f) => TRUTH.places[f.id] && (!only || only.split(",").some((o) => f.id.includes(o))),
-);
+const fixtures = [
+  ...lib.WORLD,
+  ...lib.FRESH,
+  ...lib.MORE,
+  ...lib.OLD,
+  ...TRUTH.extraFixtures,
+].filter((f) => TRUTH.places[f.id] && (!only || only.split(",").some((o) => f.id.includes(o))));
 /** right/wrong: saved unasked; …Flagged: shown as "check this one", not saved. */
 const tally = { right: 0, rightFlagged: 0, wrong: 0, wrongFlagged: 0, unplaced: 0, missingStop: 0 };
 const report = [];

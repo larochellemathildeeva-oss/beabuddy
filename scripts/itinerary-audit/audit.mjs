@@ -237,7 +237,9 @@ function score(fixture, out) {
   for (const c of e.cities ?? []) {
     const stop = items.find((i) => hay(i).includes(fold(c.match)));
     // No town of its own: it is looked up in the trip's.
-    if (stop && !fold(stop.city ?? fixture.tripCity).includes(fold(c.city)))
+    // "Keflavík|Reykjav": either town is right (the airport, or the city it serves).
+    const want = c.city.split("|");
+    if (stop && !want.some((w) => fold(stop.city ?? fixture.tripCity).includes(fold(w))))
       add("city", `${c.match} looked up in "${stop.city ?? fixture.tripCity}", want ${c.city}`);
   }
   for (const a of e.addresses ?? []) {

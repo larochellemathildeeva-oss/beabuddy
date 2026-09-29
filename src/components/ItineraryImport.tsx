@@ -88,6 +88,7 @@ import {
   placeBatches,
   routeCityOn,
   afterJourney,
+  afterRide,
   routeCountry,
   stayMinutesFrom,
   type PinChoice,
@@ -697,6 +698,7 @@ function ImportPanel({
         ...(dayArea ? { area: dayArea } : {}),
         // A train or flight before it: not beside the stop before it.
         ...(afterJourney(item, dated[i - 1]) ? { fresh: true } : {}),
+        ...(afterRide(dated[i - 1]) ? { rode: true } : {}),
       };
     });
     const placeable = stops.some((stop) => stop.city?.trim() || stop.area);

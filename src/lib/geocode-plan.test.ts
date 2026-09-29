@@ -2,12 +2,14 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   airportMatch,
+  airportNameWords,
   areaHitFor,
   boxAround,
   distanceKm,
   estimatedSeconds,
   labelAddress,
   namesAirport,
+  outingReachKm,
   pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
@@ -291,4 +293,126 @@ test("areaHitFor: the town the trip names, not the country answered first", () =
     "Kyōto, Kyoto Prefecture, Japan",
   );
   assert.equal(areaHitFor([country], "Mexico City, Mexico"), null);
+});
+
+test("areaHitFor: the city, not the region of the same name", () => {
+  // LocationIQ calls the city "Cuzco" and answers the region "Cusco" second.
+  const city = {
+    display_name: "Cuzco, Distrito de Cusco, Province of Cusco, Cusco, 08001, Peru",
+    class: "place",
+    type: "city",
+    namedetails: { name: "Cuzco", "name:qu": "Qusqu", alt_name: "Cusco" },
+  };
+  const region = {
+    display_name: "Cusco, Peru",
+    class: "boundary",
+    type: "administrative",
+    namedetails: { name: "Cusco" },
+  };
+  assert.equal(areaHitFor([city, region], "Cusco, Peru"), city);
+  assert.equal(areaHitFor([region, city], "Cusco, Peru"), city);
+  // A region alone is still better than nothing named for it.
+  assert.equal(areaHitFor([region], "Cusco, Peru"), region);
+});
+
+test("outingReachKm: a drive out widens how far from town a stop may be", () => {
+  assert.equal(outingReachKm("walk the Almannagjá gorge · getting there: drive, 45 min"), 59);
+  assert.equal(outingReachKm("getting there: train, 1h 30 min"), 117);
+  assert.equal(outingReachKm("getting there: metro line 4, 15 min"), null);
+  assert.equal(outingReachKm("getting there: walk, 40 min"), null);
+  assert.equal(outingReachKm("getting there: bus, 10 min"), null);
+  assert.equal(outingReachKm("penguins"), null);
+  assert.equal(outingReachKm(null), null);
+});
+
+test("pickHit: the answer named for the whole stop over one sharing a word", () => {
+  const box = boxAround({ lat: 64.9, lon: -19 }, 400);
+  const shop = {
+    lat: 65.68,
+    lon: -18.09,
+    label: "Geysir, 600 Akureyri, Iceland",
+    category: "place",
+    kind: "amenity",
+  };
+  const restaurant = {
+    lat: 64.3101,
+    lon: -20.2999,
+    label: "Geysir Glíma Restaurant, Biskupstungnabraut, Bláskógabyggð, Iceland",
+    category: "amenity",
+    kind: "restaurant",
+  };
+  const picked = pickHit([shop, restaurant], box, {
+    title: "Lunch at Geysir Glíma",
+    place: "Geysir Glíma",
+  });
+  assert.equal(picked?.hit, restaurant);
+  assert.equal(picked?.trusted, true);
+});
+
+test("pickHit: a street address with its town is the one in that town", () => {
+  const box = boxAround({ lat: -33.71, lon: 150.32 }, 20);
+  const katoomba = {
+    lat: -33.7122,
+    lon: 150.3326,
+    label: "84 Railway Parade, Sydney NSW 2780, Australia",
+    category: "place",
+    kind: "building",
+  };
+  const leura = {
+    lat: -33.7126,
+    lon: 150.3317,
+    label: "84 Railway Parade, Leura NSW 2780, Australia",
+    category: "place",
+    kind: "building",
+  };
+  const picked = pickHit([katoomba, leura], box, {
+    title: "Lunch at Leura Garage",
+    place: "Leura Garage",
+    address: "84 Railway Parade, Leura",
+  });
+  assert.equal(picked?.hit, leura);
+});
+
+test("pickHit: an airport named by more than its town must be that one", () => {
+  assert.deepEqual(airportNameWords({ title: "Arrive at Narita International Airport" }), [
+    "narita",
+  ]);
+  assert.deepEqual(airportNameWords({ title: "Land at JFK", place: "JFK" }), []);
+  const box = boxAround({ lat: 35.68, lon: 139.76 }, 80);
+  const haneda = {
+    lat: 35.549,
+    lon: 139.78,
+    label: "Tokyo International Airport, Tokyo, Japan",
+    category: "aeroway",
+    kind: "aerodrome",
+  };
+  const narita = {
+    lat: 35.772,
+    lon: 140.393,
+    label: "Narita International Airport, Narita-shi, Japan",
+    category: "aeroway",
+    kind: "aerodrome",
+  };
+  const stop = {
+    title: "Arrive at Narita International Airport",
+    place: "Narita International Airport",
+  };
+  assert.equal(pickHit([haneda, narita], box, stop)?.hit, narita);
+  assert.equal(pickHit([haneda], box, stop)?.trusted, false);
+  // A bus stop named for the airport is not the airport.
+  const bus = {
+    lat: 41.9,
+    lon: 12.5,
+    label: "[Terra-vision] Buses for Rome Airport, Via Marsala, Rome",
+    category: "highway",
+    kind: "bus_stop",
+  };
+  const rome = boxAround({ lat: 41.9, lon: 12.5 }, 80);
+  assert.equal(
+    pickHit([bus], rome, {
+      title: "Arrive at Rome Fiumicino Airport",
+      place: "Rome Fiumicino Airport",
+    }),
+    null,
+  );
 });

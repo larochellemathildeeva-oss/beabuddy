@@ -656,6 +656,15 @@ export function afterJourney(
   return LONG_JOURNEY.test(reached);
 }
 
+/**
+ * Whether any ride comes just before this stop: a train, a bus, a flight.
+ * Short or long, it may end a day out ("Train from Katoomba back to Sydney
+ * Central"), so the stop after it is not looked for beside the one before.
+ */
+export function afterRide(previous: { kind: string } | undefined): boolean {
+  return previous?.kind === "transport" || previous?.kind === "flight";
+}
+
 /** A stay, by what the row says happens there. */
 const STAY_WORDS = /\b(?:overnight|check[- ]?in|check[- ]?out|(?:luggage|bag) drop)\b/i;
 

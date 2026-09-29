@@ -128,7 +128,7 @@ Day 2 — Lisbon → Porto
       times: ["07:40", "09:30", "10:30", "13:00", "15:00", "16:00", "19:30"],
       booked: 2,
       flights: 1,
-      toBook: 0,
+      toBook: 1,
       mustInclude: ["JFK", "Hoxton", "Sunday in Brooklyn", "Domino Park", "9/11 Memorial", "Katz"],
       addresses: ["97 Wythe Ave", "205 E Houston St"],
       kinds: [

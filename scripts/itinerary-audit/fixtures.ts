@@ -39,7 +39,7 @@ export type Fixture = {
     toBook?: number;
     /** The stop that mentions `match` must be one of these kinds. */
     kinds?: { match: string; kind: string[] }[];
-    /** The stop that mentions `match` must be looked up in this town. */
+    /** The stop that mentions `match` must be looked up in this town ("A|B": either). */
     cities?: { match: string; city: string }[];
   };
 };
