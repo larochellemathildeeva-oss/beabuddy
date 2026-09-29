@@ -231,11 +231,17 @@ export const BEA_CHARACTER = {
         "Important update: ball.",
         "Béa was calculating. Then there was a ball.",
         "Ball retrieved. Dignity pending.",
+        "Béa is chasing a ball. The plan is chasing Béa.",
+        "Ball acquired. Béa's legs report that it was far.",
+        "Béa has caught the ball. The ball has been slobbered into submission.",
       ],
       bone: [
         "Béa found something. Unfortunately, it’s a bone.",
         "A solid find. Completely irrelevant.",
         "The evidence is delicious.",
+        "Béa dug for answers and found a bone. Close enough.",
+        "A bone. Béa is calling it a business expense.",
+        "Béa buried this bone in 2019. Probably.",
       ],
     },
     sassy: {
@@ -276,6 +282,16 @@ export const BEA_CHARACTER = {
         "Béa has narrowed it down to two. One of them is pretending.",
         "The ranking is under way. Some feelings may be hurt. Not Béa's.",
       ],
+      ball: [
+        "Béa is chasing the ball. The ball started it.",
+        "A ball rolled past. Béa did not ask for this, but here she is.",
+        "Béa will return to the plan once the ball stops being so smug.",
+      ],
+      bone: [
+        "Béa found a bone. Better quality than some of these reviews.",
+        "This bone has more going for it than half the options.",
+        "A bone. Finally, something in here worth keeping.",
+      ],
     },
     encouraging: {
       generic: [
@@ -303,6 +319,16 @@ export const BEA_CHARACTER = {
         "Great trips are built, not rushed. Béa is building.",
         "Béa is rooting for this plan. Loudly, with snorts.",
         "Keep the excitement warm. Béa is almost there.",
+      ],
+      ball: [
+        "Béa caught the ball. Everything is going well today.",
+        "Quick ball break. Béa is back on it with fresh energy.",
+        "Béa got the ball on the first try. Good sign for the plan.",
+      ],
+      bone: [
+        "Béa found a bone. Good things turn up when you keep digging.",
+        "A little treasure already. The plan is next.",
+        "A bone. Béa is taking this as a sign.",
       ],
     },
     curious: {
@@ -344,6 +370,16 @@ export const BEA_CHARACTER = {
         "What if the second option is secretly the best one? Béa is checking.",
         "Béa is turning the options over like an interesting stick.",
       ],
+      ball: [
+        "Where did this ball come from? Béa is investigating.",
+        "Béa is following the ball to see where it goes. Research.",
+        "Béa has questions about this ball. Mostly how far it rolls.",
+      ],
+      bone: [
+        "Béa found a bone and has many questions about who left it.",
+        "Is this bone significant? Béa is looking into it.",
+        "Béa is studying this bone very closely. With her mouth.",
+      ],
     },
     adventurous: {
       generic: [
@@ -383,6 +419,16 @@ export const BEA_CHARACTER = {
         "Béa is weighing comfort against a really good story.",
         "The bold choice is looking good. Béa is making sure it holds up.",
         "Béa is picking the option future you will brag about.",
+      ],
+      ball: [
+        "The ball went off the path. Naturally, Béa followed.",
+        "Béa is chasing the ball somewhere new. Detours count.",
+        "Béa went after the ball and found a whole new park.",
+      ],
+      bone: [
+        "Béa dug off the map and found a bone. Worth it.",
+        "Hidden treasure, bone edition. Béa is thrilled.",
+        "Béa went off-route and came back with a souvenir.",
       ],
     },
     dramatic: {
@@ -426,6 +472,16 @@ export const BEA_CHARACTER = {
         "Béa must choose. The weight of it. The sheer weight.",
         "Béa has not been this conflicted since the squeaky toy incident.",
       ],
+      ball: [
+        "The ball. It called to Béa. She had no choice.",
+        "Béa has abandoned her post for the ball. She regrets nothing.",
+        "A ball. Béa's one true weakness.",
+      ],
+      bone: [
+        "A bone. Béa's greatest discovery. Possibly of the century.",
+        "Béa has unearthed an ancient relic. It is a bone.",
+        "The bone was buried. Now it is found. Béa is overcome.",
+      ],
     },
     chill: {
       generic: [
@@ -465,6 +521,16 @@ export const BEA_CHARACTER = {
         "Both options seem fine. Béa is choosing the finer one.",
         "Béa is deciding. Horizontally.",
         "Weighing things up. Nobody panic. Béa certainly isn't.",
+      ],
+      ball: [
+        "Béa is chasing the ball. Casually.",
+        "Ball break. The plan will keep.",
+        "Béa got the ball eventually. No hurry.",
+      ],
+      bone: [
+        "Béa found a bone. Nice.",
+        "A bone turned up. Béa is not complaining.",
+        "Béa is taking a bone break. Back soon.",
       ],
     },
   },
