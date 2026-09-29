@@ -44,6 +44,7 @@ import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/us
 import type { RouteLeg } from "@/lib/directions.functions";
 import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
 import { useTripStops } from "@/hooks/useTripStops";
+import { destinationCities, groupsInCity } from "@/lib/trip-cities";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
 import {
@@ -184,7 +185,22 @@ export function TripDetail({
   const board = useTripBoard(activeId, me);
   const { removeWithUndo } = useUndo();
   const budget = useTripBudget(activeId);
-  const cities = useTripStops(activeId, me.id);
+  const cities = useTripStops(activeId, me.id, trip);
+  /**
+   * The cities you can move between. A trip whose second city was added
+   * before its first was kept still lists its first, from the trip itself.
+   */
+  const fullRoute = useMemo(() => {
+    const home = cities.missingHome;
+    return home
+      ? [{ id: "trip-home", kind: "destination", lat: null, lon: null, ...home }, ...cities.stops]
+      : cities.stops;
+  }, [cities.stops, cities.missingHome]);
+  const routeCities = useMemo(() => destinationCities(fullRoute), [fullRoute]);
+  /** The city picked in the switcher, by stop id; "" for every city. */
+  const [cityChoice, setCityChoice] = useState("");
+  const chosenCity =
+    routeCities.length > 1 ? (routeCities.find((c) => c.id === cityChoice) ?? null) : null;
   const dir = useOfflineDirections(activeId);
   // How this traveller gets around on this trip, asked in the directions
   // sheet and used by every journey Béa routes for it.
@@ -691,7 +707,11 @@ export function TripDetail({
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
-  const timelineGroups = groupTimelineByDay(stopItems);
+  const allDayGroups = groupTimelineByDay(stopItems);
+  // With a city picked, the days, the map and Now all follow that city.
+  const timelineGroups = chosenCity
+    ? groupsInCity(allDayGroups, routeCities, chosenCity)
+    : allDayGroups;
   /** Every day of the trip, for moving stops between them — empty days too. */
   const moveDays = tripDays(trip.start_date, trip.end_date, stopItems);
   /** The stop "Move to…" is open on. */
@@ -1007,7 +1027,11 @@ export function TripDetail({
   // Whose money the currency sheet offers: the trip's country, then its cities'.
   const tripCountries = [trip.country, ...cities.countries];
 
-  const chips = dayChips(timelineGroups, todayKey);
+  // Numbered over the whole trip: Rio's first day is still Day 4.
+  const cityDayKeys = new Set(timelineGroups.map((group) => group.key));
+  const chips = chosenCity
+    ? dayChips(allDayGroups, todayKey).filter((chip) => cityDayKeys.has(chip.key))
+    : dayChips(allDayGroups, todayKey);
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
   const datedDayCount = chips.filter((chip) => chip.key).length;
   const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
@@ -1217,6 +1241,71 @@ export function TripDetail({
           })}
         </nav>
 
+        {/* Several cities: pick one and the days, the map and Now all follow
+            it, instead of scrolling past one city to reach the next. */}
+        {stopItems.length > 0 &&
+          routeCities.length > 1 &&
+          (perspective === "companion" ||
+            perspective === "map" ||
+            (perspective === "timeline" && timelineByDay)) && (
+            <div className="mb-3">
+              <div
+                role="tablist"
+                aria-label="Which city to show"
+                className="no-scrollbar -mx-1 flex w-full gap-1.5 overflow-x-auto px-1 py-0.5"
+              >
+                {[
+                  { id: "", city: "All cities", arrive_on: null, depart_on: null },
+                  ...routeCities,
+                ].map((c) => {
+                  const on = (chosenCity?.id ?? "") === c.id;
+                  const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
+                    .filter((d): d is string => Boolean(d))
+                    .map((d) =>
+                      new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      }),
+                    )
+                    .join(" – ");
+                  return (
+                    <button
+                      key={c.id || "all"}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => {
+                        setCityChoice(c.id ?? "");
+                        // The city's days, not a day from the city before.
+                        setDayChoice(ALL_DAYS);
+                      }}
+                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-1.5 text-left transition-all ${
+                        on
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-elevated text-foreground"
+                      }`}
+                    >
+                      <span className="whitespace-nowrap text-[13px] font-semibold">{c.city}</span>
+                      {dates && (
+                        <span
+                          className={`whitespace-nowrap text-[11px] ${on ? "opacity-80" : "text-muted-foreground"}`}
+                        >
+                          {dates}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {chosenCity && timelineGroups.length === 0 && (
+                <p className="mt-1.5 px-1 text-[12.5px] text-muted-foreground">
+                  Nothing planned in {chosenCity.city} yet
+                  {chosenCity.arrive_on ? "" : " — give it dates under Cities on this trip"}.
+                </p>
+              )}
+            </div>
+          )}
+
         {/* One day row for Companion, Map and the Timeline by day: arrows
             either side of the day cards, the chosen day filled. */}
         {stopItems.length > 0 &&
@@ -1238,7 +1327,7 @@ export function TripDetail({
             items={stopItems}
             cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
             country={trip.country}
-            groups={timelineGroups}
+            groups={allDayGroups}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
             onOpenBookings={openBookings}
@@ -1384,7 +1473,7 @@ export function TripDetail({
                 trip. Under a single day it was a second, busier map repeating
                 the first. The same stop list the directions are built from,
                 so the map and the route can never describe different journeys. */}
-            {shownGroups.length > 1 && (
+            {!chosenCity && shownGroups.length > 1 && (
               <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
             )}
           </div>
@@ -2020,7 +2109,7 @@ export function TripDetail({
         </div>
       </Sheet>
 
-      <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly />
+      <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly home={trip} />
 
       <SavedPlacesSheet
         open={savedOpen}
@@ -2062,15 +2151,17 @@ export function TripDetail({
           lon: item.lon,
           planned_stay_minutes: item.planned_stay_minutes,
         }))}
-        cities={cities.stops.map((stop) => ({
+        cities={fullRoute.map((stop) => ({
           city: stop.city,
           kind: stop.kind,
-          country: stop.country,
-          arrive_on: stop.arrive_on,
-          depart_on: stop.depart_on,
+          country: stop.country || null,
+          arrive_on: stop.arrive_on || null,
+          depart_on: stop.depart_on || null,
           lat: stop.lat,
           lon: stop.lon,
         }))}
+        planCities={routeCities}
+        {...(chosenCity ? { defaultPlanCity: chosenCity.id } : {})}
         {...(trip.city || trip.country
           ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") }
           : {})}
@@ -2377,6 +2468,7 @@ export function TripDetail({
           <TripStops
             tripId={trip.id}
             uid={me.id}
+            home={trip}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
           />
         )}

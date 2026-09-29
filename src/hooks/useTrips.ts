@@ -14,6 +14,7 @@ import {
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
 import { directionSource, directionTitleKey } from "@/lib/timeline-directions";
+import { homeStopFollow } from "@/lib/trip-cities";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
@@ -113,6 +114,29 @@ async function updateTripRow(id: string, patch: TripPatch): Promise<void> {
   const { dates_status: _datesStatus, ...withoutStatus } = patch;
   const retry = await supabase.from("trips").update(withoutStatus).eq("id", id);
   if (retry.error) throw retry.error;
+}
+
+/**
+ * The trip's first city, when it is the copy of the trip's own, follows an
+ * edit to the trip's city or dates. The trip itself is saved either way.
+ */
+async function followHomeStop(
+  id: string,
+  before: Parameters<typeof homeStopFollow>[0],
+  patch: Parameters<typeof homeStopFollow>[1],
+): Promise<void> {
+  try {
+    const { data: stops } = await supabase
+      .from("trip_stops")
+      .select("id, kind, city, country, arrive_on, depart_on, position")
+      .eq("trip_id", id);
+    const follow = homeStopFollow(before, patch, stops ?? []);
+    if (!follow) return;
+    const { error } = await supabase.from("trip_stops").update(follow.patch).eq("id", follow.id);
+    if (error) throw error;
+  } catch (e) {
+    console.warn("[trips] first city did not follow the trip", e);
+  }
 }
 
 async function liveUserId(fallback?: string | null): Promise<string> {
@@ -314,7 +338,20 @@ export function useTrips() {
       const clean = Object.fromEntries(
         Object.entries(patch).map(([k, v]) => [k, v === "" ? null : v]),
       ) as typeof patch;
+      const movesPlace = (["city", "country", "start_date", "end_date"] as const).some(
+        (k) => k in clean,
+      );
+      const before = movesPlace
+        ? (
+            await supabase
+              .from("trips")
+              .select("city, country, start_date, end_date")
+              .eq("id", id)
+              .maybeSingle()
+          ).data
+        : null;
       await updateTripRow(id, clean);
+      if (before) await followHomeStop(id, before, clean);
       await load();
     },
     [load],
