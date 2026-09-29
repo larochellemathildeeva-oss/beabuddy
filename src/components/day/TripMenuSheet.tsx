@@ -8,6 +8,7 @@ import {
   Car,
   ChevronRight,
   CircleCheck,
+  Copy,
   FileText,
   MapIcon,
   MapPin,
@@ -21,7 +22,15 @@ import {
 } from "@/components/icons";
 
 export type TripMenuSection =
-  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | "checkup";
+  | "invite"
+  | "budget"
+  | "edit"
+  | "offline"
+  | "packing"
+  | "cities"
+  | "customize"
+  | "checkup"
+  | "again";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -36,6 +45,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   cities: "Destinations",
   customize: "Customize trip",
   checkup: "Trip Checkup",
+  again: "Do it again",
 };
 
 /**
@@ -209,6 +219,14 @@ export function TripMenuSheet({
       title: "Customize trip",
       note: "What the trip page shows",
       onClick: () => onSection("customize"),
+    },
+    {
+      key: "again",
+      icon: Copy,
+      title: "Do it again",
+      note: "Copy the trip, or one day, to new dates",
+      pill: "",
+      onClick: () => onSection("again"),
     },
     ...(onCalendar
       ? [

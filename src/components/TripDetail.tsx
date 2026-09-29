@@ -76,6 +76,7 @@ import { TripBookings, type BookingFilter } from "@/components/day/TripBookings"
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { TripCheckup } from "@/components/day/TripCheckup";
 import { PastYouCard } from "@/components/day/PastYouCard";
+import { TripAgain } from "@/components/day/TripAgain";
 import { tripCheckup } from "@/lib/trip-checkup";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -2592,6 +2593,19 @@ export function TripDetail({
               setPerspective("timeline");
               if (day) setDayChoice(day);
             }}
+          />
+        )}
+
+        {sheetSection === "again" && (
+          <TripAgain
+            trip={trip}
+            items={board.items}
+            stops={cities.stops}
+            onOpenTrip={(id) => {
+              setSettingsOpen(false);
+              void navigate({ to: "/trips/$tripId", params: { tripId: id } });
+            }}
+            onCopiedHere={() => void board.reload()}
           />
         )}
 
