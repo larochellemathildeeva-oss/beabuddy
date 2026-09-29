@@ -155,7 +155,8 @@ Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 fetched only when such a label is drawn. A saved map keeps the fonts for the
 traveller's own script as well (`LANGUAGE_GLYPH_STARTS`).
 
-**Stops the map misses.** With `OPEN_PLACES_API_KEY` (or `OVERTURE_API_KEY`) set, a stop the
+**Stops the map misses.** With `OPEN_PLACES_API_KEY` set (the Open Places API's own key; an
+Overture Maps API `ovt_…` key is for another service and does not work), a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or
 under another name — is looked up by name near the middle of town in
 Overture's place listings through the Open Places API (`open-places.ts`, pure
@@ -262,10 +263,10 @@ alternatives, places passed but not visited, an overnight flight, stops
 outside the city, a 140-stop plan). `check-truth.mjs` checks the answer key
 against Wikipedia's coordinates (never against the geocoder under test);
 `pins.mjs` scores checked places at 250 m and marks the rest unverified.
-Both scripts load `spend-guard.mjs`: every Geoapify credit, LocationIQ call and
-Gemini call is counted per UTC day in a file and refused past a cap
+Both scripts load `spend-guard.mjs`: every Geoapify credit, LocationIQ call,
+Open Places call and Gemini call is counted per UTC day in a file and refused past a cap
 (`AUDIT_GEOAPIFY_CREDITS` 500, `AUDIT_LOCATIONIQ_CALLS` 1500,
-`AUDIT_GEMINI_CALLS` 100), and map answers are cached on disk. Béa's own
+`AUDIT_GEMINI_CALLS` 100, `AUDIT_OPENPLACES_CALLS` 120), and map answers are cached on disk. Béa's own
 Geoapify guard counts in memory, so without it each run started at 0.
 
 ## Web check before planning

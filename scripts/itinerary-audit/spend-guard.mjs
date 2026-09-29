@@ -10,6 +10,7 @@
  *   AUDIT_GEOAPIFY_CREDITS  (default 500)   priced as Geoapify charges (geo-credits.ts)
  *   AUDIT_LOCATIONIQ_CALLS  (default 1500)  of the free plan's 5,000 a day
  *   AUDIT_GEMINI_CALLS      (default 100)   about 1–1.5 US cents each
+ *   AUDIT_OPENPLACES_CALLS  (default 120)   of the free plan's 10,000 a month
  *
  * A refused request answers 402, which Béa reads as "rest this provider":
  * the run carries on with the next one, or with none, and says so.
@@ -29,6 +30,7 @@ const CAPS = {
   geoapify: Number(process.env.AUDIT_GEOAPIFY_CREDITS ?? 500),
   locationiq: Number(process.env.AUDIT_LOCATIONIQ_CALLS ?? 1500),
   gemini: Number(process.env.AUDIT_GEMINI_CALLS ?? 100),
+  openplaces: Number(process.env.AUDIT_OPENPLACES_CALLS ?? 120),
 };
 
 /** Which paid service a URL goes to, if any. */
@@ -37,6 +39,7 @@ function serviceOf(url) {
   if (host.endsWith("geoapify.com")) return "geoapify";
   if (host.endsWith("locationiq.com")) return "locationiq";
   if (host === "generativelanguage.googleapis.com") return "gemini";
+  if (host.endsWith("openplacesapi.com")) return "openplaces";
   return null;
 }
 
@@ -62,13 +65,13 @@ export async function installSpendGuard(root) {
   const readLedger = () => {
     try {
       const all = JSON.parse(readFileSync(ledgerFile, "utf8"));
-      return all.day === day ? all : { day, geoapify: 0, locationiq: 0, gemini: 0 };
+      return all.day === day ? all : { day, geoapify: 0, locationiq: 0, gemini: 0, openplaces: 0 };
     } catch {
-      return { day, geoapify: 0, locationiq: 0, gemini: 0 };
+      return { day, geoapify: 0, locationiq: 0, gemini: 0, openplaces: 0 };
     }
   };
   let ledger = readLedger();
-  const thisRun = { geoapify: 0, locationiq: 0, gemini: 0, cached: 0, refused: 0 };
+  const thisRun = { geoapify: 0, locationiq: 0, gemini: 0, openplaces: 0, cached: 0, refused: 0 };
 
   const original = globalThis.fetch;
   globalThis.fetch = async (input, init) => {
@@ -97,6 +100,7 @@ export async function installSpendGuard(root) {
 
     const cost = service === "geoapify" ? (geoapifyCredits(href) ?? 1) : 1;
     ledger = readLedger();
+    ledger[service] ??= 0;
     if (ledger[service] + cost > CAPS[service]) {
       thisRun.refused++;
       if (thisRun.refused === 1) {
@@ -126,8 +130,8 @@ export async function installSpendGuard(root) {
     report() {
       const today = readLedger();
       console.log(
-        `[spend] this run: Geoapify ${thisRun.geoapify} credits, LocationIQ ${thisRun.locationiq}, Gemini ${thisRun.gemini} calls, ${thisRun.cached} answered from cache, ${thisRun.refused} refused. ` +
-          `Today (UTC): Geoapify ${today.geoapify}/${CAPS.geoapify}, LocationIQ ${today.locationiq}/${CAPS.locationiq}, Gemini ${today.gemini}/${CAPS.gemini}.`,
+        `[spend] this run: Geoapify ${thisRun.geoapify} credits, LocationIQ ${thisRun.locationiq}, Gemini ${thisRun.gemini} calls, Open Places ${thisRun.openplaces}, ${thisRun.cached} answered from cache, ${thisRun.refused} refused. ` +
+          `Today (UTC): Geoapify ${today.geoapify}/${CAPS.geoapify}, LocationIQ ${today.locationiq}/${CAPS.locationiq}, Gemini ${today.gemini}/${CAPS.gemini}, Open Places ${today.openplaces ?? 0}/${CAPS.openplaces}.`,
       );
     },
   };
