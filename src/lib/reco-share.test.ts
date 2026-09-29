@@ -1,9 +1,11 @@
-import { describe, it } from "node:test";
+import { describe, it, test } from "node:test";
 import assert from "node:assert/strict";
 import {
   shareStatusLine,
   shareSummaryLine,
   sharedListFromRows,
+  singlePlaceShareReco,
+  singlePlaceShareText,
   suggestedShareTitle,
   toKeptReco,
   toShareItems,
@@ -233,4 +235,41 @@ describe("shareStatusLine", () => {
   it("marks a share that has hit its cap", () => {
     assert.equal(shareStatusLine({ ...base, use_count: 50 }), "Kept by 50 people · full");
   });
+});
+
+test("singlePlaceShareText carries the Maps link, and the code when there is one", () => {
+  const link = "https://www.google.com/maps/search/?api=1&query=Harvey%27s";
+  assert.equal(
+    singlePlaceShareText({ name: "Harvey's", where: "Montréal, Canada", mapsUrl: link }),
+    `Harvey's, Montréal, Canada\n${link}`,
+  );
+  const withCode = singlePlaceShareText({ name: "Harvey's", mapsUrl: link, code: "AB12CD34" });
+  assert.ok(withCode.startsWith(`Harvey's\n${link}\n\n`));
+  assert.ok(withCode.includes("AB12CD34"));
+});
+
+test("singlePlaceShareReco prefers the saved row, and keeps an unsaved place's link", () => {
+  const nearby = { name: "Olimpico", category: "Cafe", lat: 45.52, lon: -73.6 };
+  const saved = singlePlaceShareReco(nearby, {
+    id: "r9",
+    name: "Café Olimpico",
+    city: "Montréal",
+    country: "Canada",
+    category: "Coffee",
+    lat: null,
+    lon: null,
+  });
+  assert.equal(saved.name, "Café Olimpico");
+  assert.equal(saved.city, "Montréal");
+  assert.equal(saved.category, "Coffee");
+  assert.equal(saved.lat, 45.52);
+
+  const unsaved = singlePlaceShareReco({
+    name: "Harvey's",
+    url: "https://maps.app.goo.gl/x",
+    source: "maps.app.goo.gl",
+  });
+  assert.equal(unsaved.url, "https://maps.app.goo.gl/x");
+  assert.equal(unsaved.source, "maps.app.goo.gl");
+  assert.equal(unsaved.city, null);
 });

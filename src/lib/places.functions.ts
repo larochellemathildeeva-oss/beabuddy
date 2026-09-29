@@ -33,10 +33,11 @@ import {
 } from "@/lib/place-label";
 import {
   cleanPageTitle,
-  googleQueryPlaceText,
-  placePathSegment,
-  resolvePlaceCoords,
+  placeTextFromUrls,
+  placeUrlCandidates,
+  resolveChainCoords,
   splitPlacePathName,
+  stripPlusCode,
 } from "@/lib/place-link";
 import {
   countriesStartingWith,
@@ -55,6 +56,7 @@ import {
   type GeoProvider,
 } from "@/lib/geo-endpoints";
 import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { foundWhole, openPlacesNamed, type OpenPlace } from "@/lib/open-places";
 
 export type ParsedPlace = {
   name: string;
@@ -603,7 +605,7 @@ export const searchPlaces = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data: input }): Promise<ParsedPlace[]> => {
+  .handler(async ({ data: input, context }): Promise<ParsedPlace[]> => {
     const name = input.query;
     const within = (q: string) => (input.near ? `${q}, ${input.near}` : q);
     const data = { ...input, query: within(name) };
@@ -646,9 +648,17 @@ export const searchPlaces = createServerFn({ method: "POST" })
     // chains. If the box is empty (Eiffel Tower while standing in Montreal,
     // or a chain that is not in this city), fall back to the world so
     // turning location on does not make every other search go blank.
+    // Planning from home, with the trip (or that day of it) on the map: the
+    // answers lean towards it, not held to it — "Sushidokoro Amano" on an
+    // Osaka day offered Berlin, Madrid and Prague first. A trip with a town
+    // already has it in the query (`near`).
+    const lean =
+      !data.at && !input.near && !input.areas && input.center
+        ? { viewbox: viewboxAround(input.center.lat, input.center.lon), bounded: false }
+        : undefined;
     const area = data.at
       ? { viewbox: viewboxAround(data.at.lat, data.at.lon), bounded: true }
-      : undefined;
+      : lean;
     let hits: NominatimHit[] = [];
     // "coffee" near you is a kind of place, not a word to look for: with
     // nothing tagged nearby, the geocoder may look only around the same
@@ -747,27 +757,108 @@ export const searchPlaces = createServerFn({ method: "POST" })
     }
     const refined = refineNominatimHits(hits, asked);
     const places = (refined.length ? refined : hits).map(hitToPlace);
-    const ranked = fuzzyRank(
+    const mapRanked = fuzzyRank(
       places,
       asked,
       (place) => [place.name, place.address, place.city, place.country],
       0,
     );
+    // Nothing the map found is what was typed: Overture's listings, around
+    // where the search was looking. OpenStreetMap knows many restaurants only
+    // by their local-script name, or not at all — "Sushidokoro Amano" in
+    // Osaka found nothing, or other Amanos.
+    const listed = input.areas
+      ? []
+      : await overturePlaces(
+          name,
+          [...nearbyFirst, ...mapRanked],
+          anchor,
+          input.near ?? null,
+          pace,
+          context.userId,
+        );
     // Searching near you: the nearest branch is the answer, whatever order the
     // map service ranked them in. Sort is stable, so equal distances keep it.
     const at = data.at;
+    const away = (p: ParsedPlace) =>
+      at && p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
+    const byDistance = (list: ParsedPlace[]) =>
+      at ? [...list].sort((a, b) => away(a) - away(b)) : list;
     if (typedCountries.length) {
-      const rest = ranked.filter(
+      const rest = mapRanked.filter(
         (p) => !typedCountries.some((c) => c.name.toLowerCase() === p.name.toLowerCase()),
       );
       return [...typedCountries, ...rest].slice(0, 10);
     }
-    if (nearbyFirst.length) return mergeNearbyFirst(nearbyFirst, ranked);
-    if (!at) return ranked;
-    const away = (p: ParsedPlace) =>
-      p.lat != null && p.lon != null ? haversine(at, { lat: p.lat, lon: p.lon }) : Infinity;
-    return [...ranked].sort((a, b) => away(a) - away(b));
+    const mapPart = nearbyFirst.length
+      ? mergeNearbyFirst(nearbyFirst, mapRanked)
+      : byDistance(mapRanked);
+    if (!listed.length) return mapPart;
+    // What is called what was typed goes first, nearest first; the map's
+    // look-alikes after it, less any that are the same place.
+    const sameSpot = (p: ParsedPlace) =>
+      p.lat != null &&
+      p.lon != null &&
+      listed.some(
+        (o) => haversine({ lat: o.lat!, lon: o.lon! }, { lat: p.lat!, lon: p.lon! }) < SAME_PLACE_M,
+      );
+    return [...byDistance(listed), ...mapPart.filter((p) => !sameSpot(p))].slice(0, 10);
   });
+
+/**
+ * Overture's places named like `name`, when nothing the map found is.
+ *
+ * Needs somewhere to look around: where the person is, the trip on the map,
+ * or else the trip's town, looked up once. Empty without an Open Places key,
+ * when the map already found it, or on any failure — the map's answer stands.
+ */
+async function overturePlaces(
+  name: string,
+  found: readonly ParsedPlace[],
+  anchor: { lat: number; lon: number } | null,
+  near: string | null,
+  pace: Pace,
+  userId: string,
+): Promise<ParsedPlace[]> {
+  if (found.some((place) => foundWhole(name, place))) return [];
+  const overture = await import("@/lib/open-places.server");
+  if (!overture.openPlacesReady()) return [];
+  let centre = anchor;
+  if (!centre && near?.trim()) {
+    try {
+      const [town] = await nominatim(near, 1, undefined, pace);
+      const lat = Number(town?.lat);
+      const lon = Number(town?.lon);
+      if (town && Number.isFinite(lat) && Number.isFinite(lon)) centre = { lat, lon };
+    } catch {
+      // No town to look around; the map's answer stands.
+    }
+  }
+  if (!centre) return [];
+  const places = openPlacesNamed(
+    await overture.searchOpenPlaces(name, centre, userId),
+    [name],
+    centre,
+  );
+  return places.slice(0, 5).map(overtureToPlace);
+}
+
+/** A listing and a map hit this close are the same place, shown once. */
+const SAME_PLACE_M = 150;
+
+function overtureToPlace(place: OpenPlace): ParsedPlace {
+  const address = place.label.startsWith(`${place.name}, `)
+    ? place.label.slice(place.name.length + 2)
+    : "";
+  return {
+    name: place.name,
+    ...(address ? { address } : {}),
+    lat: place.lat,
+    lon: place.lon,
+    source: "Web search",
+    url: mapsPlaceUrl(place.name, { lat: place.lat, lon: place.lon }, address || undefined),
+  };
+}
 
 /** Pull a place out of a pasted link: title, address, category and coordinates. */
 /**
@@ -823,11 +914,13 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     let html = "";
     let finalUrl = target.toString();
+    let visited: string[] = [];
     let failure: FetchFailure | undefined;
     try {
       const fetched = await fetchPlaceHtml(data.url);
       html = fetched.html;
       finalUrl = fetched.finalUrl;
+      visited = fetched.visited;
       failure = fetched.failure;
     } catch (error) {
       if (error instanceof UnsupportedPlaceUrlError) throw error;
@@ -839,14 +932,12 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
     // Google puts the name and often the street address in one path segment
     // on a /place/ URL — or, on the older ?q=Name,+Address&ftid=… share
     // shape, which has no /place/ segment at all, in the q= param instead.
-    const fromPath = splitPlacePathName(
-      placePathSegment(data.url) ||
-        placePathSegment(finalUrl) ||
-        googleQueryPlaceText(data.url) ||
-        googleQueryPlaceText(finalUrl),
-    );
+    // Read from every hop, not just the last: a chain that ends on Google's
+    // consent page still passed through the URL that names the place.
+    const urls = placeUrlCandidates(data.url, visited, finalUrl);
+    const fromPath = splitPlacePathName(stripPlusCode(placeTextFromUrls(urls)));
     const placeName = fromPath.name;
-    const coords = resolvePlaceCoords(data.url, finalUrl, Boolean(placeName));
+    const coords = resolveChainCoords(urls, Boolean(placeName));
     const place = coords ? await reverse(coords.lat, coords.lon) : {};
 
     const rawTitle =
@@ -858,7 +949,7 @@ export const parsePlaceLink = createServerFn({ method: "POST" })
 
     const titleName = cleanPageTitle(rawTitle || "");
 
-    const appleName = nameFromAppleMapsUrl(data.url) ?? nameFromAppleMapsUrl(finalUrl);
+    const appleName = urls.map(nameFromAppleMapsUrl).find(Boolean);
     const name = placeName || titleName || data.nameHint || appleName || "Saved place";
 
     const description = meta(html, "og:description") ?? "";

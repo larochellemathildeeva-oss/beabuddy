@@ -1,0 +1,65 @@
+{
+  "version": "1.0",
+  "rareVisualEasterEggs": {
+    "ballRoll": {
+      "eligibleAfterSeconds": 8,
+      "maxPerLoad": 1,
+      "sequence": [
+        "task animation continues",
+        "small ball rolls into animation area",
+        "Béa notices ball",
+        "brief chase / look",
+        "return to task animation"
+      ],
+      "copyOptions": [
+        "Béa is focused.",
+        "Correction: ball.",
+        "Right. Back to work."
+      ]
+    },
+    "boneDiscovery": {
+      "eligibleAfterSeconds": 10,
+      "maxPerLoad": 1,
+      "compatibleActions": [
+        "dig"
+      ],
+      "copyOptions": [
+        "Béa found something.",
+        "Unfortunately, it’s a bone.",
+        "Back to finding something useful."
+      ]
+    },
+    "microNap": {
+      "eligibleAfterSeconds": 12,
+      "maxPerLoad": 1,
+      "compatibleActions": [
+        "think"
+      ],
+      "copyOptions": [
+        "Béa was not sleeping.",
+        "That was computational blinking.",
+        "Back to it."
+      ]
+    },
+    "upsideDownMap": {
+      "eligibleAfterSeconds": 8,
+      "maxPerLoad": 1,
+      "compatibleActions": [
+        "run",
+        "think"
+      ],
+      "copyOptions": [
+        "Tiny cartographic setback.",
+        "There we go.",
+        "Nobody saw that."
+      ]
+    }
+  },
+  "rules": [
+    "Easter eggs are optional and rare.",
+    "Do not show more than one rare Easter egg in a single loading session.",
+    "Do not chain Easter eggs.",
+    "Do not use Easter eggs for serious/error states.",
+    "Keep the animation footprint small and never block the main status message."
+  ]
+}

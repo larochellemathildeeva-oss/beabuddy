@@ -1,9 +1,11 @@
 import { Sheet } from "@/components/Sheet";
+import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ArrowLeft,
   CalendarDays,
   Camera,
   MapPin,
@@ -13,7 +15,7 @@ import {
   ListOrdered,
   Sparkles,
   X,
-} from "lucide-react";
+} from "@/components/icons";
 import {
   compareItineraries,
   optimizeItinerary,
@@ -37,7 +39,7 @@ import { downscaleImage } from "@/lib/image";
 import { pdfProblem, pdfProblemMessage } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary, looksLikeIcs } from "@/lib/itinerary-ics";
 import { pastedLink } from "@/lib/itinerary-link";
-import { placeHintFromDetail } from "@/lib/direction-stops";
+import { looksLikeStreetAddress, placeHintFromDetail } from "@/lib/direction-stops";
 import { estimatedSeconds, labelAddress } from "@/lib/geocode-plan";
 import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
@@ -67,6 +69,7 @@ import {
   pinIsSaved,
   placeBatches,
   routeCityOn,
+  afterJourney,
   routeCountry,
   stayMinutesFrom,
   type PinChoice,
@@ -76,10 +79,15 @@ import { splitInsideNote, type InsideEntry } from "@/lib/inside-list";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
-import { planScope, type TripCity } from "@/lib/trip-cities";
+import { planScope, scopedRoute, type TripCity } from "@/lib/trip-cities";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
+import { routeStopLine } from "@/lib/trip-cities";
+import { planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
+import { countryNamedIn } from "@/lib/world-countries";
+import { lookupCoords } from "@/lib/places.functions";
 
 type NewItineraryItem = {
   day_date?: string;
@@ -103,15 +111,19 @@ const PLACE_BATCH = 8;
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
-type PlannerTab = "import" | "optimize" | "compare";
+type PanelTab = "start" | "import" | "optimize" | "compare";
+/** Where the planner opens: its start screen, a panel, or Build / Import straight away. */
+export type PlannerTab = PanelTab | "build";
 
 export function ItineraryImport({
   open,
   onClose,
   tripCity,
+  tripTitle,
   startDate,
   endDate,
-  defaultTab = "import",
+  defaultTab = "start",
+  initialAsk = "",
   existingItems = [],
   cities = [],
   planCities = [],
@@ -120,14 +132,19 @@ export function ItineraryImport({
   onRemoveItems,
   onAddCosts,
   onApplyDates,
+  onAddCities,
   onApplySchedule,
 }: {
   open: boolean;
   onClose: () => void;
   tripCity?: string | undefined;
+  /** The trip's name, only for the country it may name ("JAPAN TEST"). */
+  tripTitle?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
   defaultTab?: PlannerTab;
+  /** Words to start Build with, typed before the planner opened. */
+  initialAsk?: string | undefined;
   existingItems?: OptimizeSourceItem[];
   cities?: OptimizeSourceCity[];
   /** The trip's cities, when it has several: a plan can be read for one of them. */
@@ -140,6 +157,8 @@ export function ItineraryImport({
   onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
+  /** Towns the plan goes through that the trip's route does not have yet. */
+  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
   onApplySchedule?: (
     updates: Array<{
       id: string;
@@ -149,58 +168,109 @@ export function ItineraryImport({
     }>,
   ) => Promise<void>;
 }) {
-  const [tab, setTab] = useState<PlannerTab>(defaultTab);
+  const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
   /** The city this plan is for, by id; "" for the whole trip. */
   const [planCityId, setPlanCityId] = useState(defaultPlanCity);
+  /** How the Plan panel opens from the start screen: which job, and any words already typed. */
+  const [start, setStart] = useState<{ mode: "build" | "import"; text: string; n: number }>({
+    mode: "build",
+    text: "",
+    n: 0,
+  });
+
+  const openPlan = (mode: "build" | "import", text = "") => {
+    setStart((cur) => ({ mode, text, n: cur.n + 1 }));
+    setTab("import");
+  };
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    setPlanCityId(defaultPlanCity);
+    if (defaultTab === "build" || (defaultTab === "import" && initialAsk)) {
+      openPlan(defaultTab === "build" ? "build" : "import", initialAsk);
+    } else if (defaultTab === "import") {
+      openPlan("import");
+    } else {
       setTab(defaultTab);
-      setPlanCityId(defaultPlanCity);
     }
-  }, [open, defaultTab, defaultPlanCity]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only
+  }, [open, defaultTab]);
 
   const planCity =
     planCities.length > 1 ? (planCities.find((c) => c.id === planCityId) ?? null) : null;
   // A plan for one city is read there and lands on its days. It never moves
   // the whole trip's dates: one city's plan is not the trip's.
   const scope = planScope({ city: tripCity, startDate, endDate }, planCity);
+  // Its stops are looked up in that city whatever dates the plan names, so
+  // the route it is given is that city alone.
+  const planRoute = planCity ? scopedRoute(cities, planCity) : cities;
 
   return (
     <Sheet
       open={open}
       onClose={onClose}
-      title="Let Béa plan this trip"
+      title="Plan with Béa"
       hint="Built around your travel preferences and tagged recs"
       icon={<img src={logo} alt="" className="size-10 object-contain" />}
     >
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          onClick={() => setTab("import")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "import" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <Camera className="size-3.5" /> Plan
-        </button>
-        <button
-          data-guide="bea-optimize"
-          onClick={() => setTab("optimize")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "optimize" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <ListOrdered className="size-3.5" /> Optimize
-        </button>
-        <button
-          onClick={() => setTab("compare")}
-          className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
-            tab === "compare" ? "border-primary bg-card" : "border-border/60 text-muted-foreground"
-          }`}
-        >
-          <Columns2 className="size-3.5" /> Compare
-        </button>
-      </div>
+      {tab === "start" ? (
+        <div className="space-y-5">
+          <PlanHero compact />
+          <PlanCards
+            optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
+            onBuild={() => openPlan("build")}
+            onImport={() => openPlan("import")}
+            onOptimize={() => setTab("optimize")}
+            onCompare={() => setTab("compare")}
+          />
+          <PlanExamples onPick={(ask) => openPlan("build", ask)} />
+          <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+        </div>
+      ) : (
+        <>
+          <button
+            type="button"
+            onClick={() => setTab("start")}
+            className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+            All options
+          </button>
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setTab("import")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "import"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <Camera className="size-3.5" /> Plan
+            </button>
+            <button
+              data-guide="bea-optimize"
+              onClick={() => setTab("optimize")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "optimize"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <ListOrdered className="size-3.5" /> Optimize
+            </button>
+            <button
+              onClick={() => setTab("compare")}
+              className={`flex items-center justify-center gap-1 rounded-xl border px-2 py-2 text-[12px] ${
+                tab === "compare"
+                  ? "border-primary bg-card"
+                  : "border-border/60 text-muted-foreground"
+              }`}
+            >
+              <Columns2 className="size-3.5" /> Compare
+            </button>
+          </div>
+        </>
+      )}
 
       {tab === "import" && planCities.length > 1 && (
         <fieldset className="mt-3">
@@ -235,9 +305,14 @@ export function ItineraryImport({
       )}
       {tab === "import" && (
         <ImportPanel
+          // A new city is a new plan: nothing read or placed for the last one is kept.
+          key={`${start.n}:${planCity?.id ?? ""}`}
+          initialMode={start.mode}
+          initialText={start.text}
           existingItems={existingItems}
-          cities={cities}
+          cities={planRoute}
           tripCity={scope.city}
+          tripTitle={tripTitle}
           startDate={scope.startDate}
           endDate={scope.endDate}
           scopedTo={planCity?.city}
@@ -245,6 +320,7 @@ export function ItineraryImport({
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
           onApplyDates={planCity ? undefined : onApplyDates}
+          onAddCities={planCity ? undefined : onAddCities}
         />
       )}
       {tab === "optimize" && (
@@ -263,9 +339,12 @@ export function ItineraryImport({
 }
 
 function ImportPanel({
+  initialMode = "build",
+  initialText = "",
   existingItems,
   cities,
   tripCity,
+  tripTitle,
   startDate,
   endDate,
   onAddItems,
@@ -273,13 +352,19 @@ function ImportPanel({
   onAddCosts,
   onApplyDates,
   scopedTo,
+  onAddCities,
 }: {
+  /** Which job the panel opens on, chosen on the start screen. */
+  initialMode?: "build" | "import";
+  /** Words typed on the start screen, carried into the box. */
+  initialText?: string;
   existingItems: OptimizeSourceItem[];
   /** The trip's route, so each day's stops are looked up in that day's city. */
   cities: OptimizeSourceCity[];
   tripCity?: string | undefined;
   /** Set when the plan is for one city: its dates stand in for the trip's. */
   scopedTo?: string | undefined;
+  tripTitle?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
   /** Returns the inserted row ids, so a bulk save can be undone. */
@@ -288,19 +373,36 @@ function ImportPanel({
   onRemoveItems?: ((ids: string[]) => Promise<void>) | undefined;
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
+  /** Towns the plan goes through that the trip's route does not have yet. */
+  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
   const revise = useServerFn(reviseItinerary);
+  const lookup = useServerFn(lookupCoords);
   /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
-  const routeLine = cities
-    .filter((c) => c.city.trim())
-    .filter((c) => !scopedTo || c.city.trim() === scopedTo.trim())
-    .map((c) => {
-      const dates = [c.arrive_on, c.depart_on].filter(Boolean).join(" – ");
-      return `${[c.city, c.country].filter(Boolean).join(", ")}${dates ? ` (${dates})` : ""}`;
-    })
+  const named = cities.filter((c) => c.city.trim());
+  const routeLine = named
+    .map((_, i) => routeStopLine(named, i))
     .join("; ")
     .slice(0, 600);
+  /**
+   * Where to, asked when the trip names no place.
+   *
+   * A trip can be made without a city ("China, sometime in spring" titled
+   * only by its name), and Build used to send nothing about the place at all —
+   * so Béa picked one, and a trip called China came back planned in Brazil.
+   * Now Build waits until it knows where.
+   */
+  const [whereTo, setWhereTo] = useState("");
+  const needsPlace = !tripCity?.trim() && !routeLine;
+  /** The place sent with a request: the answer above counts only for Build. */
+  const placeFor = (forMode: "build" | "import") =>
+    tripCity?.trim() || (forMode === "build" ? whereTo.trim() : "");
+  /**
+   * The place the draft on screen was made for. Revisions and pins follow the
+   * draft, not the box, which can be edited after it (or hidden by Import).
+   */
+  const [draftPlace, setDraftPlace] = useState("");
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
@@ -368,7 +470,7 @@ function ImportPanel({
     }
   };
   const hasFiles = images.length > 0 || pdf !== null;
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -378,7 +480,7 @@ function ImportPanel({
   const [saveStatus, setSaveStatus] = useState("");
   /** Set while Béa is out placing the stops; null the rest of the time. */
   const [placing, setPlacing] = useState<{ done: number; total: number } | null>(null);
-  const [mode, setMode] = useState<"build" | "import">("build");
+  const [mode, setMode] = useState<"build" | "import">(initialMode);
   const [pace, setPace] = useState<"relaxed" | "balanced" | "full">("balanced");
   const [budgetLevel, setBudgetLevel] = useState<"value" | "comfortable" | "premium">(
     "comfortable",
@@ -388,6 +490,18 @@ function ImportPanel({
   const [altReason, setAltReason] = useState("");
   const [rebuildReason, setRebuildReason] = useState("");
   const [plan, setPlan] = useState<Awaited<ReturnType<typeof run>> | null>(null);
+  /**
+   * The country the plan is in, when something says so: the trip's place,
+   * its route, or a country its name or the plan's names ("JAPAN TEST",
+   * "Japan Master Itinerary"). A trip with no place is then searched as a
+   * country, each stop beside the one before it, instead of not at all.
+   */
+  const planCountry =
+    countryNamedIn(draftPlace.split(",").pop())?.name ||
+    routeCountry(cities) ||
+    countryNamedIn(tripTitle)?.name ||
+    countryNamedIn(plan?.trip_title)?.name ||
+    "";
   /**
    * The date a "Day 1 / Day 2" plan begins.
    *
@@ -448,7 +562,7 @@ function ImportPanel({
     setPlanVersion((v) => v + 1);
     if (out.items.length > 0) {
       const ready = beaLine("plan.ready");
-      toast.success(ready.title, { description: ready.body });
+      toast.success(ready.title, { description: beaCheer("itinerary") ?? ready.body });
     }
   };
 
@@ -459,6 +573,7 @@ function ImportPanel({
     setSaveStatus("");
     setItems(null);
     setPlan(null);
+    const sentPlace = placeFor(mode);
     try {
       const out = await run({
         data: {
@@ -466,7 +581,7 @@ function ImportPanel({
           pdfDataUrl: mode === "import" && pdf ? pdf.dataUrl : null,
           pageUrl: mode === "import" && link ? link : null,
           text: (mode === "import" && link ? "" : text.trim()) || null,
-          tripCity: tripCity || null,
+          tripCity: sentPlace || null,
           route: routeLine || null,
           startDate: startDate || null,
           endDate: endDate || null,
@@ -477,6 +592,7 @@ function ImportPanel({
           includeCosts,
         },
       });
+      setDraftPlace(sentPlace);
       showParsed(out);
     } catch (e) {
       setError(aiFailure(e).message);
@@ -501,10 +617,13 @@ function ImportPanel({
     // A trip filed under one city, or none, can still be placed day by day
     // from its route: Oct 7 is looked up in Hiroshima, not in Tokyo or in
     // the whole of Japan.
-    const area = tripCity?.trim() || routeCountry(cities) || "";
+    // A trip with no place and no route still says its country in its name
+    // ("JAPAN TEST") or the plan's ("Japan Master Itinerary"): searched as a
+    // country, each stop is looked for beside the one before it.
+    const area = draftPlace || routeCountry(cities) || planCountry || "";
     // A monument inside a park is looked up beside the park's pin.
     const parents = dated.map((_, i) => parentIndex(dated, i));
-    const stops = dated.map((item) => {
+    const stops = dated.map((item, i) => {
       const dayArea = routeCityOn(cities, item.day_date);
       return {
         title: item.title,
@@ -513,6 +632,8 @@ function ImportPanel({
         address: item.address ?? null,
         city: item.city ?? null,
         ...(dayArea ? { area: dayArea } : {}),
+        // A train or flight before it: not beside the stop before it.
+        ...(afterJourney(item, dated[i - 1]) ? { fresh: true } : {}),
       };
     });
     const placeable = stops.some((stop) => stop.city?.trim() || stop.area);
@@ -530,18 +651,21 @@ function ImportPanel({
       const placed: PlacedStop[] = [];
       // The provider's pace carries from one batch to the next.
       let recent: number[] = [];
+      // Where the last batch left off, so the next stop is looked for beside it.
+      let near: { lat: number; lon: number } | null = null;
       for (const [from, to] of placeBatches(parents, PLACE_BATCH)) {
         if (!current()) return;
         const batch = stops.slice(from, to).map((stop, k) => {
           const parent = parents[from + k]!;
           return parent >= from ? { ...stop, within: parent - from } : stop;
         });
-        const result = await geocodePlanStops({
-          data: { stops: batch, area, recent, venues: true },
+        const result: Awaited<ReturnType<typeof geocodePlanStops>> | null = await geocodePlanStops({
+          data: { stops: batch, area, recent, venues: true, inOrder: true, near },
         }).catch(() => null);
         if (!current()) return;
         if (!result) break;
         recent = result.sent ?? [];
+        near = result.lastPin ?? null;
         placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
         setPlacing({ done: to, total });
         if (result.throttled) break;
@@ -696,8 +820,13 @@ function ImportPanel({
         const found = savedPin(i);
         // With no address of its own, where it was found: a pinned stop
         // that says "No place yet" hides a wrong pin as well as a right one.
+        // A note is never the address: "Kiyomizu-zaka — historic shopping
+        // street" was saved with "historic shopping street" as where it is.
+        const hint = placeHintFromDetail(it.detail);
         const address =
-          it.address?.trim() || placeHintFromDetail(it.detail) || labelAddress(found?.label);
+          it.address?.trim() ||
+          (hint && looksLikeStreetAddress(hint) ? hint : null) ||
+          labelAddress(found?.label);
         const stay = stayMinutesFrom(it);
         return [
           {
@@ -764,6 +893,34 @@ function ImportPanel({
         setSaveStatus("Updating the trip dates…");
         await onApplyDates({ start_date: dayOneDate, end_date: last });
       }
+      // A plan through several towns puts them on the trip's route, so the
+      // days, the map and the directions look in the right one.
+      // A day whose stops name no town is looked up from one of its pins.
+      if (onAddCities) setSaveStatus("Adding the towns to the trip…");
+      const newCities = onAddCities
+        ? await planTowns(
+            order.flatMap((i) => {
+              const row = rows[i];
+              if (!row) return [];
+              const pin = savedPin(i);
+              // "Hiroshima" from the plan's own words is "Hiroshima, Japan".
+              const placed = withCountry(row, planCountry);
+              return [pin ? { ...placed, lat: pin.lat, lon: pin.lon } : placed];
+            }),
+            cities,
+            (at) => lookup({ data: at }),
+          ).catch(() => [] as PlanCity[])
+        : [];
+      if (onAddCities && newCities.length > 0) {
+        try {
+          await onAddCities(newCities);
+          toast.success(
+            `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
+          );
+        } catch {
+          toast.error("The stops are saved, but the towns could not be added to Destinations.");
+        }
+      }
       setItems(null);
       setText("");
       setSaved(true);
@@ -778,7 +935,7 @@ function ImportPanel({
           undo: () => onRemoveItems(insertedIds),
         });
       } else {
-        toast.success(done.title, { description: done.body });
+        toast.success(done.title, { description: beaCheer("route") ?? done.body });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save those. Try again.");
@@ -809,7 +966,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: tripCity || null,
+          tripCity: draftPlace || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -839,7 +996,7 @@ function ImportPanel({
     try {
       const out = await revise({
         data: {
-          tripCity: tripCity || null,
+          tripCity: draftPlace || null,
           startDate: startDate || null,
           endDate: endDate || null,
           pace,
@@ -1062,6 +1219,22 @@ function ImportPanel({
         </p>
       )}
 
+      {mode === "build" && needsPlace && (
+        <label className="block text-[13px] text-muted-foreground">
+          Where are you going?
+          <input
+            value={whereTo}
+            onChange={(e) => setWhereTo(e.target.value)}
+            maxLength={120}
+            required
+            placeholder="A city or a country — Kyoto, or Japan"
+            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px] text-foreground outline-none"
+          />
+          <span className="mt-1 block text-[12px]">
+            This trip has no place yet. Béa needs one to plan it.
+          </span>
+        </label>
+      )}
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -1096,7 +1269,11 @@ function ImportPanel({
       )}
       <button
         onClick={() => void read()}
-        disabled={busy || (mode === "import" && !hasFiles && text.trim().length < 10)}
+        disabled={
+          busy ||
+          (mode === "import" && !hasFiles && text.trim().length < 10) ||
+          (mode === "build" && needsPlace && !whereTo.trim())
+        }
         className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {busy
@@ -1113,7 +1290,7 @@ function ImportPanel({
       </button>
       {busy && (
         <div className="mt-2">
-          <BeaRunning moment="plan.working" />
+          <BeaRunning moment="plan.working" action={mode === "build" ? "run" : "think"} />
         </div>
       )}
       {mode === "import" && !hasFiles && text.trim().length < 10 && (
@@ -1255,6 +1432,7 @@ function ImportPanel({
               {placing && (
                 <div className="mt-2">
                   <BeaRunning
+                    status="Placing your stops…"
                     done={placing.done}
                     total={placing.total}
                     estimate={estimatedSeconds(placing.total, PLAN_LOOKUP_GAP_MS)}
@@ -1385,6 +1563,7 @@ function ImportPanel({
               >
                 {busy ? "Béa is working…" : "Rebuild my trip"}
               </button>
+              {busy && <BeaRunning moment="plan.working" action="run" />}
             </div>
           )}
         </div>
@@ -1558,7 +1737,7 @@ function OptimizePanel({
       await onApplySchedule(plan.items);
       setSaved(true);
       const done = beaLine("plan.complete");
-      toast.success(done.title, { description: done.body });
+      toast.success(done.title, { description: beaCheer("route") ?? done.body });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
     } finally {
@@ -1624,6 +1803,7 @@ function OptimizePanel({
           >
             {busy && !plan ? "Béa is rearranging…" : "Ask Béa to rearrange"}
           </button>
+          {busy && !plan && <BeaRunning moment="choose.working" status="Rearranging the days" />}
         </>
       )}
 
@@ -1784,6 +1964,7 @@ function ComparePanel() {
             ? "Compare side by side"
             : "Paste both plans first"}
       </button>
+      {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
 

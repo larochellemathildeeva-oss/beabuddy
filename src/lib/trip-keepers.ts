@@ -40,7 +40,7 @@ export type KeeperItem = {
 export type KeeperPinType = "reco" | "visited" | "nexttime" | "wishlist";
 
 /** Béa's own directions rows, which are movement whatever their stored kind. */
-const MOVEMENT_TITLE = /^(walk|drive|head|go|travel) to /i;
+const MOVEMENT_TITLE = /^(walk|drive|transit|head|go|travel) to /i;
 
 /** Is this row a place, rather than a note or the journey between two places? */
 export function isKeepable(item: Pick<KeeperItem, "kind" | "title">): boolean {

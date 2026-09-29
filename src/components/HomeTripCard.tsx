@@ -1,72 +1,106 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, CalendarClock, ChevronRight, Ticket } from "lucide-react";
-import { TripBanner } from "@/components/TripBanner";
-import { TripCard } from "@/components/TripCard";
-import type { TripRow, MemberRow } from "@/hooks/useTrips";
-import type { TripPhotoRow } from "@/hooks/useTripPhotos";
+import {
+  Bookmark,
+  CalendarClock,
+  CalendarDays,
+  ChevronRight,
+  CircleCheck,
+  ListChecks,
+  Luggage,
+  Users,
+} from "@/components/icons";
+import type { TripRow } from "@/hooks/useTrips";
+import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { useTripTodos } from "@/hooks/useTripTodos";
-import { laterHeading, peopleOnTrip } from "@/lib/home-trip";
-import { pickTripPhoto } from "@/lib/trip-card";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useTownPicture } from "@/hooks/useTownPicture";
+import { TownPhotoCredit } from "@/components/TownPhotoCredit";
+import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { dueLine, nextOnPlan, nextTodo } from "@/lib/trip-glance";
+import { dueLine, heroTags, nextOnPlan, routeLine } from "@/lib/trip-glance";
+import { isUnderway } from "@/lib/trip-card";
 
-function todayIso() {
-  return toLocalISODate(new Date());
-}
-
-/** A serif heading with one quiet link beside it, as on Home. */
+/** A serif heading with one quiet link beside it, as on the master Home. */
 export function HomeSectionTitle({ title, aside }: { title: string; aside?: ReactNode }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
       <h2 className="font-display text-[27px] leading-none">{title}</h2>
-      {aside ? <div className="shrink-0 text-[14px] text-primary">{aside}</div> : null}
+      {aside ? (
+        <div className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary">
+          {aside}
+          <ChevronRight className="size-4" aria-hidden />
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** What the hero says under the title: how booked, else how packed, else how planned. */
-function readiness(glance: TripGlance | undefined): { label: string; line: string } {
-  if (glance?.plans) {
-    const { confirmed, total } = glance.plans;
-    return {
-      label: confirmed === total ? "Ready to go" : "Getting ready",
-      line: `${confirmed} of ${total} ${total === 1 ? "plan" : "plans"} confirmed`,
-    };
-  }
-  if (glance?.packing) {
-    return {
-      label: "Packing",
-      line: `${glance.packing.packed} of ${glance.packing.total} packed`,
-    };
-  }
-  const n = glance?.stops ?? 0;
-  if (n > 0) return { label: "The plan", line: `${n} ${n === 1 ? "stop" : "stops"} planned` };
-  return { label: "Just started", line: "Nothing planned yet" };
+/**
+ * A trip's picture: your own photo of the place, else — with "Real photos" —
+ * a credited photo of its town, else its painted scene.
+ */
+export function TripPicture({
+  trip,
+  photos,
+  cities,
+  className = "",
+  creditAt = "bottom",
+}: {
+  trip: TripRow;
+  photos: TripPhotoRow[];
+  cities: string[];
+  className?: string;
+  /** Where a town photo's credit sits: clear of the words laid over the picture. */
+  creditAt?: "top" | "bottom";
+}) {
+  const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities });
+  const url = useSignedPhoto(photo?.storage_path ?? null);
+  const town = useTownPicture(!!photo, trip.city || cities[0], trip.country);
+  const art = bannerArtUrl(
+    bannerSceneFor([trip.title, ...cities, trip.city, trip.country], trip.title || trip.city || ""),
+  );
+  return (
+    <>
+      <img
+        src={url ?? town.photo?.url ?? art}
+        alt=""
+        decoding="async"
+        referrerPolicy={town.photo ? "no-referrer" : undefined}
+        onError={town.onError}
+        className={`art-dim absolute inset-0 size-full object-cover ${className}`}
+      />
+      {town.photo ? (
+        <TownPhotoCredit
+          photo={town.photo}
+          className={creditAt === "top" ? "top-0.5 bottom-auto" : ""}
+        />
+      ) : null}
+    </>
+  );
 }
 
 /**
- * Home's current trip, as a picture: your own photo of the place (or a
- * painted dusk), how soon, who is coming, and how ready it is.
+ * Home's current or next trip, as the master draws it: a big painted (or
+ * photographed) card, what kind of moment it is and how soon, the name in
+ * large serif, dates and route, and a round arrow into the trip.
  */
 export function HomeTripHero({
   trip,
-  glance,
   photos,
   peopleCount,
 }: {
   trip: TripRow;
-  glance: TripGlance | undefined;
   photos: TripPhotoRow[];
   peopleCount: number;
 }) {
   const stops = useTripStops(trip.id, null);
   const cities = stops.stops.map((s) => s.city);
-  const photo = pickTripPhoto(photos, { city: trip.city, country: trip.country, cities });
-  const ready = readiness(glance);
+  const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
+  const dates = tripDateLine(trip.start_date, trip.end_date);
+  const where = routeLine(cities) || trip.city?.split(",")[0] || trip.country || "";
 
   return (
     <section data-guide="home-trip" className="rise">
@@ -74,182 +108,236 @@ export function HomeTripHero({
         to="/trips/$tripId"
         params={{ tripId: trip.id }}
         viewTransition
-        className="group block rounded-[28px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        aria-label={`${trip.title}: ${[tags.label, tags.when, dates, where].filter(Boolean).join(", ")}`}
+        className="group relative block h-[208px] overflow-hidden rounded-[var(--r-card)] bg-[#2a2026] text-white shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
       >
-        <TripBanner
-          variant="hero"
-          title={trip.title}
-          city={trip.city}
-          country={trip.country}
-          cities={cities}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-          tentative={trip.dates_status === "tentative"}
-          photo={photo}
-          peopleCount={peopleCount}
-          viewTransitionName={`trip-photo-${trip.id}`}
-          footer={
-            <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-[14px] font-semibold leading-snug">
-                <span className="sr-only">{ready.label}: </span>
-                {ready.line}
-              </p>
-              <span className="flex shrink-0 items-center gap-1 text-[14px] font-semibold">
-                View itinerary
-                <ArrowUpRight
-                  className="size-4.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  aria-hidden
-                />
-              </span>
-            </div>
-          }
+        <TripPicture trip={trip} photos={photos} cities={cities} />
+        <span
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "linear-gradient(90deg, rgba(18,12,10,0.55), rgba(18,12,10,0.15) 55%, rgba(18,12,10,0) 75%), linear-gradient(to top, rgba(18,12,10,0.45), rgba(18,12,10,0) 45%)",
+          }}
         />
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <span className="flex items-center gap-1.5">
+            <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#28231f]">
+              {tags.label}
+            </span>
+            {peopleCount > 1 ? (
+              <span
+                aria-label={`${peopleCount} people on this trip`}
+                className="flex items-center gap-1 rounded-full bg-white/92 px-2 py-1 text-[11px] font-bold text-[#28231f]"
+              >
+                <Users className="size-3" aria-hidden />
+                {peopleCount}
+              </span>
+            ) : null}
+          </span>
+          {tags.when ? (
+            <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-primary">
+              {tags.when}
+            </span>
+          ) : null}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <p className="line-clamp-2 break-words font-display text-[44px] leading-[0.98] [text-shadow:0_1px_12px_rgba(0,0,0,0.35)]">
+              {trip.title}
+            </p>
+            {dates ? <p className="mt-1 text-[14px] font-semibold">{dates}</p> : null}
+            {where ? <p className="truncate text-[14px] text-white/90">{where}</p> : null}
+          </div>
+          <span
+            aria-hidden
+            className="grid size-9 shrink-0 place-items-center rounded-full bg-white/92 text-[#28231f] transition-transform group-hover:translate-x-0.5"
+          >
+            <ChevronRight className="size-5" />
+          </span>
+        </div>
       </Link>
     </section>
   );
 }
 
 /**
- * "Next up": the one to-do worth doing today, or, with none, the next thing
- * on the plan. Hidden when there is neither.
+ * "Before Brazil · 3 things left": the trip's open to-dos in one line, and the
+ * one due soonest. While the trip is on, the next thing on the plan instead.
+ * Opens the to-do list.
  */
-export function HomeNextUp({
+export function HomeBeforeTrip({
   trip,
   glance,
-  uid,
 }: {
   trip: TripRow;
   glance: TripGlance | undefined;
-  uid: string | null;
 }) {
-  const { todos } = useTripTodos(trip.id, uid);
-  const open = todos.filter((t) => !t.done);
-  const todo = nextTodo(todos);
-  const planned = todo ? null : nextOnPlan(glance?.items ?? [], todayIso());
+  const underway = isUnderway(trip.start_date, trip.end_date);
+  const open = glance?.todos.open ?? 0;
+  const next = glance?.todos.next ?? null;
+  const planned = underway ? nextOnPlan(glance?.items ?? [], toLocalISODate(new Date())) : null;
 
-  if (!todo && !planned) return null;
-
-  const eyebrow = todo ? "One thing for today" : "Next on the plan";
-  const title = todo ? todo.title : planned!.title;
-  const note = todo
-    ? dueLine(todo.due_on) || todo.notes || trip.title
-    : [
-        planned!.day_date
-          ? new Date(`${planned!.day_date}T00:00:00`).toLocaleDateString(undefined, {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-            })
-          : "",
-        timeForRail(planned!.time_label),
-      ]
-        .filter(Boolean)
-        .join(" · ");
-  const Icon = todo ? Ticket : CalendarClock;
-
-  return (
-    <section data-guide="home-next" className="rise">
-      <HomeSectionTitle
-        title="Next up"
-        aside={
-          open.length > 0 ? `${open.length} ${open.length === 1 ? "task" : "tasks"}` : undefined
-        }
+  if (underway && planned) {
+    const when = [
+      planned.day_date
+        ? new Date(`${planned.day_date}T00:00:00`).toLocaleDateString(undefined, {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          })
+        : "",
+      timeForRail(planned.time_label),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return (
+      <Row
+        to={{ tripId: trip.id }}
+        icon={<CalendarClock className="size-6" aria-hidden />}
+        title={`Next: ${planned.title}`}
+        note={when}
       />
-      <Link
-        to="/trips/$tripId"
-        params={{ tripId: trip.id }}
-        className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-xs transition-shadow hover:shadow-sm"
-      >
-        <span
-          aria-hidden
-          className="grid size-14 shrink-0 place-items-center rounded-full bg-nexttime/15 text-nexttime"
-        >
-          <Icon className="size-6" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {eyebrow}
-          </span>
-          <span className="mt-0.5 line-clamp-2 block text-[17px] font-medium leading-snug">
-            {title}
-          </span>
-          {note ? (
-            <span className="block truncate text-[13.5px] text-muted-foreground">{note}</span>
-          ) : null}
-        </span>
-        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-      </Link>
-    </section>
+    );
+  }
+
+  const title = `${underway ? "During" : "Before"} ${trip.title}`;
+  const note =
+    open === 0
+      ? "Nothing left to do"
+      : `${open} ${open === 1 ? "thing" : "things"} left${
+          next
+            ? ` · ${next.title}${dueLine(next.due_on) ? `, ${dueLine(next.due_on).toLowerCase()}` : ""}`
+            : ""
+        }`;
+  return (
+    <Row
+      to={{ tripId: trip.id, prep: "todo" }}
+      icon={<CircleCheck className="size-6" aria-hidden />}
+      title={title}
+      note={note}
+    />
+  );
+}
+
+function Row({
+  to,
+  icon,
+  title,
+  note,
+}: {
+  to: { tripId: string; prep?: "todo" };
+  icon: ReactNode;
+  title: string;
+  note: string;
+}) {
+  return (
+    <Link
+      data-guide="home-next"
+      to="/trips/$tripId"
+      params={{ tripId: to.tripId }}
+      search={to.prep ? { prep: to.prep } : {}}
+      className="rise plain-card flex items-center gap-3 px-4 py-3 transition-shadow hover:shadow-md"
+    >
+      <span className="shrink-0 text-primary">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-bold">{title}</span>
+        {note ? (
+          <span className="block truncate text-[13px] text-muted-foreground">{note}</span>
+        ) : null}
+      </span>
+      <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+    </Link>
   );
 }
 
 /**
- * Trips that ended in the last year, at the foot of Home: one thin bar each,
- * so they are there to revisit without taking the page from what is next.
+ * Four ways into the trip: its itinerary, to-dos (with how many are open),
+ * packing, and the places you saved. Each a pastel of its own in Colorful.
  */
-export function HomePastTrips({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
+export function HomeShortcuts({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
+  const open = glance?.todos.open ?? 0;
+  const tile =
+    "relative flex min-h-[78px] flex-col items-center justify-center gap-1.5 px-1 py-2.5 text-center text-[12px] font-semibold transition-shadow hover:shadow-md";
+  const icon = "size-[22px] text-primary";
+  return (
+    <nav aria-label="Trip shortcuts" className="rise grid grid-cols-4 gap-2">
+      <Link to="/trips/$tripId" params={{ tripId: trip.id }} className={`tile-card-3 ${tile}`}>
+        <CalendarDays className={icon} aria-hidden />
+        Itinerary
+      </Link>
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        search={{ prep: "todo" }}
+        className={`tile-card-5 ${tile}`}
+        aria-label={open ? `To-do, ${open} open` : "To-do"}
+      >
+        <ListChecks className={icon} aria-hidden />
+        To-do
+        {open > 0 ? (
+          <span
+            aria-hidden
+            className="absolute right-2 top-1.5 grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold leading-5 text-primary-foreground"
+          >
+            {open}
+          </span>
+        ) : null}
+      </Link>
+      <Link
+        to="/trips/$tripId"
+        params={{ tripId: trip.id }}
+        search={{ prep: "packing" }}
+        className={`tile-card-1 ${tile}`}
+      >
+        <Luggage className={icon} aria-hidden />
+        Packing
+      </Link>
+      <Link to="/recommendations" className={`tile-card-2 ${tile}`}>
+        <Bookmark className={icon} aria-hidden />
+        Saved places
+      </Link>
+    </nav>
+  );
+}
+
+/**
+ * "Your trips": the others, coming first and then the ones you're back from,
+ * as small painted tiles in a row that scrolls sideways.
+ */
+export function HomeYourTrips({ trips, photos }: { trips: TripRow[]; photos: TripPhotoRow[] }) {
   if (trips.length === 0) return null;
   return (
     <section data-guide="home-past" className="rise">
-      <HomeSectionTitle title="Past trips" aside={<Link to="/trips">All trips</Link>} />
-      <div className="space-y-2">
+      <HomeSectionTitle title="Your trips" aside={<Link to="/trips">All trips</Link>} />
+      <div className="-mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
         {trips.map((t) => (
           <Link
             key={t.id}
             to="/trips/$tripId"
             params={{ tripId: t.id }}
             viewTransition
-            className="block overflow-hidden rounded-2xl shadow-xs transition-shadow hover:shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="relative block h-[112px] w-[31%] min-w-[108px] shrink-0 snap-start overflow-hidden rounded-[var(--r-image)] bg-[#2a2026] text-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <TripBanner
-              variant="compact"
-              title={t.title}
-              city={t.city}
-              country={t.country}
-              cities={[]}
-              startDate={t.start_date}
-              endDate={t.end_date}
-              photo={pickTripPhoto(photos, { city: t.city, country: t.country, cities: [] })}
-              viewTransitionName={`trip-photo-${t.id}`}
+            <TripPicture trip={t} photos={photos} cities={[]} creditAt="top" />
+            <span
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to top, rgba(18,12,10,0.7), rgba(18,12,10,0) 60%)",
+              }}
             />
+            <span className="absolute inset-x-0 bottom-0 p-2">
+              <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
+                {t.title}
+              </span>
+              <span className="block truncate text-[11.5px] text-white/90">
+                {tripDateLine(t.start_date, t.end_date)}
+              </span>
+            </span>
           </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/** The trips after the current one, as banners, each one tap from its page. */
-export function HomeLaterTrips({
-  trips,
-  photos,
-  glances,
-  members,
-  uid,
-}: {
-  trips: TripRow[];
-  photos: TripPhotoRow[];
-  glances: Record<string, TripGlance>;
-  members: MemberRow[];
-  uid: string | null;
-}) {
-  if (trips.length === 0) return null;
-  return (
-    <section className="rise">
-      <HomeSectionTitle
-        title={laterHeading(trips.map((t) => t.start_date))}
-        aside={<Link to="/trips">All trips</Link>}
-      />
-      <div className="space-y-3">
-        {trips.map((t) => (
-          <TripCard
-            key={t.id}
-            trip={t}
-            photos={photos}
-            glance={glances[t.id]}
-            peopleCount={peopleOnTrip(members, t.id, uid)}
-            detail={false}
-          />
         ))}
       </div>
     </section>

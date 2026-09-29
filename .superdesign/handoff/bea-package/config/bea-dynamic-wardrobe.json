@@ -1,0 +1,172 @@
+{
+  "version": "1.0",
+  "name": "Béa Dynamic Wardrobe & Context System",
+  "principle": "Béa's core identity never changes: small white French bulldog + lemon bandana. Contextual accessories are functional, weather/activity-based, and culturally neutral.",
+  "priorityOrder": [
+    "actual weather",
+    "trip/activity context",
+    "season",
+    "destination-neutral environmental context",
+    "default Béa"
+  ],
+  "coreIdentityLocked": {
+    "whiteFrenchBulldog": true,
+    "lemonBandana": true,
+    "baseFaceAndBody": true,
+    "noSkinOrFurColorChanges": true,
+    "noEthnicityCoding": true
+  },
+  "allowedAccessoryCategories": {
+    "weather": [
+      "yellow raincoat",
+      "small umbrella",
+      "puffer jacket",
+      "knit hat",
+      "sun hat",
+      "sunglasses",
+      "light cooling bandana"
+    ],
+    "travel": [
+      "tiny neck pillow",
+      "small suitcase",
+      "luggage tag",
+      "map",
+      "train ticket/pass",
+      "travel tote"
+    ],
+    "activity": [
+      "hiking harness",
+      "small backpack",
+      "beach towel",
+      "water bottle",
+      "picnic blanket",
+      "walking lead"
+    ],
+    "celebration": [
+      "simple party hat",
+      "confetti",
+      "small ribbon",
+      "birthday cake prop"
+    ]
+  },
+  "forbiddenOrDefaultAvoid": [
+    "traditional, ceremonial, religious, indigenous, ethnic, or national dress used as costume",
+    "head coverings with religious or cultural significance",
+    "skin, fur, eye, facial or body changes meant to signal ethnicity or nationality",
+    "nationality caricatures",
+    "fake accents, dialect mimicry, or phonetic stereotypes",
+    "food, alcohol, body features, poverty, crime, or religion used as shorthand for a nationality or ethnicity",
+    "flag costumes or wrapping Béa in a national flag",
+    "sacred symbols used decoratively",
+    "military uniforms tied to a nationality as novelty costume",
+    "tourist stereotypes such as berets/sombreros/lederhosen/geisha-inspired styling as destination shorthand",
+    "destination-specific costume generated solely from country/city name"
+  ],
+  "destinationContextRules": [
+    "Prefer weather and activity over destination identity.",
+    "If destination flavor is desired, use neutral environmental cues such as map route, transit iconography, architecture silhouettes, coastline, mountains, or generic cityscape — not cultural costume.",
+    "Use named landmarks only when they are relevant to the user's trip and visually appropriate; do not parody them.",
+    "Do not infer culture, religion, ethnicity, language style or dress from a destination.",
+    "Do not auto-generate culturally specific attire from location metadata.",
+    "If a culturally specific visual is ever requested, treat it as a separate reviewed content/design task rather than part of the automatic wardrobe system."
+  ],
+  "contextMappings": {
+    "rain": {
+      "accessories": [
+        "yellow raincoat",
+        "small umbrella"
+      ],
+      "sampleLines": [
+        "Wet paws have entered the risk assessment.",
+        "Rain detected. Béa has concerns about paw conditions."
+      ]
+    },
+    "snowOrCold": {
+      "accessories": [
+        "puffer jacket",
+        "knit hat"
+      ],
+      "sampleLines": [
+        "Béa has become approximately 40% jacket.",
+        "Tiny dog. Significant insulation."
+      ]
+    },
+    "hotOrSunny": {
+      "accessories": [
+        "sun hat",
+        "sunglasses"
+      ],
+      "sampleLines": [
+        "High temperatures. Low Frenchie enthusiasm.",
+        "Warm. Sunny. Béa sees no reason to rush."
+      ]
+    },
+    "beach": {
+      "accessories": [
+        "sun hat",
+        "beach towel"
+      ],
+      "sampleLines": [
+        "Sand detected. Digging instincts activated.",
+        "Béa came prepared. Emotionally, for snacks."
+      ]
+    },
+    "hiking": {
+      "accessories": [
+        "hiking harness",
+        "small backpack"
+      ],
+      "sampleLines": [
+        "There is elevation involved. Béa was not consulted.",
+        "Béa is outdoorsy now. Apparently."
+      ]
+    },
+    "airport": {
+      "accessories": [
+        "tiny neck pillow",
+        "small suitcase"
+      ],
+      "sampleLines": [
+        "Béa has packed. Mostly unnecessary things.",
+        "Airport mode activated. Dignity is carry-on only."
+      ]
+    },
+    "redEye": {
+      "accessories": [
+        "tiny neck pillow"
+      ],
+      "sampleLines": [
+        "Béa supports sleep. Airports do not.",
+        "Overnight flight detected. Béa is already tired on your behalf."
+      ]
+    },
+    "celebration": {
+      "accessories": [
+        "simple party hat",
+        "confetti"
+      ],
+      "sampleLines": [
+        "Béa has no idea what’s happening but supports cake.",
+        "Celebration mode activated."
+      ]
+    }
+  },
+  "implementation": {
+    "preferredModel": "base character animation + optional accessory/prop layer",
+    "avoid": "pre-rendering every possible action × outfit combination",
+    "layerOrder": [
+      "background/environment",
+      "Béa base animation",
+      "wearable accessory overlay",
+      "foreground prop",
+      "UI text/loading dots"
+    ],
+    "fallback": "If a clean aligned overlay is unavailable for a pose, use default Béa rather than forcing a bad costume fit."
+  },
+  "frequency": {
+    "weatherVariantWhenRelevant": 0.8,
+    "activityVariantWhenRelevant": 0.55,
+    "celebrationVariant": 0.25,
+    "destinationSpecificWardrobe": 0.0
+  }
+}

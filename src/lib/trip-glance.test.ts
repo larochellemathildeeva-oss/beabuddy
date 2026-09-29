@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  documentHighlights,
   bannerPill,
   bannerScene,
   daysShort,
@@ -8,6 +9,7 @@ import {
   firstStop,
   greetingFor,
   heroPill,
+  heroTags,
   nextOnPlan,
   nextTodo,
   plansConfirmed,
@@ -33,6 +35,30 @@ test("the hero pill says how many days, or which day it is", () => {
   assert.equal(heroPill("2026-09-24", "2026-09-30", false, now), "Underway · Day 3 of 7");
   assert.equal(heroPill("2026-09-20", "2026-09-22", false, now), "Just back");
   assert.equal(heroPill(null, null, false, now), "Planning");
+});
+
+test("the master hero's two pills: what kind of moment, and when", () => {
+  assert.deepEqual(heroTags("2026-10-08", "2026-10-18", false, now), {
+    label: "Upcoming trip",
+    when: "In 12 days",
+  });
+  assert.deepEqual(heroTags("2026-09-27", null, false, now), {
+    label: "Upcoming trip",
+    when: "Tomorrow",
+  });
+  assert.deepEqual(heroTags("2026-09-24", "2026-09-30", false, now), {
+    label: "On the trip",
+    when: "Day 3 of 7",
+  });
+  assert.deepEqual(heroTags("2026-10-08", null, true, now), {
+    label: "Tentative dates",
+    when: "In 12 days",
+  });
+  assert.deepEqual(heroTags(null, null, false, now), { label: "Planning", when: "" });
+  assert.deepEqual(heroTags("2026-09-20", "2026-09-22", false, now), {
+    label: "Just back",
+    when: "",
+  });
 });
 
 test("length, route and greeting", () => {
@@ -123,7 +149,30 @@ test("a trip keeps its painted scene, and trips differ", () => {
   assert.ok(bannerScene("").sky.length === 2);
 });
 
+test("painted banners take the theme's colours but keep their hills", () => {
+  const calm = bannerScene("Hiroshima", "calm");
+  const colorful = bannerScene("Hiroshima", "colorful");
+  const dark = bannerScene("Hiroshima", "dark");
+  assert.deepEqual(calm.paths, colorful.paths);
+  assert.deepEqual(calm.paths, dark.paths);
+  assert.notEqual(calm.sky[0], colorful.sky[0]);
+  assert.notEqual(colorful.sky[0], dark.sky[0]);
+  assert.deepEqual(bannerScene("Hiroshima"), calm);
+});
+
 test("stops count places to see, not travel, beds or notes", () => {
   const kinds = ["flight", "hotel", "sight", "meal", "transport", "lodging", "note", "reservation"];
   assert.equal(stopCount(kinds.map((kind) => ({ kind }))), 3);
+});
+
+test("a trip's documents stand in for a flight and a stay", () => {
+  const docs = [
+    { id: "d1", trip_id: "t", kind: "train", title: "Hakura train" },
+    { id: "d2", trip_id: "t", kind: "flight", title: "Flight to Toronto" },
+    { id: "d3", trip_id: "t", kind: "accommodation", title: "Casa Azul" },
+  ];
+  const found = documentHighlights(docs);
+  assert.equal(found.flight?.title, "Flight to Toronto");
+  assert.equal(found.lodging?.title, "Casa Azul");
+  assert.deepEqual(documentHighlights([]), { flight: null, lodging: null });
 });

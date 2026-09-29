@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
 import { guideKeyForPath } from "@/lib/guide-key";
-import { Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "@/components/icons";
 import {
   findGuideTarget,
   measureGuideTarget,
@@ -221,7 +221,7 @@ const guides: Record<string, Guide> = {
       },
       {
         title: "What is kept on this phone",
-        body: "Béa needs a connection to open, so nothing here is a no-signal app yet. What is kept locally: trip settings → Saved directions puts the walk or drive steps on this phone so you do not fetch them twice. This list shows which trips already have them.",
+        body: "Béa needs a connection to open, so nothing here is a no-signal app yet. What is kept locally: trip settings → Saved directions puts the steps between stops on this phone so you do not fetch them twice. This list shows which trips already have them.",
         selector: "[data-guide='offline-options']",
       },
       {

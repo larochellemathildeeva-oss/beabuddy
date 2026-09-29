@@ -6,6 +6,7 @@
  */
 
 import { countdownLabel, isUnderway } from "./trip-card.ts";
+import type { ThemeName } from "./theme.ts";
 
 /** Parse a stored YYYY-MM-DD as a local date, never as UTC midnight. */
 function localDate(iso: string | null | undefined): Date | null {
@@ -56,6 +57,32 @@ export function heroPill(
   const length = daysFrom(from, to) + 1;
   if (day <= length) return length > 1 ? `Underway · Day ${day} of ${length}` : "Underway";
   return "Just back";
+}
+
+/**
+ * Home's hero in the master design has two pills: what kind of moment this is
+ * on the left ("Upcoming trip", "On the trip") and when on the right ("In 4
+ * days", "Day 3 of 7"). `when` is empty when there is nothing to count.
+ */
+export function heroTags(
+  start: string | null | undefined,
+  end: string | null | undefined,
+  tentative = false,
+  now = new Date(),
+): { label: string; when: string } {
+  const from = localDate(start);
+  if (!from) return { label: tentative ? "Tentative dates" : "Planning", when: "" };
+  const to = localDate(end) ?? from;
+  const until = daysFrom(now, from);
+  const label = tentative ? "Tentative dates" : "Upcoming trip";
+  if (until > 1) return { label, when: `In ${until} days` };
+  if (until === 1) return { label, when: "Tomorrow" };
+  if (until === 0) return { label, when: "Today" };
+  const day = daysFrom(from, now) + 1;
+  const length = daysFrom(from, to) + 1;
+  if (day <= length)
+    return { label: "On the trip", when: length > 1 ? `Day ${day} of ${length}` : "" };
+  return { label: "Just back", when: "" };
 }
 
 /** "3D": the trip's length in days, for the corner of a banner. */
@@ -191,18 +218,41 @@ export type BannerScene = {
   birds: boolean;
 };
 
+type Palette = { sky: [string, string]; sun: string; hills: [string, string, string] };
+
 /**
- * Dusk palettes in Béa's warm band — plum, wine, umber, ink, olive. Dark on
- * purpose: the title is white and sits straight on top, and a painted
- * placeholder should read as evening light rather than a colour swatch.
+ * Five palettes per theme, so a painted banner belongs to the look you chose.
+ * The same trip keeps the same slot (and the same hills) in every theme; only
+ * the colours change. In each, the near hill is deep enough that the white
+ * title holds on top of it, with the banner's soft shade underneath.
+ *
+ *   calm     — sand, stone, clay, oat, linen
+ *   colorful — lilac, sky, teal, cyan, periwinkle
+ *   dark     — near-black hills under a beige or pale sun
  */
-const PALETTES: { sky: [string, string]; sun: string; hills: [string, string, string] }[] = [
-  { sky: ["#4d3d45", "#6d5a5e"], sun: "#c9a877", hills: ["#4a3a44", "#312935", "#1e1a24"] },
-  { sky: ["#6e3a40", "#8f5b5a"], sun: "#d9ceb6", hills: ["#5c2e36", "#3f2229", "#27161b"] },
-  { sky: ["#5e4232", "#8a6446"], sun: "#e3c48f", hills: ["#4f3627", "#36251b", "#221711"] },
-  { sky: ["#2d3144", "#4a4659"], sun: "#e8dcc0", hills: ["#2c2d3c", "#1e202c", "#13141c"] },
-  { sky: ["#4f4c3c", "#716a50"], sun: "#dcc58d", hills: ["#3f3d2f", "#2c2b21", "#1b1a14"] },
-];
+const PALETTES: Record<ThemeName, Palette[]> = {
+  calm: [
+    { sky: ["#efe4d2", "#f8f2e8"], sun: "#e3c49a", hills: ["#d6c2a6", "#b89f80", "#8c755b"] },
+    { sky: ["#e6e1d8", "#f4f1ea"], sun: "#f1dcc0", hills: ["#cbc2b4", "#a79c8b", "#7d7263"] },
+    { sky: ["#f0dccb", "#f8eee4"], sun: "#dfa987", hills: ["#d8b8a0", "#b8927a", "#8a6a57"] },
+    { sky: ["#ece6d6", "#f7f3ea"], sun: "#e9d6a8", hills: ["#cfc6a8", "#aca183", "#817860"] },
+    { sky: ["#e8e0d6", "#f5f0ea"], sun: "#e8c9b3", hills: ["#d2c3b6", "#ae9d8f", "#84756a"] },
+  ],
+  colorful: [
+    { sky: ["#d9d1ee", "#f1ecf8"], sun: "#fff3c4", hills: ["#b3a6d9", "#8b7cc0", "#5f5296"] },
+    { sky: ["#c8e3f5", "#eaf5fc"], sun: "#ffffff", hills: ["#93bfdf", "#6696c3", "#44709c"] },
+    { sky: ["#c4ece9", "#e9f8f6"], sun: "#fffbe0", hills: ["#8fd1c8", "#5aada4", "#387f78"] },
+    { sky: ["#c6e6f4", "#eaf6fb"], sun: "#fff3c4", hills: ["#8ccbe3", "#58a7c6", "#347e9c"] },
+    { sky: ["#dcd6f5", "#f2effc"], sun: "#ffe6f2", hills: ["#aeb2e6", "#8088c9", "#5a5f9e"] },
+  ],
+  dark: [
+    { sky: ["#1c1a18", "#2a2622"], sun: "#d9c3a5", hills: ["#2f2a25", "#231f1c", "#161412"] },
+    { sky: ["#1a1b1f", "#2a2a2e"], sun: "#e8dcc0", hills: ["#2b2b30", "#202024", "#141417"] },
+    { sky: ["#211c1a", "#33291f"], sun: "#caa57a", hills: ["#35291f", "#281f18", "#1a1410"] },
+    { sky: ["#1b1d1b", "#282b27"], sun: "#d7cfa8", hills: ["#2a2d28", "#1f221e", "#141613"] },
+    { sky: ["#1f1b1d", "#2e2729"], sun: "#dcbfb0", hills: ["#312a2c", "#241f21", "#171415"] },
+  ],
+};
 
 function hash(seed: string): number {
   let h = 2166136261;
@@ -248,10 +298,11 @@ function ridge(rand: () => number, base: number, amp: number, peaks: number): st
  * and three ridges of hills. Chosen from the trip's name, so a trip keeps its
  * picture from visit to visit and two trips side by side do not match.
  */
-export function bannerScene(seed: string): BannerScene {
+export function bannerScene(seed: string, theme: ThemeName = "calm"): BannerScene {
   const h = hash(seed || "Béa");
   const rand = random(h);
-  const palette = PALETTES[h % PALETTES.length]!;
+  const set = PALETTES[theme];
+  const palette = set[h % set.length]!;
   return {
     ...palette,
     sunX: r1(120 + rand() * 200),
@@ -263,5 +314,20 @@ export function bannerScene(seed: string): BannerScene {
       ridge(rand, 152, 26, 3 + Math.floor(rand() * 3)),
     ],
     birds: rand() > 0.45,
+  };
+}
+
+/**
+ * A flight and a stay from Trip documents filed to the trip, for a card
+ * whose timeline has none. A confirmation added under You → Trip documents
+ * is a booking, and the card used to say "None yet" beside it. Newest
+ * first, as the library lists them; linked or not, one of each is enough.
+ */
+export function documentHighlights<
+  D extends { id: string; trip_id: string | null; kind: string; title: string },
+>(docs: readonly D[]): { flight: D | null; lodging: D | null } {
+  return {
+    flight: docs.find((d) => d.kind === "flight") ?? null,
+    lodging: docs.find((d) => d.kind === "accommodation") ?? null,
   };
 }

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "@/components/icons";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section } from "@/components/Section";
 import { Sheet } from "@/components/Sheet";
 import { useTripStops, type StopRow, type TripHome } from "@/hooks/useTripStops";
 import { filledFromMapSummary, stopKindForPlace } from "@/lib/place-kind";
+import { DAY_TRIP_KIND, dayTripBase, isDayTrip, shortCity } from "@/lib/trip-cities";
 import { useUndo } from "@/hooks/useUndo";
 import { SavedPlacePicker } from "@/components/SavedPlacePicker";
 import { toNewStop, type CapturedPlace } from "@/lib/captured-place";
@@ -72,6 +73,8 @@ export function TripStops({
   openSignal,
   formOnly = false,
   home,
+  onFindCities,
+  findingCities = false,
 }: {
   tripId: string;
   uid: string | null;
@@ -85,6 +88,9 @@ export function TripStops({
   openSignal?: number | undefined;
   /** Render only the "Add a stop" sheet, for opening from the trip page. */
   formOnly?: boolean;
+  /** Offered when the trip has stops with pins but no destinations. */
+  onFindCities?: (() => void) | undefined;
+  findingCities?: boolean | undefined;
 }) {
   const s = useTripStops(tripId, uid, home);
   const { removeWithUndo } = useUndo();
@@ -258,6 +264,16 @@ export function TripStops({
             }`
       }
     >
+      {onFindCities && s.stops.length === 0 && (
+        <button
+          type="button"
+          onClick={onFindCities}
+          disabled={findingCities}
+          className="mb-2 rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-60"
+        >
+          {findingCities ? "Finding the cities…" : "Find the cities from my stops"}
+        </button>
+      )}
       {s.countries.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {s.countries.map((c) => (
@@ -314,10 +330,19 @@ export function TripStops({
                   className="min-w-0 flex-1 text-left"
                 >
                   <p className="text-[14.5px] font-medium">
-                    {stop.kind === "layover" ? "✈️ Stopover · " : `${i + 1}. `}
+                    {stop.kind === "layover"
+                      ? "✈️ Stopover · "
+                      : isDayTrip(stop)
+                        ? "🚆 Day trip · "
+                        : `${i + 1}. `}
                     {stop.city}
                     {stop.country ? `, ${stop.country}` : ""}
                   </p>
+                  {isDayTrip(stop) && dayTripBase(s.stops, i) && (
+                    <p className="text-[12px] text-muted-foreground">
+                      From {shortCity(dayTripBase(s.stops, i)!.city)} — nights stay there
+                    </p>
+                  )}
                   {(stop.arrive_on || stop.depart_on) && (
                     <p className="text-[12px] text-muted-foreground">
                       {[stop.arrive_on, stop.depart_on].filter(Boolean).join(" → ")}
@@ -434,6 +459,7 @@ function StopDraftForm({
         {[
           ["destination", "Destination"],
           ["layover", "Stopover / layover"],
+          [DAY_TRIP_KIND, "Day trip"],
         ].map(([v, label]) => (
           <button
             key={v}

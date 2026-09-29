@@ -2,10 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { geoapifyStaticMapUrl, type PlaceFacts } from "@/lib/geoapify";
+import type { PlacePhoto } from "@/lib/wikimedia";
 
 /**
- * What a stop or a rec is like to visit — hours, website, phone, access —
- * and a picture of a day's map for offline, both from Geoapify.
+ * What a stop or a rec is like to visit — hours, website, phone, access,
+ * from Geoapify, and a photo from Pexels when one names the place, else from
+ * Wikimedia Commons when the place names one
+ * — and a picture of a day's map for offline.
  *
  * The key is read on the server only (geo-provider.server.ts, imported
  * lazily): this file ships to the browser. Without Geoapify configured both
@@ -15,26 +18,43 @@ import { geoapifyStaticMapUrl, type PlaceFacts } from "@/lib/geoapify";
 const UA = "BeaTravelApp/1.0 (travel memory vault)";
 const point = { lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) };
 
-export type PlaceDetails = Omit<PlaceFacts, "names">;
+export type PlaceDetails = Omit<PlaceFacts, "names" | "commons"> & { photo?: PlacePhoto };
 
 export const placeDetails = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { lat: number; lon: number; name: string }) =>
     z.object({ ...point, name: z.string().trim().min(1).max(200) }).parse(data),
   )
-  .handler(async ({ data }): Promise<PlaceDetails | null> => {
+  .handler(async ({ data, context }): Promise<PlaceDetails | null> => {
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
-    if (provider.name !== "geoapify") return null;
-    const { placeFactsFor } = await import("@/lib/place-facts.server");
-    const facts = await placeFactsFor(provider.token, data);
-    if (!facts) return null;
+    let facts: PlaceFacts | null = null;
+    if (provider.name === "geoapify") {
+      const { placeFactsFor } = await import("@/lib/place-facts.server");
+      facts = await placeFactsFor(provider.token, data);
+    }
+    // Pexels first (a photo whose description names the place), then Commons.
+    // Pexels needs only the stop's name, so it is asked even when the map
+    // cannot confirm the place at the pin — otherwise most stops, which the
+    // map does not know by name, would never get a photo.
+    const { pexelsPlacePhoto } = await import("@/lib/pexels.server");
+    let photo = await pexelsPlacePhoto(
+      context.userId,
+      [data.name, ...(facts?.name ? [facts.name] : []), ...(facts?.names ?? [])],
+      data,
+    );
+    if (!photo && facts?.commons) {
+      const { commonsPhotoFor } = await import("@/lib/wikimedia.server");
+      photo = await commonsPhotoFor(facts.commons);
+    }
+    if (!facts) return photo ? { photo } : null;
     return {
       ...(facts.name ? { name: facts.name } : {}),
       ...(facts.openingHours ? { openingHours: facts.openingHours } : {}),
       ...(facts.website ? { website: facts.website } : {}),
       ...(facts.phone ? { phone: facts.phone } : {}),
       ...(facts.wheelchair ? { wheelchair: facts.wheelchair } : {}),
+      ...(photo ? { photo } : {}),
     };
   });
 
@@ -69,4 +89,28 @@ export const dayMapImage = createServerFn({ method: "POST" })
     } catch {
       return null;
     }
+  });
+
+/**
+ * A photo of a trip's town, for its banner when the traveller chose real
+ * photos and has none of their own: from Pexels when PEXELS_API_KEY is set and
+ * a photo names the town, else from Wikimedia Commons (keyless). Never
+ * Geoapify, so it costs no credit.
+ */
+export const townPhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { city: string; country?: string | null }) =>
+    z
+      .object({
+        city: z.string().trim().min(1).max(200),
+        country: z.string().trim().max(100).nullish(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }): Promise<PlacePhoto | null> => {
+    const { pexelsTownPhoto } = await import("@/lib/pexels.server");
+    const pexels = await pexelsTownPhoto(context.userId, data.city, data.country);
+    if (pexels) return pexels;
+    const { townPhotoFor } = await import("@/lib/wikimedia.server");
+    return townPhotoFor(data.city, data.country);
   });

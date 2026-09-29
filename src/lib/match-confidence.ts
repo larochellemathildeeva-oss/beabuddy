@@ -109,6 +109,11 @@ const NOISE = new Set([
   "explore",
 ]);
 
+/** A word that carries no identity: "the", "cafe", "restaurant"… */
+export function isNoiseWord(word: string): boolean {
+  return NOISE.has(word);
+}
+
 function meaningfulWords(text: string): string[] {
   return foldAccents(text.toLowerCase())
     .split(/[^a-z0-9぀-ヿ一-鿿가-힯]+/)
@@ -183,7 +188,7 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
   // A street address is matched against the whole label, which is where the
   // street is; a name only against the place's own names.
   const echoes = looksLikeStreetAddress(evidence.title)
-    ? nameEchoes(evidence.title, label)
+    ? nameEchoes(evidence.title, label) && sameNumber(evidence.title, label)
     : words.length === 0
       ? names.some((name) => nameEchoes(evidence.title, name))
       : // A whole area answering for a venue has to be the whole of what was
@@ -201,6 +206,11 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
       reason: "This is a street named after it, not the place itself.",
     };
   }
+  const other =
+    echoes && !looksLikeStreetAddress(evidence.title)
+      ? otherBranch(evidence.title, label, evidence.alsoNamed ?? [])
+      : null;
+  if (other) return { confidence: "low", reason: other };
   if (areaish && !echoes) {
     return {
       confidence: "low",
@@ -214,6 +224,61 @@ export function scoreMatch(evidence: MatchEvidence): { confidence: Confidence; r
     return { confidence: "medium", reason: "Béa matched the area, not a specific address." };
   }
   return { confidence: "high", reason: "" };
+}
+
+/**
+ * An address found is that address only if it carries the number too.
+ *
+ * "68 Honmachi" is a castle in Himeji; the geocoder, asked near Osaka,
+ * answered with Osaka's own Honmachi district, and the street name echoed.
+ * Most towns share their street and district names; the number is what is
+ * particular. A found address carries it among its numbers ("68 Honmachi,
+ * Himeji", "1-chome-10 Otemachi"), a district does not.
+ */
+function sameNumber(address: string, label: string): boolean {
+  const asked = address.match(/\d+/g) ?? [];
+  if (asked.length === 0) return true;
+  const found = new Set(label.match(/\d+/g) ?? []);
+  return asked.some((n) => found.has(n) || found.has(String(Number(n))));
+}
+
+/**
+ * Right name, different place: another branch of a chain, or a namesake that
+ * shares a word with the stop.
+ *
+ * One shared word is enough to echo, and a chain shares its words: "Motel One
+ * Frankfurt-Hauptbahnhof" echoed "Motel One Berlin-Alexanderplatz" on "motel"
+ * and was pinned in Berlin; "Curry 36" echoed "Curry 61", and "Apfelwein Dax"
+ * any other cider tavern. What gives it away is that each name has something
+ * the other lacks: a different number, or a word of the stop's that the found
+ * place has nowhere in its name or address while its own name carries a word
+ * the stop never said. A name the place is also known by that holds the whole
+ * of the stop's clears it.
+ */
+function otherBranch(title: string, label: string, alsoNamed: readonly string[]): string | null {
+  const name = hitName(label);
+  if (!name) return null;
+  const numbers = (text: string): string[] => text.match(/\b\d{1,4}\b/g) ?? [];
+  const askedNumbers = numbers(title);
+  const gotNumbers = numbers(name);
+  if (
+    askedNumbers.length > 0 &&
+    gotNumbers.length > 0 &&
+    !askedNumbers.some((n) => gotNumbers.includes(n))
+  ) {
+    return `Béa found ${name}, which has another number — maybe a namesake.`;
+  }
+  const asked = meaningfulWords(title).filter((w) => w.length >= 3 && !/^\d+$/.test(w));
+  const covers = (text: string) => {
+    const folded = foldAccents(text.toLowerCase());
+    return asked.every((w) => folded.includes(w));
+  };
+  // The place's own names, not its address: "Osaka" in "…, Tennoji, Osaka"
+  // made Tennoji Station an answer for "Osaka Station".
+  if (covers(name) || alsoNamed.some(covers)) return null;
+  const askedText = foldAccents(title.toLowerCase());
+  const extra = meaningfulWords(name).some((w) => w.length >= 3 && !askedText.includes(w));
+  return extra ? `Béa found ${name} — maybe another branch or a namesake.` : null;
 }
 
 /**

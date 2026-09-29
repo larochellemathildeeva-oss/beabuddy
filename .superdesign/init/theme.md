@@ -1,0 +1,929 @@
+# Theme
+
+## Part 1 — Token summary
+
+Tailwind CSS v4, configured in CSS (`src/styles.css`, `@theme inline`); no tailwind.config file. Light "warm editorial cream / clay" + dark "warm charcoal". Class-based dark mode (`.dark`).
+
+**Fonts** — `--font-sans: "Manrope"` (300–700; body 15px / 1.5), `--font-display: "Instrument Serif"` (regular + italic; page titles 27px/1.06, wordmark 23px). Caps labels: 11px, 600, uppercase, 0.13em tracking, muted.
+
+**Light colors (oklch)**
+- background 0.963 0.016 76 (cream) · foreground 0.245 0.024 52 (dark brown)
+- card 0.998 0.004 88 (near-white, sits lighter than ground) · elevated 0.938 0.02 74 · popover 0.995 0.005 86
+- primary 0.535 0.162 39 (terracotta clay) · primary-foreground 0.99 0.008 86 · primary-soft = primary @ 11%
+- secondary 0.932 0.019 76 · muted 0.932 0.017 78 · muted-foreground 0.515 0.029 56 · accent 0.9 0.035 70
+- destructive 0.55 0.185 27 · border/input 0.917 0.014 74 · ring = primary
+- category: visited 0.55 0.135 249 (blue) · nexttime 0.56 0.12 158 (green) · wishlist 0.71 0.135 84 (gold) · reco 0.545 0.155 305 (purple)
+- gradient-clay: linear-gradient(142deg, oklch(0.625 0.155 50), oklch(0.485 0.16 30))
+- page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 78 / .85), transparent 70%)
+
+**Dark colors** — background 0.182 0.014 56 · foreground 0.948 0.008 76 · card 0.228 0.016 58 · elevated 0.272 0.017 60 · primary 0.715 0.158 45 · primary-foreground 0.17 0.025 44 · muted-foreground 0.715 0.018 66 · border 0.335 0.016 58 · visited 0.7 0.135 249 · nexttime 0.72 0.13 158 · wishlist 0.82 0.13 86 · reco 0.72 0.135 305.
+
+**Tab accent** — `--tab-accent: oklch(0.535 0.155 <hue>)`, hue per tab: home 39, world 49, trips 59, recs 69, you 79 (dark: L 0.715). Used only for the active tab pill (13% tint) and the header hairline.
+
+**Radius** — `--radius: 1.02rem`; sm −4px, md −2px, lg = radius, xl +4px, 2xl +8px, 3xl +12px (cards), 4xl +16px.
+
+**Shadows (soft, warm)** — xs `0 1px 2px oklch(.3 .03 55/.05)`; sm adds `0 3px 8px -4px /.1`; md `0 1px 2px /.04, 0 10px 24px -14px /.28` (cards); lg `0 2px 4px /.04, 0 24px 48px -24px /.34` (sheets); primary glow `0 10px 26px -12px oklch(.535 .162 39/.55)`.
+
+**Surfaces** — `card-soft` (card bg, 55% border hairline, radius-3xl, shadow-md) · `surface` (elevated bg, radius-2xl, no border) · `card-raised` (popover, shadow-lg) · `btn-primary` (clay gradient, radius-2xl, primary glow, 600) · `chip-on` (primary-soft bg, 45% primary border).
+
+**Motion** — durations tap 120ms, shift 200ms, move 320ms, arrive 420ms; ease-standard cubic-bezier(.32,.72,0,1), ease-exit (.4,0,1,1), ease-confirm (.34,1.4,.5,1).
+
+**Layout** — single centered app column: max-w 520px (phone), 680px (md), 780px (xl), side borders; page padding 16px; sticky blurred top bar and bottom tab bar.
+
+## Part 2 — Raw source
+
+### `src/styles.css`
+
+```css
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-visited: var(--visited);
+  --color-nexttime: var(--nexttime);
+  --color-wishlist: var(--wishlist);
+  --color-reco: var(--reco);
+  --color-elevated: var(--elevated);
+  --color-primary-soft: var(--primary-soft);
+
+  /* Library requirement: consumers must load these fonts in their <head>:
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
+:root {
+  --radius: 1.02rem;
+
+  /* Warm editorial cream / clay.
+     Cards sit *lighter* than the ground so depth comes from surface, not from
+     a border on every element. */
+  --background: oklch(0.963 0.016 76);
+  --foreground: oklch(0.245 0.024 52);
+  --card: oklch(0.998 0.004 88);
+  --card-foreground: oklch(0.245 0.024 52);
+  --elevated: oklch(0.938 0.02 74);
+  --popover: oklch(0.995 0.005 86);
+  --popover-foreground: oklch(0.245 0.024 52);
+  --primary: oklch(0.535 0.162 39);
+  --primary-foreground: oklch(0.99 0.008 86);
+  /* A tint of the primary, for selected chips and quiet highlights. */
+  --primary-soft: oklch(0.535 0.162 39 / 0.11);
+  --secondary: oklch(0.932 0.019 76);
+  --secondary-foreground: oklch(0.33 0.03 52);
+  --muted: oklch(0.932 0.017 78);
+  --muted-foreground: oklch(0.515 0.029 56);
+  --accent: oklch(0.9 0.035 70);
+  --accent-foreground: oklch(0.3 0.03 52);
+  --destructive: oklch(0.55 0.185 27);
+  --destructive-foreground: oklch(0.99 0.008 86);
+  --border: oklch(0.917 0.014 74);
+  --input: oklch(0.917 0.014 74);
+  --ring: oklch(0.535 0.162 39);
+
+  --visited: oklch(0.55 0.135 249);
+  --nexttime: oklch(0.56 0.12 158);
+  --wishlist: oklch(0.71 0.135 84);
+  --reco: oklch(0.545 0.155 305);
+
+  /* Diffuse and low-contrast: modern depth is soft, not a hard drop shadow. */
+  --shadow-xs: 0 1px 2px oklch(0.3 0.03 55 / 0.05);
+  --shadow-sm: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 3px 8px -4px oklch(0.3 0.03 55 / 0.1);
+  --shadow-md: 0 1px 2px oklch(0.3 0.03 55 / 0.04), 0 10px 24px -14px oklch(0.3 0.03 55 / 0.28);
+  --shadow-lg: 0 2px 4px oklch(0.3 0.03 55 / 0.04), 0 24px 48px -24px oklch(0.3 0.03 55 / 0.34);
+  --shadow-primary: 0 10px 26px -12px oklch(0.535 0.162 39 / 0.55);
+  --shadow-soft: var(--shadow-md);
+
+  --gradient-clay: linear-gradient(142deg, oklch(0.625 0.155 50), oklch(0.485 0.16 30));
+  /* Barely-there warmth so the page is not a flat fill. */
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.99 0.02 78 / 0.85), transparent 70%);
+
+  /**
+   * Motion is configured where colour is configured — one place, not forty
+   * component files.
+   *
+   * The four durations are named for what the movement *is* rather than how
+   * long it takes, so a reviewer can tell a wrong one from a right one:
+   *   tap    — the element you touched acknowledges you
+   *   shift  — something changes in place (colour, weight, rotation)
+   *   move   — something travels across the screen
+   *   arrive — a new surface lands
+   *
+   * Tailwind v4's variable shorthand reads them straight out of here:
+   * `duration-(--t-move)`, `ease-(--ease-standard)`. Component code then says
+   * what the motion means instead of guessing a number.
+   *
+   * These live on :root rather than in @theme so they are emitted whether or
+   * not a utility happens to reference them — plain CSS below uses them too.
+   */
+  --t-tap: 120ms;
+  --t-shift: 200ms;
+  --t-move: 320ms;
+  --t-arrive: 420ms;
+
+  /* Standard: decelerating, for anything entering or moving in place.
+     Exit: accelerating, for anything leaving — it should not linger.
+     Confirm: slight overshoot, reserved for "that worked" moments. */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-confirm: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* The original names, kept as aliases so older call sites stay correct. */
+  --ease-out: var(--ease-standard);
+  --ease-spring: var(--ease-confirm);
+}
+
+.dark {
+  /* Warm charcoal, not black — and the clay survives, so the brand is still
+     the brand after dark. It used to go fully desaturated, which turned every
+     primary button grey. */
+  --background: oklch(0.182 0.014 56);
+  --foreground: oklch(0.948 0.008 76);
+  --card: oklch(0.228 0.016 58);
+  --card-foreground: oklch(0.948 0.008 76);
+  --elevated: oklch(0.272 0.017 60);
+  --popover: oklch(0.238 0.016 58);
+  --popover-foreground: oklch(0.948 0.008 76);
+  --primary: oklch(0.715 0.158 45);
+  --primary-foreground: oklch(0.17 0.025 44);
+  --primary-soft: oklch(0.715 0.158 45 / 0.18);
+  --secondary: oklch(0.262 0.014 60);
+  --secondary-foreground: oklch(0.93 0.01 74);
+  --muted: oklch(0.262 0.014 60);
+  --muted-foreground: oklch(0.715 0.018 66);
+  --accent: oklch(0.3 0.017 60);
+  --accent-foreground: oklch(0.94 0.01 74);
+  --destructive: oklch(0.65 0.175 27);
+  --destructive-foreground: oklch(0.99 0.008 86);
+  --border: oklch(0.335 0.016 58);
+  --input: oklch(0.335 0.016 58);
+  --ring: oklch(0.715 0.158 45);
+
+  --visited: oklch(0.7 0.135 249);
+  --nexttime: oklch(0.72 0.13 158);
+  --wishlist: oklch(0.82 0.13 86);
+  --reco: oklch(0.72 0.135 305);
+
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
+  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
+  --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
+  --shadow-primary: 0 10px 28px -12px oklch(0.715 0.158 45 / 0.5);
+  --shadow-soft: var(--shadow-md);
+
+  --gradient-clay: linear-gradient(142deg, oklch(0.755 0.15 50), oklch(0.61 0.162 32));
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.32 0.03 52 / 0.55), transparent 70%);
+
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    /* A single soft wash at the top so the page reads as lit, not as a fill. */
+    background-image: var(--page-wash);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /**
+   * Every primary action gets a soft top-light and a colour-matched glow.
+   * Applied here rather than in forty components: `background-image` layers
+   * over the `bg-primary` colour utility instead of fighting it.
+   */
+  button.bg-primary,
+  a.bg-primary,
+  [role="button"].bg-primary {
+    background-image: linear-gradient(
+      145deg,
+      color-mix(in oklch, white 14%, transparent),
+      transparent 58%
+    );
+    box-shadow: var(--shadow-primary);
+  }
+
+  button.bg-primary:disabled {
+    box-shadow: none;
+  }
+
+  /* Tappables feel like tappables. */
+  button,
+  a,
+  [role="button"] {
+    transition:
+      background-color var(--t-shift) var(--ease-standard),
+      border-color var(--t-shift) var(--ease-standard),
+      color var(--t-shift) var(--ease-standard),
+      box-shadow var(--t-shift) var(--ease-standard),
+      transform var(--t-tap) var(--ease-standard);
+  }
+
+  button:active:not(:disabled),
+  [role="button"]:active {
+    transform: scale(0.975);
+  }
+
+  /**
+   * One reduced-motion rule for the whole app, rather than a check in every
+   * component that happens to animate. Anything added later is covered on the
+   * day it is written.
+   *
+   * Transitions are stilled, not removed: a 1ms transition still *ends* at the
+   * right value, so a disclosure that animates height still opens to the right
+   * height. Removing the property would leave it mid-way.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      animation-delay: 0ms !important;
+      transition-duration: 1ms !important;
+      transition-delay: 0ms !important;
+      scroll-behavior: auto !important;
+    }
+
+    /* The press-down is motion for its own sake; drop it entirely. */
+    button:active:not(:disabled),
+    [role="button"]:active {
+      transform: none;
+    }
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm, 4px);
+  }
+
+  /**
+   * Checkboxes, radios and sliders in the brand colour.
+   * Components used `accent-[hsl(var(--primary))]`, but --primary is oklch,
+   * so hsl(oklch(…)) was invalid and every one of them fell back to the
+   * browser's default blue.
+   */
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="range"] {
+    accent-color: var(--color-primary);
+  }
+
+  /* Numbers that sit in columns should line up. */
+  :where(table, .tabular) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+  }
+}
+
+/**
+ * Tab identity.
+ *
+ * Each tab gets one hue rotation of the same accent — never a different
+ * colour. Lightness and chroma are fixed across the set, so every tab has
+ * identical contrast against the page and against its own text. This is what
+ * the palette being in oklch buys: rotating a hex accent changes its
+ * perceived brightness, rotating an oklch hue does not.
+ *
+ * Two usages only, both in the shell: the active tab pill and the header rule.
+ * The moment a third appears, the app has six colour schemes rather than one
+ * with a compass.
+ */
+/* The accent is computed on the element that carries the hue. Putting it on
+   :root would resolve var(--tab-hue) there — before any tab has set one — and
+   every tab would come out the same colour. */
+[data-tab] {
+  --tab-hue: 39;
+  --tab-accent: oklch(0.535 0.155 var(--tab-hue));
+}
+
+.dark [data-tab] {
+  /* Same chroma, lifted lightness — the dark palette's primary sits at 0.715,
+     and an accent that did not follow would read as muddy after dark. */
+  --tab-accent: oklch(0.715 0.152 var(--tab-hue));
+}
+
+/* The band runs upward from the brand's 39°, in even steps, in tab order — so
+   the accent walks along the bar with you.
+ *
+ * Upward on purpose: below 39° the warm terracotta turns rosy within twenty
+ * degrees and stops reading as the same colour family, while above it the hue
+ * travels terracotta → amber → gold and stays unmistakably Béa. Forty degrees
+ * is the whole range; wider and the tabs read as five apps rather than one
+ * app wearing five hats, which is the failure this is meant to fix.
+ */
+[data-tab="home"] {
+  --tab-hue: 39;
+}
+[data-tab="world"] {
+  --tab-hue: 49;
+}
+[data-tab="trips"] {
+  --tab-hue: 59;
+}
+[data-tab="recs"] {
+  --tab-hue: 69;
+}
+[data-tab="you"] {
+  --tab-hue: 79;
+}
+
+/** The moving tab pill and the rule under the header, and nowhere else. */
+@utility tab-tint {
+  background-color: color-mix(in oklch, var(--tab-accent, var(--color-primary)) 13%, transparent);
+}
+
+@utility tab-ink {
+  color: var(--tab-accent, var(--color-primary));
+}
+
+/**
+ * The hairline under the app header, tinted by the tab you are in. It is the
+ * quietest possible way to say "you are somewhere else now" — noticed only
+ * once you move, which is exactly when it should be.
+ */
+@utility tab-rule {
+  border-bottom: 1px solid
+    color-mix(in oklch, var(--tab-accent, var(--color-border)) 30%, var(--color-border));
+  transition: border-color var(--t-move) var(--ease-standard);
+}
+
+/**
+ * A card lifts off the page rather than being drawn around. The hairline is
+ * there for contrast in dark mode, where shadows alone do not separate.
+ */
+@utility card-soft {
+  background-color: var(--color-card);
+  border: 1px solid color-mix(in oklch, var(--color-border) 55%, transparent);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-md);
+}
+
+/** A quiet panel: grouped, but not competing with real cards. */
+@utility surface {
+  background-color: var(--color-elevated);
+  border-radius: var(--radius-2xl);
+}
+
+/** The floating kind: sheets, popovers, anything over content. */
+@utility card-raised {
+  background-color: var(--color-popover);
+  border: 1px solid color-mix(in oklch, var(--color-border) 65%, transparent);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-lg);
+}
+
+/** One hairline, where a rule genuinely says something. */
+@utility hairline {
+  border-color: color-mix(in oklch, var(--color-border) 70%, transparent);
+}
+
+/**
+ * 0.2em of tracking at 10px is a readability problem, not a style. Slightly
+ * larger and slightly tighter reads as deliberate instead of squinty.
+ */
+@utility label-caps {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+}
+
+/** The main action, with weight behind it. */
+@utility btn-primary {
+  background-image: var(--gradient-clay);
+  color: var(--color-primary-foreground);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-primary);
+  font-weight: 600;
+}
+
+/** A chip that is switched on, without shouting. */
+@utility chip-on {
+  background-color: var(--color-primary-soft);
+  border-color: color-mix(in oklch, var(--color-primary) 45%, transparent);
+  color: var(--color-foreground);
+}
+
+@utility clay-gradient {
+  background-image: var(--gradient-clay);
+}
+
+/**
+ * Shared-element transitions.
+ *
+ * A card in the list and the page it opens give their banner the same
+ * `view-transition-name`, and the browser tweens position and size between
+ * them for free — all that is chosen here is the timing.
+ *
+ * Two things about this are load-bearing. The name must be unique in the
+ * document: two elements sharing one silently disables the transition for
+ * both, which is why it is keyed by trip id. And support is uneven, notably
+ * on Safari; the API degrades to an ordinary cut on its own, so there is no
+ * fallback to write.
+ */
+::view-transition-group(*) {
+  animation-duration: var(--t-arrive);
+  animation-timing-function: var(--ease-standard);
+}
+
+/* The old page should not hang around behind the new one. */
+::view-transition-old(root) {
+  animation-duration: var(--t-move);
+  animation-timing-function: var(--ease-exit);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 1ms !important;
+  }
+}
+
+/**
+ * Sections arrive a beat apart rather than all at once.
+ *
+ * Three steps and then everything else together: past about four the stagger
+ * stops reading as considered and starts reading as slow. The delays are a
+ * fraction of one --t-move, so the whole group is still in place well inside
+ * half a second.
+ */
+.section-stagger > * {
+  animation: rise-in var(--t-move) var(--ease-standard) both;
+}
+.section-stagger > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+.section-stagger > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.section-stagger > *:nth-child(n + 4) {
+  animation-delay: 135ms;
+}
+
+/**
+ * The three planes.
+ *
+ * The shell stamps `data-plane` from the route, so the destination decides how
+ * it arrives and no screen can animate two ways in two contexts. Each rule is
+ * transform and opacity only: those are the two properties a browser can
+ * animate off the main thread, which is what keeps a transition from eating
+ * the interaction that triggered it.
+ */
+@keyframes plane-tab {
+  from {
+    opacity: 0;
+    transform: translateX(var(--plane-dx, 0px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes plane-detail {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes plane-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* A sibling destination: cross-fade with a small drift the way you travelled.
+   It never pushes — a push implies a stack, and tabs are not a stack. */
+[data-plane="tab"] .plane-enter {
+  animation: plane-tab var(--t-move) var(--ease-standard) both;
+}
+
+/* Opened from something on the screen before: grows into place. Paired with a
+   shared-element transition where there is an element worth carrying across. */
+[data-plane="detail"] .plane-enter {
+  animation: plane-detail var(--t-arrive) var(--ease-standard) both;
+}
+
+/* Over the current surface rather than instead of it. */
+[data-plane="sheet"] .plane-enter {
+  animation: plane-sheet var(--t-arrive) var(--ease-standard) both;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pin-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@utility rise {
+  animation: rise-in var(--t-arrive) var(--ease-standard) both;
+}
+
+@utility pin-pop {
+  animation: pin-pop var(--t-arrive) var(--ease-confirm) both;
+}
+
+/**
+ * Béa, running on the spot.
+ *
+ * The one wait in the app long enough to read a sentence twice: geocoding a
+ * planned trip is a queue of one-a-second lookups, so it can run half a
+ * minute. A spinner would say "something is happening"; this says who is
+ * doing it and why it is taking a while, which is the difference between
+ * waiting and wondering whether it has hung.
+ *
+ * A short hop with a slight tilt, and the ground sliding under her so the
+ * running reads as running rather than bouncing in place.
+ */
+@keyframes bea-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(4deg);
+  }
+}
+
+@keyframes bea-ground {
+  from {
+    background-position-x: 0;
+  }
+  to {
+    background-position-x: -10px;
+  }
+}
+
+@utility bea-run {
+  animation: bea-hop 0.42s var(--ease-standard) infinite;
+}
+
+@utility bea-track {
+  background-image: radial-gradient(
+    circle at 2px 50%,
+    color-mix(in oklch, var(--color-muted-foreground) 60%, transparent) 1.25px,
+    transparent 1.35px
+  );
+  background-size: 10px 100%;
+  background-repeat: repeat-x;
+  animation: bea-ground 0.42s linear infinite;
+}
+
+/**
+ * Two small flourishes, and the two that the photograph allows.
+ *
+ * She is a head-on portrait, so paws and a flapping bandana are not available
+ * without redrawing her — and the redraw was worse than the photo. What does
+ * work is everything around her: a puff of dust off her back feet, and a map
+ * pin that lands beside her every few seconds, as though she keeps finding
+ * things while she runs.
+ */
+@keyframes bea-dust {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.35);
+  }
+  25% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-9px, -3px) scale(1.1);
+  }
+}
+
+/* Mostly absent: it is a punctuation mark, not a second animation. */
+@keyframes bea-pin {
+  0%,
+  62% {
+    opacity: 0;
+    transform: translateY(3px) scale(0.6);
+  }
+  72%,
+  88% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.9);
+  }
+}
+
+@utility bea-dust {
+  background-color: color-mix(in oklch, var(--color-muted-foreground) 40%, transparent);
+  animation: bea-dust 0.84s var(--ease-standard) infinite;
+}
+
+@utility bea-pin {
+  animation: bea-pin 4.6s var(--ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bea-run,
+  .bea-track,
+  .bea-dust,
+  .bea-pin {
+    animation: none;
+  }
+  /* With no motion the pin would sit there permanently, so it goes. */
+  .bea-pin {
+    display: none;
+  }
+}
+
+/**
+ * A finger is about 44px wide; several of Béa's controls are 28.
+ *
+ * The icon buttons on the trip page — add to this day, move this entry, close
+ * this sheet — are drawn small on purpose: they sit beside text and a large
+ * box would shout. Growing them would cost the layout. So the hit area grows
+ * instead, centred on the control and invisible, which is the part your thumb
+ * actually aims at. The glyph stays exactly where it was.
+ *
+ * Apply to the control itself, not its wrapper, or the pseudo-element lands
+ * in the wrong place.
+ */
+@utility tap-44 {
+  position: relative;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* A Timeline card turning over to its edit side. */
+@keyframes card-flip {
+  from {
+    opacity: 0.3;
+    transform: perspective(900px) rotateY(-75deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card-flip {
+  animation: card-flip 220ms var(--ease-standard) both;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .card-flip {
+    animation: none;
+  }
+}
+
+/*
+ * Map Split: an editorial travel-journal map.
+ *
+ * The base map is a quiet light style (Positron), warmed towards paper so
+ * roads nearly disappear and water, parks and place names carry it. The
+ * palette is the journal's own — paper, stone roads, pale water and park —
+ * and stays light in dark mode, like a printed map on the table.
+ */
+.journal-map {
+  --journal-paper: #f8f5f1;
+  --journal-road: #d9d2c7;
+  --journal-water: #dcebf2;
+  --journal-park: #dce6d3;
+  --journal-ink: #443d36;
+  --journal-accent: #d96b43;
+  background: var(--journal-paper);
+  box-shadow:
+    0 0 0 1px rgb(68 61 54 / 0.07),
+    0 1px 2px rgb(68 61 54 / 0.05);
+}
+.journal-map .leaflet-container {
+  background: var(--journal-paper);
+  font-family: inherit;
+}
+.journal-map .leaflet-tile-pane {
+  filter: sepia(0.18) saturate(0.78) hue-rotate(-8deg) brightness(1.03) contrast(0.9);
+  opacity: 0.9;
+}
+.journal-route {
+  stroke: var(--journal-accent);
+}
+.journal-pin {
+  width: 26px;
+  height: 26px;
+  margin: 4px;
+  background: var(--journal-accent);
+  color: #fff;
+  font-size: 11.5px;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 2px 6px rgb(68 61 54 / 0.22);
+  transition:
+    width 150ms ease,
+    height 150ms ease,
+    margin 150ms ease,
+    background-color 150ms ease;
+}
+/* Four families, each a warm earth tone so the map stays one palette. */
+.journal-pin--food {
+  background: #c8902f;
+}
+.journal-pin--transit {
+  background: #5d7d93;
+}
+.journal-pin--stay {
+  background: #8b6a8c;
+}
+.journal-pin--on {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  /* Deeper, in its own family's colour. */
+  filter: brightness(0.84) saturate(1.1);
+  font-size: 13px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 4px 12px rgb(68 61 54 / 0.3);
+}
+/* Inside another stop: a smaller ring beside its parent, numbered like its card. */
+.journal-pin--nested {
+  width: 20px;
+  height: 20px;
+  margin: 7px;
+  background: #fff;
+  color: var(--journal-accent);
+  font-size: 9.5px;
+  box-shadow:
+    0 0 0 2.5px var(--journal-accent),
+    0 2px 5px rgb(68 61 54 / 0.2);
+}
+.journal-pin--nested.journal-pin--on {
+  width: 26px;
+  height: 26px;
+  margin: 4px;
+  font-size: 11px;
+}
+/* "+2": what is listed inside the stop, on its card. */
+.journal-pin-badge {
+  position: absolute;
+  left: 24px;
+  top: -3px;
+  pointer-events: none;
+  border-radius: 999px;
+  background: var(--journal-ink);
+  color: #fff;
+  padding: 1px 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .journal-pin {
+    transition: none;
+  }
+}
+.journal-tag {
+  position: absolute;
+  left: 24px;
+  top: -13px;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--journal-ink);
+  background: rgb(248 245 241 / 0.94);
+  padding: 5px 10px 6px;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgb(68 61 54 / 0.16);
+}
+.journal-legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d96b43;
+}
+.journal-legend-dot--food {
+  background: #c8902f;
+}
+.journal-legend-dot--transit {
+  background: #5d7d93;
+}
+.journal-legend-dot--stay {
+  background: #8b6a8c;
+}
+.journal-tag--left {
+  left: auto;
+  right: 24px;
+}
+.journal-map .leaflet-container .leaflet-bar {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgb(68 61 54 / 0.14);
+}
+.journal-map .leaflet-container .leaflet-bar a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  background: rgb(248 245 241 / 0.94);
+  color: var(--journal-ink);
+  border-bottom: 1px solid var(--journal-road);
+  font-weight: 400;
+}
+.journal-map .leaflet-container .leaflet-control-attribution {
+  background: transparent;
+  color: rgb(68 61 54 / 0.55);
+  font-size: 9.5px;
+}
+.journal-map .leaflet-container .leaflet-control-attribution a {
+  color: inherit;
+}
+```

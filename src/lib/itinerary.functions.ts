@@ -16,8 +16,9 @@ import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import type { SearchGrounding } from "@/lib/search-grounding";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
-import { foldTravelLegs, nestWithin, normalizeClock } from "@/lib/import-stop";
+import { foldTravelLegs, nestWithin, normalizeClock, tidyImportedRow } from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
+import { routeStopLine } from "@/lib/trip-cities";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -53,7 +54,11 @@ const ParseInput = z
       v.mode === "build" ||
       Boolean(v.imageDataUrls?.length || v.pdfDataUrl || v.pageUrl || (v.text && v.text.trim())),
     { message: "Add a photo or a PDF, or paste an itinerary." },
-  );
+  )
+  // A plan drafted with no place is a plan somewhere Béa picked.
+  .refine((v) => v.mode === "import" || Boolean(v.tripCity?.trim() || v.route?.trim()), {
+    message: "Tell Béa where the trip is first.",
+  });
 
 const ItemSchema = z.object({
   day_date: z.string().nullable(), // YYYY-MM-DD
@@ -146,9 +151,10 @@ const instructions = (
         ? "Extract this travel itinerary into a complete trip with dates, estimated costs and an ordered day-by-day timeline."
         : "Extract this travel itinerary into a complete trip with dates and an ordered day-by-day timeline.",
     `kind must be exactly one of: ${KINDS.join(", ")}.`,
-    "Pick the kind by what the entry is: meal for anything eaten or drunk, sight for a museum, landmark, market or viewpoint, walk for a stroll or hike, transport for getting between places, lodging for where you sleep, note for a reminder, activity for anything else. Use flight, hotel or reservation only for something actually booked.",
+    "Pick the kind by what the entry is: meal for anything eaten or drunk, sight for a museum, landmark, market or viewpoint, walk for a stroll or hike, transport for getting between places, lodging for where you sleep, note for a reminder, activity for anything else. A flight is flight whether booked or not (booked says which). Use hotel or reservation only for something actually booked.",
+    'Flights, arrivals at an airport, trains, buses or ferries between two towns, and hotel check-ins are always items of their own, never folded into another entry: they fix the day and are what the traveller has to book. Title a journey between towns "Train from [station] to [station]" (or Bus, Ferry, Flight), with place set to where it leaves from.',
     "title: short name of what is happening (flight number, hotel name, restaurant, activity).",
-    "detail: one short line with the useful extras (confirmation number, address, terminal, duration). Null if there is nothing.",
+    "detail: one short line with the useful extras (confirmation number, address, terminal, duration, and for food what to order or what the place is known for, when the source says). Keep the source's tips and suggestions here rather than dropping them. Null if there is nothing.",
     "day_date: YYYY-MM-DD when a date is stated or can be worked out. time_label: 24h HH:MM when a time is stated. Otherwise null.",
     'end_time: 24h HH:MM when the source gives when it ends ("10:00–12:00"). duration_minutes: when it gives a length ("2h", "45 min"). Otherwise null — never guess either.',
     'place: the venue or landmark as it would be found on a map, in the source\'s wording, including a local-language name if the source gives one ("Itsukushima Shrine (厳島神社)"). One place only: when an entry names several ("Peace Park / Atomic Bomb Dome / Cenotaph", "Shrine + Great Torii"), the first or main one. For a train, ferry, bus or flight, where it leaves from — the station, pier or airport ("Motoyasubashi Pier", "Hiroshima Station"); for an arrival, where you arrive. For a reminder about a place ("Be at the ferry area"), that place. Null only for a note with no place at all.',
@@ -156,7 +162,9 @@ const instructions = (
     mode === "import"
       ? 'booked: true when the source marks the entry as booked, reserved, confirmed or ticketed ("BOOKED", "🎟️ booked", "✅", a confirmation number). false otherwise, including when it says no booking is needed.'
       : "booked: false.",
-    "city: the town or city the stop is in, when the source says or the context makes it plain (a day trip to Miyajima, a night in Kyoto). Null when unsure.",
+    mode === "build"
+      ? 'city: the town or city the stop is in, as "City, Country" ("Frankfurt, Germany"). Always set it: the trip learns its destinations from it.'
+      : 'city: the town or city the stop is in, as "City, Country" when the country is known, whenever the source says or the day and the stops around it make it plain (a day trip to Miyajima, a night in Kyoto). The trip learns its destinations from it. Null only when there is no way to tell.',
     "within: when the source names a place and then lists things to see in or at it (a museum's galleries, the monuments of a park, the halls of a temple), give each of those its own item and set within to the title of that earlier item, exactly as you wrote it. Keep their times only when the source gives them. Null for everything else.",
     'One item per thing to do. When one line joins different activities ("Visit Peace Memorial Museum / stroll along the Motoyasu River", "Museum, then lunch at Okonomimura"), return an item for each, in order; the line\'s time goes on the first, and the others get a time only when the source gives one. A list of places seen in one visit ("Peace Park / Atomic Bomb Dome / Cenotaph") stays one item.',
     'day_number: which day of the trip this is, counting from 1, whenever the source groups things into days — "Day 1", "Day 2", "first morning", a second day\'s heading. Set it even when no calendar date is given; that is the normal case and it is how the days survive. Null only when the entry belongs to no particular day.',
@@ -277,11 +285,11 @@ export async function runParse(
     items: nestWithin(
       foldTravelLegs(
         out.items.slice(0, 60).map((i) => ({
-          ...i,
+          // Kinds normalised before the tidy, which files a night as a stay.
+          ...tidyImportedRow({ ...i, kind: normaliseKind(i.kind) }),
           // A time the timeline cannot sort is worse than none.
           time_label: normalizeClock(i.time_label),
           end_time: normalizeClock(i.end_time),
-          kind: normaliseKind(i.kind),
           // Only a plan the traveller already has can hold a booking; a plan
           // Béa drafts never does, whatever the model said.
           booked: data.mode === "import" && i.booked === true,
@@ -870,6 +878,8 @@ const OptimizeItemIn = z.object({
 
 const OptimizeCityIn = z.object({
   city: z.string().max(120),
+  /** "daytrip" for a day out from the city before it; the nights stay there. */
+  kind: z.string().max(40).nullish(),
   country: z.string().max(80).nullable(),
   arrive_on: z.string().max(20).nullable(),
   depart_on: z.string().max(20).nullable(),
@@ -999,12 +1009,10 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       data.cities.length
         ? `Cities on this trip, in order:\n${data.cities
             .map(
-              (city) =>
-                `- ${city.city}${city.country ? `, ${city.country}` : ""}${
-                  city.arrive_on || city.depart_on
-                    ? ` (${[city.arrive_on, city.depart_on].filter(Boolean).join(" – ")})`
-                    : ""
-                }${city.lat != null && city.lon != null ? ` @ ${city.lat},${city.lon}` : ""}`,
+              (city, i) =>
+                `- ${routeStopLine(data.cities, i)}${
+                  city.lat != null && city.lon != null ? ` @ ${city.lat},${city.lon}` : ""
+                }`,
             )
             .join("\n")}`
         : "",

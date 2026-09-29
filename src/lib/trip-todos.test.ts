@@ -6,6 +6,8 @@ import {
   isMissingTodosTable,
   sortTodos,
   starterTodos,
+  todoIcon,
+  todoPhase,
   todosFromPaste,
 } from "./trip-todos.ts";
 
@@ -117,4 +119,26 @@ test("todosFromPaste caps a runaway paste", () => {
 test("todosFromPaste drops empty and over-long lines", () => {
   assert.deepEqual(todosFromPaste("\n\n   \n"), []);
   assert.deepEqual(todosFromPaste(`ok\n${"x".repeat(201)}`), ["ok"]);
+});
+
+test("to-dos fall before, during or after the trip by their due date", () => {
+  assert.equal(todoPhase("2026-09-20", "2026-10-01", "2026-10-03"), "before");
+  assert.equal(todoPhase("2026-10-01", "2026-10-01", "2026-10-03"), "during");
+  assert.equal(todoPhase("2026-10-03", "2026-10-01", "2026-10-03"), "during");
+  assert.equal(todoPhase("2026-10-10", "2026-10-01", "2026-10-03"), "after");
+  assert.equal(todoPhase(null, "2026-10-01", "2026-10-03"), "anytime");
+  // A one-day trip, and a trip without dates.
+  assert.equal(todoPhase("2026-10-01", "2026-10-01", null), "during");
+  assert.equal(todoPhase("2026-10-01", null, null), "before");
+});
+
+test("a to-do's icon comes from its words", () => {
+  assert.equal(todoIcon("Check passport expiry date"), "passport");
+  assert.equal(todoIcon("Check visa or entry requirements"), "visa");
+  assert.equal(todoIcon("Tell the bank you're travelling"), "money");
+  assert.equal(todoIcon("Arrange airport transfer"), "transfer");
+  assert.equal(todoIcon("Travel insurance"), "insurance");
+  assert.equal(todoIcon("Download offline maps"), "map");
+  assert.equal(todoIcon("Book somewhere to stay"), "stay");
+  assert.equal(todoIcon("Water the plants"), "todo");
 });

@@ -8,10 +8,10 @@ import {
 } from "./trip-perspective.ts";
 
 describe("TRIP_PERSPECTIVES", () => {
-  it("is the three day views; the trip-wide things live in To do and Settings", () => {
+  it("is the Overview, the three day views, then Bookings", () => {
     assert.deepEqual(
       TRIP_PERSPECTIVES.map((p) => p.id),
-      ["companion", "map", "timeline"],
+      ["overview", "companion", "map", "timeline", "bookings"],
     );
   });
 
@@ -30,8 +30,8 @@ describe("defaultPerspective", () => {
     assert.equal(defaultPerspective(true), "companion");
   });
 
-  it("opens on the day list otherwise", () => {
-    assert.equal(defaultPerspective(false), "timeline");
+  it("opens on the Overview otherwise", () => {
+    assert.equal(defaultPerspective(false), "overview");
   });
 });
 

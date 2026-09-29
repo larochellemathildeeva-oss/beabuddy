@@ -17,9 +17,10 @@ import {
   mapsDirUrl,
   placeQueryCandidates,
   reuseKeyForStop,
+  wideDayPinsToKeep,
 } from "@/lib/direction-stops";
 import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
-import { DIRECTIONS_WALK_M } from "@/lib/route-optimize";
+import { legModeFor, type LegMode, type TravelChoice } from "@/lib/travel-mode";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
@@ -34,7 +35,7 @@ export type RouteStep = { instruction: string; distance: number };
 export type RouteLeg = {
   from: string;
   to: string;
-  mode: "walking" | "driving";
+  mode: LegMode;
   distance: number;
   duration: number;
   steps: RouteStep[];
@@ -52,7 +53,9 @@ export type RouteLeg = {
   farApartKm?: number;
   /**
    * The router failed, so distance and duration are worked out from the
-   * straight line between the pins (see route-estimate.ts). No steps.
+   * straight line between the pins (see route-estimate.ts). No steps. Also
+   * set on every transit journey: Geoapify's transit times are typical ones,
+   * not a timetable, so they are shown as "about".
    */
   estimated?: boolean;
   fromLat?: number;
@@ -81,7 +84,10 @@ function cleanArea(area: string): string {
 
 // Lookups sleep 1.1s each (Nominatim). Legs are one un-throttled OSRM fetch.
 // A long day plan needs more than a dozen lookups; reuse identical venues.
+// The keyed providers answer four times as fast, and each stop can take up to
+// four names, so 30 ran out a few days into a two-week trip.
 const LOOKUP_BUDGET = 30;
+const KEYED_LOOKUP_BUDGET = 90;
 const LEG_BUDGET = 60;
 const WALL_MS = 80_000;
 
@@ -162,10 +168,11 @@ async function leg(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
-  mode: "walking" | "driving",
+  mode: LegMode,
 ): Promise<{ distance: number; duration: number; steps: RouteStep[]; estimated?: boolean } | null> {
   const routed = await routeOnce(provider, a, b, mode);
-  if (routed || mode === "driving") return routed;
+  if (routed && mode === "transit") return { ...routed, estimated: true };
+  if (routed || mode !== "walking") return routed;
   const byRoad = await routeOnce(provider, a, b, "driving");
   if (!byRoad || !(byRoad.distance > 0)) return null;
   return {
@@ -179,12 +186,21 @@ async function leg(
 /** 4.5 km/h, the pace route-estimate.ts assumes too. */
 const WALK_METERS_PER_SECOND = 4500 / 3600;
 
+/** "Osaka, Japan" → "Japan": the trip's country, when the area names one. */
+function countryOf(area: string): string {
+  const parts = area
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return parts[parts.length - 1] ?? "";
+}
+
 /** The router's answer, shared with Optimize's route check through one cache. */
 async function routeOnce(
   provider: GeoProvider,
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
-  mode: "walking" | "driving",
+  mode: LegMode,
 ): Promise<{ distance: number; duration: number; steps: RouteStep[] } | null> {
   const { routeOnce: route } = await import("@/lib/route-legs.server");
   return route(provider, a, b, mode);
@@ -215,6 +231,8 @@ const BuildRoutesInput = z.object({
    * of a journey, already on the map, on a day spent outside the trip's city.
    */
   near: z.object({ lat: z.number(), lon: z.number() }).optional(),
+  /** How the traveller gets around; "auto" walks what is close and drives the rest. */
+  travel: z.enum(["auto", "walk", "drive", "transit"]).optional(),
 });
 
 function mapsOnlyLeg(
@@ -223,7 +241,7 @@ function mapsOnlyLeg(
   area: string,
   opts?: {
     capped?: boolean;
-    mode?: "walking" | "driving";
+    mode?: LegMode;
     from?: { lat: number; lon: number } | null;
     to?: { lat: number; lon: number } | null;
   },
@@ -253,8 +271,13 @@ function mapsOnlyLeg(
 
 export const buildRoutes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { stops: Stop[]; area?: string; near?: { lat: number; lon: number } }) =>
-    BuildRoutesInput.parse(input),
+  .inputValidator(
+    (input: {
+      stops: Stop[];
+      area?: string;
+      near?: { lat: number; lon: number };
+      travel?: TravelChoice;
+    }) => BuildRoutesInput.parse(input),
   )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
@@ -262,12 +285,12 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const deferred: string[] = [];
     const remembered = new Map<string, { lat: number; lon: number }>();
     const queryCache = new Map<string, GeoFound | null>();
-    let lookupsLeft = LOOKUP_BUDGET;
     let legsLeft = LEG_BUDGET;
     const deadline = Date.now() + WALL_MS;
     // Server-only: this file ships to the client bundle, the token must not.
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
+    let lookupsLeft = provider.name === "nominatim" ? LOOKUP_BUDGET : KEYED_LOOKUP_BUDGET;
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
     let box: AreaBox | null = null;
@@ -300,6 +323,9 @@ export const buildRoutes = createServerFn({ method: "POST" })
     // Where each stop's day already is on the map: a stop without a pin is
     // looked up next to the rest of its day, not in the trip's home city.
     const anchors = sameDayAnchors(data.stops);
+    /** Stops not found beside their day's anchor, for a wider look after. */
+    const missedNearAnchor: { index: number; anchor: { lat: number; lon: number } }[] = [];
+    const outOfTime = () => lookupsLeft <= 0 || Date.now() > deadline;
     for (const [index, stop] of data.stops.entries()) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
@@ -342,10 +368,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
           found = trusted(await lookup(name, near));
           if (found) break;
         }
-        // Not near the rest of its day: left unplaced — Maps by name — rather
-        // than looked for in the trip's home city, where it is not.
+        // Not near the rest of its day: not guessed at in the trip's home
+        // city, where it is not. Looked for across the country below, and
+        // kept only if the day backs it (wideDayPinsToKeep).
         const pin = found ? { lat: found.lat, lon: found.lon } : null;
         if (pin) remembered.set(reuseKeyForStop(stop), pin);
+        else if (outOfTime()) {
+          if (!deferred.includes(stop.title)) deferred.push(stop.title);
+        } else missedNearAnchor.push({ index, anchor: dayAnchor });
         points.push(pin);
         continue;
       }
@@ -364,7 +394,63 @@ export const buildRoutes = createServerFn({ method: "POST" })
       }
       const pin = found ? { lat: found.lat, lon: found.lon } : null;
       if (pin) remembered.set(reuseKeyForStop(stop), pin);
+      // The budget ran out part-way through this stop's names: it was not
+      // looked for properly, so it is not reported as unfindable.
+      else if (outOfTime() && !deferred.includes(stop.title)) deferred.push(stop.title);
       points.push(pin);
+    }
+
+    // A day spent away from the base city, on a trip with no route to say
+    // so: its stops were searched beside the hotel and missed. Look again
+    // across the trip's country, and keep what the day agrees with.
+    if (missedNearAnchor.length > 0 && !outOfTime()) {
+      const country = countryOf(cleanArea(area));
+      const countryHit = country ? await lookup(country, null) : null;
+      const countryBox = areaBoxFrom(countryHit?.boundingbox);
+      const wide = countryBox ? widenBox(countryBox, 0.05) : box;
+      const wideFound: {
+        index: number;
+        day: string;
+        pin: { lat: number; lon: number };
+        anchor: { lat: number; lon: number };
+      }[] = [];
+      for (const { index, anchor } of missedNearAnchor) {
+        const stop = data.stops[index]!;
+        if (outOfTime()) {
+          if (!deferred.includes(stop.title)) deferred.push(stop.title);
+          continue;
+        }
+        const trusted = (hit: GeoFound | null) =>
+          hit && autoPinTrusted({ title: stop.title, address: stop.address }, hit) ? hit : null;
+        let found: GeoFound | null = null;
+        for (const name of placeQueryCandidates(stop.title, stop.address).slice(0, 2)) {
+          found = trusted(await lookup(name, wide));
+          if (found) break;
+        }
+        if (found) {
+          wideFound.push({
+            index,
+            day: stop.day_date ?? "",
+            pin: { lat: found.lat, lon: found.lon },
+            anchor,
+          });
+        } else if (outOfTime() && !deferred.includes(stop.title)) {
+          deferred.push(stop.title);
+        }
+      }
+      // The day's pins as the lookups left them, found here or saved before.
+      const dayPins = new Map<string, { lat: number; lon: number }[]>();
+      data.stops.forEach((stop, i) => {
+        const pin = points[i];
+        if (!pin || !stop.day_date) return;
+        dayPins.set(stop.day_date, [...(dayPins.get(stop.day_date) ?? []), pin]);
+      });
+      const keep = wideDayPinsToKeep(wideFound, undefined, dayPins);
+      for (const hit of wideFound) {
+        if (!keep.has(hit.index)) continue;
+        points[hit.index] = hit.pin;
+        remembered.set(reuseKeyForStop(data.stops[hit.index]!), hit.pin);
+      }
     }
 
     const legs: RouteLeg[] = [];
@@ -420,9 +506,10 @@ export const buildRoutes = createServerFn({ method: "POST" })
         });
         continue;
       }
-      // The same cut-off Optimize's route check uses, so the journeys it
-      // checked are the ones found in the shared cache here.
-      const mode: "walking" | "driving" = straight < DIRECTIONS_WALK_M ? "walking" : "driving";
+      // Asked of the traveller. Left on "auto", the same cut-off Optimize's
+      // route check uses, so the journeys it checked are the ones found in
+      // the shared cache here.
+      const mode = legModeFor(data.travel ?? "auto", straight);
       if (legsLeft <= 0 || Date.now() > deadline) {
         legs.push(mapsOnlyLeg(fromName, toName, area, { capped: true, from: a, to: b, mode }));
         continue;

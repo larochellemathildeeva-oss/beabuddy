@@ -1,3 +1,6 @@
+import type { LegMode } from "./travel-mode.ts";
+import { commonsRefFromTags, type CommonsRef } from "./wikimedia.ts";
+
 /**
  * Geoapify, translated into the shapes the rest of Béa already reads.
  *
@@ -83,16 +86,23 @@ export function geoapifyReverseUrl(key: string, lat: number, lon: number): strin
   return `${GEOAPIFY_BASE}/v1/geocode/reverse?${params.toString()}`;
 }
 
+/**
+ * Geoapify's transit mode. "approximated_transit" models typical times from
+ * its dataset of transit lines rather than live timetables, so a transit
+ * journey is shown as "about"; Maps has the real departures.
+ */
+export const GEOAPIFY_TRANSIT_MODE = "approximated_transit";
+
 /** Waypoints are "lat,lon" here, the other way round from OSRM. */
 export function geoapifyRouteUrl(
   key: string,
-  mode: "walking" | "driving",
+  mode: LegMode,
   from: { lat: number; lon: number },
   to: { lat: number; lon: number },
 ): string {
   const params = new URLSearchParams({
     waypoints: `${from.lat},${from.lon}|${to.lat},${to.lon}`,
-    mode: mode === "walking" ? "walk" : "drive",
+    mode: mode === "walking" ? "walk" : mode === "transit" ? GEOAPIFY_TRANSIT_MODE : "drive",
     lang: "en",
     apiKey: key,
   });
@@ -421,6 +431,8 @@ export type PlaceFacts = {
   website?: string;
   phone?: string;
   wheelchair?: string;
+  /** Where Wikimedia Commons may have a photo of it (wikimedia.ts). */
+  commons?: CommonsRef;
 };
 
 type DetailsProps = GeoapifyResult & {
@@ -429,6 +441,7 @@ type DetailsProps = GeoapifyResult & {
   website?: string;
   contact?: { phone?: string; email?: string };
   facilities?: { wheelchair?: boolean | string };
+  wiki_and_media?: { wikidata?: string; image?: string };
 };
 
 /** The "details" feature of a place-details answer, or null. */
@@ -453,9 +466,15 @@ export function readPlaceDetails(json: unknown): PlaceFacts | null {
       .filter(([k]) => k === "name" || k.startsWith("name:"))
       .map(([, v]) => v),
   ].filter((v): v is string => typeof v === "string" && v.length > 0);
+  const commons = commonsRefFromTags({
+    wikidata: p.wiki_and_media?.wikidata,
+    image: p.wiki_and_media?.image,
+    ...raw,
+  });
   return {
     ...(p.name ? { name: p.name } : {}),
     names: [...new Set(names)],
+    ...(commons ? { commons } : {}),
     ...(openingHours ? { openingHours } : {}),
     ...(website && /^https?:\/\//i.test(website) ? { website } : {}),
     ...(phone ? { phone } : {}),

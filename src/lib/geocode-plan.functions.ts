@@ -7,6 +7,7 @@ import {
   boxViewbox,
   distanceKm,
   inBox,
+  pickHit,
   planStopQueries,
   QUERIES_PER_STOP,
   widenBox,
@@ -51,6 +52,11 @@ const StopIn = z.object({
    * monument in a park), by position. Looked up beside that stop's pin first.
    */
   within: z.number().int().min(0).nullish(),
+  /**
+   * A long journey (a train between towns, a flight) comes just before this
+   * stop, so it is not beside the stop before it.
+   */
+  fresh: z.boolean().nullish(),
 });
 
 type StopInput = {
@@ -61,6 +67,7 @@ type StopInput = {
   city?: string | null;
   area?: string | null;
   within?: number | null;
+  fresh?: boolean | null;
 };
 
 const Input = z.object({
@@ -78,6 +85,13 @@ const Input = z.object({
    * would find a restaurant of that name, not the city.
    */
   venues: z.boolean().nullish(),
+  /**
+   * The stops are the plan's own, consecutive and in order, so each is
+   * where the one before it was until a journey says otherwise.
+   */
+  inOrder: z.boolean().nullish(),
+  /** The last stop the caller's previous batch placed, for the first stop of this one. */
+  near: z.object({ lat: z.number(), lon: z.number() }).nullish(),
 });
 
 /**
@@ -119,6 +133,30 @@ export type PlacedStop = {
 const INSIDE_KM = 2;
 
 /**
+ * How far from the stop before it a stop is looked for first, in km, when
+ * all the plan says of where it is is the country.
+ */
+const NEXT_KM = 30;
+
+/**
+ * An area this many degrees across is a region or a country, not a town.
+ * Its middle is nowhere in particular: sorting finds by it, or flagging those
+ * far from it, picks namesakes by where they happen to lie.
+ */
+const BROAD_DEG = 3;
+
+/**
+ * Further than this from the stop before it, with no journey between, a find
+ * across a country is flagged rather than pinned: a day's stops sit within a
+ * city and its day trips.
+ */
+const DAY_REACH_KM = 60;
+
+function isBroad(box: AreaBox): boolean {
+  return box.north - box.south > BROAD_DEG || box.east - box.west > BROAD_DEG;
+}
+
+/**
  * Further than this from the middle of the stop's town, a find is flagged
  * rather than pinned. Most of a city's sights are well inside it; an
  * airport, which often is not, is exempt.
@@ -145,7 +183,7 @@ type GeoHit = {
   kind?: string;
   alsoNamed?: string[];
 };
-type GeoResult = GeoHit | null | "throttled";
+type GeoResult = GeoHit[] | "throttled";
 
 type RawHit = {
   lat: string;
@@ -199,8 +237,9 @@ async function geocode(
   query: string,
   box: AreaBox,
   near: { lat: number; lon: number } | null,
+  limit = 3,
 ): Promise<GeoResult> {
-  const hits = await lookup(provider, query, { limit: near ? 5 : 3, box });
+  const hits = await lookup(provider, query, { limit: near ? 5 : limit, box });
   if (hits === "throttled") return "throttled";
   const found: GeoHit[] = [];
   for (const hit of hits) {
@@ -218,9 +257,10 @@ async function geocode(
   }
   // Namesakes: "Mercado Municipal, Barreiras" is also the market of a
   // village twenty kilometres out, inside the same municipality. The one
-  // nearest the middle of town is the one a visitor means.
+  // nearest the middle of town is the one a visitor means. All of them come
+  // back, nearest first: which one is the stop is decided per stop (pickHit).
   if (near) found.sort((a, b) => distanceKm(a, near) - distanceKm(b, near));
-  return found[0] ?? null;
+  return found;
 }
 
 /**
@@ -276,6 +316,8 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       area?: string | null;
       recent?: number[] | null;
       venues?: boolean | null;
+      inOrder?: boolean | null;
+      near?: { lat: number; lon: number } | null;
     }) => Input.parse(input),
   )
   .handler(async ({ data }) => {
@@ -293,7 +335,9 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const provider = geoProvider();
     const overture = data.venues ? await import("@/lib/open-places.server") : null;
 
-    const cache = new Map<string, GeoHit | null>();
+    // Every answer, not the chosen one: which answer is the stop depends on
+    // the stop, and two stops can ask the same thing.
+    const cache = new Map<string, GeoHit[]>();
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     // Only the last minute matters to either cap.
     const sent: number[] = (data.recent ?? []).filter((t) => Date.now() - t < 60_000);
@@ -342,7 +386,17 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       return box;
     };
 
+    /**
+     * The last stop placed, and trusted. A plan that names only the country
+     * ("Germany") says where each stop is by the one before it: the museum
+     * after a Berlin breakfast is in Berlin, until a train goes somewhere else.
+     */
+    let lastPin: { lat: number; lon: number } | null = data.inOrder ? (data.near ?? null) : null;
+
     for (const [index, stop] of data.stops.entries()) {
+      if (stop.fresh) lastPin = null;
+      /** Where the traveller was at the stop before, for judging a country-wide find. */
+      const anchor = lastPin;
       // The stop's own town first (a Miyajima lunch on a Hiroshima trip),
       // then where the trip is that day, then the trip's area.
       const dayArea = stop.area?.trim() || area;
@@ -364,10 +418,16 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         break;
       }
       if (!box) continue;
+      /** Only a town, not a country, has a middle worth measuring from. */
+      const broad = isBroad(box);
       /** The middle of the stop's town, which every find is measured from. */
-      const centre = centres.get(where.toLowerCase()) ?? null;
+      const centre = broad ? null : (centres.get(where.toLowerCase()) ?? null);
 
-      /** The stop's queries inside one area; true once one of them lands. */
+      // An answer that is probably not the stop (the town, for a park the
+      // geocoder could not find). Kept only if nothing better turns up.
+      const doubtful: GeoHit[] = [];
+
+      /** The stop's queries inside one area; true once one of them lands on the stop. */
       const tryIn = async (
         inWhere: string,
         bounds: AreaBox,
@@ -383,27 +443,29 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           // nearest to another searching the same country box.
           const from = near ?? centre;
           const key = `${query.toLowerCase()}|${boxViewbox(bounds)}|${from ? `${from.lat.toFixed(3)},${from.lon.toFixed(3)}` : ""}`;
-          if (cache.has(key)) {
-            const hit = cache.get(key) ?? null;
-            if (hit) {
-              placed.push({ index, ...hit, ...farFrom(hit) });
-              return true;
+          let hits = cache.get(key);
+          if (!hits) {
+            if (!(await takeTurn())) return false;
+            const found = await geocode(provider, query, bounds, near ?? centre, broad ? 5 : 3);
+            if (found === "throttled") {
+              // Asking harder will not help, and recording these as misses would
+              // mark real places unfindable for the rest of the session.
+              throttled = true;
+              return false;
             }
-            continue;
+            cache.set(key, found);
+            hits = found;
           }
-          if (!(await takeTurn())) return false;
-          const found = await geocode(provider, query, bounds, near ?? centre);
-          if (found === "throttled") {
-            // Asking harder will not help, and recording these as misses would
-            // mark real places unfindable for the rest of the session.
-            throttled = true;
-            return false;
-          }
-          cache.set(key, found);
-          if (found) {
-            placed.push({ index, ...found, ...farFrom(found) });
+          const picked = pickHit(hits, bounds, stop);
+          const far = picked ? farFrom(picked.hit) : {};
+          // The right name well out of town ("Itsukushima Shrine" in a
+          // village near Osaka, for the one on Miyajima) is a namesake until
+          // nothing better turns up: the search goes on, the country too.
+          if (picked?.trusted && !far.farKm) {
+            placed.push({ index, ...picked.hit });
             return true;
           }
+          if (picked) doubtful.push({ ...picked.hit, ...far });
         }
         return false;
       };
@@ -413,7 +475,16 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       /** Measured from the town, unless it was found beside the stop it is inside. */
       let besideParent = false;
       const farFrom = (hit: GeoHit): { farKm?: number } => {
-        if (besideParent || !centre || isAirport(hit)) return {};
+        if (besideParent || isAirport(hit)) return {};
+        // Across a whole country, far from the stop before it: a namesake,
+        // unless a journey came between. "Gion" answered from Chiba for a
+        // Kyoto afternoon, and every stop after it was looked for there.
+        if (broad && !centre) {
+          if (!anchor) return {};
+          const km = distanceKm(hit, anchor);
+          return km > DAY_REACH_KM ? { farKm: Math.round(km) } : {};
+        }
+        if (!centre) return {};
         const km = distanceKm(hit, centre);
         return km > TOWN_KM ? { farKm: Math.round(km) } : {};
       };
@@ -430,12 +501,24 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       }
       if (throttled) break;
 
-      let landed = await tryIn(where, box, null);
+      // Only the country to go on: beside the stop before it first.
+      let landed = false;
+      if (broad && lastPin && !parent) {
+        besideParent = true;
+        // In the geocoder's own order, not nearest first: the nearest "Yasaka
+        // Shrine" to a Kyoto hotel is a neighbourhood shrine, not the one.
+        landed = await tryIn(where, boxAround(lastPin, NEXT_KM), null);
+        besideParent = false;
+        if (throttled) break;
+      }
+      if (!landed) landed = await tryIn(where, box, null);
 
       // The map missed it, or found something that is not it (a namesake out
       // of town, another name): Overture's listings, near the middle of town.
       // OpenStreetMap is thin outside big cities; they are not.
-      if (overture?.openPlacesReady() && centre && !throttled) {
+      // A country has no middle to search from; the stop before this one does.
+      const venueCentre = centre ?? (broad ? lastPin : null);
+      if (overture?.openPlacesReady() && venueCentre && !throttled) {
         const mine = placed.findIndex((hit) => hit.index === index);
         const hit = mine >= 0 ? placed[mine] : undefined;
         const names = {
@@ -444,7 +527,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           address: stop.address ?? null,
         };
         if (!hit || hit.farKm || !autoPinTrusted(names, hit)) {
-          const found = await askOverture(overture.searchOpenPlaces, stop, centre);
+          const found = await askOverture(overture.searchOpenPlaces, stop, venueCentre);
           if (found) {
             if (mine >= 0) placed.splice(mine, 1);
             placed.push({
@@ -471,7 +554,14 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           throttled = true;
           break;
         }
-        if (countryBox) await tryIn(country, countryBox, null);
+        // Beside the stop before it first: a Hiroshima day on a trip filed
+        // under Osaka is found around Hiroshima Station, not across Japan.
+        if (countryBox && data.inOrder && lastPin) {
+          besideParent = true;
+          landed = await tryIn(country, boxAround(lastPin, NEXT_KM), null);
+          besideParent = false;
+        }
+        if (countryBox && !landed && !throttled) await tryIn(country, countryBox, null);
       }
       // Still nowhere, but inside a stop that was found: pinned there.
       const parentTitle = stop.within != null ? data.stops[stop.within]?.title : undefined;
@@ -484,10 +574,26 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
           inside: parentTitle,
         });
       }
+      // The next stop is looked for beside this one, if this one is sure.
+      const settled = placed.find((hit) => hit.index === index);
+      if (
+        data.inOrder &&
+        settled &&
+        !settled.inside &&
+        !settled.farKm &&
+        autoPinTrusted(stop, settled)
+      ) {
+        lastPin = { lat: settled.lat, lon: settled.lon };
+      }
+      // Nothing better than the doubtful answer: returned as before, so the
+      // review can say what was found and let the person keep it.
+      const fallback = doubtful[0];
+      if (fallback && !placed.some((hit) => hit.index === index))
+        placed.push({ index, ...fallback });
       // The inner break only leaves this stop's queries. Without this the
       // batch would carry on to the next stop and collect another 429.
       if (throttled) break;
     }
 
-    return { placed, lookedUp, area, throttled, sent: sent.slice(-120) };
+    return { placed, lookedUp, area, throttled, sent: sent.slice(-120), lastPin };
   });

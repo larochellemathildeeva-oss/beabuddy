@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authenticated/photos")({
 });
 
 const SKIP_KEY = "bea-photo-consent-skip";
+const PHOTO_INPUT_ID = "photo-import-input";
 
 type ImportMode = "both" | "locations";
 
@@ -57,6 +58,7 @@ function PhotosPage() {
   const [mode, setMode] = useState<ImportMode>("both");
   const [showLibrary, setShowLibrary] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const confirmCard = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && localStorage.getItem(SKIP_KEY) === "yes") {
@@ -65,14 +67,35 @@ function PhotosPage() {
     }
   }, []);
 
-  const agreeAndPick = () => {
+  // Runs as the label's own tap opens the picker — no scripted click, which
+  // iPhones do not always follow through on.
+  const agree = () => {
     if (dontAsk) {
-      localStorage.setItem(SKIP_KEY, "yes");
+      try {
+        localStorage.setItem(SKIP_KEY, "yes");
+      } catch {
+        // Private browsing: the prompt simply shows again next time.
+      }
       setSkipPrompt(true);
     }
     setConsented(true);
-    fileInput.current?.click();
   };
+
+  // Safari on iPhone has been seen to fire `input` without `change` after the
+  // photo picker's check mark, so both land here.
+  const onPicked = (input: HTMLInputElement) => {
+    const files = Array.from(input.files ?? []);
+    if (!files.length) return;
+    setPending(files);
+    setStatus(null);
+  };
+
+  // The confirmation sits below the fold on a phone; bring it up so picking
+  // photos visibly does something.
+  useEffect(() => {
+    if (pending.length)
+      confirmCard.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [pending]);
 
   const load = async () => {
     const { data } = await supabase
@@ -233,12 +256,13 @@ function PhotosPage() {
               />
               Don't ask me this every time.
             </label>
-            <button
-              onClick={agreeAndPick}
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
+            <label
+              htmlFor={PHOTO_INPUT_ID}
+              onClick={agree}
+              className="block w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-center text-[15px] font-semibold text-primary-foreground"
             >
               I understand — choose photos
-            </button>
+            </label>
           </div>
         )}
 
@@ -281,20 +305,22 @@ function PhotosPage() {
           />
         </div>
 
+        {/* Visually hidden rather than display:none — Safari on iPhone can drop
+            the picked files from an input that is not rendered at all. */}
         <input
           ref={fileInput}
+          id={PHOTO_INPUT_ID}
           type="file"
           accept="image/*"
           multiple
-          className="hidden"
-          onChange={(e) => {
-            setPending(Array.from(e.target.files ?? []));
-            setStatus(null);
-          }}
+          tabIndex={-1}
+          className="sr-only"
+          onChange={(e) => onPicked(e.currentTarget)}
+          onInput={(e) => onPicked(e.currentTarget)}
         />
 
         {pending.length > 0 ? (
-          <div className="card-soft space-y-3 p-4">
+          <div ref={confirmCard} className="card-soft space-y-3 p-4">
             <p className="font-display text-[18px] leading-snug">
               {mode === "both"
                 ? "Are you certain you want to upload all these photos?"
@@ -334,10 +360,16 @@ function PhotosPage() {
               </button>
             </div>
           </div>
+        ) : consented && !busy ? (
+          <label
+            htmlFor={PHOTO_INPUT_ID}
+            className="block w-full cursor-pointer rounded-xl bg-primary px-4 py-3 text-center text-[15px] font-semibold text-primary-foreground"
+          >
+            Choose photos
+          </label>
         ) : (
           <button
-            onClick={() => (consented ? fileInput.current?.click() : undefined)}
-            disabled={busy || !consented}
+            disabled
             className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
           >
             Choose photos

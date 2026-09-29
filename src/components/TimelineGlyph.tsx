@@ -1,4 +1,12 @@
-import { Bed, Footprints, Landmark, Plane, StickyNote, Sparkles, Utensils } from "lucide-react";
+import {
+  Bed,
+  Footprints,
+  Landmark,
+  Plane,
+  StickyNote,
+  Sparkles,
+  Utensils,
+} from "@/components/icons";
 import { glyphLabel, timelineGlyph, type TimelineGlyph as Glyph } from "@/lib/timeline-kind";
 
 const ICONS: Record<Glyph, typeof Bed> = {

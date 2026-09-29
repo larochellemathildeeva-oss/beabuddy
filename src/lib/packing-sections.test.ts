@@ -5,6 +5,7 @@ import {
   DEFAULT_SECTIONS,
   diffPackEdit,
   guessSection,
+  itemKind,
   hasPackEdits,
   sectionChoices,
   sectionKind,
@@ -132,4 +133,13 @@ test("diffPackEdit finds removed, added and changed items", () => {
   assert.ok(hasPackEdits(diff));
   const same = saved.map((s) => ({ key: s.id, ...s }));
   assert.ok(!hasPackEdits(diffPackEdit(saved, same)));
+});
+
+test("itemKind reads what an item is from its words", () => {
+  assert.equal(itemKind("Passport / ID"), "documents");
+  assert.equal(itemKind("Phone + charger"), "electronics");
+  assert.equal(itemKind("Swimsuit"), "beach");
+  assert.equal(itemKind("Hat"), "clothes");
+  assert.equal(itemKind("Something odd"), "other");
+  assert.equal(itemKind("  "), "other");
 });

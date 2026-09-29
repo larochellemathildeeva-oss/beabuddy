@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Sheet } from "@/components/Sheet";
@@ -43,6 +43,18 @@ const types: { type: PinType; label: string }[] = [
 ];
 
 /**
+ * How the sheet opens: the World tab's "Add places" tiles each start it in a
+ * different place — one city, a pasted list, a file already picked, or the
+ * wishlist. `key` changes on every request so the same start can repeat.
+ */
+export type AddPlacesStart = {
+  key: number;
+  mode: "one" | "list";
+  type?: PinType | undefined;
+  file?: File | undefined;
+};
+
+/**
  * Lets someone type a city by hand, or paste / upload a list from their notes,
  * pick each pin off the map and drop it on the globe.
  */
@@ -50,10 +62,12 @@ export function AddVisitedCity({
   open,
   onClose,
   onSaved,
+  start,
 }: {
   open: boolean;
   onClose: () => void;
   onSaved?: () => void;
+  start?: AddPlacesStart | undefined;
 }) {
   const vault = useRecommendations();
   const search = useServerFn(searchPlaces);
@@ -163,6 +177,10 @@ export function AddVisitedCity({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    await readFile(file);
+  };
+
+  const readFile = async (file: File) => {
     const isText = file.type.startsWith("text/") || /\.(txt|md|csv|list)$/i.test(file.name);
     if (!isText && file.size >= 200_000) {
       setErr("Use a text file from your notes — one city per line is perfect.");
@@ -172,6 +190,20 @@ export function AddVisitedCity({
     setPaste(text);
     await lookup(parseCityListText(text), "Uploaded list");
   };
+
+  // Open where the caller asked: the mode, the list it saves to, and a file
+  // the World tab's "Import file" already picked.
+  const startKey = open ? start?.key : undefined;
+  useEffect(() => {
+    if (startKey == null || !start) return;
+    setMode(start.mode);
+    if (start.type) setType(start.type);
+    setMsg("");
+    setErr("");
+    if (start.file) void readFile(start.file);
+    // Only a new request re-applies it, not every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startKey]);
 
   const saveOne = async () => {
     if (!picked || picked.lat == null || picked.lon == null) {

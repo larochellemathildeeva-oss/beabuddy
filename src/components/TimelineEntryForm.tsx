@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
-import { Bookmark, CalendarDays, Check, Clock, MapPin, Tag, StickyNote, X } from "lucide-react";
+import {
+  Bookmark,
+  CalendarDays,
+  Check,
+  Clock,
+  MapPin,
+  Tag,
+  StickyNote,
+  X,
+} from "@/components/icons";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
   dayChipLabel,

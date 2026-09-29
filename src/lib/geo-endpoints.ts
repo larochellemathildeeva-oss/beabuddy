@@ -27,6 +27,7 @@ import {
   geoapifyToNominatim,
   geoapifyToOsrm,
 } from "./geoapify.ts";
+import type { LegMode } from "./travel-mode.ts";
 
 export type GeoProvider = {
   /** Which service is answering, for logs and for the attribution line. */
@@ -235,6 +236,15 @@ export function reverseUrl(provider: GeoProvider, lat: number, lon: number): str
   return `${provider.searchBase}/reverse?${params.toString()}`;
 }
 
+/**
+ * Whether this provider can route a journey this way. Only Geoapify routes
+ * transit; OSRM has no timetables, so elsewhere a transit journey is an
+ * estimate (route-estimate.ts) and Maps has the lines.
+ */
+export function routesMode(provider: GeoProvider, mode: LegMode): boolean {
+  return mode !== "transit" || provider.name === "geoapify";
+}
+
 /** A routing URL. Both providers serve OSRM's shape, so callers parse one thing. */
 export function routeUrl(
   provider: GeoProvider,
@@ -245,7 +255,7 @@ export function routeUrl(
   if (provider.name === "geoapify") {
     return geoapifyRouteUrl(
       provider.token,
-      profile === "driving" ? "driving" : "walking",
+      profile === "driving" ? "driving" : profile === "transit" ? "transit" : "walking",
       from,
       to,
     );
@@ -280,8 +290,8 @@ export const OVERTURE_ATTRIBUTION = "Places © Overture Maps Foundation";
  * leg failing the moment a token was set, and failing quietly, because a
  * route that does not come back is already handled as "no route".
  */
-export function routeProfile(provider: GeoProvider, mode: "walking" | "driving"): string {
-  if (mode === "driving") return "driving";
+export function routeProfile(provider: GeoProvider, mode: LegMode): string {
+  if (mode === "driving" || mode === "transit") return mode;
   return provider.name === "nominatim" ? "foot" : "walking";
 }
 

@@ -8,11 +8,12 @@ import { nextCompressed, tabIdForPath } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "lucide-react";
+import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 import { PageGuide } from "./PageGuide";
+import { useStopPictures } from "../hooks/useStopPictures";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 // Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
 
@@ -32,6 +33,7 @@ export function AppShell({
   eyebrow,
   title,
   headerAction,
+  actionBesideEyebrow = false,
   publicPage = false,
   flush = false,
 }: {
@@ -40,6 +42,8 @@ export function AppShell({
   title?: ReactNode;
   /** One action beside the title. More than one belongs in the content. */
   headerAction?: ReactNode;
+  /** Put that action on the eyebrow's line, leaving the title the full width. */
+  actionBesideEyebrow?: boolean;
   /**
    * Pages a signed-out visitor must be able to read. The sign-up form asks
    * people to agree to the Privacy Policy and links to it, so gating that link
@@ -83,6 +87,8 @@ export function AppShell({
     }
   }, [matches, pathname]);
   const { user, loading } = useAuth();
+  // Applies the stop-pictures setting to every page.
+  useStopPictures();
   useLegalConsent();
   useIdleLogout(!!user);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
@@ -214,7 +220,13 @@ export function AppShell({
           </div>
         </header>
 
-        <PageHeader eyebrow={eyebrow} title={title} action={headerAction} compressed={compressed} />
+        <PageHeader
+          eyebrow={eyebrow}
+          title={title}
+          action={headerAction}
+          actionBesideEyebrow={actionBesideEyebrow}
+          compressed={compressed}
+        />
 
         <main
           ref={scrollRef}

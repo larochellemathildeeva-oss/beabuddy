@@ -17,12 +17,17 @@
  * The output has the shape the AI import returns, as the calendar reader's
  * does, so review, placing and saving are the same whichever way it came in.
  */
+import { looksLikeStreetAddress } from "./direction-stops.ts";
 import { foldTravelLegs, normalizeClock } from "./import-stop.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 import type { TimelineKind } from "./timeline-kind.ts";
 
-/** The most stops one import makes, as for the AI import. */
-const MAX_ITEMS = 60;
+/**
+ * The most stops one list makes. More than the AI import's sixty: a ten-day
+ * plan runs past a hundred lines, and reading it here costs nothing, where
+ * the model would stop partway and drop the last days.
+ */
+const MAX_ITEMS = 150;
 /** Fewer timed lines than this is not a list worth trusting. */
 const MIN_ENTRIES = 3;
 /** A longer line is prose, not a list entry. */
@@ -105,14 +110,19 @@ const VENUE =
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const DURATION =
   /^(?:about\s+|~|approx\.?\s*)?(\d+(?:\.\d+)?)\s*(h|hr|hrs|hours?|min|mins|minutes?)(?:\s*(\d{1,2})\s*(?:min|mins|minutes?)?)?$/i;
-/** ", 7 Rue du Faubourg Montmartre", ", 199-206 High Holborn": a street address. */
+/**
+ * ", 7 Rue du Faubourg Montmartre", ", 199-206 High Holborn", or with the
+ * number after the street, ", Poststraße 8", ", Hasengasse 5-7": a street address.
+ */
 const ADDRESS = /^\d+[\d\-–/]*[a-z]?\s+\p{L}/u;
+const isAddress = (seg: string) => ADDRESS.test(seg) || looksLikeStreetAddress(seg);
 
-const FLIGHT_WORDS = /✈|\bflight\b|\b(?:land|landing|arrive|depart)\b.*\b(?:airport|terminal)\b/i;
+const FLIGHT_WORDS =
+  /✈|\bflight\b|\b(?:fly|land|landing|arrive|arrival|depart|departure)\b.*\b(?:airport|terminal)\b/i;
 /** "LHR T5", "JFK T4": an airport code with its terminal. Case matters. */
 const AIRPORT_TERMINAL = /\b[A-Z]{3}\s+T\d\b/;
 const HOTEL_WORDS =
-  /\b(?:hotel|hostel|ryokan|guesthouse|airbnb|check[- ]?in|check[- ]?out|drop (?:the |our |off )?bags)\b/i;
+  /\b(?:hotel|hostel|ryokan|guesthouse|airbnb|check[- ]?in|check[- ]?out|overnight|drop (?:the |our |off )?(?:bags|luggage)|(?:luggage|bag) drop)\b/i;
 const NOTE_WORDS = /^(?:be at|be back|meet|reminder|note)\b/i;
 const TRANSPORT_WORDS =
   /\b(?:train|ferry|bus|shinkansen|eurostar|tgv|jr|line|metro|subway|tram|taxi|uber|coach|transfer)\b/i;
@@ -132,8 +142,8 @@ type Heading = { dayNumber: number | null; date: string | null; titleText: strin
 export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItinerary | null {
   const lines = text
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+    .map(tableRow)
+    .filter((l): l is string => Boolean(l));
   if (lines.length < MIN_ENTRIES) return null;
   if (lines.some((l) => CHAT_LINE.test(l))) return null;
   if (CHANGED.test(text.replace(/skip[- ]the[- ]line/gi, ""))) return null;
@@ -146,6 +156,11 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
   const items: ParsedItineraryItem[] = [];
   let entries = 0;
   let lastTime: string | null = null;
+  /** The towns the day heading names: one, or two on a travel day ("Paris → Lyon"). */
+  let dayCities: string[] = [];
+  let cityAt = 0;
+  /** Where a day trip has taken the traveller, from the plan's own arrivals. */
+  let away: TownTrail = { town: null, before: null };
 
   for (const [index, raw] of lines.entries()) {
     if (raw.length > MAX_LINE) return null;
@@ -159,8 +174,18 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
       lastTime = entry.time;
       const stop = readStop(entry);
       if (!stop) return null;
+      const moved = followTown(away, stop, entry.rest);
+      // Leaving is still where you leave from; arriving is already there.
+      const here = moved.leaving ? away.town : moved.trail.town;
+      away = moved.trail;
+      const city = here ?? dayCities[Math.min(cityAt, dayCities.length - 1)] ?? null;
+      // On a travel day, the stops after the journey are in the next town.
+      if ((stop.kind === "transport" || stop.kind === "flight") && cityAt < dayCities.length - 1) {
+        cityAt++;
+      }
       items.push({
         ...stop,
+        city,
         day_number: dayNumber,
         day_date: dayDate ?? dateAfter(opts.startDate, dayNumber - 1),
         time_label: entry.time,
@@ -173,6 +198,13 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
     if (heading) {
       if (index === 0 && heading.titleText) tripTitle = heading.titleText;
       if (heading.dayNumber != null || heading.date || dayOnly(raw)) {
+        // "Day 4 — 2026-10-15 — Lyon": the day's town. A heading naming
+        // none keeps the last one: the traveller has not moved.
+        const named = headingCities(heading.titleText);
+        if (named.length) dayCities = named;
+        else if (dayCities.length > 1) dayCities = dayCities.slice(-1);
+        cityAt = 0;
+        away = { town: null, before: null };
         // A second heading before any stop ("Paris — Saturday", then
         // "Oct 10") names the same day rather than starting another.
         if (heading.dayNumber != null) dayNumber = heading.dayNumber;
@@ -210,6 +242,71 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
     costs: [],
     items: folded,
   };
+}
+
+/**
+ * A table row as a plain line: "| 09:00–09:40 | Brandenburg Gate | stop |"
+ * or the same with tabs, as a table copied out of a chat comes. The time
+ * cell leads and the others follow as notes. The header row ("Time | Place
+ * / note") and the rule under it say nothing, so they go.
+ */
+function tableRow(raw: string): string | null {
+  const line = raw.trim();
+  if (!line) return null;
+  if (/^\|?[\s:|-]+\|[\s:|-]*$/.test(line)) return null;
+  const cells = line.includes("|")
+    ? line.replace(/^\||\|$/g, "").split("|")
+    : line.includes("\t")
+      ? line.split(/\t+/)
+      : null;
+  const parts = (cells ?? [line]).map((c) => c.trim()).filter(Boolean);
+  if (parts.length > 1 && /^time$/i.test(parts[0]!)) return null;
+  if (!cells || parts.length < 2) return parts.join(" ") || null;
+  return `${parts[0]} ${parts.slice(1).join(" - ")}`;
+}
+
+type TownTrail = { town: string | null; before: string | null };
+
+/** Arriving by rail or boat names the town: "Hiroshima Station — arrival". */
+const ARRIVAL_PLACE = /^(.+?)\s+(?:station|pier|port|ferry terminal)$/i;
+/** "morning departure toward Himeji", "return to Osaka": the town only, one word. */
+const HEADING_TO = /\b(?:toward|towards|to)\s+(\p{Lu}[\p{L}-]+)(?![\p{L}-])(?!\s+\p{Lu})/u;
+/** The note says only that this is an arrival: "arrival", "island arrival". */
+const ARRIVAL_NOTE = /^(?:[\p{L}-]+\s+)?arriv(?:al|e|ing)$/iu;
+/** A name alone, with nothing to say it is a venue: "Miyajima". */
+const BARE_TOWN = /^\p{Lu}[\p{L}-]+(?:\s\p{Lu}[\p{L}-]+)?$/u;
+
+/**
+ * Which town the traveller is in, after this stop, when the plan says it only
+ * by moving: "Hiroshima Station — arrival" puts the rest of the day in
+ * Hiroshima, "Miyajima — island arrival" on the island, and "return boat"
+ * back where they came from; "departure toward Himeji" sends them on. A
+ * train with no destination leaves them nowhere the plan names, and the
+ * trip's own town for the day answers. The day's heading starts afresh.
+ *
+ * Only a plain arrival counts: an airport is where a trip lands, not a town
+ * to look its stops up in.
+ */
+function followTown(
+  trail: TownTrail,
+  stop: { kind: string; title: string; detail: string | null },
+  rest: string,
+): { trail: TownTrail; leaving: boolean } {
+  const note = (stop.detail ?? "").trim();
+  const journey = stop.kind === "transport" || stop.kind === "flight";
+  const heading = /\b(?:depart|departure|return|back)\b/i.test(note)
+    ? note.match(HEADING_TO)
+    : null;
+  if (heading) return { trail: { town: heading[1]!, before: trail.town }, leaving: true };
+  if (ARRIVAL_NOTE.test(note) && !/\bairport\b/i.test(rest)) {
+    const place = stop.title.match(ARRIVAL_PLACE)?.[1];
+    const town = place ?? (BARE_TOWN.test(stop.title) ? stop.title : null);
+    if (town) return { trail: { town, before: trail.town }, leaving: false };
+  }
+  if (/\breturn\b/i.test(note))
+    return { trail: { town: trail.before, before: null }, leaving: true };
+  if (journey) return { trail: { town: null, before: null }, leaving: true };
+  return { trail, leaving: false };
 }
 
 /** A line that starts with a time, split into the time and what follows. */
@@ -282,7 +379,14 @@ function readStop(
   // " — go early", " — reservation confirmed #8843": the rest is a note.
   let main = text;
   let dashNote: string | null = null;
-  const dash = text.match(/^(.+?)\s+[—–]\s+(.+)$/);
+  // A plain hyphen with spaces round it does the same job in most plans
+  // ("Städel Museum, Schaumainkai 63 - 700 years of European art"), except
+  // on a journey, where it joins two towns ("Train Paris - Lyon").
+  const dash =
+    text.match(/^(.+?)\s+[—–]\s+(.+)$/) ??
+    (TRANSPORT_WORDS.test(text) || FLIGHT_WORDS.test(text)
+      ? null
+      : text.match(/^(.+?)\s+-\s+(.+)$/));
   if (dash) {
     main = cleanText(dash[1]!);
     dashNote = cleanText(dash[2]!);
@@ -291,7 +395,7 @@ function readStop(
   // A street address given after a comma is kept verbatim and taken out of the title.
   let address: string | null = null;
   const segments = main.split(/\s*,\s*/);
-  const addrAt = segments.findIndex((seg, i) => i > 0 && ADDRESS.test(seg));
+  const addrAt = segments.findIndex((seg, i) => i > 0 && isAddress(seg));
   if (addrAt > 0) {
     address = segments[addrAt]!;
     segments.splice(addrAt, 1);
@@ -356,7 +460,10 @@ function placeFor(main: string, kind: TimelineKind): string {
     first = first.split(/\s*(?:→|->)\s*/)[0]!;
     // "Eurostar 9O 9031 London St Pancras": the service, then where it leaves.
     first = first.replace(/^(?:\p{L}+\s+)?(?:[A-Z0-9]{1,3}\s*\d{2,5}\s+)+/u, "");
-    first = first.replace(/^(?:land|arrive|depart)\s+(?:at\s+)?/i, "");
+    first = first.replace(/^(?:land|arrive|depart)\s+(?:at\s+|from\s+)?/i, "");
+    // "Train from Paris Gare de Lyon to Lyon Part-Dieu": where it leaves.
+    const from = first.match(/\bfrom\s+(.+?)\s+to\s+\S/i);
+    if (from) first = from[1]!;
   }
   return trimPlace(first.replace(WALK_LEAD, ""));
 }
@@ -374,7 +481,11 @@ function trimPlace(text: string): string {
 }
 
 function kindFor(text: string, raw: string, booked: boolean): TimelineKind {
-  if (FLIGHT_WORDS.test(text) || AIRPORT_TERMINAL.test(raw)) return booked ? "flight" : "transport";
+  // A flight is fixed in the day and needs a ticket, booked or not: kept as
+  // a flight, it stays a stop at the airport and counts as a plan to book.
+  if (FLIGHT_WORDS.test(text) || AIRPORT_TERMINAL.test(raw)) return "flight";
+  // "Breakfast at the Hotel Adlon" is a meal, wherever it is eaten.
+  if (/^(?:breakfast|brunch|lunch|dinner|supper)\b/i.test(text)) return "meal";
   if (HOTEL_WORDS.test(text)) return booked ? "hotel" : "lodging";
   if (NOTE_WORDS.test(text)) return "note";
   if (TRANSPORT_WORDS.test(text) || /^(?:take|catch|board|hop on)\b.*\bto\b/i.test(text)) {
@@ -386,10 +497,64 @@ function kindFor(text: string, raw: string, booked: boolean): TimelineKind {
   return "activity";
 }
 
+/** Words a day heading uses for a theme, not a town: "Arrival", "Free day". */
+const THEME_WORDS =
+  /^(?:arrival|arrive|arriving|departure|depart|departing|free|rest|travel|travelling|traveling|leisure|explore|exploring|relax|day|trip|morning|afternoon|evening|last|first|final|full|half|optional|museums?|food|beach|shopping|home|flight|fly|drive|road|getting)\b/i;
+/** Lower-case words a town's name may carry: "Aix-en-Provence", "Frankfurt am Main". */
+const NAME_JOINERS = new Set([
+  "de",
+  "du",
+  "des",
+  "la",
+  "le",
+  "les",
+  "del",
+  "di",
+  "da",
+  "do",
+  "dos",
+  "am",
+  "an",
+  "im",
+  "sur",
+  "en",
+  "upon",
+  "on",
+  "of",
+  "y",
+  "e",
+  "el",
+  "al",
+  "and",
+]);
+
+/**
+ * The towns a day heading names after its date: "Lyon", "Lyon, France", or
+ * "Paris → Lyon" on a travel day. Empty for a theme ("Museums and markets",
+ * "Arrival") — a wrong town would send every lookup that day astray, and the
+ * trip's own area is the better guess.
+ */
+export function headingCities(text: string | null): string[] {
+  if (!text) return [];
+  const parts = text.split(/\s*(?:→|->|⟶|➔|➜)\s*/).map((p) => cleanText(p));
+  if (parts.length > 3 || parts.some((p) => !looksLikeTown(p))) return [];
+  return parts;
+}
+
+function looksLikeTown(text: string): boolean {
+  if (!text || text.length > 60 || THEME_WORDS.test(text)) return false;
+  if (!/^[\p{L}\p{M}\s,'’.-]+$/u.test(text)) return false;
+  const words = text.split(/[\s,]+/).filter(Boolean);
+  if (words.length > 6) return false;
+  return words.every(
+    (w) => /^\p{Lu}/u.test(w) || NAME_JOINERS.has(w.toLowerCase()) || !/^\p{L}/u.test(w),
+  );
+}
+
 /** A day or date heading, or the plan's title line. Null for anything else. */
 function readHeading(raw: string, year: number, startDate: string | null): Heading | null {
   const line = cleanText(raw);
-  if (!line || line.length > 60) return null;
+  if (!line || line.length > 100) return null;
   const day = line.match(DAY_MARKER);
   const date = readDate(line, year, startDate);
   const rest = cleanText(

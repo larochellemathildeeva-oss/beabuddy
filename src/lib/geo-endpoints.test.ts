@@ -9,6 +9,7 @@ import {
   locationIqProvider,
   nextDelayMs,
   routeProfile,
+  routesMode,
   reverseUrl,
   routeUrl,
   searchUrl,
@@ -249,6 +250,17 @@ test("Geoapify: every URL goes to Geoapify with its key, walking included", () =
   );
   assert.equal(route.pathname, "/v1/routing");
   assert.equal(route.searchParams.get("mode"), "walk");
+  const transit = new URL(
+    routeUrl(g, routeProfile(g, "transit"), { lat: 1, lon: 2 }, { lat: 3, lon: 4 }),
+  );
+  assert.equal(transit.searchParams.get("mode"), "approximated_transit");
+});
+
+test("only Geoapify is asked to route transit", () => {
+  assert.ok(routesMode(geoapifyProvider("GK"), "transit"));
+  assert.ok(!routesMode(locationIqProvider("t"), "transit"));
+  assert.ok(!routesMode(PUBLIC_PROVIDER, "transit"));
+  assert.ok(routesMode(PUBLIC_PROVIDER, "walking"));
 });
 
 test("readGeoJson hands callers Nominatim and OSRM shapes whoever answered", async () => {

@@ -1,5 +1,7 @@
 import { placeQueryParts } from "./place-query.ts";
+import { dayTripBase, isDayTrip } from "./trip-cities.ts";
 import { minimumNameLength, startsLikeAName, wordCount } from "./script.ts";
+import { haversine } from "./geo.ts";
 
 export type DirectionStop = {
   /**
@@ -20,6 +22,7 @@ export type DirectionStop = {
 
 type CityStop = {
   city: string;
+  kind?: string | null;
   place_name?: string | null;
   address?: string | null;
   lat?: number | null;
@@ -43,18 +46,32 @@ type TimelineItem = {
 const STATUS_LINE =
   /^(?:booked|reserved|confirmed|booking|reservation|conf(?:irmation)?\b|ticket(?:s|ed)?\b|paid|getting there|afterwards|optional|no booking)/i;
 
-/** Walk/Drive rows Béa already saved from Get directions — skip them on the next lookup. */
+/** Walk/Drive/Transit rows Béa already saved from Get directions — skip them on the next lookup. */
 export function isSavedDirectionItem(item: {
   kind?: string | null;
   title?: string | null;
 }): boolean {
-  return /^(walk|drive) to /i.test((item.title ?? "").trim());
+  return /^(walk|drive|transit) to /i.test((item.title ?? "").trim());
 }
+
+/**
+ * A street word, in the languages that put the house number after the street
+ * ("Poststraße 8", "Hasengasse 5-7", "Keizersgracht 123", "Via Roma 12").
+ * It has to be there: "Curry 36" and "Terminal 5" are names ending in a number.
+ */
+const STREET_WORD =
+  /(?:stra(?:ss|ß)e|str\.|gasse|weg|platz|damm|allee|ufer|kai|ring|markt|steig|chaussee|zeile|graben|straat|gracht|laan|plein|kade|singel|gatan|gata|v[äa]gen|gade|vej|veien|torget|ulica|utca|ulice)\b|^(?:via|viale|piazza|corso|largo|calle|carrer|avenida|plaza|rua|travessa|pra[cç]a|rynek|n[aá]m[eě]st[ií])\s/i;
+
+/** "Poststraße 8", "Neue Mainzer Straße 52-58": the street, then its number. */
+const NUMBER_LAST = /^\p{L}[\p{L}\p{M}.'’\s-]*?\s\d{1,4}[a-z]?(?:\s*[-–/]\s*\d{1,4}[a-z]?)?$/iu;
 
 export function looksLikeStreetAddress(value: string): boolean {
   const text = value.trim();
   if (!text) return false;
-  return /^\d+[a-z]?\s+\S+/i.test(text);
+  if (/^\d+[a-z]?\s+\S+/i.test(text)) return true;
+  // Only the street part, before any postcode or town: "Poststraße 8, Frankfurt".
+  const street = text.split(",")[0]!.trim();
+  return NUMBER_LAST.test(street) && STREET_WORD.test(street.replace(/\s*\d.*$/, ""));
 }
 
 const ACTIVITY_SUFFIX =
@@ -276,9 +293,22 @@ export function mapsDirUrl(
   from: { title: string; lat?: number | null; lon?: number | null },
   to: { title: string; lat?: number | null; lon?: number | null },
   area: string,
-  mode: "walking" | "driving" = "walking",
+  /** "transit": Maps' own metro, bus and train steps — which line, which stop to get off. */
+  mode: "walking" | "driving" | "transit" = "walking",
 ): string {
   return `https://www.google.com/maps/dir/?api=1&origin=${mapsPoint(from.title, from, area)}&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
+}
+
+/**
+ * Directions to one stop from wherever the phone is: Maps fills in the start
+ * from the traveller's own position, which is what "Directions" on a card means.
+ */
+export function mapsDirToUrl(
+  to: { title: string; lat?: number | null; lon?: number | null },
+  area: string,
+  mode: "walking" | "driving" | "transit" = "walking",
+): string {
+  return `https://www.google.com/maps/dir/?api=1&destination=${mapsPoint(to.title, to, area)}&travelmode=${mode}`;
 }
 
 /**
@@ -336,14 +366,21 @@ export function timelineStopsForDirections(items: TimelineItem[]): DirectionStop
 /** Cities when the trip has a route; otherwise the timeline. */
 export function stopsForDirections(cities: CityStop[], items: TimelineItem[]): DirectionStop[] {
   if (cities.length >= 2) {
-    return cities.map((stop) => {
+    const asStop = (stop: CityStop, day: string | null | undefined): DirectionStop => {
       const title = (stop.place_name || stop.city).trim() || stop.city;
       const next: DirectionStop = { title };
-      if (stop.arrive_on) next.day_date = stop.arrive_on;
+      if (day) next.day_date = day;
       if (stop.address?.trim()) next.address = stop.address.trim();
       if (stop.lat != null) next.lat = stop.lat;
       if (stop.lon != null) next.lon = stop.lon;
       return next;
+    };
+    // A day trip is out and back: Kyoto → Hiroshima → Kyoto, the same day.
+    return cities.flatMap((stop, i) => {
+      const here = asStop(stop, stop.arrive_on);
+      if (!isDayTrip(stop)) return [here];
+      const base = dayTripBase(cities, i);
+      return base ? [here, asStop(base, stop.arrive_on)] : [here];
     });
   }
   return timelineStopsForDirections(items);
@@ -393,4 +430,51 @@ export function sameDayAnchors(
     }
     return null;
   });
+}
+
+/**
+ * Which pins found beyond a day's anchor may be kept.
+ *
+ * A stop with a pinned neighbour on its day is looked up within ~45 km of
+ * it. On a day trip that neighbour is often the hotel back in the base city,
+ * so a whole Hiroshima day on an Osaka trip with no route was searched for
+ * around Osaka and came back "couldn't find" — Hiroshima Station included.
+ * Those stops are then looked for across the trip's country, and a pin is
+ * kept when the day backs it: within a day's reach of the anchor, or beside
+ * another stop of the same day found the same way. Two stops agreeing on a
+ * town is what a day trip looks like; a lone namesake 300 km away (a
+ * Hiroshima lunch found in Kyoto) is not, and stays unplaced.
+ */
+export function wideDayPinsToKeep(
+  found: readonly {
+    index: number;
+    day: string;
+    pin: { lat: number; lon: number };
+    anchor: { lat: number; lon: number };
+  }[],
+  reachM: number = SAME_DAY_FAR_APART_M,
+  /**
+   * The day's stops already on the map. A far cluster is kept only when it
+   * outnumbers those beside the anchor: a Hiroshima day on an Osaka trip has
+   * one hotel in Osaka and a dozen stops in Hiroshima, while a Kyoto day with
+   * eight stops pinned in Kyoto kept "Gion" and "Ryō-shō" found near Tokyo
+   * because the two namesakes agreed with each other.
+   */
+  dayPins: ReadonlyMap<string, readonly { lat: number; lon: number }[]> = new Map(),
+): Set<number> {
+  const keep = new Set<number>();
+  for (const hit of found) {
+    if (haversine(hit.pin, hit.anchor) <= reachM) {
+      keep.add(hit.index);
+      continue;
+    }
+    const cluster = found.filter(
+      (other) => other.day === hit.day && haversine(other.pin, hit.pin) <= reachM,
+    ).length;
+    const home = (dayPins.get(hit.day) ?? []).filter(
+      (pin) => haversine(pin, hit.anchor) <= reachM,
+    ).length;
+    if (cluster > 1 && cluster > home) keep.add(hit.index);
+  }
+  return keep;
 }

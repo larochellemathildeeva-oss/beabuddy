@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { readPlainPlan } from "./plan-lines.ts";
+import { headingCities, readPlainPlan } from "./plan-lines.ts";
 
 const read = (text: string, startDate: string | null = "2026-10-10") =>
   readPlainPlan(text, { startDate, tripCity: "Paris, France", today: new Date("2026-01-15") });
@@ -223,4 +223,121 @@ test("no booking needed is not booked", () => {
 13:00 Lunch at Chartier`);
   assert.ok(plan);
   assert.equal(plan.items[0]!.booked, false);
+});
+
+test("a day heading names its town, or both ends of a travel day", () => {
+  assert.deepEqual(headingCities("Lyon, France"), ["Lyon, France"]);
+  assert.deepEqual(headingCities("Paris → Aix-en-Provence"), ["Paris", "Aix-en-Provence"]);
+  assert.deepEqual(headingCities("Frankfurt am Main"), ["Frankfurt am Main"]);
+});
+
+test("a day heading's theme is not a town", () => {
+  assert.deepEqual(headingCities("Arrival"), []);
+  assert.deepEqual(headingCities("Museums and markets"), []);
+  assert.deepEqual(headingCities("Free day & shopping"), []);
+  assert.deepEqual(headingCities(null), []);
+});
+
+test("a German plan: street-then-number addresses, spaced-hyphen notes, a night is a stay", () => {
+  const plan = read(`Day 1 - 2026-10-01
+08:00 Breakfast at Motel One Berlin-Hauptbahnhof, Invalidenstraße 54
+09:00-09:40 Brandenburg Gate, Pariser Platz 1 - morning landmark stop
+10:45-12:30 Neues Museum, Bodestraße 1-3 - Egyptian and prehistoric collections
+13:00 Lunch at Curry 36, Mehringdamm 36
+21:00 Motel One Berlin-Hauptbahnhof, Invalidenstraße 54 - overnight`);
+  assert.ok(plan);
+  const [breakfast, gate, museum, lunch, night] = plan.items;
+  assert.equal(breakfast!.kind, "meal");
+  assert.equal(breakfast!.address, "Invalidenstraße 54");
+  assert.equal(gate!.title, "Brandenburg Gate");
+  assert.equal(gate!.address, "Pariser Platz 1");
+  assert.equal(gate!.detail, "morning landmark stop");
+  assert.equal(gate!.end_time, "09:40");
+  assert.equal(museum!.address, "Bodestraße 1-3");
+  // "Curry 36" is the name; only the street after it is an address.
+  assert.equal(lunch!.place, "Curry 36");
+  assert.equal(lunch!.address, "Mehringdamm 36");
+  assert.equal(night!.kind, "lodging");
+  assert.equal(night!.detail, "overnight");
+});
+
+test("a plan copied as a table is read like a list", () => {
+  const text = `Day 1 - 2026-10-01
+| Time | Place / note |
+|---|---|
+| 09:00-09:40 | Brandenburg Gate, Pariser Platz 1 | morning landmark stop |
+| 12:00 | Lunch at Curry 61, Oranienburger Straße 6 |
+| 14:30-16:00 | East Side Gallery, Mühlenstraße 70-71 |`;
+  const plan = read(text);
+  assert.ok(plan);
+  assert.equal(plan.items.length, 3);
+  assert.equal(plan.items[0]!.detail, "morning landmark stop");
+  const tabs = read(
+    text
+      .replace(/^\|\s*|\s*\|$/gm, "")
+      .replace(/\s*\|\s*/g, "\t")
+      .replace(/^[-\t]+$/m, ""),
+  );
+  assert.ok(tabs);
+  assert.equal(tabs.items[2]!.address, "Mühlenstraße 70-71");
+});
+
+test("a hyphen between towns on a journey is not a note", () => {
+  const plan = read(`Day 1
+08:00 Breakfast at Café de Flore
+10:00 Train Paris - Lyon
+13:00 Lunch at Bouchon Daniel et Denise`);
+  assert.ok(plan);
+  assert.ok(plan.items.some((i) => /Paris - Lyon/.test(`${i.title} ${i.detail ?? ""}`)));
+});
+
+test("a day trip's towns come from its arrivals, departures and returns", () => {
+  const plan = read(`Day 7 — 2026-10-07
+07:11 Shin-Osaka Station, 5-16-1 Nishinakajima — Shinkansen departure — booked
+08:36 Hiroshima Station, 2-37 Matsubaracho — arrival
+09:00 Atomic Bomb Dome, 1-10 Otemachi — Peace Memorial Park
+12:35 Miyajima — island arrival
+13:30 Itsukushima Shrine, 1-1 Miyajimacho — waterfront shrine
+17:00 Miyajima Pier — return boat to Peace Park — booked
+18:10 Hiroshima Yume Plaza, 8-28 Hondori — regional foods
+20:36 Hiroshima Station, 2-37 Matsubaracho — Shinkansen departure — booked
+23:00 Citadines Namba Osaka, 3-5-25 Nipponbashi — hotel
+Day 9 — 2026-10-09
+07:30 Osaka Station, 3-1-1 Umeda — morning departure toward Himeji
+09:00 Himeji Castle, 68 Honmachi — castle interior and grounds
+12:15 Izakaya Toyo, 3-2-26 Higashinodamachi — arrive before service
+20:00 Osaka Station, 3-1-1 Umeda — return to Osaka
+20:30 Citadines Namba Osaka, 3-5-25 Nipponbashi — hotel`);
+  assert.ok(plan);
+  const towns = plan.items.map((i) => `${i.title.split(",")[0]}: ${i.city ?? "-"}`);
+  assert.deepEqual(towns, [
+    "Shin-Osaka Station: -",
+    "Hiroshima Station: Hiroshima",
+    "Atomic Bomb Dome: Hiroshima",
+    "Miyajima: Miyajima",
+    "Itsukushima Shrine: Miyajima",
+    "Miyajima Pier: Miyajima",
+    "Hiroshima Yume Plaza: Hiroshima",
+    "Hiroshima Station: Hiroshima",
+    "Citadines Namba Osaka: -",
+    "Osaka Station: -",
+    "Himeji Castle: Himeji",
+    // "Arrive before service" is not arriving in a town.
+    "Izakaya Toyo: Himeji",
+    "Osaka Station: Himeji",
+    "Citadines Namba Osaka: Osaka",
+  ]);
+});
+
+test("a long plan is still read line by line", () => {
+  const lines = ["Day 1 — 2026-10-01"];
+  for (let i = 0; i < 100; i++) {
+    const h = 6 + Math.floor(i / 6);
+    lines.push(
+      `${String(h).padStart(2, "0")}:${String((i % 6) * 10).padStart(2, "0")} Stop ${i} Museum`,
+    );
+  }
+  const plan = read(lines.join("\n"));
+  assert.ok(plan);
+  assert.equal(plan.items.length, 100);
 });

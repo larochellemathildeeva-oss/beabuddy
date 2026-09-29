@@ -5,6 +5,7 @@
  *
  * Pure, so each rule is tested on its own rather than through the sheet.
  */
+import { looksLikeStreetAddress } from "./direction-stops.ts";
 import type { Confidence } from "./match-confidence.ts";
 
 /**
@@ -162,6 +163,18 @@ function isArrowJourney(kind: string, title: string): boolean {
  */
 const ARRIVAL = /^(?:arriv(?:e|al|ing)|get\s+(?:to|in)(?:to)?|reach)\b/i;
 
+/**
+ * "Train from Paris Gare de Lyon to Lyon Part-Dieu": a journey between two
+ * towns. It needs a ticket and fixes the day around it, so it stays a stop of
+ * its own rather than a "Getting there" note on the next one.
+ */
+const CITY_JOURNEY =
+  /^(?:(?:night|overnight|high[- ]speed|regional|intercity)\s+)?(?:train|ferry|bus|coach|shinkansen|eurostar|tgv|ice|flight|drive)\b.*\bfrom\s+\S.*\bto\s+\S/i;
+
+export function isCityJourney(title: string): boolean {
+  return CITY_JOURNEY.test(title.trim());
+}
+
 /** Kinds that are somewhere to be, however their title is worded. */
 const NEVER_A_LEG = new Set(["meal", "lodging", "hotel", "flight", "reservation"]);
 
@@ -174,6 +187,7 @@ export function isTravelLeg(row: {
   // however it is worded ("Take the ferry to Miyajima 🚢 BOOKED").
   if (row.booked === true) return false;
   const title = row.title.trim();
+  if (isCityJourney(title)) return false;
   if (row.kind === "transport" && (MOVEMENT.test(title) || LINE_TO.test(title))) return true;
   if (NEVER_A_LEG.has(row.kind)) return false;
   return isArrowJourney(row.kind, title) || ARRIVAL.test(title);
@@ -446,4 +460,85 @@ export function placeBatches(parents: readonly number[], size: number): [number,
   }
   if (parents.length) out.push([start, parents.length]);
   return out;
+}
+
+/**
+ * A journey that takes you to another town: a flight, an intercity or
+ * high-speed train, or anything of an hour or more. "S-Bahn to Ostbahnhof"
+ * is not one; "direct ICE, about 4h" is.
+ */
+const LONG_JOURNEY =
+  /\b(?:flight|fly|flew|plane|ICE|TGV|AVE|IC|EC|intercity|eurostar|thalys|shinkansen|railjet|frecciarossa|amtrak|overnight train|night train|ferry)\b|\b\d+(?:[.,]\d+)?\s*(?:h|hrs?|hours?)\b/i;
+
+/**
+ * Whether a long journey comes just before this stop, so it is not in the
+ * town of the stop before it: the row before is a flight or a journey, or
+ * the stop's own note says how it was reached ("getting there: direct ICE,
+ * about 4h", folded in by foldTravelLegs).
+ */
+export function afterJourney(
+  row: { detail?: string | null | undefined },
+  previous: { kind: string; title: string; detail?: string | null | undefined } | undefined,
+): boolean {
+  // Landing is a journey too: "Kansai International Airport — arrival", then
+  // a hotel in Kyoto, 90 km on. It was looked for beside the airport, and a
+  // namesake there was pinned for the hotel and its breakfasts.
+  if (
+    previous &&
+    /\b(?:airport|aeroport|aeropuerto|aeroporto|flughafen)\b/i.test(previous.title) &&
+    /\barriv/i.test(previous.detail ?? "")
+  ) {
+    return true;
+  }
+  if (previous && (previous.kind === "flight" || previous.kind === "transport")) {
+    return (
+      previous.kind === "flight" || LONG_JOURNEY.test(`${previous.title} ${previous.detail ?? ""}`)
+    );
+  }
+  const reached = (row.detail ?? "")
+    .split(" · ")
+    .filter((note) => /^getting there\b/i.test(note))
+    .join(" ");
+  return LONG_JOURNEY.test(reached);
+}
+
+/** A stay, by what the row says happens there. */
+const STAY_WORDS = /\b(?:overnight|check[- ]?in|check[- ]?out|(?:luggage|bag) drop)\b/i;
+
+/**
+ * A row the model read, set straight where it copied the source too closely.
+ *
+ * "Neues Museum, Bodestraße 1-3 - Egyptian and prehistoric collections" came
+ * back as the title, with the address left in it and null beside it: the stop
+ * then printed its address and "no address" together, and was looked up by a
+ * title with a street in it. The street goes to the address, a note the
+ * detail already carries leaves the title, and a night at the hotel filed as
+ * an activity is a stay.
+ */
+export function tidyImportedRow<
+  T extends {
+    kind: string;
+    title: string;
+    detail: string | null;
+    address?: string | null | undefined;
+  },
+>(row: T): T {
+  let title = row.title.trim();
+  let address = row.address?.trim() || null;
+  const detail = row.detail?.trim() || null;
+  const dash = title.match(/^(.+?)\s+[-–—]\s+(.+)$/);
+  let note = dash ? dash[2]!.trim() : null;
+  let main = dash ? dash[1]!.trim() : title;
+  const parts = main.split(/\s*,\s*/);
+  const at = parts.findIndex((part, i) => i > 0 && looksLikeStreetAddress(part));
+  if (at > 0) {
+    if (!address) address = parts[at]!;
+    parts.splice(at, 1);
+    main = parts.join(", ");
+  }
+  if (note && detail?.toLowerCase().includes(note.toLowerCase())) note = null;
+  title = note ? `${main} - ${note}` : main;
+  const kind =
+    row.kind === "activity" && STAY_WORDS.test(`${title} ${detail ?? ""}`) ? "lodging" : row.kind;
+  return { ...row, title, kind, ...(address ? { address } : {}) };
 }

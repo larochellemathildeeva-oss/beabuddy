@@ -99,3 +99,17 @@ test("tripLookupArea returns nothing when there is no real place to anchor to", 
   assert.equal(tripLookupArea({ city: "", country: "", stops: [] }), "");
   assert.equal(tripLookupArea({}), "");
 });
+
+test("tripLookupArea: several towns share their country, never the first town", () => {
+  assert.equal(
+    tripLookupArea({
+      stops: [
+        { city: "Hiroshima", country: "Japan" },
+        { city: "Osaka", country: "Japan" },
+      ],
+    }),
+    "Japan",
+  );
+  // Towns without a country say nothing about the days they do not cover.
+  assert.equal(tripLookupArea({ stops: [{ city: "Hiroshima" }, { city: "Osaka" }] }), "");
+});

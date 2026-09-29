@@ -100,6 +100,10 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
         a: "Béa can help build trips using your saved places, recommendations, travel preferences, and travel style.\n\nRather than starting from a blank page, planning begins with things you've already said matter to you. Set preferences on You → Travel preferences.",
       },
       {
+        q: "Can I bring in a plan from another assistant?",
+        a: 'Yes. Under Planning with another assistant, just below, there is a prompt to copy into whichever one you use. Fill in the city, dates and what you\'d like, then paste its answer into Let Béa plan → I already have a plan.\n\nThe prompt asks for one place per line, each with a time and a street address, and no "walk to…" lines. That is the shape Béa reads most precisely: each stop lands on the map on its own, and trips between them stay out of your timeline.',
+      },
+      {
         q: "Does Béa automatically book anything?",
         a: "No. Béa helps organize and plan. It does not make bookings or purchases on your behalf — and it does not book restaurants or hotels.",
       },
@@ -253,7 +257,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Does Béa work without a connection?",
-        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. You → What is kept on this phone lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
+        a: "No. Béa needs a connection to open at all, so she is not a no-signal app — maps, photos, recommendations and the vault all load fresh each time.\n\nWhat is kept on this phone: trip Settings → Saved directions stores the walk or drive steps locally, so they cost nothing to open again once you have them. Where this phone can draw it, the map around each day's stops is kept too, so a day map that is already open keeps panning and zooming when the signal drops. You → What is kept on this phone lists the trips that already have them. Keep a screenshot or your maps app for somewhere with no signal.",
       },
     ],
   },

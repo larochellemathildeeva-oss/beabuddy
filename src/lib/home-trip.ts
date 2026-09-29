@@ -4,6 +4,8 @@
  * the trips after it. Pure, so each rule is tested on its own.
  */
 
+import { isDayTrip } from "./trip-cities.ts";
+
 export type HighlightRow = {
   kind: string;
   title: string;
@@ -70,7 +72,12 @@ export function currentHighlights<T extends HighlightRow>(
   return { flight, lodging };
 }
 
-type LegStop = { city: string; arrive_on: string | null; depart_on: string | null };
+type LegStop = {
+  city: string;
+  arrive_on: string | null;
+  depart_on: string | null;
+  kind?: string | null | undefined;
+};
 
 /**
  * For a trip through several cities: the city that matters today, and the
@@ -90,18 +97,33 @@ export function currentLeg<T extends HighlightRow>(
   stops: readonly LegStop[],
   rows: readonly T[],
   today: string,
-): { city: string; label: "First stop" | "Now in"; flight: T | null; lodging: T | null } | null {
+): {
+  city: string;
+  label: "First stop" | "Now in" | "Day trip to";
+  flight: T | null;
+  lodging: T | null;
+} | null {
   const name = (c: string) => (c.split(",")[0] ?? "").trim();
   const distinct = new Set(stops.map((s) => name(s.city).toLowerCase()).filter(Boolean));
   if (distinct.size < 2 || !stops.some((s) => s.arrive_on)) return null;
 
+  // A day trip is where you are for a day, never where you sleep: the legs,
+  // their flights and their stays are the cities you stay in. Out on one
+  // today, the card names it and keeps the stay you go back to.
+  const away = stops.find(
+    (s) =>
+      isDayTrip(s) && s.arrive_on && s.arrive_on <= today && today <= (s.depart_on || s.arrive_on),
+  );
+  const staying = stops.filter((s) => !isDayTrip(s));
+  const legs = staying.length ? staying : stops;
+
   let index = 0;
-  stops.forEach((s, i) => {
+  legs.forEach((s, i) => {
     if (s.arrive_on && s.arrive_on <= today) index = i;
   });
-  const leg = stops[index]!;
+  const leg = legs[index]!;
   const arrived = Boolean(leg.arrive_on && leg.arrive_on <= today);
-  const until = leg.depart_on || stops[index + 1]?.arrive_on || null;
+  const until = leg.depart_on || legs[index + 1]?.arrive_on || null;
 
   const flight =
     rows.find(
@@ -118,6 +140,7 @@ export function currentLeg<T extends HighlightRow>(
       ) ?? null)
     : (stays[0] ?? null);
 
+  if (away) return { city: name(away.city), label: "Day trip to", flight, lodging };
   return { city: name(leg.city), label: arrived ? "Now in" : "First stop", flight, lodging };
 }
 
@@ -211,6 +234,36 @@ export function pastTrips<T extends DatedTrip>(trips: readonly T[], today: strin
     .filter((t) => isPastTrip(t, today) && lastDay(t) >= yearAgo)
     .sort((a, b) => lastDay(b).localeCompare(lastDay(a)))
     .slice(0, limit);
+}
+
+/**
+ * The Trips tab's two lists: trips still ahead or under way, in the order
+ * they came, and every trip that has ended, most recent first.
+ */
+export function splitTrips<T extends DatedTrip>(
+  trips: readonly T[],
+  today: string,
+): { mine: T[]; past: T[] } {
+  const mine: T[] = [];
+  const past: T[] = [];
+  for (const t of trips) (isPastTrip(t, today) ? past : mine).push(t);
+  past.sort((a, b) => lastDay(b).localeCompare(lastDay(a)));
+  return { mine, past };
+}
+
+/**
+ * The master's four Trips tabs. Drafts are trips with no dates yet; Upcoming
+ * is everything dated and not over (under way included), soonest first; Past
+ * is every ended trip, most recent first; All is the three together.
+ */
+export function tripTabs<T extends DatedTrip>(
+  trips: readonly T[],
+  today: string,
+): { upcoming: T[]; past: T[]; drafts: T[]; all: T[] } {
+  const { mine, past } = splitTrips(trips, today);
+  const drafts = mine.filter((t) => !t.start_date);
+  const upcoming = mine.filter((t) => t.start_date).sort(byStart);
+  return { upcoming, past, drafts, all: [...upcoming, ...drafts, ...past] };
 }
 
 /** Up to three trips after the active one, soonest first. */

@@ -3,7 +3,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { insertAfter, neighbourInDay, nextPosition } from "@/lib/timeline-order";
+import { chronologicalSlot, insertAfter, nextPosition } from "@/lib/timeline-order";
+import { clockMinutes } from "@/lib/companion";
 import { isMissingColumn } from "@/lib/bookings";
 import { insideNote, readInside, type InsideEntry } from "@/lib/inside-list";
 import {
@@ -12,7 +13,10 @@ import {
   type DatesStatus,
 } from "@/lib/trip-dates";
 import type { NewStop } from "@/hooks/useTripStops";
+import { directionSource, directionTitleKey } from "@/lib/timeline-directions";
+import { homeStopFollow } from "@/lib/trip-cities";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
+import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -112,6 +116,29 @@ async function updateTripRow(id: string, patch: TripPatch): Promise<void> {
   if (retry.error) throw retry.error;
 }
 
+/**
+ * The trip's first city, when it is the copy of the trip's own, follows an
+ * edit to the trip's city or dates. The trip itself is saved either way.
+ */
+async function followHomeStop(
+  id: string,
+  before: Parameters<typeof homeStopFollow>[0],
+  patch: Parameters<typeof homeStopFollow>[1],
+): Promise<void> {
+  try {
+    const { data: stops } = await supabase
+      .from("trip_stops")
+      .select("id, kind, city, country, arrive_on, depart_on, position")
+      .eq("trip_id", id);
+    const follow = homeStopFollow(before, patch, stops ?? []);
+    if (!follow) return;
+    const { error } = await supabase.from("trip_stops").update(follow.patch).eq("id", follow.id);
+    if (error) throw error;
+  } catch (e) {
+    console.warn("[trips] first city did not follow the trip", e);
+  }
+}
+
 async function liveUserId(fallback?: string | null): Promise<string> {
   const { data } = await supabase.auth.getUser();
   const id = data.user?.id ?? fallback ?? null;
@@ -179,13 +206,18 @@ const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
 /** Columns that arrive with migrations applied by hand, asked for only while they answer. */
 const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES];
 
+type TripsSnapshot = { uid: string; trips: TripRow[]; members: MemberRow[] };
+
 export function useTrips() {
-  const [uid, setUid] = useState<string | null>(null);
-  const [trips, setTrips] = useState<TripRow[]>([]);
-  const [members, setMembers] = useState<MemberRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Home and Trips both open on the list they last showed, then refresh it.
+  const [last] = useState(() => lastLoaded<TripsSnapshot>("trips"));
+  const [uid, setUid] = useState<string | null>(last?.uid ?? null);
+  const [trips, setTrips] = useState<TripRow[]>(last?.trips ?? []);
+  const [members, setMembers] = useState<MemberRow[]>(last?.members ?? []);
+  const [loading, setLoading] = useState(!last);
 
   const load = useCallback(async () => {
+    const since = screenGeneration();
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user ?? null;
     setUid(user?.id ?? null);
@@ -196,12 +228,19 @@ export function useTrips() {
       return;
     }
     const rows = await selectTrips();
-    setTrips(rows);
     const { data: m } = await supabase
       .from("trip_members")
       .select("id, trip_id, user_id, role, display_name");
-    setMembers((m ?? []) as MemberRow[]);
+    const memberRows = (m ?? []) as MemberRow[];
+    // Together, so a card never draws with its trip but without its people.
+    setTrips(rows);
+    setMembers(memberRows);
     setLoading(false);
+    rememberLoaded<TripsSnapshot>(
+      "trips",
+      { uid: user.id, trips: rows, members: memberRows },
+      since,
+    );
   }, []);
 
   useEffect(() => {
@@ -299,7 +338,20 @@ export function useTrips() {
       const clean = Object.fromEntries(
         Object.entries(patch).map(([k, v]) => [k, v === "" ? null : v]),
       ) as typeof patch;
+      const movesPlace = (["city", "country", "start_date", "end_date"] as const).some(
+        (k) => k in clean,
+      );
+      const before = movesPlace
+        ? (
+            await supabase
+              .from("trips")
+              .select("city, country, start_date, end_date")
+              .eq("id", id)
+              .maybeSingle()
+          ).data
+        : null;
       await updateTripRow(id, clean);
+      if (before) await followHomeStop(id, before, clean);
       await load();
     },
     [load],
@@ -559,6 +611,28 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [me.id, me.name],
   );
 
+  /**
+   * Move rows down to make room, one write each; positions have no uniqueness
+   * rule, the same as "+ Add stop between". Not a transaction: a write that
+   * fails part way reloads the trip, so the screen shows the order actually
+   * saved rather than the one hoped for, and the error still reaches the form.
+   */
+  const shiftPositions = useCallback(
+    async (shifts: { id: string; position: number }[], authorId: string | null) => {
+      for (const shift of shifts) {
+        const { error } = await supabase
+          .from("itinerary_items")
+          .update({ position: shift.position, ...(authorId ? { updated_by: authorId } : {}) })
+          .eq("id", shift.id);
+        if (error) {
+          await load();
+          throw error;
+        }
+      }
+    },
+    [load],
+  );
+
   const addItem = useCallback(
     async (item: {
       day_date?: string;
@@ -573,6 +647,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       const id = tripIdRef.current;
       if (!id) throw new Error("Open a trip first");
       const authorId = await liveUserId(me.id);
+      // In its place by day and time, not at the end of the trip: a stop
+      // added at 14:00 goes between 12:30 and 16:00. Only positions move to
+      // make room; every other stop keeps its time.
+      const { position, shifts } = chronologicalSlot(
+        items,
+        { day_date: item.day_date || null, time_label: item.time_label || null },
+        clockMinutes,
+      );
+      await shiftPositions(shifts, authorId);
       const { data, error } = await supabase
         .from("itinerary_items")
         .insert({
@@ -585,7 +668,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           address: item.address || null,
           lat: item.lat ?? null,
           lon: item.lon ?? null,
-          position: nextPosition(items),
+          position,
           created_by: authorId,
           updated_by: authorId,
         })
@@ -597,7 +680,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       await load();
       return data?.id as string | undefined;
     },
-    [tripId, me.id, items.length, load],
+    [me.id, items, load, shiftPositions],
   );
 
   /**
@@ -784,17 +867,38 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (!id) throw new Error("Open a trip first");
       if (additions.length === 0) return;
       const authorId = await liveUserId(me.id);
-      const existingByTitle = new Map(items.map((row) => [row.title.trim().toLowerCase(), row]));
+      // Matched by day, title and, for a walk or drive, the stop it leaves
+      // from — not title alone: "Walk to Hotel" comes back every evening, and
+      // a title-only match moved one row from day to day while every other
+      // day's walk home was never saved. The mode is left out of the match, so
+      // a walk asked again by transit replaces the walk.
+      const keyOf = (row: { day_date?: string | null; title: string; detail?: string | null }) =>
+        `${row.day_date ?? ""}|${directionTitleKey(row.title)}|${directionSource(row.detail).toLowerCase()}`;
+      const existingByKey = new Map(items.map((row) => [keyOf(row), row]));
       const inserts: typeof additions = [];
+      const queued = new Set<string>();
       for (const item of additions) {
-        const hit = existingByTitle.get(item.title.trim().toLowerCase());
+        const key = keyOf(item);
+        // A row saved before sources were kept is claimed once, and updated
+        // in place, rather than left beside the new one.
+        const legacyKey = keyOf({ ...item, detail: null });
+        const hitKey = existingByKey.has(key)
+          ? key
+          : existingByKey.has(legacyKey)
+            ? legacyKey
+            : null;
+        const hit = hitKey ? existingByKey.get(hitKey) : undefined;
+        if (hitKey) existingByKey.delete(hitKey);
         if (!hit) {
-          inserts.push(item);
+          // The same walk twice in one batch is saved once.
+          if (!queued.has(key)) inserts.push(item);
+          queued.add(key);
           continue;
         }
         const { error } = await supabase
           .from("itinerary_items")
           .update({
+            title: item.title,
             detail: item.detail ?? hit.detail,
             address: item.address ?? hit.address,
             lat: item.lat ?? hit.lat,
@@ -856,10 +960,33 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       >,
     ) => {
       const { inside, ...rest } = patch;
+      // A new day or time moves the stop to its place on that day, so the
+      // list keeps reading in time order. Nothing else's time changes.
+      let position: number | undefined;
+      const current = items.find((item) => item.id === id);
+      if (current && ("day_date" in patch || "time_label" in patch)) {
+        const day = "day_date" in patch ? (patch.day_date ?? null) : current.day_date;
+        const time = "time_label" in patch ? (patch.time_label ?? null) : current.time_label;
+        const moved =
+          (day ?? "") !== (current.day_date ?? "") ||
+          clockMinutes(time) !== clockMinutes(current.time_label);
+        // Includes clearing a time: an untimed stop goes to the end of its day.
+        if (moved) {
+          const slot = chronologicalSlot(
+            items,
+            { day_date: day, time_label: time },
+            clockMinutes,
+            id,
+          );
+          await shiftPositions(slot.shifts, me.id);
+          position = slot.position;
+        }
+      }
       const { error } = await supabase
         .from("itinerary_items")
         .update({
           ...rest,
+          ...(position !== undefined ? { position } : {}),
           ...(inside ? { inside: inside as unknown as Json } : {}),
           updated_by: me.id,
         })
@@ -867,7 +994,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (error) throw error;
       await load();
     },
-    [me.id, load],
+    [me.id, items, load, shiftPositions],
   );
 
   /**
@@ -901,38 +1028,9 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   );
 
   /**
-   * Move a saved entry up or down within its day.
-   *
-   * A straight swap of positions, the same way trip_stops does it. Crossing a
-   * day boundary is deliberately not possible here: rows sort by day first, so
-   * the swap would not move anything you can see. Changing the day is its own
-   * control.
+   * Write new days, times and places in the list, for Optimize and for
+   * moving stops (`stop-move.ts` works out which rows change).
    */
-  const moveItem = useCallback(
-    async (id: string, direction: -1 | 1) => {
-      const tripId2 = tripIdRef.current;
-      if (!tripId2) throw new Error("Open a trip first");
-      const current = items.find((item) => item.id === id);
-      const swapWith = neighbourInDay(items, id, direction);
-      if (!current || !swapWith) return;
-      const authorId = await liveUserId(me.id);
-      await Promise.all([
-        supabase
-          .from("itinerary_items")
-          .update({ position: swapWith.position, updated_by: authorId })
-          .eq("id", current.id)
-          .eq("trip_id", tripId2),
-        supabase
-          .from("itinerary_items")
-          .update({ position: current.position, updated_by: authorId })
-          .eq("id", swapWith.id)
-          .eq("trip_id", tripId2),
-      ]);
-      await load();
-    },
-    [items, me.id, load],
-  );
-
   const applySchedule = useCallback(
     async (
       updates: Array<{
@@ -947,21 +1045,27 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       if (updates.length === 0) return;
       const authorId = await liveUserId(me.id);
       const known = new Set(items.map((item) => item.id));
-      for (const row of updates) {
-        if (!known.has(row.id)) continue;
-        const { error } = await supabase
-          .from("itinerary_items")
-          .update({
-            day_date: row.day_date,
-            time_label: row.time_label,
-            position: row.position,
-            updated_by: authorId,
-          })
-          .eq("id", row.id)
-          .eq("trip_id", id);
-        if (error) throw error;
+      // One write a row, not a transaction: when one fails part way, the
+      // list still reloads, so it shows what was saved rather than the plan
+      // before, and the error reaches the caller.
+      try {
+        for (const row of updates) {
+          if (!known.has(row.id)) continue;
+          const { error } = await supabase
+            .from("itinerary_items")
+            .update({
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+              updated_by: authorId,
+            })
+            .eq("id", row.id)
+            .eq("trip_id", id);
+          if (error) throw error;
+        }
+      } finally {
+        await load();
       }
-      await load();
     },
     [me.id, items, load],
   );
@@ -989,7 +1093,6 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     updateItem,
     setProgress,
     insertItemAfter,
-    moveItem,
     removeItem,
     setEditing,
     reload: load,

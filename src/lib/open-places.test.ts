@@ -1,6 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { openPlacesUrl, pickOpenPlace, readOpenPlaces } from "./open-places.ts";
+import {
+  echoesName,
+  foundWhole,
+  openPlacesNamed,
+  openPlacesUrl,
+  pickOpenPlace,
+  readOpenPlaces,
+} from "./open-places.ts";
 
 const barreiras = { lat: -12.1439, lon: -44.9968 };
 
@@ -82,4 +89,75 @@ test("a restaurant is found by the name inside an activity title", () => {
     ],
   });
   assert.equal(pickOpenPlace(places, ["Lunch at Cais e Porto"], barreiras)?.id, "cais");
+});
+
+test("a search typed as three words finds the restaurant spelt as one", () => {
+  const osaka = { lat: 34.6937, lon: 135.5023 };
+  const places = readOpenPlaces({
+    results: [
+      { place_id: "amano-far", name: "Amano", lat: 34.9, lon: 135.7, address: "Kyoto" },
+      {
+        place_id: "amano",
+        name: "Sushidokoro Amano",
+        lat: 34.653,
+        lon: 135.518,
+        address: { freeform: "Shitennoji", locality: "Osaka" },
+      },
+      { place_id: "other", name: "Sushi Zanmai", lat: 34.69, lon: 135.5 },
+    ],
+  });
+  const named = openPlacesNamed(places, ["sushido koro amano"], osaka);
+  assert.deepEqual(
+    named.map((p) => p.id),
+    ["amano", "amano-far"],
+  );
+});
+
+test("the map's own answer that is the place needs no second look", () => {
+  assert.equal(
+    echoesName("Sushidokoro Amano", { name: "Sushidokoro Amano", address: "Osaka, Japan" }),
+    true,
+  );
+  assert.equal(echoesName("Sushidokoro Amano", { name: "Tennoji Park", address: "Osaka" }), false);
+});
+
+test("a street named after the place does not stop the second look", () => {
+  assert.equal(
+    echoesName("Rio de Ondas", {
+      name: "Rua Rio de Ondas",
+      address: "Barreiras, Brazil",
+      category: "highway",
+      placeType: "residential",
+    }),
+    false,
+  );
+});
+
+test("an amano elsewhere is not the whole of Sushidokoro Amano", () => {
+  const typed = "Sushidokoro Amano";
+  assert.equal(
+    foundWhole(typed, { name: "amano", address: "Toyokawa, Aichi Prefecture, Japan" }),
+    false,
+  );
+  assert.equal(
+    foundWhole(typed, { name: "Amano", address: "Linz, Upper Austria, Austria" }),
+    false,
+  );
+  assert.equal(
+    foundWhole(typed, { name: "Sushidokoro Amano", address: "Fukushima, Osaka, Japan" }),
+    true,
+  );
+  assert.equal(
+    foundWhole("sushido koro amano", { name: "Sushidokoro Amano", address: "Osaka" }),
+    true,
+  );
+});
+
+test("a branch number, a two-character name and other scripts all count", () => {
+  assert.equal(foundWhole("Curry 36", { name: "Curry", address: "Berlin" }), false);
+  assert.equal(foundWhole("Curry 36", { name: "Curry 36", address: "Berlin" }), true);
+  assert.equal(foundWhole("北京 Amano", { name: "Amano", address: "Osaka" }), false);
+  assert.equal(foundWhole("Кафе Пушкин", { name: "Пушкин", address: "Москва" }), false);
+  assert.equal(foundWhole("Кафе Пушкин", { name: "Кафе Пушкин", address: "Москва" }), true);
+  assert.equal(foundWhole("مطعم نجمة", { name: "نجمة", address: "Beirut" }), false);
 });
