@@ -2301,6 +2301,11 @@ export function TripDetail({
                 ]
                   .filter(Boolean)
                   .join(" · "),
+                start_date: trip.start_date,
+                end_date: trip.end_date,
+                travellers: members.map((m) => m.display_name || "Traveller"),
+                link: `${window.location.origin}/trips/${trip.id}`,
+                printedAt: new Date(),
               },
               stopItems,
             ),

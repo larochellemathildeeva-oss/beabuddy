@@ -1,7 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  bookingRows,
   escapeHtml,
+  legBetween,
+  legText,
+  staysOf,
+  tripNights,
   itineraryPrintHtml,
   timeRange,
   tidyPrintRow,
@@ -35,7 +40,10 @@ test("says what is booked and what is still to book", () => {
     row({ kind: "meal", title: "Lunch" }),
   ]);
   assert.ok(html.includes("Booked · AB12"));
-  assert.equal(html.split("To book").length - 1, 1);
+  // Once on the day, once in the cover's bookings list.
+  const days = html.slice(html.indexOf('<div class="days">'));
+  assert.equal(days.split("To book").length - 1, 1);
+  assert.equal(html.split("To book").length - 1, 2);
 });
 
 test("the traveller's text cannot become markup", () => {
@@ -129,4 +137,83 @@ test("a stay is to book once, never on leaving it, and again on coming back", ()
     rows.map((r) => marked.has(r)),
     [true, false, false, true, false, true, false, true],
   );
+});
+
+test("the cover says how long, who, where they sleep and each day in a line", () => {
+  const html = itineraryPrintHtml(
+    {
+      title: "Porto",
+      subtitle: "Porto, Portugal · Sep 14 – 18",
+      start_date: "2026-09-14",
+      end_date: "2026-09-18",
+      travellers: ["Mathilde", "Ana", "Sofia"],
+      link: "https://example.test/trips/1",
+      printedAt: new Date(2026, 8, 12, 18, 42),
+    },
+    [
+      row({
+        day_date: "2026-09-14",
+        kind: "hotel",
+        title: "Torel Avantgarde",
+        address: "Rua da Restauração 336",
+      }),
+      row({ day_date: "2026-09-15", kind: "hotel", title: "Torel Avantgarde - breakfast" }),
+      row({ day_date: "2026-09-15", kind: "meal", title: "Café Progresso" }),
+    ],
+  );
+  assert.ok(html.includes("4 nights · 3 travellers"));
+  assert.ok(html.includes("Mathilde · Ana · Sofia"));
+  assert.ok(html.includes("Prepared in Béa · Sep 12, 2026 at 18:42"));
+  assert.ok(html.includes("Staying at"));
+  assert.ok(html.includes("Rua da Restauração 336"));
+  assert.ok(html.includes("At a glance"));
+  assert.ok(html.indexOf("Day 1 · ") < html.indexOf("Day 2 · "));
+  assert.ok(html.includes('href="https://example.test/trips/1"'));
+});
+
+test("a trip's nights come from its dates", () => {
+  assert.equal(tripNights("2026-09-14", "2026-09-18"), 4);
+  assert.equal(tripNights("2026-09-14", null), null);
+  assert.equal(tripNights("2026-09-18", "2026-09-14"), null);
+});
+
+test("a stay is listed once, and never by its check-out", () => {
+  const rows = [
+    row({ kind: "hotel", title: "Hotel A", booked: true, booking_ref: "H1" }),
+    row({ kind: "hotel", title: "Hotel A - check-out" }),
+    row({ kind: "hotel", title: "Check out of Hotel B" }),
+    row({ kind: "lodging", title: "Hotel C" }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.title),
+    ["Hotel A", "Hotel C"],
+  );
+  const listed = bookingRows(rows, toBookRows(rows)).map((r) => r.title);
+  assert.deepEqual(listed, ["Hotel A", "Hotel C"]);
+});
+
+test("between two pinned stops, a walk when it is close and a ride when it is not", () => {
+  const a = row({ lat: 41.1486, lon: -8.6107 });
+  const near = row({ lat: 41.1469, lon: -8.6148 });
+  const far = row({ lat: 41.1621, lon: -8.6759 });
+  const walk = legBetween(a, near);
+  assert.equal(walk?.mode, "walking");
+  assert.match(legText(walk!), /^~\d+ min walk · \d+ m$/);
+  const ride = legBetween(a, far);
+  assert.equal(ride?.mode, "ride");
+  assert.match(legText(ride!), /by transit, ~\d+ min by car$/);
+  // No pin, a note, a flight that lands elsewhere, or another country: no line.
+  assert.equal(legBetween(a, row()), null);
+  assert.equal(legBetween(row({ kind: "note", lat: 41.1486, lon: -8.6107 }), near), null);
+  assert.equal(legBetween(row({ kind: "flight", lat: 41.1486, lon: -8.6107 }), near), null);
+  assert.equal(legBetween(a, row({ lat: 48.8566, lon: 2.3522 })), null);
+});
+
+test("the day says how many stops and how far on foot, with the walks between them", () => {
+  const html = itineraryPrintHtml({ title: "T" }, [
+    row({ time_label: "09:30", title: "Mercado do Bolhão", lat: 41.1486, lon: -8.6061 }),
+    row({ time_label: "11:00", title: "Livraria Lello", lat: 41.1469, lon: -8.6148 }),
+  ]);
+  assert.ok(/2 stops · ~\d+ m walking/.test(html));
+  assert.ok(/↓ ~\d+ min walk/.test(html));
 });
