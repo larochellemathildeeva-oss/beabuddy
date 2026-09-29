@@ -53,3 +53,10 @@ test("comparePriorities joins picks and typed words, within the limit", () => {
   assert.ok(out.length <= 400);
   assert.ok(out.endsWith(note));
 });
+
+test("comparePriorities skips a pick that no longer fits, keeping later short ones", () => {
+  // 400 - (357 + 2) leaves 41: "places close together…" (43) is skipped,
+  // "no day overloaded" (17) still fits.
+  const note = "z".repeat(357);
+  assert.equal(comparePriorities(["closest", "even"], note), `no day overloaded; ${note}`);
+});

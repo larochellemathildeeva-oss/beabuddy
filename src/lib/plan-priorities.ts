@@ -72,7 +72,7 @@ export function comparePriorities(
   for (const p of PLAN_PRIORITIES) {
     if (!ids.includes(p.id)) continue;
     const cost = p.ask.length + (parts.length ? 2 : 0);
-    if (cost > room) break;
+    if (cost > room) continue;
     parts.push(p.ask);
     room -= cost;
   }

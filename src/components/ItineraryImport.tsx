@@ -568,7 +568,9 @@ function ImportPanel({
     }
     const calendar = docs[0] && (/\.ics$/i.test(docs[0].name) || docs[0].type === "text/calendar");
     if (calendar && pictures.length) {
-      setError("Upload a calendar file on its own, then add pictures separately.");
+      setError(
+        "A calendar file and pictures are imported as separate plans: upload one, then the other.",
+      );
       return;
     }
     if (pictures.length) await addImages(pictures);
