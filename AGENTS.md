@@ -168,7 +168,10 @@ a link: a rec saved from a pasted Google Maps link keeps that link, and
 "Open in Maps" opens its exact place (`googlePlaceLink` in `reco-open.ts`:
 the short link as is, a `ChIJ…` place ID through `query_place_id`, a
 feature ID through `?cid=`), with no API call. A match must echo the stop's
-name, closed places are skipped, and the nearest to the middle of town wins.
+name, closed places are skipped, and the nearest to the stop before wins when
+that stop is in the same town (a chain's branches), else the nearest to the
+middle of town. A short word of the name (under five letters) must start a word
+of the place's name: "ryo" and "sho" are both inside "Kisshokaryo".
 Only venues use it (`venues: true`), never a trip's cities. The free plan is
 10,000 calls a month and stops answering at the cap; a refusal pauses it for
 an hour. `OVERTURE_ATTRIBUTION` sits beside the other map credits.

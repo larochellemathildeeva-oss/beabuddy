@@ -1,9 +1,9 @@
 {
  "counts": {
-  "savedRight": 96,
-  "savedWrong": 4,
+  "savedRight": 98,
+  "savedWrong": 1,
   "savedUnverified": 6,
-  "flagged": 3,
+  "flagged": 4,
   "notPlaced": 18
  },
  "stops": {
@@ -110,8 +110,8 @@
   },
   "21": {
    "title": "RYŌ-SHŌ",
-   "outcome": "saved wrong",
-   "label": "Kisshokaryo Kyoto, 古門前通東大路東入ルIshibashicho, 306, 京都市東山区"
+   "outcome": "saved right",
+   "label": "Ryosho, 570-166 Gionmachi Minamigawa, 京都市東山区"
   },
   "22": {
    "title": "SANGA ONO KYOTO JOKYO-JI",
@@ -174,8 +174,8 @@
   },
   "34": {
    "title": "Togetsukyō Bridge",
-   "outcome": "saved wrong",
-   "label": "渡月橋 / Togetsukyo Bridge, Arashiyama, Kyoto, 京都市, 京都市右京区"
+   "outcome": "saved right",
+   "label": "Togetsukyo Bridge, 1-5 Sagatenryuji Susukinobabacho, 京都市右京区"
   },
   "35": {
    "title": "Arashiyama streets",
@@ -189,8 +189,8 @@
   },
   "37": {
    "title": "Men-ya Inoichi",
-   "outcome": "saved wrong",
-   "label": "10th floor full of Ramen, 901, Higashishiokojicho, Shimogyo Ward, Kyoto, Kyoto Prefecture,"
+   "outcome": "saved right",
+   "label": "Men-ya Inoichi Hanare, 高辻通堺町西入Senshojicho, 463, 京都市下京区"
   },
   "38": {
    "title": "SANGA ONO KYOTO JOKYO-JI",
@@ -203,8 +203,8 @@
   },
   "40": {
    "title": "Kiyomizu-zaka",
-   "outcome": "saved right",
-   "label": "Kiyomizuzaka Park, 205-2 Kiyomizu, 京都市東山区"
+   "outcome": "flagged (right)",
+   "label": "Kiyomizu Slope, Kiyomizu 2-chome, 辰巳町, Higashiyama Ward, Kyoto, Kyoto Prefecture, 605-0862"
   },
   "41": {
    "title": "Sannenzaka",
@@ -214,7 +214,7 @@
   "42": {
    "title": "Ninenzaka",
    "outcome": "saved right",
-   "label": "Ninenzaka KAMANZA, 363-12 Masuyacho, 京都市東山区"
+   "label": "Ninenzaka Futaba, 京都市東山区"
   },
   "43": {
    "title": "Hōkan-ji / Yasaka Pagoda",
@@ -308,7 +308,7 @@
   "61": {
    "title": "Hozenji Yokocho",
    "outcome": "saved right",
-   "label": "Katsudon Hozenjiyokocho, 1 Chome-1-17 Namba, 大阪市中央区"
+   "label": "Hozenji Yokocho Yakizen"
   },
   "62": {
    "title": "Hozenji Temple",
@@ -607,7 +607,7 @@
   "123": {
    "title": "Osaka Station City",
    "outcome": "saved right",
-   "label": "Kobe Rengatei Osaka Station City, Umeda, 3 Chome−1−1 サウスゲートビルディング 16F, 大阪市北区"
+   "label": "大阪ステーションシティシネマ (Osaka Station City Cinema), 北区梅田3-1-3, 大阪市"
   },
   "124": {
    "title": "Nakanoshima Park",

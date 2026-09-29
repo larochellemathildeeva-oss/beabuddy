@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { autoPinTrusted, nameEchoes, scoreMatch, tallyConfidence } from "./match-confidence.ts";
+import {
+  autoPinTrusted,
+  nameEchoes,
+  scoreMatch,
+  tallyConfidence,
+  wordInName,
+} from "./match-confidence.ts";
 
 test("a venue that came back under its own name is trusted", () => {
   const { confidence } = scoreMatch({
@@ -436,4 +442,28 @@ test("an address matched by its number alone is another address", () => {
     kind: "building",
   });
   assert.equal(right.confidence, "high");
+});
+
+test("a short word inside another name is not that name: RYŌ-SHŌ is not Kisshokaryo", () => {
+  // From a real Japan plan: the booked kaiseki dinner was saved at another
+  // restaurant because "ryo" and "sho" both sit inside "Kisshokaryo".
+  const wrong = scoreMatch({
+    title: "RYŌ-SHŌ",
+    label: "Kisshokaryo Kyoto, Ishibashicho, 306, 京都市東山区",
+    alsoNamed: ["Kisshokaryo Kyoto"],
+  });
+  assert.notEqual(wrong.confidence, "high");
+  // The same name at the start of a word, or a long word run together, still is.
+  assert.equal(
+    scoreMatch({ title: "Kōdai-ji", label: "Kodai-ji, Higashiyama Ward, Kyoto" }).confidence,
+    "high",
+  );
+  assert.equal(
+    scoreMatch({ title: "Sushido Koro Amano", label: "Sushidokoro Amano, Namba, Osaka" })
+      .confidence,
+    "high",
+  );
+  assert.ok(wordInName("ryo", "ryo sho kyoto"));
+  assert.ok(!wordInName("ryo", "kisshokaryo kyoto"));
+  assert.ok(wordInName("一蘭", "一蘭 道頓堀店"));
 });
