@@ -8,6 +8,7 @@ import {
   hereBesideDay,
   hereFix,
   locationTrouble,
+  lonsBeside,
 } from "./live-location.ts";
 
 const montreal = { lat: 45.5231, lon: -73.5817 };
@@ -55,6 +56,18 @@ test("across the date line you are drawn beside the stop, not a world away", () 
   ]);
   assert.ok(Math.abs(at.lon - 180.1) < 1e-9);
   assert.ok(nearestM < 25_000);
+});
+
+test("a day on both sides of the date line is fitted as the short span", () => {
+  const here = { lat: -16.8, lon: 179.95 };
+  const lons = lonsBeside(
+    [
+      { lat: -16.8, lon: 179.9 },
+      { lat: -16.8, lon: -179.9 },
+    ],
+    here,
+  ).map((p) => p.lon);
+  assert.ok(Math.max(...lons) - Math.min(...lons) < 1);
 });
 
 test("on the same side of the date line nothing moves", () => {

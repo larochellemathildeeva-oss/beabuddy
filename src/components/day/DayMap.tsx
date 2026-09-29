@@ -9,7 +9,13 @@ import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { journalStyle, labelLanguage } from "@/lib/journal-style";
 import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
 import { enableRtlText } from "@/lib/rtl-text";
-import { accuracyRadius, farFromDay, framesWithDay, hereBesideDay } from "@/lib/live-location";
+import {
+  accuracyRadius,
+  farFromDay,
+  framesWithDay,
+  hereBesideDay,
+  lonsBeside,
+} from "@/lib/live-location";
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import { LocateFixed } from "@/components/icons";
 
@@ -421,7 +427,7 @@ export function DayMap({
 
     if (!framedHere.current) {
       framedHere.current = true;
-      const points = [...pins, fix].map((p) => [p.lat, p.lon] as [number, number]);
+      const points = [...lonsBeside(pins, fix), fix].map((p) => [p.lat, p.lon] as [number, number]);
       m.fitBounds(L.latLngBounds(points), {
         paddingTopLeft: FIT_PADDING,
         paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],

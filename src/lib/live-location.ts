@@ -67,6 +67,14 @@ export function hereBesideDay(
   return { at: { ...here, lon: here.lon + turns * 360 }, nearestM };
 }
 
+/**
+ * Longitudes moved by whole turns to sit beside `ref`, so points either side
+ * of the date line are fitted as the short span they are.
+ */
+export function lonsBeside<T extends LatLon>(points: readonly T[], ref: LatLon): T[] {
+  return points.map((p) => ({ ...p, lon: p.lon + Math.round((ref.lon - p.lon) / 360) * 360 }));
+}
+
 /** Whether the map moves to frame you with the day. */
 export function framesWithDay(nearestM: number): boolean {
   return nearestM <= HERE_WITH_DAY_M;
