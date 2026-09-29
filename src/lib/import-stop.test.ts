@@ -348,6 +348,118 @@ test("siblings that name their parent as their place are not each other's parent
   );
 });
 
+test("spots listed under a neighbourhood or market stay stops of their own", async () => {
+  const { nestWithin, isAreaStop } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-05",
+    day_number: 1 as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const out = nestWithin([
+    row("Nishiki Market", { time_label: "10:00" }),
+    row("Aritsugu", { within: "Nishiki Market", place: "Aritsugu" }),
+    row("Konnamonja", { within: "Nishiki Market", place: "Konnamonja" }),
+    row("Walk in Le Marais", { kind: "walk", time_label: "16:00", place: "Le Marais" }),
+    row("Place des Vosges", { within: "Walk in Le Marais" }),
+    row("Walk in Jardin du Luxembourg", { kind: "walk", time_label: "18:00" }),
+    row("Medici Fountain", { within: "Walk in Jardin du Luxembourg" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => [r.title, r.within ?? null]),
+    [
+      ["Nishiki Market", null],
+      ["Aritsugu", "Nishiki Market"],
+      ["Konnamonja", "Nishiki Market"],
+      ["Walk in Le Marais", null],
+      ["Place des Vosges", "Walk in Le Marais"],
+      ["Walk in Jardin du Luxembourg", null],
+    ],
+  );
+  assert.equal(out[5]!.detail, "Inside: Medici Fountain", "a garden is one site");
+  assert.equal(
+    isAreaStop({ kind: "sight", title: "Marché des Enfants Rouges", place: null }),
+    true,
+  );
+  assert.equal(isAreaStop({ kind: "sight", title: "Gion district", place: null }), true);
+  assert.equal(isAreaStop({ kind: "walk", title: "Peace Memorial Park", place: null }), false);
+  assert.equal(isAreaStop({ kind: "sight", title: "Kiyomizu-dera", place: null }), false);
+  assert.equal(isAreaStop({ kind: "sight", title: "Supermarket run", place: null }), false);
+  // The last word says what it is.
+  assert.equal(isAreaStop({ kind: "sight", title: "Old Town Hall", place: null }), false);
+  assert.equal(
+    isAreaStop({ kind: "sight", title: "Temple Street Night Market", place: null }),
+    true,
+  );
+});
+
+test("a spot with a venue of its own stays a stop under an area named plainly", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-05",
+    day_number: 1 as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const out = nestWithin([
+    row("Le Marais", { time_label: "16:00", place: "Le Marais" }),
+    row("Place des Vosges", { within: "Le Marais", place: "Place des Vosges" }),
+    row("Old Town Hall", { time_label: "18:00", place: "Old Town Hall" }),
+    row("Council chamber", { within: "Old Town Hall", place: "Old Town Hall" }),
+    row("Peace Memorial Park", { time_label: "19:00" }),
+    row("Flame of Peace", { within: "Peace Memorial Park", place: "Flame of Peace" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    ["Le Marais", "Place des Vosges", "Old Town Hall", "Peace Memorial Park"],
+  );
+  assert.equal(out[1]!.within, "Le Marais");
+  assert.equal(out[2]!.detail, "Inside: Council chamber");
+  assert.equal(out[3]!.detail, "Inside: Flame of Peace", "a park is one site");
+});
+
+test("linkAreaSpots: spots timed inside an area's span sit inside it", async () => {
+  const { linkAreaSpots } = await import("./import-stop.ts");
+  const row = (title: string, time: string, extra: Record<string, unknown> = {}) => ({
+    kind: "sight",
+    title,
+    detail: null as string | null,
+    time_label: time as string | null,
+    end_time: null as string | null,
+    day_date: "2026-10-12",
+    day_number: 1 as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const out = linkAreaSpots([
+    row("Musée d'Orsay", "10:00", { end_time: "12:00" }),
+    row("Lunch at Bouillon Chartier", "11:30", { kind: "meal" }),
+    row("Nishiki Market", "14:00", { end_time: "16:00" }),
+    row("Aritsugu", "14:10"),
+    row("Konnamonja", "15:00"),
+    row("Dinner at Gion Karyo", "18:00", { kind: "meal" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => [r.title, r.within, r.end_time]),
+    [
+      ["Musée d'Orsay", null, "12:00"],
+      ["Lunch at Bouillon Chartier", null, null],
+      ["Nishiki Market", null, null],
+      ["Aritsugu", "Nishiki Market", null],
+      ["Konnamonja", "Nishiki Market", null],
+      ["Dinner at Gion Karyo", null, null],
+    ],
+  );
+});
+
 test("afterJourney: a train between towns starts afresh, a city hop does not", () => {
   assert.equal(
     afterJourney({ detail: "luggage drop · getting there: direct ICE, about 4h" }, undefined),

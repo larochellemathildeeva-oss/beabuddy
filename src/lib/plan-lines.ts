@@ -18,7 +18,13 @@
  * does, so review, placing and saving are the same whichever way it came in.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
-import { foldTravelLegs, isAirportArrival, isCityJourney, normalizeClock } from "./import-stop.ts";
+import {
+  foldTravelLegs,
+  isAirportArrival,
+  isCityJourney,
+  linkAreaSpots,
+  normalizeClock,
+} from "./import-stop.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 import type { TimelineKind } from "./timeline-kind.ts";
 
@@ -250,7 +256,8 @@ export function readPlainPlan(text: string, opts: PlainPlanOptions): ParsedItine
 
   if (entries < MIN_ENTRIES || items.length > MAX_ITEMS) return null;
 
-  const folded = foldTravelLegs(items);
+  // Spots timed inside an area's span are looked up beside it.
+  const folded = linkAreaSpots(foldTravelLegs(items));
   const dates = folded
     .map((i) => i.day_date)
     .filter((d): d is string => Boolean(d))
