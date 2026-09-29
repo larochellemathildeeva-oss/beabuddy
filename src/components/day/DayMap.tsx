@@ -9,6 +9,9 @@ import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { journalStyle, labelLanguage } from "@/lib/journal-style";
 import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
 import { enableRtlText } from "@/lib/rtl-text";
+import { accuracyRadius, hereFraming } from "@/lib/live-location";
+import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
+import { LocateFixed } from "@/components/icons";
 
 const OSM_CREDIT =
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
@@ -373,6 +376,60 @@ export function DayMap({
     }
   }, [ready, selectedId, follow]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
 
+  // You, when asked for: a dot where the phone is, with its accuracy around
+  // it. The first position frames you with the day, or alone when the day is
+  // far away; after that the map is left where the reader puts it.
+  const live = useLiveLocation();
+  const framedHere = useRef(false);
+  useEffect(() => {
+    if (!live.on) framedHere.current = false;
+  }, [live.on]);
+  useEffect(() => {
+    const L = leaflet.current;
+    const m = map.current;
+    const fix = live.fix;
+    if (!ready || !L || !m || !fix) return;
+    const layer = L.layerGroup().addTo(m);
+    const radius = accuracyRadius(fix);
+    if (radius > 0) {
+      L.circle([fix.lat, fix.lon], {
+        radius,
+        className: "journal-here-accuracy",
+        interactive: false,
+      }).addTo(layer);
+    }
+    L.marker([fix.lat, fix.lon], {
+      interactive: false,
+      keyboard: false,
+      zIndexOffset: 800,
+      icon: L.divIcon({
+        className: "",
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+        html: '<span class="journal-here" aria-hidden="true"></span>',
+      }),
+    }).addTo(layer);
+
+    if (!framedHere.current) {
+      framedHere.current = true;
+      const animate = !prefersReducedMotion();
+      if (hereFraming(fix, pins) === "with-day") {
+        const points = [...pins, fix].map((p) => [p.lat, p.lon] as [number, number]);
+        m.fitBounds(L.latLngBounds(points), {
+          paddingTopLeft: FIT_PADDING,
+          paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],
+          maxZoom: FIT_MAX_ZOOM,
+          animate,
+        });
+      } else {
+        m.setView([fix.lat, fix.lon], SINGLE_STOP_ZOOM, { animate });
+      }
+    }
+    return () => {
+      layer.remove();
+    };
+  }, [ready, live.fix]); // eslint-disable-line react-hooks/exhaustive-deps -- redrawn per position
+
   return (
     // `isolate` keeps Leaflet's pane z-indexes (400 and up) inside this box,
     // so the map cannot draw over the app header or the bottom navigation.
@@ -383,6 +440,30 @@ export function DayMap({
     >
       <div ref={container} className="absolute inset-0" />
       {children}
+      {/* Under the zoom buttons, centred on them. */}
+      <button
+        type="button"
+        onClick={() => (live.on ? stopLiveLocation() : startLiveLocation())}
+        aria-pressed={live.on}
+        aria-label={live.on ? "Stop showing where I am" : "Show where I am"}
+        title={live.on ? "Stop showing where I am" : "Show where I am"}
+        className={`absolute right-[5px] top-[78px] z-[500] grid size-10 place-items-center rounded-full shadow-[0_1px_3px_rgb(68_61_54/0.2)] backdrop-blur-sm ${
+          live.on ? "bg-[#3f6f9a] text-white" : "bg-[rgb(248_245_241/0.95)] text-[#443d36]"
+        }`}
+      >
+        <LocateFixed
+          className={`size-4${live.locating ? " animate-pulse motion-reduce:animate-none" : ""}`}
+          aria-hidden
+        />
+      </button>
+      {live.error ? (
+        <p
+          role="status"
+          className="absolute right-[52px] top-[78px] z-[500] max-w-[15rem] rounded-2xl bg-[rgb(248_245_241/0.97)] px-3 py-2 text-[12px] leading-snug text-[#443d36] shadow-[0_1px_3px_rgb(68_61_54/0.2)]"
+        >
+          {live.error}
+        </p>
+      ) : null}
     </div>
   );
 }
