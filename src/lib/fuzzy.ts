@@ -24,6 +24,33 @@ export function foldAccents(value: string): string {
 }
 
 /**
+ * One spelling for the words a place's kind is written in many ways.
+ *
+ * "Excelsior Caffé" is "EXCELSIOR CAFE" on the map, and "caffe" is not inside
+ * "cafe": asking that every word typed be found made the right place look
+ * like half a match. Only the kind words, never names.
+ */
+const SPELLINGS: Record<string, string> = {
+  caffe: "cafe",
+  kaffee: "cafe",
+  kafe: "cafe",
+  kafeh: "cafe",
+  cafeteria: "cafe",
+  ristorante: "restaurant",
+  restaurante: "restaurant",
+  restoran: "restaurant",
+  museo: "museum",
+  musee: "museum",
+  museu: "museum",
+  muzeum: "museum",
+};
+
+/** Accents folded, and the kind words above written one way: "Caffè" → "cafe". */
+export function canonicalSpelling(value: string): string {
+  return foldAccents(value).replace(/\p{L}+/gu, (word) => SPELLINGS[word] ?? word);
+}
+
+/**
  * Levenshtein distance, bounded: once every cell in a row exceeds `max` the
  * strings cannot come back under it, so we stop early. Keeps long note fields
  * from costing anything on a query that was never going to match.

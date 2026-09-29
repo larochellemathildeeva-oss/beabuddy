@@ -259,6 +259,24 @@ export type Database = {
         }
         Relationships: []
       }
+      place_search_cache: {
+        Row: {
+          created_at: string
+          key: string
+          results: Json
+        }
+        Insert: {
+          created_at?: string
+          key: string
+          results: Json
+        }
+        Update: {
+          created_at?: string
+          key?: string
+          results?: Json
+        }
+        Relationships: []
+      }
       packing_items: {
         Row: {
           created_at: string

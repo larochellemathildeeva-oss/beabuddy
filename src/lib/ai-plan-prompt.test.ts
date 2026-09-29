@@ -40,6 +40,29 @@ describe("AI plan prompt", () => {
     assert.ok(plan.items.every((i) => i.booked === false));
   });
 
+  it("reads a name given in both scripts, with its note", () => {
+    const plan = readPlainPlan(
+      `Day 1 — 2026-10-05 — Osaka, Japan
+09:00 Kuromon Market (黒門市場), 2-4-1 Nipponbashi — try the grilled scallops
+12:00 Lunch at Sushidokoro Amano (鮨処 あま野), 1-5-3 Dotonbori — order the omakase
+15:45 Excelsior Caffé Shinsaibashi (エクセルシオール カフェ 心斎橋), 2-3-23 Shinsaibashisuji — Cremia ice cream`,
+      { startDate: null, tripCity: null },
+    );
+    assert.ok(plan);
+    assert.deepEqual(
+      plan.items.map((i) => [i.place, i.address, i.detail]),
+      [
+        ["Kuromon Market (黒門市場)", "2-4-1 Nipponbashi", "try the grilled scallops"],
+        ["Sushidokoro Amano (鮨処 あま野)", "1-5-3 Dotonbori", "order the omakase"],
+        [
+          "Excelsior Caffé Shinsaibashi (エクセルシオール カフェ 心斎橋)",
+          "2-3-23 Shinsaibashisuji",
+          "Cremia ice cream",
+        ],
+      ],
+    );
+  });
+
   it("keeps flights and airports as stops of their own", () => {
     const plan = readPlainPlan(
       `Day 1 — 2026-10-11 — Montréal, Canada → Paris, France

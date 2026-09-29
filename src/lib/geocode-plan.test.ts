@@ -208,3 +208,24 @@ test("distanceKm measures the Liberdade namesake as out of town", () => {
   const km = distanceKm({ lat: -12.1439, lon: -44.9968 }, { lat: -11.961, lon: -45.0143 });
   assert.ok(km > 15 && km < 25, String(km));
 });
+
+test("planStopQueries asks a Japanese block address the way the map reads it", () => {
+  const queries = planStopQueries(
+    { title: "Excelsior Caffé Shinsaibashi", address: "2-3-23 Shinsaibashisuji" },
+    "Osaka, Japan",
+  );
+  assert.equal(queries[0], "Shinsaibashisuji 2-chome 3-23, Osaka, Japan");
+  assert.ok(!queries.includes("2-3-23 Shinsaibashisuji, Osaka, Japan"));
+  assert.ok(queries.some((q) => q.startsWith("Excelsior Caffé Shinsaibashi")));
+});
+
+test("planStopQueries keeps the chōme alone as the last address try", async () => {
+  const { QUERIES_PER_STOP } = await import("./geocode-plan.ts");
+  const queries = planStopQueries(
+    { title: "Lunch", address: "2-3-23 Shinsaibashisuji" },
+    "Osaka, Japan",
+  );
+  assert.equal(queries[0], "Shinsaibashisuji 2-chome 3-23, Osaka, Japan");
+  assert.ok(queries.includes("Shinsaibashisuji 2-chome, Osaka, Japan"));
+  assert.ok(queries.length <= QUERIES_PER_STOP);
+});

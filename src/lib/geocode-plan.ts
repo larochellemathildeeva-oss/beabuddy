@@ -20,6 +20,7 @@ import {
   placeQueryCandidates,
 } from "./direction-stops.ts";
 import { autoPinTrusted } from "./match-confidence.ts";
+import { japaneseAddressQueries, namesJapan } from "./japan-address.ts";
 
 export type PlanStop = {
   title: string;
@@ -51,10 +52,16 @@ export function planStopQueries(stop: PlanStop, area: string | null | undefined)
   const place = stop.place?.trim() || "";
   // placeQueryCandidates stops at an address when it has one; the venue
   // is still worth its own try in case the address is not on the map.
+  // A Japanese block address ("2-3-23 Shinsaibashisuji") as the map reads
+  // it: as written, it found an address in Tokyo for an Osaka café.
+  const japanese = address ? japaneseAddressQueries(address, namesJapan(where)) : [];
   const candidates = [
-    ...(address && looksLikeStreetAddress(address) ? [address] : []),
+    ...(japanese.length ? japanese.slice(0, 1) : []),
+    ...(!japanese.length && address && looksLikeStreetAddress(address) ? [address] : []),
     ...(place ? placeQueryCandidates(place, null) : []),
-    ...placeQueryCandidates(title, address),
+    ...placeQueryCandidates(title, japanese.length ? null : address),
+    // The chōme alone, last: near enough when the block is not on the map.
+    ...japanese.slice(1),
   ];
   const seen = new Set<string>();
   const out: string[] = [];

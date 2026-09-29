@@ -90,3 +90,10 @@ test("folding keeps kana and Hangul whole, so the map can match them", () => {
   assert.equal(foldAccents("Ōsaka Café"), "osaka cafe");
   assert.equal(fuzzyQueryVariants("原爆ドーム")[0], "原爆ドーム");
 });
+
+test("canonicalSpelling writes the kind words one way", async () => {
+  const { canonicalSpelling } = await import("./fuzzy.ts");
+  assert.equal(canonicalSpelling("Excelsior Caffè"), "excelsior cafe");
+  assert.equal(canonicalSpelling("Museo del Prado"), "museum del prado");
+  assert.equal(canonicalSpelling("Caffeine Lab"), "caffeine lab");
+});

@@ -206,6 +206,33 @@ OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and
 `GEOAPIFY_ATTRIBUTION` beside it on the maps, as Geoapify's free plan asks.
 
+**Smarter place search.** The search box's `searchPlaces` runs
+`smartPlaceSearch` around the plain lookup (`findPlaces`), each step only
+when the one before found nothing that is the place: a Japanese block
+address ("2-3-23 Shinsaibashisuji") is asked as the map reads it,
+"Shinsaibashisuji 2-chome 3-23" (`japan-address.ts`, also used by plan
+lookups in `planStopQueries`); results sharing only the area's words with
+the search ("Shinsaibashi Mocha Cat Cafe" for "Caffé Shinsaibashi") go last,
+marked `weak` (`place-match.ts`); "Change place" sends the stop's name and
+pin, so a shortened search is also asked by the full name; and in a country
+mapped in another script, Gemini gives the name in that script and it is
+searched too (`local-name.ts`, `local-name.server.ts`: only the name and
+country are sent, cached in process, 30 an hour per traveller). Kind words
+are spelt one way when names are compared (`canonicalSpelling`: caffè →
+cafe). The import prompt (`ai-plan-prompt.ts`) asks for the local-script
+name in brackets as well.
+
+**Search credits.** A pause in typing (`typing: true`) runs only the
+type-ahead, or one plain search when it has nothing: no spelling variants,
+wider towns, name parts, Overture or Gemini. Pressing Search runs everything.
+Each search's answer is kept (`place-search-cache.server.ts`): in memory,
+then in `place_search_cache` for two weeks, keyed by a hash of the words,
+town and rounded position (`searchCacheKey`, tested), so the same search is
+paid for once across all travellers. Empty answers are kept an hour, in
+memory only. Bump `SEARCH_CACHE_VERSION` when a change to the search should
+not be answered from old results. The migration is applied by hand; until it
+is, memory only, with one warning in the log.
+
 ## Web check before planning
 
 When Béa drafts or reworks a plan (Build, Rebuild, Alternatives), it first

@@ -41,6 +41,7 @@ export function PlaceSearchInput({
   /** Off for fields where a lookup on every pause would be noise. */
   typeAhead = true,
   quickAdd,
+  stop,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -66,6 +67,11 @@ export function PlaceSearchInput({
    */
   quickAdd?:
     { label: string; busyLabel?: string; onAdd: (place: ParsedPlace) => Promise<void> } | undefined;
+  /**
+   * The stop whose place is being changed. A shortened search is also looked
+   * up by the stop's full name, and places beside its pin come first.
+   */
+  stop?: { title: string; lat?: number | null; lon?: number | null } | undefined;
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
@@ -113,6 +119,17 @@ export function PlaceSearchInput({
     setSuggested((cur) =>
       places.length === 0 && cur.places.length === 0 ? cur : { key: "", places },
     );
+  const stopTitle = stop?.title.trim() ?? "";
+  const stopLat = stop?.lat ?? null;
+  const stopLon = stop?.lon ?? null;
+  const stopData = stopTitle
+    ? {
+        stop: {
+          title: stopTitle,
+          ...(stopLat != null && stopLon != null ? { lat: stopLat, lon: stopLon } : {}),
+        },
+      }
+    : {};
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   /** Bumped on pick/clear so type-ahead does not immediately re-open. */
@@ -169,6 +186,7 @@ export function PlaceSearchInput({
           ...(at ? { at } : {}),
           ...(center ? { center } : {}),
           ...(areas ? { areas: true } : {}),
+          ...stopData,
         },
       });
       setHits(res);
@@ -220,6 +238,8 @@ export function PlaceSearchInput({
             ...(at ? { at } : {}),
             ...(center ? { center } : {}),
             ...(areas ? { areas: true } : {}),
+            ...stopData,
+            typing: true,
           },
         });
         if (cancelled) return;
@@ -249,7 +269,7 @@ export function PlaceSearchInput({
     // offerSuggestions reads the same props; listing it would re-run the
     // lookup on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, near, at, center, areas, typeAhead, search]);
+  }, [value, near, at, center, areas, typeAhead, search, stopTitle, stopLat, stopLon]);
 
   /**
    * A position arriving is an answer to the search that just failed, so run
@@ -267,7 +287,8 @@ export function PlaceSearchInput({
 
   const linkPaste = looksLikePastedPlaceLink(value);
 
-  const choose = (place: ParsedPlace) => {
+  const choose = (hit: ParsedPlace) => {
+    const place = withoutMark(hit);
     settle(place);
     onPick(place);
     setHits([]);
@@ -375,6 +396,11 @@ export function PlaceSearchInput({
                   {line.subtitle ? (
                     <p className="truncate text-[12px] text-muted-foreground">{line.subtitle}</p>
                   ) : null}
+                  {h.weak ? (
+                    <p className="text-[11.5px] font-medium text-muted-foreground">
+                      Another name, same area
+                    </p>
+                  ) : null}
                 </button>
                 {quickAdd && (
                   <button
@@ -384,7 +410,7 @@ export function PlaceSearchInput({
                     onClick={() => {
                       setAddingIndex(i);
                       void quickAdd
-                        .onAdd(h)
+                        .onAdd(withoutMark(h))
                         .then(() => {
                           settled.current = h.name;
                           setHits([]);
@@ -427,4 +453,12 @@ export function PlaceSearchInput({
         )}
     </div>
   );
+}
+
+/** A result as a place to keep: the "same area only" mark is for the list. */
+function withoutMark(place: ParsedPlace): ParsedPlace {
+  if (!place.weak) return place;
+  const kept = { ...place };
+  delete kept.weak;
+  return kept;
 }
