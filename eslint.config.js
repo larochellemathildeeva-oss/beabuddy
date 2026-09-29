@@ -22,6 +22,8 @@ export default tseslint.config(
       ".vinxi",
       // Helper agents' worktrees: separate checkouts, not this app.
       ".claude",
+      // Scratch output of the audit and bench scripts, git-ignored.
+      "scripts/*/out",
       "src/integrations/supabase/types.ts",
       // Reference copy of the AI Studio prototype, not part of the app.
       "docs/prototype",

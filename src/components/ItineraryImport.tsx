@@ -1,4 +1,5 @@
 import { Sheet } from "@/components/Sheet";
+import { AiPromptButton } from "@/components/AiPromptSheet";
 import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
 import { SearchGroundingNote } from "@/components/SearchGroundingNote";
@@ -32,7 +33,7 @@ import {
   type ParsedItineraryItem,
 } from "@/lib/itinerary.functions";
 import { aiFailure } from "@/lib/ai-errors";
-import { findDuplicate } from "@/lib/captured-place";
+import { repeatsTimelineStop } from "@/lib/captured-place";
 import { useUndo } from "@/hooks/useUndo";
 import { addedLine } from "@/lib/undo";
 import { downscaleImage } from "@/lib/image";
@@ -40,7 +41,8 @@ import { pdfProblem, pdfProblemMessage } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary, looksLikeIcs } from "@/lib/itinerary-ics";
 import { pastedLink } from "@/lib/itinerary-link";
 import { looksLikeStreetAddress, placeHintFromDetail } from "@/lib/direction-stops";
-import { estimatedSeconds, labelAddress } from "@/lib/geocode-plan";
+import { airportMatch, estimatedSeconds, labelAddress } from "@/lib/geocode-plan";
+import { outsideAddressDistrict } from "@/lib/japan-address";
 import { minutesLabel } from "@/lib/route-optimize";
 import { pastedPlanNote, readPlanShape } from "@/lib/pasted-plan";
 import {
@@ -108,6 +110,10 @@ type NewItineraryItem = {
 
 /** Stops placed per server call: a long plan in one call ran out of time and came back bare. */
 const PLACE_BATCH = 8;
+/** How long to let the map's minute limit clear before one more try. */
+const THROTTLE_PAUSE_MS = 20_000;
+/** Whether "Add directions between stops" was last left ticked, on this phone. */
+const DIRECTIONS_BOX_KEY = "bea:import-directions";
 
 type NewCostItem = { label: string; category: string; amount: number; currency: string };
 
@@ -133,6 +139,7 @@ export function ItineraryImport({
   onAddCosts,
   onApplyDates,
   onAddCities,
+  onAddDirections,
   onApplySchedule,
 }: {
   open: boolean;
@@ -159,6 +166,8 @@ export function ItineraryImport({
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
   /** Towns the plan goes through that the trip's route does not have yet. */
   onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
+  /** Directions between the saved stops, added to the timeline, when the box is ticked. */
+  onAddDirections?: ((ids: string[]) => void) | undefined;
   onApplySchedule?: (
     updates: Array<{
       id: string;
@@ -223,6 +232,7 @@ export function ItineraryImport({
             onOptimize={() => setTab("optimize")}
             onCompare={() => setTab("compare")}
           />
+          <AiPromptButton />
           <PlanExamples onPick={(ask) => openPlan("build", ask)} />
           <PlanAsk onSend={(ask) => openPlan("build", ask)} />
         </div>
@@ -321,6 +331,7 @@ export function ItineraryImport({
           onAddCosts={onAddCosts}
           onApplyDates={planCity ? undefined : onApplyDates}
           onAddCities={planCity ? undefined : onAddCities}
+          {...(onAddDirections ? { onAddDirections } : {})}
         />
       )}
       {tab === "optimize" && (
@@ -353,6 +364,7 @@ function ImportPanel({
   onApplyDates,
   scopedTo,
   onAddCities,
+  onAddDirections,
 }: {
   /** Which job the panel opens on, chosen on the start screen. */
   initialMode?: "build" | "import";
@@ -375,8 +387,26 @@ function ImportPanel({
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
   /** Towns the plan goes through that the trip's route does not have yet. */
   onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
+  onAddDirections?: ((ids: string[]) => void) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
+  /** "Add directions between stops": remembered on this phone, off at first. */
+  const [withDirections, setWithDirections] = useState(false);
+  useEffect(() => {
+    try {
+      setWithDirections(window.localStorage.getItem(DIRECTIONS_BOX_KEY) === "1");
+    } catch {
+      // Blocked storage: the box starts unticked.
+    }
+  }, []);
+  const tickDirections = (on: boolean) => {
+    setWithDirections(on);
+    try {
+      window.localStorage.setItem(DIRECTIONS_BOX_KEY, on ? "1" : "0");
+    } catch {
+      // Not remembering the box is fine.
+    }
+  };
   const revise = useServerFn(reviseItinerary);
   const lookup = useServerFn(lookupCoords);
   /** "Tokyo, Japan (2026-09-30 – 2026-10-03); Kyoto, Japan (…)", for the parse to name each stop's city. */
@@ -406,9 +436,9 @@ function ImportPanel({
   const { addedWithUndo } = useUndo();
 
   /** Indexes of the parsed rows the timeline does not already have. */
-  const freshIndexes = (rows: { title: string }[]) =>
-    rows
-      .map((row, i) => (findDuplicate(existingItems, { name: row.title }) ? -1 : i))
+  const freshIndexes = (rows: ParsedItineraryItem[], start: string | null | undefined) =>
+    (start ? resolveDayDates(rows, start) : rows)
+      .map((row, i) => (repeatsTimelineStop(existingItems, row) ? -1 : i))
       .filter((i) => i >= 0);
   const fileRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
@@ -549,7 +579,7 @@ function ImportPanel({
     setSummary(out.summary);
     setItems(out.items);
     setPlan(out);
-    setPicked(freshIndexes(out.items));
+    setPicked(freshIndexes(out.items, startDate || out.start_date || dayOneDate));
     setAltReason("");
     setRebuildReason("");
     setPlacements({});
@@ -659,10 +689,28 @@ function ImportPanel({
           const parent = parents[from + k]!;
           return parent >= from ? { ...stop, within: parent - from } : stop;
         });
-        const result: Awaited<ReturnType<typeof geocodePlanStops>> | null = await geocodePlanStops({
-          data: { stops: batch, area, recent, venues: true, inOrder: true, near },
-        }).catch(() => null);
+        const ask = () =>
+          geocodePlanStops({
+            data: { stops: batch, area, recent, venues: true, inOrder: true, near },
+          }).catch(() => null);
+        let result: Awaited<ReturnType<typeof geocodePlanStops>> | null = await ask();
         if (!current()) return;
+        // The map's minute limit is shared by everyone using Béa. Asked too
+        // fast, it says wait; the rest of the plan used to be left unplaced.
+        // One pause and one more try, keeping what the first try found.
+        if (result?.throttled) {
+          placed.push(...result.placed.map((hit) => ({ ...hit, index: hit.index + from })));
+          recent = result.sent ?? [];
+          await new Promise((r) => setTimeout(r, THROTTLE_PAUSE_MS));
+          if (!current()) return;
+          const again: Awaited<ReturnType<typeof geocodePlanStops>> | null = await ask();
+          if (!current()) return;
+          if (again) {
+            const have = new Set(placed.map((hit) => hit.index));
+            again.placed = again.placed.filter((hit) => !have.has(hit.index + from));
+          }
+          result = again;
+        }
         if (!result) break;
         recent = result.sent ?? [];
         near = result.lastPin ?? null;
@@ -698,14 +746,21 @@ function ImportPanel({
         // shown for checking and not pinned unless the person keeps it.
         const { confidence, reason } = hit.inside
           ? { confidence: "medium" as const, reason: `Pinned at ${hit.inside}, where it is` }
-          : hit.farKm
-            ? {
-                confidence: "low" as const,
-                reason: `This is ${hit.farKm} km from the middle of town — maybe a namesake.`,
-              }
-            : scored.reduce((best, next) =>
-                rank[next.confidence] > rank[best.confidence] ? next : best,
-              );
+          : airportMatch(row, hit)
+            ? { confidence: "high" as const, reason: "An airport, as the plan says" }
+            : outsideAddressDistrict(row.address, hit.label)
+              ? {
+                  confidence: "low" as const,
+                  reason: `Not in ${outsideAddressDistrict(row.address, hit.label)}, where the plan's address is — maybe a namesake.`,
+                }
+              : hit.farKm
+                ? {
+                    confidence: "low" as const,
+                    reason: `This is ${hit.farKm} km from the middle of town — maybe a namesake.`,
+                  }
+                : scored.reduce((best, next) =>
+                    rank[next.confidence] > rank[best.confidence] ? next : best,
+                  );
         found[hit.index] = {
           lat: hit.lat,
           lon: hit.lon,
@@ -722,17 +777,18 @@ function ImportPanel({
     }
   };
 
+  const planStartFor = startDate || plan?.start_date || dayOneDate || "";
   /**
    * Which parsed rows the timeline already has. Re-reading the same booking
    * email used to silently double the trip; now the repeats are named and
    * left unticked.
    */
   const duplicateIndexes = new Set(
-    (items ?? [])
-      // Matched on title alone: every row here belongs to this one trip, so a
-      // repeated name is a repeat rather than a same-named place elsewhere.
-      // isSamePlace does not read addresses, so a hint here did nothing.
-      .map((item, index) => (findDuplicate(existingItems, { name: item.title }) ? index : -1))
+    (items ? (planStartFor ? resolveDayDates(items, planStartFor) : items) : [])
+      // Every row here belongs to this one trip, so a repeated name is a
+      // repeat rather than a same-named place elsewhere; so is the same place
+      // at the same time on the same day, however the title is worded.
+      .map((item, index) => (repeatsTimelineStop(existingItems, item) ? index : -1))
       .filter((index) => index >= 0),
   );
 
@@ -921,6 +977,16 @@ function ImportPanel({
           toast.error("The stops are saved, but the towns could not be added to Destinations.");
         }
       }
+      // Routed once the new stops are on the trip, by the trip page, the
+      // same way the directions sheet does it.
+      if (
+        withDirections &&
+        onAddDirections &&
+        Array.isArray(insertedIds) &&
+        insertedIds.length > 1
+      ) {
+        onAddDirections(insertedIds);
+      }
       setItems(null);
       setText("");
       setSaved(true);
@@ -948,7 +1014,7 @@ function ImportPanel({
     setSummary(out.summary);
     setItems(out.items);
     setPlan(out);
-    setPicked(freshIndexes(out.items));
+    setPicked(freshIndexes(out.items, startDate || out.start_date || dayOneDate));
     // Pins are kept by row number, and a revision renumbers the rows: the
     // old ones would land on whichever stop now sits in that place.
     setPlacements({});
@@ -1247,6 +1313,7 @@ function ImportPanel({
         }
         className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
       />
+      {mode === "import" && !text.trim() && <AiPromptButton />}
       {wrongMode && (
         <div className="rise rounded-xl border border-primary/40 bg-elevated p-2.5">
           <p className="text-[13px]">
@@ -1413,6 +1480,23 @@ function ImportPanel({
                   ? "Stops your plan marks as booked keep a Booked tag; Béa has not checked or made any booking."
                   : "Nothing here is reserved — book hotels, tables and tickets yourself."}
               </p>
+              {onAddDirections && (
+                <label className="mb-2 flex items-start gap-2 text-[13px]">
+                  <input
+                    type="checkbox"
+                    checked={withDirections}
+                    onChange={(e) => tickDirections(e.target.checked)}
+                    className="mt-0.5 size-4 accent-[var(--color-primary)]"
+                  />
+                  <span>
+                    <span className="font-semibold">Add directions between stops</span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      How to get from each stop to the next, added to the timeline once they're
+                      saved.
+                    </span>
+                  </span>
+                </label>
+              )}
               <button
                 onClick={() => void addChosen()}
                 // Saving before the stops are placed saved them with no pins.

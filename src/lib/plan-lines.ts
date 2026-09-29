@@ -341,6 +341,12 @@ function followTown(
       ? stop.title.match(JOURNEY_TO)
       : null;
   if (to) {
+    // "Train from Sintra to Rossio Station", on a day trip to Sintra: back
+    // where the day started, whatever the station there is called.
+    const from = stop.title.match(/\bfrom\s+(.+?)\s+(?:back\s+)?to\s/i)?.[1] ?? "";
+    if (trail.town && from.toLowerCase().includes(trail.town.toLowerCase())) {
+      return { trail: { town: trail.before, before: null }, leaving: true };
+    }
     const dest = cleanText(to[1]!.replace(/\s*[(（].*$/, ""));
     const homeTown = (home ?? "").split(",")[0]!.trim().toLowerCase();
     if (homeTown && dest.toLowerCase().includes(homeTown)) {
@@ -549,7 +555,9 @@ function kindFor(text: string, raw: string, booked: boolean): TimelineKind {
   if (/^(?:breakfast|brunch|lunch|dinner|supper)\b/i.test(text)) return "meal";
   if (HOTEL_WORDS.test(text)) return booked ? "hotel" : "lodging";
   if (NOTE_WORDS.test(text)) return "note";
-  if (TRANSPORT_WORDS.test(text) || /^(?:take|catch|board|hop on)\b.*\bto\b/i.test(text)) {
+  // "Hanoi Train Street" is a street to walk, not a train to catch.
+  const moving = text.replace(/\btrain street\b/gi, "");
+  if (TRANSPORT_WORDS.test(moving) || /^(?:take|catch|board|hop on)\b.*\bto\b/i.test(moving)) {
     return "transport";
   }
   if (WALK_WORDS.test(text)) return "walk";

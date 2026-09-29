@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  airportMatch,
+  areaHitFor,
   boxAround,
   distanceKm,
   estimatedSeconds,
@@ -262,4 +264,31 @@ test("pickHit: an airport stop takes only an airport", () => {
     true,
   );
   assert.equal(namesAirport({ title: "Arrive", place: "Aeropuerto de Barajas T4" }), true);
+});
+
+test("an airport written as its code is searched as an airport and trusted as one", () => {
+  const stop = { title: "Land at JFK on AC 764", place: "JFK" };
+  assert.equal(planStopQueries(stop, "New York, USA")[0], "JFK Airport, New York, USA");
+  const jfk = {
+    lat: 40.6429,
+    lon: -73.7794,
+    label: "John F. Kennedy International Airport, JFK Access Road, Queens, New York, USA",
+    category: "aeroway",
+    kind: "aerodrome",
+  };
+  const nyc = { south: 40.4, north: 41, west: -74.3, east: -73.6 };
+  assert.deepEqual(pickHit([jfk], nyc, stop), { hit: jfk, trusted: true });
+  assert.equal(airportMatch(stop, jfk), true);
+  assert.equal(airportMatch({ title: "Katz's Delicatessen" }, jfk), false);
+});
+
+test("areaHitFor: the town the trip names, not the country answered first", () => {
+  const country = { display_name: "Mexico" };
+  const city = { display_name: "Mexico City, Mexico" };
+  assert.equal(areaHitFor([country, city], "Mexico City, Mexico"), city);
+  assert.equal(
+    areaHitFor([{ display_name: "Kyōto, Kyoto Prefecture, Japan" }], "Kyoto, Japan")?.display_name,
+    "Kyōto, Kyoto Prefecture, Japan",
+  );
+  assert.equal(areaHitFor([country], "Mexico City, Mexico"), null);
 });

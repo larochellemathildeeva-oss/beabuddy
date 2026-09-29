@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   areaBoxFrom,
+  areaHitFor,
   boxAround,
   boxViewbox,
   distanceKm,
@@ -166,6 +167,14 @@ function isBroad(box: AreaBox): boolean {
  * airport, which often is not, is exempt.
  */
 const TOWN_KM = 15;
+
+/** The same, for a town whose box is a region's (Tokyo, Los Angeles): a wider city. */
+const METRO_KM = 35;
+
+/** "Tokyo, Japan", "Kyoto, Kyoto Prefecture, Japan": a town and where it is, not a country alone. */
+function namesTown(area: string): boolean {
+  return area.split(",").filter((part) => part.trim()).length >= 2;
+}
 
 function isAirport(hit: GeoHit): boolean {
   return (
@@ -378,17 +387,24 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
     const boxes = new Map<string, AreaBox | null>();
     /** The middle of each area, as the geocoder gave it, for the nearest namesake. */
     const centres = new Map<string, { lat: number; lon: number }>();
+    /** Areas the geocoder answered with the town itself, not a wider place. */
+    const namedTowns = new Set<string>();
     const boxFor = async (where: string): Promise<AreaBox | null | "throttled"> => {
       const key = where.toLowerCase();
       if (boxes.has(key)) return boxes.get(key) ?? null;
       if (!(await takeTurn())) return null;
-      const hits = await lookup(provider, where);
+      // A few answers, for the one named for the town: the first can be the
+      // country ("Mexico" for "Mexico City, Mexico").
+      const hits = await lookup(provider, where, { limit: 3 });
       if (hits === "throttled") return "throttled";
-      const found = areaBoxFrom(hits[0]?.boundingbox);
+      const named = areaHitFor(hits, where);
+      const hit = named ?? hits[0];
+      const found = areaBoxFrom(hit?.boundingbox);
       const box = found ? widenBox(found) : null;
       boxes.set(key, box);
-      const lat = Number(hits[0]?.lat);
-      const lon = Number(hits[0]?.lon);
+      if (named) namedTowns.add(key);
+      const lat = Number(hit?.lat);
+      const lon = Number(hit?.lon);
       if (box && Number.isFinite(lat) && Number.isFinite(lon)) centres.set(key, { lat, lon });
       return box;
     };
@@ -427,8 +443,14 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       if (!box) continue;
       /** Only a town, not a country, has a middle worth measuring from. */
       const broad = isBroad(box);
-      /** The middle of the stop's town, which every find is measured from. */
-      const centre = broad ? null : (centres.get(where.toLowerCase()) ?? null);
+      /**
+       * The middle of the stop's town, which every find is measured from.
+       * A town named as one ("Tokyo, Japan") keeps its middle however wide
+       * its box: Tokyo's runs to islands 1,000 km south, and as a country
+       * with no middle it pinned a "Meiji Jingu" 40 km out without a word.
+       */
+      const metro = broad && namesTown(where) && namedTowns.has(where.toLowerCase());
+      const centre = broad && !metro ? null : (centres.get(where.toLowerCase()) ?? null);
 
       // An answer that is probably not the stop (the town, for a park the
       // geocoder could not find). Kept only if nothing better turns up.
@@ -493,7 +515,7 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         }
         if (!centre) return {};
         const km = distanceKm(hit, centre);
-        return km > TOWN_KM ? { farKm: Math.round(km) } : {};
+        return km > (metro ? METRO_KM : TOWN_KM) ? { farKm: Math.round(km) } : {};
       };
 
       const parent =

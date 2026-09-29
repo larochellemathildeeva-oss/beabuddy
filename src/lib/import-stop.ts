@@ -167,6 +167,47 @@ export function arrowDestination(title: string): string | null {
   return dest && !HUB.test(dest) ? dest : null;
 }
 
+/** "Ferry from Circular Quay to Manly": a boat, bus or tram between two named ends. */
+const LOCAL_CROSSING =
+  /^(?:(?:cross[- ]river|harbou?r|river|local|city)\s+)?(?:ferry|boat|water taxi|river taxi|bus|tram|streetcar|cable car|funicular)\b.*\bfrom\s+(.+?)\s+(?:back\s+)?to\s+(\S.*)$/i;
+
+const townOf = (row: object): string =>
+  "city" in row
+    ? String(row.city ?? "")
+        .split(",")[0]!
+        .trim()
+        .toLowerCase()
+    : "";
+
+/**
+ * A ferry, bus or tram written as a journey between towns that never leaves
+ * town: "Ferry from Circular Quay to Manly" between two Sydney stops. The
+ * model writes it that way because it is told to title journeys between
+ * towns so, and as its own stop it was an extra card with "To book".
+ * Only when the stops on both sides are known to be in the same town.
+ */
+function isLocalCrossing<T extends FoldableRow>(rows: readonly T[], i: number): boolean {
+  const row = rows[i]!;
+  if (row.kind !== "transport" || row.booked === true || !LOCAL_CROSSING.test(row.title.trim()))
+    return false;
+  const here = townOf(row);
+  if (!here) return false;
+  const around = [rows[i - 1], rows[i + 1]].filter(
+    (r): r is T => r != null && sameDay(r, row) && !LOCAL_CROSSING.test(r.title.trim()),
+  );
+  return around.length > 0 && around.every((r) => townOf(r) === here);
+}
+
+/** Where a crossing written "Ferry from Tha Tien Pier to Wat Arun" goes, when that is a place to visit. */
+function crossingDestination(title: string): string | null {
+  const dest = title
+    .trim()
+    .match(LOCAL_CROSSING)?.[2]
+    ?.replace(/\s+[-–—]\s+.*$/, "")
+    .trim();
+  return dest && !HUB.test(dest) ? dest : null;
+}
+
 function isArrowJourney(kind: string, title: string): boolean {
   const m = title.match(ARROW_ROUTE);
   if (!m) return false;
@@ -197,17 +238,39 @@ export function isAirportArrival(title: string): boolean {
   return ARRIVAL.test(text) && AIRPORT.test(text) && !/\bflight\b|✈/i.test(text);
 }
 
-/** The rows with an airport arrival that a later flight follows, the same day, filed as an arrival. */
-export function settleAirportArrivals<T extends DayRow>(rows: readonly T[]): T[] {
+/**
+ * An airport arrival however the rows put it: "Arrive at Narita International
+ * Airport", or "Barcelona El Prat Airport" with the note "Arrive at airport".
+ */
+function arrivesAtAirport(row: { title: string; detail?: string | null | undefined }): boolean {
+  if (isAirportArrival(row.title)) return true;
+  return (
+    AIRPORT.test(row.title) &&
+    !/\bflight\b|✈/i.test(row.title) &&
+    ARRIVAL.test((row.detail ?? "").trim())
+  );
+}
+
+/**
+ * Airport arrivals, filed the same way whichever kind the reading gave them.
+ * With a flight after it the same day, it is getting there: an arrival, which
+ * folds into that flight. With none, it is the landing: the flight in.
+ */
+export function settleAirportArrivals<T extends DayRow & { detail?: string | null }>(
+  rows: readonly T[],
+): T[] {
   return rows.map((row, i) => {
-    if (row.kind !== "flight" || row.booked === true || !isAirportArrival(row.title)) return row;
+    if (row.booked === true || !arrivesAtAirport(row)) return row;
+    if (!["flight", "transport", "activity"].includes(row.kind)) return row;
+    let flightAfter = false;
     for (let j = i + 1; j < rows.length && sameDay(rows[j]!, row); j++) {
       const next = rows[j]!;
-      if (next.kind === "flight" && !isAirportArrival(next.title)) {
-        return { ...row, kind: "activity" };
-      }
+      if (next.kind === "flight" && !arrivesAtAirport(next)) flightAfter = true;
     }
-    return row;
+    if (!flightAfter) return row.kind === "flight" ? row : { ...row, kind: "flight" };
+    // Worded as an arrival, so the fold reads it as the end of a journey.
+    const title = isAirportArrival(row.title) ? row.title : `Arrive at ${row.title.trim()}`;
+    return { ...row, kind: "activity", title };
   });
 }
 
@@ -303,6 +366,7 @@ export function routeCountry(cities: readonly RouteCity[]): string | null {
 type FoldableRow = {
   kind: string;
   title: string;
+  booked?: boolean | null | undefined;
   detail: string | null;
   time_label: string | null;
   day_date: string | null;
@@ -320,15 +384,20 @@ export function foldTravelLegs<T extends FoldableRow>(rows: readonly T[]): T[] {
   const drop = new Set<number>();
   /** The stop the last leg went into, for an arrival that ends that same journey. */
   let lastInto = -1;
+  const crossing = out.map((_, i) => isLocalCrossing(out, i));
   out.forEach((row, i) => {
-    if (!isTravelLeg(row)) return;
+    if (!crossing[i] && !isTravelLeg(row)) return;
     const target = legTarget(out, i, drop);
     if (!target) return;
     const into = out[target.index]!;
     // "Tha Tien Pier → ferry to Wat Arun", then lunch somewhere else: the
     // ferry is how Wat Arun is reached, and Wat Arun is the visit. Folded
     // into lunch, the temple was lost from the day.
-    const dest = target.after ? null : arrowDestination(row.title);
+    const dest = target.after
+      ? null
+      : crossing[i]
+        ? crossingDestination(row.title)
+        : arrowDestination(row.title);
     if (
       dest &&
       !fold(`${into.title} ${"place" in into ? String(into.place ?? "") : ""}`).includes(fold(dest))

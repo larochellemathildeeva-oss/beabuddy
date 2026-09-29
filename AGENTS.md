@@ -233,6 +233,18 @@ memory only. Bump `SEARCH_CACHE_VERSION` when a change to the search should
 not be answered from old results. The migration is applied by hand; until it
 is, memory only, with one warning in the log.
 
+## Import audit
+
+`scripts/itinerary-audit/` puts sample plans through the real import and
+scores the answer: `audit.mjs` for stops, times, kinds, bookings and towns
+(`--fixtures fresh` or `more` for the newer sets; `--engine rules` needs no
+key; `--rescore out/<file>.json --replay` re-runs saved Gemini answers
+through today's clean-up for free), and `pins.mjs` for where each stop is
+pinned against where it really is (`pins-truth.mjs`), scored the way the
+import screen saves pins. Run both after changing the import, the plain-list
+reader, the place lookup or the match scoring. In a cloud session, prefix
+`pins.mjs` with `NODE_USE_ENV_PROXY=1`.
+
 ## Web check before planning
 
 When Béa drafts or reworks a plan (Build, Rebuild, Alternatives), it first

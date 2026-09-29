@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Sheet } from "@/components/Sheet";
 import { TripPicture } from "@/components/HomeTripCard";
+import { AiPromptButton } from "@/components/AiPromptSheet";
 import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { CalendarDays, ChevronRight, Plus, Users } from "@/components/icons";
 import type { PlannerTab } from "@/components/ItineraryImport";
@@ -92,6 +93,7 @@ function PlanPage() {
           onOptimize={() => start({ tab: "optimize" })}
           onCompare={() => start({ tab: "compare" })}
         />
+        <AiPromptButton />
 
         {recent && (
           <section className="border-t border-border pt-5">

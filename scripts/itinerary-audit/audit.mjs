@@ -14,6 +14,7 @@
  *   … --save-baseline       write the trends to baseline.json for this engine
  *   … --compare             print what changed against baseline.json
  *   … --rescore out/<file>.json   score saved answers again, no calls: after changing the scorer
+ *   … --rescore out/<file>.json --replay   and put the model's rows through today's clean-up
  *   node scripts/itinerary-audit/audit.mjs --mock --only paris   # checks the harness, no key
  *
  * Writes scripts/itinerary-audit/out/<timestamp>.json — every answer, the
@@ -61,7 +62,7 @@ const { FIXTURES } = await jiti.import(
 );
 const { toBookRows } = await jiti.import(join(root, "src/lib/itinerary-print.ts"));
 const { isCityJourney } = await jiti.import(join(root, "src/lib/import-stop.ts"));
-const { runParse, readPlainAsList } = await jiti.import(
+const { runParse, readPlainAsList, tidyModelItems } = await jiti.import(
   join(root, "src/lib/itinerary.functions.ts"),
 );
 const { withModelFallback } =
@@ -327,6 +328,8 @@ if (rescore) {
   for (const r of saved.results) {
     const fixture = FIXTURES.find((f) => f.id === r.id);
     if (!fixture || (only && !r.id.includes(only)) || !r.out) continue;
+    // --replay: the model's own rows through today's clean-up, as if asked now.
+    if (flag("--replay") && r.raw) r.out = { ...r.out, items: tidyModelItems(r.raw, "import") };
     const findings = score(fixture, r.out);
     results.push({ ...r, engine: r.engine ?? "model", findings });
     console.log(

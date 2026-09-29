@@ -329,3 +329,37 @@ test("a station named for its town is not another station in that town", () => {
   });
   assert.equal(umeda.confidence, "high");
 });
+
+test("scoreMatch: a local name in brackets, a hyphen or a building part is the same place", () => {
+  const score = (title: string, label: string) =>
+    scoreMatch({ title, label, category: "tourism", kind: "museum", alsoNamed: null }).confidence;
+  assert.equal(
+    score(
+      "Hiroshima Peace Memorial Museum (広島平和記念資料館)",
+      "Hiroshima Peace Memorial Museum Main Building, Peace Boulevard, Nakajimacho, Naka Ward, Hiroshima, Japan",
+    ),
+    "high",
+  );
+  assert.equal(
+    score(
+      "Okonomimura (お好み村)",
+      "Okonomi-mura, Namiki-dori, Mikawacho, Naka Ward, Hiroshima, Japan",
+    ),
+    "high",
+  );
+  // Still another place: a chain's other branch, or a namesake church.
+  assert.equal(
+    score(
+      "Motel One Frankfurt-Hauptbahnhof",
+      "Motel One Berlin-Alexanderplatz, Dircksenstraße, Berlin, Germany",
+    ),
+    "low",
+  );
+  assert.equal(
+    score(
+      "St. Peter's Basilica",
+      "Saint Peter in Chains, 4/a, Piazza di San Pietro in Vincoli, Rome",
+    ),
+    "low",
+  );
+});
