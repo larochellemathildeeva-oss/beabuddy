@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  PLAN_PRIORITIES,
   budgetFor,
   comparePriorities,
   paceFor,
@@ -40,4 +41,10 @@ test("comparePriorities joins picks and typed words, within the limit", () => {
   );
   assert.equal(comparePriorities([], ""), "");
   assert.equal(comparePriorities(["food"], "x".repeat(500)).length, 400);
+  // Every pick and a long note: the note arrives whole, picks give way.
+  const all = PLAN_PRIORITIES.map((p) => p.id);
+  const note = "y".repeat(300);
+  const out = comparePriorities(all, note);
+  assert.ok(out.length <= 400);
+  assert.ok(out.endsWith(note));
 });

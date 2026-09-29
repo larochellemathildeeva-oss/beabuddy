@@ -11,6 +11,9 @@ export type PlanTextItem = {
   time_label?: string | null;
   title: string;
   detail?: string | null;
+  /** Where it is, as a calendar's LOCATION or the reader pulled it out. */
+  place?: string | null | undefined;
+  address?: string | null | undefined;
 };
 
 export function planAsText(items: readonly PlanTextItem[]): string {
@@ -28,8 +31,15 @@ export function planAsText(items: readonly PlanTextItem[]): string {
       day = heading;
     }
     const time = item.time_label?.trim();
-    const detail = item.detail?.trim();
-    out.push(`${time ? `${time} ` : ""}${item.title.trim()}${detail ? ` — ${detail}` : ""}`);
+    const title = item.title.trim();
+    const detail = item.detail?.trim() ?? "";
+    // The place, unless the title or detail already says it.
+    const where = (item.address?.trim() || item.place?.trim()) ?? "";
+    const said = `${title} ${detail}`.toLowerCase();
+    const notes = [detail, where && !said.includes(where.toLowerCase()) ? `at ${where}` : ""]
+      .filter(Boolean)
+      .join(" · ");
+    out.push(`${time ? `${time} ` : ""}${title}${notes ? ` — ${notes}` : ""}`);
   }
   return out.join("\n");
 }

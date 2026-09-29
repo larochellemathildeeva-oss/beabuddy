@@ -509,9 +509,20 @@ function ImportPanel({
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     const pictures = files.filter((f) => f.type.startsWith("image/"));
-    const doc = files.find((f) => !f.type.startsWith("image/"));
+    const docs = files.filter((f) => !f.type.startsWith("image/"));
+    // One document at a time, and a calendar on its own: it is read on the
+    // spot, which would leave pictures picked with it unread.
+    if (docs.length > 1) {
+      setError("Choose one PDF or calendar file at a time.");
+      return;
+    }
+    const calendar = docs[0] && (/\.ics$/i.test(docs[0].name) || docs[0].type === "text/calendar");
+    if (calendar && pictures.length) {
+      setError("Upload a calendar file on its own, then add pictures separately.");
+      return;
+    }
     if (pictures.length) await addImages(pictures);
-    if (doc) await addPdf(doc);
+    if (docs[0]) await addPdf(docs[0]);
   };
   const hasFiles = images.length > 0 || pdf !== null;
   const [text, setText] = useState(initialText);
@@ -2019,7 +2030,10 @@ function ComparePanel() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ItineraryComparison | null>(null);
 
-  const ready = a.text.trim().length >= 10 && b.text.trim().length >= 10;
+  /** A side still reading an uploaded file: its text is about to change. */
+  const [reading, setReading] = useState({ A: false, B: false });
+  const ready =
+    a.text.trim().length >= 10 && b.text.trim().length >= 10 && !reading.A && !reading.B;
   const togglePicked = (id: PlanPriorityId) =>
     setPicked((cur) => (cur.includes(id) ? cur.filter((p) => p !== id) : [...cur, id]));
 
@@ -2051,8 +2065,22 @@ function ComparePanel() {
         a little longer.
       </PlanTitle>
 
-      <CompareSide letter="A" tone="rose" plan={a} onChange={setA} disabled={busy} />
-      <CompareSide letter="B" tone="mint" plan={b} onChange={setB} disabled={busy} />
+      <CompareSide
+        letter="A"
+        tone="rose"
+        plan={a}
+        onChange={(patch) => setA((cur) => ({ ...cur, ...patch }))}
+        onReading={(on) => setReading((cur) => ({ ...cur, A: on }))}
+        disabled={busy}
+      />
+      <CompareSide
+        letter="B"
+        tone="mint"
+        plan={b}
+        onChange={(patch) => setB((cur) => ({ ...cur, ...patch }))}
+        onReading={(on) => setReading((cur) => ({ ...cur, B: on }))}
+        disabled={busy}
+      />
 
       <PriorityPicker
         title="What matters to you?"
@@ -2099,12 +2127,16 @@ function CompareSide({
   tone,
   plan,
   onChange,
+  onReading,
   disabled,
 }: {
   letter: string;
   tone: "rose" | "mint";
   plan: { label: string; text: string };
-  onChange: (plan: { label: string; text: string }) => void;
+  /** A change to the plan, applied to its latest state. */
+  onChange: (patch: Partial<{ label: string; text: string }>) => void;
+  /** While a file is read, so Compare waits for its text. */
+  onReading: (on: boolean) => void;
   disabled: boolean;
 }) {
   const read = useServerFn(parseItinerary);
@@ -2119,6 +2151,7 @@ function CompareSide({
     if (!file) return;
     setProblem(null);
     setReading(file.name);
+    onReading(true);
     try {
       let items: ParsedItineraryItem[];
       const all = new Uint8Array(await file.arrayBuffer());
@@ -2171,12 +2204,13 @@ function CompareSide({
       }
       const text = planAsText(items);
       if (!text.trim()) throw new Error(`Béa found no plan in ${file.name}.`);
-      onChange({ ...plan, text: text.slice(0, 20000) });
+      onChange({ text: text.slice(0, 20000) });
       setHow("paste");
     } catch (err) {
       setProblem(err instanceof IcsReadError ? err.message : aiFailure(err).message);
     } finally {
       setReading(null);
+      onReading(false);
     }
   };
 
@@ -2196,7 +2230,7 @@ function CompareSide({
         </span>
         <input
           value={plan.label}
-          onChange={(e) => onChange({ ...plan, label: e.target.value })}
+          onChange={(e) => onChange({ label: e.target.value })}
           maxLength={60}
           aria-label={`Name of plan ${letter}`}
           className="min-w-0 flex-1 bg-transparent text-[20px] font-medium outline-none"
@@ -2223,7 +2257,7 @@ function CompareSide({
       {how === "paste" ? (
         <textarea
           value={plan.text}
-          onChange={(e) => onChange({ ...plan, text: e.target.value })}
+          onChange={(e) => onChange({ text: e.target.value })}
           rows={3}
           maxLength={20000}
           aria-label={`Plan ${letter}`}
