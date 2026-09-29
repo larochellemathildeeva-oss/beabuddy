@@ -47,3 +47,11 @@ test("countryAt picks the smallest box that holds the point", () => {
   assert.equal(countryAt(34.67, 135.5, boxes, countryCode), "JP");
   assert.equal(countryAt(0, 0, boxes, countryCode), null);
 });
+
+test("countryAt reads boxes that cross the 180° line", () => {
+  const boxes = [{ country: "Russia", bbox: [19.611, 41.192, -168.995, 81.86] }];
+  assert.equal(countryAt(55.75, 37.62, boxes, countryCode), "RU");
+  assert.equal(countryAt(64.7, 177.5, boxes, countryCode), "RU");
+  assert.equal(countryAt(64.7, -170, boxes, countryCode), "RU");
+  assert.equal(countryAt(40, -100, boxes, countryCode), null);
+});

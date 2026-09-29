@@ -86,3 +86,31 @@ test("a local-script ask answered only in English is not judged", async () => {
   const ranked = rankByName([excelsior], "エクセルシオール カフェ 心斎橋");
   assert.equal(ranked[0]!.weak, undefined);
 });
+
+test("a name asked in both scripts matches a place named in either", () => {
+  const ranked = rankByName(
+    [excelsior],
+    "Excelsior Caffé Shinsaibashi (エクセルシオール カフェ 心斎橋)",
+    {
+      namesOf: () => ["エクセルシオール カフェ 心斎橋店"],
+    },
+  );
+  assert.equal(ranked[0]!.weak, undefined);
+  const english = rankByName([excelsior], "Excelsior Caffé (エクセルシオール カフェ)");
+  assert.equal(english[0]!.weak, undefined);
+});
+
+test("a Latin ask answered only in the local script is not judged", () => {
+  const amano = { name: "鮨処 あま野", address: "Chūō Ward, Osaka, Japan" };
+  assert.equal(rankByName([amano], "Sushidokoro Amano")[0]!.weak, undefined);
+});
+
+test("askedNames splits a two-script name", async () => {
+  const { askedNames } = await import("./place-match.ts");
+  assert.deepEqual(askedNames("Kuromon Market (黒門市場)"), [
+    "Kuromon Market (黒門市場)",
+    "Kuromon Market",
+    "黒門市場",
+  ]);
+  assert.deepEqual(askedNames("Kuromon Market"), ["Kuromon Market"]);
+});

@@ -60,6 +60,8 @@ export function planStopQueries(stop: PlanStop, area: string | null | undefined)
     ...(!japanese.length && address && looksLikeStreetAddress(address) ? [address] : []),
     ...(place ? placeQueryCandidates(place, null) : []),
     ...placeQueryCandidates(title, japanese.length ? null : address),
+    // The chōme alone, last: near enough when the block is not on the map.
+    ...japanese.slice(1),
   ];
   const seen = new Set<string>();
   const out: string[] = [];

@@ -239,6 +239,7 @@ export function PlaceSearchInput({
             ...(center ? { center } : {}),
             ...(areas ? { areas: true } : {}),
             ...stopData,
+            typing: true,
           },
         });
         if (cancelled) return;

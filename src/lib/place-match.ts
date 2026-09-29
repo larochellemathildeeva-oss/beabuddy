@@ -95,30 +95,48 @@ export function onlyAreaMatches(
 
 /**
  * Asked in one script, answered only in another ("エクセルシオール カフェ"
- * answered "EXCELSIOR CAFE"): there is nothing to compare, so no verdict.
+ * answered "EXCELSIOR CAFE", or "Sushidokoro Amano" answered "鮨処 あま野"):
+ * there is nothing to compare, so no verdict.
  */
 export function scriptsDiffer(asked: string, names: readonly string[]): boolean {
-  if (/\p{Script=Latin}/u.test(asked)) return false;
-  const scripts = [...asked.matchAll(/\p{L}/gu)]
-    .map((m) => scriptOf(m[0]))
-    .filter((script) => script !== "other");
-  if (!scripts.length) return false;
-  return !names.some((name) => [...name].some((ch) => scripts.includes(scriptOf(ch))));
+  const mine = scriptsIn(asked);
+  const theirs = new Set(names.flatMap((name) => [...scriptsIn(name)]));
+  if (!mine.size || !theirs.size) return false;
+  return ![...mine].some((script) => theirs.has(script));
 }
 
-const SCRIPTS = [
-  "Han",
-  "Hiragana",
-  "Katakana",
-  "Hangul",
-  "Thai",
-  "Cyrillic",
-  "Greek",
-  "Arabic",
-  "Hebrew",
+/** Chinese and Japanese share their characters, so they count as one. */
+const SCRIPTS: [string, RegExp][] = [
+  ["Latin", /\p{Script=Latin}/u],
+  ["CJK", /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u],
+  ["Hangul", /\p{Script=Hangul}/u],
+  ["Thai", /\p{Script=Thai}/u],
+  ["Cyrillic", /\p{Script=Cyrillic}/u],
+  ["Greek", /\p{Script=Greek}/u],
+  ["Arabic", /\p{Script=Arabic}/u],
+  ["Hebrew", /\p{Script=Hebrew}/u],
 ];
-function scriptOf(ch: string): string {
-  return SCRIPTS.find((script) => new RegExp(`\\p{Script=${script}}`, "u").test(ch)) ?? "other";
+
+function scriptsIn(text: string): Set<string> {
+  const found = new Set<string>();
+  for (const [, ch] of text.matchAll(/(\p{L})/gu)) {
+    const script = SCRIPTS.find(([, re]) => re.test(ch!))?.[0];
+    if (script) found.add(script);
+  }
+  return found;
+}
+
+/**
+ * The names in a search written "Kuromon Market (黒門市場)", as the import
+ * prompt asks: each is judged on its own, as well as the whole.
+ */
+export function askedNames(asked: string): string[] {
+  const inside = [...asked.matchAll(/[(（]([^)）]+)[)）]/g)].map((m) => m[1]!.trim());
+  const outside = asked
+    .replace(/[(（][^)）]*[)）]?/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [...new Set([asked.trim(), outside, ...inside].filter(Boolean))];
 }
 
 /** Near enough to the stop's pin to be the same place, or its next-door twin. */
@@ -150,8 +168,8 @@ export function rankByName<T extends MatchPlace>(
     .map((place, index) => ({
       place,
       index,
-      weak: judged(place, asked, opts.namesOf?.(place) ?? [], (name) =>
-        onlyAreaMatches(asked, { ...place, name }, opts.near, opts.whereOf?.(place)),
+      weak: judged(place, asked, opts.namesOf?.(place) ?? [], (part, name) =>
+        onlyAreaMatches(part, { ...place, name }, opts.near, opts.whereOf?.(place)),
       ),
       beside: nearPin(place),
     }))
@@ -162,16 +180,21 @@ export function rankByName<T extends MatchPlace>(
     .map(({ place, weak }) => (weak ? { ...place, weak: true as const } : place));
 }
 
-/** Weak under every name it has, unless the ask cannot be compared with them. */
+/**
+ * Weak unless some name asked for matches some name the place has. A name
+ * in a script the place is not named in gives no verdict; with no verdict
+ * at all, it is not marked.
+ */
 function judged(
   place: MatchPlace,
   asked: string,
   others: readonly string[],
-  weakAs: (name: string) => boolean,
+  weakAs: (part: string, name: string) => boolean,
 ): boolean {
   const names = [place.name, ...others];
-  if (scriptsDiffer(asked, names)) return false;
-  return names.every(weakAs);
+  const comparable = askedNames(asked).filter((part) => !scriptsDiffer(part, names));
+  if (!comparable.length) return false;
+  return !comparable.some((part) => names.some((name) => !weakAs(part, name)));
 }
 
 /**

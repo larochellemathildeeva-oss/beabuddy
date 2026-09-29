@@ -218,3 +218,14 @@ test("planStopQueries asks a Japanese block address the way the map reads it", (
   assert.ok(!queries.includes("2-3-23 Shinsaibashisuji, Osaka, Japan"));
   assert.ok(queries.some((q) => q.startsWith("Excelsior Caffé Shinsaibashi")));
 });
+
+test("planStopQueries keeps the chōme alone as the last address try", async () => {
+  const { QUERIES_PER_STOP } = await import("./geocode-plan.ts");
+  const queries = planStopQueries(
+    { title: "Lunch", address: "2-3-23 Shinsaibashisuji" },
+    "Osaka, Japan",
+  );
+  assert.equal(queries[0], "Shinsaibashisuji 2-chome 3-23, Osaka, Japan");
+  assert.ok(queries.includes("Shinsaibashisuji 2-chome, Osaka, Japan"));
+  assert.ok(queries.length <= QUERIES_PER_STOP);
+});

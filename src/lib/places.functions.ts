@@ -58,7 +58,7 @@ import {
 import { looksLikeStreetAddress, mapsPlaceUrl } from "@/lib/direction-stops";
 import { foundWhole, openPlacesNamed, type OpenPlace } from "@/lib/open-places";
 import { japaneseAddressQueries, namesJapan } from "@/lib/japan-address";
-import { onlyAreaMatches, rankByName, stopTitleAddsToQuery } from "@/lib/place-match";
+import { askedNames, onlyAreaMatches, rankByName, stopTitleAddsToQuery } from "@/lib/place-match";
 import { localLanguageFor, worthTranslating } from "@/lib/local-name";
 import { countryCode } from "@/lib/country-names";
 
@@ -629,6 +629,8 @@ const PlaceSearchInput = z.object({
    * shortened search ("Caffé Shinsaibashi") is also looked up by the
    * stop's name, and places beside its pin lead the list.
    */
+  /** Sent by the type-ahead: a pause in typing, not a finished search. */
+  typing: z.boolean().nullish(),
   stop: z
     .object({
       title: z.string().max(200),
@@ -671,12 +673,16 @@ async function smartPlaceSearch(input: PlaceSearch, userId: string): Promise<Par
     input.stop?.lat != null && input.stop.lon != null
       ? { lat: input.stop.lat, lon: input.stop.lon }
       : null;
-  const search = (query: string) => findPlaces({ ...input, query, stop: null }, userId, pace);
+  const search = (query: string) =>
+    findPlaces({ ...input, query, stop: null, typing: null }, userId, pace);
+  // The extra searches only add: one that fails (a rate limit) never turns
+  // results already found into "Couldn't reach the map".
+  const searchMore = (query: string) => search(query).catch((): ParsedPlace[] => []);
   if (input.areas) return search(input.query);
 
   const addressForms = japaneseAddressQueries(input.query, namesJapan(near));
   for (const form of addressForms) {
-    const found = await search(form);
+    const found = await searchMore(form);
     if (found.length) return found;
   }
   // An address, or a kind of place ("coffee"): the words are not a name.
@@ -686,18 +692,34 @@ async function smartPlaceSearch(input: PlaceSearch, userId: string): Promise<Par
   const found = rankByName(await search(input.query), input.query, { near, pin, whereOf, namesOf });
   if (found.some((place) => !place.weak)) return found;
 
+  // Written in two scripts ("Kuromon Market (黒門市場)"): each name on its own.
+  for (const part of askedNames(input.query).slice(1)) {
+    const byPart = rankByName(await searchMore(part), part, {
+      near,
+      pin,
+      whereOf,
+      namesOf,
+    }).filter((place) => !place.weak);
+    if (byPart.length) return mergePlaces(byPart, found);
+  }
+
   // The stop's full name, when the search was a part of it or another.
   const title = input.stop?.title.trim() ?? "";
   let named = input.query;
   if (title && stopTitleAddsToQuery(input.query, title)) {
     named = title;
-    const byTitle = rankByName(await search(title), title, { near, pin, whereOf, namesOf }).filter(
-      (place) => !place.weak,
-    );
+    const byTitle = rankByName(await searchMore(title), title, {
+      near,
+      pin,
+      whereOf,
+      namesOf,
+    }).filter((place) => !place.weak);
     if (byTitle.length) return mergePlaces(byTitle, found);
   }
 
-  const local = await localScriptSearch(named, found, input, userId, search);
+  // Not while typing: every pause would spend a Gemini call on half a name.
+  if (input.typing) return found;
+  const local = await localScriptSearch(named, found, input, userId, searchMore);
   return local.length ? mergePlaces(local, found) : found;
 }
 

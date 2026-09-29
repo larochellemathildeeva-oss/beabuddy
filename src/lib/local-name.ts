@@ -98,9 +98,12 @@ export function countryAt(
   for (const box of boxes) {
     const [w, s, e, n] = box.bbox;
     if (w == null || s == null || e == null || n == null) continue;
-    if (lat < s || lat > n || lon < w || lon > e) continue;
+    // A box across the 180° line (Russia, Fiji) has its east edge below its west.
+    const across = e < w;
+    if (lat < s || lat > n) continue;
+    if (across ? lon < w && lon > e : lon < w || lon > e) continue;
     const found = code(box.country);
-    const area = (e - w) * (n - s);
+    const area = ((across ? e + 360 : e) - w) * (n - s);
     if (found && (!best || area < best.area)) best = { code: found, area };
   }
   return best?.code ?? null;

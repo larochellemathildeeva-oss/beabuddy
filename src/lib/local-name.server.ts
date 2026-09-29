@@ -42,7 +42,7 @@ export function localName(
   country: string,
 ): Promise<string | null> {
   if (!process.env["GOOGLE_GENERATIVE_AI_API_KEY"]) return Promise.resolve(null);
-  const key = `${language}|${name.trim().toLowerCase()}`;
+  const key = `${language}|${country.toLowerCase()}|${name.trim().toLowerCase()}`;
   const known = cache.get(key);
   if (known) return known;
   if (!allowed(userId, Date.now())) return Promise.resolve(null);
