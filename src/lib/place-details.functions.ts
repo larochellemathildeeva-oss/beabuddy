@@ -72,8 +72,9 @@ export const dayMapImage = createServerFn({ method: "POST" })
     const { geoProvider } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
     if (provider.name !== "geoapify") return null;
+    const { geoFetch } = await import("@/lib/geo-provider.server");
     try {
-      const res = await fetch(geoapifyStaticMapUrl(provider.token, data.points), {
+      const res = await geoFetch(geoapifyStaticMapUrl(provider.token, data.points), {
         headers: { "user-agent": UA, accept: "image/jpeg,image/*" },
         signal: AbortSignal.timeout(10_000),
       });

@@ -71,10 +71,10 @@ async function geocodeHome(city: string | null): Promise<LatLon | null> {
   const key = query.toLowerCase();
   const cached = homeCache.get(key);
   if (cached) return cached;
-  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const { geoProvider, geoFetch } = await import("@/lib/geo-provider.server");
   try {
     const provider = geoProvider();
-    const res = await fetch(searchUrl(provider, { query, limit: 1, format: "jsonv2" }), {
+    const res = await geoFetch(searchUrl(provider, { query, limit: 1, format: "jsonv2" }), {
       headers: {
         "user-agent": "BeaTravelApp/1.0 (travel memory vault)",
         accept: "application/json",

@@ -199,10 +199,10 @@ const UA = "BeaTravelApp/1.0 (travel memory vault)";
  * hamlet, a town and a city are all "where you are".
  */
 async function reverse(lat: number, lon: number) {
-  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const { geoProvider, geoFetch } = await import("@/lib/geo-provider.server");
   try {
     const provider = geoProvider();
-    const res = await fetch(reverseUrl(provider, lat, lon), {
+    const res = await geoFetch(reverseUrl(provider, lat, lon), {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
@@ -246,7 +246,15 @@ type NominatimHit = NominatimHitLike;
  */
 type Pace = { provider: GeoProvider; sent: number[] };
 
+/** Whoever answers now: Geoapify can rest mid-search (geo-credits.ts). */
+async function refresh(pace: Pace) {
+  const { geoProvider } = await import("@/lib/geo-provider.server");
+  pace.provider = geoProvider();
+}
+
 async function wait(pace: Pace) {
+  // At the pace of whoever answers now.
+  await refresh(pace);
   const delay = nextDelayMs(pace.provider, pace.sent, Date.now());
   if (delay > 0) await new Promise((r) => setTimeout(r, delay));
   pace.sent.push(Date.now());
@@ -267,10 +275,10 @@ async function nominatim(
   pace?: Pace,
 ): Promise<NominatimHit[]> {
   // Server-only: the token must not be compiled into the client bundle.
-  const { geoProvider } = await import("@/lib/geo-provider.server");
+  const { geoProvider, geoFetch } = await import("@/lib/geo-provider.server");
   const { PUBLIC_PROVIDER } = await import("@/lib/geo-endpoints");
-  const provider = geoProvider();
   if (pace) await wait(pace);
+  const provider = pace?.provider ?? geoProvider();
   const options = {
     query: q,
     limit,
@@ -291,7 +299,7 @@ async function nominatim(
   } as const;
 
   async function fetchProvider(which: typeof provider) {
-    return fetch(searchUrl(which, options), {
+    return geoFetch(searchUrl(which, options), {
       headers,
       signal: AbortSignal.timeout(5_000),
     });
@@ -442,11 +450,11 @@ async function overpassPlaces(
           keep: (tags: Record<string, string>) => matchesBrand(tags, intent.text),
         };
   if (geoapifyAsk) {
-    const { geoProvider } = await import("@/lib/geo-provider.server");
+    const { geoProvider, geoFetch } = await import("@/lib/geo-provider.server");
     const provider = geoProvider();
     if (provider.name === "geoapify") {
       try {
-        const res = await fetch(
+        const res = await geoFetch(
           geoapifyPlacesUrl(
             provider.token,
             geoapifyAsk.categories,
@@ -545,6 +553,7 @@ async function autocompleteHits(
   pace: Pace,
   opts: { areas: boolean; area?: { viewbox: string; bounded: boolean } },
 ): Promise<NominatimHit[]> {
+  await refresh(pace);
   const url = autocompleteUrl(pace.provider, {
     query,
     limit: 10,
@@ -553,9 +562,10 @@ async function autocompleteHits(
     ...(opts.area ? { viewbox: opts.area.viewbox, bounded: opts.area.bounded } : {}),
   });
   if (!url) return [];
+  const { geoFetch } = await import("@/lib/geo-provider.server");
   try {
     await wait(pace);
-    const res = await fetch(url, {
+    const res = await geoFetch(url, {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });

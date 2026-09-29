@@ -4,6 +4,7 @@ import { gunzipSync } from "node:zlib";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { geoFetch, geoapifyKey } from "./lib/geo-provider.server";
 import { TILE_CACHE_CONTROL, parseTilePath, tileSourceUrl } from "./lib/tile-proxy";
 import {
   glyphSourceUrl,
@@ -73,9 +74,9 @@ async function serveTile(request: Request): Promise<Response | null> {
   }
 
   const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
-  const geoapifyKey = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
   try {
-    const upstream = await fetch(tileSourceUrl(coords, token, geoapifyKey), {
+    // Geoapify's key only while it is not resting for the day (geo-credits.ts).
+    const upstream = await geoFetch(tileSourceUrl(coords, token, geoapifyKey()), {
       headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "image/png,image/*" },
       signal: AbortSignal.timeout(8_000),
     });
@@ -112,10 +113,11 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method not allowed", { status: 405 });
   }
-  const key = (process.env["GEOAPIFY_API_KEY"] ?? "").trim();
+  // Also 404 while Geoapify rests for the day, so the map draws image tiles.
+  const key = geoapifyKey();
   if (!key) return new Response(null, { status: 404 });
   try {
-    const upstream = await fetch(
+    const upstream = await geoFetch(
       tile ? vectorTileSourceUrl(tile, key) : glyphSourceUrl(glyph!, key),
       {
         headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "application/x-protobuf,*/*" },

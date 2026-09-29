@@ -118,8 +118,9 @@ async function geocode(
     nameDetails: true,
     ...(box ? { viewbox: boxViewbox(box), bounded: true } : {}),
   });
+  const { geoFetch } = await import("@/lib/geo-provider.server");
   try {
-    const res = await fetch(url, {
+    const res = await geoFetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },
       signal: AbortSignal.timeout(5_000),
     });
@@ -289,7 +290,8 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const deadline = Date.now() + WALL_MS;
     // Server-only: this file ships to the client bundle, the token must not.
     const { geoProvider } = await import("@/lib/geo-provider.server");
-    const provider = geoProvider();
+    // Re-read before every lookup and route: Geoapify can rest mid-batch.
+    let provider = geoProvider();
     let lookupsLeft = provider.name === "nominatim" ? LOOKUP_BUDGET : KEYED_LOOKUP_BUDGET;
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
@@ -298,6 +300,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const cacheKey = `${query.toLowerCase()}|${within ? boxViewbox(within) : ""}`;
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
       if (lookupsLeft <= 0 || Date.now() > deadline) return null;
+      provider = geoProvider();
       // The provider's own pace, honouring the minute cap as well as the gap,
       // rather than a number written in here.
       const delay = nextDelayMs(provider, sent, Date.now());
@@ -515,6 +518,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       legsLeft -= 1;
+      provider = geoProvider();
       const r = await leg(provider, a, b, mode);
       if (!r) {
         // Both ends are on the map; only the router failed. An estimate from
