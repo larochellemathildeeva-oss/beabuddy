@@ -1247,3 +1247,26 @@
     font-size: 16px !important;
   }
 }
+
+/* Plan with Béa's form panels: a whisper of one hue over the card, in every
+   theme (Dark included, where the mix stays a tint of the dark card). The
+   badge beside each panel's title takes the same hue, a little stronger. */
+@layer components {
+  .plan-panel {
+    background-color: color-mix(in oklab, var(--panel-hue) 7%, var(--color-card));
+    border: 1px solid color-mix(in oklab, var(--panel-hue) 12%, transparent);
+    border-radius: var(--r-card);
+  }
+  .plan-badge {
+    color: var(--panel-hue);
+    background-color: color-mix(in oklab, var(--panel-hue) 16%, var(--color-card));
+  }
+  .plan-rose { --panel-hue: #c24a67; }
+  .plan-mint { --panel-hue: #2a7f52; }
+  .plan-sky { --panel-hue: #2f7bb0; }
+  .plan-butter { --panel-hue: #c28a1a; }
+  .dark .plan-rose { --panel-hue: #f08aa3; }
+  .dark .plan-mint { --panel-hue: #6cc995; }
+  .dark .plan-sky { --panel-hue: #7db6e0; }
+  .dark .plan-butter { --panel-hue: #e0b25a; }
+}

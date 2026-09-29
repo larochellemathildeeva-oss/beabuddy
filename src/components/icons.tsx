@@ -146,6 +146,9 @@ import {
   Hourglass as PhHourglass,
   Plant as PhPlant,
   PaperPlaneTilt as PhPaperPlaneTilt,
+  PiggyBank as PhPiggyBank,
+  PersonSimpleWalk as PhPersonSimpleWalk,
+  Leaf as PhLeaf,
 } from "@phosphor-icons/react";
 
 export type LucideProps = Omit<ComponentPropsWithoutRef<"svg">, "ref"> & {
@@ -278,6 +281,9 @@ export const MapIcon = Map;
 export const Hourglass = icon(PhHourglass, "Hourglass");
 export const Send = icon(PhPaperPlaneTilt, "Send");
 export const Plant = icon(PhPlant, "Plant");
+export const PiggyBank = icon(PhPiggyBank, "PiggyBank");
+export const Walk = icon(PhPersonSimpleWalk, "Walk");
+export const Leaf = icon(PhLeaf, "Leaf");
 export const RouteIcon = Route;
 export const ChevronDownIcon = ChevronDown;
 export const ChevronLeftIcon = ChevronLeft;
