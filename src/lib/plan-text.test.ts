@@ -37,3 +37,15 @@ test("planAsText prefers a real date and leaves undated stops bare", () => {
     "2026-04-12\nArrive\nSomewhere, sometime",
   );
 });
+
+test("planAsText keeps a place and an address that does not name it", () => {
+  assert.equal(
+    planAsText([{ title: "Dinner", place: "Le Train Bleu", address: "Place Louis-Armand, Paris" }]),
+    "Dinner — at Le Train Bleu, Place Louis-Armand, Paris",
+  );
+});
+
+test("planAsText matches the place as whole words", () => {
+  assert.equal(planAsText([{ title: "Dinner", place: "Inn" }]), "Dinner — at Inn");
+  assert.equal(planAsText([{ title: "Dinner at the Inn", place: "Inn" }]), "Dinner at the Inn");
+});

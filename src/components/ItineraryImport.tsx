@@ -134,6 +134,8 @@ const THROTTLE_PAUSE_MS = 20_000;
 const DIRECTIONS_BOX_KEY = "bea:import-directions";
 /** Optimize's "What would you like to improve?", as the server takes it. */
 const OPTIMIZE_NOTE_MAX = 500;
+/** Optimize's "Add your own" priorities; with the note, within the server's 700. */
+const OPTIMIZE_OWN_MAX = 180;
 /** How much Build's box and Import's plan box take. */
 const BUILD_TEXT_MAX = 2000;
 const IMPORT_TEXT_MAX = 20000;
@@ -315,9 +317,17 @@ export function ItineraryImport({
       open={open}
       onClose={onClose}
       title="Plan with Béa"
-      hint="Built around your travel preferences and tagged recs"
-      icon={<img src={logo} alt="" className="size-10 object-contain" />}
+      hint={tab === "start" ? "Built around your travel preferences and tagged recs" : undefined}
+      icon={
+        <img
+          src={logo}
+          alt=""
+          className={`object-contain ${tab === "start" ? "size-10" : "size-8"}`}
+        />
+      }
       onBack={tab === "start" ? undefined : () => setTab("start")}
+      width="lg"
+      tall
     >
       {tab === "start" ? (
         <div className="space-y-5">
@@ -558,7 +568,9 @@ function ImportPanel({
     }
     const calendar = docs[0] && (/\.ics$/i.test(docs[0].name) || docs[0].type === "text/calendar");
     if (calendar && pictures.length) {
-      setError("Upload a calendar file on its own, then add pictures separately.");
+      setError(
+        "A calendar file and pictures are imported as separate plans: upload one, then the other.",
+      );
       return;
     }
     if (pictures.length) await addImages(pictures);
@@ -578,12 +590,14 @@ function ImportPanel({
   const [mode, setMode] = useState<"build" | "import">(initialMode);
   /** Build's "What should Béa prioritize?": pace and budget follow from it, the rest is words. */
   const [priorities, setPriorities] = useState<PlanPriorityId[]>([]);
+  /** Priorities the chips don't cover, in the traveller's own words. */
+  const [ownPriorities, setOwnPriorities] = useState("");
   const togglePriority = (id: PlanPriorityId) =>
     setPriorities((cur) => (cur.includes(id) ? cur.filter((p) => p !== id) : [...cur, id]));
   const pace = paceFor(priorities);
   const budgetLevel = budgetFor(priorities);
   /** The request as Béa reads it: the typed words, then what matters. */
-  const request = withPriorities(text, mode === "build" ? priorities : []);
+  const request = mode === "build" ? withPriorities(text, priorities, ownPriorities) : text.trim();
   /** Import's "Import from a link", typed in its own box. */
   const [linkInput, setLinkInput] = useState("");
   const [currency, setCurrency] = useState("CAD");
@@ -1164,59 +1178,42 @@ function ImportPanel({
   };
 
   return (
-    <div className="mt-1 space-y-3">
+    <div className="mt-1 space-y-2.5">
       {mode === "build" ? (
         <PlanTitle title={addingMore ? "Build more for this trip" : "Build me a trip"}>
-          {addingMore
-            ? `Tell Béa what you'd like to add. She'll suggest options that fit your trip${
-                tripPlace ? ` to ${tripPlace}` : ""
-              }${tripDates ? `, ${tripDates}` : ""}.`
-            : "Tell Béa about your trip and what you'd like to do. She'll draft an itinerary with the best places, timing and flow for your preferences."}
+          {tripPlace && !needsPlace
+            ? `${tripPlace}${tripDates ? ` · ${tripDates}` : ""}. ${
+                addingMore
+                  ? "Tell Béa what to add; she'll find options that fit."
+                  : "Béa drafts the days around your preferences."
+              }`
+            : "Tell Béa what you'd like; she drafts the days for you."}
         </PlanTitle>
       ) : (
         <PlanTitle title="Import a plan">
-          Add your existing itinerary and let Béa clean it up, find the places and save it to your
-          trip.
+          Paste, upload or link your itinerary. Béa finds the places and adds it to your trip.
         </PlanTitle>
       )}
+      {mode === "import" && <AiPromptButton variant="banner" label="Get the AI prompt" />}
       {cityPicker}
 
       {mode === "build" &&
         (needsPlace ? (
-          <PlanPanel tone="rose" icon={MapPin} title="Where are you going?">
-            <label className="relative block">
-              <span className="sr-only">Where are you going?</span>
-              <Search
-                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <input
-                value={whereTo}
-                onChange={(e) => setWhereTo(e.target.value)}
-                maxLength={120}
-                required
-                placeholder="Enter a city, region or country…"
-                className={`${PLAN_FIELD} pl-10`}
-              />
-            </label>
-            <p className="text-[12px] text-muted-foreground">
-              This trip has no place yet. Béa needs one to plan it.
-            </p>
-          </PlanPanel>
-        ) : tripPlace ? (
-          <div className="plain-card flex items-center gap-3 p-2.5">
-            <span className="plan-sky plan-badge grid size-12 shrink-0 place-items-center rounded-xl">
-              <MapPin className="size-5" aria-hidden />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-[19px] leading-tight">
-                {tripPlace}
-              </span>
-              {tripDates ? (
-                <span className="block text-[12.5px] text-muted-foreground">{tripDates}</span>
-              ) : null}
-            </span>
-          </div>
+          <label className="relative block">
+            <span className="sr-only">Where are you going?</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              value={whereTo}
+              onChange={(e) => setWhereTo(e.target.value)}
+              maxLength={120}
+              required
+              placeholder="Where to? A city, region or country"
+              className={`${PLAN_FIELD} pl-9`}
+            />
+          </label>
         ) : null)}
 
       {mode === "build" ? (
@@ -1225,33 +1222,28 @@ function ImportPanel({
           icon={FileText}
           title={addingMore ? "What would you like to add?" : "Must include"}
           optional={!addingMore}
-          hint={
-            addingMore
-              ? "Tell Béa what you're looking for: activities, restaurants, day trips…"
-              : "Specific places, activities or experiences you want in your trip."
-          }
+          aside={<CharCount value={text} max={BUILD_TEXT_MAX} />}
         >
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            rows={3}
+            rows={2}
             maxLength={BUILD_TEXT_MAX}
             aria-label={addingMore ? "What would you like to add?" : "Must include"}
             placeholder={
               addingMore
-                ? "e.g. a cooking class, a day trip, more museums, a nice café near the hotel…"
+                ? "e.g. a cooking class, a day trip, more museums, a café near the hotel…"
                 : "e.g. a famous museum, wine tasting, a day trip to the coast…"
             }
-            className={PLAN_FIELD}
+            className={`${PLAN_FIELD} resize-none`}
           />
-          <CharCount value={text} max={BUILD_TEXT_MAX} />
         </PlanPanel>
       ) : (
         <PlanPanel
           tone="rose"
           icon={FileText}
-          title="Paste your plan"
-          hint="Copy and paste your itinerary from any source."
+          title="Your plan"
+          aside={<CharCount value={text} max={IMPORT_TEXT_MAX} />}
         >
           <textarea
             value={text}
@@ -1262,16 +1254,10 @@ function ImportPanel({
             placeholder={
               hasFiles
                 ? "Add notes about the pictures or PDF, if you like…"
-                : "Paste your itinerary here…\ne.g. from ChatGPT, a travel blog, notes or an email"
+                : "Paste your itinerary here: from ChatGPT, a travel blog, notes or an email…"
             }
-            className={PLAN_FIELD}
+            className={`${PLAN_FIELD} resize-none`}
           />
-          <CharCount value={text} max={IMPORT_TEXT_MAX} />
-          <div className="flex items-center gap-3 text-[13px] text-muted-foreground" aria-hidden>
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
           <input
             ref={uploadRef}
             type="file"
@@ -1280,85 +1266,34 @@ function ImportPanel({
             className="hidden"
             onChange={(e) => void onUploadPicked(e)}
           />
-          <button
-            type="button"
-            onClick={() => uploadRef.current?.click()}
-            disabled={busy}
-            className="flex w-full items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-left disabled:opacity-50"
-          >
-            <Upload className="size-6 shrink-0" aria-hidden />
-            <span>
-              <span className="block font-display text-[18px] leading-tight">Upload a file</span>
-              <span className="block text-[12px] text-muted-foreground">
-                PDF, calendar, screenshot or photo
-              </span>
-            </span>
-          </button>
-          {pdf && (
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
-              <FileText className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1 truncate text-[13.5px]">{pdf.name}</span>
-              <button
-                aria-label={`Remove ${pdf.name}`}
-                onClick={() => setPdf(null)}
-                className="tap-44 grid size-6 place-items-center rounded-full border border-border bg-card"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          )}
-          {images.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="text-[12px] text-muted-foreground">
-                {images.length} of {MAX_IMAGES} pictures — Béa reads them together as one plan.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {images.map((src, i) => (
-                  <div key={i} className="relative">
-                    <img
-                      src={src}
-                      alt={`Attached picture ${i + 1}`}
-                      className="size-16 rounded-lg border border-border object-cover"
-                    />
-                    <button
-                      aria-label={`Remove picture ${i + 1}`}
-                      onClick={() => setImages((cur) => cur.filter((_, x) => x !== i))}
-                      className="tap-44 absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-border bg-card"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </PlanPanel>
-      )}
-
-      {mode === "import" && (
-        <PlanPanel
-          tone="sky"
-          icon={Link2}
-          title="Import from a link"
-          optional
-          hint="A travel guide, a tour page or a shared itinerary."
-        >
-          <label className="relative block">
-            <span className="sr-only">Link to a plan</span>
-            <Link2
-              className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <input
-              type="url"
-              inputMode="url"
-              value={linkInput}
-              onChange={(e) => setLinkInput(e.target.value)}
-              maxLength={2000}
-              placeholder="Paste a link here…"
-              className={`${PLAN_FIELD} pl-10`}
-            />
-          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              disabled={busy}
+              title="PDF, calendar, screenshot or photo"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2 text-[13.5px] font-medium disabled:opacity-50"
+            >
+              <Upload className="size-4" aria-hidden />
+              Upload a file
+            </button>
+            <label className="relative block min-w-0 flex-1">
+              <span className="sr-only">Or a link to a plan</span>
+              <Link2
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <input
+                type="url"
+                inputMode="url"
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                maxLength={2000}
+                placeholder="…or paste a link"
+                className={`${PLAN_FIELD} pl-9`}
+              />
+            </label>
+          </div>
           {badLink ? (
             <p className="text-[12px] text-destructive">
               That doesn't look like a link. Paste the whole address, starting with https://
@@ -1368,17 +1303,44 @@ function ImportPanel({
               Béa will open this link and read the plan on it.
             </p>
           ) : null}
-        </PlanPanel>
-      )}
-
-      {mode === "import" && (
-        <PlanPanel
-          tone="butter"
-          icon={Sparkles}
-          title="Need help formatting your plan?"
-          hint="Get a ready-to-use prompt to paste into any AI, like ChatGPT."
-        >
-          <AiPromptButton label="Get the AI prompt" />
+          {(pdf || images.length > 0) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {pdf && (
+                <span className="flex max-w-full items-center gap-1.5 rounded-lg border border-border bg-card py-1 pl-2 pr-1 text-[12.5px]">
+                  <FileText className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="min-w-0 truncate">{pdf.name}</span>
+                  <button
+                    aria-label={`Remove ${pdf.name}`}
+                    onClick={() => setPdf(null)}
+                    className="tap-44 grid size-5 place-items-center rounded-full border border-border bg-card"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              )}
+              {images.map((src, i) => (
+                <div key={i} className="relative">
+                  <img
+                    src={src}
+                    alt={`Attached picture ${i + 1}`}
+                    className="size-10 rounded-lg border border-border object-cover"
+                  />
+                  <button
+                    aria-label={`Remove picture ${i + 1}`}
+                    onClick={() => setImages((cur) => cur.filter((_, x) => x !== i))}
+                    className="tap-44 absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-border bg-card"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </div>
+              ))}
+              {images.length > 1 && (
+                <span className="text-[12px] text-muted-foreground">
+                  {images.length} of {MAX_IMAGES}, read as one plan
+                </span>
+              )}
+            </div>
+          )}
         </PlanPanel>
       )}
 
@@ -1404,41 +1366,36 @@ function ImportPanel({
       )}
 
       {mode === "build" && (
-        <PriorityPicker options={BUILD_PRIORITIES} selected={priorities} onToggle={togglePriority}>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-[14px] font-medium">Approximate costs</p>
-              <p className="text-[12px] text-muted-foreground">
-                Off unless you ask. Estimates only — not quotes.
-              </p>
-            </div>
+        <PriorityPicker
+          options={BUILD_PRIORITIES}
+          selected={priorities}
+          onToggle={togglePriority}
+          custom={ownPriorities}
+          onCustom={setOwnPriorities}
+        >
+          <div className="flex items-center gap-2 text-[12.5px]">
+            <Switch
+              checked={includeCosts}
+              onCheckedChange={setIncludeCosts}
+              aria-label="Include approximate costs"
+            />
+            <span className="min-w-0 flex-1 text-muted-foreground">
+              Estimate costs <span className="text-[11.5px]">(approximate, not quotes)</span>
+            </span>
             {includeCosts && (
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 aria-label="Currency"
-                className="rounded-xl border border-border bg-card px-2 py-1.5 text-[13px]"
+                className="rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
               >
                 {["CAD", "USD", "EUR", "GBP", "JPY", "MXN"].map((value) => (
                   <option key={value}>{value}</option>
                 ))}
               </select>
             )}
-            <Switch
-              checked={includeCosts}
-              onCheckedChange={setIncludeCosts}
-              aria-label="Include approximate costs"
-            />
           </div>
         </PriorityPicker>
-      )}
-
-      {mode === "import" && (
-        <p className="text-[12px] leading-relaxed text-muted-foreground">
-          Pictures, PDFs, links and pasted plans are sent to an AI provider to read them — avoid
-          including passport numbers, card details or other sensitive information. Calendar files
-          (.ics) are read on your device.
-        </p>
       )}
 
       <PlanAction
@@ -1463,17 +1420,13 @@ function ImportPanel({
           <BeaRunning moment="plan.working" action={mode === "build" ? "run" : "think"} />
         </div>
       )}
-      {mode === "import" && !hasFiles && !link && text.trim().length < 10 && (
-        <p className="text-center text-[12px] text-muted-foreground">
-          Paste the plan, upload a file or add a link first.
-        </p>
-      )}
-      {mode === "build" && (
-        <p className="text-center text-[12px] text-muted-foreground">
-          Béa drafts a plan. She doesn't book anything or check that a table or room is free — you
-          reserve and confirm those yourself.
-        </p>
-      )}
+      <p className="text-center text-[11.5px] leading-snug text-muted-foreground">
+        {mode === "build"
+          ? "Béa drafts the plan; you book and confirm."
+          : !hasFiles && !link && text.trim().length < 10
+            ? "Paste a plan, upload a PDF, calendar or photo, or add a link to import it."
+            : "Sent to an AI to read, so leave out passport and card numbers. Calendar files stay on your device."}
+      </p>
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
       {saved && (
@@ -1873,6 +1826,8 @@ function OptimizePanel({
   const [goals, setGoals] = useState<OptimizeGoalId[]>(preset?.goals ?? ["closest"]);
   const [note, setNote] = useState(preset?.note ?? "");
   const [showStayed, setShowStayed] = useState(false);
+  /** Priorities beyond the goal chips, sent with the note. */
+  const [ownGoals, setOwnGoals] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<OptimizeItinerary | null>(null);
@@ -1906,7 +1861,10 @@ function OptimizePanel({
           startDate: startDate || null,
           endDate: endDate || null,
           goals,
-          note: note.trim() || null,
+          note:
+            [note.trim(), ownGoals.trim() ? `Also prioritize: ${ownGoals.trim()}` : ""]
+              .filter(Boolean)
+              .join("\n") || null,
           tripPreferences,
           items: items.map((item) => ({
             ...item,
@@ -1962,11 +1920,10 @@ function OptimizePanel({
     : [];
 
   return (
-    <div className="mt-1 space-y-3">
+    <div className="mt-1 space-y-2.5">
       <PlanTitle title="Optimize my trip">
-        Béa keeps every stop you already have and reorganizes the days around what matters to you,
-        moving things and adjusting timing. She does not check whether a reservation is still
-        available.
+        Béa keeps your {items.length} stop{items.length === 1 ? "" : "s"} and reorganizes the days
+        around what matters to you. She doesn't check reservations.
       </PlanTitle>
       {preset && (
         <p className="rounded-xl bg-primary-soft px-3 py-2 text-[13.5px] font-semibold text-primary">
@@ -1984,24 +1941,26 @@ function OptimizePanel({
             tone="rose"
             icon={Pencil}
             title="What would you like to improve?"
-            hint="Tell Béa what isn't working, or what you'd like changed."
+            aside={<CharCount value={note} max={OPTIMIZE_NOTE_MAX} />}
           >
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              rows={3}
+              rows={2}
               maxLength={OPTIMIZE_NOTE_MAX}
               aria-label="What would you like to improve?"
-              placeholder="e.g. Too much backtracking, make mornings slower, keep my dinner reservations, move indoor activities to the rainy day…"
-              className={PLAN_FIELD}
+              placeholder="e.g. less backtracking, slower mornings, keep my dinner bookings…"
+              className={`${PLAN_FIELD} resize-none`}
             />
-            <CharCount value={note} max={OPTIMIZE_NOTE_MAX} />
           </PlanPanel>
           <PriorityPicker
-            hint={`Select up to four. ${items.length} stop${items.length === 1 ? "" : "s"} on this trip.`}
+            hint="Up to four"
             options={OPTIMIZE_GOALS.map((g) => g.id)}
             selected={goals}
             onToggle={(id) => toggleGoal(id as OptimizeGoalId)}
+            custom={ownGoals}
+            onCustom={setOwnGoals}
+            customMax={OPTIMIZE_OWN_MAX}
           >
             <p className="text-[12px] text-muted-foreground">
               {OPTIMIZE_GOALS.filter((g) => goals.includes(g.id))
@@ -2151,56 +2110,44 @@ function ComparePanel() {
   };
 
   return (
-    <div className="mt-1 space-y-3">
+    <div className="mt-1 space-y-2">
       <PlanTitle title="Compare options">
-        Paste two versions of a plan — from two AI answers, a friend, or a tour page. You can paste
-        text or upload a PDF, calendar or photo. Béa reads each one first, then compares. That takes
-        a little longer.
+        Paste or upload two plans; Béa picks the better fit.
       </PlanTitle>
+      <AiPromptButton variant="banner" label="Get the AI prompt" />
 
-      <CompareSide
-        letter="A"
-        tone="rose"
-        plan={a}
-        onChange={(patch) => setA((cur) => ({ ...cur, ...patch }))}
-        onReading={(on) => setReading((cur) => ({ ...cur, A: on }))}
-        disabled={busy}
-      />
-      <CompareSide
-        letter="B"
-        tone="mint"
-        plan={b}
-        onChange={(patch) => setB((cur) => ({ ...cur, ...patch }))}
-        onReading={(on) => setReading((cur) => ({ ...cur, B: on }))}
-        disabled={busy}
-      />
+      <div className="grid grid-cols-2 gap-2">
+        <CompareSide
+          letter="A"
+          tone="rose"
+          plan={a}
+          onChange={(patch) => setA((cur) => ({ ...cur, ...patch }))}
+          onReading={(on) => setReading((cur) => ({ ...cur, A: on }))}
+          disabled={busy}
+        />
+        <CompareSide
+          letter="B"
+          tone="mint"
+          plan={b}
+          onChange={(patch) => setB((cur) => ({ ...cur, ...patch }))}
+          onReading={(on) => setReading((cur) => ({ ...cur, B: on }))}
+          disabled={busy}
+        />
+      </div>
 
       <PriorityPicker
         title="What matters to you?"
-        hint="Help Béa decide which plan fits you best."
-        variant="chips"
         options={COMPARE_PRIORITIES}
         selected={picked}
         onToggle={togglePicked}
-      >
-        <input
-          value={priorities}
-          onChange={(e) => setPriorities(e.target.value)}
-          maxLength={300}
-          aria-label="Anything else that matters"
-          placeholder="Anything else? No early flights, good coffee…"
-          className={PLAN_FIELD}
-        />
-      </PriorityPicker>
+        custom={priorities}
+        onCustom={setPriorities}
+        customMax={300}
+      />
 
-      <div className="flex items-center gap-2">
-        <AiPromptButton label="Get the prompt" className="shrink-0 py-3" />
-        <div className="min-w-0 flex-1">
-          <PlanAction onClick={() => void compare()} disabled={busy || !ready}>
-            {busy ? "Comparing…" : "Compare these plans"}
-          </PlanAction>
-        </div>
-      </div>
+      <PlanAction onClick={() => void compare()} disabled={busy || !ready}>
+        {busy ? "Comparing…" : "Compare these plans"}
+      </PlanAction>
       {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
@@ -2211,8 +2158,8 @@ function ComparePanel() {
 }
 
 /**
- * One side of Compare: its letter and name, "Paste text" or "Upload file",
- * and the plan's text. An uploaded file is read into that text first — a
+ * One side of Compare: its letter and name, the plan's text, and a button
+ * to upload it instead. An uploaded file is read into that text first — a
  * calendar right here, a PDF or photo by Béa — so the box shows what was read.
  */
 function CompareSide({
@@ -2234,7 +2181,6 @@ function CompareSide({
 }) {
   const read = useServerFn(parseItinerary);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [how, setHow] = useState<"paste" | "upload">("paste");
   const [reading, setReading] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -2298,7 +2244,6 @@ function CompareSide({
       const text = planAsText(items);
       if (!text.trim()) throw new Error(`Béa found no plan in ${file.name}.`);
       onChange({ text: text.slice(0, 20000) });
-      setHow("paste");
     } catch (err) {
       setProblem(err instanceof IcsReadError ? err.message : aiFailure(err).message);
     } finally {
@@ -2307,17 +2252,12 @@ function CompareSide({
     }
   };
 
-  const tab = (on: boolean) =>
-    `flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full text-[14px] font-medium ${
-      on ? "bg-primary-soft text-primary" : "text-foreground"
-    }`;
-
   return (
-    <section className={`plan-panel plan-${tone} space-y-2.5 p-3`}>
-      <div className="flex items-center gap-3">
+    <section className={`plan-panel plan-${tone} min-w-0 space-y-1.5 p-2`}>
+      <div className="flex items-center gap-1.5">
         <span
           aria-hidden
-          className="plan-badge grid size-11 shrink-0 place-items-center rounded-full font-display text-[22px]"
+          className="plan-badge grid size-6 shrink-0 place-items-center rounded-full font-display text-[15px]"
         >
           {letter}
         </span>
@@ -2326,66 +2266,36 @@ function CompareSide({
           onChange={(e) => onChange({ label: e.target.value })}
           maxLength={60}
           aria-label={`Name of plan ${letter}`}
-          className="min-w-0 flex-1 bg-transparent text-[20px] font-medium outline-none"
+          className="min-w-0 flex-1 bg-transparent text-[15px] font-medium outline-none"
         />
       </div>
-      <div className="flex rounded-full border border-border bg-card p-1" role="group">
-        <button
-          type="button"
-          aria-pressed={how === "paste"}
-          onClick={() => setHow("paste")}
-          className={tab(how === "paste")}
-        >
-          <FileText className="size-4" aria-hidden /> Paste text
-        </button>
-        <button
-          type="button"
-          aria-pressed={how === "upload"}
-          onClick={() => setHow("upload")}
-          className={tab(how === "upload")}
-        >
-          <Upload className="size-4" aria-hidden /> Upload file
-        </button>
-      </div>
-      {how === "paste" ? (
-        <textarea
-          value={plan.text}
-          onChange={(e) => onChange({ text: e.target.value })}
-          rows={3}
-          maxLength={20000}
-          aria-label={`Plan ${letter}`}
-          placeholder="Paste your plan here…"
-          className={PLAN_FIELD}
-        />
-      ) : (
-        <>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*,application/pdf,.pdf,text/calendar,.ics"
-            className="hidden"
-            onChange={(e) => void onFile(e)}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={disabled || reading !== null}
-            className="flex min-h-20 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-card px-3 py-3 text-[14px] disabled:opacity-60"
-          >
-            <Upload className="size-5" aria-hidden />
-            {reading ? `Reading ${reading}…` : "Choose a file"}
-          </button>
-        </>
-      )}
-      {problem ? (
-        <p className="break-words text-[12px] text-destructive">{problem}</p>
-      ) : (
-        <p className="text-[12px] text-muted-foreground">
-          {how === "upload"
-            ? "PDF, calendar, photo or screenshot"
-            : "Or upload a PDF, calendar, photo or screenshot"}
-        </p>
-      )}
+      <textarea
+        value={plan.text}
+        onChange={(e) => onChange({ text: e.target.value })}
+        rows={3}
+        maxLength={20000}
+        aria-label={`Plan ${letter}`}
+        placeholder="Paste this plan here, or upload a PDF, calendar or photo…"
+        className={`${PLAN_FIELD} resize-none px-2.5 text-[13px]`}
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,application/pdf,.pdf,text/calendar,.ics"
+        className="hidden"
+        onChange={(e) => void onFile(e)}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={disabled || reading !== null}
+        title="PDF, calendar, photo or screenshot"
+        className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px] font-medium disabled:opacity-60"
+      >
+        <Upload className="size-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{reading ? `Reading ${reading}…` : "Or upload a file"}</span>
+      </button>
+      {problem ? <p className="break-words text-[11.5px] text-destructive">{problem}</p> : null}
     </section>
   );
 }

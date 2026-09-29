@@ -33,13 +33,22 @@ export function planAsText(items: readonly PlanTextItem[]): string {
     const time = item.time_label?.trim();
     const title = item.title.trim();
     const detail = item.detail?.trim() ?? "";
-    // The place, unless the title or detail already says it.
-    const where = (item.address?.trim() || item.place?.trim()) ?? "";
-    const said = `${title} ${detail}`.toLowerCase();
-    const notes = [detail, where && !said.includes(where.toLowerCase()) ? `at ${where}` : ""]
-      .filter(Boolean)
-      .join(" · ");
+    // The place and its address, each unless something before it already says it.
+    const said = `${title} ${detail}`;
+    const place = item.place?.trim() ?? "";
+    const address = item.address?.trim() ?? "";
+    const parts = place && address && mentions(address, place) ? [address] : [place, address];
+    const where = parts.filter((part) => part && !mentions(said, part)).join(", ");
+    const notes = [detail, where ? `at ${where}` : ""].filter(Boolean).join(" · ");
     out.push(`${time ? `${time} ` : ""}${title}${notes ? ` — ${notes}` : ""}`);
   }
   return out.join("\n");
+}
+
+/** Whether `text` says `words` as whole words: "Dinner" does not say "Inn". */
+function mentions(text: string, words: string): boolean {
+  const escaped = words.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}($|[^\\p{L}\\p{N}])`, "u").test(
+    text.toLowerCase(),
+  );
 }

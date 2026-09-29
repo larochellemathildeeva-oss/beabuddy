@@ -26,20 +26,21 @@ export const PLAN_PRIORITIES: ReadonlyArray<{
   { id: "budget", label: "On a budget", ask: "easy on the budget" },
   {
     id: "unique",
-    label: "Unique / off the beaten path",
+    label: "Off the beaten path",
     ask: "less touristy, off the beaten path",
   },
 ];
 
-/** "What matters most to me: places close together …; easy on the budget." — "" for none. */
-export function prioritiesLine(ids: readonly PlanPriorityId[]): string {
+/** "What matters most to me: places close together …; easy on the budget." — "" for none. `own` is typed. */
+export function prioritiesLine(ids: readonly PlanPriorityId[], own = ""): string {
   const asks = PLAN_PRIORITIES.filter((p) => ids.includes(p.id)).map((p) => p.ask);
+  if (own.trim()) asks.push(own.trim());
   return asks.length ? `What matters most to me: ${asks.join("; ")}.` : "";
 }
 
-/** The traveller's words with the priorities after them, for Build. */
-export function withPriorities(text: string, ids: readonly PlanPriorityId[]): string {
-  const line = prioritiesLine(ids);
+/** The traveller's words with the priorities (picked and typed) after them, for Build. */
+export function withPriorities(text: string, ids: readonly PlanPriorityId[], own = ""): string {
+  const line = prioritiesLine(ids, own);
   const words = text.trim();
   if (!line) return words;
   return words ? `${words}\n\n${line}` : line;
@@ -71,7 +72,7 @@ export function comparePriorities(
   for (const p of PLAN_PRIORITIES) {
     if (!ids.includes(p.id)) continue;
     const cost = p.ask.length + (parts.length ? 2 : 0);
-    if (cost > room) break;
+    if (cost > room) continue;
     parts.push(p.ask);
     room -= cost;
   }

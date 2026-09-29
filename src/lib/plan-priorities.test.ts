@@ -15,6 +15,11 @@ test("prioritiesLine lists the picks in the tiles' order", () => {
     "What matters most to me: places close together, little backtracking; easy on the budget.",
   );
   assert.equal(prioritiesLine([]), "");
+  assert.equal(
+    prioritiesLine(["rest"], "  vegetarian food "),
+    "What matters most to me: one clearly quieter day; vegetarian food.",
+  );
+  assert.equal(prioritiesLine([], "kid-friendly"), "What matters most to me: kid-friendly.");
 });
 
 test("withPriorities puts the line after the traveller's words", () => {
@@ -47,4 +52,11 @@ test("comparePriorities joins picks and typed words, within the limit", () => {
   const out = comparePriorities(all, note);
   assert.ok(out.length <= 400);
   assert.ok(out.endsWith(note));
+});
+
+test("comparePriorities skips a pick that no longer fits, keeping later short ones", () => {
+  // 400 - (357 + 2) leaves 41: "places close together…" (43) is skipped,
+  // "no day overloaded" (17) still fits.
+  const note = "z".repeat(357);
+  assert.equal(comparePriorities(["closest", "even"], note), `no day overloaded; ${note}`);
 });

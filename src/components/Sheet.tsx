@@ -31,6 +31,7 @@ export function Sheet({
   width = "md",
   showClose = true,
   above = false,
+  tall = false,
   children,
 }: {
   open: boolean;
@@ -45,7 +46,7 @@ export function Sheet({
   onBack?: (() => void) | undefined;
   /** Header actions, right of the title and left of the close button. */
   actions?: ReactNode;
-  width?: "sm" | "md";
+  width?: "sm" | "md" | "lg";
   /** Off only where the panel's own body carries the single way out. */
   showClose?: boolean;
   /**
@@ -54,6 +55,8 @@ export function Sheet({
    * belt and braces rather than the only thing holding it up.
    */
   above?: boolean;
+  /** Nearly the whole screen, for a sheet whose forms should fit without scrolling. */
+  tall?: boolean;
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -106,8 +109,8 @@ export function Sheet({
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
         style={pull ? { transform: `translateY(${pull}px)`, transition: "none" } : undefined}
-        className={`rise card-raised transition-transform flex max-h-[88vh] w-full flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl ${
-          width === "sm" ? "max-w-sm" : "max-w-md"
+        className={`rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88vh]"} w-full flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl ${
+          width === "sm" ? "max-w-sm" : width === "lg" ? "max-w-xl" : "max-w-md"
         }`}
       >
         <div
