@@ -1423,7 +1423,9 @@ function ImportPanel({
       <p className="text-center text-[11.5px] leading-snug text-muted-foreground">
         {mode === "build"
           ? "Béa drafts the plan; you book and confirm."
-          : "Sent to an AI to read, so leave out passport and card numbers. Calendar files stay on your device."}
+          : !hasFiles && !link && text.trim().length < 10
+            ? "Paste a plan, upload a PDF, calendar or photo, or add a link to import it."
+            : "Sent to an AI to read, so leave out passport and card numbers. Calendar files stay on your device."}
       </p>
 
       {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
@@ -2273,7 +2275,7 @@ function CompareSide({
         rows={3}
         maxLength={20000}
         aria-label={`Plan ${letter}`}
-        placeholder="Paste this plan here…"
+        placeholder="Paste this plan here, or upload a PDF, calendar or photo…"
         className={`${PLAN_FIELD} resize-none px-2.5 text-[13px]`}
       />
       <input
