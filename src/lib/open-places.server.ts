@@ -29,8 +29,9 @@ const DAY_MS = 24 * HOUR_MS;
 const searchesByPerson = new Map<string, number[]>();
 const searchesByDay = new Map<string, number[]>();
 
+/** Either name works: OVERTURE_API_KEY is how it was first added on Canner. */
 function openPlacesKey(): string {
-  return (process.env["OPEN_PLACES_API_KEY"] ?? "").trim();
+  return (process.env["OPEN_PLACES_API_KEY"] || process.env["OVERTURE_API_KEY"] || "").trim();
 }
 
 export function openPlacesReady(): boolean {
