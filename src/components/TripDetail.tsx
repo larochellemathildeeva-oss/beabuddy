@@ -69,6 +69,8 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
+import { TripCheckup } from "@/components/day/TripCheckup";
+import { tripCheckup } from "@/lib/trip-checkup";
 import {
   ALL_DAYS,
   dayChips,
@@ -1108,6 +1110,10 @@ export function TripDetail({
   const bookingCounts: Record<BookingTile, number> = countBookings(
     tripBookings(stopItems, bookingDocs.docs),
   );
+  /** What Trip Checkup finds, for its pill — worked out only while the menu is open. */
+  const checkupCount = settingsOpen
+    ? tripCheckup({ trip, items: board.items, documents: bookingDocs.docs }).length
+    : undefined;
   /** "+ Add a stop between" on a connector: the form opens at the time between them. */
   const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
     insertAnchor.current = null;
@@ -2289,6 +2295,7 @@ export function TripDetail({
             : ""
         }
         budgetOn={Boolean(trip.budget_enabled)}
+        checkupCount={checkupCount}
         onPrint={() => {
           setSettingsOpen(false);
           printHtml(
@@ -2516,6 +2523,19 @@ export function TripDetail({
             uid={me.id}
             home={trip}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
+          />
+        )}
+
+        {sheetSection === "checkup" && (
+          <TripCheckup
+            trip={trip}
+            items={board.items}
+            documents={bookingDocs.docs}
+            onOpen={({ day }) => {
+              setSettingsOpen(false);
+              setPerspective("timeline");
+              if (day) setDayChoice(day);
+            }}
           />
         )}
 

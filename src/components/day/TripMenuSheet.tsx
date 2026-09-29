@@ -6,6 +6,7 @@ import {
   Bed,
   Car,
   ChevronRight,
+  CircleCheck,
   FileText,
   MapIcon,
   MapPin,
@@ -19,7 +20,7 @@ import {
 } from "@/components/icons";
 
 export type TripMenuSection =
-  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize";
+  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | "checkup";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -33,6 +34,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   packing: "Packing",
   cities: "Destinations",
   customize: "Customize trip",
+  checkup: "Trip Checkup",
 };
 
 /**
@@ -58,6 +60,7 @@ export function TripMenuSheet({
   offlineNote,
   budgetOn,
   onPrint,
+  checkupCount,
   footer,
   children,
 }: {
@@ -79,6 +82,8 @@ export function TripMenuSheet({
   budgetOn: boolean;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
+  /** How many things Trip Checkup found, for its pill. */
+  checkupCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
@@ -178,6 +183,14 @@ export function TripMenuSheet({
     },
   ];
   const tools = [
+    {
+      key: "checkup",
+      icon: CircleCheck,
+      title: "Trip Checkup",
+      note: "Mistakes worth catching before you go",
+      pill: checkupCount ? `${checkupCount} to check` : checkupCount === 0 ? "All good" : "",
+      onClick: () => onSection("checkup"),
+    },
     {
       key: "offline",
       icon: MapIcon,
