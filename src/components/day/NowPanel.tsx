@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
+import { Bed, ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
 import { bookingAtHand } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
 import { EASE_PRESETS, rainPreset, type EasePreset } from "@/lib/day-ease";
@@ -12,7 +12,8 @@ import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
-import { mapsPlaceUrl } from "@/lib/direction-stops";
+import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
+import { arrivalHelp, type ArrivalStop } from "@/lib/arrival-help";
 import { timeForRail } from "@/lib/timeline-kind";
 import { lookupRain } from "@/lib/weather.functions";
 import {
@@ -82,7 +83,7 @@ export function NowPanel({
     title: string;
   }[];
   /** Every entry on the trip, for the bookings and departures coming up. */
-  reminderItems?: readonly ReminderItem[];
+  reminderItems?: readonly (ReminderItem & ArrivalStop & { position: number })[];
   /** The trip's next day with stops after this one, for "Make tomorrow easier". */
   nextDay?: string | null;
   /** Run one of Optimize's one-tap requests on a day. */
@@ -152,6 +153,15 @@ export function NowPanel({
   const placeDay = now ? placeClock(now, offset).day : null;
   // Once today is done, the easing is for the next day; before that, this one.
   const easeTarget = phase === "done" ? nextDay : thisDay;
+  // The way in from the airport or station, on a day that lands somewhere to sleep.
+  const arrival = thisDay
+    ? arrivalHelp(
+        [...reminderItems]
+          .filter((i) => i.day_date === thisDay)
+          .sort((a, b) => a.position - b.position),
+      )
+    : null;
+  const arrivalOpen = arrival && !dayStops.find((s) => s.id === arrival.stay.id)?.arrived_at;
   const easeLabel = easeTarget ? dayLabelFor(easeTarget, placeDay) : "";
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
@@ -204,6 +214,39 @@ export function NowPanel({
             </li>
           ))}
         </ul>
+      )}
+      {arrival && arrivalOpen && (
+        <section aria-labelledby="now-arrival" className="plain-card space-y-2 p-3.5">
+          <p
+            id="now-arrival"
+            className="flex items-center gap-2 text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            <Bed className="size-4 text-primary" aria-hidden />
+            Arrival
+          </p>
+          <p className="text-[14.5px] leading-snug">
+            From <span className="font-semibold">{arrival.from.title}</span> to{" "}
+            <span className="font-semibold">{arrival.stay.title}</span>
+            {arrival.checkIn ? (
+              <span className="text-muted-foreground"> · check-in from {arrival.checkIn}</span>
+            ) : null}
+          </p>
+          {arrival.stay.address?.trim() && (
+            <p className="flex items-start gap-1 text-[12.5px] text-muted-foreground">
+              <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0">{arrival.stay.address}</span>
+            </p>
+          )}
+          <a
+            href={mapsDirUrl(arrival.from, arrival.stay, area ?? "", "transit")}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-10 items-center gap-1 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground"
+          >
+            The way there, by transit
+            <ChevronRight className="size-4" aria-hidden />
+          </a>
+        </section>
       )}
       {phase !== "done" && (
         <RainAhead
