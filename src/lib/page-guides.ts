@@ -110,7 +110,7 @@ export const guides: Record<string, Guide> = {
       "Join a friend's trip with their invite code",
       "Switch between upcoming and past trips",
       "Open a trip to plan its days, stops, budget and packing",
-      "Keep bookings and tickets in Trip documents, locked behind a passcode",
+      "Keep bookings and tickets in Trip documents, shared with the trip",
     ],
     steps: [
       {
@@ -130,7 +130,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Trip documents",
-        body: "Reservations, tickets, and confirmations for the trip — encrypted on your device and locked behind a passcode.",
+        body: "Reservations, tickets, and confirmations for the trip, shared with everyone on it. Anything private goes in Protected, encrypted with your passcode.",
         selector: "[data-guide='document-vault']",
       },
     ],
@@ -410,12 +410,13 @@ export const guides: Record<string, Guide> = {
   "/profile/documents": {
     name: "Trip documents",
     about:
-      "Bookings, tickets and confirmations, encrypted on your device and locked with a passcode.",
+      "Bookings, tickets and confirmations for your trips, shared with the people on them. Protected holds what only you should see.",
     features: [
       "Add a PDF, photo or file for a trip",
       "Fill in from this file: Béa reads the booking and fills the form (only when you tap it)",
       "Search, sort and choose which documents to show",
-      "Lock Trip documents behind Face ID, fingerprint or your passcode on this device",
+      "Keep private files in Protected, encrypted on your device with your passcode",
+      "Lock Trip documents on this phone behind Face ID, fingerprint or your passcode",
     ],
     steps: [],
   },
