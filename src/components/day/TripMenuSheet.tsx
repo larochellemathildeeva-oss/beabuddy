@@ -15,6 +15,7 @@ import {
   Pencil,
   Plane,
   Settings2,
+  Sparkles,
   Ticket,
   Users,
   Wallet,
@@ -30,7 +31,8 @@ export type TripMenuSection =
   | "cities"
   | "customize"
   | "checkup"
-  | "again";
+  | "again"
+  | "preferences";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -46,6 +48,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   customize: "Customize trip",
   checkup: "Trip Checkup",
   again: "Do it again",
+  preferences: "Just for this trip",
 };
 
 /**
@@ -73,6 +76,7 @@ export function TripMenuSheet({
   onPrint,
   onCalendar,
   checkupCount,
+  preferencesCount,
   footer,
   children,
 }: {
@@ -98,6 +102,8 @@ export function TripMenuSheet({
   onCalendar?: (() => void) | undefined;
   /** How many things Trip Checkup found, for its pill. */
   checkupCount?: number | undefined;
+  /** How many "just for this trip" preferences are set. */
+  preferencesCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
@@ -171,6 +177,14 @@ export function TripMenuSheet({
       note: "Tours, tickets and reservations",
       pill: count(bookings.activity, "booking", "bookings"),
       onClick: () => onBookings("activity"),
+    },
+    {
+      key: "preferences",
+      icon: Sparkles,
+      title: "Just for this trip",
+      note: "Late mornings, less walking…",
+      pill: preferencesCount ? `${preferencesCount} set` : "",
+      onClick: () => onSection("preferences"),
     },
     {
       key: "budget",

@@ -77,6 +77,8 @@ import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { TripCheckup } from "@/components/day/TripCheckup";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
+import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
+import { useTripPreferences } from "@/hooks/useTripPreferences";
 import { tripCheckup } from "@/lib/trip-checkup";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -775,6 +777,7 @@ export function TripDetail({
   /** Which kind the Bookings tab shows. */
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
+  const tripPrefs = useTripPreferences(trip.id);
   const others = board.present.filter((p) => p.userId !== me.id);
   const allDayGroups = groupTimelineByDay(stopItems);
   // With a city picked, the days, the map and Now all follow that city.
@@ -2230,6 +2233,7 @@ export function TripDetail({
           setOptimizePreset(null);
         }}
         optimizePreset={optimizePreset}
+        tripPreferences={tripPrefs.list}
         defaultTab={plannerTab}
         initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
@@ -2338,6 +2342,7 @@ export function TripDetail({
         }
         budgetOn={Boolean(trip.budget_enabled)}
         checkupCount={checkupCount}
+        preferencesCount={tripPrefs.list.length}
         onCalendar={() => {
           setSettingsOpen(false);
           const blob = new Blob([tripCalendar(trip, stopItems)], {
@@ -2593,6 +2598,14 @@ export function TripDetail({
               setPerspective("timeline");
               if (day) setDayChoice(day);
             }}
+          />
+        )}
+
+        {sheetSection === "preferences" && (
+          <TripPreferencesPanel
+            list={tripPrefs.list}
+            onPhone={tripPrefs.onPhone}
+            onSave={tripPrefs.save}
           />
         )}
 

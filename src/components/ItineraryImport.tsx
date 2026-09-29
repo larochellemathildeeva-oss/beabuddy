@@ -154,6 +154,7 @@ export function ItineraryImport({
   onAddDirections,
   onApplySchedule,
   optimizePreset,
+  tripPreferences = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -194,6 +195,8 @@ export function ItineraryImport({
    * goal and note, on that one day, and runs at once. `n` changes each tap.
    */
   optimizePreset?: OptimizePreset | null | undefined;
+  /** "Just for this trip", sent with every plan asked for here. */
+  tripPreferences?: string[];
 }) {
   const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
   /** The city this plan is for, by id; "" for the whole trip. */
@@ -347,6 +350,7 @@ export function ItineraryImport({
           onAddItems={onAddItems}
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
+          tripPreferences={tripPreferences}
           onApplyDates={planCity ? undefined : onApplyDates}
           onAddCities={planCity ? undefined : onAddCities}
           {...(onAddDirections ? { onAddDirections } : {})}
@@ -356,6 +360,7 @@ export function ItineraryImport({
         <OptimizePanel
           key={`preset:${optimizePreset.n}`}
           preset={optimizePreset}
+          tripPreferences={tripPreferences}
           tripCity={tripCity}
           startDate={optimizePreset.day}
           endDate={optimizePreset.day}
@@ -366,6 +371,7 @@ export function ItineraryImport({
       )}
       {tab === "optimize" && !optimizePreset && (
         <OptimizePanel
+          tripPreferences={tripPreferences}
           tripCity={tripCity}
           startDate={startDate}
           endDate={endDate}
@@ -380,6 +386,7 @@ export function ItineraryImport({
 }
 
 function ImportPanel({
+  tripPreferences = [],
   initialMode = "build",
   initialText = "",
   existingItems,
@@ -396,6 +403,8 @@ function ImportPanel({
   onAddCities,
   onAddDirections,
 }: {
+  /** "Just for this trip", sent with every plan asked for here. */
+  tripPreferences?: string[];
   /** Which job the panel opens on, chosen on the start screen. */
   initialMode?: "build" | "import";
   /** Words typed on the start screen, carried into the box. */
@@ -650,6 +659,7 @@ function ImportPanel({
           budgetLevel,
           currency,
           includeCosts,
+          tripPreferences,
         },
       });
       setDraftPlace(sentPlace);
@@ -1074,6 +1084,7 @@ function ImportPanel({
           selectedIndexes: picked,
           reason: altReason.trim(),
           mode: "alternatives",
+          tripPreferences,
         },
       });
       applyRevision(out);
@@ -1104,6 +1115,7 @@ function ImportPanel({
           selectedIndexes: [],
           reason: rebuildReason.trim(),
           mode: "rebuild",
+          tripPreferences,
         },
       });
       applyRevision(out);
@@ -1769,6 +1781,7 @@ function PlacementNote({
 
 function OptimizePanel({
   preset,
+  tripPreferences = [],
   tripCity,
   startDate,
   endDate,
@@ -1777,6 +1790,7 @@ function OptimizePanel({
   onApplySchedule,
 }: {
   preset?: OptimizePreset | undefined;
+  tripPreferences?: string[];
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
@@ -1831,6 +1845,7 @@ function OptimizePanel({
           endDate: endDate || null,
           goals,
           note: note.trim() || null,
+          tripPreferences,
           items: items.map((item) => ({
             ...item,
             detail: stripEmbeddedMapsUrl(item.detail) || null,

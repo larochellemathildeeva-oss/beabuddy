@@ -48,6 +48,8 @@ const ParseInput = z
     budgetLevel: z.enum(["value", "comfortable", "premium"]).nullable(),
     currency: z.string().max(3).nullable(),
     includeCosts: z.boolean().optional().default(false),
+    /** "Just for this trip": said once on the trip, ahead of the saved profile. */
+    tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
   })
   .refine(
     (v) =>
@@ -395,9 +397,12 @@ async function loadPlanExtra(
     route?: string | null | undefined;
     startDate: string | null;
     endDate: string | null;
+    tripPreferences?: string[] | null | undefined;
   },
   mode: "import" | "build",
 ) {
+  const { tripPreferencePrompt } = await import("@/lib/trip-preferences");
+  const forTrip = tripPreferencePrompt(data.tripPreferences);
   const [base, web] = await Promise.all([
     loadBuildExtra(context, data.tripCity, mode),
     mode === "build"
@@ -406,9 +411,10 @@ async function loadPlanExtra(
         )
       : null,
   ]);
+  const extra = forTrip ? `${base.extra}\n\n${forTrip}` : base.extra;
   return {
     ...base,
-    extra: web ? `${base.extra}\n\n${web.note}` : base.extra,
+    extra: web ? `${extra}\n\n${web.note}` : extra,
     grounding: web?.grounding ?? null,
   };
 }
@@ -511,6 +517,8 @@ const ReviseInput = z
     selectedIndexes: z.array(z.number().int().min(0).max(59)).max(40),
     reason: z.string().trim().min(3).max(800),
     mode: z.enum(["alternatives", "rebuild"]),
+    /** "Just for this trip": said once on the trip, ahead of the saved profile. */
+    tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
   })
   .refine((v) => v.mode === "rebuild" || v.selectedIndexes.length > 0, {
     message: "Tick the stops you want alternatives for.",
@@ -906,6 +914,8 @@ const OptimizeInput = z.object({
   note: z.string().max(400).nullable(),
   items: z.array(OptimizeItemIn).min(2).max(OPTIMIZE_MAX_ITEMS),
   cities: z.array(OptimizeCityIn).max(20),
+  /** "Just for this trip": said once on the trip, ahead of the saved profile. */
+  tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
 });
 
 const OptimizeItemOut = z.object({
@@ -966,6 +976,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<OptimizeItinerary> => {
     const { getTravelPreferences, preferencePrompt } =
       await import("@/lib/travel-preferences.server");
+    const { tripPreferencePrompt } = await import("@/lib/trip-preferences");
     const preferences = await getTravelPreferences(context);
     // Normalize at the server boundary — do not trust the client strip alone.
     const items = data.items.map((item) => ({
@@ -1017,6 +1028,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       ...data.goals.map((goal) => `- ${GOAL_PROMPT[goal]}`),
       data.note?.trim() ? `Traveller note: ${data.note.trim()}` : "",
       preferencePrompt(preferences),
+      tripPreferencePrompt(data.tripPreferences),
       data.cities.length
         ? `Cities on this trip, in order:\n${data.cities
             .map(

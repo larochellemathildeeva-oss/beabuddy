@@ -889,6 +889,7 @@ export type Database = {
           start_date: string | null
           status: string
           title: string
+          trip_preferences: string[]
           updated_at: string
         }
         Insert: {
@@ -907,6 +908,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           title: string
+          trip_preferences?: string[]
           updated_at?: string
         }
         Update: {
@@ -925,6 +927,7 @@ export type Database = {
           start_date?: string | null
           status?: string
           title?: string
+          trip_preferences?: string[]
           updated_at?: string
         }
         Relationships: []
