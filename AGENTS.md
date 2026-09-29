@@ -256,6 +256,17 @@ pinned against where it really is (`pins-truth.mjs`), scored the way the
 import screen saves pins. Run both after changing the import, the plain-list
 reader, the place lookup or the match scoring. In a cloud session, prefix
 `pins.mjs` with `NODE_USE_ENV_PROXY=1`.
+Fixture sets: the original, `fresh`, `more` (Béa's own prompt format),
+`world` (day trips with hotels and flights) and `edge` (vague times,
+alternatives, places passed but not visited, an overnight flight, stops
+outside the city, a 140-stop plan). `check-truth.mjs` checks the answer key
+against Wikipedia's coordinates (never against the geocoder under test);
+`pins.mjs` scores checked places at 250 m and marks the rest unverified.
+Both scripts load `spend-guard.mjs`: every Geoapify credit, LocationIQ call and
+Gemini call is counted per UTC day in a file and refused past a cap
+(`AUDIT_GEOAPIFY_CREDITS` 500, `AUDIT_LOCATIONIQ_CALLS` 1500,
+`AUDIT_GEMINI_CALLS` 100), and map answers are cached on disk. Béa's own
+Geoapify guard counts in memory, so without it each run started at 0.
 
 ## Web check before planning
 

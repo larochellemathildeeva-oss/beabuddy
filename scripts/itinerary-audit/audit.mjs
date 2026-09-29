@@ -335,7 +335,8 @@ if (rescore) {
     const fixture = FIXTURES.find((f) => f.id === r.id);
     if (!fixture || (only && !r.id.includes(only)) || !r.out) continue;
     // --replay: the model's own rows through today's clean-up, as if asked now.
-    if (flag("--replay") && r.raw) r.out = { ...r.out, items: tidyModelItems(r.raw, "import") };
+    if (flag("--replay") && r.raw)
+      r.out = { ...r.out, items: tidyModelItems(r.raw, "import", fixture.text) };
     const findings = score(fixture, r.out);
     results.push({ ...r, engine: r.engine ?? "model", findings });
     console.log(

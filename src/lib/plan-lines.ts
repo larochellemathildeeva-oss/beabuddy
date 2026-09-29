@@ -459,6 +459,13 @@ function readStop(
     return "";
   });
   text = cleanText(text.replace(/\s*(?:🎟|✅)?\s*\bbooked\b\s*$/i, ""));
+  // "Dinner at Da Nennella, or Tandem if it's full": the backup is a note,
+  // not part of the stop's name, as "(or Sorbillo …)" in brackets already is.
+  const backup = text.match(/^(.+?),\s+or\s+(\S.*)$/i);
+  if (backup) {
+    text = backup[1]!;
+    notes.push(`or ${backup[2]}`);
+  }
 
   // " — go early", " — reservation confirmed #8843": the rest is a note.
   let main = text;

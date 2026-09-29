@@ -625,7 +625,11 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
         // Beside the stop before it first: a Hiroshima day on a trip filed
         // under Osaka is found around Hiroshima Station, not across Japan.
         if (countryBox && data.inOrder && lastPin) {
-          besideParent = true;
+          // A stop whose own town was looked up and missed it is still
+          // measured from that town: "Wallace Monument" found 25 km from
+          // Stirling Castle, near Glasgow, was saved unflagged for Stirling's.
+          const ownTown = Boolean(own) && where === own && centre != null;
+          besideParent = !ownTown;
           landed = await tryIn(country, boxAround(lastPin, NEXT_KM), null);
           besideParent = false;
         }

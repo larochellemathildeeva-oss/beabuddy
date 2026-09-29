@@ -82,10 +82,8 @@ export async function installSpendGuard(root) {
     const service = serviceOf(url);
     if (!service) return original(input, init);
 
-    const method = (
-      init?.method ??
-      (typeof input === "object" && input.method) ??
-      "GET"
+    const method = String(
+      init?.method ?? (typeof input === "object" ? input.method : undefined) ?? "GET",
     ).toUpperCase();
     const cacheable = useCache && service !== "gemini" && method === "GET";
     const cacheFile = cacheable

@@ -44,6 +44,52 @@ export function normalizeClock(value: string | null | undefined): string | null 
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+const pad = (hour: number) => `${String(hour).padStart(2, "0")}:00`;
+
+/**
+ * Every clock time a pasted plan gives, as HH:MM: "09:00", "9.30", "13h30",
+ * "9am", "7 p.m.", "19h", "noon", and a bare hour after a time word or before
+ * a range ("around 11", "a las 11", "9–11am"), which counts as morning or
+ * evening. What the model may put on a stop and still be the source's.
+ */
+export function clockTimesIn(text: string): Set<string> {
+  const out = new Set<string>();
+  const written =
+    /\b\d{1,2}(?:\s*[:.h]\s*\d{2}|\s*h\b)?\s*(?:am|pm|a\.m\.|p\.m\.)?|\bnoon\b|\bmidday\b|\bmidnight\b/gi;
+  for (const m of text.matchAll(written)) {
+    const time = normalizeClock(m[0]);
+    if (time) out.add(time);
+  }
+  const bare =
+    /\b(?:at|around|about|by|until|till|from|las|à|vers|um|gegen|alle|ore)\s+(\d{1,2})\b|(?<![\d\-–/.])\b(\d{1,2})(?=\s*(?:-|–|to)\s*\d{1,2}(?:[:.h]\d{2}|\s*(?:am|pm|a\.m\.|p\.m\.)))/gi;
+  for (const m of text.matchAll(bare)) {
+    const hour = Number(m[1] ?? m[2]);
+    if (hour > 23) continue;
+    out.add(pad(hour));
+    if (hour < 12) out.add(pad(hour + 12));
+  }
+  return out;
+}
+
+/**
+ * The rows without clock times the source never gave. Told a plan says
+ * "morning" or "after lunch", a model can still answer 09:00 or 14:00, and a
+ * made-up time moves the stop and reads as fact. Only for a pasted plan: a
+ * photo or PDF has no text to check against.
+ */
+export function withoutInventedTimes<
+  T extends { time_label: string | null; end_time?: string | null | undefined },
+>(rows: readonly T[], source: string): T[] {
+  const given = clockTimesIn(source);
+  return rows.map((row) => {
+    const start = row.time_label && !given.has(row.time_label) ? null : row.time_label;
+    const end = row.end_time && !given.has(row.end_time) ? null : row.end_time;
+    return start === row.time_label && end === row.end_time
+      ? row
+      : { ...row, time_label: start, ...(row.end_time !== undefined ? { end_time: end } : {}) };
+  });
+}
+
 /** Longest stay taken from a source; anything more is a misread, not a plan. */
 const MAX_STAY_MIN = 12 * 60;
 
@@ -198,11 +244,26 @@ function isLocalCrossing<T extends FoldableRow>(rows: readonly T[], i: number): 
   return around.length > 0 && around.every((r) => townOf(r) === here);
 }
 
-/** Where a crossing written "Ferry from Tha Tien Pier to Wat Arun" goes, when that is a place to visit. */
+/** A boat ride to somewhere: "Ferry to Wat Arun", "Take the boat to Wat Arun". */
+const BOAT_TO =
+  /^(?:take\s+(?:the\s+|a\s+)?)?(?:(?:cross[- ]river|river|harbou?r)\s+)?(?:ferry|boat|water taxi|river taxi)\b.*?\bto\s+(\S.*)$/i;
+
+/**
+ * A boat ride to a sight ("Ferry to Wat Arun"), not to a town or an island
+ * whose stops follow ("Take the ferry to Miyajima", then the shrine there).
+ */
+const BOAT_SIGHT = new RegExp(
+  `${BOAT_TO.source.slice(0, -1)}(?<=\\b(?:wat|temple|shrine|museum|palace|castle|tower|fort|fortress|cathedral|church|basilica|monastery|abbey|statue|gallery|lighthouse)\\b.*)$`,
+  "i",
+);
+
+/**
+ * Where a crossing written "Ferry from Tha Tien Pier to Wat Arun" goes, or a
+ * boat ride "Ferry to Wat Arun", when that is a place to visit, not a pier.
+ */
 function crossingDestination(title: string): string | null {
-  const dest = title
-    .trim()
-    .match(LOCAL_CROSSING)?.[2]
+  const text = title.trim();
+  const dest = (text.match(LOCAL_CROSSING)?.[2] ?? text.match(BOAT_TO)?.[1])
     ?.replace(/\s+[-–—]\s+.*$/, "")
     .trim();
   return dest && !HUB.test(dest) ? dest : null;
@@ -395,7 +456,7 @@ export function foldTravelLegs<T extends FoldableRow>(rows: readonly T[]): T[] {
     // into lunch, the temple was lost from the day.
     const dest = target.after
       ? null
-      : crossing[i]
+      : crossing[i] || BOAT_SIGHT.test(row.title.trim())
         ? crossingDestination(row.title)
         : arrowDestination(row.title);
     if (

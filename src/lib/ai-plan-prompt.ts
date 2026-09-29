@@ -58,8 +58,7 @@ Rules:
 4. After the time, write the place's real, official name as it appears on a map. For meals: "Lunch at [restaurant name], [address]". In a country that writes in another script (Japan, China, Korea, Thailand, Greece, Russia, the Arab world…), add the name as written locally in brackets right after it: "Kuromon Market (黒門市場), 2-4-1 Nipponbashi".
 5. After a comma, give the real street address, starting with the number. A park, neighbourhood or other place with no street number gets no address: write just its name. Never invent an address; if you are not sure, leave it out.
 6. Flights, trains between towns and hotels get their own lines, written exactly like this:
-   "HH:MM Flight [airline and number] from [airport name] Airport to [airport name] Airport"
-   "HH:MM Arrive at [airport name] Airport"
+   "HH:MM Flight [airline and number] from [airport name] Airport to [airport name] Airport — lands HH:MM" (write "lands next day HH:MM" when it lands the day after). One line per flight: never a separate line for arriving at or landing at an airport.
    "HH:MM Train from [station name] to [station name]" (the same for a bus, coach or ferry between towns)
    "HH:MM Check in at [hotel name], [address]" — on the first day in each town.
 7. No other travel lines. Never write "Walk to…", "Take the metro to…" or "A → B" for getting around town. To say how to get somewhere, add it in brackets at the end of the next place's line: "(getting there: metro line 2, 10 min)".
