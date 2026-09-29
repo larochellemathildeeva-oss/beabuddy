@@ -12,6 +12,7 @@ import {
   Pencil,
   Plane,
   Settings2,
+  ShieldCheck,
   Ticket,
   Users,
   Wallet,
@@ -19,7 +20,7 @@ import {
 } from "@/components/icons";
 
 export type TripMenuSection =
-  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize";
+  "invite" | "budget" | "edit" | "offline" | "packing" | "cities" | "customize" | "checkup";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -33,6 +34,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   packing: "Packing",
   cities: "Destinations",
   customize: "Customize trip",
+  checkup: "Trip checkup",
 };
 
 /**
@@ -57,6 +59,7 @@ export function TripMenuSheet({
   citiesCount,
   offlineNote,
   budgetOn,
+  checkupNote,
   onPrint,
   footer,
   children,
@@ -77,6 +80,8 @@ export function TripMenuSheet({
   /** "Saved 2 days ago", or empty. */
   offlineNote: string;
   budgetOn: boolean;
+  /** "3 to check" or "All clear"; the card is hidden when empty (nothing planned). */
+  checkupNote: string;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
@@ -178,6 +183,18 @@ export function TripMenuSheet({
     },
   ];
   const tools = [
+    ...(checkupNote
+      ? [
+          {
+            key: "checkup",
+            icon: ShieldCheck,
+            title: "Trip checkup",
+            note: "Clashes, tight gaps, missing bookings",
+            pill: checkupNote,
+            onClick: () => onSection("checkup"),
+          },
+        ]
+      : []),
     {
       key: "offline",
       icon: MapIcon,
