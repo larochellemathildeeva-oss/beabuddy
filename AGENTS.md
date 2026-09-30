@@ -11,10 +11,13 @@ npm run typecheck   # tsc --noEmit — vite does not typecheck, so run this
 npm test            # node --test over src/lib/*.test.ts (needs Node >= 22.6)
 npm run lint        # eslint; the tree carries pre-existing prettier drift
 npm run build       # must exit 0 before anything is pushed
+npm run db:check:ci           # migration rules, offline (RLS, grants, no anon)
+npm run check:public-secrets  # after build: no server secret in .output/public
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and build on every
-push to `main` and every pull request. Do not push work that has not passed it
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, test, the migration
+rules, build and the public-bundle secret scan on every push to `main` and
+every pull request. Do not push work that has not passed it
 locally first.
 
 ## App version (Canner)
@@ -73,8 +76,10 @@ order:
 
 1. `GEOAPIFY_API_KEY` set: **Geoapify** — geocoding, autocomplete, reverse,
    walking/driving routes, "coffee near me" category searches (its Places API,
-   ahead of the public Overpass servers) and the map tiles served through
-   `/api/tile`, five requests a second. Its terms allow storing
+   ahead of the public Overpass servers) and, when OpenFreeMap does not
+   answer, the day map's vector tiles, five requests a second. Never the image
+   tiles of `/api/tile`: that endpoint is public, so it asks LocationIQ or
+   OpenStreetMap only, and `tileSourceUrl` takes no Geoapify key. Its terms allow storing
    results, which is what saved pins are. It answers in its own shapes;
    `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
    callers read every answer through `readGeoJson`.
@@ -139,9 +144,9 @@ The count is kept in the server's memory, so a restart starts it again at 0.
 Map proxy requests have their own guardrails before that shared allowance: successful image
 tiles, vector tiles and glyphs stay in a 24-hour in-process LRU (2,000 entries / 64 MB), and a
 cache miss that reaches anything except OpenFreeMap is limited to 600 upstream fetches per client
-per 10 minutes. Tiles and glyphs may use at most 600 Geoapify credits per UTC day; after that
-raster tiles fall back to LocationIQ/OpenStreetMap and vector tiles/glyphs stop at OpenFreeMap,
-leaving the rest of the app-wide allowance for place search and directions.
+per 10 minutes. Image tiles never reach Geoapify. Vector tiles and glyphs may use at most 600
+Geoapify credits per UTC day; after that they stop at OpenFreeMap, leaving the rest of the
+app-wide allowance for place search and directions.
 
 **The day map and its offline copy.** The day map (`DayMap.tsx`) draws
 OpenMapTiles vector tiles in Béa's journal palette (`journal-style.ts`),
@@ -271,8 +276,11 @@ because `*.functions.ts` ships to the client bundle. Never prefix them
 the browser:
 
 ```
-npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY|OVERTURE_API_KEY|PEXELS_API_KEY" .output/public/   # must print nothing
+npm run build && npm run check:public-secrets   # CI runs it too
 ```
+
+A new server-only key goes into `SERVER_SECRET_NAMES` in
+`scripts/check-public-secrets.mjs`.
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and
@@ -372,6 +380,31 @@ e-ticket numbers stay) dropped, and its date used to pick the trip
 (`tripForDate`) and stop (`stopForRead`) only when the choice is clear. It
 fills the form, marks each field "from file" until it is edited, and saves
 nothing. Other file types (.pkpass, .eml, .docx) do not offer it.
+
+## Protected passcodes
+
+Protected is encrypted in the browser with a key from the traveller's
+passcode (PBKDF2 then AES-GCM, `vaultCrypto.ts`). Anyone with a copy of
+`vault_settings` can try passcodes offline against its verifier, so the
+passcode is the weak part, not the cipher. A new passcode must be a PIN of at
+least 6 digits or a passphrase of at least 10 characters
+(`validateVaultPasscode` in `vault-passcode.ts`, pure and tested), enforced
+in `useVault`'s `createVault` as well as the form. Older vaults with a shorter
+passcode still unlock; on unlock they are asked to choose a stronger one
+(`changePasscode`): every document is re-encrypted in the browser and written
+with the new salt and verifier in one transaction by `rotate_vault_passcode`
+(security invoker, under the tables' own row level security), which refuses
+if the verifier this device unlocked with is no longer current (a change on
+another device) or a document is missing. Documents are read a page at a
+time, and a change larger than 20 MB is refused up front. An insert into
+`vault_documents` waits for a running change (a share lock on the
+traveller's `vault_settings` row, by trigger), and `addDoc` re-reads the
+verifier afterwards, deleting its row and asking to unlock again if the
+passcode changed meanwhile. Face ID / fingerprint on that device is
+forgotten, since it held the old key; a Face ID unlock never sees the
+passcode, so the short-passcode prompt also appears when Face ID is set up. The
+migration is applied by hand; until it is, the change fails with nothing
+written and the old passcode keeps working.
 
 ## World globe data
 

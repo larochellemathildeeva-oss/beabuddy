@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Fingerprint, Lock, LockOpen, ShieldCheck } from "@/components/icons";
 import { useVault, type DocSecret, type VaultDocRow } from "@/hooks/useVault";
 import { passkeysPossible } from "@/lib/vault-passkey";
+import { VAULT_PASSCODE_HINT, validateVaultPasscode } from "@/lib/vault-passcode";
 
 /**
  * Protected: the encrypted part of Trip documents (it was "the vault").
@@ -17,6 +18,21 @@ import { passkeysPossible } from "@/lib/vault-passkey";
 const kinds = ["Passport", "ID card", "Visa", "Insurance", "Payment card", "Other"];
 
 type Vault = ReturnType<typeof useVault>;
+
+type Keyboard = "numeric" | "text";
+
+/** A PIN keyboard by default; a passphrase needs letters. */
+function KeyboardToggle({ keyboard, set }: { keyboard: Keyboard; set: (k: Keyboard) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => set(keyboard === "numeric" ? "text" : "numeric")}
+      className="mt-1.5 text-[12.5px] text-muted-foreground underline"
+    >
+      {keyboard === "numeric" ? "Use letters too" : "Use the number pad"}
+    </button>
+  );
+}
 
 async function attempt(
   setError: (s: string) => void,
@@ -56,6 +72,11 @@ export function VaultUnlock({
   const [confirmCode, setConfirmCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [keyboard, setKeyboard] = useState<Keyboard>("numeric");
+  // Unlocking takes any passcode a vault was made with; a new one must pass
+  // today's rule (vault-passcode.ts).
+  const check = validateVaultPasscode(passcode);
+  const ready = v.hasVault ? passcode.length > 0 : check.valid && confirmCode.length > 0;
 
   return (
     <div className="plain-card p-4">
@@ -88,23 +109,27 @@ export function VaultUnlock({
         value={passcode}
         onChange={(e) => setPasscode(e.target.value)}
         type="password"
-        inputMode="numeric"
+        inputMode={keyboard}
         autoComplete={v.hasVault ? "current-password" : "new-password"}
         placeholder="Passcode"
         aria-label="Passcode"
         className="mt-4 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
       />
+      <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
       {!v.hasVault && (
         <input
           value={confirmCode}
           onChange={(e) => setConfirmCode(e.target.value)}
           type="password"
-          inputMode="numeric"
+          inputMode={keyboard}
           autoComplete="new-password"
           placeholder="Repeat passcode"
           aria-label="Repeat passcode"
           className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
         />
+      )}
+      {!v.hasVault && passcode.length > 0 && !check.valid && !error && (
+        <p className="mt-2 text-[13px] text-muted-foreground">{check.message}</p>
       )}
       {error && (
         <p role="alert" className="mt-2 text-[13px] text-destructive">
@@ -113,7 +138,7 @@ export function VaultUnlock({
       )}
       <button
         type="button"
-        disabled={busy || passcode.length < 4}
+        disabled={busy || !ready}
         onClick={() =>
           void attempt(setError, setBusy, async () => {
             if (v.hasVault) await v.unlock(passcode);
@@ -135,7 +160,7 @@ export function VaultUnlock({
       </button>
       {!v.hasVault && (
         <p className="mt-2 text-[12px] text-muted-foreground">
-          At least 4 characters. Béa cannot recover a forgotten passcode: what is in Protected is
+          {VAULT_PASSCODE_HINT} Béa cannot recover a forgotten passcode: what is in Protected is
           encrypted with it.
         </p>
       )}
@@ -227,6 +252,122 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
   );
 }
 
+/**
+ * A vault made before today's passcode rule, unlocked with its short
+ * passcode: ask for a stronger one. Changing it re-encrypts everything in
+ * Protected on this device and writes it in one go (useVault's
+ * `changePasscode`); until then the old passcode keeps working.
+ */
+function StrongerPasscode({ v }: { v: Vault }) {
+  const [asking, setAsking] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [passcode, setPasscode] = useState("");
+  const [confirmCode, setConfirmCode] = useState("");
+  const [keyboard, setKeyboard] = useState<Keyboard>("numeric");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (!v.weakPasscode || dismissed) return null;
+  const check = validateVaultPasscode(passcode);
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-border bg-elevated p-3">
+      <p className="flex items-start gap-1.5 text-[13px]">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+        <span>
+          Your passcode is shorter than Béa now asks for. A longer one is much harder to guess.{" "}
+          {VAULT_PASSCODE_HINT}
+        </span>
+      </p>
+      {!asking ? (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setAsking(true)}
+            className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground"
+          >
+            Choose a stronger passcode
+          </button>
+          <button
+            type="button"
+            onClick={() => setDismissed(true)}
+            className="rounded-xl border border-border px-4 py-2 text-[14px]"
+          >
+            Not now
+          </button>
+        </div>
+      ) : (
+        <>
+          <input
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+            type="password"
+            inputMode={keyboard}
+            autoComplete="new-password"
+            placeholder="New passcode"
+            aria-label="New passcode"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          />
+          <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
+          <input
+            value={confirmCode}
+            onChange={(e) => setConfirmCode(e.target.value)}
+            type="password"
+            inputMode={keyboard}
+            autoComplete="new-password"
+            placeholder="Repeat new passcode"
+            aria-label="Repeat new passcode"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          />
+          {passcode.length > 0 && !check.valid && !error && (
+            <p className="text-[13px] text-muted-foreground">{check.message}</p>
+          )}
+          {error && (
+            <p role="alert" className="text-[13px] text-destructive">
+              {error}
+            </p>
+          )}
+          <p className="text-[12px] text-muted-foreground">
+            Everything in Protected is re-encrypted on this device with the new passcode.
+            {v.hasPasskey && " Face ID or fingerprint will need setting up again here."}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy || !check.valid || confirmCode.length === 0}
+              onClick={() =>
+                void attempt(setError, setBusy, async () => {
+                  if (passcode !== confirmCode) throw new Error("Those passcodes don't match");
+                  await v.changePasscode(passcode);
+                  setPasscode("");
+                  setConfirmCode("");
+                  setAsking(false);
+                })
+              }
+              className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {busy ? "Changing…" : "Change passcode"}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setAsking(false);
+                setPasscode("");
+                setConfirmCode("");
+                setError("");
+              }}
+              className="rounded-xl border border-border px-4 py-2 text-[14px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Protected, given the vault — so a page can share one unlock between parts. */
 export function ProtectedPanel({ v }: { v: Vault }) {
   const [error, setError] = useState("");
@@ -279,6 +420,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
             Lock now
           </button>
         </div>
+        <StrongerPasscode v={v} />
 
         <div className="mt-2 divide-y divide-border">
           {v.rows.map((row: VaultDocRow) => (

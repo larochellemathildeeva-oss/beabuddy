@@ -11,6 +11,7 @@
  *
  *   npm run db:check              prints the query
  *   npm run db:check -- --list    what each file is checked by, no SQL
+ *   npm run db:check -- --ci      the repo's rules, offline; exits 1 on a break
  *
  * Checked: tables, columns, functions, triggers, policies, indexes, named
  * constraints (and a foreign key's ON DELETE rule), table privileges and
@@ -249,6 +250,81 @@ export function endState(files) {
   );
 }
 
+/**
+ * The rules AGENTS.md sets for every table in `public`, checked on the end
+ * state of the folder with no database: row level security on, granted to
+ * service_role explicitly (Supabase stops granting new tables to the API
+ * roles on its own), and nothing granted to anon. One line per break.
+ */
+export function ruleProblems(files) {
+  const state = endState(files);
+  const problems = [];
+  // Row level security as the folder leaves it: enables and disables in
+  // order, and a dropped table loses it. (CREATE TABLE IF NOT EXISTS on a
+  // table that already exists changes nothing, so a create does not reset.)
+  const rls = new Set();
+  // Schema-wide grants to anon, which readMigration's per-table reader
+  // cannot see: ON ALL TABLES IN SCHEMA, and ALTER DEFAULT PRIVILEGES.
+  const broad = [];
+  const rlsRe = new RegExp(
+    `alter\\s+table\\s+(?:if\\s+exists\\s+)?(?:only\\s+)?(${ID})\\s+(enable|disable)\\s+row\\s+level\\s+security`,
+    "gi",
+  );
+  const dropRe = new RegExp(`drop\\s+table\\s+(?:if\\s+exists\\s+)?(${ID})`, "gi");
+  const schemaGrantRe =
+    /(grant|revoke)\s+[\w,\s]+?\s+on\s+all\s+(?:tables|sequences|functions|routines)\s+in\s+schema\s+("?public"?)\s+(?:to|from)\s+([\w,\s]+?)\s*;/gi;
+  const defaultGrantRe =
+    /alter\s+default\s+privileges\b[^;]*?\bgrant\b[^;]*?\bto\s+([\w,\s]+?)\s*;/gi;
+  for (const f of files) {
+    const text = stripped(f.sql);
+    const events = [];
+    for (const m of text.matchAll(dropRe)) {
+      const t = qualified(m[1]);
+      events.push({ at: m.index, key: `${t.schema}.${t.name}`, on: false });
+    }
+    for (const m of text.matchAll(rlsRe)) {
+      const t = qualified(m[1]);
+      events.push({
+        at: m.index,
+        key: `${t.schema}.${t.name}`,
+        on: m[2].toLowerCase() === "enable",
+      });
+    }
+    for (const e of events.sort((a, b) => a.at - b.at)) {
+      if (e.on) rls.add(e.key);
+      else rls.delete(e.key);
+    }
+    for (const m of text.matchAll(schemaGrantRe)) {
+      if (m[1].toLowerCase() === "grant" && roles(m[3]).includes("anon"))
+        broad.push(`${f.name}: grants on every table in schema public to anon`);
+    }
+    for (const m of text.matchAll(defaultGrantRe)) {
+      if (roles(m[1]).includes("anon"))
+        broad.push(
+          `${f.name}: default privileges grant to anon (Béa has no signed-out data access)`,
+        );
+    }
+  }
+  problems.push(...broad);
+  const tables = state.filter(
+    (o) => o.kind === "table" && o.op === "make" && o.schema === "public",
+  );
+  for (const t of tables) {
+    const grants = state.filter(
+      (o) => o.kind === "grant" && o.op === "make" && o.schema === "public" && o.table === t.name,
+    );
+    if (!rls.has(`public.${t.name}`))
+      problems.push(`${t.file}: public.${t.name} has no ENABLE ROW LEVEL SECURITY`);
+    if (!grants.some((g) => g.role === "service_role"))
+      problems.push(`${t.file}: public.${t.name} is not granted to service_role`);
+    for (const g of grants.filter((g) => g.role === "anon"))
+      problems.push(
+        `${g.file}: public.${t.name} grants ${g.priv} to anon (Béa has no signed-out data access)`,
+      );
+  }
+  return problems;
+}
+
 const lit = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 /** SQL that is true when the database matches this end state. */
@@ -325,7 +401,20 @@ if (isMain) {
     .sort()
     .map((name) => ({ name, sql: readFileSync(join(dir, name), "utf8") }));
   const state = endState(files);
-  if (process.argv.includes("--list")) {
+  if (process.argv.includes("--ci")) {
+    const problems = ruleProblems(files);
+    if (problems.length) {
+      console.error(
+        `Migrations break the rules in AGENTS.md:\n${problems.map((p) => `  - ${p}`).join("\n")}`,
+      );
+      process.exit(1);
+    }
+    // Building the query is the other half: a file the reader chokes on fails here.
+    checkQuery(state);
+    console.log(
+      `${files.length} migrations, ${state.length} checks: every public table has RLS, a service_role grant and nothing for anon.`,
+    );
+  } else if (process.argv.includes("--list")) {
     for (const f of files) {
       const mine = state.filter((o) => o.file === f.name);
       console.log(

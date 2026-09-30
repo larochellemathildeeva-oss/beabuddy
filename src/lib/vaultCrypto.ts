@@ -57,6 +57,29 @@ export async function decryptJson<T>(key: CryptoKey, ciphertext: string, iv: str
   return JSON.parse(dec.decode(buf)) as T;
 }
 
+/**
+ * The same rows sealed under another key, for a passcode change.
+ *
+ * Every row is opened with the old key before anything is sealed with the
+ * new one, so a row that cannot be read stops the change with nothing
+ * written. Each gets a fresh IV.
+ */
+export async function reencryptRows<Row extends { id: string; ciphertext: string; iv: string }>(
+  oldKey: CryptoKey,
+  newKey: CryptoKey,
+  rows: Row[],
+): Promise<{ id: string; ciphertext: string; iv: string }[]> {
+  const opened = await Promise.all(
+    rows.map(async (row) => ({
+      id: row.id,
+      value: await decryptJson<unknown>(oldKey, row.ciphertext, row.iv),
+    })),
+  );
+  return Promise.all(
+    opened.map(async ({ id, value }) => ({ id, ...(await encryptJson(newKey, value)) })),
+  );
+}
+
 /** Drop leftover Face ID convenience keys from older app versions. */
 export function clearStoredVaultKeys(uid: string) {
   if (typeof window === "undefined") return;

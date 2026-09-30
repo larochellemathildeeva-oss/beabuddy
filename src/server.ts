@@ -105,7 +105,7 @@ function announceTileShareIfSpent(now: number): void {
   const share = tileShare();
   if (!share.takeExhaustedNotice(now)) return;
   console.warn(
-    `[geo] map tiles and glyphs used their ${TILE_DAILY_CREDITS} Geoapify credits today; map fallbacks skip Geoapify until midnight UTC`,
+    `[geo] vector tiles and glyphs used their ${TILE_DAILY_CREDITS} Geoapify credits today; they stop at OpenFreeMap until midnight UTC`,
   );
 }
 
@@ -137,22 +137,11 @@ async function serveTile(request: Request): Promise<Response | null> {
     return new Response(null, { status: 204 });
   }
 
+  // LocationIQ or OpenStreetMap only: never Geoapify (see tileSourceUrl).
   const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
-  let key = geoapifyKey();
-  if (key) {
-    const share = tileShare();
-    if (share.canSpend(GEOAPIFY_TILE_CREDITS, now)) {
-      share.trySpend(GEOAPIFY_TILE_CREDITS, now);
-      announceTileShareIfSpent(now);
-    } else {
-      announceTileShareIfSpent(now);
-      key = "";
-    }
-  }
 
   try {
-    // Geoapify's key only while both the app-wide and map-only credit guards allow it.
-    const upstream = await geoFetch(tileSourceUrl(coords, token, key), {
+    const upstream = await fetch(tileSourceUrl(coords, token), {
       headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "image/png,image/*" },
       signal: AbortSignal.timeout(8_000),
     });

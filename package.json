@@ -17,9 +17,11 @@
     "preview:check": "node scripts/preview/check.mjs",
     "format": "prettier --write .",
     "db:check": "node scripts/migration-check.mjs",
+    "db:check:ci": "node scripts/migration-check.mjs --ci",
+    "check:public-secrets": "node scripts/check-public-secrets.mjs",
     "audit:ci": "node scripts/itinerary-audit/ci.mjs && node scripts/itinerary-audit/pins-japan.mjs",
     "map:check": "node --experimental-strip-types scripts/check-vector-map.ts",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts scripts/*.test.mjs",
     "version:fix": "npm version patch --no-git-tag-version",
     "version:enhance": "npm version minor --no-git-tag-version",
     "version:feature": "npm version major --no-git-tag-version"

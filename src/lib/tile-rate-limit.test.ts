@@ -53,7 +53,7 @@ test("tracked-key cap evicts the oldest key", () => {
   assert.equal(limit.has("c"), true);
 });
 
-test("anonymous tile traffic cannot spend more than the tile share of Geoapify credits", () => {
+test("anonymous vector-tile traffic cannot spend more than the map share of Geoapify credits", () => {
   const share = new TileDailyCreditShare();
   for (let spent = 0; spent < TILE_DAILY_CREDITS; spent += 0.25) {
     assert.equal(share.trySpend(0.25, noon), true);
