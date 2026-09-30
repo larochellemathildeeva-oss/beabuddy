@@ -214,9 +214,7 @@ function RecentTrip({
         <TripPicture trip={trip} photos={photos} cities={[]} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-2 block font-display text-[22px] leading-tight">
-          {trip.title}
-        </span>
+        <span className="line-clamp-2 font-display text-[22px] leading-tight">{trip.title}</span>
         {dates ? (
           <span className="mt-1 flex items-center gap-1.5 text-[13.5px] text-muted-foreground">
             <CalendarDays className="size-4 shrink-0" aria-hidden />

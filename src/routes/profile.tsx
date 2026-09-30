@@ -755,7 +755,7 @@ function Tile({
           <span className="font-display text-[16.5px] leading-tight">{title}</span>
           <ChevronRight className="mt-1 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </span>
-        <span className="mt-0.5 line-clamp-2 block text-[12px] leading-snug text-muted-foreground">
+        <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-muted-foreground">
           {hint}
         </span>
       </span>

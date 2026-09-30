@@ -369,7 +369,7 @@ export function TimelineEntry({
             }
           />
           {detail ? (
-            <span className="mt-1.5 line-clamp-2 block break-words text-[13.5px] leading-snug text-muted-foreground">
+            <span className="mt-1.5 line-clamp-2 break-words text-[13.5px] leading-snug text-muted-foreground">
               {detail}
             </span>
           ) : null}
@@ -380,7 +380,7 @@ export function TimelineEntry({
             </span>
           ) : null}
           {flat && inside.length > 0 ? (
-            <span className="mt-0.5 line-clamp-2 block break-words text-[12px] leading-snug text-muted-foreground">
+            <span className="mt-0.5 line-clamp-2 break-words text-[12px] leading-snug text-muted-foreground">
               Inside: {inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
             </span>
           ) : null}
