@@ -163,6 +163,21 @@ Latin, then the local name (`labelName`). Arabic and Hebrew are shaped by
 fetched only when such a label is drawn. A saved map keeps the fonts for the
 traveller's own script as well (`LANGUAGE_GLYPH_STARTS`).
 
+**Kept directions in the account.** "Keep offline" also writes the trip's
+directions to `trip_directions` (one row per traveller and trip, readable
+only by them while on the trip; `directions-account.ts`), and deleting them
+deletes both copies. After sign-in, `restoreKeptOffline` (from `AppShell`,
+once per page load) writes back every copy the phone is missing, with the
+trip's plan (`keepTripPlanOffline` in `useTrips.ts`), its map and its day
+pictures, so the trip opens offline without being opened first. Signing out
+from the profile runs `clearKeptOfflineOnSignOut`: it first sends the
+account any copy it lacks, then removes from the phone only the trips the
+account holds (`signOutClears` in `directions-backup.ts`, pure and tested);
+with no signal nothing is removed. The idle and Documents-lock sign-outs
+clear nothing. Erase deletes the rows, and leaving a trip deletes that
+traveller's row (a trigger on `trip_members`). The migration is applied by hand;
+until it is, directions stay on the phone only, with one warning.
+
 **Stops the map misses.** With `OPEN_PLACES_API_KEY` set (the Open Places API's own key; an
 Overture Maps API `ovt_…` key is for another service and does not work), a stop the
 geocoder cannot find in its town — or finds only as a namesake out of town, or

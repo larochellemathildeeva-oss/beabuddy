@@ -152,6 +152,13 @@ function PrivacyPage() {
             Béa&apos;s server from our map provider, which sees the area, not who asked. Deleting
             the saved directions, or erasing your account, removes it.
           </p>
+          <p>
+            A copy of those directions is also kept in your account, visible only to you, so they
+            come back after you sign in on another phone or this one&apos;s storage is cleared.
+            Signing out from You removes the trips kept offline from this phone once your account
+            holds them; signing in brings them back. Deleting the saved directions removes both
+            copies.
+          </p>
         </Section>
 
         <Section title="Trips and collaboration">

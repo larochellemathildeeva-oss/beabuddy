@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import {
   BookOpen,
   Briefcase,
@@ -54,6 +54,7 @@ import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { modeName } from "@/lib/bea-personality";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
 import { clearLocalUserData } from "@/lib/clear-local-user-data";
+import { clearKeptOfflineOnSignOut } from "@/lib/directions-account";
 import { safeStorage } from "@/lib/tour-state";
 import { clearStoredVaultKeys } from "@/lib/vaultCrypto";
 
@@ -183,8 +184,29 @@ function ProfilePage() {
   const photo = avatarUrl || (typeof metaAvatar === "string" ? metaAvatar : null);
   const tripCount = t.trips.length;
 
+  const signingOut = useRef(false);
   const signOut = async () => {
+    if (signingOut.current) return;
+    signingOut.current = true;
+    // Trips kept offline leave this phone with the traveller, but only those
+    // the account holds a copy of, so signing in brings them back. With no
+    // signal, or after a few seconds, everything stays on the phone.
+    const left = user
+      ? await Promise.race([
+          clearKeptOfflineOnSignOut(user.id),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 8_000)),
+        ]).catch(() => null)
+      : null;
     await supabase.auth.signOut();
+    if (left?.kept) {
+      toast(
+        left.kept === 1
+          ? "One trip kept offline stays on this phone: it couldn't be copied to your account just now."
+          : `${left.kept} trips kept offline stay on this phone: they couldn't be copied to your account just now.`,
+      );
+    } else if (left?.cleared) {
+      toast("Trips kept offline were removed from this phone. They come back when you sign in.");
+    }
     navigate({ to: "/auth" });
   };
 

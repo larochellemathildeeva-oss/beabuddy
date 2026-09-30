@@ -5,12 +5,13 @@ import { gunzipSync } from "node:zlib";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { geoFetch, geoapifyKey } from "./lib/geo-provider.server";
-import { openFreeMapAsset, openFreeMapOn } from "./lib/open-free-map.server";
+import { openFreeMapAsset, openFreeMapOn, openFreeMapUnreadable } from "./lib/open-free-map.server";
 import { TILE_CACHE_CONTROL, parseTilePath, tileSourceUrl } from "./lib/tile-proxy";
 import {
   glyphSourceUrl,
   parseGlyphPath,
   parseVectorTilePath,
+  VECTOR_CACHE_CONTROL,
   vectorTileSourceUrl,
 } from "./lib/vector-tiles";
 
@@ -117,7 +118,9 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
     return new Response("Method not allowed", { status: 405 });
   }
   const free = await openFreeMapAsset(tile ? { tile } : { glyph: glyph! });
-  if (free) return vectorResponse(free);
+  const fromFree = free && vectorResponse(free);
+  if (fromFree) return fromFree;
+  if (free) openFreeMapUnreadable();
   // Empty while Geoapify rests for the day (geo-credits.ts).
   const key = geoapifyKey();
   if (!key) return new Response(null, { status: openFreeMapOn() ? 502 : 404 });
@@ -132,22 +135,30 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
     if (!upstream.ok) return new Response(null, { status: 502 });
     const body = new Uint8Array(await upstream.arrayBuffer());
     if (body.byteLength === 0 && !tile) return new Response(null, { status: 502 });
-    return vectorResponse(body);
+    return vectorResponse(body) ?? new Response(null, { status: 502 });
   } catch {
     return new Response(null, { status: 502 });
   }
 }
 
-function vectorResponse(bytes: Uint8Array<ArrayBuffer>): Response {
+/** The asset as the map reads it, or null when it cannot be read. */
+function vectorResponse(bytes: Uint8Array<ArrayBuffer>): Response | null {
   let body = bytes;
   // Vector tiles are often stored gzipped and sometimes sent that way with
-  // no Content-Encoding, which neither fetch nor MapLibre would undo.
-  if (body[0] === 0x1f && body[1] === 0x8b) body = new Uint8Array(gunzipSync(body));
+  // no Content-Encoding, which neither fetch nor MapLibre would undo. A
+  // broken one is a failed answer, for the next provider to try.
+  if (body[0] === 0x1f && body[1] === 0x8b) {
+    try {
+      body = new Uint8Array(gunzipSync(body));
+    } catch {
+      return null;
+    }
+  }
   return new Response(body, {
     status: 200,
     headers: {
       "content-type": "application/x-protobuf",
-      "cache-control": TILE_CACHE_CONTROL,
+      "cache-control": VECTOR_CACHE_CONTROL,
     },
   });
 }

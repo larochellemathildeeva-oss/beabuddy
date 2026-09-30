@@ -15,6 +15,7 @@ const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0
 import { PageGuide } from "./PageGuide";
 import { useStopPictures } from "../hooks/useStopPictures";
 import { useIdleLogout } from "../hooks/useIdleLogout";
+import { useRestoreKeptOffline } from "../hooks/useRestoreKeptOffline";
 // Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
 
 // Five, not six: Near folded into Recs as a filter, because it was never a
@@ -91,6 +92,7 @@ export function AppShell({
   useStopPictures();
   useLegalConsent();
   useIdleLogout(!!user);
+  useRestoreKeptOffline(user?.id);
   const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
 
   // The shell owns the only scroll container in the app, so header compression

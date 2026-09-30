@@ -38,6 +38,15 @@ function rest(): void {
   restUntil = Date.now() + REST_MS;
 }
 
+/**
+ * An answer that came back but could not be read (broken gzip): counted as a
+ * failure, so the next few minutes go straight to Geoapify rather than fetch
+ * the same bad bytes first each time.
+ */
+export function openFreeMapUnreadable(): void {
+  rest();
+}
+
 /** The week's tile URL template, re-read twice a day; last known one if the read fails. */
 function tileTemplate(): Promise<string | null> {
   if (Date.now() < templateCheckAt) return Promise.resolve(template);

@@ -257,7 +257,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Does Béa work without a connection?",
-        a: "Partly. Installed on your home screen, Béa is designed to open without signal, and a trip you keep offline comes with it: in the trip menu (•••) → Offline maps, download its directions and Béa keeps its plan, the saved directions (walk or drive steps) and, where this phone can draw it, the map around each day's stops.\n\nEverything else — recommendations, photos, new searches and the vault — needs a connection. You → Data & imports lists the trips kept on this phone. Keep a screenshot or your maps app too, in case.",
+        a: "Partly. Installed on your home screen, Béa is designed to open without signal, and a trip you keep offline comes with it: in the trip menu (•••) → Offline maps, download its directions and Béa keeps its plan, the saved directions (walk or drive steps) and, where this phone can draw it, the map around each day's stops.\n\nEverything else — recommendations, photos, new searches and the vault — needs a connection. You → Data & imports lists the trips kept on this phone. The directions are also kept in your account, so signing out (which clears them from this phone) or a new phone never loses them: sign in with a signal and they come back. Keep a screenshot or your maps app too, in case.",
       },
     ],
   },

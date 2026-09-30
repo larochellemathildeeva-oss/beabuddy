@@ -3,6 +3,12 @@ import { useServerFn } from "@tanstack/react-start";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import type { TravelChoice } from "@/lib/travel-mode";
 import {
+  accountCopyOf,
+  backupDirections,
+  forgetDirectionsBackup,
+  signedInUid,
+} from "@/lib/directions-account";
+import {
   directionsSignature,
   storageFailureMessage,
   type SignatureStop,
@@ -45,12 +51,32 @@ export function useOfflineDirections(tripId: string | null) {
       setSaved(null);
       return;
     }
+    let phone: SavedDirections | null = null;
     try {
       const raw = localStorage.getItem(directionsStorageKey(tripId));
-      setSaved(raw ? (JSON.parse(raw) as SavedDirections) : null);
+      phone = raw ? (JSON.parse(raw) as SavedDirections) : null;
     } catch {
-      setSaved(null);
+      phone = null;
     }
+    setSaved(phone);
+    if (phone) return;
+    // None on this phone: the account's copy, if the traveller kept one
+    // (signed out, a new phone, or storage the browser cleared).
+    let active = true;
+    void (async () => {
+      const uid = await signedInUid();
+      const copy = uid ? await accountCopyOf(uid, tripId) : null;
+      if (!active || !copy) return;
+      try {
+        localStorage.setItem(directionsStorageKey(tripId), JSON.stringify(copy));
+      } catch {
+        // Full: shown for now, kept in the account.
+      }
+      setSaved(copy as SavedDirections);
+    })();
+    return () => {
+      active = false;
+    };
   }, [tripId]);
 
   /**
@@ -78,6 +104,10 @@ export function useOfflineDirections(tripId: string | null) {
       }
       setSaved(record);
       setError("");
+      // And in the account, so losing the phone's storage never loses them.
+      void signedInUid().then((uid) => {
+        if (uid) void backupDirections(uid, tripId, record);
+      });
       return true;
     },
     [tripId],
@@ -115,6 +145,10 @@ export function useOfflineDirections(tripId: string | null) {
     if (!tripId) return;
     localStorage.removeItem(directionsStorageKey(tripId));
     setSaved(null);
+    // Deleted on purpose: the account's copy goes too, or sign-in would bring it back.
+    void signedInUid().then((uid) => {
+      if (uid) void forgetDirectionsBackup(uid, tripId);
+    });
   }, [tripId]);
 
   return { saved, busy, error, download, keep, clear };
