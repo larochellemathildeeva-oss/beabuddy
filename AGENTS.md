@@ -136,6 +136,13 @@ maps) are skipped, and the day map's vector tiles come from OpenFreeMap alone
 (below).
 The count is kept in the server's memory, so a restart starts it again at 0.
 
+Map proxy requests have their own guardrails before that shared allowance: successful image
+tiles, vector tiles and glyphs stay in a 24-hour in-process LRU (2,000 entries / 64 MB), and a
+cache miss that reaches anything except OpenFreeMap is limited to 600 upstream fetches per client
+per 10 minutes. Tiles and glyphs may use at most 600 Geoapify credits per UTC day; after that
+raster tiles fall back to LocationIQ/OpenStreetMap and vector tiles/glyphs stop at OpenFreeMap,
+leaving the rest of the app-wide allowance for place search and directions.
+
 **The day map and its offline copy.** The day map (`DayMap.tsx`) draws
 OpenMapTiles vector tiles in Béa's journal palette (`journal-style.ts`),
 through `/api/vtile` and `/api/glyphs` in `server.ts`, using MapLibre inside
