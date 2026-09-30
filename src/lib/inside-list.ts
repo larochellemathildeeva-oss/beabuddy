@@ -61,6 +61,59 @@ export function readInside(value: unknown): InsideEntry[] {
   return out;
 }
 
+/** Marks around an entry's note and address in the note form: never typed by hand. */
+const OPEN = "‹";
+const CLOSE = "›";
+
+/** A piece of text safe inside the note form: none of its separators or marks. */
+function forNote(text: string): string {
+  return text
+    .replace(/[‹›]/g, "")
+    .replace(/\s+·\s+/g, ", ")
+    .replace(/;/g, ",")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** One entry as the note form writes it: "Miki Keiran ‹dashimaki› ‹@ 182 Higashiuoyacho›". */
+function entryText(entry: InsideEntry): string {
+  const parts = [forNote(entry.title)];
+  if (entry.note) parts.push(`${OPEN}${forNote(entry.note)}${CLOSE}`);
+  if (entry.address) parts.push(`${OPEN}@ ${forNote(entry.address)}${CLOSE}`);
+  return parts.join(" ");
+}
+
+/**
+ * The list after "Inside: ", back as entries. A plain list ("A, B") is split
+ * on commas, as it always was; a list whose entries carry a note or address
+ * is split on semicolons, since an address has commas of its own.
+ */
+export function readInsideText(text: string): InsideEntry[] {
+  const detailed = text.includes(OPEN);
+  const pieces = text.split(detailed ? /;\s*/ : ", ");
+  return readInside(
+    pieces.map((piece) => {
+      if (!detailed) return piece;
+      const at = piece.indexOf(OPEN);
+      const title = at < 0 ? piece : piece.slice(0, at);
+      let note: string | undefined;
+      let address: string | undefined;
+      for (const m of piece.matchAll(/‹([^›]*)›/g)) {
+        const inner = m[1]!.trim();
+        if (inner.startsWith("@")) address = inner.slice(1).trim();
+        else note = inner;
+      }
+      return { title, done: false, ...(note ? { note } : {}), ...(address ? { address } : {}) };
+    }),
+  );
+}
+
+/** The note form of a list: "Inside: A, B", or with details "Inside: A ‹…›; B". */
+export function insideText(entries: readonly InsideEntry[]): string {
+  const detailed = entries.some((e) => e.note || e.address);
+  return entries.map(entryText).join(detailed ? "; " : ", ");
+}
+
 /**
  * The "Inside: A, B" note taken out of a stop's note, as entries, with the
  * rest of the note kept as it was. The import writes the list this way; the
@@ -75,7 +128,7 @@ export function splitInsideNote(detail: string | null | undefined): {
   const rest: string[] = [];
   for (const note of notes) {
     if (note.startsWith("Inside: ")) {
-      inside.push(...readInside(note.slice("Inside: ".length).split(", ")));
+      inside.push(...readInsideText(note.slice("Inside: ".length)));
     } else {
       rest.push(note);
     }
@@ -85,19 +138,26 @@ export function splitInsideNote(detail: string | null | undefined): {
 
 /** Entries as the note form, for a database without the column. */
 export function insideNote(entries: readonly InsideEntry[]): string | null {
-  return entries.length ? `Inside: ${entries.map((e) => e.title).join(", ")}` : null;
+  return entries.length ? `Inside: ${insideText(entries)}` : null;
 }
 
 export function toggleInside(entries: readonly InsideEntry[], index: number): InsideEntry[] {
   return entries.map((e, i) => (i === index ? { ...e, done: !e.done } : e));
 }
 
-/** Added at the end, unless it is already there or the list is full. */
-export function addInside(entries: readonly InsideEntry[], title: string): InsideEntry[] {
-  const clean = title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX);
-  if (!clean || entries.length >= INSIDE_MAX) return [...entries];
-  if (entries.some((e) => e.title.toLowerCase() === clean.toLowerCase())) return [...entries];
-  return [...entries, { title: clean, done: false }];
+/**
+ * Added at the end, with its note and address when given, unless it is
+ * already there or the list is full.
+ */
+export function addInside(
+  entries: readonly InsideEntry[],
+  title: string,
+  details: { note?: string | undefined; address?: string | undefined } = {},
+): InsideEntry[] {
+  const [entry] = readInside([{ title, done: false, ...details }]);
+  if (!entry || entries.length >= INSIDE_MAX) return [...entries];
+  if (entries.some((e) => e.title.toLowerCase() === entry.title.toLowerCase())) return [...entries];
+  return [...entries, entry];
 }
 
 export function removeInside(entries: readonly InsideEntry[], index: number): InsideEntry[] {

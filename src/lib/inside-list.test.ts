@@ -8,6 +8,8 @@ import {
   removeInside,
   splitInsideNote,
   toggleInside,
+  insideText,
+  readInsideText,
 } from "./inside-list.ts";
 
 test("the stored list is read forgivingly", () => {
@@ -85,4 +87,39 @@ test("an entry keeps where it is and what it is for, and ticking keeps them", ()
     { title: "Yubakichi", done: false },
   ]);
   assert.deepEqual(toggleInside(list, 0)[0], { ...list[0], done: true });
+});
+
+test("the note form keeps notes and addresses, commas and all, and reads back", () => {
+  const list = [
+    {
+      title: "Miki Keiran",
+      done: false,
+      note: "Dashimaki tamago",
+      address: "182 Higashiuoyacho, Nakagyo Ward, Kyoto",
+    },
+    { title: "Aritsugu", done: false, address: "219 Kajiyacho, Kyoto" },
+    { title: "Tako tamago", done: false },
+  ];
+  const text = insideText(list);
+  assert.equal(
+    text,
+    "Miki Keiran ‹Dashimaki tamago› ‹@ 182 Higashiuoyacho, Nakagyo Ward, Kyoto›; Aritsugu ‹@ 219 Kajiyacho, Kyoto›; Tako tamago",
+  );
+  assert.deepEqual(readInsideText(text), list);
+  assert.deepEqual(insideNote(list), `Inside: ${text}`);
+  // A plain list reads and writes as it always did.
+  assert.equal(
+    insideText([
+      { title: "A", done: false },
+      { title: "B", done: false },
+    ]),
+    "A, B",
+  );
+  assert.deepEqual(splitInsideNote(`Booked · Inside: ${text}`).inside, list);
+});
+
+test("an entry added by hand keeps its note and address", () => {
+  assert.deepEqual(addInside([], " Yubakichi ", { note: " nama-yuba ", address: "" }), [
+    { title: "Yubakichi", done: false, note: "nama-yuba" },
+  ]);
 });
