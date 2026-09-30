@@ -10,6 +10,9 @@ import {
   toggleInside,
   insideText,
   readInsideText,
+  insideBytes,
+  insideHasRoom,
+  INSIDE_BYTES_MAX,
 } from "./inside-list.ts";
 
 test("the stored list is read forgivingly", () => {
@@ -103,7 +106,7 @@ test("the note form keeps notes and addresses, commas and all, and reads back", 
   const text = insideText(list);
   assert.equal(
     text,
-    "Miki Keiran ‹Dashimaki tamago› ‹@ 182 Higashiuoyacho, Nakagyo Ward, Kyoto›; Aritsugu ‹@ 219 Kajiyacho, Kyoto›; Tako tamago",
+    "Miki Keiran ‹Dashimaki tamago› ⟨182 Higashiuoyacho, Nakagyo Ward, Kyoto⟩; Aritsugu ⟨219 Kajiyacho, Kyoto⟩; Tako tamago",
   );
   assert.deepEqual(readInsideText(text), list);
   assert.deepEqual(insideNote(list), `Inside: ${text}`);
@@ -122,4 +125,53 @@ test("an entry added by hand keeps its note and address", () => {
   assert.deepEqual(addInside([], " Yubakichi ", { note: " nama-yuba ", address: "" }), [
     { title: "Yubakichi", done: false, note: "nama-yuba" },
   ]);
+});
+
+test("a note starting with @ stays a note", () => {
+  const list = [
+    { title: "Lunch spot", done: false, note: "@ lunch, not dinner" },
+    { title: "Cafe", done: false, note: "@ 3pm", address: "1-2-3 Namba, Osaka" },
+  ];
+  assert.deepEqual(readInsideText(insideText(list)), list);
+});
+
+test("names with semicolons, commas or dots come back as one entry each", () => {
+  const list = [
+    { title: "Gallery; Garden", done: false },
+    { title: "Nishiki, east end", done: false },
+    { title: "Tea · sweets", done: false },
+  ];
+  assert.deepEqual(
+    readInsideText(insideText(list)).map((e) => e.title),
+    ["Gallery, Garden", "Nishiki, east end", "Tea - sweets"],
+  );
+  assert.deepEqual(readInsideText(insideText([list[0]!])).length, 1);
+});
+
+test("an entry already listed gains the note and address it lacked", () => {
+  const next = addInside([{ title: "Aritsugu", done: true }], "aritsugu", {
+    note: "Knives",
+    address: "219 Kajiyacho",
+  });
+  assert.deepEqual(next, [
+    { title: "Aritsugu", done: true, note: "Knives", address: "219 Kajiyacho" },
+  ]);
+});
+
+test("a list never grows past what the database accepts", () => {
+  const long = "x".repeat(200);
+  let list: ReturnType<typeof readInside> = [];
+  for (let i = 0; i < 40; i++)
+    list = addInside(list, `Stall ${i} ${long}`, { note: long, address: long });
+  assert.ok(list.length < 40);
+  assert.ok(insideBytes(list) <= INSIDE_BYTES_MAX);
+  assert.equal(insideHasRoom(list, `One more ${long}`, { note: long, address: long }), false);
+  // And a stored list too big is cut rather than refused.
+  const stored = Array.from({ length: 40 }, (_, i) => ({
+    title: `S${i} ${long}`,
+    done: false,
+    note: long,
+    address: long,
+  }));
+  assert.ok(insideBytes(readInside(stored)) <= INSIDE_BYTES_MAX);
 });

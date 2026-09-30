@@ -32,6 +32,7 @@ import { KindChip, KindIcon, StopChips, StopDisc } from "@/components/day/stop-b
 import { toast } from "sonner";
 import {
   addInside,
+  insideHasRoom,
   INSIDE_MAX,
   nestPillLabel,
   removeInside,
@@ -1082,7 +1083,9 @@ function InsideEditor({
   const [draft, setDraft] = useState("");
   const [draftNote, setDraftNote] = useState("");
   const [draftAddress, setDraftAddress] = useState("");
+  const fits = insideHasRoom(entries, draft, { note: draftNote, address: draftAddress });
   const add = () => {
+    if (!fits) return;
     const next = addInside(entries, draft, { note: draftNote, address: draftAddress });
     if (next.length !== entries.length) onChange(next);
     setDraft("");
@@ -1140,12 +1143,17 @@ function InsideEditor({
             <button
               type="button"
               onClick={add}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || !fits}
               className="rounded-lg border border-border bg-card px-2.5 text-[12px] font-semibold disabled:opacity-50"
             >
               Add
             </button>
           </div>
+          {draft.trim() && !fits ? (
+            <p className="text-[12px] text-destructive">
+              This list is full. Shorten the note or address, or remove an entry.
+            </p>
+          ) : null}
           {draft.trim() ? (
             <div className="grid grid-cols-1 gap-1 @[20rem]:grid-cols-2">
               <input

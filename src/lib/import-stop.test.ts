@@ -641,7 +641,18 @@ test("a place folded into its parent keeps its note and address", () => {
       note: "Dashimaki",
       address: "182 Higashiuoyacho, Kyoto",
     }),
-    "Inside: Miki Keiran ‹Dashimaki› ‹@ 182 Higashiuoyacho, Kyoto›",
+    "Inside: Miki Keiran ‹Dashimaki› ⟨182 Higashiuoyacho, Kyoto⟩",
   );
   assert.equal(withInsideNote("Booked · Inside: A", "B"), "Booked · Inside: A, B");
+});
+
+test("a place already listed in its parent gains the note and address it carried", () => {
+  assert.equal(
+    withInsideNote("Inside: Aritsugu, Fufusa", {
+      title: "Aritsugu",
+      note: "Knives",
+      address: "219 Kajiyacho, Kyoto",
+    }),
+    "Inside: Aritsugu ‹Knives› ⟨219 Kajiyacho, Kyoto⟩; Fufusa",
+  );
 });

@@ -751,9 +751,8 @@ export function withInsideNote(
   const notes = (detail ?? "").split(" · ").filter(Boolean);
   const at = notes.findIndex((n) => n.startsWith("Inside: "));
   const listed = at < 0 ? [] : readInsideText(notes[at]!.slice("Inside: ".length));
-  const next = listed.some((l) => fold(l.title) === fold(item.title))
-    ? listed
-    : addInside(listed, item.title, item);
+  // Already listed, it gains the note and address it lacked (addInside).
+  const next = addInside(listed, item.title, item);
   const line = `Inside: ${insideText(next)}`;
   if (at < 0) return [...notes, line].join(" · ");
   notes[at] = line;
