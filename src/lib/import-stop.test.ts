@@ -671,8 +671,8 @@ test("a stall folded into its market keeps what the plan said about it", async (
   );
   assert.equal(
     out[0]!.detail,
-    "Choose a few items; you are not expected to eat everything. Market etiquette: eat beside the vendor. · Inside: Miki Keiran (三木鶏卵) ‹dashimaki tamago / Kyoto-style rolled omelet›; Yubakichi ‹fresh yuba› ⟨Nishikikoji-dori 190⟩; Tanaka Keiran",
-    "each stall's sentence leaves the market's note, for its own entry",
+    "Choose a few items; you are not expected to eat everything. Yubakichi / 湯波吉 - nama-yuba / fresh tofu skin. Market etiquette: eat beside the vendor. · Inside: Miki Keiran (三木鶏卵) ‹dashimaki tamago / Kyoto-style rolled omelet›; Yubakichi ‹fresh yuba› ⟨Nishikikoji-dori 190⟩; Tanaka Keiran",
+    "a stall's sentence moves to its entry; one that says something else of its own leaves it",
   );
   const { splitInsideNote } = await import("./inside-list.ts");
   assert.deepEqual(splitInsideNote(out[0]!.detail).inside, [
@@ -718,6 +718,62 @@ test("isMarketStop: markets and food halls, not supermarkets or halls", async ()
   assert.equal(isMarketStop({ title: "Supermarket run", place: null }), false);
   assert.equal(isMarketStop({ title: "Walk in Le Marais", place: "Le Marais" }), false);
   assert.equal(isMarketStop({ title: "Market Hall", place: null }), false);
+  assert.equal(isMarketStop({ title: "Walk along Market Street", place: null }), false);
+  assert.equal(isMarketStop({ title: "Old Market Square", place: null }), false);
+});
+
+test("a stall's sentence stays on the market when it cannot be kept whole", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "meal",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-02",
+    day_number: 2 as number | null,
+    within: null as string | null,
+    ...extra,
+  });
+  const long = `Aritsugu - ${"knives and graters, ".repeat(15)}and more.`;
+  const out = nestWithin([
+    row("Nishiki Market", {
+      kind: "sight",
+      time_label: "11:15",
+      detail: `Yubakichi - nama-yuba. Miki Keiran - dashimaki. ${long}`,
+    }),
+    // Its own note says something else: the market's sentence stays.
+    row("Yubakichi", { within: "Nishiki Market", detail: "closed Wednesdays" }),
+    // Its own note says less than the market's: the longer one is kept.
+    row("Miki Keiran", { within: "Nishiki Market", detail: "dashimaki" }),
+    // Longer than an entry's note: stays on the market.
+    row("Aritsugu", { within: "Nishiki Market" }),
+  ]);
+  assert.equal(out.length, 1);
+  assert.equal(
+    out[0]!.detail,
+    `Yubakichi - nama-yuba. ${long} · Inside: Yubakichi ‹closed Wednesdays›; Miki Keiran ‹dashimaki›; Aritsugu`,
+  );
+});
+
+test("a market's stalls past a full list stay stops", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "meal",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-02",
+    day_number: 2 as number | null,
+    within: "Nishiki Market" as string | null,
+    ...extra,
+  });
+  const stalls = Array.from({ length: 42 }, (_, n) => row(`Stall ${n + 1}`));
+  const out = nestWithin([row("Nishiki Market", { within: null, time_label: "11:15" }), ...stalls]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    ["Nishiki Market", "Stall 41", "Stall 42"],
+  );
+  assert.equal(out[1]!.within, "Nishiki Market", "still inside it, as a stop");
 });
 
 test("a place folded into its parent keeps its note and address", () => {

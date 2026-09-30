@@ -6,7 +6,13 @@
  * Pure, so each rule is tested on its own rather than through the sheet.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
-import { addInside, insideText, readInsideText } from "./inside-list.ts";
+import {
+  INSIDE_EXTRA_MAX,
+  addInside,
+  insideHasRoom,
+  insideText,
+  readInsideText,
+} from "./inside-list.ts";
 import type { Confidence } from "./match-confidence.ts";
 
 /**
@@ -660,20 +666,34 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
     }
     row.within = out[parent]!.title;
     const area = out[parent]!;
-    // What the parent's note says about this row is this row's to say.
-    const { detail: rest, said } = takeChildNote(area.detail, row.title);
-    area.detail = rest;
-    if (said && !row.detail?.trim()) row.detail = said;
+    // What the parent's note says about this row is this row's to say, when
+    // it can be kept whole: the row says nothing else, or the same thing, and
+    // it fits an entry's note. Otherwise it stays on the parent.
+    const taken = takeChildNote(area.detail, row.title);
+    const own = fold(row.detail);
+    const said = fold(taken.said);
+    if (
+      said &&
+      said.length <= INSIDE_EXTRA_MAX &&
+      (!own || said.includes(own) || own.includes(said))
+    ) {
+      area.detail = taken.detail;
+      if (!own || own.length < said.length) row.detail = taken.said;
+    }
     const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
     if (ownTime || row.booked === true) return;
     const market = isMarketStop(area);
     if (isAreaStop(area) && !market) return;
     if (hasOwnVenue(row, area) && !isSiteStop(area) && !market) return;
-    area.detail = withInsideNote(area.detail, {
-      title: row.title,
+    const details = {
       ...(row.detail?.trim() ? { note: row.detail.trim() } : {}),
       ...(row.address?.trim() ? { address: row.address.trim() } : {}),
-    });
+    };
+    // A full list keeps the rest as stops, rather than losing them.
+    const listed = insideListOf(area.detail);
+    const already = listed.some((e) => fold(e.title) === fold(row.title));
+    if (!already && !insideHasRoom(listed, row.title, details)) return;
+    area.detail = withInsideNote(area.detail, { title: row.title, ...details });
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
@@ -715,8 +735,20 @@ const MARKET_WORDS =
 /** A market by name ("Nishiki Market", "Temple Street Night Market"), not a supermarket. */
 export function isMarketStop(row: Pick<NestableRow, "title" | "place">): boolean {
   const names = [row.title, row.place ?? ""].filter((n) => n.trim());
-  if (names.some((n) => SITE_WORDS.test(lastWord(n)))) return false;
+  if (names.some((n) => SITE_WORDS.test(lastWord(n)) || STREET_END.test(lastWord(n)))) {
+    return false;
+  }
   return names.some((n) => MARKET_WORDS.test(n));
+}
+
+/** A street or square named after a market ("Market Street") is not a market. */
+const STREET_END =
+  /^(?:street|st\.?|road|rd\.?|avenue|ave\.?|boulevard|blvd\.?|lane|way|square|place|district|quarter|station)$/i;
+
+/** The "Inside: …" list already on a stop's note, as entries. */
+function insideListOf(detail: string | null) {
+  const line = (detail ?? "").split(" · ").find((n) => n.startsWith("Inside: "));
+  return line ? readInsideText(line.slice("Inside: ".length)) : [];
 }
 
 /** A name without its local-script name in brackets: "Miki Keiran (三木鶏卵)" → "miki keiran". */

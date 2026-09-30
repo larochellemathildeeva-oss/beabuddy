@@ -33,7 +33,9 @@ export function insideBytes(entries: readonly InsideEntry[]): number {
   return new TextEncoder().encode(JSON.stringify(entries)).length;
 }
 const TITLE_MAX = 200;
-const EXTRA_MAX = 200;
+/** The longest note or address an entry keeps. */
+export const INSIDE_EXTRA_MAX = 200;
+const EXTRA_MAX = INSIDE_EXTRA_MAX;
 
 /** An optional text field of an entry, cleaned, or nothing. */
 function extra(raw: unknown, key: "address" | "note"): string | undefined {
