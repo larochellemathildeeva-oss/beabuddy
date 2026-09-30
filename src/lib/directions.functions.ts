@@ -20,7 +20,7 @@ import {
   wideDayPinsToKeep,
 } from "@/lib/direction-stops";
 import { estimatedLegMeters, estimatedLegSeconds, plannedRideSeconds } from "@/lib/route-estimate";
-import { legModeFor, type LegMode, type TravelChoice } from "@/lib/travel-mode";
+import { isTravelChoice, legModeFor, type LegMode, type TravelChoice } from "@/lib/travel-mode";
 import { haversine } from "@/lib/geo";
 import {
   classifyGeoStatus,
@@ -235,7 +235,12 @@ const BuildRoutesInput = z.object({
    */
   near: z.object({ lat: z.number(), lon: z.number() }).optional(),
   /** How the traveller gets around; "auto" walks what is close and drives the rest. */
-  travel: z.enum(["auto", "walk", "drive", "transit"]).optional(),
+  travel: z
+    .string()
+    .max(40)
+    .refine(isTravelChoice, "Unknown way of getting around.")
+    .transform((v) => v as TravelChoice)
+    .optional(),
 });
 
 function mapsOnlyLeg(
@@ -480,11 +485,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const straight = haversine(a, b);
       // Station to station, both timed: the train the plan booked. No
       // estimate from the distance comes near a Shinkansen.
-      // Only when transit is the traveller's choice, or Béa's to make: a
-      // chosen car or walk is routed as chosen.
+      // Only when transit is the traveller's choice (for this distance, with
+      // their own rules), or Béa's to make: a chosen car or walk is routed as
+      // chosen.
       const travelChoice = data.travel ?? "auto";
       const planned =
-        travelChoice === "auto" || travelChoice === "transit"
+        travelChoice === "auto" ||
+        travelChoice === "transit" ||
+        legModeFor(travelChoice, straight) === "transit"
           ? plannedRideSeconds(data.stops[i]!, data.stops[i + 1]!)
           : null;
       if (planned != null) {

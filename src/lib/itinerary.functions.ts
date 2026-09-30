@@ -25,6 +25,7 @@ import {
 } from "@/lib/import-stop";
 import { readPlainPlan } from "@/lib/plan-lines";
 import { routeStopLine } from "@/lib/trip-cities";
+import { isTravelChoice, travelPrompt, type TravelChoice } from "@/lib/travel-mode";
 
 /**
  * One vocabulary, shared with the rest of the app.
@@ -35,6 +36,13 @@ import { routeStopLine } from "@/lib/trip-cities";
  * categories and the prep checks already read.
  */
 const KINDS = TIMELINE_KINDS;
+
+const TravelChoiceField = z
+  .string()
+  .max(40)
+  .refine(isTravelChoice, "Unknown way of getting around.")
+  .transform((v) => v as TravelChoice)
+  .nullish();
 
 const ParseInput = z
   .object({
@@ -56,6 +64,8 @@ const ParseInput = z
     includeCosts: z.boolean().optional().default(false),
     /** "Just for this trip": said once on the trip, ahead of the saved profile. */
     tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
+    /** How the traveller gets around on this trip, from the directions sheet. */
+    travel: TravelChoiceField,
   })
   .refine(
     (v) =>
@@ -436,11 +446,18 @@ async function loadPlanExtra(
     startDate: string | null;
     endDate: string | null;
     tripPreferences?: string[] | null | undefined;
+    travel?: TravelChoice | null | undefined;
   },
   mode: "import" | "build",
 ) {
   const { tripPreferencePrompt } = await import("@/lib/trip-preferences");
-  const forTrip = tripPreferencePrompt(data.tripPreferences);
+  // An imported plan keeps its own journeys; only a drafted one is shaped by it.
+  const forTrip = [
+    tripPreferencePrompt(data.tripPreferences),
+    mode === "build" ? travelPrompt(data.travel) : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const [base, web] = await Promise.all([
     loadBuildExtra(context, data.tripCity, mode),
     mode === "build"
@@ -573,6 +590,8 @@ const ReviseInput = z
     mode: z.enum(["alternatives", "rebuild"]),
     /** "Just for this trip": said once on the trip, ahead of the saved profile. */
     tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
+    /** How the traveller gets around on this trip, from the directions sheet. */
+    travel: TravelChoiceField,
   })
   .refine((v) => v.mode === "rebuild" || v.selectedIndexes.length > 0, {
     message: "Tick the stops you want alternatives for.",
@@ -970,6 +989,8 @@ const OptimizeInput = z.object({
   cities: z.array(OptimizeCityIn).max(20),
   /** "Just for this trip": said once on the trip, ahead of the saved profile. */
   tripPreferences: z.array(z.string().max(80)).max(12).nullish(),
+  /** How the traveller gets around on this trip, from the directions sheet. */
+  travel: TravelChoiceField,
 });
 
 const OptimizeItemOut = z.object({
@@ -1083,6 +1104,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       data.note?.trim() ? `Traveller note: ${data.note.trim()}` : "",
       preferencePrompt(preferences),
       tripPreferencePrompt(data.tripPreferences),
+      travelPrompt(data.travel),
       data.cities.length
         ? `Cities on this trip, in order:\n${data.cities
             .map(

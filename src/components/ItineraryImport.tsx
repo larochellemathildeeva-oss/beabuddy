@@ -109,6 +109,7 @@ import { routeStopLine } from "@/lib/trip-cities";
 import { planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
 import { countryNamedIn } from "@/lib/world-countries";
 import { lookupCoords } from "@/lib/places.functions";
+import type { TravelChoice } from "@/lib/travel-mode";
 
 type NewItineraryItem = {
   day_date?: string;
@@ -202,6 +203,7 @@ export function ItineraryImport({
   onApplySchedule,
   optimizePreset,
   tripPreferences = [],
+  travel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -244,6 +246,8 @@ export function ItineraryImport({
   optimizePreset?: OptimizePreset | null | undefined;
   /** "Just for this trip", sent with every plan asked for here. */
   tripPreferences?: string[];
+  /** How the traveller gets around, from the directions sheet; shapes the plan. */
+  travel?: TravelChoice | undefined;
 }) {
   const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
   /** The city this plan is for, by id; "" for the whole trip. */
@@ -364,6 +368,7 @@ export function ItineraryImport({
           {...(onRemoveItems ? { onRemoveItems } : {})}
           onAddCosts={onAddCosts}
           tripPreferences={tripPreferences}
+          travel={travel}
           onApplyDates={planCity ? undefined : onApplyDates}
           onAddCities={planCity ? undefined : onAddCities}
           {...(onAddDirections ? { onAddDirections } : {})}
@@ -374,6 +379,7 @@ export function ItineraryImport({
           key={`preset:${optimizePreset.n}`}
           preset={optimizePreset}
           tripPreferences={tripPreferences}
+          travel={travel}
           tripCity={tripCity}
           startDate={optimizePreset.day}
           endDate={optimizePreset.day}
@@ -385,6 +391,7 @@ export function ItineraryImport({
       {tab === "optimize" && !optimizePreset && (
         <OptimizePanel
           tripPreferences={tripPreferences}
+          travel={travel}
           tripCity={tripCity}
           startDate={startDate}
           endDate={endDate}
@@ -400,6 +407,7 @@ export function ItineraryImport({
 
 function ImportPanel({
   tripPreferences = [],
+  travel,
   initialMode = "build",
   initialText = "",
   existingItems,
@@ -419,6 +427,8 @@ function ImportPanel({
 }: {
   /** "Just for this trip", sent with every plan asked for here. */
   tripPreferences?: string[];
+  /** How the traveller gets around, from the directions sheet; shapes the plan. */
+  travel?: TravelChoice | undefined;
   /** "Which city is this plan for?", for a trip with several. */
   cityPicker?: ReactNode;
   /** Which job the panel opens on, chosen on the start screen. */
@@ -709,6 +719,7 @@ function ImportPanel({
           currency,
           includeCosts,
           tripPreferences,
+          ...(travel ? { travel } : {}),
         },
       });
       setDraftPlace(sentPlace);
@@ -1145,6 +1156,7 @@ function ImportPanel({
           reason: altReason.trim(),
           mode: "alternatives",
           tripPreferences,
+          ...(travel ? { travel } : {}),
         },
       });
       applyRevision(out);
@@ -1176,6 +1188,7 @@ function ImportPanel({
           reason: rebuildReason.trim(),
           mode: "rebuild",
           tripPreferences,
+          ...(travel ? { travel } : {}),
         },
       });
       applyRevision(out);
@@ -1806,6 +1819,7 @@ function PlacementNote({
 function OptimizePanel({
   preset,
   tripPreferences = [],
+  travel,
   tripCity,
   startDate,
   endDate,
@@ -1815,6 +1829,7 @@ function OptimizePanel({
 }: {
   preset?: OptimizePreset | undefined;
   tripPreferences?: string[];
+  travel?: TravelChoice | undefined;
   tripCity?: string | undefined;
   startDate?: string | undefined;
   endDate?: string | undefined;
@@ -1875,6 +1890,7 @@ function OptimizePanel({
               .filter(Boolean)
               .join("\n") || null,
           tripPreferences,
+          ...(travel ? { travel } : {}),
           items: items.map((item) => ({
             ...item,
             detail: stripEmbeddedMapsUrl(item.detail) || null,

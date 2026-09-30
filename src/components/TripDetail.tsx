@@ -247,6 +247,10 @@ export function TripDetail({
   const chooseTravel = (choice: TravelChoice) => {
     setTravel(choice);
     writeTravelChoice(activeId, choice);
+    // Journeys just worked out were for the old choice: drop them rather
+    // than show a drive the traveller now walks. A kept copy stays until
+    // directions are asked again.
+    if (choice !== travel) setLiveLegs(null);
   };
   const dayMaps = useOfflineDayMaps(activeId);
   const offlineMap = useOfflineMap(activeId);
@@ -2345,6 +2349,7 @@ export function TripDetail({
         }}
         optimizePreset={optimizePreset}
         tripPreferences={tripPrefs.list}
+        travel={travel}
         defaultTab={plannerTab}
         initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({

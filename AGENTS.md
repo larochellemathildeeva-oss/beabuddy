@@ -101,8 +101,12 @@ order:
    **How the traveller gets around** is asked in the directions sheet
    (`travel-mode.ts`, pure and tested; remembered per trip on the phone by
    `travel-choice-store.ts`): walk what's close (the old default: walk under
-   `DIRECTIONS_WALK_M`, drive the rest), public transit, walk everywhere, or
-   car. Transit is routed only by Geoapify, with its `approximated_transit`
+   `DIRECTIONS_WALK_M`, drive the rest), public transit, walk everywhere,
+   car, or the traveller's own distance rules (walk under one distance, one
+   way up to a second, another beyond; kept as a `rules:…` string so it is
+   stored and sent like a preset). A choice other than "walk what's close" is
+   also told to Build, Rebuild, Alternatives and Optimize (`travelPrompt`).
+   Transit is routed only by Geoapify, with its `approximated_transit`
    mode (`GEOAPIFY_TRANSIT_MODE`): typical times, not a timetable, so every
    transit journey is marked as an estimate and opens Google Maps in transit
    mode for the real lines. Any other provider, or a failed transit route,
