@@ -198,14 +198,20 @@ export type ItineraryRow = {
    */
   parent_id?: string | null;
   inside?: InsideEntry[];
+  /**
+   * Why the stop's place is worth a second look, from the import (see
+   * pin-check.ts). Absent until the pin_check migration is applied.
+   */
+  pin_check?: string | null;
 };
 
 const ITINERARY_COLUMNS =
   "id, trip_id, day_date, time_label, kind, title, detail, address, lat, lon, position, updated_by, updated_at, arrived_at, left_at, planned_stay_minutes";
 const BOOKING_COLUMN_NAMES = ["booked", "booking_ref", "booking_details"];
 const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
+const PIN_CHECK_COLUMN_NAMES = ["pin_check"];
 /** Columns that arrive with migrations applied by hand, asked for only while they answer. */
-const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES];
+const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES, PIN_CHECK_COLUMN_NAMES];
 
 type TripsSnapshot = { uid: string; trips: TripRow[]; members: MemberRow[] };
 
@@ -511,6 +517,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   tripIdRef.current = tripId;
   /** Whether the nesting columns answered the last read. */
   const nestingReady = useRef(true);
+  /** Whether the pin_check column answered the last read. */
+  const pinCheckReady = useRef(true);
 
   /**
    * Refresh the trip's rows.
@@ -556,6 +564,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       return;
     }
     nestingReady.current = groups.includes(NESTING_COLUMN_NAMES);
+    pinCheckReady.current = groups.includes(PIN_CHECK_COLUMN_NAMES);
     setItems(
       ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
         "inside" in row ? { ...row, inside: readInside(row.inside) } : row,
@@ -781,6 +790,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         inside?: InsideEntry[];
         /** The addition this one is inside, by its place in this list. */
         parent_index?: number;
+        /** Why its place is worth a second look (pin-check.ts). */
+        pin_check?: string | null;
       }>,
     ) => {
       const id = tripIdRef.current;
@@ -839,7 +850,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         created_by: authorId,
         updated_by: authorId,
       });
-      const insertRows = (withBooked: boolean, withNesting: boolean) =>
+      // Like the others, sent only while its column answers: a note to check
+      // a pin is never worth losing the stops over.
+      const anyPinCheck = additions.some((item) => item.pin_check);
+      const insertRows = (withBooked: boolean, withNesting: boolean, withPinCheck: boolean) =>
         supabase
           .from("itinerary_items")
           .insert(
@@ -848,6 +862,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
               ...rowFor(item, index),
               ...(anyNesting ? { id: ids[index]! } : {}),
               ...nestingFor(item, withNesting),
+              ...(withPinCheck ? { pin_check: item.pin_check || null } : {}),
             })),
           )
           // The ids come back so a bulk save can be undone in one go rather
@@ -855,12 +870,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           .select("id");
       let withBooked = anyBooked;
       let withNesting = anyNesting && nestingReady.current;
-      let { data, error } = await insertRows(withBooked, withNesting);
-      for (let tries = 0; error && tries < 2; tries++) {
+      let withPinCheck = anyPinCheck && pinCheckReady.current;
+      let { data, error } = await insertRows(withBooked, withNesting, withPinCheck);
+      for (let tries = 0; error && tries < 3; tries++) {
         if (withBooked && isMissingColumn(error, ["booked"])) withBooked = false;
         else if (withNesting && isMissingColumn(error, NESTING_COLUMN_NAMES)) withNesting = false;
+        else if (withPinCheck && isMissingColumn(error, PIN_CHECK_COLUMN_NAMES))
+          withPinCheck = false;
         else break;
-        ({ data, error } = await insertRows(withBooked, withNesting));
+        ({ data, error } = await insertRows(withBooked, withNesting, withPinCheck));
       }
       if (error) throw error;
       await load();
@@ -990,6 +1008,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           | "booking_details"
           | "parent_id"
           | "inside"
+          | "pin_check"
         >
       >,
     ) => {
@@ -1016,15 +1035,25 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           position = slot.position;
         }
       }
-      const { error } = await supabase
-        .from("itinerary_items")
-        .update({
-          ...rest,
-          ...(position !== undefined ? { position } : {}),
-          ...(inside ? { inside: inside as unknown as Json } : {}),
-          updated_by: me.id,
-        })
-        .eq("id", id);
+      // A place set by hand is the traveller's own: whatever Béa was unsure
+      // of about the old pin no longer applies.
+      const clearsCheck =
+        pinCheckReady.current && Boolean(current?.pin_check) && ("lat" in patch || "lon" in patch);
+      const write = (withCheck: boolean) =>
+        supabase
+          .from("itinerary_items")
+          .update({
+            ...rest,
+            ...(position !== undefined ? { position } : {}),
+            ...(inside ? { inside: inside as unknown as Json } : {}),
+            ...(withCheck ? { pin_check: null } : {}),
+            updated_by: me.id,
+          })
+          .eq("id", id);
+      let { error } = await write(clearsCheck);
+      if (error && clearsCheck && isMissingColumn(error, PIN_CHECK_COLUMN_NAMES)) {
+        ({ error } = await write(false));
+      }
       if (error) throw error;
       await load();
     },
