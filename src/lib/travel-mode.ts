@@ -80,8 +80,10 @@ export function parseTravelRules(choice: string | null | undefined): TravelRules
   if (!m) return null;
   const walkKm = Number(m[1]);
   const farKm = Number(m[3]);
+  const mid = m[2] as LegMode;
   if (walkKm > WALK_MAX_M / 1000 || farKm > RULES_MAX_KM || farKm < walkKm) return null;
-  return { walkKm, mid: m[2] as LegMode, farKm, far: m[4] as TravelRules["far"] };
+  if (mid === "walking" && farKm > WALK_MAX_M / 1000) return null;
+  return { walkKm, mid, farKm, far: m[4] as TravelRules["far"] };
 }
 
 function tenth(km: number): number {
@@ -95,7 +97,10 @@ function tenth(km: number): number {
  */
 export function travelRulesKey(rules: TravelRules): TravelRulesKey {
   const walkKm = Math.min(Math.max(tenth(rules.walkKm), 0), WALK_MAX_M / 1000);
-  const farKm = Math.min(Math.max(tenth(rules.farKm), walkKm), RULES_MAX_KM);
+  // A walking middle band stops where walking does, so the summary and the
+  // planning prompt never promise a walk that is driven.
+  const farMax = rules.mid === "walking" ? WALK_MAX_M / 1000 : RULES_MAX_KM;
+  const farKm = Math.min(Math.max(tenth(rules.farKm), walkKm), farMax);
   const far = rules.far === "transit" ? "transit" : "driving";
   return `rules:${walkKm}:${rules.mid}:${farKm}:${far}`;
 }

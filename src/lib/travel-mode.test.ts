@@ -70,11 +70,16 @@ test("rules are tidied: tenths, walking capped, far edge never before the walkin
   );
 });
 
-test("a walking band past a day's walk is driven, as with walk everywhere", () => {
+test("a walking middle band stops where walking does, and says so", () => {
   const key = travelRulesKey({ walkKm: 1, mid: "walking", farKm: 100, far: "transit" });
+  assert.equal(key, "rules:1:walking:15:transit");
   assert.equal(legModeFor(key, 10_000), "walking");
-  assert.equal(legModeFor(key, 20_000), "driving");
-  assert.equal(legModeFor(key, 150_000), "transit");
+  assert.equal(legModeFor(key, 20_000), "transit");
+  assert.equal(
+    travelRulesSummary(parseTravelRules(key)!),
+    "Walk under 15 km, take transit beyond.",
+  );
+  assert.ok(!isTravelChoice("rules:1:walking:100:transit"));
 });
 
 test("malformed rules are refused from storage and the wire", () => {

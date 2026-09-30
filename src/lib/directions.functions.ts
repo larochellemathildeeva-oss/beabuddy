@@ -485,11 +485,14 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const straight = haversine(a, b);
       // Station to station, both timed: the train the plan booked. No
       // estimate from the distance comes near a Shinkansen.
-      // Only when transit is the traveller's choice for this distance, or
-      // Béa's to make: a chosen car or walk is routed as chosen.
+      // Only when transit is the traveller's choice (for this distance, with
+      // their own rules), or Béa's to make: a chosen car or walk is routed as
+      // chosen.
       const travelChoice = data.travel ?? "auto";
       const planned =
-        travelChoice === "auto" || legModeFor(travelChoice, straight) === "transit"
+        travelChoice === "auto" ||
+        travelChoice === "transit" ||
+        legModeFor(travelChoice, straight) === "transit"
           ? plannedRideSeconds(data.stops[i]!, data.stops[i + 1]!)
           : null;
       if (planned != null) {
