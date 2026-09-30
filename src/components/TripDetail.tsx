@@ -293,6 +293,9 @@ export function TripDetail({
         return;
       }
       await cities.addStops(found);
+      // A trip imported before the plan set its starting city gets it here.
+      const place = tripPlaceFromTowns(trip, found);
+      if (place) await onUpdate(place);
       toast.success(`Added ${found.map((c) => c.city).join(", ")} to the trip's destinations`);
     } catch {
       toast.error("Couldn't add the cities. Check your connection and try again.");
@@ -2421,10 +2424,10 @@ export function TripDetail({
         onApplyDates={async (dates) => {
           await onUpdate(dates);
         }}
-        onAddCities={async (list) => {
-          await cities.addStops(list);
-          // A trip with no place takes the one its plan shows ("Japan").
-          const place = tripPlaceFromTowns(trip, list);
+        onAddCities={async (list, plan) => {
+          if (list.length > 0) await cities.addStops(list);
+          // A trip with no starting city takes the plan's first town.
+          const place = tripPlaceFromTowns(trip, plan.towns, plan.country);
           if (place) await onUpdate(place);
         }}
       />

@@ -149,24 +149,48 @@ export function withCountry<T extends PlanCityRow>(row: T, country: string | nul
 }
 
 /**
- * The place a trip with none takes from the plan saved into it.
+ * The starting city a trip with none takes from the plan saved into it.
  *
- * A whole Japan itinerary imported into a trip with no place left it saying
- * nowhere, and everything that looks a stop up without a day's town — the
- * background placing, the directions — then used its first destination: a
- * Kyoto hotel was looked for around Hiroshima. The country the plan's towns
- * share becomes the trip's, and its town too when the plan has only one.
- * A trip that has a place keeps it; towns in several countries set nothing.
+ * `towns` are every town the plan reaches, in the order it reaches them —
+ * not only the ones new to the route, or a plan whose towns were already
+ * Destinations set nothing. The first is where the trip starts; its country
+ * comes from the town, else the one the towns share, else `country` (the one
+ * the plan was placed in).
+ *
+ * A trip with no place used to take only the country when the plan went
+ * through several towns, so the starting city stayed empty after every
+ * multi-town import. A trip that has a starting city keeps it, and one filed
+ * under a country is only given a town in that country.
  */
 export function tripPlaceFromTowns(
   trip: { city?: string | null | undefined; country?: string | null | undefined },
   towns: readonly PlanCity[],
   country?: string | null | undefined,
-): { city?: string; country: string } | null {
-  if (trip.city?.trim() || trip.country?.trim()) return null;
+): { city: string; country?: string } | null {
+  if (trip.city?.trim()) return null;
+  const first = towns.find((t) => t.city.trim());
+  if (!first) return null;
   const named = new Set(towns.map((t) => t.country?.trim()).filter((c): c is string => Boolean(c)));
-  if (named.size > 1) return null;
-  const nation = [...named][0] ?? country?.trim();
-  if (!nation) return null;
-  return towns.length === 1 ? { city: towns[0]!.city, country: nation } : { country: nation };
+  const nation =
+    first.country?.trim() || (named.size === 1 ? [...named][0] : undefined) || country?.trim();
+  const had = trip.country?.trim();
+  if (had) {
+    if (nation && key(nation) !== key(had)) return null;
+    return { city: first.city.trim() };
+  }
+  return nation ? { city: first.city.trim(), country: nation } : { city: first.city.trim() };
+}
+
+/**
+ * The towns of `all` (a plan's, in order) that the trip's route does not have
+ * yet — `planCities`' rule on towns already worked out: a one-town plan adds
+ * its town only to a trip with no destinations yet.
+ */
+export function newTowns(
+  all: readonly PlanCity[],
+  existing: readonly { city: string }[],
+): PlanCity[] {
+  if (all.length === 0 || (all.length < 2 && existing.length > 0)) return [];
+  const have = new Set(existing.map((c) => key(c.city)));
+  return all.filter((t) => !have.has(key(t.city)));
 }
