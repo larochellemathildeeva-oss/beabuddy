@@ -106,7 +106,7 @@ import { toast } from "sonner";
 import { beaCheer } from "@/hooks/useBeaSettings";
 import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
-import { planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
+import { newTowns, planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
 import { countryNamedIn } from "@/lib/world-countries";
 import { lookupCoords } from "@/lib/places.functions";
 import type { TravelChoice } from "@/lib/travel-mode";
@@ -228,7 +228,12 @@ export function ItineraryImport({
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
   /** Towns the plan goes through that the trip's route does not have yet. */
-  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
+  onAddCities?:
+    | ((
+        cities: PlanCity[],
+        plan: { towns: PlanCity[]; country: string | null | undefined },
+      ) => Promise<void>)
+    | undefined;
   /** Directions between the saved stops, added to the timeline, when the box is ticked. */
   onAddDirections?: ((ids: string[]) => void) | undefined;
   onApplySchedule?: (
@@ -451,7 +456,12 @@ function ImportPanel({
   onAddCosts?: ((items: NewCostItem[]) => Promise<void>) | undefined;
   onApplyDates?: ((dates: { start_date: string; end_date: string }) => Promise<void>) | undefined;
   /** Towns the plan goes through that the trip's route does not have yet. */
-  onAddCities?: ((cities: PlanCity[]) => Promise<void>) | undefined;
+  onAddCities?:
+    | ((
+        cities: PlanCity[],
+        plan: { towns: PlanCity[]; country: string | null | undefined },
+      ) => Promise<void>)
+    | undefined;
   onAddDirections?: ((ids: string[]) => void) | undefined;
 }) {
   const run = useServerFn(parseItinerary);
@@ -1064,7 +1074,9 @@ function ImportPanel({
       // days, the map and the directions look in the right one.
       // A day whose stops name no town is looked up from one of its pins.
       if (onAddCities) setSaveStatus("Adding the towns to the trip…");
-      const newCities = onAddCities
+      // Every town the plan reaches, in order: the first is the trip's
+      // starting city even when the route already has it.
+      const planTownList = onAddCities
         ? await planTowns(
             order.flatMap((i) => {
               const row = rows[i];
@@ -1074,16 +1086,19 @@ function ImportPanel({
               const placed = withCountry(row, planCountry);
               return [pin ? { ...placed, lat: pin.lat, lon: pin.lon } : placed];
             }),
-            cities,
+            [],
             (at) => lookup({ data: at }),
           ).catch(() => [] as PlanCity[])
         : [];
-      if (onAddCities && newCities.length > 0) {
+      const newCities = newTowns(planTownList, cities);
+      if (onAddCities && planTownList.length > 0) {
         try {
-          await onAddCities(newCities);
-          toast.success(
-            `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
-          );
+          await onAddCities(newCities, { towns: planTownList, country: planCountry });
+          if (newCities.length > 0) {
+            toast.success(
+              `Added ${newCities.map((c) => c.city).join(", ")} to the trip's destinations`,
+            );
+          }
         } catch {
           toast.error("The stops are saved, but the towns could not be added to Destinations.");
         }

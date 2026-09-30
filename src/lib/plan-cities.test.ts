@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   dayPinsToLookUp,
   planCities,
+  newTowns,
   tripPlaceFromTowns,
   withCountry,
   withDayTowns,
@@ -85,22 +86,51 @@ test("withCountry: a town the plan named alone takes the plan's country", () => 
   assert.equal(withCountry(row, null).city, "Hiroshima");
 });
 
-test("tripPlaceFromTowns: a trip with no place takes the plan's", () => {
+test("tripPlaceFromTowns: a trip with no starting city takes the plan's first town", () => {
   const towns = [
     { city: "Kyoto", country: "Japan" },
     { city: "Osaka", country: "Japan" },
     { city: "Hiroshima", country: "Japan" },
   ];
-  assert.deepEqual(tripPlaceFromTowns({}, towns), { country: "Japan" });
-  assert.deepEqual(tripPlaceFromTowns({ city: "", country: null }, towns.slice(0, 1)), {
+  assert.deepEqual(tripPlaceFromTowns({}, towns), { city: "Kyoto", country: "Japan" });
+  assert.deepEqual(tripPlaceFromTowns({ city: "", country: null }, towns.slice(1)), {
+    city: "Osaka",
+    country: "Japan",
+  });
+  // A trip filed under the country takes the town and keeps its country.
+  assert.deepEqual(tripPlaceFromTowns({ country: "Japan" }, towns), { city: "Kyoto" });
+  // Several countries: the first town's own.
+  assert.deepEqual(tripPlaceFromTowns({}, [{ city: "Seoul", country: "South Korea" }, ...towns]), {
+    city: "Seoul",
+    country: "South Korea",
+  });
+  // Towns without a country take the one the plan was placed in.
+  assert.deepEqual(tripPlaceFromTowns({}, [{ city: "Kyoto" }, { city: "Osaka" }], "Japan"), {
     city: "Kyoto",
     country: "Japan",
   });
-  // A trip that has a place keeps it; two countries set nothing.
-  assert.equal(tripPlaceFromTowns({ country: "Japan" }, towns), null);
-  assert.equal(tripPlaceFromTowns({}, [...towns, { city: "Seoul", country: "South Korea" }]), null);
-  // Towns without a country take the one the plan was placed in.
-  assert.deepEqual(tripPlaceFromTowns({}, [{ city: "Kyoto" }, { city: "Osaka" }], "Japan"), {
-    country: "Japan",
-  });
+  assert.deepEqual(tripPlaceFromTowns({}, [{ city: "Kyoto" }]), { city: "Kyoto" });
+});
+
+test("tripPlaceFromTowns: a starting city already set, or a town in another country, is kept out", () => {
+  const towns = [{ city: "Kyoto", country: "Japan" }];
+  assert.equal(tripPlaceFromTowns({ city: "Tokyo", country: "Japan" }, towns), null);
+  assert.equal(tripPlaceFromTowns({ country: "France" }, towns), null);
+  // The same country under another name is not another country.
+  assert.deepEqual(
+    tripPlaceFromTowns({ country: "United States" }, [{ city: "New York", country: "USA" }]),
+    { city: "New York" },
+  );
+  assert.equal(tripPlaceFromTowns({}, []), null);
+});
+
+test("newTowns: the plan's towns the route lacks, one-town plans only onto an empty route", () => {
+  const all = [
+    { city: "Tokyo", country: "Japan" },
+    { city: "Kyoto", country: "Japan" },
+  ];
+  assert.deepEqual(newTowns(all, [{ city: "Tokyo" }]), [{ city: "Kyoto", country: "Japan" }]);
+  assert.deepEqual(newTowns(all.slice(0, 1), []), all.slice(0, 1));
+  assert.deepEqual(newTowns(all.slice(1), [{ city: "Tokyo" }]), []);
+  assert.deepEqual(newTowns(all, [{ city: "tokyo" }, { city: "Kyóto" }]), []);
 });
