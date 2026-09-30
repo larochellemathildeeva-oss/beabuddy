@@ -49,6 +49,8 @@ export type PrintRow = {
   booking_details?: string | null | undefined;
   /** How long the stop lasts: with the time, when it ends ("09:00–09:40"). */
   planned_stay_minutes?: number | null | undefined;
+  /** Why its place is worth a second look; printed only when the caller passes it. */
+  pin_check?: string | null | undefined;
 };
 
 export type PrintTrip = {
@@ -262,13 +264,19 @@ function locationHtml(row: PrintRow): string {
   const where = address ? `<div class="address">${escapeHtml(address)}</div>` : "";
   if (row.kind === "note") return where;
   if (!hasPin(row)) {
-    return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>`;
+    return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>${checkHtml(row)}`;
   }
   // The link opens the pin itself, not a search by name: it is there to
   // check that point, and a search could land on the right place and hide
   // a wrong pin.
   const url = `https://www.google.com/maps/search/?api=1&query=${row.lat},${row.lon}`;
-  return `${where}<div class="pin">Map pin: <a href="${escapeHtml(url)}">${pinText(row.lat, row.lon)}</a></div>`;
+  return `${where}<div class="pin">Map pin: <a href="${escapeHtml(url)}">${pinText(row.lat, row.lon)}</a></div>${checkHtml(row)}`;
+}
+
+/** "Pin to check: …", under the pin, when the row carries one. */
+function checkHtml(row: PrintRow): string {
+  const check = row.pin_check?.trim();
+  return check ? `<div class="pin check">Pin to check: ${escapeHtml(check)}</div>` : "";
 }
 
 function rowHtml(source: PrintRow, toBook: ReadonlySet<PrintRow>): string {
@@ -593,7 +601,7 @@ tr:has(+ tr.leg) td { border-bottom: 0; }
 .small { font-size: 8.5pt; }
 .pin { font: 9pt/1.4 "Courier New", monospace; color: #4a463f; }
 .pin a, .key a { color: inherit; }
-.nopin { color: #9a4b16; }
+.nopin, .check { color: #9a4b16; }
 .booked { color: #2f6b3a; }
 .tobook { color: #9a4b16; font-weight: bold; }
 footer { margin-top: 16pt; font-size: 8.5pt; color: #8a8378; }

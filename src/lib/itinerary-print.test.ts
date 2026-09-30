@@ -329,3 +329,12 @@ test("two bookings at one address are two stays", () => {
     ["Tower Hotel", "Harbour Suites"],
   );
 });
+
+test("a pin to check is printed under its pin, only when passed", () => {
+  const checked = itineraryPrintHtml({ title: "Japan" }, [
+    row({ lat: 35.0, lon: 135.7, pin_check: "Béa's best guess: the area" }),
+  ]);
+  assert.match(checked, /Pin to check: Béa&#39;s best guess: the area/);
+  const plain = itineraryPrintHtml({ title: "Japan" }, [row({ lat: 35.0, lon: 135.7 })]);
+  assert.doesNotMatch(plain, /Pin to check/);
+});
