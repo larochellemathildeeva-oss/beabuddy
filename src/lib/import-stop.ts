@@ -6,7 +6,7 @@
  * Pure, so each rule is tested on its own rather than through the sheet.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
-import type { InsideDetail } from "./inside-list.ts";
+import { addInside, insideText, readInsideText } from "./inside-list.ts";
 import type { Confidence } from "./match-confidence.ts";
 
 /**
@@ -590,13 +590,8 @@ type NestableRow = {
   booked?: boolean | null | undefined;
   /** The title of the earlier stop this one is inside, as the parse wrote it. */
   within?: string | null | undefined;
+  /** Where it is, carried into its parent's list when it is folded in. */
   address?: string | null | undefined;
-  /**
-   * What each row folded into this one said about itself ("dashimaki
-   * tamago", its street address): the "Inside: …" note carries only names,
-   * and the save puts these on the entries of the same name.
-   */
-  inside_details?: InsideDetail[] | null | undefined;
 };
 
 const fold = (value: string | null | undefined) =>
@@ -647,8 +642,7 @@ export function parentIndex(rows: readonly NestableRow[], i: number): number {
  * pinned, not rooms of one building. A market is the exception: its
  * untimed stalls are what you do during the one visit, so they fold into
  * its list like a museum's galleries, each keeping what the plan said about
- * it and its address (`inside_details`). A stall with its own time stays a
- * stop.
+ * it and its address. A stall with its own time stays a stop.
  *
  * The model often repeats each part's line in the parent's note as well
  * ("Miki Keiran / 三木鶏卵 - dashimaki tamago."): that sentence is taken out
@@ -675,15 +669,11 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
     const market = isMarketStop(area);
     if (isAreaStop(area) && !market) return;
     if (hasOwnVenue(row, area) && !isSiteStop(area) && !market) return;
-    area.detail = withInsideNote(area.detail, row.title);
-    const note = row.detail?.trim();
-    const address = row.address?.trim();
-    if (note || address) {
-      area.inside_details = [
-        ...(area.inside_details ?? []),
-        { title: row.title, ...(note ? { note } : {}), ...(address ? { address } : {}) },
-      ];
-    }
+    area.detail = withInsideNote(area.detail, {
+      title: row.title,
+      ...(row.detail?.trim() ? { note: row.detail.trim() } : {}),
+      ...(row.address?.trim() ? { address: row.address.trim() } : {}),
+    });
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
@@ -747,25 +737,29 @@ export function takeChildNote(
   if (!detail || name.length < 3) return { detail, said: null };
   let said: string | null = null;
   const parts = detail.split(" · ").map((part) =>
-    part
-      .split(/(?<=[.;!?])\s+/)
-      .filter((sentence) => {
-        if (said !== null || sentence.startsWith("Inside: ")) return true;
-        const head = fold(sentence);
-        if (!head.startsWith(name) || /[\p{L}\p{N}]/u.test(head.charAt(name.length))) return true;
-        said =
-          sentence
-            .slice(name.length)
-            .replace(/^\s*[(（][^)）]*[)）]/, "")
-            .replace(/^\s*\/\s*[^-–—:]*?(?=\s*[-–—:])/, "")
-            .replace(/^\s*[-–—:,]\s*/, "")
-            .replace(/[.;]\s*$/, "")
-            .trim() || null;
-        // A sentence that was only the name still goes: the list says it.
-        said ??= "";
-        return false;
-      })
-      .join(" "),
+    // The list itself is never searched: its entries' notes have sentences too.
+    part.startsWith("Inside: ")
+      ? part
+      : part
+          .split(/(?<=[.;!?])\s+/)
+          .filter((sentence) => {
+            if (said !== null) return true;
+            const head = fold(sentence);
+            if (!head.startsWith(name) || /[\p{L}\p{N}]/u.test(head.charAt(name.length)))
+              return true;
+            said =
+              sentence
+                .slice(name.length)
+                .replace(/^\s*[(（][^)）]*[)）]/, "")
+                .replace(/^\s*\/\s*[^-–—:]*?(?=\s*[-–—:])/, "")
+                .replace(/^\s*[-–—:,]\s*/, "")
+                .replace(/[.;]\s*$/, "")
+                .trim() || null;
+            // A sentence that was only the name still goes: the list says it.
+            said ??= "";
+            return false;
+          })
+          .join(" "),
   );
   const rest = parts.filter((p) => p.trim()).join(" · ");
   return { detail: rest || null, said: said || null };
@@ -815,14 +809,24 @@ export function linkAreaSpots<T extends NestableRow>(rows: readonly T[]): T[] {
   return out;
 }
 
-/** "Inside: East building · Main building", one note however many are added. */
-export function withInsideNote(detail: string | null, title: string): string {
+/**
+ * "Inside: East building, Main building", one note however many are added.
+ * A place's own note and address ride along (inside-list.ts writes them), so
+ * a stall folded into its market keeps where it is.
+ */
+export function withInsideNote(
+  detail: string | null,
+  entry: string | { title: string; note?: string; address?: string },
+): string {
+  const item = typeof entry === "string" ? { title: entry } : entry;
   const notes = (detail ?? "").split(" · ").filter(Boolean);
   const at = notes.findIndex((n) => n.startsWith("Inside: "));
-  if (at < 0) return [...notes, `Inside: ${title}`].join(" · ");
-  const listed = notes[at]!.slice("Inside: ".length).split(", ");
-  if (!listed.some((l) => fold(l) === fold(title))) listed.push(title);
-  notes[at] = `Inside: ${listed.join(", ")}`;
+  const listed = at < 0 ? [] : readInsideText(notes[at]!.slice("Inside: ".length));
+  // Already listed, it gains the note and address it lacked (addInside).
+  const next = addInside(listed, item.title, item);
+  const line = `Inside: ${insideText(next)}`;
+  if (at < 0) return [...notes, line].join(" · ");
+  notes[at] = line;
   return notes.join(" · ");
 }
 

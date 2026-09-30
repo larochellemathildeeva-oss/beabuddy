@@ -96,7 +96,7 @@ import {
   type PinChoice,
 } from "@/lib/import-stop";
 import { stayLabel } from "@/lib/planned-stay";
-import { splitInsideNote, withInsideDetails, type InsideEntry } from "@/lib/inside-list";
+import { splitInsideNote, type InsideEntry } from "@/lib/inside-list";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -960,10 +960,7 @@ function ImportPanel({
         const it = rows[i];
         if (!it) return [];
         // "Inside: …" the import wrote into the note becomes its own list.
-        // What the import kept about each entry (a stall's dish, its address) joins it.
-        const split = splitInsideNote(it.detail);
-        const note = split.detail;
-        const inside = withInsideDetails(split.inside, it.inside_details);
+        const { detail: note, inside } = splitInsideNote(it.detail);
         // Inside another stop that is being saved too: linked to it.
         const parent = order.indexOf(parentIndex(rows, i));
         // The address the source gave, pulled out by the parse; the detail

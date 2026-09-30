@@ -32,6 +32,7 @@ import { KindChip, KindIcon, StopChips, StopDisc } from "@/components/day/stop-b
 import { toast } from "sonner";
 import {
   addInside,
+  insideHasRoom,
   INSIDE_MAX,
   nestPillLabel,
   removeInside,
@@ -1080,10 +1081,16 @@ function InsideEditor({
   onChange: (next: InsideEntry[]) => void;
 }) {
   const [draft, setDraft] = useState("");
+  const [draftNote, setDraftNote] = useState("");
+  const [draftAddress, setDraftAddress] = useState("");
+  const fits = insideHasRoom(entries, draft, { note: draftNote, address: draftAddress });
   const add = () => {
-    const next = addInside(entries, draft);
+    if (!fits) return;
+    const next = addInside(entries, draft, { note: draftNote, address: draftAddress });
     if (next.length !== entries.length) onChange(next);
     setDraft("");
+    setDraftNote("");
+    setDraftAddress("");
   };
   return (
     <div className="w-full space-y-1">
@@ -1095,8 +1102,15 @@ function InsideEditor({
               key={`${entry.title}-${index}`}
               className="flex items-center justify-between gap-2 rounded-lg bg-card px-2 py-1 text-[12.5px]"
             >
-              <span className={entry.done ? "text-muted-foreground line-through" : ""}>
-                {entry.title}
+              <span className="min-w-0">
+                <span className={entry.done ? "text-muted-foreground line-through" : ""}>
+                  {entry.title}
+                </span>
+                {entry.note || entry.address ? (
+                  <span className="block break-words text-[11.5px] text-muted-foreground">
+                    {[entry.note, entry.address].filter(Boolean).join(" · ")}
+                  </span>
+                ) : null}
               </span>
               <button
                 type="button"
@@ -1111,28 +1125,53 @@ function InsideEditor({
         </ul>
       )}
       {entries.length < INSIDE_MAX && (
-        <div className="flex gap-1.5">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                add();
-              }
-            }}
-            placeholder="Add something to see here"
-            aria-label="Add something to see inside this stop"
-            className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
-          />
-          <button
-            type="button"
-            onClick={add}
-            disabled={!draft.trim()}
-            className="rounded-lg border border-border bg-card px-2.5 text-[12px] font-semibold disabled:opacity-50"
-          >
-            Add
-          </button>
+        <div className="space-y-1">
+          <div className="flex gap-1.5">
+            <input
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+              placeholder="Add something to see here"
+              aria-label="Add something to see inside this stop"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+            />
+            <button
+              type="button"
+              onClick={add}
+              disabled={!draft.trim() || !fits}
+              className="rounded-lg border border-border bg-card px-2.5 text-[12px] font-semibold disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          {draft.trim() && !fits ? (
+            <p className="text-[12px] text-destructive">
+              This list is full. Shorten the note or address, or remove an entry.
+            </p>
+          ) : null}
+          {draft.trim() ? (
+            <div className="grid grid-cols-1 gap-1 @[20rem]:grid-cols-2">
+              <input
+                value={draftNote}
+                onChange={(e) => setDraftNote(e.target.value)}
+                placeholder="What it's for (optional)"
+                aria-label="Note for this entry"
+                className="min-w-0 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+              />
+              <input
+                value={draftAddress}
+                onChange={(e) => setDraftAddress(e.target.value)}
+                placeholder="Address (optional)"
+                aria-label="Address for this entry"
+                className="min-w-0 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+              />
+            </div>
+          ) : null}
         </div>
       )}
     </div>

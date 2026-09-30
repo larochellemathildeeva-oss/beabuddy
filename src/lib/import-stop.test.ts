@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   afterJourney,
+  withInsideNote,
   foldTravelLegs,
   clockTimesIn,
   withoutInventedTimes,
@@ -643,7 +644,6 @@ test("a stall folded into its market keeps what the plan said about it", async (
     day_date: "2026-10-02",
     day_number: 2 as number | null,
     within: null as string | null,
-    inside_details: null as { title: string; note?: string; address?: string }[] | null,
     ...extra,
   });
   // As the model answers a pasted plan: each stall an item, and each
@@ -671,12 +671,18 @@ test("a stall folded into its market keeps what the plan said about it", async (
   );
   assert.equal(
     out[0]!.detail,
-    "Choose a few items; you are not expected to eat everything. Market etiquette: eat beside the vendor. · Inside: Miki Keiran (三木鶏卵), Yubakichi, Tanaka Keiran",
-    "each stall's sentence leaves the market's note",
+    "Choose a few items; you are not expected to eat everything. Market etiquette: eat beside the vendor. · Inside: Miki Keiran (三木鶏卵) ‹dashimaki tamago / Kyoto-style rolled omelet›; Yubakichi ‹fresh yuba› ⟨Nishikikoji-dori 190⟩; Tanaka Keiran",
+    "each stall's sentence leaves the market's note, for its own entry",
   );
-  assert.deepEqual(out[0]!.inside_details, [
-    { title: "Miki Keiran (三木鶏卵)", note: "dashimaki tamago / Kyoto-style rolled omelet" },
-    { title: "Yubakichi", note: "fresh yuba", address: "Nishikikoji-dori 190" },
+  const { splitInsideNote } = await import("./inside-list.ts");
+  assert.deepEqual(splitInsideNote(out[0]!.detail).inside, [
+    {
+      title: "Miki Keiran (三木鶏卵)",
+      done: false,
+      note: "dashimaki tamago / Kyoto-style rolled omelet",
+    },
+    { title: "Yubakichi", done: false, address: "Nishikikoji-dori 190", note: "fresh yuba" },
+    { title: "Tanaka Keiran", done: false },
   ]);
 });
 
@@ -712,4 +718,27 @@ test("isMarketStop: markets and food halls, not supermarkets or halls", async ()
   assert.equal(isMarketStop({ title: "Supermarket run", place: null }), false);
   assert.equal(isMarketStop({ title: "Walk in Le Marais", place: "Le Marais" }), false);
   assert.equal(isMarketStop({ title: "Market Hall", place: null }), false);
+});
+
+test("a place folded into its parent keeps its note and address", () => {
+  assert.equal(
+    withInsideNote(null, {
+      title: "Miki Keiran",
+      note: "Dashimaki",
+      address: "182 Higashiuoyacho, Kyoto",
+    }),
+    "Inside: Miki Keiran ‹Dashimaki› ⟨182 Higashiuoyacho, Kyoto⟩",
+  );
+  assert.equal(withInsideNote("Booked · Inside: A", "B"), "Booked · Inside: A, B");
+});
+
+test("a place already listed in its parent gains the note and address it carried", () => {
+  assert.equal(
+    withInsideNote("Inside: Aritsugu, Fufusa", {
+      title: "Aritsugu",
+      note: "Knives",
+      address: "219 Kajiyacho, Kyoto",
+    }),
+    "Inside: Aritsugu ‹Knives› ⟨219 Kajiyacho, Kyoto⟩; Fufusa",
+  );
 });
