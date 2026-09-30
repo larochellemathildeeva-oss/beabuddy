@@ -15,6 +15,8 @@ export type DirectionStop = {
   title: string;
   day_date?: string | null;
   time_label?: string | null;
+  /** The row's kind: a ride between two timed stations is timed by the plan. */
+  kind?: string | null;
   address?: string | null;
   lat?: number | null;
   lon?: number | null;
@@ -351,6 +353,7 @@ export function asDirectionStop(item: TimelineItem): DirectionStop {
   if (item.id) stop.id = item.id;
   if (item.day_date) stop.day_date = item.day_date;
   if (item.time_label) stop.time_label = item.time_label;
+  if (item.kind) stop.kind = item.kind;
   if (address) stop.address = address;
   if (item.lat != null) stop.lat = item.lat;
   if (item.lon != null) stop.lon = item.lon;
