@@ -86,3 +86,29 @@ test("an entry keeps where it is and what it is for, and ticking keeps them", ()
   ]);
   assert.deepEqual(toggleInside(list, 0)[0], { ...list[0], done: true });
 });
+
+test("withInsideDetails: the import's notes join their entries by name", async () => {
+  const { withInsideDetails } = await import("./inside-list.ts");
+  const entries = [
+    { title: "Miki Keiran", done: false },
+    { title: "Aritsugu", done: false },
+  ];
+  assert.deepEqual(
+    withInsideDetails(entries, [
+      { title: "miki  keiran", note: "dashimaki tamago", address: "Nishikikoji-dori 188" },
+      { title: "Someone else", note: "not on the list" },
+    ]),
+    [
+      {
+        title: "Miki Keiran",
+        done: false,
+        note: "dashimaki tamago",
+        address: "Nishikikoji-dori 188",
+      },
+      { title: "Aritsugu", done: false },
+    ],
+  );
+  assert.deepEqual(withInsideDetails(entries, undefined), entries);
+  const long = withInsideDetails(entries, [{ title: "Aritsugu", note: "x".repeat(500) }]);
+  assert.equal(long[1]!.note!.length, 200, "cut as the column's entries are");
+});

@@ -351,7 +351,7 @@ test("siblings that name their parent as their place are not each other's parent
   );
 });
 
-test("spots listed under a neighbourhood or market stay stops of their own", async () => {
+test("spots listed under a neighbourhood stay stops; a market's stalls join its list", async () => {
   const { nestWithin, isAreaStop } = await import("./import-stop.ts");
   const row = (title: string, extra: Record<string, unknown> = {}) => ({
     kind: "sight",
@@ -366,7 +366,7 @@ test("spots listed under a neighbourhood or market stay stops of their own", asy
   const out = nestWithin([
     row("Nishiki Market", { time_label: "10:00" }),
     row("Aritsugu", { within: "Nishiki Market", place: "Aritsugu" }),
-    row("Konnamonja", { within: "Nishiki Market", place: "Konnamonja" }),
+    row("Konnamonja", { within: "Nishiki Market", place: "Konnamonja", time_label: "10:40" }),
     row("Walk in Le Marais", { kind: "walk", time_label: "16:00", place: "Le Marais" }),
     row("Place des Vosges", { within: "Walk in Le Marais" }),
     row("Walk in Jardin du Luxembourg", { kind: "walk", time_label: "18:00" }),
@@ -376,14 +376,14 @@ test("spots listed under a neighbourhood or market stay stops of their own", asy
     out.map((r) => [r.title, r.within ?? null]),
     [
       ["Nishiki Market", null],
-      ["Aritsugu", "Nishiki Market"],
       ["Konnamonja", "Nishiki Market"],
       ["Walk in Le Marais", null],
       ["Place des Vosges", "Walk in Le Marais"],
       ["Walk in Jardin du Luxembourg", null],
     ],
   );
-  assert.equal(out[5]!.detail, "Inside: Medici Fountain", "a garden is one site");
+  assert.equal(out[0]!.detail, "Inside: Aritsugu", "untimed, a stall is part of the visit");
+  assert.equal(out[4]!.detail, "Inside: Medici Fountain", "a garden is one site");
   assert.equal(
     isAreaStop({ kind: "sight", title: "Marché des Enfants Rouges", place: null }),
     true,
@@ -631,4 +631,85 @@ test("foldTravelLegs: a boat to a sight is the visit; a boat to an island folds"
     ]).map((x) => x.title),
     ["Itsukushima Shrine"],
   );
+});
+
+test("a stall folded into its market keeps what the plan said about it", async () => {
+  const { nestWithin } = await import("./import-stop.ts");
+  const row = (title: string, extra: Record<string, unknown> = {}) => ({
+    kind: "meal",
+    title,
+    detail: null as string | null,
+    time_label: null as string | null,
+    day_date: "2026-10-02",
+    day_number: 2 as number | null,
+    within: null as string | null,
+    inside_details: null as { title: string; note?: string; address?: string }[] | null,
+    ...extra,
+  });
+  // As the model answers a pasted plan: each stall an item, and each
+  // stall's line repeated in the market's note.
+  const out = nestWithin([
+    row("Nishiki Market", {
+      kind: "sight",
+      time_label: "11:15",
+      place: "Nishiki Market (錦市場)",
+      detail:
+        "Choose a few items; you are not expected to eat everything. Miki Keiran / 三木鶏卵 - dashimaki tamago / Kyoto-style rolled omelet. Yubakichi / 湯波吉 - nama-yuba / fresh tofu skin. Market etiquette: eat beside the vendor.",
+    }),
+    row("Miki Keiran (三木鶏卵)", { within: "Nishiki Market", place: "Miki Keiran" }),
+    row("Yubakichi", {
+      within: "Nishiki Market",
+      place: "Yubakichi",
+      detail: "fresh yuba",
+      address: "Nishikikoji-dori 190",
+    }),
+    row("Tanaka Keiran", { within: "Nishiki Market" }),
+  ]);
+  assert.deepEqual(
+    out.map((r) => r.title),
+    ["Nishiki Market"],
+  );
+  assert.equal(
+    out[0]!.detail,
+    "Choose a few items; you are not expected to eat everything. Market etiquette: eat beside the vendor. · Inside: Miki Keiran (三木鶏卵), Yubakichi, Tanaka Keiran",
+    "each stall's sentence leaves the market's note",
+  );
+  assert.deepEqual(out[0]!.inside_details, [
+    { title: "Miki Keiran (三木鶏卵)", note: "dashimaki tamago / Kyoto-style rolled omelet" },
+    { title: "Yubakichi", note: "fresh yuba", address: "Nishikikoji-dori 190" },
+  ]);
+});
+
+test("takeChildNote: only a sentence that starts with the name, and only once", async () => {
+  const { takeChildNote } = await import("./import-stop.ts");
+  assert.deepEqual(
+    takeChildNote("Senbon Torii - famous tunnels. Past Senbon Torii, climb.", "Senbon Torii"),
+    {
+      detail: "Past Senbon Torii, climb.",
+      said: "famous tunnels",
+    },
+  );
+  assert.deepEqual(takeChildNote("Arashiyama bamboo at dawn.", "Arashi"), {
+    detail: "Arashiyama bamboo at dawn.",
+    said: null,
+  });
+  assert.deepEqual(takeChildNote("Honden. Booked · Inside: Honden", "Honden"), {
+    detail: "Booked · Inside: Honden",
+    said: null,
+  });
+  assert.deepEqual(takeChildNote(null, "Honden"), { detail: null, said: null });
+});
+
+test("isMarketStop: markets and food halls, not supermarkets or halls", async () => {
+  const { isMarketStop } = await import("./import-stop.ts");
+  assert.equal(isMarketStop({ title: "Nishiki Market", place: null }), true);
+  assert.equal(isMarketStop({ title: "Temple Street Night Market", place: null }), true);
+  assert.equal(isMarketStop({ title: "Lunch", place: "Mercado de San Miguel" }), true);
+  assert.equal(
+    isMarketStop({ title: "Maxwell Food Centre", place: "Maxwell Hawker Centre" }),
+    true,
+  );
+  assert.equal(isMarketStop({ title: "Supermarket run", place: null }), false);
+  assert.equal(isMarketStop({ title: "Walk in Le Marais", place: "Le Marais" }), false);
+  assert.equal(isMarketStop({ title: "Market Hall", place: null }), false);
 });

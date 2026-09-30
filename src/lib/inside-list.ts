@@ -19,6 +19,9 @@ export type InsideEntry = {
   note?: string;
 };
 
+/** What the import knew about an entry beyond its name, matched to it by name on saving. */
+export type InsideDetail = { title: string; note?: string; address?: string };
+
 /** At most this many entries, as the migration's check allows. */
 export const INSIDE_MAX = 40;
 const TITLE_MAX = 200;
@@ -81,6 +84,30 @@ export function splitInsideNote(detail: string | null | undefined): {
     }
   }
   return { detail: rest.length ? rest.join(" · ") : null, inside: inside.slice(0, INSIDE_MAX) };
+}
+
+/**
+ * Entries read from the "Inside: A, B" note, with the note and address the
+ * import kept for each (`inside_details`), matched by name. The note form
+ * carries names only; a name with nothing kept stays as it was.
+ */
+export function withInsideDetails(
+  entries: readonly InsideEntry[],
+  details: readonly InsideDetail[] | null | undefined,
+): InsideEntry[] {
+  if (!details?.length) return [...entries];
+  const key = (title: string) => title.replace(/\s+/g, " ").trim().toLowerCase();
+  const byTitle = new Map(details.map((d) => [key(d.title), d]));
+  return entries.map((entry) => {
+    const found = byTitle.get(key(entry.title));
+    if (!found) return entry;
+    const [clean] = readInside([{ ...found, title: entry.title }]);
+    return {
+      ...entry,
+      ...(clean?.note ? { note: clean.note } : {}),
+      ...(clean?.address ? { address: clean.address } : {}),
+    };
+  });
 }
 
 /** Entries as the note form, for a database without the column. */

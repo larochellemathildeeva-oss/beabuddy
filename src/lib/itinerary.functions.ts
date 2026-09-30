@@ -14,6 +14,7 @@ import type { ComputedMetrics } from "@/lib/itinerary-metrics";
 import { applyCostPolicy, mergeAlternativeItems } from "@/lib/itinerary-plan";
 import { stripEmbeddedMapsUrl } from "@/lib/timeline-directions";
 import type { SearchGrounding } from "@/lib/search-grounding";
+import type { InsideDetail } from "@/lib/inside-list";
 import { TIMELINE_KINDS, normaliseKind } from "@/lib/timeline-kind";
 import type { DayOutcome } from "@/lib/route-optimize";
 import {
@@ -130,7 +131,13 @@ const ParsedSchema = z.object({
 export type ParsedItinerary = z.infer<typeof ParsedSchema> & {
   grounding?: SearchGrounding | null;
 };
-export type ParsedItineraryItem = z.infer<typeof ItemSchema>;
+/**
+ * `inside_details`: set by the tidy, not asked of the model, for the parts
+ * folded into this stop (nestWithin).
+ */
+export type ParsedItineraryItem = z.infer<typeof ItemSchema> & {
+  inside_details?: InsideDetail[] | null;
+};
 
 /** Prefer withGemini so a rate-limit can fall through to GEMINI_FALLBACK_MODEL. */
 async function withGemini<T>(

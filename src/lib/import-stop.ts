@@ -6,6 +6,7 @@
  * Pure, so each rule is tested on its own rather than through the sheet.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
+import type { InsideDetail } from "./inside-list.ts";
 import type { Confidence } from "./match-confidence.ts";
 
 /**
@@ -589,6 +590,13 @@ type NestableRow = {
   booked?: boolean | null | undefined;
   /** The title of the earlier stop this one is inside, as the parse wrote it. */
   within?: string | null | undefined;
+  address?: string | null | undefined;
+  /**
+   * What each row folded into this one said about itself ("dashimaki
+   * tamago", its street address): the "Inside: …" note carries only names,
+   * and the save puts these on the entries of the same name.
+   */
+  inside_details?: InsideDetail[] | null | undefined;
 };
 
 const fold = (value: string | null | undefined) =>
@@ -635,8 +643,17 @@ export function parentIndex(rows: readonly NestableRow[], i: number): number {
  * `within`, so it is looked up beside its parent rather than across the city.
  * Booked rows always stay, and so does everything listed under an area
  * (`isAreaStop`), or pinned to a venue of its own under anything that is not
- * one site: the stalls of a market or the cafés of a neighbourhood are
- * places of their own, to be pinned, not rooms of one building.
+ * one site: the cafés of a neighbourhood are places of their own, to be
+ * pinned, not rooms of one building. A market is the exception: its
+ * untimed stalls are what you do during the one visit, so they fold into
+ * its list like a museum's galleries, each keeping what the plan said about
+ * it and its address (`inside_details`). A stall with its own time stays a
+ * stop.
+ *
+ * The model often repeats each part's line in the parent's note as well
+ * ("Miki Keiran / 三木鶏卵 - dashimaki tamago."): that sentence is taken out
+ * of the parent's note and given to the part (`takeChildNote`), so it is
+ * said once, where it belongs.
  */
 export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
   const out = rows.map((row) => ({ ...row }));
@@ -648,11 +665,25 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
       return;
     }
     row.within = out[parent]!.title;
-    const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
     const area = out[parent]!;
-    if (ownTime || row.booked === true || isAreaStop(area)) return;
-    if (hasOwnVenue(row, area) && !isSiteStop(area)) return;
-    out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
+    // What the parent's note says about this row is this row's to say.
+    const { detail: rest, said } = takeChildNote(area.detail, row.title);
+    area.detail = rest;
+    if (said && !row.detail?.trim()) row.detail = said;
+    const ownTime = Boolean(row.time_label || row.end_time || row.duration_minutes);
+    if (ownTime || row.booked === true) return;
+    const market = isMarketStop(area);
+    if (isAreaStop(area) && !market) return;
+    if (hasOwnVenue(row, area) && !isSiteStop(area) && !market) return;
+    area.detail = withInsideNote(area.detail, row.title);
+    const note = row.detail?.trim();
+    const address = row.address?.trim();
+    if (note || address) {
+      area.inside_details = [
+        ...(area.inside_details ?? []),
+        { title: row.title, ...(note ? { note } : {}), ...(address ? { address } : {}) },
+      ];
+    }
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
@@ -685,6 +716,59 @@ export function isAreaStop(row: Pick<NestableRow, "kind" | "title" | "place">): 
   if (names.some((n) => SITE_WORDS.test(lastWord(n)))) return false;
   if (names.some((n) => AREA_WORDS.test(n))) return true;
   return row.kind.toLowerCase() === "walk" && !names.some((n) => SITE_WORDS.test(n));
+}
+
+/** A market, food hall or hawker centre: its stalls are one visit, whatever the words around it. */
+const MARKET_WORDS =
+  /(?<!\p{L})(?:markets?|marché|mercado|mercato|markt|bazaar|souk|food hall|hawker cent(?:re|er)|depachika)(?!\p{L})/iu;
+
+/** A market by name ("Nishiki Market", "Temple Street Night Market"), not a supermarket. */
+export function isMarketStop(row: Pick<NestableRow, "title" | "place">): boolean {
+  const names = [row.title, row.place ?? ""].filter((n) => n.trim());
+  if (names.some((n) => SITE_WORDS.test(lastWord(n)))) return false;
+  return names.some((n) => MARKET_WORDS.test(n));
+}
+
+/** A name without its local-script name in brackets: "Miki Keiran (三木鶏卵)" → "miki keiran". */
+const bareName = (name: string) => fold(name.replace(/\s*[(（][^)）]*[)）]\s*/g, " "));
+
+/**
+ * The sentence of a parent's note that is about one of its parts, taken
+ * out: "…omelet. Yubakichi / 湯波吉 - nama-yuba. …" gives "nama-yuba" for
+ * "Yubakichi". A sentence is one that starts with the part's name; the name,
+ * a local name after "/", and the dash after them are dropped from what is
+ * said. `said` is null when no sentence starts with it.
+ */
+export function takeChildNote(
+  detail: string | null,
+  title: string,
+): { detail: string | null; said: string | null } {
+  const name = bareName(title);
+  if (!detail || name.length < 3) return { detail, said: null };
+  let said: string | null = null;
+  const parts = detail.split(" · ").map((part) =>
+    part
+      .split(/(?<=[.;!?])\s+/)
+      .filter((sentence) => {
+        if (said !== null || sentence.startsWith("Inside: ")) return true;
+        const head = fold(sentence);
+        if (!head.startsWith(name) || /[\p{L}\p{N}]/u.test(head.charAt(name.length))) return true;
+        said =
+          sentence
+            .slice(name.length)
+            .replace(/^\s*[(（][^)）]*[)）]/, "")
+            .replace(/^\s*\/\s*[^-–—:]*?(?=\s*[-–—:])/, "")
+            .replace(/^\s*[-–—:,]\s*/, "")
+            .replace(/[.;]\s*$/, "")
+            .trim() || null;
+        // A sentence that was only the name still goes: the list says it.
+        said ??= "";
+        return false;
+      })
+      .join(" "),
+  );
+  const rest = parts.filter((p) => p.trim()).join(" · ");
+  return { detail: rest || null, said: said || null };
 }
 
 /** One site by name ("Peace Memorial Park", "Kiyomizu-dera"), whose parts fold into it. */
