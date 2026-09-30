@@ -20,8 +20,11 @@ export class GeoLedger {
   private unmetered = false;
   private errorUntil = 0;
   private inFlight: Promise<GeoReserveResult> | null = null;
+  private readonly reserve: (credits: number) => Promise<GeoReserveResult>;
 
-  constructor(private readonly reserve: (credits: number) => Promise<GeoReserveResult>) {}
+  constructor(reserve: (credits: number) => Promise<GeoReserveResult>) {
+    this.reserve = reserve;
+  }
 
   async spend(credits: number, now: number): Promise<GeoSpendResult> {
     this.roll(now);
