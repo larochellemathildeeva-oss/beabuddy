@@ -6,7 +6,14 @@ import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { geoFetch, geoapifyKey } from "./lib/geo-provider.server";
 import { openFreeMapAsset, openFreeMapOn, openFreeMapUnreadable } from "./lib/open-free-map.server";
+import { TILE_CACHE_MAX_BYTES, TileResponseCache, type TileCacheValue } from "./lib/tile-cache";
 import { TILE_CACHE_CONTROL, parseTilePath, tileSourceUrl } from "./lib/tile-proxy";
+import {
+  TILE_DAILY_CREDITS,
+  TileDailyCreditShare,
+  TileRateLimiter,
+  tileClientKey,
+} from "./lib/tile-rate-limit";
 import {
   glyphSourceUrl,
   parseGlyphPath,
@@ -56,6 +63,52 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+const tileCache = new TileResponseCache();
+const tileRateLimiter = new TileRateLimiter();
+const TILE_SHARE_KEY = Symbol.for("bea.tileGeoapifyCreditShare");
+const GEOAPIFY_TILE_CREDITS = 0.25;
+
+function tileShare(): TileDailyCreditShare {
+  const store = globalThis as { [TILE_SHARE_KEY]?: TileDailyCreditShare };
+  store[TILE_SHARE_KEY] ??= new TileDailyCreditShare();
+  return store[TILE_SHARE_KEY];
+}
+
+function cachedMapResponse(key: string, cacheControl: string): Response | null {
+  const cached = tileCache.get(key, Date.now());
+  if (!cached) return null;
+  return new Response(cached.body, {
+    status: 200,
+    headers: { "content-type": cached.contentType, "cache-control": cacheControl },
+  });
+}
+
+async function rememberMapResponse(key: string, response: Response): Promise<Response> {
+  if (response.status !== 200) return response;
+  const announcedLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(announcedLength) && announcedLength > TILE_CACHE_MAX_BYTES) return response;
+  try {
+    const body = new Uint8Array(await response.clone().arrayBuffer());
+    if (body.byteLength === 0) return response;
+    const value: TileCacheValue = {
+      body,
+      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+    };
+    tileCache.set(key, value, Date.now());
+  } catch {
+    // The upstream answer is still useful even if its clone cannot be cached.
+  }
+  return response;
+}
+
+function announceTileShareIfSpent(now: number): void {
+  const share = tileShare();
+  if (!share.takeExhaustedNotice(now)) return;
+  console.warn(
+    `[geo] map tiles and glyphs used their ${TILE_DAILY_CREDITS} Geoapify credits today; map fallbacks skip Geoapify until midnight UTC`,
+  );
+}
+
 /**
  * Map tiles, fetched by Béa rather than by the browser.
  *
@@ -75,10 +128,31 @@ async function serveTile(request: Request): Promise<Response | null> {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  const cacheKey = `tile:${coords.z}:${coords.x}:${coords.y}`;
+  const cached = cachedMapResponse(cacheKey, TILE_CACHE_CONTROL);
+  if (cached) return cached;
+
+  const now = Date.now();
+  if (!tileRateLimiter.allow(tileClientKey(request.headers), now)) {
+    return new Response(null, { status: 204 });
+  }
+
   const token = (process.env["LOCATIONIQ_TOKEN"] ?? "").trim();
+  let key = geoapifyKey();
+  if (key) {
+    const share = tileShare();
+    if (share.canSpend(GEOAPIFY_TILE_CREDITS, now)) {
+      share.trySpend(GEOAPIFY_TILE_CREDITS, now);
+      announceTileShareIfSpent(now);
+    } else {
+      announceTileShareIfSpent(now);
+      key = "";
+    }
+  }
+
   try {
-    // Geoapify's key only while it is not resting for the day (geo-credits.ts).
-    const upstream = await geoFetch(tileSourceUrl(coords, token, geoapifyKey()), {
+    // Geoapify's key only while both the app-wide and map-only credit guards allow it.
+    const upstream = await geoFetch(tileSourceUrl(coords, token, key), {
       headers: { "User-Agent": "BeaBot/1.0 (travel app)", Accept: "image/png,image/*" },
       signal: AbortSignal.timeout(8_000),
     });
@@ -86,13 +160,16 @@ async function serveTile(request: Request): Promise<Response | null> {
       // A missing tile is a blank square on a small map, not an error page.
       return new Response(null, { status: 204 });
     }
-    return new Response(upstream.body, {
-      status: 200,
-      headers: {
-        "content-type": upstream.headers.get("content-type") ?? "image/png",
-        "cache-control": TILE_CACHE_CONTROL,
-      },
-    });
+    return await rememberMapResponse(
+      cacheKey,
+      new Response(upstream.body, {
+        status: 200,
+        headers: {
+          "content-type": upstream.headers.get("content-type") ?? "image/png",
+          "cache-control": TILE_CACHE_CONTROL,
+        },
+      }),
+    );
   } catch {
     return new Response(null, { status: 204 });
   }
@@ -117,13 +194,34 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
   if (request.method !== "GET" && request.method !== "HEAD") {
     return new Response("Method not allowed", { status: 405 });
   }
+
+  const cacheKey = tile
+    ? `vtile:${tile.z}:${tile.x}:${tile.y}`
+    : `glyph:${glyph!.font}:${glyph!.start}`;
+  const cached = cachedMapResponse(cacheKey, VECTOR_CACHE_CONTROL);
+  if (cached) return cached;
+
   const free = await openFreeMapAsset(tile ? { tile } : { glyph: glyph! });
   const fromFree = free && vectorResponse(free);
-  if (fromFree) return fromFree;
+  if (fromFree) return await rememberMapResponse(cacheKey, fromFree);
   if (free) openFreeMapUnreadable();
+
   // Empty while Geoapify rests for the day (geo-credits.ts).
   const key = geoapifyKey();
   if (!key) return new Response(null, { status: openFreeMapOn() ? 502 : 404 });
+
+  const now = Date.now();
+  const share = tileShare();
+  if (!share.canSpend(GEOAPIFY_TILE_CREDITS, now)) {
+    announceTileShareIfSpent(now);
+    return new Response(null, { status: 502 });
+  }
+  if (!tileRateLimiter.allow(tileClientKey(request.headers), now)) {
+    return new Response(null, { status: 502 });
+  }
+  share.trySpend(GEOAPIFY_TILE_CREDITS, now);
+  announceTileShareIfSpent(now);
+
   try {
     const upstream = await geoFetch(
       tile ? vectorTileSourceUrl(tile, key) : glyphSourceUrl(glyph!, key),
@@ -135,7 +233,8 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
     if (!upstream.ok) return new Response(null, { status: 502 });
     const body = new Uint8Array(await upstream.arrayBuffer());
     if (body.byteLength === 0 && !tile) return new Response(null, { status: 502 });
-    return vectorResponse(body) ?? new Response(null, { status: 502 });
+    const response = vectorResponse(body) ?? new Response(null, { status: 502 });
+    return await rememberMapResponse(cacheKey, response);
   } catch {
     return new Response(null, { status: 502 });
   }
