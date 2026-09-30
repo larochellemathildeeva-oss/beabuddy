@@ -655,7 +655,7 @@ export function TripDetail({
   }, [board.items, itemsById]);
   const nestProps = (item: ItineraryRow) => {
     const onInside = (next: InsideEntry[]) => void board.updateItem(item.id, { inside: next });
-    // Flat, by choice: every stop on its own line, what is inside as a note.
+    // Flat, by choice: every stop on its own line. What is inside stays a pill.
     if (!view.prefs.nesting) return { flat: true, onInside };
     const parent = item.parent_id ? itemsById.get(item.parent_id) : undefined;
     return {

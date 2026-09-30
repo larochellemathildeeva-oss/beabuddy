@@ -181,7 +181,11 @@ export function TimelineEntry({
   nestedStops?: number;
   /** Save what to see inside this stop. Absent until the nesting migration is applied. */
   onInside?: ((next: InsideEntry[]) => void) | undefined;
-  /** The flat view: what is inside is a plain line, not a pill. */
+  /**
+   * The flat view: stops inside another are not tucked under it or counted
+   * on its pill. What is inside is a pill either way: a list of names as a
+   * line of text could not be opened, ticked, or show where each one is.
+   */
   flat?: boolean;
   /** One line a stop (time, name, kind); tapping it shows the whole card. */
   compact?: boolean;
@@ -204,7 +208,7 @@ export function TimelineEntry({
   const inside = item.inside ?? [];
   // Editable only once the column exists: the row carries it when it does.
   const canEditInside = Boolean(onInside) && item.inside !== undefined;
-  const pill = flat ? null : nestPillLabel(inside.length, nestedStops);
+  const pill = nestPillLabel(inside.length, flat ? 0 : nestedStops);
   const insideDone = inside.filter((entry) => entry.done).length;
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
@@ -377,11 +381,6 @@ export function TimelineEntry({
             <span className="mt-1 flex items-start gap-1.5 text-[12.5px] leading-snug text-muted-foreground">
               <MapPin className="mt-px size-4 shrink-0" aria-hidden />
               <span className="line-clamp-1 break-words">{whereLine}</span>
-            </span>
-          ) : null}
-          {flat && inside.length > 0 ? (
-            <span className="mt-0.5 line-clamp-2 block break-words text-[12px] leading-snug text-muted-foreground">
-              Inside: {inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
             </span>
           ) : null}
           {stray ? (
