@@ -1474,6 +1474,8 @@ export function TripDetail({
             cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
             country={trip.country}
             groups={allDayGroups}
+            days={moveDays}
+            route={routeCities}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
             onOpenBookings={openBookings}
