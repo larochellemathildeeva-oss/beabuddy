@@ -5,7 +5,7 @@ import { gunzipSync } from "node:zlib";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 import { geoFetch, geoapifyKey } from "./lib/geo-provider.server";
-import { openFreeMapAsset, openFreeMapOn } from "./lib/open-free-map.server";
+import { openFreeMapAsset, openFreeMapOn, openFreeMapUnreadable } from "./lib/open-free-map.server";
 import { TILE_CACHE_CONTROL, parseTilePath, tileSourceUrl } from "./lib/tile-proxy";
 import {
   glyphSourceUrl,
@@ -120,6 +120,7 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
   const free = await openFreeMapAsset(tile ? { tile } : { glyph: glyph! });
   const fromFree = free && vectorResponse(free);
   if (fromFree) return fromFree;
+  if (free) openFreeMapUnreadable();
   // Empty while Geoapify rests for the day (geo-credits.ts).
   const key = geoapifyKey();
   if (!key) return new Response(null, { status: openFreeMapOn() ? 502 : 404 });
