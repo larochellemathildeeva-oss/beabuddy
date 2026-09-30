@@ -6,6 +6,7 @@
  * Pure, so each rule is tested on its own rather than through the sheet.
  */
 import { looksLikeStreetAddress } from "./direction-stops.ts";
+import { addInside, insideText, readInsideText } from "./inside-list.ts";
 import type { Confidence } from "./match-confidence.ts";
 
 /**
@@ -589,6 +590,8 @@ type NestableRow = {
   booked?: boolean | null | undefined;
   /** The title of the earlier stop this one is inside, as the parse wrote it. */
   within?: string | null | undefined;
+  /** Where it is, carried into its parent's list when it is folded in. */
+  address?: string | null | undefined;
 };
 
 const fold = (value: string | null | undefined) =>
@@ -652,7 +655,11 @@ export function nestWithin<T extends NestableRow>(rows: readonly T[]): T[] {
     const area = out[parent]!;
     if (ownTime || row.booked === true || isAreaStop(area)) return;
     if (hasOwnVenue(row, area) && !isSiteStop(area)) return;
-    out[parent]!.detail = withInsideNote(out[parent]!.detail, row.title);
+    out[parent]!.detail = withInsideNote(out[parent]!.detail, {
+      title: row.title,
+      ...(row.detail?.trim() ? { note: row.detail.trim() } : {}),
+      ...(row.address?.trim() ? { address: row.address.trim() } : {}),
+    });
     drop.add(i);
   });
   return out.filter((_, i) => !drop.has(i));
@@ -731,14 +738,24 @@ export function linkAreaSpots<T extends NestableRow>(rows: readonly T[]): T[] {
   return out;
 }
 
-/** "Inside: East building · Main building", one note however many are added. */
-export function withInsideNote(detail: string | null, title: string): string {
+/**
+ * "Inside: East building, Main building", one note however many are added.
+ * A place's own note and address ride along (inside-list.ts writes them), so
+ * a stall folded into its market keeps where it is.
+ */
+export function withInsideNote(
+  detail: string | null,
+  entry: string | { title: string; note?: string; address?: string },
+): string {
+  const item = typeof entry === "string" ? { title: entry } : entry;
   const notes = (detail ?? "").split(" · ").filter(Boolean);
   const at = notes.findIndex((n) => n.startsWith("Inside: "));
-  if (at < 0) return [...notes, `Inside: ${title}`].join(" · ");
-  const listed = notes[at]!.slice("Inside: ".length).split(", ");
-  if (!listed.some((l) => fold(l) === fold(title))) listed.push(title);
-  notes[at] = `Inside: ${listed.join(", ")}`;
+  const listed = at < 0 ? [] : readInsideText(notes[at]!.slice("Inside: ".length));
+  // Already listed, it gains the note and address it lacked (addInside).
+  const next = addInside(listed, item.title, item);
+  const line = `Inside: ${insideText(next)}`;
+  if (at < 0) return [...notes, line].join(" · ");
+  notes[at] = line;
   return notes.join(" · ");
 }
 
