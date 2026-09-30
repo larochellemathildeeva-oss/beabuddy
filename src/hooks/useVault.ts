@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   clearStoredVaultKeys,
@@ -44,6 +44,11 @@ export type NewDoc = {
 
 const VERIFIER = "bea-vault-ok";
 
+/** Rows read per request when a passcode change fetches every document. */
+const ROTATE_PAGE = 500;
+/** Past this, a passcode change is refused up front rather than sent. */
+const ROTATE_MAX_BYTES = 20_000_000;
+
 export function useVault() {
   const [uid, setUid] = useState<string | null>(null);
   const [hasVault, setHasVault] = useState(false);
@@ -57,6 +62,12 @@ export function useVault() {
    * a vault made before it. Asked to choose a stronger one.
    */
   const [weakPasscode, setWeakPasscode] = useState(false);
+  /**
+   * The verifier this device unlocked with. A passcode change sends it, so a
+   * change made meanwhile on another device is refused rather than
+   * overwritten; a new document checks it after saving.
+   */
+  const unlockedVerifier = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -103,6 +114,7 @@ export function useVault() {
         .from("vault_settings")
         .upsert({ user_id: uid, salt, verifier: ciphertext, verifier_iv: iv });
       if (error) throw error;
+      unlockedVerifier.current = ciphertext;
       setKey(k);
       setHasVault(true);
       await load();
@@ -123,6 +135,7 @@ export function useVault() {
     } catch {
       throw new Error("That passcode doesn't match");
     }
+    unlockedVerifier.current = settings.verifier;
     setKey(k);
     setWeakPasscode(!validateVaultPasscode(passcode).valid);
   }, []);
@@ -140,6 +153,7 @@ export function useVault() {
     } catch {
       throw new Error("That did not unlock Protected. Use your passcode.");
     }
+    unlockedVerifier.current = settings.verifier;
     setKey(k);
   }, []);
 
@@ -168,6 +182,9 @@ export function useVault() {
       }
       await enrolDevicePasskey(uid, raw);
       setHasPasskey(true);
+      // A Face ID unlock never sees the passcode, so this is the moment to
+      // ask for a stronger one if it needs it.
+      setWeakPasscode(!validateVaultPasscode(passcode).valid);
     },
     [uid, acceptKey],
   );
@@ -191,26 +208,40 @@ export function useVault() {
       if (!uid || !key) throw new Error("Unlock Protected first");
       const check = validateVaultPasscode(passcode);
       if (!check.valid) throw new Error(check.message);
-      const { data: settings, error: settingsError } = await supabase
-        .from("vault_settings")
-        .select("verifier")
-        .maybeSingle();
-      if (settingsError || !settings) throw new Error("No vault yet");
-      const { data: docs, error: docsError } = await supabase
-        .from("vault_documents")
-        .select("id, ciphertext, iv");
-      if (docsError) throw docsError;
+      const oldVerifier = unlockedVerifier.current;
+      if (!oldVerifier) throw new Error("Unlock Protected first");
+      // Every document, a page at a time: the API returns at most a page per
+      // request, and the change is refused unless it names them all.
+      const docs: { id: string; ciphertext: string; iv: string }[] = [];
+      for (let from = 0; ; from += ROTATE_PAGE) {
+        const { data, error: docsError } = await supabase
+          .from("vault_documents")
+          .select("id, ciphertext, iv")
+          .order("id")
+          .range(from, from + ROTATE_PAGE - 1);
+        if (docsError) throw docsError;
+        docs.push(...(data ?? []));
+        if (!data || data.length < ROTATE_PAGE) break;
+      }
       const salt = randomB64(16);
       const k = await deriveKey(passcode, salt);
       let documents: { id: string; ciphertext: string; iv: string }[];
       try {
-        documents = await reencryptRows(key, k, docs ?? []);
+        documents = await reencryptRows(key, k, docs);
       } catch {
-        throw new Error("A document in Protected could not be opened, so nothing was changed.");
+        throw new Error(
+          "A document in Protected could not be opened, so nothing was changed. If the passcode was changed on another device, lock Protected and unlock it again.",
+        );
+      }
+      const bytes = documents.reduce((n, d) => n + d.ciphertext.length + d.iv.length, 0);
+      if (bytes > ROTATE_MAX_BYTES) {
+        throw new Error(
+          "Protected holds too many large files to change the passcode in one go. Remove a few scans, change it, then add them back.",
+        );
       }
       const verifier = await encryptJson(k, VERIFIER);
       const { error } = await supabase.rpc("rotate_vault_passcode", {
-        _old_verifier: settings.verifier,
+        _old_verifier: oldVerifier,
         _salt: salt,
         _verifier: verifier.ciphertext,
         _verifier_iv: verifier.iv,
@@ -221,9 +252,12 @@ export function useVault() {
         throw new Error(
           error.code === "40001"
             ? "Protected changed on another device. Lock it, unlock again, then try once more."
-            : "The passcode could not be changed just now. Your current passcode still works.",
+            : error.code === "57014"
+              ? "Protected is too large to change the passcode in one go. Remove a few scans and try again. Your current passcode still works."
+              : "The passcode could not be changed just now. Your current passcode still works.",
         );
       }
+      unlockedVerifier.current = verifier.ciphertext;
       forgetPasskey(uid);
       setHasPasskey(false);
       setKey(k);
@@ -234,6 +268,7 @@ export function useVault() {
   );
 
   const lock = useCallback(() => {
+    unlockedVerifier.current = null;
     setKey(null);
     setWeakPasscode(false);
   }, []);
@@ -242,15 +277,35 @@ export function useVault() {
     async (doc: NewDoc) => {
       if (!uid || !key) throw new Error("Unlock the vault first");
       const { ciphertext, iv } = await encryptJson(key, doc.secret);
-      const { error } = await supabase.from("vault_documents").insert({
-        user_id: uid,
-        kind: doc.kind,
-        label: doc.label,
-        expires_on: doc.expires_on || null,
-        ciphertext,
-        iv,
-      });
+      const { data: inserted, error } = await supabase
+        .from("vault_documents")
+        .insert({
+          user_id: uid,
+          kind: doc.kind,
+          label: doc.label,
+          expires_on: doc.expires_on || null,
+          ciphertext,
+          iv,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+      // If the passcode was changed on another device while this was being
+      // saved, the row is sealed under a key nobody has any more. The insert
+      // waits for such a change to finish (see rotate_vault_passcode), so
+      // reading the verifier now tells.
+      const { data: settings } = await supabase
+        .from("vault_settings")
+        .select("verifier")
+        .maybeSingle();
+      if (settings && unlockedVerifier.current && settings.verifier !== unlockedVerifier.current) {
+        await supabase.from("vault_documents").delete().eq("id", inserted.id);
+        unlockedVerifier.current = null;
+        setKey(null);
+        throw new Error(
+          "The Protected passcode was changed on another device. Unlock with the new one, then add this again.",
+        );
+      }
       await load();
     },
     [uid, key, load],

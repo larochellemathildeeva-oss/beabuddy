@@ -259,19 +259,53 @@ export function endState(files) {
 export function ruleProblems(files) {
   const state = endState(files);
   const problems = [];
+  // Row level security as the folder leaves it: enables and disables in
+  // order, and a dropped table loses it. (CREATE TABLE IF NOT EXISTS on a
+  // table that already exists changes nothing, so a create does not reset.)
   const rls = new Set();
+  // Schema-wide grants to anon, which readMigration's per-table reader
+  // cannot see: ON ALL TABLES IN SCHEMA, and ALTER DEFAULT PRIVILEGES.
+  const broad = [];
+  const rlsRe = new RegExp(
+    `alter\\s+table\\s+(?:if\\s+exists\\s+)?(?:only\\s+)?(${ID})\\s+(enable|disable)\\s+row\\s+level\\s+security`,
+    "gi",
+  );
+  const dropRe = new RegExp(`drop\\s+table\\s+(?:if\\s+exists\\s+)?(${ID})`, "gi");
+  const schemaGrantRe =
+    /(grant|revoke)\s+[\w,\s]+?\s+on\s+all\s+(?:tables|sequences|functions|routines)\s+in\s+schema\s+("?public"?)\s+(?:to|from)\s+([\w,\s]+?)\s*;/gi;
+  const defaultGrantRe =
+    /alter\s+default\s+privileges\b[^;]*?\bgrant\b[^;]*?\bto\s+([\w,\s]+?)\s*;/gi;
   for (const f of files) {
     const text = stripped(f.sql);
-    for (const m of text.matchAll(
-      new RegExp(
-        `alter\\s+table\\s+(?:if\\s+exists\\s+)?(?:only\\s+)?(${ID})\\s+enable\\s+row\\s+level\\s+security`,
-        "gi",
-      ),
-    )) {
+    const events = [];
+    for (const m of text.matchAll(dropRe)) {
       const t = qualified(m[1]);
-      rls.add(`${t.schema}.${t.name}`);
+      events.push({ at: m.index, key: `${t.schema}.${t.name}`, on: false });
+    }
+    for (const m of text.matchAll(rlsRe)) {
+      const t = qualified(m[1]);
+      events.push({
+        at: m.index,
+        key: `${t.schema}.${t.name}`,
+        on: m[2].toLowerCase() === "enable",
+      });
+    }
+    for (const e of events.sort((a, b) => a.at - b.at)) {
+      if (e.on) rls.add(e.key);
+      else rls.delete(e.key);
+    }
+    for (const m of text.matchAll(schemaGrantRe)) {
+      if (m[1].toLowerCase() === "grant" && roles(m[3]).includes("anon"))
+        broad.push(`${f.name}: grants on every table in schema public to anon`);
+    }
+    for (const m of text.matchAll(defaultGrantRe)) {
+      if (roles(m[1]).includes("anon"))
+        broad.push(
+          `${f.name}: default privileges grant to anon (Béa has no signed-out data access)`,
+        );
     }
   }
+  problems.push(...broad);
   const tables = state.filter(
     (o) => o.kind === "table" && o.op === "make" && o.schema === "public",
   );

@@ -15,6 +15,14 @@
 -- name every document the traveller has, each once, so none is left behind
 -- under the old key.
 --
+-- A document added from another device while a change runs would be sealed
+-- under the old key. So every insert first takes a share lock on the
+-- traveller's vault_settings row (vault_documents_wait_for_rotation): an
+-- insert that comes first makes the change wait and then refuse (one
+-- document too many); one that comes second waits for the change to commit,
+-- and the browser that added it sees the new verifier, deletes its row and
+-- asks to unlock again (useVault's addDoc).
+--
 -- Applied by hand; safe to re-run. Until it is applied, changing the passcode
 -- fails with nothing changed, and the old passcode keeps working.
 
@@ -81,3 +89,20 @@ $$;
 
 REVOKE ALL ON FUNCTION public.rotate_vault_passcode(text, text, text, text, jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rotate_vault_passcode(text, text, text, text, jsonb) TO authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.vault_documents_wait_for_rotation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  PERFORM 1 FROM public.vault_settings WHERE user_id = NEW.user_id FOR SHARE;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS vault_documents_wait_for_rotation ON public.vault_documents;
+CREATE TRIGGER vault_documents_wait_for_rotation
+  BEFORE INSERT ON public.vault_documents
+  FOR EACH ROW EXECUTE FUNCTION public.vault_documents_wait_for_rotation();

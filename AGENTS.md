@@ -394,8 +394,15 @@ passcode still unlock; on unlock they are asked to choose a stronger one
 (`changePasscode`): every document is re-encrypted in the browser and written
 with the new salt and verifier in one transaction by `rotate_vault_passcode`
 (security invoker, under the tables' own row level security), which refuses
-if the vault changed on another device or a document is missing. Face ID /
-fingerprint on that device is forgotten, since it held the old key. The
+if the verifier this device unlocked with is no longer current (a change on
+another device) or a document is missing. Documents are read a page at a
+time, and a change larger than 20 MB is refused up front. An insert into
+`vault_documents` waits for a running change (a share lock on the
+traveller's `vault_settings` row, by trigger), and `addDoc` re-reads the
+verifier afterwards, deleting its row and asking to unlock again if the
+passcode changed meanwhile. Face ID / fingerprint on that device is
+forgotten, since it held the old key; a Face ID unlock never sees the
+passcode, so the short-passcode prompt also appears when Face ID is set up. The
 migration is applied by hand; until it is, the change fails with nothing
 written and the old passcode keeps working.
 
