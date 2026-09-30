@@ -104,6 +104,12 @@ export class CreditGuard {
     return true;
   }
 
+  /** Rest Geoapify until the next UTC day without changing the local count. */
+  restForDay(now: number): void {
+    this.roll(now);
+    this.rest(nextUtcDay(now), "ceiling");
+  }
+
   /** True when this answer put Geoapify to rest. */
   answered(status: number, now: number, retryAfterS?: number): boolean {
     if (this.resting(now)) return false;

@@ -134,7 +134,13 @@ LocationIQ, else the public servers,
 Geoapify-only extras (hours, photos by place, nearby categories, static
 maps) are skipped, and the day map's vector tiles come from OpenFreeMap alone
 (below).
-The count is kept in the server's memory, so a restart starts it again at 0.
+The app-wide count is reserved atomically in `geoapify_daily_usage` before a
+request is sent, in 25-credit blocks shared across restarts and server
+instances; the in-memory guard still counts each actual call too. If that
+reservation fails for anything except a missing migration, `geoFetch` fails
+closed for 60 seconds and sends nothing to Geoapify. The migration is applied
+by hand; until it is applied, Béa logs one warning and falls back to the
+existing in-memory count.
 
 Map proxy requests have their own guardrails before that shared allowance: successful image
 tiles, vector tiles and glyphs stay in a 24-hour in-process LRU (2,000 entries / 64 MB), and a
