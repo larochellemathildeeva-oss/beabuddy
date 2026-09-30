@@ -15,19 +15,14 @@ function isGoogleHost(host: string): boolean {
   return /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/.test(host);
 }
 
-/**
- * The Google Maps link a rec was saved from, as a link to that exact place.
- *
- * A pin and a name can open the wrong café next door, or a search. The link
- * the traveller pasted names the place itself: Google's short share link,
- * a `/maps/place/` page, or one carrying Google's place ID or feature ID.
- * It is the traveller's own link, not an answer from Google's APIs, so it is
- * kept like any other note on the rec and costs nothing to open. A place ID
- * (`ChIJ…`) opens through Maps URLs' documented `query_place_id`; a feature
- * ID (`0x…:0x…`) through its customer ID, the second half in decimal. Null
- * for anything else, including the search links Béa writes itself.
- */
-export function googlePlaceLink(url: string | null | undefined, name: string): string | null {
+/** A Google Maps link, read for the one place it names. */
+type GooglePlaceRef =
+  | { kind: "share"; url: string }
+  | { kind: "place"; id: string }
+  | { kind: "cid"; cid: string }
+  | { kind: "page"; url: string };
+
+function readGoogleLink(url: string | null | undefined): GooglePlaceRef | null {
   if (!url?.trim()) return null;
   let u: URL;
   try {
@@ -44,7 +39,7 @@ export function googlePlaceLink(url: string | null | undefined, name: string): s
     host === "g.page" ||
     (host === "goo.gl" && u.pathname.startsWith("/maps"))
   ) {
-    return u.toString();
+    return { kind: "share", url: u.toString() };
   }
   const onMaps = isGoogleHost(host) && (host.startsWith("maps.") || u.pathname.startsWith("/maps"));
   if (!onMaps) return null;
@@ -59,18 +54,54 @@ export function googlePlaceLink(url: string | null | undefined, name: string): s
     u.searchParams.get("query_place_id") ||
     u.searchParams.get("place_id") ||
     /!19s(ChIJ[\w-]+)/.exec(whole)?.[1];
-  if (placeId && /^ChIJ[\w-]+$/.test(placeId)) {
-    const params = new URLSearchParams({ api: "1", query: name.trim() || "Place" });
-    params.set("query_place_id", placeId);
-    return `https://www.google.com/maps/search/?${params.toString()}`;
-  }
+  if (placeId && /^ChIJ[\w-]+$/.test(placeId)) return { kind: "place", id: placeId };
   const cid = u.searchParams.get("cid");
-  if (cid && /^\d{1,20}$/.test(cid)) return `https://maps.google.com/?cid=${cid}`;
+  if (cid && /^\d{1,20}$/.test(cid)) return { kind: "cid", cid: BigInt(cid).toString() };
   const feature =
     /^0x[0-9a-f]+:0x([0-9a-f]{1,16})$/i.exec(u.searchParams.get("ftid") ?? "")?.[1] ??
     /!1s0x[0-9a-f]+:0x([0-9a-f]{1,16})/i.exec(whole)?.[1];
-  if (feature) return `https://maps.google.com/?cid=${BigInt(`0x${feature}`).toString()}`;
-  return /\/maps\/place\//.test(u.pathname) ? u.toString() : null;
+  if (feature) return { kind: "cid", cid: BigInt(`0x${feature}`).toString() };
+  return /\/maps\/place\//.test(u.pathname) ? { kind: "page", url: u.toString() } : null;
+}
+
+/**
+ * The Google Maps link a rec was saved from, as a link to that exact place.
+ *
+ * A pin and a name can open the wrong café next door, or a search. The link
+ * the traveller pasted names the place itself: Google's short share link,
+ * a `/maps/place/` page, or one carrying Google's place ID or feature ID.
+ * It is the traveller's own link, not an answer from Google's APIs, so it is
+ * kept like any other note on the rec and costs nothing to open. A place ID
+ * (`ChIJ…`) opens through Maps URLs' documented `query_place_id`; a feature
+ * ID (`0x…:0x…`) through its customer ID, the second half in decimal. Null
+ * for anything else, including the search links Béa writes itself.
+ */
+export function googlePlaceLink(url: string | null | undefined, name: string): string | null {
+  const ref = readGoogleLink(url);
+  if (!ref) return null;
+  if (ref.kind === "place") {
+    const params = new URLSearchParams({ api: "1", query: name.trim() || "Place" });
+    params.set("query_place_id", ref.id);
+    return `https://www.google.com/maps/search/?${params.toString()}`;
+  }
+  if (ref.kind === "cid") return `https://maps.google.com/?cid=${ref.cid}`;
+  return ref.url;
+}
+
+/**
+ * Which Google place a saved link names, as a key two recs can be compared
+ * by: "place:ChIJ…" for a place ID, "cid:…" for a customer or feature ID
+ * (the same number either way), "link:…" for a short share link. Storing
+ * the ID is what Google's terms allow; nothing is asked of Google to get it.
+ * A `/maps/place/` page with no ID names no key: its path is a name and a
+ * view, and two of them differ for the same place.
+ */
+export function googlePlaceKey(url: string | null | undefined): string | null {
+  const ref = readGoogleLink(url);
+  if (!ref || ref.kind === "page") return null;
+  if (ref.kind === "place") return `place:${ref.id}`;
+  if (ref.kind === "cid") return `cid:${ref.cid}`;
+  return `link:${ref.url}`;
 }
 
 export function recMapsUrl(rec: {

@@ -97,6 +97,39 @@ test("different names in the same city are different places", () => {
   );
 });
 
+test("two recs saved from links to the same Google place are one place", () => {
+  const link = (q: string) =>
+    `https://www.google.com/maps/search/?api=1&query=${q}&query_place_id=ChIJN1t_tDeuEmsRUsoyG83frY4`;
+  assert.equal(
+    isSamePlace(
+      { name: "Fabrica Coffee", city: "Lisbon", url: link("Fabrica") },
+      { name: "Fábrica Coffee Roasters - Flores", city: "Lisboa", url: link("Fabrica+Flores") },
+    ),
+    true,
+  );
+});
+
+test("two different Google IDs do not by themselves make two places", () => {
+  // A market and a stall inside it each have an ID; the pins still decide.
+  assert.equal(
+    isSamePlace(
+      {
+        name: "Time Out Market",
+        lat: 38.7069,
+        lon: -9.1459,
+        url: "https://www.google.com/maps/search/?api=1&query=a&query_place_id=ChIJaaaa",
+      },
+      {
+        name: "Time Out Market Lisboa",
+        lat: 38.707,
+        lon: -9.146,
+        url: "https://www.google.com/maps/search/?api=1&query=b&query_place_id=ChIJbbbb",
+      },
+    ),
+    true,
+  );
+});
+
 test("isSamePlace reads a timeline row's title as its name", () => {
   assert.equal(
     isSamePlace({ title: "Bar Raval", city: "Toronto" }, { name: "Bar Raval", city: "Toronto" }),

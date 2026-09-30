@@ -11,6 +11,7 @@
 import { foldAccents } from "./fuzzy.ts";
 import { haversine } from "./geo.ts";
 import { timelineKindForPlace, type TimelineKind } from "./place-kind.ts";
+import { googlePlaceKey } from "./reco-open.ts";
 
 export type CapturedPlace = {
   name: string;
@@ -37,6 +38,8 @@ export type PlaceLike = {
   address?: string | null | undefined;
   lat?: number | null | undefined;
   lon?: number | null | undefined;
+  /** The link it was saved from; a Google Maps one can name the place itself. */
+  url?: string | null | undefined;
 };
 
 export function displayName(place: PlaceLike): string {
@@ -82,8 +85,16 @@ function coordsOf(place: PlaceLike): { lat: number; lon: number } | null {
  * ~120 m, or lacking coordinates, in the same city. Two pins on the same spot
  * count even when the names differ, which catches "Sagrada Familia" saved once
  * from a link and once by hand as "La Sagrada Família".
+ *
+ * Two recs saved from Google links to the same place are one place whatever
+ * their names and pins say. Two different Google IDs prove nothing — a market
+ * and a stall inside it each have one, and an old ID can outlive a merge — so
+ * they fall through to the usual checks.
  */
 export function isSamePlace(existing: PlaceLike, candidate: PlaceLike): boolean {
+  const key = googlePlaceKey(existing.url);
+  if (key && key === googlePlaceKey(candidate.url)) return true;
+
   const a = coordsOf(existing);
   const b = coordsOf(candidate);
   if (a && b && haversine(a, b) <= SAME_PLACE_METRES) return true;
