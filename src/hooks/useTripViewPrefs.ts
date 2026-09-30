@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { tripViewKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 /**
  * What the trip page shows, chosen by the traveller.
  *
  * Three switches, not the prototype's eight. A preference is for something
  * someone may not want to see; something absent because the data is not
- * there is a conditional render, not a setting. Kept on this device, the
+ * there is a conditional render, not a setting. Kept with the account, the
  * same way the Home layout is.
  */
 export type TripViewKey = "ribbon" | "journey" | "walkTimes" | "nesting" | "pinChecks";
@@ -45,11 +48,11 @@ export const DEFAULT_TRIP_VIEW: TripViewPrefs = {
   pinChecks: false,
 };
 
-const keyFor = (userId: string | undefined) => `bea-trip-view-${userId ?? "anon"}`;
+const keyFor = tripViewKey;
 
 function read(userId: string | undefined): TripViewPrefs {
   try {
-    const raw = window.localStorage.getItem(keyFor(userId));
+    const raw = getStored(keyFor(userId));
     if (!raw) return DEFAULT_TRIP_VIEW;
     return { ...DEFAULT_TRIP_VIEW, ...(JSON.parse(raw) as Partial<TripViewPrefs>) };
   } catch {
@@ -63,17 +66,19 @@ export function useTripViewPrefs() {
 
   useEffect(() => {
     setPrefs(read(user?.id));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === keyFor(user?.id) || e.key === null) setPrefs(read(user?.id));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [user?.id]);
 
   const toggle = useCallback(
     (key: TripViewKey) => {
       setPrefs((prev) => {
         const next = { ...prev, [key]: !prev[key] };
-        try {
-          window.localStorage.setItem(keyFor(user?.id), JSON.stringify(next));
-        } catch {
-          /* storage unavailable: the choice lasts for this visit */
-        }
+        setStored(keyFor(user?.id), JSON.stringify(next));
+        if (user?.id) saveAccountSetting("tripView", JSON.stringify(next));
         return next;
       });
     },

@@ -505,7 +505,7 @@ function ProfilePage() {
         open={panel === "appearance"}
         onClose={close}
         title="Appearance"
-        hint="Saved on this device"
+        hint="Saved to your account"
       >
         <div className="space-y-3">
           <ThemePicker />

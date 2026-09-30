@@ -5,6 +5,8 @@ import {
   STOP_PICTURES_KEY,
   type StopPictures,
 } from "@/lib/stop-pictures";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 // One value for the whole page, so every picture follows a change at once.
 let current: StopPictures | null = null;
@@ -12,28 +14,32 @@ const listeners = new Set<() => void>();
 
 function snapshot(): StopPictures {
   if (current === null) {
-    try {
-      current = asStopPictures(window.localStorage.getItem(STOP_PICTURES_KEY));
-    } catch {
-      current = "illustrations";
-    }
+    current = asStopPictures(getStored(STOP_PICTURES_KEY));
   }
   return current;
 }
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  // Another tab, or the account's value arriving from another device.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === STOP_PICTURES_KEY || e.key === null) {
+      current = null;
+      listener();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 function setStopPictures(next: StopPictures) {
   current = next;
   applyStopPictures(next, document.documentElement);
-  try {
-    window.localStorage.setItem(STOP_PICTURES_KEY, next);
-  } catch {
-    /* private mode: kept for this visit */
-  }
+  setStored(STOP_PICTURES_KEY, next);
+  saveAccountSetting("pictures", next);
   listeners.forEach((l) => l());
 }
 

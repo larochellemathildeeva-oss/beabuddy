@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { Check } from "@/components/icons";
-import { applyTheme, readTheme, THEMES, type ThemeName } from "@/lib/theme";
+import {
+  applyTheme,
+  DEFAULT_THEME,
+  isThemeName,
+  readTheme,
+  THEME_KEY,
+  THEMES,
+  type ThemeName,
+} from "@/lib/theme";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
 
 const LABELS: Record<ThemeName, { name: string; hint: string }> = {
   calm: { name: "Calm", hint: "White, cream and light beige" },
@@ -20,12 +29,21 @@ export function ThemePicker() {
 
   useEffect(() => {
     setTheme(readTheme());
+    const onStorage = (e: StorageEvent) => {
+      // The new value itself: this page may not be repainted yet.
+      if (e.key === THEME_KEY) setTheme(isThemeName(e.newValue) ? e.newValue : DEFAULT_THEME);
+      else if (e.key === null) setTheme(readTheme());
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   return (
     <div className="rounded-xl bg-elevated p-3">
       <p className="text-[14.5px] font-medium">Theme</p>
-      <p className="text-[12.5px] text-muted-foreground">Changes Béa’s colors on this device.</p>
+      <p className="text-[12.5px] text-muted-foreground">
+        Changes Béa’s colors on every device you sign in on.
+      </p>
       <div role="radiogroup" aria-label="Theme" className="mt-3 grid grid-cols-3 gap-2">
         {THEMES.map((name) => {
           const on = name === theme;
@@ -38,6 +56,7 @@ export function ThemePicker() {
               aria-label={`${LABELS[name].name}: ${LABELS[name].hint}`}
               onClick={() => {
                 applyTheme(name);
+                saveAccountSetting("theme", name);
                 setTheme(name);
               }}
               className={`rounded-2xl border-2 p-1.5 text-center transition-colors duration-(--t-tap) ease-(--ease-standard) ${

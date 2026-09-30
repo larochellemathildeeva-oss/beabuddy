@@ -442,6 +442,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          app_settings: Json
           avatar_url: string | null
           avoid_notes: string | null
           budget_level: string | null
@@ -458,6 +459,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          app_settings?: Json
           avatar_url?: string | null
           avoid_notes?: string | null
           budget_level?: string | null
@@ -474,6 +476,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          app_settings?: Json
           avatar_url?: string | null
           avoid_notes?: string | null
           budget_level?: string | null
@@ -1063,6 +1066,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      merge_app_settings: {
+        Args: { patch: Json }
+        Returns: undefined
+      }
       reserve_geo_credits: {
         Args: { _credits: number; _limit: number }
         Returns: boolean

@@ -1,5 +1,8 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { homeLayoutKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 export type HomeSectionKey = "trip" | "weather" | "waiting" | "future";
 
@@ -27,11 +30,11 @@ export const DEFAULT_HOME_LAYOUT: HomeLayout = {
   future: true,
 };
 
-const keyFor = (userId: string | undefined) => `bea-home-layout-${userId ?? "anon"}`;
+const keyFor = homeLayoutKey;
 
 function read(userId: string | undefined): HomeLayout {
   try {
-    const raw = window.localStorage.getItem(keyFor(userId));
+    const raw = getStored(keyFor(userId));
     if (!raw) return DEFAULT_HOME_LAYOUT;
     const parsed = JSON.parse(raw) as Partial<HomeLayout>;
     return { ...DEFAULT_HOME_LAYOUT, ...parsed };
@@ -50,11 +53,7 @@ const listeners = new Set<() => void>();
 const cache = new Map<string, { raw: string | null; layout: HomeLayout }>();
 
 function rawFor(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return cache.get(key)?.raw ?? null;
-  }
+  return getStored(key);
 }
 
 /**
@@ -75,13 +74,9 @@ function current(userId: string | undefined): HomeLayout {
 function write(userId: string | undefined, next: HomeLayout | null): void {
   const key = keyFor(userId);
   const raw = next ? JSON.stringify(next) : null;
-  try {
-    if (raw) window.localStorage.setItem(key, raw);
-    else window.localStorage.removeItem(key);
-  } catch {
-    /* storage unavailable: the choice lasts for this visit */
-  }
+  setStored(key, raw);
   cache.set(key, { raw, layout: next ?? DEFAULT_HOME_LAYOUT });
+  if (userId) saveAccountSetting("homeLayout", raw);
   for (const listener of listeners) listener();
 }
 

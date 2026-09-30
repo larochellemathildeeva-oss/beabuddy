@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { statsLayoutKey } from "@/lib/account-settings";
+import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 export type StatKey =
   "countries" | "cities" | "trips" | "flights" | "hotels" | "restaurants" | "travelDays" | "pins";
@@ -37,11 +40,11 @@ export const DEFAULT_STATS_LAYOUT: StatsLayout = {
   countryShare: true,
 };
 
-const keyFor = (userId: string | undefined) => `bea-stats-layout-${userId ?? "anon"}`;
+const keyFor = statsLayoutKey;
 
 function read(userId: string | undefined): StatsLayout {
   try {
-    const raw = window.localStorage.getItem(keyFor(userId));
+    const raw = getStored(keyFor(userId));
     if (!raw) return DEFAULT_STATS_LAYOUT;
     const parsed = JSON.parse(raw) as Partial<StatsLayout>;
     return { ...DEFAULT_STATS_LAYOUT, ...parsed };
@@ -56,17 +59,19 @@ export function useStatsLayout() {
 
   useEffect(() => {
     setLayout(read(user?.id));
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === keyFor(user?.id) || e.key === null) setLayout(read(user?.id));
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [user?.id]);
 
   const toggle = useCallback(
     (key: StatKey) => {
       setLayout((prev) => {
         const next = { ...prev, [key]: !prev[key] };
-        try {
-          window.localStorage.setItem(keyFor(user?.id), JSON.stringify(next));
-        } catch {
-          /* storage unavailable */
-        }
+        setStored(keyFor(user?.id), JSON.stringify(next));
+        if (user?.id) saveAccountSetting("statsLayout", JSON.stringify(next));
         return next;
       });
     },
@@ -77,11 +82,8 @@ export function useStatsLayout() {
     (on: boolean) => {
       setLayout((prev) => {
         const next = { ...prev, countryShare: on };
-        try {
-          window.localStorage.setItem(keyFor(user?.id), JSON.stringify(next));
-        } catch {
-          /* storage unavailable */
-        }
+        setStored(keyFor(user?.id), JSON.stringify(next));
+        if (user?.id) saveAccountSetting("statsLayout", JSON.stringify(next));
         return next;
       });
     },
@@ -90,11 +92,8 @@ export function useStatsLayout() {
 
   const reset = useCallback(() => {
     setLayout(DEFAULT_STATS_LAYOUT);
-    try {
-      window.localStorage.removeItem(keyFor(user?.id));
-    } catch {
-      /* storage unavailable */
-    }
+    setStored(keyFor(user?.id), null);
+    if (user?.id) saveAccountSetting("statsLayout", null);
   }, [user?.id]);
 
   return { layout, toggle, setCountryShare, reset };
