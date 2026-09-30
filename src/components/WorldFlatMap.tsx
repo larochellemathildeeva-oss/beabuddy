@@ -16,22 +16,50 @@ const world = feature(topo, topo.objects["countries"]!) as unknown as FeatureCol
 const W = 360;
 const H = 188;
 
+type Box = { x0: number; x1: number; y0: number; y1: number };
+const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+/**
+ * Each country's name goes right of its ring, or left when a pin or another
+ * name is there, or not at all: the ring still marks it, and says its name
+ * when held. The map is too small to print every name over Europe.
+ */
+function placeRingLabels<T extends { name: string; x: number; y: number }>(
+  rings: T[],
+  pins: readonly { x: number; y: number }[],
+): (T & { side: "right" | "left" | null })[] {
+  const taken: Box[] = pins.map(({ x, y }) => ({ x0: x - 4, x1: x + 4, y0: y - 12, y1: y }));
+  return rings.map((ring) => {
+    const width = ring.name.length * 3.6;
+    const right: Box = { x0: ring.x + 3, x1: ring.x + 4 + width, y0: ring.y - 3, y1: ring.y + 3 };
+    const left: Box = { x0: ring.x - 4 - width, x1: ring.x - 3, y0: ring.y - 3, y1: ring.y + 3 };
+    const fits = (box: Box) => box.x0 >= 0 && box.x1 <= W && !taken.some((t) => overlaps(t, box));
+    const side = fits(right) ? "right" : fits(left) ? "left" : null;
+    if (side) taken.push(side === "right" ? right : left);
+    return { ...ring, side };
+  });
+}
+
 /**
  * The World tab's Stats view: the same places as the globe, laid flat so the
  * whole world is seen at once. Countries you have been to are shaded, your
- * provinces or states filled, and each city gets a pin. Not interactive —
+ * provinces or states filled, each city gets a pin and each country a ring,
+ * as on the globe. Not interactive —
  * the globe on the Map tab is the one to explore.
  */
 export function WorldFlatMap({
   pins,
   visitedCountries,
   regions,
+  countryMarks,
 }: {
   pins: Pin[];
   visitedCountries: ReadonlySet<string>;
   regions?: { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> }[];
+  /** Every country you have been to, as the globe marks it. */
+  countryMarks?: { key: string; name: string; lat: number; lon: number }[] | undefined;
 }) {
-  const { countries, regionPaths, points } = useMemo(() => {
+  const { countries, regionPaths, points, rings } = useMemo(() => {
     const projection = geoNaturalEarth1().fitExtent(
       [
         [4, 4],
@@ -40,6 +68,12 @@ export function WorldFlatMap({
       { type: "Sphere" },
     );
     const path = geoPath(projection);
+    const points = pins
+      .map((pin) => {
+        const p = projection([pin.lon, pin.lat]);
+        return p ? { id: pin.id, name: pin.city || pin.name, x: p[0], y: p[1] } : null;
+      })
+      .filter((p): p is { id: string; name: string; x: number; y: number } => p !== null);
     return {
       countries: world.features.map((f, i) => ({
         id: String(f.id ?? i),
@@ -48,14 +82,18 @@ export function WorldFlatMap({
           Boolean(f.properties?.name) && visitedCountries.has(countryKey(f.properties?.name)),
       })),
       regionPaths: (regions ?? []).map((r) => ({ id: r.id, d: path(r.feature) ?? "" })),
-      points: pins
-        .map((pin) => {
-          const p = projection([pin.lon, pin.lat]);
-          return p ? { id: pin.id, name: pin.city || pin.name, x: p[0], y: p[1] } : null;
-        })
-        .filter((p): p is { id: string; name: string; x: number; y: number } => p !== null),
+      points,
+      rings: placeRingLabels(
+        (countryMarks ?? [])
+          .map((mark) => {
+            const p = projection([mark.lon, mark.lat]);
+            return p ? { key: mark.key, name: mark.name, x: p[0], y: p[1] } : null;
+          })
+          .filter((p): p is { key: string; name: string; x: number; y: number } => p !== null),
+        points,
+      ),
     };
-  }, [pins, visitedCountries, regions]);
+  }, [pins, visitedCountries, regions, countryMarks]);
 
   return (
     <svg
@@ -92,6 +130,34 @@ export function WorldFlatMap({
             strokeWidth={0.8}
           />
           <circle cy={-7.6} r={1.5} fill="var(--card)" />
+        </g>
+      ))}
+      {/* Country rings go over the city pins, as on the globe, with the
+          name beside them where it has room. */}
+      {rings.map((r) => (
+        <g key={`country-${r.key}`}>
+          <title>{r.name}</title>
+          <circle
+            cx={r.x}
+            cy={r.y}
+            r={2.4}
+            fill="var(--card)"
+            stroke="var(--visited)"
+            strokeWidth={1.2}
+          />
+          {r.side && (
+            <text
+              x={r.side === "right" ? r.x + 4 : r.x - 4}
+              y={r.y + 2}
+              textAnchor={r.side === "right" ? "start" : "end"}
+              className="fill-foreground text-[5.5px] font-semibold uppercase"
+              stroke="var(--card)"
+              strokeWidth={1.6}
+              paintOrder="stroke"
+            >
+              {r.name}
+            </text>
+          )}
         </g>
       ))}
     </svg>

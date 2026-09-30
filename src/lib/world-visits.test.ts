@@ -292,7 +292,7 @@ test("a country added by hand shades its country and is not a city", async () =>
   assert.deepEqual([...visitedCountryKeys(pins, [])].sort(), ["DE", "JP", "PT"]);
 });
 
-test("a country with no city of its own is named on the globe", async () => {
+test("every country you have been to is named on the globe", async () => {
   const { countryMarks } = await import("./world-visits.ts");
   const pins = [
     pin({
@@ -313,12 +313,48 @@ test("a country with no city of its own is named on the globe", async () => {
       lat: 0,
       lon: 0,
     }),
+    // Cities only, no country pin: named all the same, at the country's middle.
+    pin({ name: "Montreal", city: "Montreal", country: "Canada", lat: 45.5, lon: -73.57 }),
+    pin({ name: "New York", city: "New York", country: "USA", lat: 40.71, lon: -74.01 }),
   ];
   const cities = visitedCities(pins);
   const marks = countryMarks(pins, visitsByCountry(pins, cities, []));
-  // Japan has a city dot already; Ireland was saved with no real point.
   assert.deepEqual(
-    marks.map((m) => [m.name, m.lat]),
-    [["Iceland", 64.9]],
+    marks.map((m) => [m.name, m.lat, m.lon]),
+    [
+      ["Canada", 56.13, -106.35],
+      // Added by hand: where it was saved.
+      ["Iceland", 64.9, -18.6],
+      // Saved with no real point: its middle.
+      ["Ireland", 53.14, -7.69],
+      // A city dot already: the country's middle, not the dot.
+      ["Japan", 36.2, 138.25],
+      ["United States", 37.09, -95.71],
+    ],
   );
+});
+
+test("a country missing from the country list is named at its cities' middle", async () => {
+  const { countryMarks } = await import("./world-visits.ts");
+  const pins = [
+    pin({ name: "A", city: "Townsville", country: "Atlantis", lat: 10, lon: 20 }),
+    pin({ name: "B", city: "Otherton", country: "Atlantis", lat: 12, lon: 24 }),
+  ];
+  const cities = visitedCities(pins);
+  const marks = countryMarks(pins, visitsByCountry(pins, cities, []));
+  assert.deepEqual(
+    marks.map((m) => [m.name, m.lat, Number(m.lon.toFixed(6))]),
+    [["Atlantis", 11, 22]],
+  );
+});
+
+test("a country's cities either side of the date line are named between them", async () => {
+  const { countryMarks } = await import("./world-visits.ts");
+  const pins = [
+    pin({ name: "A", city: "Westend", country: "Atlantis", lat: -17, lon: 179 }),
+    pin({ name: "B", city: "Eastend", country: "Atlantis", lat: -17, lon: -179 }),
+  ];
+  const cities = visitedCities(pins);
+  const [mark] = countryMarks(pins, visitsByCountry(pins, cities, []));
+  assert.ok(mark && Math.abs(Math.abs(mark.lon) - 180) < 1e-9, `lon ${mark?.lon}`);
 });
