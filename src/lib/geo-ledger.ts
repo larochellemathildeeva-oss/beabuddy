@@ -63,8 +63,7 @@ export class GeoLedger {
 
   private startReservation(credits: number, now: number): void {
     const reservationDay = this.day;
-    let promise: Promise<GeoReserveResult>;
-    promise = this.reserve(credits)
+    const promise = this.reserve(credits)
       .catch(() => "error" as const)
       .then((result) => {
         if (result === "ok") {
@@ -80,7 +79,7 @@ export class GeoLedger {
         return result;
       })
       .finally(() => {
-        if (this.inFlight === promise) this.inFlight = null;
+        this.inFlight = null;
       });
     this.inFlight = promise;
   }
