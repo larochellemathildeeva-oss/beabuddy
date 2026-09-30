@@ -10,11 +10,27 @@
  * Pure, so every edit is tested without a database.
  */
 
-export type InsideEntry = { title: string; done: boolean };
+export type InsideEntry = {
+  title: string;
+  done: boolean;
+  /** Where it is, when known: a stall's own street address, opened in Maps from the list. */
+  address?: string;
+  /** What it is for: "dashimaki tamago". */
+  note?: string;
+};
 
 /** At most this many entries, as the migration's check allows. */
 export const INSIDE_MAX = 40;
 const TITLE_MAX = 200;
+const EXTRA_MAX = 200;
+
+/** An optional text field of an entry, cleaned, or nothing. */
+function extra(raw: unknown, key: "address" | "note"): string | undefined {
+  const value = raw && typeof raw === "object" ? (raw as Record<string, unknown>)[key] : undefined;
+  if (typeof value !== "string") return undefined;
+  const clean = value.replace(/\s+/g, " ").trim().slice(0, EXTRA_MAX);
+  return clean || undefined;
+}
 
 /**
  * The column's value as entries, forgiving anything malformed: a row saved
@@ -32,7 +48,14 @@ export function readInside(value: unknown): InsideEntry[] {
           : "";
     const clean = title.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX);
     if (!clean) continue;
-    out.push({ title: clean, done: Boolean((raw as { done?: unknown })?.done) });
+    const address = extra(raw, "address");
+    const note = extra(raw, "note");
+    out.push({
+      title: clean,
+      done: Boolean((raw as { done?: unknown })?.done),
+      ...(address ? { address } : {}),
+      ...(note ? { note } : {}),
+    });
     if (out.length >= INSIDE_MAX) break;
   }
   return out;

@@ -64,3 +64,25 @@ test("the pill says what is nested", () => {
   assert.equal(nestPillLabel(2, 2), "2 inside · 2 stops");
   assert.equal(nestPillLabel(0, 0), null);
 });
+
+test("an entry keeps where it is and what it is for, and ticking keeps them", () => {
+  const list = readInside([
+    {
+      title: "Miki Keiran",
+      done: false,
+      address: " 182 Higashiuoyacho,  Kyoto ",
+      note: "dashimaki tamago",
+    },
+    { title: "Yubakichi", done: false, address: "", note: 3 },
+  ]);
+  assert.deepEqual(list, [
+    {
+      title: "Miki Keiran",
+      done: false,
+      address: "182 Higashiuoyacho, Kyoto",
+      note: "dashimaki tamago",
+    },
+    { title: "Yubakichi", done: false },
+  ]);
+  assert.deepEqual(toggleInside(list, 0)[0], { ...list[0], done: true });
+});

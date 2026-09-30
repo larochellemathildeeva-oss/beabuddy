@@ -1047,6 +1047,22 @@ function InsidePill({
                   {entry.title}
                 </span>
               </button>
+              {entry.note || entry.address ? (
+                <p className="-mt-1 mb-1 pl-6 text-[12px] leading-snug text-muted-foreground">
+                  {entry.note ? <span className="block break-words">{entry.note}</span> : null}
+                  {entry.address ? (
+                    <a
+                      href={mapsPlaceUrl(entry.title, null, entry.address)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-start gap-1 break-words underline decoration-dotted underline-offset-2"
+                    >
+                      <MapPin className="mt-px size-3 shrink-0" aria-hidden />
+                      {entry.address}
+                    </a>
+                  ) : null}
+                </p>
+              ) : null}
             </li>
           ))}
         </ul>
