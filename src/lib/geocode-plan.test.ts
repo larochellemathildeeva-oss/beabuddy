@@ -126,6 +126,31 @@ test("a stop far from the rest of the trip is flagged; a road trip is not", asyn
   assert.equal(strayStopIds(roadTrip).size, 0);
 });
 
+test("a day trip far from the rest of the trip is not flagged; a lone pin is", async () => {
+  const { strayStopIds } = await import("./geocode-plan.ts");
+  const at = (id: string, day: string, lat: number, lon: number) => ({
+    id,
+    day_date: day,
+    lat,
+    lon,
+  });
+  const kyoto = [
+    at("fushimi", "2026-10-02", 34.9671, 135.7727),
+    at("nishiki", "2026-10-02", 35.005, 135.7649),
+    at("kinkaku", "2026-10-03", 35.0394, 135.7292),
+    at("ginkaku", "2026-10-03", 35.027, 135.7982),
+    at("kiyomizu", "2026-10-04", 34.9949, 135.785),
+    at("arashiyama", "2026-10-04", 35.0094, 135.6668),
+    // Day 7: a day trip to Hiroshima and Miyajima, ~300 km away.
+    at("dome", "2026-10-07", 34.3955, 132.4536),
+    at("peace-park", "2026-10-07", 34.3916, 132.4527),
+    at("itsukushima", "2026-10-07", 34.2959, 132.3199),
+    // A namesake pinned in Tokyo on a Kyoto day.
+    at("wrong", "2026-10-04", 35.6764, 139.65),
+  ];
+  assert.deepEqual([...strayStopIds(kyoto)], ["wrong"]);
+});
+
 test("the source's address and venue are asked for before the title", async () => {
   const { planStopQueries } = await import("./geocode-plan.ts");
   const q = planStopQueries(

@@ -432,11 +432,21 @@ function namesAllOf(
  * median of the placed stops; a stop counts as far when it is more than
  * `minKm` away and more than four times the typical distance from the middle,
  * so a road trip's stops, all far apart, are not all flagged.
+ *
+ * A far stop with company is a day trip, not a wrong pin: Hiroshima on a
+ * Kyoto trip is 300 km from the middle, but so is the rest of that day. So a
+ * stop is not flagged when another stop of the same day (of the trip, for
+ * stops with no day) is within `minKm` of it. A wrong pin, a namesake across
+ * the country, stands alone.
  */
-export function strayStopIds<T extends { id: string; lat: number | null; lon: number | null }>(
-  items: readonly T[],
-  minKm = 50,
-): Set<string> {
+export function strayStopIds<
+  T extends {
+    id: string;
+    lat: number | null;
+    lon: number | null;
+    day_date?: string | null | undefined;
+  },
+>(items: readonly T[], minKm = 50): Set<string> {
   const placed = items.filter(
     (i): i is T & { lat: number; lon: number } => i.lat != null && i.lon != null,
   );
@@ -449,9 +459,13 @@ export function strayStopIds<T extends { id: string; lat: number | null; lon: nu
   const mid = { lat: median(placed.map((p) => p.lat)), lon: median(placed.map((p) => p.lon)) };
   const km = (p: { lat: number; lon: number }) => distanceKm(p, mid);
   const typical = median(placed.map(km));
+  const company = (p: (typeof placed)[number]) =>
+    placed.some(
+      (q) => q !== p && (q.day_date ?? null) === (p.day_date ?? null) && distanceKm(p, q) <= minKm,
+    );
   for (const p of placed) {
     const d = km(p);
-    if (d > minKm && d > typical * 4) out.add(p.id);
+    if (d > minKm && d > typical * 4 && !company(p)) out.add(p.id);
   }
   return out;
 }
