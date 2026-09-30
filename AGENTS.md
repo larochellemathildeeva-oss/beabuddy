@@ -11,10 +11,13 @@ npm run typecheck   # tsc --noEmit — vite does not typecheck, so run this
 npm test            # node --test over src/lib/*.test.ts (needs Node >= 22.6)
 npm run lint        # eslint; the tree carries pre-existing prettier drift
 npm run build       # must exit 0 before anything is pushed
+npm run db:check:ci           # migration rules, offline (RLS, grants, no anon)
+npm run check:public-secrets  # after build: no server secret in .output/public
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, lint, test and build on every
-push to `main` and every pull request. Do not push work that has not passed it
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, test, the migration
+rules, build and the public-bundle secret scan on every push to `main` and
+every pull request. Do not push work that has not passed it
 locally first.
 
 ## App version (Canner)
@@ -273,8 +276,11 @@ because `*.functions.ts` ships to the client bundle. Never prefix them
 the browser:
 
 ```
-npm run build && grep -rlE "GEOAPIFY_API_KEY|LOCATIONIQ_TOKEN|OPEN_PLACES_API_KEY|OVERTURE_API_KEY|PEXELS_API_KEY" .output/public/   # must print nothing
+npm run build && npm run check:public-secrets   # CI runs it too
 ```
+
+A new server-only key goes into `SERVER_SECRET_NAMES` in
+`scripts/check-public-secrets.mjs`.
 
 OpenStreetMap data is ODbL, so `OSM_ATTRIBUTION` must stay visible wherever
 its data is shown — currently the trip map and the privacy page — and

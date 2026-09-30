@@ -41,8 +41,18 @@ jobs:
       - name: Test
         run: npm test
 
+      # Offline: every public table has RLS, a service_role grant and nothing
+      # for anon, and the live-database check query still builds. Blocking.
+      - name: Migration rules
+        run: npm run db:check:ci
+
       - name: Build
         run: npm run build
+
+      # Server-only env names (and Supabase secret keys) must never reach
+      # .output/public, the bundle a browser downloads. Blocking.
+      - name: No server secrets in the client bundle
+        run: npm run check:public-secrets
 
   # The frozen import checks: every sample plan through the list reader and
   # every frozen Gemini answer through today's clean-up, then a real 127-stop
