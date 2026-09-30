@@ -334,7 +334,7 @@ export function HomeYourTrips({ trips, photos }: { trips: TripRow[]; photos: Tri
               }}
             />
             <span className="absolute inset-x-0 bottom-0 p-2">
-              <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
+              <span className="line-clamp-2 break-words font-display text-[19px] leading-[1.05]">
                 {t.title}
               </span>
               <span className="block truncate text-[11.5px] text-white/90">
