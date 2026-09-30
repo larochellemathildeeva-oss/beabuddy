@@ -3,6 +3,8 @@
  * which kind (flights, stays, other transport, activities). Pure, so the
  * sorting rule is tested on its own.
  */
+import { routeStopOn } from "./import-stop.ts";
+import { parseLocalDate } from "./trip-dates.ts";
 import { timelineGlyph } from "./timeline-kind.ts";
 
 export type BookingKind = "flight" | "stay" | "transport" | "activity";
@@ -100,4 +102,68 @@ export function countBookings(bookings: readonly TripBooking[]): Record<BookingK
   const counts: Record<BookingKind, number> = { flight: 0, stay: 0, transport: 0, activity: 0 };
   for (const b of bookings) counts[b.kind] += 1;
   return counts;
+}
+
+/** One run of days in the same city: "Days 1–3 · Oct 1 – 3 · Berlin". */
+export type CityStretch<C> = {
+  /** Null for days the route does not place anywhere. */
+  city: C | null;
+  /** First and last day, YYYY-MM-DD. */
+  start: string;
+  end: string;
+  /** Day numbers across the trip, from 1. */
+  firstDay: number;
+  lastDay: number;
+  /** Timeline stops on these days. */
+  stops: number;
+};
+
+/**
+ * The trip as a recap of where it is when: consecutive days in the same city
+ * folded into one stretch, by the same rule placing uses (`routeStopOn`). A
+ * day trip is its own stretch between two of its base's.
+ */
+export function cityStretches<
+  C extends { city: string; arrive_on?: string | null; depart_on?: string | null },
+>(
+  days: readonly string[],
+  route: readonly C[],
+  stops: readonly { day_date: string | null }[],
+): CityStretch<C>[] {
+  const perDay = new Map<string, number>();
+  for (const stop of stops) {
+    if (stop.day_date) perDay.set(stop.day_date, (perDay.get(stop.day_date) ?? 0) + 1);
+  }
+  const out: CityStretch<C>[] = [];
+  days.forEach((day, i) => {
+    const city = routeStopOn(route, day);
+    const last = out[out.length - 1];
+    if (last && last.city === city && last.lastDay === i) {
+      last.end = day;
+      last.lastDay = i + 1;
+      last.stops += perDay.get(day) ?? 0;
+      return;
+    }
+    out.push({
+      city,
+      start: day,
+      end: day,
+      firstDay: i + 1,
+      lastDay: i + 1,
+      stops: perDay.get(day) ?? 0,
+    });
+  });
+  return out;
+}
+
+/** "Oct 1", "Oct 1 – 3", "Sep 30 – Oct 2". */
+export function stretchDates(start: string, end: string): string {
+  const from = parseLocalDate(start);
+  const to = parseLocalDate(end);
+  if (!from) return "";
+  const month = (d: Date) => d.toLocaleDateString("en-US", { month: "short" });
+  if (!to || start === end) return `${month(from)} ${from.getDate()}`;
+  return month(from) === month(to) && from.getFullYear() === to.getFullYear()
+    ? `${month(from)} ${from.getDate()} – ${to.getDate()}`
+    : `${month(from)} ${from.getDate()} – ${month(to)} ${to.getDate()}`;
 }

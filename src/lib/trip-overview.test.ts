@@ -1,6 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { bookingKind, countBookings, documentBookingKind, tripBookings } from "./trip-overview.ts";
+import {
+  bookingKind,
+  cityStretches,
+  countBookings,
+  documentBookingKind,
+  stretchDates,
+  tripBookings,
+} from "./trip-overview.ts";
 
 test("flights, stays, other transport and activities are told apart", () => {
   assert.equal(bookingKind({ kind: "flight", title: "YUL to LIS" }), "flight");
@@ -49,4 +56,46 @@ test("an unbooked stop is not a booking until a document is filed to it", () => 
     { id: "d1", kind: "other", title: "Confirmation", itinerary_item_id: "s1" },
   ]);
   assert.equal(withDoc[0]?.kind, "stay");
+});
+
+test("the overview folds the days into a stretch per city", () => {
+  const route = [
+    { city: "Berlin", arrive_on: "2026-10-01", depart_on: "2026-10-03" },
+    { city: "Potsdam", kind: "daytrip", arrive_on: "2026-10-02", depart_on: "2026-10-02" },
+    { city: "Munich", arrive_on: "2026-10-03", depart_on: "2026-10-05" },
+  ];
+  const days = ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"];
+  const stops = [
+    { day_date: "2026-10-01" },
+    { day_date: "2026-10-01" },
+    { day_date: "2026-10-02" },
+    { day_date: "2026-10-04" },
+    { day_date: null },
+  ];
+  const stretches = cityStretches(days, route, stops).map((s) => [
+    s.city?.city ?? null,
+    s.start,
+    s.end,
+    s.firstDay,
+    s.lastDay,
+    s.stops,
+  ]);
+  assert.deepEqual(stretches, [
+    ["Berlin", "2026-10-01", "2026-10-01", 1, 1, 2],
+    ["Potsdam", "2026-10-02", "2026-10-02", 2, 2, 1],
+    ["Munich", "2026-10-03", "2026-10-05", 3, 5, 1],
+  ]);
+});
+
+test("a trip with no cities is one stretch of unplaced days", () => {
+  const stretches = cityStretches(["2026-10-01", "2026-10-02"], [], []);
+  assert.equal(stretches.length, 1);
+  assert.equal(stretches[0]!.city, null);
+  assert.equal(stretches[0]!.lastDay, 2);
+});
+
+test("a stretch's dates are said briefly", () => {
+  assert.equal(stretchDates("2026-10-01", "2026-10-01"), "Oct 1");
+  assert.equal(stretchDates("2026-10-01", "2026-10-03"), "Oct 1 – 3");
+  assert.equal(stretchDates("2026-09-30", "2026-10-02"), "Sep 30 – Oct 2");
 });

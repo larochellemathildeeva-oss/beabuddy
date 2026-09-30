@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   ListChecks,
+  ListOrdered,
   Luggage,
   Map as MapIcon,
   MapPin,
@@ -15,10 +16,16 @@ import {
 } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { bookingKind, countBookings, tripBookings, type BookingKind } from "@/lib/trip-overview";
+import {
+  bookingKind,
+  cityStretches,
+  countBookings,
+  stretchDates,
+  tripBookings,
+  type BookingKind,
+} from "@/lib/trip-overview";
 import type { TripDocument } from "@/lib/trip-documents";
-import { PlacePicture } from "@/components/PlacePicture";
-import { timeForRail } from "@/lib/timeline-kind";
+import { isDayTrip, shortCity } from "@/lib/trip-cities";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 import type { PrepTab } from "@/components/TripPrep";
 
@@ -33,11 +40,20 @@ const KINDS: {
   { kind: "activity", label: "Activities", icon: Ticket },
 ];
 
+/** A city on the trip's route, as the recap reads it. */
+type RouteCity = {
+  city: string;
+  country?: string | null;
+  kind?: string | null;
+  arrive_on?: string | null;
+  depart_on?: string | null;
+};
+
 /**
- * The trip at a glance, as the master's Trip Overview: the route, bookings by
- * kind, prep, documents, and the days with their first stops. Every tile opens
- * something that exists — the Timeline for a kind of booking, the to-do and
- * packing sheet, the day on the map.
+ * The trip at a glance: bookings by kind, prep, documents, and a recap of
+ * where the trip is when (a line per city, with its days), not every stop.
+ * Every tile opens something that exists — the Timeline for a kind of
+ * booking, the to-do and packing sheet, every stop on the Timeline or map.
  */
 export function TripOverview({
   tripId,
@@ -47,6 +63,8 @@ export function TripOverview({
   onFindCities,
   findingCities = false,
   groups,
+  days,
+  route,
   bookingDocs,
   onOpenBookings,
   onOpenTimeline,
@@ -63,6 +81,10 @@ export function TripOverview({
   onFindCities?: (() => void) | undefined;
   findingCities?: boolean | undefined;
   groups: TimelineDayGroup<ItineraryRow>[];
+  /** Every day of the trip, in order, empty days too. */
+  days: string[];
+  /** The cities the trip moves between, day trips included. */
+  route: RouteCity[];
   /** Trip documents filed to this trip: they are bookings too. */
   bookingDocs: TripDocument[];
   /** The trip's bookings list, open on one kind. */
@@ -106,9 +128,14 @@ export function TripOverview({
   const packing = glance?.packing;
   const dated = groups.filter((g) => g.key);
 
-  const dates = dated.length
-    ? `${dated.length} ${dated.length === 1 ? "day" : "days"}`
-    : "No dates";
+  const stretches = cityStretches(days, route, items);
+  // Cities with no dates at all have no stretch: listed after, so none is lost.
+  const undatedCities = route.filter((c) => !stretches.some((s) => s.city === c));
+  const undated = items.filter((item) => !item.day_date).length;
+  const placeCountry = (c: RouteCity) =>
+    (c.country || c.city.split(",").slice(1).pop() || country || "").trim();
+  const manyCountries = countries.size > 1;
+  const dates = days.length ? `${days.length} ${days.length === 1 ? "day" : "days"}` : "No dates";
   const essentials: {
     key: string;
     icon: ComponentType<{ className?: string }>;
@@ -141,9 +168,21 @@ export function TripOverview({
       note: packing ? `${packing.packed} / ${packing.total}` : "No list yet",
       onClick: () => onPrep("packing"),
     },
+    {
+      key: "timeline",
+      icon: ListOrdered,
+      title: "Timeline",
+      note: `${items.length} ${items.length === 1 ? "stop" : "stops"}`,
+      onClick: () => onOpenTimeline(),
+    },
+    {
+      key: "map",
+      icon: MapIcon,
+      title: "Map",
+      note: dated[0] ? "See the pins" : "No days yet",
+      onClick: () => onOpenMap(dated[0]?.key ?? ""),
+    },
   ];
-  // The itinerary, numbered across the trip, as the master lists it.
-  let n = 0;
 
   return (
     <div className="space-y-6">
@@ -174,7 +213,7 @@ export function TripOverview({
 
       <section>
         <Head title="Trip essentials" />
-        <div className="-mx-4 flex snap-x scroll-px-4 gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        <div className="grid grid-cols-3 gap-2">
           {essentials.map((e, i) => (
             <Tile
               key={e.key}
@@ -187,13 +226,10 @@ export function TripOverview({
           ))}
           <Link
             to="/profile/documents"
-            className="tile-card-3 flex min-h-[92px] w-[132px] shrink-0 snap-start flex-col justify-between p-3"
+            className={`tile-card-${(essentials.length % 5) + 1} ${TILE}`}
           >
-            <FileText className="size-6 text-primary" aria-hidden />
-            <span>
-              <span className="block text-[14.5px] font-semibold">Travel docs</span>
-              <span className="block text-[12px] text-muted-foreground">View details</span>
-            </span>
+            <FileText className="size-5 text-primary" aria-hidden />
+            <TileText title="Travel docs" note="View details" />
           </Link>
         </div>
       </section>
@@ -215,75 +251,85 @@ export function TripOverview({
             ) : null
           }
         />
-        {groups.length === 0 ? (
+        {stretches.length === 0 && undatedCities.length === 0 ? (
           <p className="plain-card p-4 text-[14px] text-muted-foreground">
-            Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have.
+            {items.length
+              ? `${items.length} ${items.length === 1 ? "stop" : "stops"} with no dates yet. Give the trip its dates to see where you are each day.`
+              : "Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have."}
           </p>
         ) : (
           <div className="plain-card divide-y divide-border overflow-hidden">
-            {groups.map((group) =>
-              group.items.map((item) => {
-                n += 1;
-                const when = [
-                  group.key
-                    ? new Date(`${group.key}T00:00:00`).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : "",
-                  timeForRail(item.time_label),
-                ]
-                  .filter(Boolean)
-                  .join(" · ");
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onOpenTimeline(group.key)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
+            {stretches.map((s, i) => {
+              const days =
+                s.firstDay === s.lastDay ? `Day ${s.firstDay}` : `Days ${s.firstDay}–${s.lastDay}`;
+              const note = [
+                s.city && isDayTrip(s.city) ? "Day trip" : "",
+                s.city && manyCountries ? placeCountry(s.city) : "",
+                s.stops ? `${s.stops} ${s.stops === 1 ? "stop" : "stops"}` : "Nothing planned yet",
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                <button
+                  key={s.start}
+                  type="button"
+                  onClick={() => onOpenTimeline(s.start)}
+                  className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                >
+                  <span
+                    className={`seq-${(i % 5) + 1} grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold`}
                   >
-                    <span
-                      className={`seq-${((n - 1) % 5) + 1} grid size-7 shrink-0 place-items-center rounded-full text-[12.5px] font-bold`}
-                    >
-                      {n}
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-display text-[20px] leading-tight">
+                      {s.city ? shortCity(s.city.city) : "No city set"}
                     </span>
-                    <PlacePicture
-                      name={item.title}
-                      kind={item.kind}
-                      lat={item.lat}
-                      lon={item.lon}
-                      className="h-14 w-[72px] shrink-0 rounded-[12px]"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block font-display text-[18px] leading-tight">
-                        {item.title}
-                      </span>
-                      {when ? (
-                        <span className="block text-[12.5px] text-muted-foreground">{when}</span>
-                      ) : null}
-                      {item.booked ? (
-                        <span className="mt-1 inline-block rounded-full bg-primary-soft px-2 py-0.5 text-[11.5px] font-semibold text-primary">
-                          Booked
-                        </span>
-                      ) : null}
+                    <span className="block truncate text-[12.5px] text-muted-foreground">
+                      {note}
                     </span>
-                    <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-                  </button>
-                );
-              }),
-            )}
+                  </span>
+                  <span className="shrink-0 text-right leading-tight">
+                    <span className="block text-[13.5px] font-semibold">{days}</span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      {stretchDates(s.start, s.end)}
+                    </span>
+                  </span>
+                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+                </button>
+              );
+            })}
+            {undatedCities.map((c, i) => (
+              <button
+                key={`${c.city}-${i}`}
+                type="button"
+                onClick={() => onOpenTimeline()}
+                className="flex w-full items-center gap-3 px-3 py-3 text-left"
+              >
+                <span
+                  className={`seq-${((stretches.length + i) % 5) + 1} grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold`}
+                >
+                  {stretches.length + i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-display text-[20px] leading-tight">
+                  {shortCity(c.city)}
+                </span>
+                <span className="shrink-0 text-[12px] text-muted-foreground">No dates yet</span>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            ))}
+            {undated ? (
+              <button
+                type="button"
+                onClick={() => onOpenTimeline("")}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[13px] text-muted-foreground"
+              >
+                {undated} {undated === 1 ? "stop" : "stops"} without a day
+                <ChevronRight className="size-4 shrink-0" aria-hidden />
+              </button>
+            ) : null}
           </div>
         )}
-        {dated[0] ? (
-          <button
-            type="button"
-            onClick={() => onOpenMap(dated[0]!.key)}
-            className="btn-primary mt-3 flex w-full items-center justify-center gap-2"
-          >
-            <MapIcon className="size-5" aria-hidden />
-            Open on map
-          </button>
-        ) : null}
       </section>
     </div>
   );
@@ -318,6 +364,18 @@ function Stat({
   );
 }
 
+/** A tile in the essentials grid: three across, the same size each. */
+const TILE = "flex min-h-[84px] min-w-0 flex-col justify-between gap-2 p-2.5 text-left";
+
+function TileText({ title, note }: { title: string; note: string }) {
+  return (
+    <span className="min-w-0">
+      <span className="block truncate text-[13.5px] font-semibold leading-tight">{title}</span>
+      <span className="block truncate text-[11.5px] text-muted-foreground">{note}</span>
+    </span>
+  );
+}
+
 function Tile({
   icon: Icon,
   title,
@@ -332,16 +390,9 @@ function Tile({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`tile-card-${tone} flex min-h-[92px] w-[132px] shrink-0 snap-start flex-col justify-between p-3 text-left`}
-    >
-      <Icon className="size-6 text-primary" />
-      <span>
-        <span className="block text-[14.5px] font-semibold">{title}</span>
-        <span className="block text-[12px] text-muted-foreground">{note}</span>
-      </span>
+    <button type="button" onClick={onClick} className={`tile-card-${tone} ${TILE}`}>
+      <Icon className="size-5 text-primary" />
+      <TileText title={title} note={note} />
     </button>
   );
 }
