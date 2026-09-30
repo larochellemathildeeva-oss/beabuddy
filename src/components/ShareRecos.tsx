@@ -72,6 +72,7 @@ export function ShareRecos({
       rows.map((r) => ({
         name: r.name,
         city: r.city ?? "",
+        url: r.url,
         ...(r.lat != null ? { lat: r.lat } : {}),
         ...(r.lon != null ? { lon: r.lon } : {}),
       })),
@@ -159,6 +160,7 @@ export function ShareRecos({
           city: item.city,
           lat: item.lat,
           lon: item.lon,
+          url: item.url,
         });
       }
       setKeeping(next);
@@ -430,6 +432,7 @@ export function ShareRecos({
                     city: item.city,
                     lat: item.lat,
                     lon: item.lon,
+                    url: item.url,
                   });
                   return (
                     <li key={item.id}>

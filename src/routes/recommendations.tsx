@@ -440,9 +440,11 @@ function RecommendationsPage() {
           city: r.city,
           lat: r.lat,
           lon: r.lon,
+          url: r.url,
         })),
         {
           name: draft.name,
+          ...(draft.url ? { url: draft.url } : {}),
           ...(draft.city ? { city: draft.city } : {}),
           ...(draft.lat != null ? { lat: draft.lat } : {}),
           ...(draft.lon != null ? { lon: draft.lon } : {}),
@@ -608,9 +610,17 @@ function RecommendationsPage() {
       return;
     }
     const match = findDuplicate(
-      vault.rows.map((r) => ({ id: r.id, name: r.name, city: r.city, lat: r.lat, lon: r.lon })),
+      vault.rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        city: r.city,
+        lat: r.lat,
+        lon: r.lon,
+        url: r.url,
+      })),
       {
         name: found.name,
+        ...(found.url ? { url: found.url } : {}),
         ...(found.city ? { city: found.city } : {}),
         ...(found.lat != null ? { lat: found.lat } : {}),
         ...(found.lon != null ? { lon: found.lon } : {}),

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { draftFromTyped, googlePlaceLink, recMapsUrl } from "./reco-open.ts";
+import { draftFromTyped, googlePlaceKey, googlePlaceLink, recMapsUrl } from "./reco-open.ts";
 
 const q = (url: string) => new URL(url).searchParams.get("query");
 
@@ -95,4 +95,35 @@ test("links that do not name one Google place are not used", () => {
   // Pinned rec without a link still opens on its pin.
   const url = new URL(recMapsUrl({ name: "Mandy's", lat: 45.5, lon: -73.55, url: null }));
   assert.equal(url.searchParams.get("q"), "Mandy's@45.5,-73.55");
+});
+
+test("a Google link's place is a key two recs can be compared by", () => {
+  const id = "ChIJLU7jZClu5kcR4PcOOO6p3I0";
+  assert.equal(
+    googlePlaceKey(`https://www.google.com/maps/search/?api=1&query=Eiffel&query_place_id=${id}`),
+    `place:${id}`,
+  );
+  assert.equal(
+    googlePlaceKey(`https://www.google.fr/maps/place/Tour+Eiffel/data=!4m2!3m1!19s${id}`),
+    `place:${id}`,
+  );
+  // A feature ID and its customer ID are the same number.
+  assert.equal(
+    googlePlaceKey("https://www.google.com/maps/place/X/data=!4m2!3m1!1s0x47e66e2964e34e2d:0x1a2b"),
+    googlePlaceKey(`https://maps.google.com/?cid=${0x1a2b}`),
+  );
+  assert.equal(
+    googlePlaceKey("https://maps.app.goo.gl/abc123"),
+    "link:https://maps.app.goo.gl/abc123",
+  );
+});
+
+test("links with no Google ID give no key", () => {
+  assert.equal(
+    googlePlaceKey("https://www.google.com/maps/place/Tour+Eiffel/@48.85,2.29,17z"),
+    null,
+  );
+  assert.equal(googlePlaceKey("https://www.google.com/maps/search/?api=1&query=Eiffel"), null);
+  assert.equal(googlePlaceKey("https://example.com/?query_place_id=ChIJabc"), null);
+  assert.equal(googlePlaceKey(null), null);
 });
