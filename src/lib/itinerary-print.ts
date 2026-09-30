@@ -125,11 +125,17 @@ function addressKey(row: PrintRow): string {
 /**
  * One stay: the same hotel by name, or at the same address however the row
  * names it — "Hotel (Rest)" and "Citadines (Rest)" are the nights' own hotel.
+ * Two bookings at one address (different references, or both booked under
+ * different names) stay two stays.
  */
 function sameStay(a: PrintRow, b: PrintRow): boolean {
   if (stayKey(a) === stayKey(b)) return true;
   const where = addressKey(a);
-  return where.length > 0 && where === addressKey(b);
+  if (!where || where !== addressKey(b)) return false;
+  const refA = a.booking_ref?.trim();
+  const refB = b.booking_ref?.trim();
+  if (refA && refB && refA !== refB) return false;
+  return !(a.booked && b.booked);
 }
 
 /**

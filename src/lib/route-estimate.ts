@@ -48,8 +48,13 @@ export function estimatedLegMeters(straightMeters: number, mode: LegMode): numbe
 
 /** Stops that are a station or a pier: the ride between two is the train or boat itself. */
 const STATION_KINDS = new Set(["transport", "train"]);
+/** A journey row that names where it boards: not a transfer, taxi or "get to the airport". */
+const STATION_WORD =
+  /\b(?:station|stn|pier|port|terminal|airport|ferry)\b|駅|桟橋|港|空港|gare|bahnhof|estaci[oó]n/i;
 
 type RideEnd = {
+  title?: string | null | undefined;
+  address?: string | null | undefined;
   kind?: string | null | undefined;
   day_date?: string | null | undefined;
   time_label?: string | null | undefined;
@@ -67,12 +72,15 @@ function clockMinutes(label: string | null | undefined): number | null {
  * The ride between two timed stations the same day, as the plan has it:
  * "Kyoto Station 14:45" then "Shin-Osaka Station 15:00" is a 15-minute
  * Shinkansen, which no estimate from the distance gets near (it read
- * 2 h 31 min). Null unless both ends are stations with times in order, at
- * most twelve hours apart.
+ * 2 h 31 min). Null unless both ends are journey rows named or addressed
+ * as a station, pier, port or airport, with times in order, at most twelve
+ * hours apart: two timed transfers are not one ride.
  */
 export function plannedRideSeconds(from: RideEnd, to: RideEnd): number | null {
   if (!STATION_KINDS.has((from.kind ?? "").toLowerCase())) return null;
   if (!STATION_KINDS.has((to.kind ?? "").toLowerCase())) return null;
+  const boards = (end: RideEnd) => STATION_WORD.test(`${end.title ?? ""} ${end.address ?? ""}`);
+  if (!boards(from) || !boards(to)) return null;
   if (!from.day_date || from.day_date !== to.day_date) return null;
   const start = clockMinutes(from.time_label);
   const end = clockMinutes(to.time_label);

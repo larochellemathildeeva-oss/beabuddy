@@ -31,12 +31,35 @@ test("a ride between towns is timed at a train's or a highway's pace", () => {
 });
 
 test("a ride between two timed stations takes the plan's own time", () => {
-  const kyoto = { kind: "transport", day_date: "2026-10-04", time_label: "14:45" };
-  const shinOsaka = { kind: "transport", day_date: "2026-10-04", time_label: "15:00" };
+  const kyoto = {
+    title: "Kyoto Station",
+    kind: "transport",
+    day_date: "2026-10-04",
+    time_label: "14:45",
+  };
+  const shinOsaka = {
+    title: "Shin-Osaka Station",
+    kind: "transport",
+    day_date: "2026-10-04",
+    time_label: "15:00",
+  };
   assert.equal(plannedRideSeconds(kyoto, shinOsaka), 15 * 60);
   // Not a station at one end, another day, no time, or times out of order.
   assert.equal(plannedRideSeconds({ ...kyoto, kind: "sight" }, shinOsaka), null);
   assert.equal(plannedRideSeconds(kyoto, { ...shinOsaka, day_date: "2026-10-05" }), null);
   assert.equal(plannedRideSeconds(kyoto, { ...shinOsaka, time_label: null }), null);
   assert.equal(plannedRideSeconds(shinOsaka, kyoto), null);
+  // Named by its pier's address, the boat's arrival still counts.
+  const arrival = {
+    title: "Miyajima arrival",
+    address: "Miyajima Pier No. 3, Hatsukaichi",
+    kind: "transport",
+    day_date: "2026-10-07",
+    time_label: "12:35",
+  };
+  const motoyasu = { ...arrival, title: "Motoyasu Pier", address: null, time_label: "11:50" };
+  assert.equal(plannedRideSeconds(motoyasu, arrival), 45 * 60);
+  // Two timed transfers are not one ride.
+  const taxi = { title: "Taxi to the hotel", kind: "transport", day_date: "2026-10-04" };
+  assert.equal(plannedRideSeconds({ ...taxi, time_label: "14:00" }, shinOsaka), null);
 });

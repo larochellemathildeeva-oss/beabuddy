@@ -317,3 +317,15 @@ test("a rest at the hotel is the same stay, however it is named", () => {
     ["Citadines Namba Osaka (Check-in)"],
   );
 });
+
+test("two bookings at one address are two stays", () => {
+  const address = "1 Harbour Rd, Sydney";
+  const rows = [
+    row({ day_date: "2026-10-05", kind: "hotel", title: "Tower Hotel", address, booked: true }),
+    row({ day_date: "2026-10-07", kind: "hotel", title: "Harbour Suites", address, booked: true }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.title),
+    ["Tower Hotel", "Harbour Suites"],
+  );
+});
