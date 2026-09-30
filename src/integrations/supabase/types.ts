@@ -702,6 +702,27 @@ export type Database = {
           },
         ]
       }
+      trip_directions: {
+        Row: {
+          directions: Json
+          saved_at: string
+          trip_id: string
+          user_id: string
+        }
+        Insert: {
+          directions: Json
+          saved_at?: string
+          trip_id: string
+          user_id: string
+        }
+        Update: {
+          directions?: Json
+          saved_at?: string
+          trip_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       trip_invites: {
         Row: {
           accepted_at: string | null

@@ -183,6 +183,14 @@ async function wipeUserContent(
   await deleteWhere(admin, "vault_settings", "user_id", userId);
   await deleteWhere(admin, "app_reports", "user_id", userId);
 
+  // Directions kept offline, in the account; absent until its migration is applied.
+  {
+    const { error } = await admin.from("trip_directions").delete().eq("user_id", userId);
+    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+      throw new Error(`trip_directions: ${error.message}`);
+    }
+  }
+
   // Rate-limit log may be absent on older DBs; ignore missing-table errors.
   {
     const { error } = await admin.from("trip_invite_attempts").delete().eq("user_id", userId);

@@ -17,7 +17,7 @@ import { directionSource, directionTitleKey } from "@/lib/timeline-directions";
 import { homeStopFollow } from "@/lib/trip-cities";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
-import { readOfflineTrip, readOfflineTrips } from "@/lib/offline-trip";
+import { readOfflineTrip, readOfflineTrips, saveOfflineTrip } from "@/lib/offline-trip";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -206,6 +206,72 @@ const BOOKING_COLUMN_NAMES = ["booked", "booking_ref", "booking_details"];
 const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
 /** Columns that arrive with migrations applied by hand, asked for only while they answer. */
 const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES];
+
+/**
+ * A trip's timeline rows, or null when the read failed (no signal, an expired
+ * token). The booking and nesting columns arrive with migrations applied by
+ * hand; until one runs, asking for its columns fails the whole read, so it is
+ * asked again without them.
+ */
+async function selectTripItems(
+  tripId: string,
+): Promise<{ items: ItineraryRow[]; nesting: boolean } | null> {
+  const query = (columns: string) =>
+    supabase
+      .from("itinerary_items")
+      .select(columns)
+      .eq("trip_id", tripId)
+      .order("day_date", { ascending: true })
+      .order("position", { ascending: true });
+  let groups = OPTIONAL_COLUMN_GROUPS;
+  let { data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", "));
+  for (let tries = 0; error && tries < OPTIONAL_COLUMN_GROUPS.length; tries++) {
+    const missing = groups.find((group) => isMissingColumn(error, group));
+    if (!missing) break;
+    groups = groups.filter((group) => group !== missing);
+    ({ data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", ")));
+  }
+  if (error) return null;
+  return {
+    nesting: groups.includes(NESTING_COLUMN_NAMES),
+    items: ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
+      "inside" in row ? { ...row, inside: readInside(row.inside) } : row,
+    ),
+  };
+}
+
+/**
+ * Write a trip's offline copy (its plan, people and timeline) the way the
+ * trip page does, without opening it: after sign-in brings kept directions
+ * back from the account, so the trip opens with no signal straight away.
+ * Returns the timeline it kept, or null when it could not.
+ */
+export async function keepTripPlanOffline(
+  uid: string,
+  tripId: string,
+): Promise<ItineraryRow[] | null> {
+  try {
+    const trip = (await selectTrips()).find((row) => row.id === tripId);
+    if (!trip) return null;
+    const { data: m, error: memberError } = await supabase
+      .from("trip_members")
+      .select("id, trip_id, user_id, role, display_name")
+      .eq("trip_id", tripId);
+    if (memberError) return null;
+    const read = await selectTripItems(tripId);
+    if (!read || read.items.length === 0) return null;
+    saveOfflineTrip(localStorage, {
+      uid,
+      savedAt: new Date().toISOString(),
+      trip,
+      members: (m ?? []) as MemberRow[],
+      items: read.items,
+    });
+    return read.items;
+  } catch {
+    return null;
+  }
+}
 
 type TripsSnapshot = { uid: string; trips: TripRow[]; members: MemberRow[] };
 
@@ -528,25 +594,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
    */
   const load = useCallback(async () => {
     if (!tripId) return;
-    const query = (columns: string) =>
-      supabase
-        .from("itinerary_items")
-        .select(columns)
-        .eq("trip_id", tripId)
-        .order("day_date", { ascending: true })
-        .order("position", { ascending: true });
-    // The booking and nesting columns arrive with migrations applied by
-    // hand. Until one runs, asking for its columns fails the whole read, and
-    // a failed read keeps an empty trip on screen — so ask again without them.
-    let groups = OPTIONAL_COLUMN_GROUPS;
-    let { data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", "));
-    for (let tries = 0; error && tries < OPTIONAL_COLUMN_GROUPS.length; tries++) {
-      const missing = groups.find((group) => isMissingColumn(error, group));
-      if (!missing) break;
-      groups = groups.filter((group) => group !== missing);
-      ({ data, error } = await query([ITINERARY_COLUMNS, ...groups.flat()].join(", ")));
-    }
-    if (error) {
+    const read = await selectTripItems(tripId);
+    if (!read) {
       // No signal on a trip kept offline: its plan as last saved on this
       // phone, and only while nothing better is on screen.
       if (me.id) {
@@ -555,12 +604,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       }
       return;
     }
-    nestingReady.current = groups.includes(NESTING_COLUMN_NAMES);
-    setItems(
-      ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
-        "inside" in row ? { ...row, inside: readInside(row.inside) } : row,
-      ),
-    );
+    nestingReady.current = read.nesting;
+    setItems(read.items);
     const { data: inv, error: invError } = await supabase
       .from("trip_invites")
       .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
