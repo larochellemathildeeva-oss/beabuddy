@@ -373,7 +373,7 @@ export function TimelineEntry({
             }
           />
           {detail ? (
-            <span className="mt-1.5 line-clamp-2 block break-words text-[13.5px] leading-snug text-muted-foreground">
+            <span className="mt-1.5 line-clamp-2 break-words text-[13.5px] leading-snug text-muted-foreground">
               {detail}
             </span>
           ) : null}

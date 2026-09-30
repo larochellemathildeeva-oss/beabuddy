@@ -848,7 +848,7 @@ function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
       />
       {town.photo ? <TownPhotoCredit photo={town.photo} className="top-0.5 bottom-auto" /> : null}
       <span className="absolute inset-x-0 bottom-0 p-2">
-        <span className="line-clamp-2 block break-words font-display text-[19px] leading-[1.05]">
+        <span className="line-clamp-2 break-words font-display text-[19px] leading-[1.05]">
           {trip.title}
         </span>
         {month ? (
