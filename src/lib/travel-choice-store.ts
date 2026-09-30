@@ -1,4 +1,10 @@
-import { isTravelChoice, type TravelChoice } from "./travel-mode.ts";
+import {
+  DEFAULT_TRAVEL_RULES,
+  isTravelChoice,
+  parseTravelRules,
+  type TravelChoice,
+  type TravelRules,
+} from "./travel-mode.ts";
 
 /**
  * How the traveller gets around, remembered per trip on this phone: a road
@@ -7,6 +13,8 @@ import { isTravelChoice, type TravelChoice } from "./travel-mode.ts";
  */
 export const TRAVEL_KEY_PREFIX = "bea.travel.";
 const LAST_KEY = `${TRAVEL_KEY_PREFIX}last`;
+/** The last rules set on any trip, so picking "Your own rules" again starts from them. */
+const RULES_KEY = `${TRAVEL_KEY_PREFIX}rules`;
 
 function read(key: string): TravelChoice | null {
   try {
@@ -27,7 +35,13 @@ export function writeTravelChoice(tripId: string | null | undefined, choice: Tra
   try {
     if (tripId) window.localStorage.setItem(`${TRAVEL_KEY_PREFIX}${tripId}`, choice);
     window.localStorage.setItem(LAST_KEY, choice);
+    if (parseTravelRules(choice)) window.localStorage.setItem(RULES_KEY, choice);
   } catch {
     // Not remembering it is fine.
   }
+}
+
+export function readLastTravelRules(): TravelRules {
+  if (typeof window === "undefined") return DEFAULT_TRAVEL_RULES;
+  return parseTravelRules(read(RULES_KEY)) ?? DEFAULT_TRAVEL_RULES;
 }

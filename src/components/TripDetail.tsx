@@ -2345,6 +2345,7 @@ export function TripDetail({
         }}
         optimizePreset={optimizePreset}
         tripPreferences={tripPrefs.list}
+        travel={travel}
         defaultTab={plannerTab}
         initialAsk={plannerAsk}
         existingItems={stopItems.map((item) => ({
