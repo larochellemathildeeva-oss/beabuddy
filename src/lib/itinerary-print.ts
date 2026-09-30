@@ -114,6 +114,24 @@ function stayKey(row: PrintRow): string {
     .trim();
 }
 
+/** An address as written, for telling whether two rows are the same door. */
+function addressKey(row: PrintRow): string {
+  return (row.address ?? "")
+    .toLowerCase()
+    .replace(/[\s,]+/g, " ")
+    .trim();
+}
+
+/**
+ * One stay: the same hotel by name, or at the same address however the row
+ * names it — "Hotel (Rest)" and "Citadines (Rest)" are the nights' own hotel.
+ */
+function sameStay(a: PrintRow, b: PrintRow): boolean {
+  if (stayKey(a) === stayKey(b)) return true;
+  const where = addressKey(a);
+  return where.length > 0 && where === addressKey(b);
+}
+
 /**
  * Where "To book" goes: once per stay, on its first row that is not leaving
  * it. A night's room is one booking; saying it again on the check-out and on
@@ -123,7 +141,7 @@ function stayKey(row: PrintRow): string {
 export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
   const out = new Set<PrintRow>();
   /** The stay the plan is in, and whether its booking has been said. */
-  let stay = null as { key: string; marked: boolean; drop?: PrintRow } | null;
+  let stay = null as { last: PrintRow; marked: boolean; drop?: PrintRow } | null;
   /** A stay that only dropped its bags is still a stay to book: on that row. */
   const settle = () => {
     if (stay && !stay.marked && stay.drop) out.add(stay.drop);
@@ -134,11 +152,11 @@ export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
       if (!row.booked) out.add(row);
       continue;
     }
-    const key = stayKey(row);
-    if (stay?.key !== key) {
+    if (!stay || !sameStay(stay.last, row)) {
       settle();
-      stay = { key, marked: false };
+      stay = { last: row, marked: false };
     }
+    stay.last = row;
     if (row.booked) stay.marked = true;
     if (stay.marked) continue;
     const text = `${row.title} ${row.detail ?? ""}`;
@@ -341,12 +359,11 @@ function isStayAction(row: PrintRow): boolean {
  */
 export function stayRuns(rows: readonly PrintRow[]): PrintRow[][] {
   const runs: PrintRow[][] = [];
-  let key: string | null = null;
+  let last: PrintRow | null = null;
   for (const row of rows) {
     if (!STAY_KINDS.has(row.kind)) continue;
-    const next = stayKey(row);
-    if (next !== key || !runs.length) runs.push([]);
-    key = next;
+    if (!last || !sameStay(last, row)) runs.push([]);
+    last = row;
     runs[runs.length - 1]!.push(row);
   }
   return runs;

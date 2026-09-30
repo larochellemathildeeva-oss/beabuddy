@@ -290,3 +290,30 @@ test("the day says how many stops and how far on foot, with the walks between th
   assert.ok(/2 stops · ~\d+ m walking/.test(html));
   assert.ok(/↓ ~\d+ min walk/.test(html));
 });
+
+test("a rest at the hotel is the same stay, however it is named", () => {
+  const citadines = "3-5-25 Nipponbashi, Naniwa Ward, Osaka 556-0005, Japan";
+  const rows = [
+    row({
+      day_date: "2026-10-05",
+      kind: "lodging",
+      title: "Citadines Namba Osaka (Check-in)",
+      address: citadines,
+    }),
+    row({ day_date: "2026-10-06", kind: "lodging", title: "Citadines (Rest)", address: citadines }),
+    row({
+      day_date: "2026-10-09",
+      kind: "lodging",
+      title: "Citadines Namba Osaka",
+      address: citadines,
+    }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.title),
+    ["Citadines Namba Osaka (Check-in)"],
+  );
+  assert.deepEqual(
+    [...toBookRows(rows)].map((r) => r.title),
+    ["Citadines Namba Osaka (Check-in)"],
+  );
+});

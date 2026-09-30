@@ -19,7 +19,7 @@ import {
   reuseKeyForStop,
   wideDayPinsToKeep,
 } from "@/lib/direction-stops";
-import { estimatedLegMeters, estimatedLegSeconds } from "@/lib/route-estimate";
+import { estimatedLegMeters, estimatedLegSeconds, plannedRideSeconds } from "@/lib/route-estimate";
 import { legModeFor, type LegMode, type TravelChoice } from "@/lib/travel-mode";
 import { haversine } from "@/lib/geo";
 import {
@@ -220,6 +220,8 @@ const BuildRoutesInput = z.object({
         title: z.string().trim().min(1).max(200),
         address: z.string().max(300).nullable().optional(),
         day_date: z.string().max(20).nullable().optional(),
+        time_label: z.string().max(40).nullable().optional(),
+        kind: z.string().max(40).nullable().optional(),
         lat: coord,
         lon: coord,
       }),
@@ -476,6 +478,18 @@ export const buildRoutes = createServerFn({ method: "POST" })
         continue;
       }
       const straight = haversine(a, b);
+      // Station to station, both timed: the train the plan booked. No
+      // estimate from the distance comes near a Shinkansen.
+      const planned = plannedRideSeconds(data.stops[i]!, data.stops[i + 1]!);
+      if (planned != null) {
+        legs.push({
+          ...mapsOnlyLeg(fromName, toName, area, { from: a, to: b, mode: "transit" }),
+          distance: estimatedLegMeters(straight, "transit"),
+          duration: planned,
+          estimated: true,
+        });
+        continue;
+      }
       // Same day, hundreds of km apart: one pin is wrong. Routing it gave a
       // 4½-hour drive between a lunch and a food crawl on the same island.
       const sameDay =
