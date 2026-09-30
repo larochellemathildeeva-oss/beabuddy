@@ -31,7 +31,7 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
   {
     key: "nesting",
     label: "Nested stops",
-    hint: "Stops inside another tucked under it, and a pill for what to see inside. Off: every stop on its own line.",
+    hint: "Timed stops inside another tucked under it. Off: every stop on its own line. What to see inside a stop is always its pill.",
   },
   {
     key: "pinChecks",
