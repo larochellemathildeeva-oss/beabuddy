@@ -57,7 +57,7 @@ import {
   stopsForDirections,
   timelineStopsForDirections,
 } from "@/lib/direction-stops";
-import { formatTripLocation } from "@/lib/place-label";
+import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
@@ -98,6 +98,7 @@ import { runLabelsByIndex, walkableRuns } from "@/lib/stop-grouping";
 import { rowsToPlace, stopLookupTitle, stopsToPlace, tripLookupArea } from "@/lib/stop-placing";
 import { geocodePlanStops } from "@/lib/geocode-plan.functions";
 import { labelAddress, strayStopIds } from "@/lib/geocode-plan";
+import { pinCheckFor, pinsToCheck } from "@/lib/pin-check";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
 import {
@@ -138,7 +139,8 @@ import { useOfflineMap } from "@/hooks/useOfflineMap";
 import { prettyMegabytes } from "@/lib/vector-tiles";
 import { daysForMaps } from "@/lib/day-maps";
 import { GEOAPIFY_ATTRIBUTION, OSM_ATTRIBUTION, OVERTURE_ATTRIBUTION } from "@/lib/geo-endpoints";
-import { TravelConnector, TimelineEntry } from "@/components/day/TimelineCard";
+import { TravelConnector, TimelineEntry, rememberPick } from "@/components/day/TimelineCard";
+import { PinReviewSheet } from "@/components/day/PinReviewSheet";
 import { isTravelLeg, legTarget, routeCityOn, routeStopOn, withLegNote } from "@/lib/import-stop";
 import { useTripViewPrefs } from "@/hooks/useTripViewPrefs";
 import type { InsideEntry } from "@/lib/inside-list";
@@ -1010,6 +1012,9 @@ export function TripDetail({
     }
   }, [viewKey, perspective, dayChoice, hideDone, byArea, compactCards]);
   const view = useTripViewPrefs();
+  /** The stops behind the "!": Béa unsure of their place, until each is reviewed. */
+  const toCheck = useMemo(() => pinsToCheck(stopItems), [stopItems]);
+  const [pinReviewOpen, setPinReviewOpen] = useState(false);
 
   /** Trip documents linked to each stop, for the document mark on its card. */
   const docsByStop = new Map<string, string[]>();
@@ -1242,19 +1247,35 @@ export function TripDetail({
             <p className="text-[13px] text-muted-foreground">{companionsLine}</p>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setSettingsOpen(true);
-            setSheetSection(null);
-          }}
-          data-guide="trip-menu"
-          title="Trip menu"
-          aria-label="Trip menu"
-          className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
-        >
-          <MoreHorizontal className="size-5" aria-hidden />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          {view.prefs.pinChecks && toCheck.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setPinReviewOpen(true)}
+              title="Pins to check"
+              aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+              className="relative grid size-11 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive shadow-xs"
+            >
+              !
+              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-5 text-white">
+                {toCheck.length}
+              </span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setSettingsOpen(true);
+              setSheetSection(null);
+            }}
+            data-guide="trip-menu"
+            title="Trip menu"
+            aria-label="Trip menu"
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+          >
+            <MoreHorizontal className="size-5" aria-hidden />
+          </button>
+        </div>
       </header>
       {/* Béa's line scrolls away with the page; only the bar above stays. */}
       {tripNote ? (
@@ -2197,6 +2218,33 @@ export function TripDetail({
           openSignal={prepSignal}
           openTab={prepAsk}
         />
+        <PinReviewSheet
+          open={pinReviewOpen}
+          onClose={() => setPinReviewOpen(false)}
+          stops={toCheck}
+          anchorsFor={(day) => withNear(day)}
+          onApprove={(item) => {
+            // Approved as it is: the traveller's vote for that spot, like a pick.
+            void board
+              .updateItem(item.id, { pin_check: null })
+              .catch(() => toast.error("Couldn't save that — try again."));
+            if (item.lat != null && item.lon != null) {
+              rememberPick(item.title, {
+                name: item.title,
+                ...(item.address ? { address: item.address } : {}),
+                lat: item.lat,
+                lon: item.lon,
+                source: "traveller",
+                url: "",
+              });
+            }
+          }}
+          onChangePlace={(item, place) => {
+            void board
+              .updateItem(item.id, { ...placePatchForSavedRow(place), pin_check: null })
+              .catch(() => toast.error("Couldn't save that place — try again."));
+          }}
+        />
         {currencyOpen && (
           <CurrencySheet
             key={trip.id}
@@ -2440,7 +2488,13 @@ export function TripDetail({
                 link: `${window.location.origin}/trips/${trip.id}`,
                 printedAt: new Date(),
               },
-              stopItems,
+              // Pins to check go on paper too, when the traveller shows them.
+              view.prefs.pinChecks
+                ? stopItems.map((item) => ({
+                    ...item,
+                    pin_check: pinCheckFor(item, strayIds.has(item.id)),
+                  }))
+                : stopItems.map((item) => ({ ...item, pin_check: null })),
             ),
           );
         }}

@@ -71,6 +71,7 @@ import {
 } from "@/lib/plan-dates";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { scoreMatch, tallyConfidence, type Confidence } from "@/lib/match-confidence";
+import { pinCheckNote } from "@/lib/pin-check";
 import { dayShapeLine } from "@/lib/day-shape";
 import {
   hasRelativeDays,
@@ -978,9 +979,14 @@ function ImportPanel({
           (hint && looksLikeStreetAddress(hint) ? hint : null) ||
           labelAddress(found?.label);
         const stay = stayMinutesFrom(it);
+        // What the review said about this pin, kept on the stop for "Pins to
+        // check". A pin the traveller removed themselves is their call.
+        const pinCheck =
+          pinChoices[i] === "drop" ? null : pinCheckNote(placements[i], Boolean(found));
         return [
           {
             ...(found ? { lat: found.lat, lon: found.lon } : {}),
+            ...(pinCheck ? { pin_check: pinCheck } : {}),
             ...(it.day_date ? { day_date: it.day_date } : {}),
             ...(it.time_label ? { time_label: it.time_label } : {}),
             kind: it.kind,

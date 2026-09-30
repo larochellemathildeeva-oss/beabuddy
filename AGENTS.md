@@ -211,6 +211,16 @@ server alone. The migration is applied by hand; until it is, nothing is
 remembered, with one warning in the log. The audits run with no database
 (`no-database.ts`), so the pin check measures the lookup itself.
 
+**Pins to check.** What the import's review says about a pin it was unsure
+of ("Béa's best guess", "Check this one — not pinned") is kept on the stop as
+`pin_check` (`pin-check.ts`, pure and tested), not dropped on saving. With
+"Pins to check" on (trip view settings, off by default), the trip header
+shows a "!" with their count, opening a list to review (`PinReviewSheet`):
+"Looks right" approves the pin (and counts as the traveller's vote in
+`resolved_places`), "Change place" sets another; either clears the note. The
+printed itinerary carries the notes too while the setting is on. The
+migration is applied by hand; until it is, nothing is kept.
+
 **Place photos.** When a stop's Place Details carry a `wikimedia_commons`,
 `image` or `wikidata` tag, the stop card shows that place's photo from
 Wikimedia Commons (`wikimedia.ts`, pure and tested; `wikimedia.server.ts`

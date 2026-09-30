@@ -290,3 +290,51 @@ test("the day says how many stops and how far on foot, with the walks between th
   assert.ok(/2 stops · ~\d+ m walking/.test(html));
   assert.ok(/↓ ~\d+ min walk/.test(html));
 });
+
+test("a rest at the hotel is the same stay, however it is named", () => {
+  const citadines = "3-5-25 Nipponbashi, Naniwa Ward, Osaka 556-0005, Japan";
+  const rows = [
+    row({
+      day_date: "2026-10-05",
+      kind: "lodging",
+      title: "Citadines Namba Osaka (Check-in)",
+      address: citadines,
+    }),
+    row({ day_date: "2026-10-06", kind: "lodging", title: "Citadines (Rest)", address: citadines }),
+    row({
+      day_date: "2026-10-09",
+      kind: "lodging",
+      title: "Citadines Namba Osaka",
+      address: citadines,
+    }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.title),
+    ["Citadines Namba Osaka (Check-in)"],
+  );
+  assert.deepEqual(
+    [...toBookRows(rows)].map((r) => r.title),
+    ["Citadines Namba Osaka (Check-in)"],
+  );
+});
+
+test("two bookings at one address are two stays", () => {
+  const address = "1 Harbour Rd, Sydney";
+  const rows = [
+    row({ day_date: "2026-10-05", kind: "hotel", title: "Tower Hotel", address, booked: true }),
+    row({ day_date: "2026-10-07", kind: "hotel", title: "Harbour Suites", address, booked: true }),
+  ];
+  assert.deepEqual(
+    staysOf(rows).map((r) => r.title),
+    ["Tower Hotel", "Harbour Suites"],
+  );
+});
+
+test("a pin to check is printed under its pin, only when passed", () => {
+  const checked = itineraryPrintHtml({ title: "Japan" }, [
+    row({ lat: 35.0, lon: 135.7, pin_check: "Béa's best guess: the area" }),
+  ]);
+  assert.match(checked, /Pin to check: Béa&#39;s best guess: the area/);
+  const plain = itineraryPrintHtml({ title: "Japan" }, [row({ lat: 35.0, lon: 135.7 })]);
+  assert.doesNotMatch(plain, /Pin to check/);
+});

@@ -49,6 +49,8 @@ export type PrintRow = {
   booking_details?: string | null | undefined;
   /** How long the stop lasts: with the time, when it ends ("09:00–09:40"). */
   planned_stay_minutes?: number | null | undefined;
+  /** Why its place is worth a second look; printed only when the caller passes it. */
+  pin_check?: string | null | undefined;
 };
 
 export type PrintTrip = {
@@ -114,6 +116,30 @@ function stayKey(row: PrintRow): string {
     .trim();
 }
 
+/** An address as written, for telling whether two rows are the same door. */
+function addressKey(row: PrintRow): string {
+  return (row.address ?? "")
+    .toLowerCase()
+    .replace(/[\s,]+/g, " ")
+    .trim();
+}
+
+/**
+ * One stay: the same hotel by name, or at the same address however the row
+ * names it — "Hotel (Rest)" and "Citadines (Rest)" are the nights' own hotel.
+ * Two bookings at one address (different references, or both booked under
+ * different names) stay two stays.
+ */
+function sameStay(a: PrintRow, b: PrintRow): boolean {
+  if (stayKey(a) === stayKey(b)) return true;
+  const where = addressKey(a);
+  if (!where || where !== addressKey(b)) return false;
+  const refA = a.booking_ref?.trim();
+  const refB = b.booking_ref?.trim();
+  if (refA && refB && refA !== refB) return false;
+  return !(a.booked && b.booked);
+}
+
 /**
  * Where "To book" goes: once per stay, on its first row that is not leaving
  * it. A night's room is one booking; saying it again on the check-out and on
@@ -123,7 +149,7 @@ function stayKey(row: PrintRow): string {
 export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
   const out = new Set<PrintRow>();
   /** The stay the plan is in, and whether its booking has been said. */
-  let stay = null as { key: string; marked: boolean; drop?: PrintRow } | null;
+  let stay = null as { last: PrintRow; marked: boolean; drop?: PrintRow } | null;
   /** A stay that only dropped its bags is still a stay to book: on that row. */
   const settle = () => {
     if (stay && !stay.marked && stay.drop) out.add(stay.drop);
@@ -134,11 +160,11 @@ export function toBookRows(rows: readonly PrintRow[]): Set<PrintRow> {
       if (!row.booked) out.add(row);
       continue;
     }
-    const key = stayKey(row);
-    if (stay?.key !== key) {
+    if (!stay || !sameStay(stay.last, row)) {
       settle();
-      stay = { key, marked: false };
+      stay = { last: row, marked: false };
     }
+    stay.last = row;
     if (row.booked) stay.marked = true;
     if (stay.marked) continue;
     const text = `${row.title} ${row.detail ?? ""}`;
@@ -238,13 +264,19 @@ function locationHtml(row: PrintRow): string {
   const where = address ? `<div class="address">${escapeHtml(address)}</div>` : "";
   if (row.kind === "note") return where;
   if (!hasPin(row)) {
-    return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>`;
+    return `${where}<div class="pin nopin">Not on the map yet${address ? "" : " · no address"}</div>${checkHtml(row)}`;
   }
   // The link opens the pin itself, not a search by name: it is there to
   // check that point, and a search could land on the right place and hide
   // a wrong pin.
   const url = `https://www.google.com/maps/search/?api=1&query=${row.lat},${row.lon}`;
-  return `${where}<div class="pin">Map pin: <a href="${escapeHtml(url)}">${pinText(row.lat, row.lon)}</a></div>`;
+  return `${where}<div class="pin">Map pin: <a href="${escapeHtml(url)}">${pinText(row.lat, row.lon)}</a></div>${checkHtml(row)}`;
+}
+
+/** "Pin to check: …", under the pin, when the row carries one. */
+function checkHtml(row: PrintRow): string {
+  const check = row.pin_check?.trim();
+  return check ? `<div class="pin check">Pin to check: ${escapeHtml(check)}</div>` : "";
 }
 
 function rowHtml(source: PrintRow, toBook: ReadonlySet<PrintRow>): string {
@@ -341,12 +373,11 @@ function isStayAction(row: PrintRow): boolean {
  */
 export function stayRuns(rows: readonly PrintRow[]): PrintRow[][] {
   const runs: PrintRow[][] = [];
-  let key: string | null = null;
+  let last: PrintRow | null = null;
   for (const row of rows) {
     if (!STAY_KINDS.has(row.kind)) continue;
-    const next = stayKey(row);
-    if (next !== key || !runs.length) runs.push([]);
-    key = next;
+    if (!last || !sameStay(last, row)) runs.push([]);
+    last = row;
     runs[runs.length - 1]!.push(row);
   }
   return runs;
@@ -570,7 +601,7 @@ tr:has(+ tr.leg) td { border-bottom: 0; }
 .small { font-size: 8.5pt; }
 .pin { font: 9pt/1.4 "Courier New", monospace; color: #4a463f; }
 .pin a, .key a { color: inherit; }
-.nopin { color: #9a4b16; }
+.nopin, .check { color: #9a4b16; }
 .booked { color: #2f6b3a; }
 .tobook { color: #9a4b16; font-weight: bold; }
 footer { margin-top: 16pt; font-size: 8.5pt; color: #8a8378; }

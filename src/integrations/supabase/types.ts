@@ -124,6 +124,7 @@ export type Database = {
           left_at: string | null
           lon: number | null
           parent_id: string | null
+          pin_check: string | null
           planned_stay_minutes: number | null
           position: number
           time_label: string | null
@@ -149,6 +150,7 @@ export type Database = {
           left_at?: string | null
           lon?: number | null
           parent_id?: string | null
+          pin_check?: string | null
           planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null
@@ -174,6 +176,7 @@ export type Database = {
           left_at?: string | null
           lon?: number | null
           parent_id?: string | null
+          pin_check?: string | null
           planned_stay_minutes?: number | null
           position?: number
           time_label?: string | null

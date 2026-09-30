@@ -1131,7 +1131,7 @@ function InsideEditor({
  * add form uses, so a pick brings the address and the point with it — which is
  * also what puts the entry on the trip's map.
  */
-function TimelinePlaceEditor({
+export function TimelinePlaceEditor({
   item,
   near,
   center,
@@ -1194,7 +1194,7 @@ function TimelinePlaceEditor({
  * where that name is (resolved-places.ts). Never in the way: the stop is
  * already saved, and a failure is dropped.
  */
-function rememberPick(title: string, place: ParsedPlace) {
+export function rememberPick(title: string, place: ParsedPlace) {
   if (place.lat == null || place.lon == null) return;
   const label = [place.name, place.address].filter(Boolean).join(", ").slice(0, 300);
   if (!title.trim() || !label) return;
