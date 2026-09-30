@@ -8,6 +8,7 @@ import {
 } from "@/lib/bea-personality";
 import { PERSONALITY_KEY } from "@/lib/account-settings";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 /** Béa's personality follows the account, like the theme (account-settings.ts). */
 export const BEA_SETTINGS_KEY = PERSONALITY_KEY;
@@ -18,7 +19,7 @@ let cached: BeaSettings | null = null;
 function read(): BeaSettings {
   if (cached) return cached;
   try {
-    const raw = window.localStorage.getItem(BEA_SETTINGS_KEY);
+    const raw = getStored(BEA_SETTINGS_KEY);
     cached = raw ? cleanSettings(JSON.parse(raw)) : DEFAULT_SETTINGS;
   } catch {
     cached = DEFAULT_SETTINGS;
@@ -28,11 +29,7 @@ function read(): BeaSettings {
 
 export function saveBeaSettings(next: BeaSettings): void {
   cached = cleanSettings(next);
-  try {
-    window.localStorage.setItem(BEA_SETTINGS_KEY, JSON.stringify(cached));
-  } catch {
-    /* private mode: kept for this visit */
-  }
+  setStored(BEA_SETTINGS_KEY, JSON.stringify(cached));
   saveAccountSetting("personality", JSON.stringify(cached));
   for (const listener of listeners) listener();
 }

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Check } from "@/components/icons";
-import { applyTheme, readTheme, THEME_KEY, THEMES, type ThemeName } from "@/lib/theme";
+import {
+  applyTheme,
+  DEFAULT_THEME,
+  isThemeName,
+  readTheme,
+  THEME_KEY,
+  THEMES,
+  type ThemeName,
+} from "@/lib/theme";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
 
 const LABELS: Record<ThemeName, { name: string; hint: string }> = {
@@ -22,7 +30,9 @@ export function ThemePicker() {
   useEffect(() => {
     setTheme(readTheme());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === THEME_KEY || e.key === null) setTheme(readTheme());
+      // The new value itself: this page may not be repainted yet.
+      if (e.key === THEME_KEY) setTheme(isThemeName(e.newValue) ? e.newValue : DEFAULT_THEME);
+      else if (e.key === null) setTheme(readTheme());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);

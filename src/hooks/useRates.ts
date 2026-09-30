@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getRates, HOME_CURRENCIES, type RateTable } from "@/lib/rates.functions";
 import { HOME_CURRENCY_KEY } from "@/lib/account-settings";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 const HOME_KEY = HOME_CURRENCY_KEY;
 
@@ -12,7 +13,7 @@ const ALLOWED_HOME = new Set<string>(HOME_CURRENCIES);
 
 function guessHome() {
   if (typeof window === "undefined") return "CAD";
-  const saved = window.localStorage.getItem(HOME_KEY);
+  const saved = getStored(HOME_KEY);
   if (saved && ALLOWED_HOME.has(saved)) return saved;
   try {
     const region = new Intl.Locale(navigator.language).region;
@@ -95,7 +96,7 @@ export function useRates() {
 
   const setHomeCurrency = useCallback((next: string) => {
     if (!ALLOWED_HOME.has(next)) return;
-    window.localStorage.setItem(HOME_KEY, next);
+    setStored(HOME_KEY, next);
     saveAccountSetting("homeCurrency", next);
     setHome(next);
   }, []);

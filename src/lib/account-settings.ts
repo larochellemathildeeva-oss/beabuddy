@@ -60,6 +60,29 @@ export function settingStorageKey(name: SyncedSetting, uid: string): string {
   }
 }
 
+/**
+ * Kept under one key for everyone who signs in on this device, where the
+ * layouts are kept per account.
+ */
+export const DEVICE_WIDE_SETTINGS: readonly SyncedSetting[] = [
+  "theme",
+  "personality",
+  "pictures",
+  "homeCurrency",
+];
+
+/** The account whose settings this device last held. */
+export const SETTINGS_OWNER_KEY = "bea-settings-owner";
+
+/**
+ * Whether the device-wide settings here are `uid`'s own. They are someone
+ * else's when another account held this device last; with no owner on record
+ * (settings from before they synced) they are taken to be the one signing in.
+ */
+export function ownsDeviceSettings(owner: string | null, uid: string): boolean {
+  return !owner || owner === uid;
+}
+
 /** Longer than any real setting; a bigger value is not one of ours. */
 export const MAX_SETTING_LENGTH = 4000;
 
@@ -89,12 +112,15 @@ export type SyncPlan = {
 /**
  * What a sign-in changes. The account wins wherever it has a say, except for
  * settings changed on this device while the account was being read (`busy`),
- * which are on their way up already.
+ * which are on their way up already. When the device-wide settings here were
+ * another account's (`ownsDevice` false), those the account lacks go back to
+ * their defaults instead of being sent up.
  */
 export function planSync(
   account: AccountSettings,
   device: Partial<Record<SyncedSetting, string | null>>,
   busy: ReadonlySet<SyncedSetting> = new Set(),
+  ownsDevice = true,
 ): SyncPlan {
   const plan: SyncPlan = { toDevice: {}, toAccount: {} };
   for (const name of SYNCED_SETTINGS) {
@@ -103,6 +129,9 @@ export function planSync(
     if (name in account) {
       const there = account[name] ?? null;
       if (there !== here) plan.toDevice[name] = there;
+    } else if (!ownsDevice && DEVICE_WIDE_SETTINGS.includes(name)) {
+      // Another account's choice: back to the default, never sent up.
+      if (here !== null) plan.toDevice[name] = null;
     } else if (here !== null && here.length <= MAX_SETTING_LENGTH) {
       plan.toAccount[name] = here;
     }

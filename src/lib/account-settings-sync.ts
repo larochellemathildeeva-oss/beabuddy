@@ -2,14 +2,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
 import {
   cleanAccountSettings,
+  ownsDeviceSettings,
   planSync,
+  SETTINGS_OWNER_KEY,
   settingStorageKey,
   SYNCED_SETTINGS,
   type AccountSettings,
   type SyncedSetting,
 } from "@/lib/account-settings";
-import { applyStopPictures, asStopPictures } from "@/lib/stop-pictures";
-import { applyTheme, isThemeName } from "@/lib/theme";
+import { getStored, setStored } from "@/lib/settings-storage";
+import { applyStopPictures, asStopPictures, STOP_PICTURES_KEY } from "@/lib/stop-pictures";
+import { applyTheme, DEFAULT_THEME, isThemeName, THEME_KEY, type ThemeName } from "@/lib/theme";
 
 /*
  * Keeps the settings in account-settings.ts the same on every device the
@@ -22,12 +25,21 @@ import { applyTheme, isThemeName } from "@/lib/theme";
 
 const COLUMN = ["app_settings"];
 const SEND_AFTER_MS = 800;
+/** Waits between tries after a failed save: offline, or a blip. */
+const RETRY_MS = [5_000, 20_000, 60_000, 300_000];
 
 let uid: string | null = null;
 let unavailable = false;
 let started = false;
+/** Changes not yet sent, all for `uid`. */
 const pending: AccountSettings = {};
+/** Changes on their way to the account right now. */
+const sending = new Set<SyncedSetting>();
+/** Counts changes made here, so a read can tell which came after it started. */
+let edits = 0;
+const editedAt = new Map<SyncedSetting, number>();
 let timer: ReturnType<typeof setTimeout> | null = null;
+let failures = 0;
 
 function giveUp(error: { message?: string; code?: string } | null) {
   if (!unavailable) {
@@ -39,28 +51,28 @@ function giveUp(error: { message?: string; code?: string } | null) {
   unavailable = true;
 }
 
+function clearPending() {
+  for (const name of Object.keys(pending)) delete pending[name as SyncedSetting];
+  if (timer) clearTimeout(timer);
+  timer = null;
+  failures = 0;
+}
+
 function readDevice(id: string): Partial<Record<SyncedSetting, string | null>> {
   const out: Partial<Record<SyncedSetting, string | null>> = {};
-  for (const name of SYNCED_SETTINGS) {
-    try {
-      out[name] = window.localStorage.getItem(settingStorageKey(name, id));
-    } catch {
-      out[name] = null;
-    }
-  }
+  for (const name of SYNCED_SETTINGS) out[name] = getStored(settingStorageKey(name, id));
   return out;
+}
+
+function themeFrom(value: string | null): ThemeName {
+  return isThemeName(value) ? value : DEFAULT_THEME;
 }
 
 /** Stores the account's value here and tells the screens showing it. */
 function writeDevice(name: SyncedSetting, id: string, value: string | null) {
   const key = settingStorageKey(name, id);
-  try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
-  } catch {
-    /* private mode: the account's value is still applied below for this visit */
-  }
-  if (name === "theme") applyTheme(isThemeName(value) ? value : "calm");
+  setStored(key, value);
+  if (name === "theme") applyTheme(themeFrom(value));
   if (name === "pictures") applyStopPictures(asStopPictures(value), document.documentElement);
   // The same signal another tab's change gives, which every settings hook
   // listens for.
@@ -69,36 +81,55 @@ function writeDevice(name: SyncedSetting, id: string, value: string | null) {
 
 async function flush() {
   timer = null;
-  if (!uid || unavailable) return;
+  const id = uid;
+  if (!id || unavailable) return;
   const patch = { ...pending };
-  for (const name of Object.keys(patch)) delete pending[name as SyncedSetting];
-  if (Object.keys(patch).length === 0) return;
-  const { error } = await supabase.rpc("merge_app_settings", { patch });
-  if (error) {
-    if (isMissingColumn(error, COLUMN) || isMissingColumn(error, ["merge_app_settings"])) {
-      giveUp(error);
-      return;
-    }
-    // Offline or a blip: try again with the next change, unless it is newer.
-    for (const [name, value] of Object.entries(patch)) {
-      if (!(name in pending)) pending[name as SyncedSetting] = value;
-    }
+  const names = Object.keys(patch) as SyncedSetting[];
+  if (names.length === 0) return;
+  for (const name of names) {
+    delete pending[name];
+    sending.add(name);
   }
+  const { error } = await supabase.rpc("merge_app_settings", { patch });
+  for (const name of names) sending.delete(name);
+  // Signed out or switched while it was sent: nothing of it is the new
+  // account's, whatever happened.
+  if (uid !== id) return;
+  if (!error) {
+    failures = 0;
+    if (Object.keys(pending).length > 0) schedule();
+    return;
+  }
+  if (isMissingColumn(error, COLUMN) || isMissingColumn(error, ["merge_app_settings"])) {
+    giveUp(error);
+    return;
+  }
+  // Offline or a blip: keep it, unless there is a newer change, and try again.
+  for (const name of names) {
+    if (!(name in pending)) pending[name] = patch[name] ?? null;
+  }
+  schedule(RETRY_MS[Math.min(failures, RETRY_MS.length - 1)]);
+  failures += 1;
 }
 
-function schedule() {
+function schedule(delay = SEND_AFTER_MS) {
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => void flush(), SEND_AFTER_MS);
+  timer = setTimeout(() => void flush(), delay);
 }
 
 /** Sends a changed setting to the account. `null` is a setting reset to its default. */
 export function saveAccountSetting(name: SyncedSetting, value: string | null): void {
-  if (typeof window === "undefined" || unavailable) return;
+  if (typeof window === "undefined" || unavailable || !uid) return;
+  edits += 1;
+  editedAt.set(name, edits);
   pending[name] = value;
-  if (uid) schedule();
+  // A change here makes the device-wide settings this account's.
+  setStored(SETTINGS_OWNER_KEY, uid);
+  schedule();
 }
 
 async function pull(id: string) {
+  const startedAt = edits;
   const { data, error } = await supabase
     .from("profiles")
     .select("app_settings")
@@ -109,11 +140,19 @@ async function pull(id: string) {
     if (isMissingColumn(error, COLUMN)) giveUp(error);
     return;
   }
-  const busy = new Set(Object.keys(pending) as SyncedSetting[]);
-  const plan = planSync(cleanAccountSettings(data?.app_settings), readDevice(id), busy);
+  // Left alone: anything changed here since this read began, waiting to be
+  // sent, or being sent now. Their own save carries them.
+  const busy = new Set<SyncedSetting>([
+    ...(Object.keys(pending) as SyncedSetting[]),
+    ...sending,
+    ...SYNCED_SETTINGS.filter((name) => (editedAt.get(name) ?? 0) > startedAt),
+  ]);
+  const owns = ownsDeviceSettings(getStored(SETTINGS_OWNER_KEY), id);
+  const plan = planSync(cleanAccountSettings(data?.app_settings), readDevice(id), busy, owns);
   for (const [name, value] of Object.entries(plan.toDevice)) {
     writeDevice(name as SyncedSetting, id, value ?? null);
   }
+  setStored(SETTINGS_OWNER_KEY, id);
   for (const [name, value] of Object.entries(plan.toAccount)) {
     pending[name as SyncedSetting] = value ?? null;
   }
@@ -124,7 +163,7 @@ function signedIn(id: string | null) {
   if (id === uid) return;
   uid = id;
   // Changes made signed out, or as someone else, are not this account's.
-  for (const name of Object.keys(pending)) delete pending[name as SyncedSetting];
+  clearPending();
   if (id && !unavailable) void pull(id);
 }
 
@@ -136,8 +175,26 @@ export function startAccountSettingsSync(): void {
     signedIn(session?.user?.id ?? null);
   });
   void supabase.auth.getSession().then(({ data }) => signedIn(data.session?.user?.id ?? null));
-  // Coming back to Béa after changing something on another device.
+  // Coming back to Béa after changing something on another device, or back
+  // online with a change still to send.
+  const resume = () => {
+    if (!uid || unavailable) return;
+    if (Object.keys(pending).length > 0) schedule();
+    void pull(uid);
+  };
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && uid && !unavailable) void pull(uid);
+    if (document.visibilityState === "visible") resume();
+  });
+  window.addEventListener("online", resume);
+  // A theme or pictures choice made in another tab: paint this one too, not
+  // only the picker.
+  window.addEventListener("storage", (e) => {
+    if (e.key === THEME_KEY) {
+      const theme = themeFrom(e.newValue);
+      document.documentElement.setAttribute("data-theme", theme);
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    } else if (e.key === STOP_PICTURES_KEY) {
+      applyStopPictures(asStopPictures(e.newValue), document.documentElement);
+    }
   });
 }

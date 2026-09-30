@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { tripViewKey } from "@/lib/account-settings";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
+import { getStored, setStored } from "@/lib/settings-storage";
 
 /**
  * What the trip page shows, chosen by the traveller.
@@ -45,7 +46,7 @@ const keyFor = tripViewKey;
 
 function read(userId: string | undefined): TripViewPrefs {
   try {
-    const raw = window.localStorage.getItem(keyFor(userId));
+    const raw = getStored(keyFor(userId));
     if (!raw) return DEFAULT_TRIP_VIEW;
     return { ...DEFAULT_TRIP_VIEW, ...(JSON.parse(raw) as Partial<TripViewPrefs>) };
   } catch {
@@ -70,11 +71,7 @@ export function useTripViewPrefs() {
     (key: TripViewKey) => {
       setPrefs((prev) => {
         const next = { ...prev, [key]: !prev[key] };
-        try {
-          window.localStorage.setItem(keyFor(user?.id), JSON.stringify(next));
-        } catch {
-          /* storage unavailable: the choice lasts for this visit */
-        }
+        setStored(keyFor(user?.id), JSON.stringify(next));
         if (user?.id) saveAccountSetting("tripView", JSON.stringify(next));
         return next;
       });

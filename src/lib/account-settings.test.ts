@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   cleanAccountSettings,
+  ownsDeviceSettings,
   MAX_SETTING_LENGTH,
   planSync,
   settingStorageKey,
@@ -87,5 +88,25 @@ describe("planSync", () => {
       new Set(["theme", "pictures"] as const),
     );
     assert.deepEqual(plan, { toDevice: {}, toAccount: {} });
+  });
+});
+
+describe("switching accounts on one device", () => {
+  it("treats settings as the signer's own when nobody or they held the device", () => {
+    assert.equal(ownsDeviceSettings(null, "u1"), true);
+    assert.equal(ownsDeviceSettings("u1", "u1"), true);
+    assert.equal(ownsDeviceSettings("u1", "u2"), false);
+  });
+
+  it("never sends the last account's device-wide settings up to the next", () => {
+    const device = { theme: "dark", homeCurrency: "EUR", homeLayout: '{"weather":false}' };
+    const plan = planSync({}, device, new Set(), false);
+    assert.deepEqual(plan.toAccount, { homeLayout: '{"weather":false}' });
+    assert.deepEqual(plan.toDevice, { theme: null, homeCurrency: null });
+  });
+
+  it("still applies the next account's own settings", () => {
+    const plan = planSync({ theme: "colorful" }, { theme: "dark" }, new Set(), false);
+    assert.deepEqual(plan, { toDevice: { theme: "colorful" }, toAccount: {} });
   });
 });
