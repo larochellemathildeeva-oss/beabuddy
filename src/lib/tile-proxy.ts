@@ -56,20 +56,21 @@ export function tilePath({ z, x, y }: TileCoords): string {
 export const TILE_URL_TEMPLATE = "/api/tile/{z}/{x}/{y}.png";
 
 /**
- * Where Béa fetches it from.
+ * Where Béa fetches it from: LocationIQ when there is a token, OpenStreetMap
+ * when there is not.
  *
- * Geoapify when its key is set, LocationIQ when there is a token,
- * OpenStreetMap when there is neither — the same order as every other
- * lookup, so an app with no key still draws a map.
+ * Never Geoapify. `/api/tile` answers anyone who asks, signed in or not, and
+ * the x/y/z are theirs to vary, so no cache stops a stranger walking the
+ * world one tile at a time. Geoapify's daily allowance is shared with place
+ * search and directions; a public image endpoint is the wrong place to spend
+ * it. The function takes no Geoapify key, so it cannot build a Geoapify URL
+ * — the test holds that. (The day map's vector tiles still fall back to
+ * Geoapify behind their own daily share; see `serveVectorAsset`.)
  */
-export function tileSourceUrl(coords: TileCoords, token: string, geoapifyKey = ""): string {
+export function tileSourceUrl(coords: TileCoords, locationIqToken: string): string {
   const { z, x, y } = coords;
-  // Geoapify first when its key is set, like every other lookup.
-  if (geoapifyKey) {
-    return `https://maps.geoapify.com/v1/tile/positron/${z}/${x}/${y}.png?apiKey=${encodeURIComponent(geoapifyKey)}`;
-  }
-  return token
-    ? `https://tiles.locationiq.com/v3/streets/r/${z}/${x}/${y}.png?key=${encodeURIComponent(token)}`
+  return locationIqToken
+    ? `https://tiles.locationiq.com/v3/streets/r/${z}/${x}/${y}.png?key=${encodeURIComponent(locationIqToken)}`
     : `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 }
 

@@ -73,8 +73,10 @@ order:
 
 1. `GEOAPIFY_API_KEY` set: **Geoapify** — geocoding, autocomplete, reverse,
    walking/driving routes, "coffee near me" category searches (its Places API,
-   ahead of the public Overpass servers) and the map tiles served through
-   `/api/tile`, five requests a second. Its terms allow storing
+   ahead of the public Overpass servers) and, when OpenFreeMap does not
+   answer, the day map's vector tiles, five requests a second. Never the image
+   tiles of `/api/tile`: that endpoint is public, so it asks LocationIQ or
+   OpenStreetMap only, and `tileSourceUrl` takes no Geoapify key. Its terms allow storing
    results, which is what saved pins are. It answers in its own shapes;
    `geoapify.ts` translates them into Nominatim's and OSRM's (tested), and
    callers read every answer through `readGeoJson`.
@@ -139,9 +141,9 @@ The count is kept in the server's memory, so a restart starts it again at 0.
 Map proxy requests have their own guardrails before that shared allowance: successful image
 tiles, vector tiles and glyphs stay in a 24-hour in-process LRU (2,000 entries / 64 MB), and a
 cache miss that reaches anything except OpenFreeMap is limited to 600 upstream fetches per client
-per 10 minutes. Tiles and glyphs may use at most 600 Geoapify credits per UTC day; after that
-raster tiles fall back to LocationIQ/OpenStreetMap and vector tiles/glyphs stop at OpenFreeMap,
-leaving the rest of the app-wide allowance for place search and directions.
+per 10 minutes. Image tiles never reach Geoapify. Vector tiles and glyphs may use at most 600
+Geoapify credits per UTC day; after that they stop at OpenFreeMap, leaving the rest of the
+app-wide allowance for place search and directions.
 
 **The day map and its offline copy.** The day map (`DayMap.tsx`) draws
 OpenMapTiles vector tiles in Béa's journal palette (`journal-style.ts`),
