@@ -1074,6 +1074,16 @@ export type Database = {
         Args: { _credits: number; _limit: number }
         Returns: boolean
       }
+      rotate_vault_passcode: {
+        Args: {
+          _old_verifier: string
+          _salt: string
+          _verifier: string
+          _verifier_iv: string
+          _documents: Json
+        }
+        Returns: undefined
+      }
       accept_trip_invite: {
         Args: { _code: string; _display_name?: string }
         Returns: string

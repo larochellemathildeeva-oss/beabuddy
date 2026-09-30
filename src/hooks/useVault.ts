@@ -6,7 +6,9 @@ import {
   deriveKey,
   encryptJson,
   randomB64,
+  reencryptRows,
 } from "@/lib/vaultCrypto";
+import { validateVaultPasscode } from "@/lib/vault-passcode";
 import {
   deriveKeyBits,
   enrolPasskey as enrolDevicePasskey,
@@ -50,6 +52,11 @@ export function useVault() {
   const [loading, setLoading] = useState(true);
   /** Face ID / fingerprint is set up for Protected on this device. */
   const [hasPasskey, setHasPasskey] = useState(false);
+  /**
+   * Unlocked with a passcode shorter than today's rule (vault-passcode.ts):
+   * a vault made before it. Asked to choose a stronger one.
+   */
+  const [weakPasscode, setWeakPasscode] = useState(false);
 
   const load = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
@@ -87,6 +94,8 @@ export function useVault() {
   const createVault = useCallback(
     async (passcode: string) => {
       if (!uid) throw new Error("Sign in first");
+      const check = validateVaultPasscode(passcode);
+      if (!check.valid) throw new Error(check.message);
       const salt = randomB64(16);
       const k = await deriveKey(passcode, salt);
       const { ciphertext, iv } = await encryptJson(k, VERIFIER);
@@ -115,6 +124,7 @@ export function useVault() {
       throw new Error("That passcode doesn't match");
     }
     setKey(k);
+    setWeakPasscode(!validateVaultPasscode(passcode).valid);
   }, []);
 
   /** Checks a key against the vault's verifier before accepting it. */
@@ -168,7 +178,65 @@ export function useVault() {
     setHasPasskey(false);
   }, [uid]);
 
-  const lock = useCallback(() => setKey(null), []);
+  /**
+   * A new passcode for an unlocked vault: every document is opened with the
+   * current key and sealed with the new one in the browser, then written in
+   * one transaction with the new salt and verifier (rotate_vault_passcode).
+   * If anything fails, nothing is written and the old passcode still works.
+   * Face ID / fingerprint on this device held the old key, so it is
+   * forgotten and can be set up again.
+   */
+  const changePasscode = useCallback(
+    async (passcode: string) => {
+      if (!uid || !key) throw new Error("Unlock Protected first");
+      const check = validateVaultPasscode(passcode);
+      if (!check.valid) throw new Error(check.message);
+      const { data: settings, error: settingsError } = await supabase
+        .from("vault_settings")
+        .select("verifier")
+        .maybeSingle();
+      if (settingsError || !settings) throw new Error("No vault yet");
+      const { data: docs, error: docsError } = await supabase
+        .from("vault_documents")
+        .select("id, ciphertext, iv");
+      if (docsError) throw docsError;
+      const salt = randomB64(16);
+      const k = await deriveKey(passcode, salt);
+      let documents: { id: string; ciphertext: string; iv: string }[];
+      try {
+        documents = await reencryptRows(key, k, docs ?? []);
+      } catch {
+        throw new Error("A document in Protected could not be opened, so nothing was changed.");
+      }
+      const verifier = await encryptJson(k, VERIFIER);
+      const { error } = await supabase.rpc("rotate_vault_passcode", {
+        _old_verifier: settings.verifier,
+        _salt: salt,
+        _verifier: verifier.ciphertext,
+        _verifier_iv: verifier.iv,
+        _documents: documents,
+      });
+      if (error) {
+        console.warn("[vault] passcode change failed:", error.message);
+        throw new Error(
+          error.code === "40001"
+            ? "Protected changed on another device. Lock it, unlock again, then try once more."
+            : "The passcode could not be changed just now. Your current passcode still works.",
+        );
+      }
+      forgetPasskey(uid);
+      setHasPasskey(false);
+      setKey(k);
+      setWeakPasscode(false);
+      await load();
+    },
+    [uid, key, load],
+  );
+
+  const lock = useCallback(() => {
+    setKey(null);
+    setWeakPasscode(false);
+  }, []);
 
   const addDoc = useCallback(
     async (doc: NewDoc) => {
@@ -210,6 +278,7 @@ export function useVault() {
     hasVault,
     hasPasskey,
     unlocked: !!key,
+    weakPasscode,
     rows,
     loading,
     createVault,
@@ -217,6 +286,7 @@ export function useVault() {
     unlockWithDevice,
     enrolDevice,
     forgetDevice,
+    changePasscode,
     lock,
     addDoc,
     removeDoc,

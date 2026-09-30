@@ -381,6 +381,24 @@ e-ticket numbers stay) dropped, and its date used to pick the trip
 fills the form, marks each field "from file" until it is edited, and saves
 nothing. Other file types (.pkpass, .eml, .docx) do not offer it.
 
+## Protected passcodes
+
+Protected is encrypted in the browser with a key from the traveller's
+passcode (PBKDF2 then AES-GCM, `vaultCrypto.ts`). Anyone with a copy of
+`vault_settings` can try passcodes offline against its verifier, so the
+passcode is the weak part, not the cipher. A new passcode must be a PIN of at
+least 6 digits or a passphrase of at least 10 characters
+(`validateVaultPasscode` in `vault-passcode.ts`, pure and tested), enforced
+in `useVault`'s `createVault` as well as the form. Older vaults with a shorter
+passcode still unlock; on unlock they are asked to choose a stronger one
+(`changePasscode`): every document is re-encrypted in the browser and written
+with the new salt and verifier in one transaction by `rotate_vault_passcode`
+(security invoker, under the tables' own row level security), which refuses
+if the vault changed on another device or a document is missing. Face ID /
+fingerprint on that device is forgotten, since it held the old key. The
+migration is applied by hand; until it is, the change fails with nothing
+written and the old passcode keeps working.
+
 ## World globe data
 
 The World tab shades provinces and states from `public/geo/admin1/` — one
