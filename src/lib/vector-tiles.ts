@@ -18,6 +18,13 @@
 /** OpenMapTiles stops at 14; the map draws closer by stretching those tiles. */
 export const VTILE_ZOOM_MAX = 14;
 
+/**
+ * A day, in the browser and in any shared cache. Unlike an image tile, the
+ * same path is answered from OpenFreeMap's weekly build, so a week-long
+ * shared copy could draw last week's streets beside this week's.
+ */
+export const VECTOR_CACHE_CONTROL = "public, max-age=86400, s-maxage=86400";
+
 /** The path template the map's style asks for, through Béa's own protocol. */
 export const VTILE_PROTOCOL_TEMPLATE = "bea-tile://{z}/{x}/{y}";
 export const GLYPH_PROTOCOL_TEMPLATE = "bea-glyph://{fontstack}/{range}";

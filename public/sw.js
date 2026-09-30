@@ -10,7 +10,9 @@
  *   comes from what "Keep offline" saved on the phone, and the map tiles
  *   from their own cache.
  *
- * Bump VERSION to drop every copy kept by an older worker.
+ * Bump VERSION to drop every copy kept by an older worker. The maps a
+ * traveller kept offline (bea-map-…) are theirs, not the worker's: they stay
+ * until the traveller, sign-out or erasure removes them.
  */
 const VERSION = "v1";
 const PAGES = `bea-pages-${VERSION}`;
@@ -33,7 +35,12 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key.startsWith("bea-") && key !== PAGES && key !== ASSETS)
+            .filter(
+              (key) =>
+                (key.startsWith("bea-pages-") || key.startsWith("bea-assets-")) &&
+                key !== PAGES &&
+                key !== ASSETS,
+            )
             .map((key) => caches.delete(key)),
         ),
       )
