@@ -116,6 +116,11 @@ test("tripPlaceFromTowns: a starting city already set, or a town in another coun
   const towns = [{ city: "Kyoto", country: "Japan" }];
   assert.equal(tripPlaceFromTowns({ city: "Tokyo", country: "Japan" }, towns), null);
   assert.equal(tripPlaceFromTowns({ country: "France" }, towns), null);
+  // The same country under another name is not another country.
+  assert.deepEqual(
+    tripPlaceFromTowns({ country: "United States" }, [{ city: "New York", country: "USA" }]),
+    { city: "New York" },
+  );
   assert.equal(tripPlaceFromTowns({}, []), null);
 });
 

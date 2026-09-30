@@ -1,3 +1,5 @@
+import { matchWorldCountry } from "./world-countries.ts";
+
 /**
  * The towns an imported plan goes through, for the trip's Destinations.
  *
@@ -28,6 +30,13 @@ export type PlanCity = {
 };
 
 const JOURNEY_KINDS = new Set(["flight", "transport"]);
+
+/** "USA" and "United States" are one country; names it does not know are compared as written. */
+function sameCountry(a: string, b: string): boolean {
+  const one = matchWorldCountry(a);
+  const two = matchWorldCountry(b);
+  return one && two ? one.name === two.name : key(a) === key(b);
+}
 
 /** "Montréal" and "Montreal" are one town. */
 function key(name: string): string {
@@ -175,7 +184,7 @@ export function tripPlaceFromTowns(
     first.country?.trim() || (named.size === 1 ? [...named][0] : undefined) || country?.trim();
   const had = trip.country?.trim();
   if (had) {
-    if (nation && key(nation) !== key(had)) return null;
+    if (nation && !sameCountry(nation, had)) return null;
     return { city: first.city.trim() };
   }
   return nation ? { city: first.city.trim(), country: nation } : { city: first.city.trim() };
