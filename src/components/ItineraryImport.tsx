@@ -391,8 +391,6 @@ export function ItineraryImport({
           items={existingItems.filter((item) => item.day_date === optimizePreset.day)}
           cities={cities}
           onApplySchedule={onApplySchedule}
-          onImport={() => openPlan("import")}
-          onBuild={() => openPlan("build")}
         />
       )}
       {tab === "optimize" && !optimizePreset && (
@@ -1866,7 +1864,10 @@ function OptimizePanel({
         }>,
       ) => Promise<void>)
     | undefined;
-  /** With fewer than two stops: bring a plan in, or have Béa draft one, right here. */
+  /**
+   * With fewer than two stops on the trip: bring a plan in, or have Béa draft
+   * one, right here. Not offered for a single day, whose other days may be full.
+   */
   onImport?: () => void;
   onBuild?: () => void;
 }) {
