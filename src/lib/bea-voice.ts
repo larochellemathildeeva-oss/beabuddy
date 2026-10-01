@@ -161,7 +161,7 @@ const POOLS: Record<BeaMoment, readonly BeaLine[]> = {
     },
     {
       title: "Your vault looks wonderfully unexplored.",
-      body: "Import photos, save a tip, or load sample data to try the walk.",
+      body: "Plan a trip, save a tip, or import photos to get started.",
       mode: "companion",
     },
   ],

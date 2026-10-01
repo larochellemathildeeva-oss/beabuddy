@@ -47,7 +47,7 @@ import { useTrips } from "@/hooks/useTrips";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
-import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
+import { clearDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
 import { StopPicturesPicker } from "@/components/StopPicturesPicker";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
@@ -391,7 +391,7 @@ function ProfilePage() {
               card={3}
               tone={3}
               title="Data & imports"
-              hint="Photos, calendar, sample data, offline"
+              hint="Photos, calendar, offline"
               onClick={() => setPanel("data")}
               guide="offline-options"
             />
@@ -538,31 +538,12 @@ function ProfilePage() {
 
           {user && !sampleCtaDismissed && (
             <div className="rounded-2xl border border-border bg-elevated p-3">
-              <p className="text-[14.5px] font-semibold">Demo / sample data</p>
+              <p className="text-[14.5px] font-semibold">Sample data</p>
               <p className="mt-1 text-[13px] text-muted-foreground">
-                Loads ~10 cities, Lisbon-heavy recommendations, 3 trips with timelines, and Future
-                Me notes. Remove only deletes the sample rows — not places you added yourself.
+                Loaded the sample trips and places earlier? Remove deletes only those — never places
+                you added yourself.
               </p>
               <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={seeding}
-                  onClick={async () => {
-                    setSeeding(true);
-                    setSeedMsg("");
-                    const result = await loadDemoSeed();
-                    setSeeding(false);
-                    setSeedMsg(
-                      result.ok
-                        ? `Loaded ${result.recos} places, ${result.trips} trips, ${result.notes} notes.`
-                        : result.message,
-                    );
-                    if (result.ok) navigate({ to: "/world" });
-                  }}
-                  className="flex-1 rounded-full border border-border bg-card px-4 py-2 text-[14.5px] font-semibold disabled:opacity-60"
-                >
-                  {seeding ? "Working…" : "Load sample"}
-                </button>
                 <button
                   type="button"
                   disabled={seeding}
