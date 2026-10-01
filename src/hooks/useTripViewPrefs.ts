@@ -41,7 +41,8 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
 ];
 
 export const DEFAULT_TRIP_VIEW: TripViewPrefs = {
-  ribbon: true,
+  // Off by default: Now already has the day as a numbered line and a list.
+  ribbon: false,
   journey: true,
   walkTimes: true,
   nesting: true,
