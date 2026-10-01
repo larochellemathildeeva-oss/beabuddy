@@ -245,6 +245,30 @@ export function useVault() {
   }, [uid]);
 
   /**
+   * After a Face ID unlock: the traveller types their current passcode once,
+   * so Béa can tell whether it meets today's rule. Checked against the vault
+   * first; then recorded as meeting the rule, or asked to be made longer.
+   */
+  const confirmPasscode = useCallback(
+    async (passcode: string) => {
+      const { data: settings, error } = await supabase
+        .from("vault_settings")
+        .select("salt, verifier, verifier_iv")
+        .maybeSingle();
+      if (error || !settings) throw new Error("No vault yet");
+      const k = await deriveKey(passcode, settings.salt);
+      try {
+        const check = await decryptJson<string>(k, settings.verifier, settings.verifier_iv);
+        if (check !== VERIFIER) throw new Error("bad");
+      } catch {
+        throw new Error("That passcode doesn't match");
+      }
+      await judgeTypedPasscode(passcode);
+    },
+    [judgeTypedPasscode],
+  );
+
+  /**
    * A new passcode for an unlocked vault: every document is opened with the
    * current key and sealed with the new one in the browser, then written in
    * one transaction with the new salt and verifier (rotate_vault_passcode).
@@ -392,6 +416,7 @@ export function useVault() {
     enrolDevice,
     forgetDevice,
     changePasscode,
+    confirmPasscode,
     lock,
     addDoc,
     removeDoc,

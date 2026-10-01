@@ -1,5 +1,6 @@
 import { generateText } from "ai";
 import { AI_CALL, withModelFallback } from "@/lib/ai.server";
+import { reserveLocalName } from "@/lib/ai-quota.server";
 import { takeFromHour } from "@/lib/pexels";
 import countryBoxes from "../../public/geo/admin1/index.json";
 import { countryCode } from "@/lib/country-names";
@@ -46,18 +47,23 @@ export function localName(
   const known = cache.get(key);
   if (known) return known;
   if (!allowed(userId, Date.now())) return Promise.resolve(null);
-  // No AI units are reserved here: this runs in the background of a search,
-  // and spending the day's allowance on it would refuse the traveller's next
-  // trip build. It has its own cap (30 an hour, `allowed`) and a cache.
-  const answer = withModelFallback((model) =>
-    generateText({
-      model,
-      ...AI_CALL,
-      reasoning: "low",
-      prompt: localNamePrompt(name.trim(), language, country),
-    }),
-  )
-    .then((result) => readLocalName(result.text, name))
+  // From the traveller's own local-name bucket, not the trip-build
+  // allowance (ai-quota.server.ts), on top of the hourly cap above.
+  const answer = reserveLocalName(userId)
+    .then((reserved) => {
+      if (!reserved) {
+        cache.delete(key);
+        return null;
+      }
+      return withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          reasoning: "low",
+          prompt: localNamePrompt(name.trim(), language, country),
+        }),
+      ).then((result) => readLocalName(result.text, name));
+    })
     .catch((error: unknown) => {
       console.error("[places] local-script name failed:", error);
       cache.delete(key);

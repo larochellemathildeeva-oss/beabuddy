@@ -404,9 +404,17 @@ export const geocodePlanStops = createServerFn({ method: "POST" })
       // the minute cap too: two a second empties sixty a minute in thirty
       // seconds, and the rest of the batch would meet a wall of 429s.
       if (!first) {
-        const delay = nextDelayMs(provider, sent, Date.now());
-        if (Date.now() + delay > deadline) return false;
-        if (delay > 0) await wait(delay);
+        for (;;) {
+          const delay = nextDelayMs(provider, sent, Date.now());
+          if (Date.now() + delay > deadline) return false;
+          if (delay > 0) await wait(delay);
+          // Geoapify can rest while this waits (its ceiling, a refusal, no
+          // shared ledger): the URL is built for whoever answers now, at
+          // their pace, not for the provider chosen before the wait.
+          const current = geoProvider();
+          if (current.name === provider.name) break;
+          provider = current;
+        }
       }
       first = false;
       budget -= 1;

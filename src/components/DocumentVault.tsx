@@ -262,6 +262,9 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
  */
 function StrongerPasscode({ v }: { v: Vault }) {
   const [asking, setAsking] = useState(false);
+  /** After Face ID: type the current passcode once, to show it is long enough. */
+  const [confirming, setConfirming] = useState(false);
+  const [current, setCurrent] = useState("");
   const [dismissed, setDismissed] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [confirmCode, setConfirmCode] = useState("");
@@ -283,7 +286,54 @@ function StrongerPasscode({ v }: { v: Vault }) {
           {VAULT_PASSCODE_HINT}
         </span>
       </p>
-      {!asking ? (
+      {confirming && !asking ? (
+        <>
+          <input
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            type="password"
+            inputMode={keyboard}
+            autoComplete="current-password"
+            placeholder="Current passcode"
+            aria-label="Current passcode"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          />
+          <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
+          {error && (
+            <p role="alert" className="text-[13px] text-destructive">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy || current.length === 0}
+              onClick={() =>
+                void attempt(setError, setBusy, async () => {
+                  await v.confirmPasscode(current);
+                  setCurrent("");
+                  setConfirming(false);
+                })
+              }
+              className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              Check it
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setConfirming(false);
+                setCurrent("");
+                setError("");
+              }}
+              className="rounded-xl border border-border px-4 py-2 text-[14px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : !asking ? (
         <div className="flex gap-2">
           <button
             type="button"
@@ -292,6 +342,15 @@ function StrongerPasscode({ v }: { v: Vault }) {
           >
             Choose a stronger passcode
           </button>
+          {v.weakPasscode === "older" && (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              className="rounded-xl border border-border px-3 py-2 text-[14px]"
+            >
+              Mine is long enough
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setDismissed(true)}

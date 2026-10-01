@@ -391,7 +391,10 @@ two plans 6, a receipt 2, and so on, `AI_DAILY_UNITS` a UTC day (100 unless
 that env var says otherwise). One operation reserves once, however many models
 `withModelFallback` tries, before the web check and after its pictures are
 checked (a refused picture costs nothing). Local-script names looked up in the
-background of a search reserve nothing: they keep their own hourly cap. The user ID always comes
+background of a search draw on a bucket of their own (`LOCAL_NAME_DAILY`,
+`reserve_ai_units_in`, the `ai_usage_buckets` migration), never the allowance
+for what a traveller asks; when it cannot be counted in the deployed app, the
+search simply goes on without them. The user ID always comes
 from the verified session (`context.userId`). The count is held in
 `ai_daily_usage` by `reserve_ai_units` (service role only, atomic), so restarts
 and several instances share it. When the database cannot be asked, the
@@ -445,7 +448,9 @@ forgotten, since it held the old key; a Face ID unlock never sees the
 passcode, so it reads `vault_settings.passcode_rule` (the rule the passcode is
 known to meet, written when one is created, changed, or typed and found long
 enough; `VAULT_PASSCODE_RULE`) and asks when it is missing or older. A typed
-short passcode is asked about too, and so is one given to set up Face ID. The
+short passcode is asked about too, and so is one given to set up Face ID.
+After Face ID the prompt also offers "Mine is long enough": the current
+passcode, typed once and checked, is recorded as meeting the rule. The
 migration is applied by hand; until it is, the change fails with nothing
 written and the old passcode keeps working.
 

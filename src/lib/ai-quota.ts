@@ -8,15 +8,18 @@
  * (reserve_ai_units, the ai_daily_usage migration). The units are Béa's own:
  * a rough weight per operation, not Google's bill. One operation reserves
  * once, however many models `withModelFallback` tries. Local-script names
- * looked up in the background of a search reserve nothing: they have their
- * own hourly cap, and must not spend the allowance meant for what a
- * traveller asks for.
+ * looked up in the background of a search have a bucket of their own
+ * (`LOCAL_NAME_DAILY`), so they never spend the allowance meant for what a
+ * traveller asks for, but are still counted across every server.
  *
  * Pure and tested; the reservation itself is in ai-quota.server.ts.
  */
 
 /** Units a traveller may spend in a UTC day, unless `AI_DAILY_UNITS` says otherwise. */
 export const AI_DAILY_UNITS_DEFAULT = 100;
+
+/** Local-script name lookups a traveller may have in a UTC day (one unit each). */
+export const LOCAL_NAME_DAILY = 150;
 
 /** What each operation reserves. About 25 trip builds, or 50 receipt scans, a day. */
 export const AI_COST = {

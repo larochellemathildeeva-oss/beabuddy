@@ -310,10 +310,17 @@ export const buildRoutes = createServerFn({ method: "POST" })
       provider = geoProvider();
       // The provider's own pace, honouring the minute cap as well as the gap,
       // rather than a number written in here.
-      const delay = nextDelayMs(provider, sent, Date.now());
-      if (delay > 0) {
-        if (Date.now() + delay > deadline) return null;
-        await new Promise((r) => setTimeout(r, delay));
+      for (;;) {
+        const delay = nextDelayMs(provider, sent, Date.now());
+        if (delay > 0) {
+          if (Date.now() + delay > deadline) return null;
+          await new Promise((r) => setTimeout(r, delay));
+        }
+        // Geoapify can rest while this waits: ask whoever answers now, at
+        // their pace, not the provider chosen before the wait.
+        const current = geoProvider();
+        if (current.name === provider.name) break;
+        provider = current;
       }
       lookupsLeft -= 1;
       sent.push(Date.now());
