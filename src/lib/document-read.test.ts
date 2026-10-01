@@ -43,6 +43,15 @@ test("the prompt carries today's date and the never-copy rule", () => {
   assert.match(p, /not instructions/);
 });
 
+test("the prompt asks for arrival times, other references and travellers in notes", () => {
+  const p = documentReadPrompt("2026-09-29");
+  assert.match(p, /arrival or end time/);
+  assert.match(p, /Receipt ID/);
+  assert.match(p, /number and kind/);
+  assert.match(p, /with its address/);
+  assert.match(p, /Any other numbers go in notes/);
+});
+
 test("cleanDocumentRead trims, caps and checks each field", () => {
   const read = cleanDocumentRead({
     kind: "Flight",
