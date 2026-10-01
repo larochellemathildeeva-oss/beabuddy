@@ -2,7 +2,12 @@ import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tan
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useLegalConsent } from "../hooks/useLegalConsent";
-import { hasPendingOAuthResultInWindow } from "../lib/auth-redirect";
+import {
+  hasPendingOAuthResultInWindow,
+  safeRedirectPath,
+  takeReturnPath,
+} from "../lib/auth-redirect";
+import { useOnline } from "../hooks/useOnline";
 import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
 import { nextCompressed, tabIdForPath } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
@@ -58,6 +63,7 @@ export function AppShell({
   flush?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const href = useRouterState({ select: (s) => s.location.href });
   // The plane travels with the route, so the shell asks the router rather than
   // letting each screen decide how it should arrive.
   const matches = useRouterState({ select: (s) => s.matches });
@@ -93,7 +99,7 @@ export function AppShell({
   useLegalConsent();
   useIdleLogout(!!user);
   useRestoreKeptOffline(user?.id);
-  const [online, setOnline] = useState(typeof navigator === "undefined" ? true : navigator.onLine);
+  const online = useOnline();
 
   // The shell owns the only scroll container in the app, so header compression
   // is one listener here rather than one per screen. Passive, and it only sets
@@ -108,17 +114,6 @@ export function AppShell({
     return () => el.removeEventListener("scroll", onScroll);
   }, [pathname]);
 
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener("online", on);
-    window.addEventListener("offline", off);
-    return () => {
-      window.removeEventListener("online", on);
-      window.removeEventListener("offline", off);
-    };
-  }, []);
-
   // The app frame is for members, except on pages a visitor has to be able to
   // read before they have an account.
   //
@@ -129,14 +124,40 @@ export function AppShell({
   useEffect(() => {
     if (publicPage || loading || user) return;
     if (hasPendingOAuthResultInWindow()) return;
-    navigate({ to: "/auth", replace: true });
-  }, [publicPage, loading, user, navigate]);
+    // Remember where they were going, so signing in brings them back here.
+    // The router moves to /auth before this page unmounts, so this runs once
+    // more with the sign-in address itself; that must not be sent again.
+    const returnTo = safeRedirectPath(href);
+    if (!returnTo) return;
+    navigate({ to: "/auth", search: { redirect: returnTo }, replace: true });
+  }, [publicPage, loading, user, navigate, href]);
+
+  // Google and the confirmation email return to the site's origin, not to the
+  // page that asked for sign-in; that page waits in this tab until now.
+  useEffect(() => {
+    if (loading || !user || hasPendingOAuthResultInWindow()) return;
+    const to = takeReturnPath();
+    if (to && to !== href) void navigate({ href: to, replace: true });
+  }, [loading, user, navigate, href]);
 
   const settlingOAuth = !user && hasPendingOAuthResultInWindow();
   if (!publicPage && (loading || !user || settlingOAuth)) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-background">
-        <p className="text-[14.5px] text-muted-foreground">Loading…</p>
+      // Béa's mark rather than a bare word, so the moment before the page reads
+      // as the app opening, not as something stuck.
+      <div className="grid min-h-[100dvh] place-items-center bg-background" aria-busy="true">
+        <div className="flex flex-col items-center gap-3">
+          <img
+            src={logo}
+            alt=""
+            className="size-14 animate-pulse object-contain motion-reduce:animate-none"
+            width={56}
+            height={56}
+          />
+          <p role="status" className="text-[14.5px] text-muted-foreground">
+            Opening Béa…
+          </p>
+        </div>
       </div>
     );
   }
@@ -167,17 +188,21 @@ export function AppShell({
                 <button
                   onClick={() => router.history.back()}
                   aria-label="Go back"
-                  className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card"
+                  className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
                 >
-                  <ArrowLeft className="size-4" />
+                  <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
+                    <ArrowLeft className="size-4" />
+                  </span>
                 </button>
               ) : (
                 <Link
                   to="/"
                   aria-label="Go back home"
-                  className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card"
+                  className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
                 >
-                  <ArrowLeft className="size-4" />
+                  <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
+                    <ArrowLeft className="size-4" />
+                  </span>
                 </Link>
               ))}
             <Link to="/" className="flex items-center gap-2">
@@ -191,11 +216,13 @@ export function AppShell({
               <span className="flex items-center gap-2">
                 <span className="leading-none">
                   <span className="block font-display text-[23px]">Béa</span>
-                  <span className="block text-[10.5px] font-semibold uppercase text-muted-foreground">
+                  {/* The version is for support, not for every screen of a small
+                      phone: from 390px wide only. */}
+                  <span className="hidden text-[10.5px] font-semibold uppercase text-muted-foreground min-[390px]:block">
                     v{APP_VERSION}
                   </span>
                 </span>
-                <span className="label-caps">Travel Buddy</span>
+                <span className="label-caps hidden sm:inline">Travel Buddy</span>
               </span>
             </Link>
           </div>
@@ -211,6 +238,7 @@ export function AppShell({
               </Link>
             )}
             <span
+              role="img"
               aria-label={online ? "Online" : "Offline"}
               title={online ? "Online" : "Offline — changes may not sync"}
               className="grid size-7 place-items-center rounded-full border border-border bg-card"
@@ -221,6 +249,17 @@ export function AppShell({
             </span>
           </div>
         </header>
+
+        {/* A dot alone is a tooltip a phone cannot show. Said once, in words,
+            for as long as it is true. */}
+        {!online && (
+          <p
+            role="status"
+            className="z-10 shrink-0 bg-muted px-4 py-1.5 text-center text-[12.5px] font-semibold text-muted-foreground"
+          >
+            You're offline. Kept trips still open; changes sync when you're back.
+          </p>
+        )}
 
         <PageHeader
           eyebrow={eyebrow}

@@ -8,10 +8,14 @@ function AuthenticatedLayout() {
 export const Route = createFileRoute("/_authenticated")({
   staticData: { plane: "detail" },
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
+  beforeLoad: async ({ location }) => {
+    // The session saved on this phone, not getUser(): getUser() asks the
+    // server, so with no signal it failed and sent a signed-in traveller to
+    // the sign-in page. Supabase still checks the token on every query.
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    if (!user) throw redirect({ to: "/auth", search: { redirect: location.href } });
+    return { user };
   },
   component: AuthenticatedLayout,
 });

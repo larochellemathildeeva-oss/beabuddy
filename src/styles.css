@@ -5,7 +5,28 @@
 @custom-variant dark (&:is(.dark *));
 
 
+/*
+ * Béa's type scale and touch sizes as Tailwind utilities: `text-body`
+ * instead of `text-[14.5px]`, `rounded-card`, `h-tap`. The app still carries
+ * many arbitrary sizes; new code reaches for these, and old code moves over
+ * a screen at a time.
+ */
+@theme {
+  --text-micro: 11px;
+  --text-caption: 12.5px;
+  --text-small: 13.5px;
+  --text-body: 14.5px;
+  --text-lead: 15px;
+  --text-heading: 19px;
+  --text-title: 22px;
+  --text-display: 27px;
+  --spacing-tap: 44px;
+}
+
 @theme inline {
+  --radius-card: var(--r-card);
+  --radius-button: var(--r-button);
+  --radius-input: var(--r-input);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -707,6 +728,15 @@
   font-weight: 700;
 }
 
+/**
+ * The least a finger needs. A small icon can sit inside it, drawn smaller,
+ * as long as the button itself is this big.
+ */
+@utility tap-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
 /** A chip that is switched on, without shouting. */
 @utility chip-on {
   background-color: var(--color-primary-soft);
@@ -1035,6 +1065,16 @@
   --journal-park: #dce6d3;
   --journal-ink: #443d36;
   --journal-accent: var(--color-primary);
+  /* Buttons and notes over the map: the same paper, slightly see-through.
+     They stay light in every theme because the map does. */
+  --journal-control: rgb(248 245 241 / 0.95);
+  --journal-control-shadow: 0 1px 3px rgb(68 61 54 / 0.2);
+  --journal-live: #3f6f9a;
+  /* Leaflet's zoom buttons, at a thumb's size; the controls under them are
+     placed from this, not from a measured pixel offset. */
+  --journal-zoom: 44px;
+  --journal-control-gap: 10px;
+  --journal-below-zoom: calc(var(--journal-control-gap) + 2 * var(--journal-zoom) + 8px);
   background: var(--journal-paper);
   box-shadow:
     0 0 0 1px rgb(68 61 54 / 0.07),
@@ -1199,10 +1239,11 @@
   box-shadow: 0 1px 3px rgb(68 61 54 / 0.14);
 }
 .journal-map .leaflet-container .leaflet-bar a {
-  width: 30px;
-  height: 30px;
-  line-height: 30px;
-  background: rgb(248 245 241 / 0.94);
+  width: var(--journal-zoom);
+  height: var(--journal-zoom);
+  line-height: var(--journal-zoom);
+  font-size: 20px;
+  background: var(--journal-control);
   color: var(--journal-ink);
   border-bottom: 1px solid var(--journal-road);
   font-weight: 400;

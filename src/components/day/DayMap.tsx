@@ -468,8 +468,8 @@ export function DayMap({
         aria-pressed={live.on}
         aria-label={live.on ? "Stop showing where I am" : "Show where I am"}
         title={live.on ? "Stop showing where I am" : "Show where I am"}
-        className={`absolute right-[5px] top-[78px] z-[500] grid size-10 place-items-center rounded-full shadow-[0_1px_3px_rgb(68_61_54/0.2)] backdrop-blur-sm ${
-          live.on ? "bg-[#3f6f9a] text-white" : "bg-[rgb(248_245_241/0.95)] text-[#443d36]"
+        className={`absolute right-(--journal-control-gap) top-(--journal-below-zoom) z-[500] grid size-(--journal-zoom) place-items-center rounded-full shadow-(--journal-control-shadow) backdrop-blur-sm ${
+          live.on ? "bg-(--journal-live) text-white" : "bg-(--journal-control) text-(--journal-ink)"
         }`}
       >
         <LocateFixed
@@ -480,7 +480,7 @@ export function DayMap({
       {hereNote ? (
         <p
           role="status"
-          className="absolute right-[52px] top-[78px] z-[500] max-w-[15rem] rounded-2xl bg-[rgb(248_245_241/0.97)] px-3 py-2 text-[12px] leading-snug text-[#443d36] shadow-[0_1px_3px_rgb(68_61_54/0.2)]"
+          className="absolute right-[calc(var(--journal-control-gap)+var(--journal-zoom)+8px)] top-(--journal-below-zoom) z-[500] max-w-[15rem] rounded-2xl bg-(--journal-control) px-3 py-2 text-[12px] leading-snug text-(--journal-ink) shadow-(--journal-control-shadow)"
         >
           {hereNote}
         </p>

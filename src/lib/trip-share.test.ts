@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  sharedStopMapsUrl,
   isShareToken,
   newShareToken,
   shareClientKey,
@@ -100,4 +101,15 @@ test("readers are limited by address, and IPv6 ones by their /64", () => {
   assert.notEqual(shareClientKey("2001:db8:abcd:13::1"), a);
   assert.equal(shareClientKey("::1"), "0:0:0:0::/64");
   assert.equal(shareClientKey(""), "unknown");
+});
+
+test("a shared stop with an address opens a maps search for it", () => {
+  assert.equal(
+    sharedStopMapsUrl({ title: "Café Lomi", address: "3 ter Rue Marcadet, Paris" }),
+    "https://www.google.com/maps/search/?api=1&query=Caf%C3%A9%20Lomi%2C%203%20ter%20Rue%20Marcadet%2C%20Paris",
+  );
+});
+
+test("a shared stop with no address gets no maps link", () => {
+  assert.equal(sharedStopMapsUrl({ title: "Free afternoon", address: "  " }), null);
 });

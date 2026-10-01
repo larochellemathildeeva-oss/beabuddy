@@ -32,7 +32,15 @@ import {
 } from "@/lib/plan-priorities";
 import { tripDateLine } from "@/lib/trip-card";
 import { planAsText } from "@/lib/plan-text";
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react";
 import {
   compareItineraries,
   optimizeItinerary,
@@ -181,6 +189,20 @@ export type OptimizePreset = {
 /** Where the planner opens: its start screen, a panel, or Build / Import straight away. */
 export type PlannerTab = PanelTab | "build";
 
+/**
+ * Each panel says when Béa is working, so the sheet cannot be swiped or
+ * tapped away mid-run: closing it unmounts the panel, and the draft with it.
+ */
+const PlannerBusy = createContext<(busy: boolean) => void>(() => {});
+
+function useReportBusy(busy: boolean) {
+  const report = useContext(PlannerBusy);
+  useEffect(() => {
+    report(busy);
+    return () => report(false);
+  }, [busy, report]);
+}
+
 export function ItineraryImport({
   open,
   onClose,
@@ -255,6 +277,7 @@ export function ItineraryImport({
   travel?: TravelChoice | undefined;
 }) {
   const [tab, setTab] = useState<PanelTab>(defaultTab === "build" ? "import" : defaultTab);
+  const [panelBusy, setPanelBusy] = useState(false);
   /** The city this plan is for, by id; "" for the whole trip. */
   const [planCityId, setPlanCityId] = useState(defaultPlanCity);
   /** How the Plan panel opens from the start screen: which job, and any words already typed. */
@@ -304,7 +327,7 @@ export function ItineraryImport({
                 type="button"
                 aria-pressed={on}
                 onClick={() => setPlanCityId(c.id ?? "")}
-                className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[13px] ${
+                className={`shrink-0 whitespace-nowrap min-h-11 rounded-full border px-3.5 py-1.5 text-[13px] ${
                   on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
                 }`}
               >
@@ -335,79 +358,82 @@ export function ItineraryImport({
           className={`object-contain ${tab === "start" ? "size-10" : "size-8"}`}
         />
       }
-      onBack={tab === "start" ? undefined : () => setTab("start")}
+      onBack={tab === "start" || panelBusy ? undefined : () => setTab("start")}
       width="lg"
       tall
+      dismissible={!panelBusy}
     >
-      {tab === "start" ? (
-        <div className="space-y-5">
-          <PlanHero compact />
-          <PlanCards
-            optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
-            onBuild={() => openPlan("build")}
-            onImport={() => openPlan("import")}
-            onOptimize={() => setTab("optimize")}
-            onCompare={() => setTab("compare")}
-          />
-          <AiPromptButton />
-          <PlanExamples onPick={(ask) => openPlan("build", ask)} />
-          <PlanAsk onSend={(ask) => openPlan("build", ask)} />
-        </div>
-      ) : null}
+      <PlannerBusy.Provider value={setPanelBusy}>
+        {tab === "start" ? (
+          <div className="space-y-5">
+            <PlanHero compact />
+            <PlanCards
+              optimizeNote={existingItems.length >= 2 ? "" : "Add two stops first"}
+              onBuild={() => openPlan("build")}
+              onImport={() => openPlan("import")}
+              onOptimize={() => setTab("optimize")}
+              onCompare={() => setTab("compare")}
+            />
+            <AiPromptButton />
+            <PlanExamples onPick={(ask) => openPlan("build", ask)} />
+            <PlanAsk onSend={(ask) => openPlan("build", ask)} />
+          </div>
+        ) : null}
 
-      {tab === "import" && (
-        <ImportPanel
-          // A new city is a new plan: nothing read or placed for the last one is kept.
-          key={`${start.n}:${planCity?.id ?? ""}`}
-          initialMode={start.mode}
-          initialText={start.text}
-          existingItems={existingItems}
-          cities={planRoute}
-          tripCity={scope.city}
-          tripTitle={tripTitle}
-          startDate={scope.startDate}
-          endDate={scope.endDate}
-          scopedTo={planCity?.city}
-          cityPicker={cityPicker}
-          onAddItems={onAddItems}
-          {...(onRemoveItems ? { onRemoveItems } : {})}
-          onAddCosts={onAddCosts}
-          tripPreferences={tripPreferences}
-          travel={travel}
-          onApplyDates={planCity ? undefined : onApplyDates}
-          onAddCities={planCity ? undefined : onAddCities}
-          {...(onAddDirections ? { onAddDirections } : {})}
-        />
-      )}
-      {tab === "optimize" && optimizePreset && (
-        <OptimizePanel
-          key={`preset:${optimizePreset.n}`}
-          preset={optimizePreset}
-          tripPreferences={tripPreferences}
-          travel={travel}
-          tripCity={tripCity}
-          startDate={optimizePreset.day}
-          endDate={optimizePreset.day}
-          items={existingItems.filter((item) => item.day_date === optimizePreset.day)}
-          cities={cities}
-          onApplySchedule={onApplySchedule}
-        />
-      )}
-      {tab === "optimize" && !optimizePreset && (
-        <OptimizePanel
-          tripPreferences={tripPreferences}
-          travel={travel}
-          tripCity={tripCity}
-          startDate={startDate}
-          endDate={endDate}
-          items={existingItems}
-          cities={cities}
-          onApplySchedule={onApplySchedule}
-          onImport={() => openPlan("import")}
-          onBuild={() => openPlan("build")}
-        />
-      )}
-      {tab === "compare" && <ComparePanel />}
+        {tab === "import" && (
+          <ImportPanel
+            // A new city is a new plan: nothing read or placed for the last one is kept.
+            key={`${start.n}:${planCity?.id ?? ""}`}
+            initialMode={start.mode}
+            initialText={start.text}
+            existingItems={existingItems}
+            cities={planRoute}
+            tripCity={scope.city}
+            tripTitle={tripTitle}
+            startDate={scope.startDate}
+            endDate={scope.endDate}
+            scopedTo={planCity?.city}
+            cityPicker={cityPicker}
+            onAddItems={onAddItems}
+            {...(onRemoveItems ? { onRemoveItems } : {})}
+            onAddCosts={onAddCosts}
+            tripPreferences={tripPreferences}
+            travel={travel}
+            onApplyDates={planCity ? undefined : onApplyDates}
+            onAddCities={planCity ? undefined : onAddCities}
+            {...(onAddDirections ? { onAddDirections } : {})}
+          />
+        )}
+        {tab === "optimize" && optimizePreset && (
+          <OptimizePanel
+            key={`preset:${optimizePreset.n}`}
+            preset={optimizePreset}
+            tripPreferences={tripPreferences}
+            travel={travel}
+            tripCity={tripCity}
+            startDate={optimizePreset.day}
+            endDate={optimizePreset.day}
+            items={existingItems.filter((item) => item.day_date === optimizePreset.day)}
+            cities={cities}
+            onApplySchedule={onApplySchedule}
+          />
+        )}
+        {tab === "optimize" && !optimizePreset && (
+          <OptimizePanel
+            tripPreferences={tripPreferences}
+            travel={travel}
+            tripCity={tripCity}
+            startDate={startDate}
+            endDate={endDate}
+            items={existingItems}
+            cities={cities}
+            onApplySchedule={onApplySchedule}
+            onImport={() => openPlan("import")}
+            onBuild={() => openPlan("build")}
+          />
+        )}
+        {tab === "compare" && <ComparePanel />}
+      </PlannerBusy.Provider>
     </Sheet>
   );
 }
@@ -602,6 +628,7 @@ function ImportPanel({
   const hasFiles = images.length > 0 || pdf !== null;
   const [text, setText] = useState(initialText);
   const [busy, setBusy] = useState(false);
+  useReportBusy(busy);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
   const [items, setItems] = useState<ParsedItineraryItem[] | null>(null);
@@ -1878,6 +1905,7 @@ function OptimizePanel({
   /** Priorities beyond the goal chips, sent with the note. */
   const [ownGoals, setOwnGoals] = useState("");
   const [busy, setBusy] = useState(false);
+  useReportBusy(busy);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<OptimizeItinerary | null>(null);
   const [saved, setSaved] = useState(false);
@@ -2154,6 +2182,7 @@ function ComparePanel() {
   const [picked, setPicked] = useState<PlanPriorityId[]>([]);
   const [priorities, setPriorities] = useState("");
   const [busy, setBusy] = useState(false);
+  useReportBusy(busy);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ItineraryComparison | null>(null);
 

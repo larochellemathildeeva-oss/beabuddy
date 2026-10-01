@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { preferenceGroups } from "@/data/atlas";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,8 +117,21 @@ function Chip({
   );
 }
 
+type SaveState = "idle" | "saving" | "saved" | "error";
+
 function PreferencesPage() {
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
+  // Nothing is shown to tap until the saved answers are in: a tap made on the
+  // empty defaults was overwritten on screen when they arrived.
+  const [loaded, setLoaded] = useState(false);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    },
+    [],
+  );
   const [prefs, setPrefs] = useState<Prefs>({
     preferences: [],
     travel_style: null,
@@ -130,7 +143,6 @@ function PreferencesPage() {
     home_currency: null,
   });
   const [countryDraft, setCountryDraft] = useState("");
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -143,7 +155,9 @@ function PreferencesPage() {
       .eq("id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!active || !data) return;
+        if (!active) return;
+        setLoaded(true);
+        if (!data) return;
         setPrefs({
           preferences: data.preferences ?? [],
           travel_style: data.travel_style,
@@ -161,11 +175,27 @@ function PreferencesPage() {
   }, [user]);
 
   const save = async (patch: Partial<Prefs>) => {
+    const before = prefs;
     setPrefs((p) => ({ ...p, ...patch }));
     if (!user) return;
-    await supabase.from("profiles").upsert({ id: user.id, ...patch });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    setSaveState("saving");
+    const { error } = await supabase.from("profiles").upsert({ id: user.id, ...patch });
+    if (error) {
+      // Put a tapped choice back, so the screen never shows what was not
+      // saved. Typed notes stay in their box to try again.
+      const undo: Partial<Prefs> = {};
+      for (const key of Object.keys(patch) as Array<keyof Prefs>) {
+        if (key !== "dietary_notes" && key !== "avoid_notes") {
+          (undo as Record<string, unknown>)[key] = before[key];
+        }
+      }
+      setPrefs((p) => ({ ...p, ...undo }));
+      setSaveState("error");
+      return;
+    }
+    setSaveState("saved");
+    savedTimer.current = setTimeout(() => setSaveState("idle"), 1500);
   };
 
   const toggleIn = (list: string[], value: string) =>
@@ -187,200 +217,215 @@ function PreferencesPage() {
           itineraries, restaurant picks and trip comparisons land to what you actually want.
         </p>
 
-        {!loading && !user && (
-          <div className="card-soft p-4 text-[14.5px]">
-            <p className="font-medium">Sign in to save your preferences</p>
-            <Link to="/auth" className="mt-2 inline-block font-semibold text-primary underline">
-              Sign in
-            </Link>
+        {!loaded ? (
+          <div className="space-y-4" aria-busy="true" aria-label="Loading your preferences">
+            <div className="card-soft h-56 animate-pulse" />
+            <div className="card-soft h-40 animate-pulse" />
+            <div className="card-soft h-32 animate-pulse" />
           </div>
-        )}
+        ) : (
+          <>
+            <section data-guide="pref-style" className="card-soft p-4">
+              <p className="label-caps text-foreground">Travel style</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">Pick as many as feel true.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {styles.map((s) => (
+                  <Chip
+                    key={s.value}
+                    label={s.value}
+                    hint={s.hint}
+                    active={(prefs.travel_style ?? "").split(", ").includes(s.value)}
+                    onClick={() => {
+                      const current = (prefs.travel_style ?? "").split(", ").filter(Boolean);
+                      void save({ travel_style: toggleIn(current, s.value).join(", ") || null });
+                    }}
+                  />
+                ))}
+              </div>
+            </section>
 
-        <section data-guide="pref-style" className="card-soft p-4">
-          <p className="label-caps text-foreground">Travel style</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">Pick as many as feel true.</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {styles.map((s) => (
-              <Chip
-                key={s.value}
-                label={s.value}
-                hint={s.hint}
-                active={(prefs.travel_style ?? "").split(", ").includes(s.value)}
-                onClick={() => {
-                  const current = (prefs.travel_style ?? "").split(", ").filter(Boolean);
-                  void save({ travel_style: toggleIn(current, s.value).join(", ") || null });
-                }}
-              />
-            ))}
-          </div>
-        </section>
+            <section data-guide="pref-budget" className="card-soft p-4">
+              <p className="label-caps text-foreground">Budget</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {budgets.map((b) => (
+                  <Chip
+                    key={b.value}
+                    label={b.value}
+                    hint={b.hint}
+                    active={prefs.budget_level === b.value}
+                    onClick={() =>
+                      void save({ budget_level: prefs.budget_level === b.value ? null : b.value })
+                    }
+                  />
+                ))}
+              </div>
+              <p className="label-caps mt-4 text-foreground">Show prices in</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {currencies.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() =>
+                      void save({ home_currency: prefs.home_currency === c ? null : c })
+                    }
+                    aria-pressed={prefs.home_currency === c}
+                    className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                      prefs.home_currency === c
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-card text-muted-foreground"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-        <section data-guide="pref-budget" className="card-soft p-4">
-          <p className="label-caps text-foreground">Budget</p>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {budgets.map((b) => (
-              <Chip
-                key={b.value}
-                label={b.value}
-                hint={b.hint}
-                active={prefs.budget_level === b.value}
-                onClick={() =>
-                  void save({ budget_level: prefs.budget_level === b.value ? null : b.value })
-                }
-              />
-            ))}
-          </div>
-          <p className="label-caps mt-4 text-foreground">Show prices in</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {currencies.map((c) => (
-              <button
-                key={c}
-                onClick={() => void save({ home_currency: prefs.home_currency === c ? null : c })}
-                aria-pressed={prefs.home_currency === c}
-                className={`rounded-full border px-3 py-1.5 text-[13px] ${
-                  prefs.home_currency === c
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </section>
+            <section data-guide="pref-pace" className="card-soft p-4">
+              <p className="label-caps text-foreground">Daily pace</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {paces.map((p) => (
+                  <Chip
+                    key={p.value}
+                    label={p.value}
+                    hint={p.hint}
+                    active={prefs.trip_pace === p.value}
+                    onClick={() =>
+                      void save({ trip_pace: prefs.trip_pace === p.value ? null : p.value })
+                    }
+                  />
+                ))}
+              </div>
+            </section>
 
-        <section data-guide="pref-pace" className="card-soft p-4">
-          <p className="label-caps text-foreground">Daily pace</p>
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {paces.map((p) => (
-              <Chip
-                key={p.value}
-                label={p.value}
-                hint={p.hint}
-                active={prefs.trip_pace === p.value}
-                onClick={() =>
-                  void save({ trip_pace: prefs.trip_pace === p.value ? null : p.value })
-                }
-              />
-            ))}
-          </div>
-        </section>
-
-        <section data-guide="pref-countries" className="card-soft p-4">
-          <p className="label-caps text-foreground">Countries you love</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Béa leans on these when she suggests where to go next.
-          </p>
-          {prefs.preferred_countries.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {prefs.preferred_countries.map((c) => (
-                <button
-                  key={c}
-                  onClick={() =>
-                    void save({
-                      preferred_countries: prefs.preferred_countries.filter((v) => v !== c),
-                    })
-                  }
-                  className="rounded-full border border-primary bg-primary px-3 py-1.5 text-[13px] text-primary-foreground"
-                >
-                  {c} ✕
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="mt-3 flex gap-2">
-            <input
-              value={countryDraft}
-              onChange={(e) => setCountryDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addCountry();
-                }
-              }}
-              placeholder="Add a country"
-              className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-            />
-            <button
-              onClick={addCountry}
-              className="rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground"
-            >
-              Add
-            </button>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {suggestedCountries
-              .filter((c) => !prefs.preferred_countries.includes(c))
-              .map((c) => (
-                <button
-                  key={c}
-                  onClick={() =>
-                    void save({ preferred_countries: [...prefs.preferred_countries, c] })
-                  }
-                  className="rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground"
-                >
-                  + {c}
-                </button>
-              ))}
-          </div>
-        </section>
-
-        <section data-guide="pref-interests" className="card-soft p-4">
-          <p className="label-caps text-foreground">Interests</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            These are your travel tags — the same ones that weight Opportunities near you.
-          </p>
-          <div className="mt-3 space-y-4">
-            {preferenceGroups.map((group) => (
-              <div key={group.title}>
-                <p className="text-[14.5px] font-medium">{group.title}</p>
-                <p className="text-[12.5px] text-muted-foreground">{group.hint}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {group.tags.map((tag) => (
+            <section data-guide="pref-countries" className="card-soft p-4">
+              <p className="label-caps text-foreground">Countries you love</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Béa leans on these when she suggests where to go next.
+              </p>
+              {prefs.preferred_countries.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {prefs.preferred_countries.map((c) => (
                     <button
-                      key={tag}
-                      onClick={() => void save({ preferences: toggleIn(prefs.preferences, tag) })}
-                      aria-pressed={prefs.preferences.includes(tag)}
-                      className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
-                        prefs.preferences.includes(tag)
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-card text-muted-foreground"
-                      }`}
+                      key={c}
+                      onClick={() =>
+                        void save({
+                          preferred_countries: prefs.preferred_countries.filter((v) => v !== c),
+                        })
+                      }
+                      className="rounded-full border border-primary bg-primary px-3 py-1.5 text-[13px] text-primary-foreground"
                     >
-                      {tag}
+                      {c} ✕
                     </button>
                   ))}
                 </div>
+              )}
+              <div className="mt-3 flex gap-2">
+                <input
+                  value={countryDraft}
+                  onChange={(e) => setCountryDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCountry();
+                    }
+                  }}
+                  placeholder="Add a country"
+                  className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                />
+                <button
+                  onClick={addCountry}
+                  className="rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground"
+                >
+                  Add
+                </button>
               </div>
-            ))}
-          </div>
-        </section>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {suggestedCountries
+                  .filter((c) => !prefs.preferred_countries.includes(c))
+                  .map((c) => (
+                    <button
+                      key={c}
+                      onClick={() =>
+                        void save({ preferred_countries: [...prefs.preferred_countries, c] })
+                      }
+                      className="rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-muted-foreground"
+                    >
+                      + {c}
+                    </button>
+                  ))}
+              </div>
+            </section>
 
-        <section data-guide="pref-rules" className="card-soft p-4">
-          <p className="label-caps text-foreground">Hard rules</p>
-          <p className="mt-1 text-[13px] text-muted-foreground">
-            Béa will never plan around these. Food needs, allergies, mobility, anything you refuse.
-          </p>
-          <textarea
-            value={prefs.dietary_notes ?? ""}
-            onChange={(e) => setPrefs((p) => ({ ...p, dietary_notes: e.target.value }))}
-            onBlur={() => void save({ dietary_notes: prefs.dietary_notes })}
-            rows={2}
-            placeholder="Food: e.g. no shellfish, vegetarian dinners"
-            className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-          />
-          <textarea
-            value={prefs.avoid_notes ?? ""}
-            onChange={(e) => setPrefs((p) => ({ ...p, avoid_notes: e.target.value }))}
-            onBlur={() => void save({ avoid_notes: prefs.avoid_notes })}
-            rows={2}
-            placeholder="Avoid: e.g. long hikes, crowded nightlife, early flights"
-            className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
-          />
-        </section>
+            <section data-guide="pref-interests" className="card-soft p-4">
+              <p className="label-caps text-foreground">Interests</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                These are your travel tags — the same ones that weight Opportunities near you.
+              </p>
+              <div className="mt-3 space-y-4">
+                {preferenceGroups.map((group) => (
+                  <div key={group.title}>
+                    <p className="text-[14.5px] font-medium">{group.title}</p>
+                    <p className="text-[12.5px] text-muted-foreground">{group.hint}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {group.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() =>
+                            void save({ preferences: toggleIn(prefs.preferences, tag) })
+                          }
+                          aria-pressed={prefs.preferences.includes(tag)}
+                          className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
+                            prefs.preferences.includes(tag)
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
 
-        <p className="pb-2 text-center text-[13px] text-muted-foreground">
-          {saved ? "Saved ✓" : "Everything saves as you tap."}
+            <section data-guide="pref-rules" className="card-soft p-4">
+              <p className="label-caps text-foreground">Hard rules</p>
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                Béa will never plan around these. Food needs, allergies, mobility, anything you
+                refuse.
+              </p>
+              <textarea
+                value={prefs.dietary_notes ?? ""}
+                onChange={(e) => setPrefs((p) => ({ ...p, dietary_notes: e.target.value }))}
+                onBlur={() => void save({ dietary_notes: prefs.dietary_notes })}
+                rows={2}
+                placeholder="Food: e.g. no shellfish, vegetarian dinners"
+                className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+              />
+              <textarea
+                value={prefs.avoid_notes ?? ""}
+                onChange={(e) => setPrefs((p) => ({ ...p, avoid_notes: e.target.value }))}
+                onBlur={() => void save({ avoid_notes: prefs.avoid_notes })}
+                rows={2}
+                placeholder="Avoid: e.g. long hikes, crowded nightlife, early flights"
+                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+              />
+            </section>
+          </>
+        )}
+
+        <p
+          role="status"
+          className={`pb-2 text-center text-[13px] ${saveState === "error" ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+        >
+          {saveState === "saving"
+            ? "Saving…"
+            : saveState === "saved"
+              ? "Saved ✓"
+              : saveState === "error"
+                ? "That didn't save. Check your connection and tap it again."
+                : "Everything saves as you tap."}
         </p>
       </div>
     </AppShell>

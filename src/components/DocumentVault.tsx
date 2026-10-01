@@ -107,41 +107,12 @@ export function VaultUnlock({
           Unlock with Face ID or fingerprint
         </button>
       )}
-      <input
-        value={passcode}
-        onChange={(e) => setPasscode(e.target.value)}
-        type="password"
-        inputMode={keyboard}
-        autoComplete={v.hasVault ? "current-password" : "new-password"}
-        placeholder="Passcode"
-        aria-label="Passcode"
-        className="mt-4 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
-      />
-      <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
-      {!v.hasVault && (
-        <input
-          value={confirmCode}
-          onChange={(e) => setConfirmCode(e.target.value)}
-          type="password"
-          inputMode={keyboard}
-          autoComplete="new-password"
-          placeholder="Repeat passcode"
-          aria-label="Repeat passcode"
-          className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
-        />
-      )}
-      {!v.hasVault && passcode.length > 0 && !check.valid && !error && (
-        <p className="mt-2 text-[13px] text-muted-foreground">{check.message}</p>
-      )}
-      {error && (
-        <p role="alert" className="mt-2 text-[13px] text-destructive">
-          {error}
-        </p>
-      )}
-      <button
-        type="button"
-        disabled={busy || !ready}
-        onClick={() =>
+      {/* A form, so the keyboard's Go key submits and a password manager
+          can fill and save the passcode. */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (busy || !ready) return;
           void attempt(setError, setBusy, async () => {
             if (v.hasVault) await v.unlock(passcode);
             else {
@@ -150,16 +121,54 @@ export function VaultUnlock({
             }
             setPasscode("");
             setConfirmCode("");
-          })
-        }
-        className={`mt-3 w-full rounded-xl px-4 py-2.5 text-[14.5px] font-semibold disabled:opacity-50 ${
-          v.hasPasskey
-            ? "border border-border bg-card text-foreground"
-            : "bg-primary text-primary-foreground"
-        }`}
+          });
+        }}
       >
-        {v.hasVault ? "Unlock with passcode" : "Set passcode"}
-      </button>
+        <input
+          value={passcode}
+          onChange={(e) => setPasscode(e.target.value)}
+          type="password"
+          inputMode={keyboard}
+          enterKeyHint={v.hasVault ? "go" : "next"}
+          autoComplete={v.hasVault ? "current-password" : "new-password"}
+          placeholder="Passcode"
+          aria-label="Passcode"
+          className="mt-4 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+        />
+        <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
+        {!v.hasVault && (
+          <input
+            value={confirmCode}
+            onChange={(e) => setConfirmCode(e.target.value)}
+            type="password"
+            inputMode={keyboard}
+            autoComplete="new-password"
+            enterKeyHint="go"
+            placeholder="Repeat passcode"
+            aria-label="Repeat passcode"
+            className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+          />
+        )}
+        {!v.hasVault && passcode.length > 0 && !check.valid && !error && (
+          <p className="mt-2 text-[13px] text-muted-foreground">{check.message}</p>
+        )}
+        {error && (
+          <p role="alert" className="mt-2 text-[13px] text-destructive">
+            {error}
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={busy || !ready}
+          className={`mt-3 min-h-11 w-full rounded-xl px-4 py-2.5 text-[14.5px] font-semibold disabled:opacity-50 ${
+            v.hasPasskey
+              ? "border border-border bg-card text-foreground"
+              : "bg-primary text-primary-foreground"
+          }`}
+        >
+          {v.hasVault ? "Unlock with passcode" : "Set passcode"}
+        </button>
+      </form>
       {!v.hasVault && (
         <p className="mt-2 text-[12px] text-muted-foreground">
           {VAULT_PASSCODE_HINT} Béa cannot recover a forgotten passcode: what is in Protected is
@@ -174,6 +183,9 @@ export function VaultUnlock({
 function DeviceUnlockSetting({ v }: { v: Vault }) {
   const [asking, setAsking] = useState(false);
   const [passcode, setPasscode] = useState("");
+  // New passcodes are 12+ characters and may hold letters, so the number pad
+  // alone could not type them: the same switch as the unlock form.
+  const [keyboard, setKeyboard] = useState<Keyboard>("numeric");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -204,7 +216,18 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
     );
   }
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (busy || passcode.length < 4) return;
+        void attempt(setError, setBusy, async () => {
+          await v.enrolDevice(passcode);
+          setPasscode("");
+          setAsking(false);
+        });
+      }}
+      className="space-y-2 rounded-xl border border-border bg-elevated p-3"
+    >
       <p className="text-[13px] text-muted-foreground">
         Enter your passcode once more to set it up. The passcode keeps working on every device.
       </p>
@@ -212,12 +235,14 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
         value={passcode}
         onChange={(e) => setPasscode(e.target.value)}
         type="password"
-        inputMode="numeric"
+        inputMode={keyboard}
+        enterKeyHint="go"
         autoComplete="current-password"
         placeholder="Passcode"
         aria-label="Passcode"
         className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
       />
+      <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
       {error && (
         <p role="alert" className="text-[13px] text-destructive">
           {error}
@@ -225,16 +250,9 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
       )}
       <div className="flex gap-2">
         <button
-          type="button"
+          type="submit"
           disabled={busy || passcode.length < 4}
-          onClick={() =>
-            void attempt(setError, setBusy, async () => {
-              await v.enrolDevice(passcode);
-              setPasscode("");
-              setAsking(false);
-            })
-          }
-          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+          className="min-h-11 flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >
           Set up
         </button>
@@ -250,7 +268,7 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
           Cancel
         </button>
       </div>
-    </div>
+    </form>
   );
 }
 
@@ -287,9 +305,21 @@ function StrongerPasscode({ v }: { v: Vault }) {
         </span>
       </p>
       {confirming && !asking ? (
-        <>
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy || current.length === 0) return;
+            void attempt(setError, setBusy, async () => {
+              await v.confirmPasscode(current);
+              setCurrent("");
+              setConfirming(false);
+            });
+          }}
+        >
           <input
             value={current}
+            enterKeyHint="go"
             onChange={(e) => setCurrent(e.target.value)}
             type="password"
             inputMode={keyboard}
@@ -306,16 +336,9 @@ function StrongerPasscode({ v }: { v: Vault }) {
           )}
           <div className="flex gap-2">
             <button
-              type="button"
+              type="submit"
               disabled={busy || current.length === 0}
-              onClick={() =>
-                void attempt(setError, setBusy, async () => {
-                  await v.confirmPasscode(current);
-                  setCurrent("");
-                  setConfirming(false);
-                })
-              }
-              className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+              className="min-h-11 flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
             >
               Check it
             </button>
@@ -332,7 +355,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
               Cancel
             </button>
           </div>
-        </>
+        </form>
       ) : !asking ? (
         <div className="flex gap-2">
           <button
@@ -360,9 +383,23 @@ function StrongerPasscode({ v }: { v: Vault }) {
           </button>
         </div>
       ) : (
-        <>
+        <form
+          className="space-y-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (busy || !check.valid || confirmCode.length === 0) return;
+            void attempt(setError, setBusy, async () => {
+              if (passcode !== confirmCode) throw new Error("Those passcodes don't match");
+              await v.changePasscode(passcode);
+              setPasscode("");
+              setConfirmCode("");
+              setAsking(false);
+            });
+          }}
+        >
           <input
             value={passcode}
+            enterKeyHint="next"
             onChange={(e) => setPasscode(e.target.value)}
             type="password"
             inputMode={keyboard}
@@ -378,6 +415,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
             type="password"
             inputMode={keyboard}
             autoComplete="new-password"
+            enterKeyHint="go"
             placeholder="Repeat new passcode"
             aria-label="Repeat new passcode"
             className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
@@ -396,18 +434,9 @@ function StrongerPasscode({ v }: { v: Vault }) {
           </p>
           <div className="flex gap-2">
             <button
-              type="button"
+              type="submit"
               disabled={busy || !check.valid || confirmCode.length === 0}
-              onClick={() =>
-                void attempt(setError, setBusy, async () => {
-                  if (passcode !== confirmCode) throw new Error("Those passcodes don't match");
-                  await v.changePasscode(passcode);
-                  setPasscode("");
-                  setConfirmCode("");
-                  setAsking(false);
-                })
-              }
-              className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
+              className="min-h-11 flex-1 rounded-xl bg-primary px-4 py-2 text-[14px] font-semibold text-primary-foreground disabled:opacity-50"
             >
               {busy ? "Changing…" : "Change passcode"}
             </button>
@@ -425,7 +454,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
               Cancel
             </button>
           </div>
-        </>
+        </form>
       )}
     </div>
   );

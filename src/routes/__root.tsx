@@ -13,7 +13,7 @@ import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
-import { THEME_BOOT_SCRIPT } from "@/lib/theme";
+import { readTheme, syncThemeColor, THEME_BOOT_SCRIPT } from "@/lib/theme";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -152,6 +152,8 @@ function RootComponent() {
   const closeTour = useCallback(() => setOpen(false), [setOpen]);
   useServiceWorker();
   useEffect(() => startAccountSettingsSync(), []);
+  // The server renders the light status-bar colour; match the saved theme.
+  useEffect(() => syncThemeColor(readTheme()), []);
 
   return (
     <QueryClientProvider client={queryClient}>
