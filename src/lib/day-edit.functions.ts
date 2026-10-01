@@ -19,17 +19,30 @@ const DayEditInput = z.object({
   day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   stopIds: z.array(z.string().min(1).max(64)).min(1).max(DAY_EDIT_MAX_STOPS),
   request: z.string().trim().min(1).max(DAY_EDIT_MAX_REQUEST),
+  /** The day's town ("Paris, France"), so suggested places are looked for there. */
+  area: z.string().trim().max(120).nullish(),
 });
 
 const DayEditSchema = z.object({
   stops: z
-    .array(z.object({ stop: z.string(), day: z.string(), time: z.string() }))
+    .array(
+      z.object({
+        stop: z.string(),
+        day: z.string(),
+        time: z.string(),
+        title: z.string(),
+        kind: z.string(),
+        address: z.string(),
+        why: z.string(),
+      }),
+    )
     .max(DAY_EDIT_MAX_STOPS * 2),
   reply: z.string(),
 });
 
 /**
- * Béa's version of one day, for the stops the traveller ticked. Saves
+ * Béa's version of one day, for the stops the traveller ticked, with any
+ * places she suggests adding (looked up on the map by the caller). Saves
  * nothing: the traveller sees it beside the day as it is, and applies it.
  *
  * The trip and its stops are read here, as the traveller (row security
@@ -82,7 +95,7 @@ export const askDayEdit = createServerFn({ method: "POST" })
           ...AI_CALL,
           output: Output.object({ schema: DayEditSchema }),
           reasoning: "low",
-          prompt: dayEditPrompt(data.request, dayStops, selected, days, data.day),
+          prompt: dayEditPrompt(data.request, dayStops, selected, days, data.day, data.area),
         }),
       );
       return readDayEdit(

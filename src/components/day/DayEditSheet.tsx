@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Sheet } from "@/components/Sheet";
-import { ArrowRight, Check, Lock, RotateCcw } from "@/components/icons";
+import { ArrowRight, Check, Lock, MapPin, RotateCcw, X } from "@/components/icons";
 import { askDayEdit } from "@/lib/day-edit.functions";
 import {
   DAY_EDIT_MAX_ASK,
   dayEditChanges,
-  dayEditMoves,
   dayEditRows,
+  dayEditSchedule,
   joinAsks,
   type DayEditPlan,
 } from "@/lib/day-edit";
-import { stopsOfDay, type StopMove } from "@/lib/stop-move";
+import { geocodePlanStops } from "@/lib/geocode-plan.functions";
+import { labelAddress } from "@/lib/geocode-plan";
+import { scoreMatch, type Confidence } from "@/lib/match-confidence";
+import { pinCheckNote } from "@/lib/pin-check";
+import { stopsOfDay, type ScheduleUpdate } from "@/lib/stop-move";
+import type { TimelineKind } from "@/lib/timeline-kind";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { readableError } from "@/lib/optimistic";
 
@@ -26,12 +31,35 @@ type Stop = {
 
 /** One-tap starting points for the ask; the box stays editable. */
 const IDEAS = [
+  "Rain is coming: swap outdoor stops for indoor places nearby",
+  "Replace the ticked stops with something better nearby",
   "Slower start to the morning",
   "Less walking between stops",
   "Lunch around 12:30",
   "Finish by 6pm",
   "Put the busiest places first",
 ];
+
+/** Where a suggested place was found on the map, and how sure Béa is. */
+type Found = { lat: number; lon: number; label?: string; confidence: Confidence; reason: string };
+
+/** Béa's version, ready to write: the rows that change and the places to add. */
+export type DayEditSave = {
+  updates: ScheduleUpdate[];
+  added: Array<{
+    day_date: string;
+    time_label?: string;
+    kind: TimelineKind;
+    title: string;
+    detail?: string;
+    address?: string;
+    lat?: number;
+    lon?: number;
+    pin_check?: string;
+    position: number;
+  }>;
+  summary: string;
+};
 
 /** The day as Béa read it, to tell whether it changed before Apply. */
 const dayKey = (stops: readonly Stop[]) =>
@@ -50,6 +78,9 @@ export function DayEditSheet({
   stops,
   days,
   initialDay,
+  initialAsk,
+  area,
+  center,
   onApply,
 }: {
   open: boolean;
@@ -60,10 +91,17 @@ export function DayEditSheet({
   days: readonly string[];
   /** The day to open on, when the sheet was opened from one. */
   initialDay?: string | null | undefined;
-  /** Save Béa's moves, with its own Undo. */
-  onApply: (moves: StopMove[], summary: string) => Promise<void>;
+  /** Words to start with, when opened from a nudge ("rain from 14:00"). */
+  initialAsk?: string | undefined;
+  /** The town a day is in, so new places are looked for there. */
+  area?: ((day: string) => string | undefined) | undefined;
+  /** The middle of a day's stops or town, to look new places up beside. */
+  center?: ((day: string) => { lat: number; lon: number } | null | undefined) | undefined;
+  /** Save Béa's version, with its own Undo. */
+  onApply: (save: DayEditSave) => Promise<void>;
 }) {
   const ask = useServerFn(askDayEdit);
+  const place = useServerFn(geocodePlanStops);
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [text, setText] = useState("");
@@ -72,7 +110,15 @@ export function DayEditSheet({
   const [refining, setRefining] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
-  const [proposal, setProposal] = useState<{ plan: DayEditPlan; basis: string } | null>(null);
+  const [proposal, setProposal] = useState<{
+    plan: DayEditPlan;
+    basis: string;
+    /** Suggested places found on the map, by entry id; missing ones were not. */
+    found: Record<string, Found>;
+  } | null>(null);
+  /** Suggested places the traveller turned down. */
+  const [skipped, setSkipped] = useState<Set<string>>(new Set());
+  const [placing, setPlacing] = useState(false);
 
   const dayStops = useMemo(() => (day ? stopsOfDay(stops, day) : []), [stops, day]);
   const filled = days.filter((d) => stops.some((s) => s.day_date === d));
@@ -96,9 +142,9 @@ export function DayEditSheet({
           ? filled[0]!
           : null;
     chooseDay(start);
-    setText("");
+    setText(initialAsk ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only
-  }, [open, initialDay]);
+  }, [open, initialDay, initialAsk]);
 
   const dayName = (d: string | null) => {
     if (!d) return "No date";
@@ -114,6 +160,58 @@ export function DayEditSheet({
       return next;
     });
   const allPicked = dayStops.length > 0 && dayStops.every((s) => picked.has(s.id));
+
+  /**
+   * Look Béa's new places up on the map, in the day's town, beside its
+   * stops. A place found under a doubtful name is still added, unpinned,
+   * with a note to check it; one not found is added without a pin.
+   */
+  const findPlaces = async (plan: DayEditPlan, onDay: string): Promise<Record<string, Found>> => {
+    const fresh = plan.order.filter((row) => row.fresh);
+    const town = area?.(onDay);
+    if (fresh.length === 0 || !town) return {};
+    setPlacing(true);
+    try {
+      const result = await place({
+        data: {
+          stops: fresh.map((row) => ({
+            title: row.fresh!.title,
+            place: row.fresh!.title,
+            address: row.fresh!.address,
+            area: town,
+          })),
+          area: town,
+          venues: true,
+          near: center?.(onDay) ?? null,
+        },
+      });
+      const found: Record<string, Found> = {};
+      for (const hit of result.placed) {
+        const row = fresh[hit.index];
+        if (!row) continue;
+        const { confidence, reason } = scoreMatch({
+          title: hit.matchedAs ?? row.fresh!.title,
+          label: hit.label ?? null,
+          category: hit.category ?? null,
+          kind: hit.kind ?? null,
+          alsoNamed: hit.alsoNamed ?? null,
+        });
+        found[row.id] = {
+          lat: hit.lat,
+          lon: hit.lon,
+          ...(hit.label ? { label: hit.label } : {}),
+          confidence: hit.farKm ? "low" : confidence,
+          reason: hit.farKm ? `${hit.farKm} km from the middle of town` : reason,
+        };
+      }
+      return found;
+    } catch {
+      // The places are still worth showing: they go in without a pin.
+      return {};
+    } finally {
+      setPlacing(false);
+    }
+  };
 
   const run = async (nextAsks: string[]) => {
     if (!day) return;
@@ -132,8 +230,10 @@ export function DayEditSheet({
         setProblem(plan.reply || "Béa didn't find anything to change for that.");
         return;
       }
+      const found = await findPlaces(plan, day);
       setAsks(nextAsks);
-      setProposal({ plan, basis });
+      setSkipped(new Set());
+      setProposal({ plan, basis, found });
       setRefining(false);
       setText("");
     } catch (err) {
@@ -152,12 +252,34 @@ export function DayEditSheet({
       setProblem("This day changed since Béa suggested this. Ask again.");
       return;
     }
+    const plan = {
+      ...proposal.plan,
+      order: proposal.plan.order.filter((row) => !skipped.has(row.id)),
+    };
+    const { updates, added } = dayEditSchedule(plan, stops, day);
     setBusy(true);
     try {
-      await onApply(
-        dayEditMoves(proposal.plan, dayStops, day),
-        proposal.plan.reply || `${dayName(day)} changed`,
-      );
+      await onApply({
+        updates,
+        added: added.map((row) => {
+          const hit = proposal.found[row.key];
+          const pinned = hit && hit.confidence !== "low" ? hit : undefined;
+          const note = pinCheckNote(hit, Boolean(pinned));
+          const address = row.address || labelAddress(hit?.label);
+          return {
+            day_date: day,
+            ...(row.time_label ? { time_label: row.time_label } : {}),
+            kind: row.kind,
+            title: row.title,
+            ...(row.why ? { detail: row.why } : {}),
+            ...(address ? { address } : {}),
+            ...(pinned ? { lat: pinned.lat, lon: pinned.lon } : {}),
+            ...(note ? { pin_check: note } : {}),
+            position: row.position,
+          };
+        }),
+        summary: proposal.plan.reply || `${dayName(day)} changed`,
+      });
       onClose();
     } catch {
       setProblem("Couldn't save that. Check your connection and try again.");
@@ -200,7 +322,7 @@ export function DayEditSheet({
         disabled={busy || !text.trim() || picked.size === 0}
         className="mt-2 min-h-11 w-full rounded-xl bg-primary text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
-        {busy ? "Béa is reworking the day…" : send}
+        {placing ? "Finding the new places on the map…" : busy ? "Béa is reworking the day…" : send}
       </button>
     </form>
   );
@@ -209,7 +331,7 @@ export function DayEditSheet({
   const awayStops = proposal
     ? proposal.plan.away.flatMap((row) => {
         const stop = dayStops.find((s) => s.id === row.id);
-        return stop ? [{ stop, to: row.day_date }] : [];
+        return stop ? [{ stop, to: row.day_date, why: row.why }] : [];
       })
     : [];
 
@@ -316,7 +438,7 @@ export function DayEditSheet({
               </div>
               {askBox(
                 "3 · What would you like to change?",
-                "e.g. start later, move the museum after lunch, take Orsay off this day",
+                "e.g. it'll rain after 2pm, find a café for lunch, swap the park for a museum",
                 () => void run([text]),
                 "Show me Béa's version",
               )}
@@ -362,10 +484,67 @@ export function DayEditSheet({
               <p className="label-caps mb-1.5 text-primary">Béa&apos;s version</p>
               <ol className="space-y-1">
                 {rows.map((row) => {
+                  if (row.fresh) {
+                    const off = skipped.has(row.id);
+                    const hit = proposal.found[row.id];
+                    const pinned = hit && hit.confidence !== "low";
+                    return (
+                      <li
+                        key={row.id}
+                        className={`rounded-lg border border-primary bg-primary-soft px-2 py-1.5 ${
+                          off ? "opacity-50" : ""
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1">
+                          <p className="text-[11.5px] tabular-nums text-muted-foreground">
+                            {row.time_label ?? "No time"}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSkipped((cur) => {
+                                const next = new Set(cur);
+                                if (next.has(row.id)) next.delete(row.id);
+                                else next.add(row.id);
+                                return next;
+                              })
+                            }
+                            aria-label={off ? `Add ${row.title} back` : `Leave out ${row.title}`}
+                            className="-m-1 rounded p-1 text-muted-foreground"
+                          >
+                            {off ? (
+                              <span className="text-[11px] font-semibold text-primary">Undo</span>
+                            ) : (
+                              <X className="size-3.5" aria-hidden />
+                            )}
+                          </button>
+                        </div>
+                        <p
+                          className={`break-words text-[13.5px] font-medium ${off ? "line-through" : ""}`}
+                        >
+                          {row.title}
+                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                          New
+                        </p>
+                        {row.why && (
+                          <p className="break-words text-[12px] text-muted-foreground">{row.why}</p>
+                        )}
+                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <MapPin className="size-3 shrink-0" aria-hidden />
+                          {pinned
+                            ? "On the map"
+                            : hit
+                              ? "Check its pin later"
+                              : "Not on the map yet"}
+                        </p>
+                      </li>
+                    );
+                  }
                   const changed = row.moved || row.retimed;
                   return (
                     <li
-                      key={row.stop.id}
+                      key={row.id}
                       className={`rounded-lg border px-2 py-1.5 ${
                         changed ? "border-primary/40 bg-primary-soft" : "border-border/70 bg-card"
                       }`}
@@ -374,9 +553,9 @@ export function DayEditSheet({
                         <span className={row.retimed ? "font-semibold text-primary" : ""}>
                           {row.time_label ?? "No time"}
                         </span>
-                        {!picked.has(row.stop.id) && <Lock className="size-3" aria-label="Kept" />}
+                        {!picked.has(row.id) && <Lock className="size-3" aria-label="Kept" />}
                       </p>
-                      <p className="break-words text-[13.5px] font-medium">{row.stop.title}</p>
+                      <p className="break-words text-[13.5px] font-medium">{row.title}</p>
                       {changed && (
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                           {[row.moved && "Moved", row.retimed && "New time"]
@@ -384,13 +563,16 @@ export function DayEditSheet({
                             .join(" · ")}
                         </p>
                       )}
+                      {changed && row.why && (
+                        <p className="break-words text-[12px] text-muted-foreground">{row.why}</p>
+                      )}
                     </li>
                   );
                 })}
               </ol>
               {awayStops.length > 0 && (
                 <ul className="mt-2 space-y-1">
-                  {awayStops.map(({ stop, to }) => (
+                  {awayStops.map(({ stop, to, why }) => (
                     <li
                       key={stop.id}
                       className="rounded-lg border border-dashed border-border px-2 py-1.5 text-[12.5px]"
@@ -399,8 +581,11 @@ export function DayEditSheet({
                       <span className="text-muted-foreground">
                         {" "}
                         <ArrowRight className="inline size-3" aria-hidden />{" "}
-                        {to ? dayName(to) : "Off the plan (No date)"}
+                        {to ? dayName(to) : "Set aside under No date"}
                       </span>
+                      {why && (
+                        <span className="block text-[12px] text-muted-foreground">{why}</span>
+                      )}
                     </li>
                   ))}
                 </ul>

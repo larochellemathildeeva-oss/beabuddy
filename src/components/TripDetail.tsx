@@ -44,7 +44,7 @@ import {
 import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
-import { DayEditSheet } from "@/components/day/DayEditSheet";
+import { DayEditSheet, type DayEditSave } from "@/components/day/DayEditSheet";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
 import { printHtml } from "@/lib/print-page";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
@@ -769,6 +769,8 @@ export function TripDetail({
   const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
   /** "Change a day": pick a day and its stops, say what to change, compare. */
   const [dayEditOpen, setDayEditOpen] = useState(false);
+  /** A day and words to open it on, from a nudge such as rain ahead. */
+  const [dayEditStart, setDayEditStart] = useState<{ day: string; ask: string } | null>(null);
   /**
    * The clock, for the line that says where you are in today.
    *
@@ -899,6 +901,54 @@ export function TripDetail({
         action: { label: "Undo", onClick: undo },
       },
     );
+  };
+  /**
+   * Save Béa's version of a day: the stops that change, then her new
+   * places, each exactly where she put it. One Undo puts the stops back and
+   * takes the new places out again.
+   */
+  const applyDayEdit = async ({ updates, added, summary }: DayEditSave) => {
+    const previous = updates.flatMap((u) => {
+      const row = board.items.find((item) => item.id === u.id);
+      return row
+        ? [
+            {
+              id: row.id,
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+            },
+          ]
+        : [];
+    });
+    let addedIds: string[] = [];
+    try {
+      await board.applySchedule(updates);
+      addedIds = (await board.addItems(added)) ?? [];
+    } finally {
+      // Journeys worked out just now were for the old neighbours.
+      setLiveLegs(null);
+    }
+    const undo = async () => {
+      await board.removeItems(addedIds);
+      await board.applySchedule(previous);
+    };
+    const parts = [
+      updates.length ? `${updates.length} ${updates.length === 1 ? "change" : "changes"}` : "",
+      added.length ? `${added.length} new ${added.length === 1 ? "place" : "places"}` : "",
+    ].filter(Boolean);
+    toast(summary.length > 90 ? "Day updated" : summary, {
+      description: `${parts.join(" · ")} saved.`,
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: () =>
+          void undo().then(
+            () => toast.success("Back to the day as it was"),
+            () => toast.error("Couldn't undo all of that. Check your connection."),
+          ),
+      },
+    });
   };
   const moveProps = (item: ItineraryRow) => {
     const up = stepMove(stopItems, item.id, -1, moveDays);
@@ -1579,6 +1629,10 @@ export function TripDetail({
                     )?.key ?? null
                   }
                   onEase={easeDay}
+                  onRework={(day, ask) => {
+                    setDayEditStart({ day, ask });
+                    setDayEditOpen(true);
+                  }}
                   onProgress={board.setProgress}
                   onLook={(id) => {
                     setPeekId(id);
@@ -2134,12 +2188,18 @@ export function TripDetail({
 
           <DayEditSheet
             open={dayEditOpen}
-            onClose={() => setDayEditOpen(false)}
+            onClose={() => {
+              setDayEditOpen(false);
+              setDayEditStart(null);
+            }}
             tripId={trip.id}
             stops={stopItems}
             days={moveDays}
-            initialDay={addToDay}
-            onApply={(moves, summary) => moveStops(moves, summary)}
+            initialDay={dayEditStart?.day ?? addToDay}
+            initialAsk={dayEditStart?.ask}
+            area={(day) => nearOn(day)}
+            center={(day) => centerOn(day)}
+            onApply={applyDayEdit}
           />
 
           <MoveStopSheet

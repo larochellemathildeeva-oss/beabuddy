@@ -2,14 +2,13 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
   dayEditChanges,
-  dayEditMoves,
   dayEditPrompt,
   dayEditRows,
+  dayEditSchedule,
   joinAsks,
   readDayEdit,
   type DayEditStop,
 } from "./day-edit.ts";
-import { rearrange } from "./stop-move.ts";
 
 const days = ["2026-10-01", "2026-10-02", "2026-10-03"];
 const day = days[1]!;
@@ -110,7 +109,7 @@ test("a stop set aside leaves the day, and nothing else is marked moved", () => 
   assert.equal(dayEditChanges(plan, stops), true);
 });
 
-test("the moves save exactly Béa's version of the day", () => {
+test("the schedule saves exactly Béa's version of the day", () => {
   const plan = readDayEdit(
     [
       { stop: "s3", day: "same", time: "10:00" },
@@ -123,24 +122,103 @@ test("the moves save exactly Béa's version of the day", () => {
     days,
     day,
   );
-  const moves = dayEditMoves(plan, stops, day);
-  const updates = rearrange(stops, moves);
-  const after = stops.map((s) => ({ ...s, ...updates.find((u) => u.id === s.id) }));
+  const other = { id: "id-x", title: "Arrive", day_date: days[0]!, time_label: null, position: 7 };
+  const { updates, added } = dayEditSchedule(plan, [...stops, other], day);
+  assert.deepEqual(added, []);
+  const after = [...stops, other].map((s) => ({ ...s, ...updates.find((u) => u.id === s.id) }));
   const onDay = after.filter((s) => s.day_date === day).sort((a, b) => a.position - b.position);
   assert.deepEqual(
     onDay.map((s) => `${s.title} ${s.time_label}`),
     ["Orsay 10:00", "Louvre 09:00", "Dinner 19:30"],
   );
-  assert.equal(after.find((s) => s.id === "id-b")?.day_date, days[0]);
+  const lunch = after.find((s) => s.id === "id-b")!;
+  assert.equal(lunch.day_date, days[0]);
+  const arrive = after.find((s) => s.id === "id-x")!;
+  assert.ok(lunch.position > arrive.position, "goes to the end of its new day");
   const rows = dayEditRows(plan, stops);
   assert.deepEqual(
-    rows.map((r) => [r.stop.title, r.moved, r.retimed]),
+    rows.map((r) => [r.title, r.moved, r.retimed]),
     [
       ["Orsay", true, true],
       ["Louvre", true, false],
       ["Dinner", false, false],
     ],
   );
+});
+
+test("rain: an outdoor stop is set aside and an indoor place takes its slot", () => {
+  const plan = readDayEdit(
+    [
+      { stop: "s1", day: "same", time: "keep" },
+      { stop: "s2", day: "same", time: "keep" },
+      { stop: "s3", day: "none", time: "keep", why: "Outdoors, and rain is due" },
+      {
+        stop: "new",
+        day: "same",
+        time: "14:00",
+        title: "Musée de l'Orangerie",
+        kind: "museum",
+        address: "Jardin des Tuileries",
+        why: "Indoors, ten minutes away",
+      },
+      { stop: "s4", day: "same", time: "keep" },
+    ],
+    stops,
+    all,
+    days,
+    day,
+  );
+  assert.deepEqual(plan.away, [
+    { id: "id-c", day_date: null, time_label: "14:00", why: "Outdoors, and rain is due" },
+  ]);
+  const fresh = plan.order[2]!;
+  assert.equal(fresh.id, "new:1");
+  assert.deepEqual(fresh.fresh, {
+    title: "Musée de l'Orangerie",
+    kind: "sight",
+    address: "Jardin des Tuileries",
+  });
+  const rows = dayEditRows(plan, stops);
+  assert.deepEqual(
+    rows.map((r) => [r.title, r.moved, Boolean(r.fresh)]),
+    [
+      ["Louvre", false, false],
+      ["Lunch", false, false],
+      ["Musée de l'Orangerie", false, true],
+      ["Dinner", false, false],
+    ],
+  );
+  const { updates, added } = dayEditSchedule(plan, stops, day);
+  assert.deepEqual(added, [
+    {
+      title: "Musée de l'Orangerie",
+      kind: "sight",
+      address: "Jardin des Tuileries",
+      key: "new:1",
+      time_label: "14:00",
+      why: "Indoors, ten minutes away",
+      position: 3,
+    },
+  ]);
+  const byId = new Map(updates.map((u) => [u.id, u]));
+  assert.equal(byId.get("id-c")?.day_date, null);
+  assert.equal(byId.has("id-d"), false, "Dinner keeps its place after the new stop");
+  assert.equal(byId.has("id-a"), false, "unchanged rows are not written");
+});
+
+test("new places need a name, never a booking kind, and are capped", () => {
+  const lines = Array.from({ length: 8 }, (_, i) => ({
+    stop: "new",
+    day: "same",
+    time: "15:00",
+    title: i === 0 ? "" : `Place ${i}`,
+    kind: i === 1 ? "hotel" : "meal",
+  }));
+  const plan = readDayEdit(lines, stops, all, days, day);
+  const fresh = plan.order.filter((r) => r.fresh);
+  assert.equal(fresh.length, 5);
+  assert.equal(fresh[0]!.fresh!.kind, "activity");
+  assert.equal(fresh[0]!.fresh!.title, "Place 1");
 });
 
 test("asks join as a first request and its refinements", () => {
