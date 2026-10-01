@@ -57,6 +57,16 @@ test("reaching the ceiling rests Geoapify until the next UTC day", () => {
   assert.equal(guard.credits(tomorrow), 0);
 });
 
+test("restForDay rests Geoapify until the next UTC day", () => {
+  const guard = new CreditGuard(10);
+  guard.spend(3, noon);
+  guard.restForDay(noon);
+  assert.equal(guard.credits(noon), 3);
+  assert.equal(guard.reason, "ceiling");
+  assert.equal(guard.resting(Date.UTC(2026, 8, 28, 23, 59, 59)), true);
+  assert.equal(guard.resting(Date.UTC(2026, 8, 29)), false);
+});
+
 test("a refusal rests it for the day, a 429 for a minute", () => {
   const refused = new CreditGuard();
   assert.equal(refused.answered(200, noon), false);
@@ -90,4 +100,17 @@ test("the request that reaches the ceiling is the last one counted", () => {
   assert.equal(guard.resting(noon), false);
   assert.equal(guard.spend(2, noon), true);
   assert.equal(guard.resting(noon), true, "geoFetch sends nothing after this");
+});
+
+test("restFor rests Geoapify briefly without shortening a longer rest", () => {
+  const guard = new CreditGuard(10);
+  guard.restFor(60_000, noon);
+  assert.equal(guard.reason, "unverified");
+  assert.equal(guard.resting(noon + 59_999), true);
+  assert.equal(guard.resting(noon + 60_000), false);
+
+  guard.restForDay(noon);
+  guard.restFor(60_000, noon);
+  assert.equal(guard.reason, "ceiling");
+  assert.equal(guard.resting(noon + 120_000), true);
 });

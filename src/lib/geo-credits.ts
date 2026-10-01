@@ -52,7 +52,7 @@ export function nextUtcDay(now: number): number {
 }
 
 /** Why Geoapify is resting, for the one line in the log. */
-export type RestReason = "ceiling" | "refused" | "rate-limited";
+export type RestReason = "ceiling" | "refused" | "rate-limited" | "unverified";
 
 /**
  * The day's count and whether Geoapify is resting.
@@ -102,6 +102,22 @@ export class CreditGuard {
     if (this.spent < this.ceiling || this.resting(now)) return false;
     this.rest(nextUtcDay(now), "ceiling");
     return true;
+  }
+
+  /** Rest Geoapify until the next UTC day without changing the local count. */
+  restForDay(now: number): void {
+    this.roll(now);
+    this.rest(nextUtcDay(now), "ceiling");
+  }
+
+  /**
+   * Rest Geoapify for `ms` (the database count could not be checked), so
+   * lookups move to the fallback meanwhile. A longer rest already in place
+   * is kept.
+   */
+  restFor(ms: number, now: number, reason: RestReason = "unverified"): void {
+    if (this.resting(now) && this.until >= now + ms) return;
+    this.rest(now + ms, reason);
   }
 
   /** True when this answer put Geoapify to rest. */
