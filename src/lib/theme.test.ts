@@ -7,6 +7,8 @@ import {
   isThemeName,
   readTheme,
   THEME_BOOT_SCRIPT,
+  THEME_COLOR_BOOT_SCRIPT,
+  THEME_COLORS,
   THEME_KEY,
 } from "./theme.ts";
 
@@ -115,5 +117,20 @@ test("boot script picks the right theme for each saved state", () => {
     new Function(THEME_BOOT_SCRIPT)();
     assert.equal(attrs.get("data-theme"), theme);
     assert.equal(classes.has("dark"), dark);
+  }
+});
+
+test("status-bar boot script paints the saved theme's colour", () => {
+  for (const theme of ["calm", "colorful", "dark"] as const) {
+    const meta = { content: THEME_COLORS.colorful };
+    fakeDom(theme);
+    const doc = globalThis.document as unknown as { querySelector: unknown };
+    doc.querySelector = () => ({
+      setAttribute: (_: string, value: string) => {
+        meta.content = value;
+      },
+    });
+    new Function(THEME_COLOR_BOOT_SCRIPT)();
+    assert.equal(meta.content, THEME_COLORS[theme]);
   }
 });

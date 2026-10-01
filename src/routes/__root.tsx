@@ -18,6 +18,7 @@ import {
   readTheme,
   syncThemeColor,
   THEME_BOOT_SCRIPT,
+  THEME_COLOR_BOOT_SCRIPT,
   THEME_COLORS,
 } from "@/lib/theme";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
@@ -128,6 +129,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_BOOT_SCRIPT }} />
       </head>
       <body>
         {children}

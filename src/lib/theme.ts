@@ -51,6 +51,12 @@ export const THEME_COLORS: Record<ThemeName, string> = {
   dark: "#171513",
 };
 
+/**
+ * Runs in `<head>` right after the meta tags, so the status bar matches the
+ * saved theme from first paint rather than from hydration.
+ */
+export const THEME_COLOR_BOOT_SCRIPT = `try{var c=${JSON.stringify(THEME_COLORS)}[document.documentElement.getAttribute("data-theme")];var m=document.querySelector('meta[name="theme-color"]');if(c&&m)m.setAttribute("content",c)}catch(e){}`;
+
 /** Points the theme-color meta at the theme now showing. */
 export function syncThemeColor(theme: ThemeName): void {
   if (typeof document === "undefined" || typeof document.querySelector !== "function") return;
