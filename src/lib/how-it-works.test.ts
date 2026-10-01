@@ -7,7 +7,7 @@ describe("HOW_SCENES", () => {
   it("tells the whole arc", () => {
     assert.deepEqual(
       HOW_SCENES.map((s) => s.id),
-      ["scatter", "capture", "vault", "assemble", "nearby", "compare", "map"],
+      ["scatter", "assemble", "capture", "vault", "nearby", "compare", "map"],
     );
   });
 

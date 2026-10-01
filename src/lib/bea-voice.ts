@@ -22,6 +22,13 @@ export type BeaLine = {
 export const BEA_MISSION =
   "Béa remembers your travel life so Future You doesn't miss what matters.";
 
+/**
+ * What Béa does for you, said plainly — the line that leads a newcomer in.
+ * The mission says why; this says how she helps, planning first.
+ */
+export const BEA_HELPS =
+  "Béa turns the places you saved into a real trip, then helps every day you're on it.";
+
 /** Position — use in landing and meta, never “AI travel planner”. */
 export const BEA_POSITION = "Your travel life, all in one place.";
 

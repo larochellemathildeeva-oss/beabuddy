@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { DemoVideo } from "@/components/DemoVideo";
 import { SceneFigureView } from "@/components/HowItWorksFigures";
 import { configuredDemoVideo } from "@/lib/demo-video";
+import { BEA_HELPS } from "@/lib/bea-voice";
 import { HOW_CLOSING, HOW_SCENES, WATCH_LABEL, type Scene } from "@/lib/how-it-works";
 
 export const Route = createFileRoute("/how-it-works")({
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/how-it-works")({
       {
         name: "description",
         content:
-          "Béa remembers your travel life so Future You doesn't miss what matters — how saving, planning and rediscovering actually work.",
+          "How Béa plans your trips from the places you saved, helps while you travel, and remembers where you've been.",
       },
       { property: "og:title", content: "How Béa works" },
       { property: "og:type", content: "website" },
@@ -108,9 +109,9 @@ function HowItWorksPage() {
       <div className="space-y-12 pb-4">
         <div className="space-y-3">
           <p className="text-[15px] leading-relaxed text-muted-foreground">
-            Béa is not a trip generator. It is the place your travel life lives — what you saved,
-            who told you about it, and where you have already been. Here is the whole of it, in
-            order.
+            {BEA_HELPS} She starts from what you saved and who told you about it, not a list
+            invented for you — and remembers where you have been for next time. Here is the whole of
+            it, in order.
           </p>
           {video ? (
             <button

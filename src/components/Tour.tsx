@@ -305,7 +305,7 @@ export function Tour({
                   See how Béa works
                 </span>
                 <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  The whole story on one page. Remember → choose → plan → opportunity → story.
+                  The whole story on one page. Plan → save → rediscover → choose → remember.
                 </span>
               </button>
             )}
