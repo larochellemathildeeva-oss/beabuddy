@@ -74,9 +74,14 @@ export function isAreaPlace(place: RecoPlaceFields): boolean {
  * country you have been to, which belongs on the globe. A country saved to the
  * wishlist or next time stays, since saving it says it went to Recs.
  */
-export function hiddenFromRecs(place: RecoPlaceFields, type: string | null | undefined): boolean {
+export function hiddenFromRecs(
+  place: RecoPlaceFields,
+  type: string | null | undefined,
+  visited?: boolean | null,
+): boolean {
   if (isCityLevelPlace(place)) return true;
-  return isCountryLevelPlace(place) && type === "visited";
+  // World counts either mark as been there, so Recs does too.
+  return isCountryLevelPlace(place) && (type === "visited" || visited === true);
 }
 
 /** Unique city/place chips from saved recs' city fields — not from city-as-pin rows. */

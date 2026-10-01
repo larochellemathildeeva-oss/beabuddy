@@ -255,7 +255,9 @@ function RecommendationsPage() {
           removable: false,
         };
 
-  const venues = saved.filter((r) => !hiddenFromRecs(r, "created_at" in r ? r.pin_type : r.type));
+  const venues = saved.filter(
+    (r) => !hiddenFromRecs(r, "created_at" in r ? r.pin_type : r.type, r.visited),
+  );
   const views = venues.map(rowView);
   const places = ["All places", ...uniqueRecCities(saved)];
   // "cafe" and "Cafe" are one filter, not two.
@@ -671,14 +673,16 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
-  const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type)));
+  const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)));
   const recent = recentlySaved(
-    vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type)),
+    vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)),
     3,
   );
   const latestIn = (t: PinType) =>
     recentlySaved(
-      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !hiddenFromRecs(r, r.pin_type)),
+      vault.rows.filter(
+        (r) => (r.pin_type ?? "reco") === t && !hiddenFromRecs(r, r.pin_type, r.visited),
+      ),
       1,
     )[0];
 

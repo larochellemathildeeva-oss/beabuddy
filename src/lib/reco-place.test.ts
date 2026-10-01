@@ -91,6 +91,8 @@ test("hiddenFromRecs hides a visited country but keeps a wishlist one", () => {
   assert.equal(hiddenFromRecs(japan, "visited"), true);
   assert.equal(hiddenFromRecs(japan, "wishlist"), false);
   assert.equal(hiddenFromRecs(japan, "nexttime"), false);
+  assert.equal(hiddenFromRecs(japan, "wishlist", true), true);
+  assert.equal(hiddenFromRecs(japan, "wishlist", false), false);
   assert.equal(
     hiddenFromRecs({ name: "Kyoto", city: "Kyoto", category: "City" }, "wishlist"),
     true,
