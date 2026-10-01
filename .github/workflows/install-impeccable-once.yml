@@ -1,0 +1,33 @@
+name: Install Impeccable once
+
+on:
+  push:
+    branches:
+      - chore/install-impeccable
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/install-impeccable
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Install Impeccable project files
+        run: npx --yes impeccable install --providers=codex --scope=project
+      - name: Remove one-off installer workflow
+        run: rm .github/workflows/install-impeccable-once.yml
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Install Impeccable for Codex" || exit 0
+          git push origin chore/install-impeccable
