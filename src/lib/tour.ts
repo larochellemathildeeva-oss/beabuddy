@@ -76,7 +76,7 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Ideas become trips",
-    body: "Each trip holds its days, stops, bookings and to-dos. Plan with Béa drafts the days from places you saved, or reads a plan you have. On the road she gives directions, even offline. You approve every change.",
+    body: "Each trip holds its days, stops, bookings and to-dos. Plan with Béa drafts the days from places you saved, or reads a plan you have. On the road she gives directions you can keep offline. You approve every change.",
     to: "/trips",
     selector: "[data-guide='plan-with-bea']",
   },

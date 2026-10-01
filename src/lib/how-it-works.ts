@@ -38,7 +38,7 @@ export const HOW_SCENES: readonly Scene[] = [
     id: "assemble",
     eyebrow: "Planning",
     heading: "Béa plans the trip with you.",
-    body: "Start a trip and Béa drafts the days from the places you saved, or reads a plan you already have. She puts each day in a sensible order, checks for events, strikes and closures on your dates, and gives directions the way you like to get around — kept offline for when there is no signal. Nothing changes until you say so.",
+    body: "Start a trip and Béa drafts the days from the places you saved, checking for events, strikes and closures on your dates — or reads a plan you already have. She puts each day in a sensible order and gives directions the way you like to get around, which you can keep offline for when there is no signal. Nothing changes until you say so.",
     signature: BEA_SIGNATURE.planning,
     figure: "assemble",
   },

@@ -78,4 +78,11 @@ describe("tour storage lifecycle", () => {
       assert.equal(readTourProgress(fakeStorage({ [TOUR_PROGRESS_KEY]: raw })), null, raw);
     }
   });
+
+  it("does not resume a walk saved before the steps were reordered", () => {
+    // Step 1 used to be the globe; it is now planning.
+    const s = fakeStorage({ "bea-tour-progress": '{"mode":"quick","step":1}' });
+    assert.notEqual(TOUR_PROGRESS_KEY, "bea-tour-progress");
+    assert.equal(readTourProgress(s), null);
+  });
 });
