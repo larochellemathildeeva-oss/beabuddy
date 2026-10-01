@@ -26,6 +26,8 @@ const TOUR_EVENT = "bea-tour-start";
 /** Wait for route paint + data (seed/trips) before treating a target as missing. */
 const TARGET_TRIES = 40;
 const TARGET_RETRY_MS = 100;
+/** Tries before a step settles for its fallback — the real target may still be loading. */
+const FALLBACK_AFTER = 12;
 const EMPTY_STEPS: ReturnType<typeof tourSteps> = [];
 
 export type TourIntent = "first-run" | "replay";
@@ -149,7 +151,10 @@ export function Tour({
   const stepSearch = step?.search;
   const stepNeedsAuth = step?.needsAuth;
   const stepSelector = step?.selector;
+  const stepFallback = step?.fallback;
   const stepAwaitClick = step?.awaitClick;
+  /** The element this step settled on: its own target, or its fallback. */
+  const targetRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open || loading || !mode || !stepTo) return;
@@ -158,12 +163,8 @@ export function Tour({
   }, [open, i, mode, user, loading, navigate, stepTo, stepNeedsAuth]);
 
   const measure = useCallback(() => {
-    if (!stepSelector) {
-      setBox(null);
-      return;
-    }
-    const el = findGuideTarget(stepSelector);
-    if (!el) {
+    const el = targetRef.current;
+    if (!el || !el.isConnected) {
       setBox(null);
       return;
     }
@@ -177,7 +178,7 @@ export function Tour({
         ? prev
         : next,
     );
-  }, [stepSelector]);
+  }, []);
 
   const measureRef = useRef(measure);
   measureRef.current = measure;
@@ -196,6 +197,7 @@ export function Tour({
     if (!open || !mode) return;
     setClicked(false);
     setTargetMissing(false);
+    targetRef.current = null;
     if (!stepSelector) {
       setBox(null);
       return;
@@ -209,14 +211,31 @@ export function Tour({
     const onResizeOrScroll = () => measureRef.current();
     const tick = () => {
       if (cancelled) return;
-      const el = findGuideTarget(stepSelector);
+      const primary = findGuideTarget(stepSelector);
+      const el = primary ?? (tries >= FALLBACK_AFTER ? findGuideTarget(stepFallback) : null);
       if (el) {
+        targetRef.current = el;
         el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
         stopSettle?.();
         stopSettle = trackGuideTargetSettle(el, (next) => {
-          if (!cancelled) setBox(next);
+          if (cancelled) return;
+          // A loading placeholder can match and then empty out (Recs' list
+          // before its empty-vault card): look again rather than ring a
+          // zero-size box in the corner.
+          const rect = el.getBoundingClientRect();
+          if (el.isConnected && rect.width >= 1 && rect.height >= 1) {
+            setBox(next);
+            return;
+          }
+          targetRef.current = null;
+          setBox(null);
+          window.clearTimeout(retryTimer);
+          retryTimer = window.setTimeout(tick, TARGET_RETRY_MS);
         });
         setTargetMissing(false);
+        // On the fallback, keep watching for the real control: saves that
+        // load late should still move the spotlight onto it.
+        if (!primary) watchPrimary(el);
         return;
       }
       setBox(null);
@@ -225,6 +244,14 @@ export function Tour({
         return;
       }
       setTargetMissing(true);
+    };
+    const watchPrimary = (fallbackEl: HTMLElement) => {
+      if (tries++ >= TARGET_TRIES) return;
+      retryTimer = window.setTimeout(() => {
+        if (cancelled || targetRef.current !== fallbackEl) return;
+        if (findGuideTarget(stepSelector)) tick();
+        else watchPrimary(fallbackEl);
+      }, TARGET_RETRY_MS);
     };
     const frame = window.requestAnimationFrame(tick);
     window.addEventListener("resize", onResizeOrScroll);
@@ -237,12 +264,12 @@ export function Tour({
       window.removeEventListener("resize", onResizeOrScroll);
       window.removeEventListener("scroll", onResizeOrScroll, true);
     };
-  }, [open, mode, i, stepSelector]);
+  }, [open, mode, i, stepSelector, stepFallback]);
 
   // Interactive beats: any click inside the highlighted control unlocks Next.
   useEffect(() => {
     if (!open || !stepAwaitClick || !stepSelector || !box) return;
-    const el = findGuideTarget(stepSelector);
+    const el = targetRef.current;
     if (!el) return;
     const onClick = () => setClicked(true);
     el.addEventListener("click", onClick, true);

@@ -135,7 +135,7 @@ function StoryPage() {
         )}
 
         {!loading && stops.length === 0 && (
-          <div className="card-soft p-5">
+          <div data-guide="story-empty" className="card-soft p-5">
             <p className="font-display text-[19px] leading-snug">No story to play yet.</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">
               Import a few photos with location on and Béa will turn them into a city-by-city story.

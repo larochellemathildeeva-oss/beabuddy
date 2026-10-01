@@ -21,7 +21,7 @@ import { PageGuide } from "./PageGuide";
 import { useStopPictures } from "../hooks/useStopPictures";
 import { useIdleLogout } from "../hooks/useIdleLogout";
 import { useRestoreKeptOffline } from "../hooks/useRestoreKeptOffline";
-// Sample travel data is opt-in (Home / You). Do not mount useAutoSeed here.
+// Sample travel data can no longer be loaded. Do not mount useAutoSeed here.
 
 // Five, not six: Near folded into Recs as a filter, because it was never a
 // different set of places — it was the vault sorted by how close you are.

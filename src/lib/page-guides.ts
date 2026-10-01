@@ -75,7 +75,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "An empty vault",
-        body: "Nothing saved yet. Save a place, import photos, or load the sample travel data to try things out — you can remove it later from You → Data & imports.",
+        body: "Nothing saved yet. Plan a trip, save a place, or import photos to get started.",
         selector: "[data-guide='home-empty']",
       },
     ],
@@ -319,7 +319,7 @@ export const guides: Record<string, Guide> = {
       "Trip documents: bookings, confirmations and private files",
       "Choose Béa's personality and how much she suggests",
       "Change the theme and what Home shows (Appearance)",
-      "Import photos, open the calendar, load sample data (Data & imports)",
+      "Import photos, open the calendar (Data & imports)",
       "Privacy & legal, Help & FAQ, Feedback, and replay the tour under About Béa",
     ],
     steps: [
@@ -360,7 +360,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Data & imports",
-        body: "Import photos, open the trip calendar, load or remove sample data, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
+        body: "Import photos, open the trip calendar, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
         selector: "[data-guide='offline-options']",
       },
       {
@@ -375,7 +375,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Replay the tour",
-        body: "About Béa holds How Béa works, the quick walk and the Deep Dive. Sample travel data is under Data & imports — Béa will not load either until you ask.",
+        body: "About Béa holds How Béa works, the quick walk and the Deep Dive — Béa will not start either until you ask.",
         selector: "[data-guide='replay-tour']",
       },
     ],

@@ -674,7 +674,7 @@ function WorldPage() {
               </div>
             </div>
 
-            <section className="space-y-3">
+            <section data-guide="bucket-list" className="space-y-3">
               <div className="flex items-baseline justify-between">
                 <h2 className="font-display text-[27px] leading-none">My bucket list</h2>
                 <Link

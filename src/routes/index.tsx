@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
@@ -29,7 +29,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
-import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
+import { demoGlobePins } from "@/lib/demo-seed";
 import { beaLine, BEA_HELPS, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
@@ -110,10 +110,10 @@ function LandingPage() {
           selectedId={selectedId}
           onSelect={(pin) => setSelectedId(pin.id)}
           scrollFriendly
+          autoSpin
         />
         <p className="text-[13px] text-muted-foreground">
-          The globe shows sample places. Once you've signed in, you can load sample data to try
-          everything out.
+          The places on this globe are examples. Yours fill it in once you start saving.
         </p>
       </div>
     </AppShell>
@@ -122,14 +122,11 @@ function LandingPage() {
 
 function SignedInHome() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState(() =>
     user ? rememberedProfileName(safeStorage(), user.id) : "",
   );
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [homeCity, setHomeCity] = useState("");
-  const [seeding, setSeeding] = useState(false);
-  const [seedMsg, setSeedMsg] = useState("");
   const photo = usePhotoMemories();
   const vault = useRecommendations();
   const notes = useFutureNotes();
@@ -200,20 +197,6 @@ function SignedInHome() {
   const showSamplePrompt = empty && !sampleCtaDismissed;
   const { layout } = useHomeLayout();
 
-  const fillSample = async () => {
-    setSeeding(true);
-    setSeedMsg("");
-    const result = await loadDemoSeed();
-    setSeeding(false);
-    if (!result.ok) {
-      setSeedMsg(result.message);
-      return;
-    }
-    await Promise.all([vault.reload(), notes.reload()]);
-    setSeedMsg(`Loaded ${result.recos} places, ${result.trips} trips and ${result.notes} notes.`);
-    navigate({ to: "/world" });
-  };
-
   const now = new Date();
   const today = now.toLocaleDateString(undefined, {
     weekday: "long",
@@ -259,14 +242,12 @@ function SignedInHome() {
             <p className="font-display text-[20px] leading-snug">{beaLine("empty.home").title}</p>
             <p className="mt-1 text-[14.5px] text-muted-foreground">{beaLine("empty.home").body}</p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                disabled={seeding}
-                onClick={() => void fillSample()}
-                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
+              <Link
+                to="/trips/plan"
+                className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
               >
-                {seeding ? "Loading sample…" : "Load sample travel data"}
-              </button>
+                Plan a trip
+              </Link>
               <Link
                 to="/recommendations"
                 className="flex-1 rounded-xl border border-border px-4 py-2.5 text-center text-[14.5px] font-semibold"
@@ -274,7 +255,6 @@ function SignedInHome() {
                 Save a place
               </Link>
             </div>
-            {seedMsg && <p className="mt-2 text-[13px] text-muted-foreground">{seedMsg}</p>}
           </section>
         )}
 

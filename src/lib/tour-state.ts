@@ -16,8 +16,15 @@ import type { TourMode } from "./tour.ts";
 
 /** Set once the traveller has finished or dismissed the walk. */
 export const TOUR_SEEN_KEY = "bea-tour-seen";
-/** Where they were, so closing the tab mid-Deep-Dive is not a restart. */
-export const TOUR_PROGRESS_KEY = "bea-tour-progress";
+/**
+ * Where they were, so closing the tab mid-Deep-Dive is not a restart.
+ *
+ * The step is stored as a number, so reordering a walk changes what a saved
+ * number means. Rename the key (bump the suffix) whenever the steps are
+ * reordered: an old saved walk then starts again from the top rather than
+ * landing on another step. v2: planning moved up to step 2 of the quick walk.
+ */
+export const TOUR_PROGRESS_KEY = "bea-tour-progress-v2";
 
 export type TourProgress = { mode: TourMode; step: number };
 

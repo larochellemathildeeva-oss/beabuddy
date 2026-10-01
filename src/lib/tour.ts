@@ -11,6 +11,12 @@ export type TourStep = {
   /** CSS selector for the spotlight cutout (PageGuide `data-guide` targets). */
   selector?: string;
   /**
+   * Shown instead when `selector` is not on screen: a fresh account has no
+   * saves, so Near and Help me choose are not drawn at all, and the step
+   * dimmed the whole page over nothing.
+   */
+  fallback?: string;
+  /**
    * Traveller must click the highlighted control before Next unlocks.
    * Skip still works. Used for a few first-run “do something” beats.
    */
@@ -70,7 +76,7 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Ideas become trips",
-    body: "Each trip holds its days, stops, bookings and to-dos. Plan with Béa drafts the days from places you saved, or reads a plan you have. On the road she gives directions, even offline. You approve every change.",
+    body: "Each trip holds its days, stops, bookings and to-dos. Plan with Béa drafts the days from places you saved, or reads a plan you have. On the road she gives directions you can keep offline. You approve every change.",
     to: "/trips",
     selector: "[data-guide='plan-with-bea']",
   },
@@ -85,6 +91,7 @@ export const QUICK_STEPS: TourStep[] = [
     body: "Share your location and Home shows your own saves within reach, nearest first. Tick a few and Béa arranges a day trip around them.",
     to: "/",
     selector: "[data-guide='home-near']",
+    fallback: "[data-guide='home-empty']",
   },
   {
     title: "Where next?",
@@ -92,6 +99,7 @@ export const QUICK_STEPS: TourStep[] = [
     to: "/world",
     search: { tab: "bucket" },
     selector: "[data-guide='compare-pins']",
+    fallback: "[data-guide='bucket-list']",
   },
   {
     title: "Your travel globe",
@@ -133,6 +141,7 @@ export const DEEP_STEPS: TourStep[] = [
     to: "/world",
     search: { tab: "been" },
     selector: "[data-guide='places-list']",
+    fallback: "[data-guide='world-tabs']",
   },
   {
     title: "Travel statistics",
@@ -158,12 +167,14 @@ export const DEEP_STEPS: TourStep[] = [
     body: "Open a city and leave a note for next time — a rooftop, a warning, a bakery. Béa hands it back when you return.",
     to: "/memories",
     selector: "[data-guide='future-me']",
+    fallback: "[data-guide='city-memories']",
   },
   {
     title: "Travel story playback",
     body: "From City memories, playback walks the cities in your photos in the order you were there. Your story, not a new itinerary.",
     to: "/story",
     selector: "[data-guide='story-play']",
+    fallback: "[data-guide='story-empty']",
   },
 
   // —— Pillar 2: The Recommendation Vault ——
@@ -193,6 +204,7 @@ export const DEEP_STEPS: TourStep[] = [
     to: "/world",
     search: { tab: "bucket" },
     selector: "[data-guide='compare-pins']",
+    fallback: "[data-guide='bucket-list']",
   },
 
   // —— Pillar 4: Opportunity Engine ——
@@ -201,12 +213,14 @@ export const DEEP_STEPS: TourStep[] = [
     body: "You saved a restaurant, a museum, a hike months ago. Share your location and Home shows which of them are near you now. Snooze when it's not the moment.",
     to: "/",
     selector: "[data-guide='home-near']",
+    fallback: "[data-guide='home-empty']",
   },
   {
     title: "Day trip from your vault",
     body: "Tap Plan a day trip, tick nearby saves, pick a pace, Arrange with Béa, then save it as a trip — still starting from places you already kept.",
     to: "/",
     selector: "[data-guide='home-near']",
+    fallback: "[data-guide='home-empty']",
   },
 
   // —— Pillar 5: Planning Without a Blank Page ——
@@ -229,6 +243,7 @@ export const DEEP_STEPS: TourStep[] = [
     body: "Map → recommendations → decisions → trips → photos → memories → the next opportunity. Most apps solve one problem; Béa connects them.",
     to: "/",
     selector: "[data-guide='home-near']",
+    fallback: "[data-guide='home-empty']",
   },
   {
     title: "Help on every page",

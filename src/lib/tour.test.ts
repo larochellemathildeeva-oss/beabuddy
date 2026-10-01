@@ -136,3 +136,18 @@ test("tourSteps picks the walk and tags gated routes", () => {
   assert.equal(routeNeedsAuth("/calendar"), true);
   assert.equal(routeNeedsAuth("/story"), true);
 });
+
+/**
+ * These controls are only drawn once there is something in them. On a fresh
+ * account each step dimmed the whole page over nothing until it had a
+ * fallback to point at instead.
+ */
+test("steps on controls a fresh account lacks have a fallback", () => {
+  const dataOnly = ["home-near", "compare-pins", "places-list", "future-me", "story-play"];
+  for (const s of [...QUICK_STEPS, ...DEEP_STEPS]) {
+    const target = s.selector?.match(/data-guide='([a-z0-9-]+)'/)?.[1];
+    if (!target || !dataOnly.includes(target)) continue;
+    assert.ok(s.fallback, `${s.title} points at ${target} with nothing to fall back on`);
+    assert.notEqual(s.fallback, s.selector);
+  }
+});

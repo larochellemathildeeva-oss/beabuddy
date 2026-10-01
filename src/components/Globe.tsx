@@ -102,6 +102,7 @@ export function Globe({
   className,
   variant = "framed",
   scrollFriendly = false,
+  autoSpin = false,
 }: {
   pins: Pin[];
   /**
@@ -144,9 +145,19 @@ export function Globe({
    * the page, as everywhere else; the globe's zoom buttons still work.
    */
   scrollFriendly?: boolean | undefined;
+  /**
+   * Turn slowly on its own until someone touches it — the welcome page's
+   * globe, so it reads as a world rather than a picture. Never with reduced
+   * motion, and it stops for good on the first drag, key or button.
+   */
+  autoSpin?: boolean | undefined;
 }) {
   const open = variant === "open";
-  const oceanId = `globe-ocean-${useId().replace(/:/g, "")}`;
+  const uid = useId().replace(/:/g, "");
+  const oceanId = `globe-ocean-${uid}`;
+  const shadeId = `globe-shade-${uid}`;
+  const glowId = `globe-glow-${uid}`;
+  const shineId = `globe-shine-${uid}`;
   const [rotation, setRotation] = useState<[number, number]>([-10, -18]);
   const [zoom, setZoom] = useState(1);
   const pointers = useRef<Map<number, ActivePointer>>(new Map());
@@ -172,6 +183,9 @@ export function Globe({
   const frameRef = useRef<HTMLDivElement | null>(null);
   const rafDrag = useRef<number | null>(null);
   const rafInertia = useRef<number | null>(null);
+  const rafSpin = useRef<number | null>(null);
+  /** Set by the first touch, key or button: the auto-spin never comes back. */
+  const spinStopped = useRef(false);
 
   const visitedKeys = useMemo(() => {
     const keys = shadePinCountries ? visitedCountryKeySet(pins) : new Set<string>();
@@ -190,29 +204,31 @@ export function Globe({
     [],
   );
 
-  const { countryPaths, regionPaths, graticulePath, spherePath, projection } = useMemo(() => {
-    const proj = geoOrthographic()
-      .scale(150 * zoom)
-      .translate([SIZE / 2, SIZE / 2])
-      .rotate([rotation[0], rotation[1]]);
-    const path = geoPath(proj);
-    return {
-      projection: proj,
-      countryPaths: countries.map((c) => ({
-        id: c.id,
-        name: c.name,
-        d: path(c.feature) ?? "",
-        visited: featureVisited(c.name, visitedKeys),
-      })),
-      regionPaths: (regions ?? []).map((r) => ({
-        id: r.id,
-        name: r.name,
-        d: path(r.feature) ?? "",
-      })),
-      graticulePath: path(geoGraticule10()) ?? "",
-      spherePath: path({ type: "Sphere" }) ?? "",
-    };
-  }, [rotation, zoom, countries, visitedKeys, regions]);
+  const { countryPaths, regionPaths, graticulePath, spherePath, projection, radius } =
+    useMemo(() => {
+      const proj = geoOrthographic()
+        .scale(150 * zoom)
+        .translate([SIZE / 2, SIZE / 2])
+        .rotate([rotation[0], rotation[1]]);
+      const path = geoPath(proj);
+      return {
+        projection: proj,
+        countryPaths: countries.map((c) => ({
+          id: c.id,
+          name: c.name,
+          d: path(c.feature) ?? "",
+          visited: featureVisited(c.name, visitedKeys),
+        })),
+        regionPaths: (regions ?? []).map((r) => ({
+          id: r.id,
+          name: r.name,
+          d: path(r.feature) ?? "",
+        })),
+        radius: proj.scale(),
+        graticulePath: path(geoGraticule10()) ?? "",
+        spherePath: path({ type: "Sphere" }) ?? "",
+      };
+    }, [rotation, zoom, countries, visitedKeys, regions]);
 
   const clipTest = useMemo(() => {
     const c: [number, number] = [-rotation[0], -rotation[1]];
@@ -306,6 +322,7 @@ export function Globe({
   const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 
   const applyZoom = (next: number) => {
+    stopSpin();
     const z = clampZoom(next);
     liveZoom.current = z;
     setZoom(z);
@@ -318,6 +335,7 @@ export function Globe({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      stopSpin();
       const next = clampZoom(liveZoom.current + (e.deltaY > 0 ? -0.12 : 0.12));
       liveZoom.current = next;
       setZoom(next);
@@ -330,10 +348,82 @@ export function Globe({
     return () => {
       if (rafDrag.current != null) cancelAnimationFrame(rafDrag.current);
       if (rafInertia.current != null) cancelAnimationFrame(rafInertia.current);
+      if (rafSpin.current != null) cancelAnimationFrame(rafSpin.current);
     };
   }, []);
 
+  // About a turn a minute: enough to show it is a globe, slow enough to read.
+  useEffect(() => {
+    if (!autoSpin || typeof window === "undefined" || prefersReducedMotion()) return;
+    let last = 0;
+    let owed = 0;
+    const tick = (now: number) => {
+      owed += last ? Math.min(now - last, 64) : 0;
+      last = now;
+      // Each turn redraws every country, so step about twenty times a second
+      // rather than every frame: still smooth at this speed, a third the work.
+      if (owed >= 50) {
+        applyDelta(owed * 0.006, 0);
+        owed = 0;
+      }
+      rafSpin.current = requestAnimationFrame(tick);
+    };
+    const pause = () => {
+      if (rafSpin.current != null) cancelAnimationFrame(rafSpin.current);
+      rafSpin.current = null;
+    };
+    const resume = () => {
+      if (spinStopped.current || rafSpin.current != null) return;
+      last = 0;
+      rafSpin.current = requestAnimationFrame(tick);
+    };
+    resume();
+
+    // Scrolled past, it is not worth a frame.
+    const io =
+      typeof IntersectionObserver === "function" && frameRef.current
+        ? new IntersectionObserver(([entry]) => (entry?.isIntersecting ? resume() : pause()))
+        : null;
+    if (io && frameRef.current) io.observe(frameRef.current);
+
+    // Reduced motion switched on while the page is open stops it too.
+    const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const onMotion = () => {
+      if (motion?.matches) stopSpin();
+    };
+    motion?.addEventListener?.("change", onMotion);
+
+    return () => {
+      pause();
+      io?.disconnect();
+      motion?.removeEventListener?.("change", onMotion);
+    };
+    // applyDelta and stopSpin read refs only; the spin starts once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSpin]);
+
+  function stopSpin() {
+    spinStopped.current = true;
+    if (rafSpin.current != null) {
+      cancelAnimationFrame(rafSpin.current);
+      rafSpin.current = null;
+    }
+  }
+
+  /**
+   * Jump straight to a rotation, dropping any turn a drag or the spin had
+   * queued for the next frame — or it lands after, and undoes, the jump.
+   */
+  const jumpTo = (next: [number, number]) => {
+    if (rafDrag.current != null) cancelAnimationFrame(rafDrag.current);
+    rafDrag.current = null;
+    pending.current = null;
+    live.current = next;
+    setRotation(next);
+  };
+
   const stopInertia = () => {
+    stopSpin();
     if (rafInertia.current != null) {
       cancelAnimationFrame(rafInertia.current);
       rafInertia.current = null;
@@ -381,8 +471,7 @@ export function Globe({
     const next: [number, number] = [-lon, -Math.max(-85, Math.min(85, lat))];
     stopInertia();
     velocity.current = [0, 0];
-    live.current = next;
-    setRotation(next);
+    jumpTo(next);
   };
 
   // Selecting a pin anywhere (the list below, a country tap, a search) spins the
@@ -401,8 +490,7 @@ export function Globe({
   const resetView = () => {
     stopInertia();
     velocity.current = [0, 0];
-    live.current = [-10, -18];
-    setRotation([-10, -18]);
+    jumpTo([-10, -18]);
     applyZoom(1);
   };
 
@@ -432,8 +520,8 @@ export function Globe({
           else if (e.key === "+" || e.key === "=") applyZoom(liveZoom.current + 0.2);
           else if (e.key === "-" || e.key === "_") applyZoom(liveZoom.current - 0.2);
           else if (e.key === "Home") {
-            live.current = [-10, -18];
-            setRotation([-10, -18]);
+            stopInertia();
+            jumpTo([-10, -18]);
             applyZoom(1);
           } else return;
           e.preventDefault();
@@ -519,33 +607,75 @@ export function Globe({
                 } countries. Every pin is also listed below the globe.`
           }
           className={`w-full cursor-grab active:cursor-grabbing ${
-            open ? "h-[min(92vw,440px)] md:h-[500px]" : "h-[min(52vw,420px)] md:h-[480px]"
+            open ? "h-[min(92vw,440px)] md:h-[500px]" : "h-[min(82vw,420px)] md:h-[480px]"
           }`}
         >
           <defs>
-            <radialGradient id={oceanId} cx="35%" cy="30%">
-              <stop offset="0%" stopColor="var(--card)" />
-              <stop offset="70%" stopColor="var(--muted)" />
-              <stop offset="100%" stopColor="var(--secondary)" />
+            {/* Sea: the visited blue washed into the card colour, lit from
+                the upper left. Built from tokens so every theme gets its own. */}
+            <radialGradient id={oceanId} cx="38%" cy="32%" r="75%">
+              <stop
+                offset="0%"
+                style={{ stopColor: "color-mix(in oklab, var(--visited) 8%, var(--card))" }}
+              />
+              <stop
+                offset="65%"
+                style={{ stopColor: "color-mix(in oklab, var(--visited) 18%, var(--card))" }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "color-mix(in oklab, var(--visited) 30%, var(--card))" }}
+              />
+            </radialGradient>
+            {/* The far edge falls into shade, so it reads round, not flat. */}
+            <radialGradient id={shadeId} cx="40%" cy="35%" r="68%">
+              <stop offset="60%" stopColor="#000" stopOpacity={0} />
+              <stop offset="100%" stopColor="#000" stopOpacity={0.16} />
+            </radialGradient>
+            <radialGradient id={shineId} cx="34%" cy="28%" r="42%">
+              <stop offset="0%" stopColor="#fff" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+            </radialGradient>
+            <radialGradient id={glowId}>
+              <stop offset="88%" style={{ stopColor: "var(--visited)" }} stopOpacity={0.16} />
+              <stop offset="100%" style={{ stopColor: "var(--visited)" }} stopOpacity={0} />
             </radialGradient>
           </defs>
-          <path d={spherePath} fill={`url(#${oceanId})`} stroke="var(--border)" />
+          {/* A thin atmosphere just past the rim. */}
+          <circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={radius + 9}
+            fill={`url(#${glowId})`}
+            className="pointer-events-none"
+          />
+          <path
+            d={spherePath}
+            fill={`url(#${oceanId})`}
+            style={{ stroke: "color-mix(in oklab, var(--visited) 25%, var(--border))" }}
+            strokeWidth={0.8}
+          />
           <path
             d={graticulePath}
             fill="none"
-            stroke="var(--border)"
-            strokeWidth={0.4}
-            opacity={0.7}
+            stroke="var(--visited)"
+            strokeWidth={0.35}
+            opacity={0.14}
+            className="pointer-events-none"
           />
           {countryPaths.map((c) =>
             c.d ? (
               <path
                 key={c.id}
                 d={c.d}
-                fill={c.visited ? "var(--visited)" : "var(--primary)"}
+                style={{
+                  fill: c.visited
+                    ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
+                    : "color-mix(in oklab, var(--primary) 30%, var(--card))",
+                }}
                 stroke="var(--card)"
-                strokeWidth={0.4}
-                opacity={c.visited ? 0.55 : 0.22}
+                strokeWidth={0.45}
+                strokeLinejoin="round"
                 className={onCountrySelect && c.name ? "cursor-pointer" : undefined}
                 onClick={(e) => {
                   if (!c.name) return;
@@ -557,6 +687,12 @@ export function Globe({
               />
             ) : null,
           )}
+          <path d={spherePath} fill={`url(#${shadeId})`} className="pointer-events-none" />
+          <path
+            d={spherePath}
+            fill={`url(#${shineId})`}
+            className="pointer-events-none dark:opacity-30"
+          />
           {regionPaths.map((r) =>
             r.d ? (
               <path
@@ -706,11 +842,11 @@ export function Globe({
         )}
 
         <p
-          className={`absolute bottom-3 left-4 text-muted-foreground ${
-            open ? "right-28 text-[11px]" : "right-16 text-[12px]"
+          className={`pointer-events-none absolute bottom-2.5 left-4 truncate text-[11px] text-muted-foreground ${
+            open ? "right-28" : "right-16"
           }`}
         >
-          Drag or use the arrow keys to rotate · pinch, scroll or +/− to zoom
+          Drag to spin · pinch or +/− to zoom
         </p>
       </div>
     </div>
