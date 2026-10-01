@@ -12,14 +12,20 @@
  * a screen at a time.
  */
 @theme {
-  --text-micro: 11px;
-  --text-caption: 12.5px;
-  --text-small: 13.5px;
-  --text-body: 14.5px;
-  --text-lead: 15px;
-  --text-heading: 19px;
-  --text-title: 22px;
-  --text-display: 27px;
+  --text-micro: calc(11px * var(--text-scale, 1));
+  --text-caption: calc(12.5px * var(--text-scale, 1));
+  --text-small: calc(13.5px * var(--text-scale, 1));
+  --text-body: calc(14.5px * var(--text-scale, 1));
+  --text-lead: calc(15px * var(--text-scale, 1));
+  --text-heading: calc(19px * var(--text-scale, 1));
+  --text-title: calc(22px * var(--text-scale, 1));
+  --text-display: calc(27px * var(--text-scale, 1));
+  /* Tailwind's own sizes, scaled by the reading text size too (accessibility.ts). */
+  --text-xs: calc(0.75rem * var(--text-scale, 1));
+  --text-sm: calc(0.875rem * var(--text-scale, 1));
+  --text-base: calc(1rem * var(--text-scale, 1));
+  --text-lg: calc(1.125rem * var(--text-scale, 1));
+  --text-xl: calc(1.25rem * var(--text-scale, 1));
   --spacing-tap: 44px;
 }
 
@@ -97,7 +103,7 @@
   --success: #58745c;
   --warning: #b47a35;
 
-  /* Calm — the default. White and cream on light beige; a soft sand accent.
+  /* Calm. White and cream on light beige; a soft sand accent.
      Cards sit *lighter* than the ground so depth comes from surface, not from
      a border on every element. */
   --background: #f7f2e9;
@@ -1337,4 +1343,57 @@
   .dark .plan-mint { --panel-hue: #6cc995; }
   .dark .plan-sky { --panel-hue: #7db6e0; }
   .dark .plan-butter { --panel-hue: #e0b25a; }
+}
+
+/*
+ * Reading settings (You → Appearance, accessibility.ts). The text size is
+ * `--text-scale`, which every pixel font size is multiplied by at build time
+ * (text-scale-css.ts); the rest are attributes on <html>, after the themes so
+ * they win over each one.
+ */
+:root[data-font="easy"] {
+  --font-sans: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Atkinson Hyperlegible Next", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="lexend"] {
+  --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend", ui-sans-serif, system-ui, sans-serif;
+}
+:root[data-font="system"] {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Everything moves at once instead of sliding or fading. */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Quiet text and lines drawn closer to the text colour, in every theme. */
+:root[data-contrast="more"],
+:root[data-contrast="more"] [data-tab] {
+  --muted-foreground: color-mix(in oklch, var(--foreground) 84%, var(--background));
+  --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
+  --input: color-mix(in oklch, var(--foreground) 50%, var(--background));
+}
+
+/* One step heavier everywhere, and links inside text underlined. */
+:root[data-bold="on"] {
+  --font-weight-light: 400;
+  --font-weight-normal: 500;
+  --font-weight-medium: 600;
+  --font-weight-semibold: 700;
+  --font-weight-bold: 800;
+}
+:root[data-bold="on"] body {
+  font-weight: 500;
+}
+:root[data-bold="on"] :is(p, li) a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }

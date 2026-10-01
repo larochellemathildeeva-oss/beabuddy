@@ -13,8 +13,16 @@ import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
-import { readTheme, syncThemeColor, THEME_BOOT_SCRIPT } from "@/lib/theme";
+import {
+  DEFAULT_THEME,
+  readTheme,
+  syncThemeColor,
+  THEME_BOOT_SCRIPT,
+  THEME_COLOR_BOOT_SCRIPT,
+  THEME_COLORS,
+} from "@/lib/theme";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
+import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
@@ -96,7 +104,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "Béa" },
-      { name: "theme-color", content: "#f7f2e9" },
+      { name: "theme-color", content: THEME_COLORS[DEFAULT_THEME] },
     ],
     links: [
       {
@@ -117,11 +125,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />
+        <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_BOOT_SCRIPT }} />
       </head>
       <body>
         {children}

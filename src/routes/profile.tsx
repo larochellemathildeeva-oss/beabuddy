@@ -50,6 +50,7 @@ import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed, loadDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
 import { StopPicturesPicker } from "@/components/StopPicturesPicker";
+import { AccessibilityPicker } from "@/components/AccessibilityPicker";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { modeName } from "@/lib/bea-personality";
 import { deleteMyAccount, eraseMyData } from "@/lib/account.functions";
@@ -381,7 +382,7 @@ function ProfilePage() {
               card={1}
               tone={4}
               title="Appearance"
-              hint="Theme and what Home shows"
+              hint="Theme, text size and what Home shows"
               onClick={() => setPanel("appearance")}
             />
             {/* Links & formats and Notifications are in the master but not
@@ -510,6 +511,7 @@ function ProfilePage() {
         <div className="space-y-3">
           <ThemePicker />
           <StopPicturesPicker />
+          <AccessibilityPicker />
           <CustomizeHome variant="row" />
         </div>
       </Sheet>

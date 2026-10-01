@@ -2,8 +2,8 @@
  * Béa's three looks, picked on the You page and kept with the account
  * (account-settings.ts), with a copy on each device for first paint.
  *
- *   calm     — white, cream and light beige (the default)
- *   colorful — cheerful pastels (lilac, sky, teal, cyan, pink) with a violet accent
+ *   calm     — white, cream and light beige
+ *   colorful — cheerful pastels (lilac, sky, teal, cyan, pink) with a violet accent (the default)
  *   dark     — near-black with off-white and beige
  *
  * The choice lands on `<html>` twice: as `data-theme`, which selects the
@@ -16,7 +16,7 @@ export type ThemeName = (typeof THEMES)[number];
 export const THEME_KEY = "bea-theme";
 /** The old Light/Dark switch. Read once so a Dark user stays dark. */
 export const DARK_KEY = "bea-dark";
-export const DEFAULT_THEME: ThemeName = "calm";
+export const DEFAULT_THEME: ThemeName = "colorful";
 
 export function isThemeName(value: unknown): value is ThemeName {
   return typeof value === "string" && (THEMES as readonly string[]).includes(value);
@@ -51,12 +51,18 @@ export const THEME_COLORS: Record<ThemeName, string> = {
   dark: "#171513",
 };
 
+/**
+ * Runs in `<head>` right after the meta tags, so the status bar matches the
+ * saved theme from first paint rather than from hydration.
+ */
+export const THEME_COLOR_BOOT_SCRIPT = `try{var c=${JSON.stringify(THEME_COLORS)}[document.documentElement.getAttribute("data-theme")];var m=document.querySelector('meta[name="theme-color"]');if(c&&m)m.setAttribute("content",c)}catch(e){}`;
+
 /** Points the theme-color meta at the theme now showing. */
 export function syncThemeColor(theme: ThemeName): void {
   if (typeof document === "undefined" || typeof document.querySelector !== "function") return;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute("content", THEME_COLORS[theme] ?? THEME_COLORS.calm);
+    ?.setAttribute("content", THEME_COLORS[theme] ?? THEME_COLORS[DEFAULT_THEME]);
 }
 
 export function applyTheme(theme: ThemeName): void {

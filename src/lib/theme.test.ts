@@ -7,6 +7,8 @@ import {
   isThemeName,
   readTheme,
   THEME_BOOT_SCRIPT,
+  THEME_COLOR_BOOT_SCRIPT,
+  THEME_COLORS,
   THEME_KEY,
 } from "./theme.ts";
 
@@ -78,7 +80,7 @@ test("someone who had the old dark switch on stays dark", () => {
 test("nothing saved means Calm", () => {
   fakeDom(null);
   assert.equal(readTheme(), DEFAULT_THEME);
-  assert.equal(DEFAULT_THEME, "calm");
+  assert.equal(DEFAULT_THEME, "colorful");
 });
 
 test("applyTheme sets the attribute, the dark class and remembers the choice", () => {
@@ -104,16 +106,31 @@ test("boot script reads both keys and sets theme before paint", () => {
 
 test("boot script picks the right theme for each saved state", () => {
   const cases: [Record<string, string>, string, boolean][] = [
-    [{}, "calm", false],
+    [{}, "colorful", false],
     [{ [THEME_KEY]: "colorful" }, "colorful", false],
     [{ [THEME_KEY]: "dark" }, "dark", true],
     [{ [DARK_KEY]: "yes" }, "dark", true],
-    [{ [THEME_KEY]: "nonsense" }, "calm", false],
+    [{ [THEME_KEY]: "nonsense" }, "colorful", false],
   ];
   for (const [stored, theme, dark] of cases) {
     const { attrs, classes } = fakeDom(null, stored);
     new Function(THEME_BOOT_SCRIPT)();
     assert.equal(attrs.get("data-theme"), theme);
     assert.equal(classes.has("dark"), dark);
+  }
+});
+
+test("status-bar boot script paints the saved theme's colour", () => {
+  for (const theme of ["calm", "colorful", "dark"] as const) {
+    const meta = { content: THEME_COLORS.colorful };
+    fakeDom(theme);
+    const doc = globalThis.document as unknown as { querySelector: unknown };
+    doc.querySelector = () => ({
+      setAttribute: (_: string, value: string) => {
+        meta.content = value;
+      },
+    });
+    new Function(THEME_COLOR_BOOT_SCRIPT)();
+    assert.equal(meta.content, THEME_COLORS[theme]);
   }
 });
