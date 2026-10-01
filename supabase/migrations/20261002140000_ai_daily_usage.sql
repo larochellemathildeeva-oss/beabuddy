@@ -11,8 +11,12 @@
 -- reserve_ai_units. Nothing for anon or authenticated: a traveller cannot
 -- read or reset their own count. Rows go with the account (ON DELETE CASCADE).
 --
--- Applied by hand; safe to re-run. Until it is applied the server counts the
--- same ceiling per process, with one warning, and asks again hourly.
+-- Applied by hand; safe to re-run.
+--
+-- The deployed app fails closed without it: no Gemini request is sent when
+-- this ledger cannot be reached (isDeployedBuild, ai-quota.server.ts). Only
+-- local runs, unit tests and the repository's audit scripts fall back to a
+-- per-process count, so they need no live service-role connection.
 
 CREATE TABLE IF NOT EXISTS public.ai_daily_usage (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -55,7 +59,10 @@ BEGIN
 
   INSERT INTO public.ai_daily_usage AS u (user_id, day, units, updated_at)
   VALUES (_user_id, _today, _units, now())
-  ON CONFLICT (user_id, day) DO UPDATE
+  -- By constraint name, not columns: still right once the ai_usage_buckets
+  -- migration widens this key to (user_id, day, bucket), where a row inserted
+  -- here takes the default bucket 'ai'. So re-running this file stays safe.
+  ON CONFLICT ON CONSTRAINT ai_daily_usage_pkey DO UPDATE
     SET units = u.units + EXCLUDED.units, updated_at = now()
     WHERE u.units + EXCLUDED.units <= _limit
   RETURNING units INTO _reserved;

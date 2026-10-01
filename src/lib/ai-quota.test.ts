@@ -84,3 +84,13 @@ test("with no database, reserveAi counts per process and refuses past the ceilin
     else process.env["AI_DAILY_UNITS"] = before;
   }
 });
+
+test("with no database, local-name lookups have their own bucket", async () => {
+  const { reserveLocalName } = await import("./ai-quota.server.ts");
+  const { LOCAL_NAME_DAILY } = await import("./ai-quota.ts");
+  for (let i = 0; i < LOCAL_NAME_DAILY; i++) {
+    assert.equal(await reserveLocalName("name-test-user"), true, `lookup ${i + 1}`);
+  }
+  assert.equal(await reserveLocalName("name-test-user"), false, "past the bucket: skipped");
+  assert.equal(await reserveLocalName(""), false, "no verified user: skipped");
+});

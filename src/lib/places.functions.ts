@@ -253,10 +253,16 @@ async function refresh(pace: Pace) {
 }
 
 async function wait(pace: Pace) {
-  // At the pace of whoever answers now.
+  // At the pace of whoever answers now, and again after the wait: Geoapify
+  // can rest meanwhile, and the request is then built for the fallback.
   await refresh(pace);
-  const delay = nextDelayMs(pace.provider, pace.sent, Date.now());
-  if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+  for (;;) {
+    const before = pace.provider.name;
+    const delay = nextDelayMs(pace.provider, pace.sent, Date.now());
+    if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+    await refresh(pace);
+    if (pace.provider.name === before) break;
+  }
   pace.sent.push(Date.now());
 }
 
@@ -553,18 +559,23 @@ async function autocompleteHits(
   pace: Pace,
   opts: { areas: boolean; area?: { viewbox: string; bounded: boolean } },
 ): Promise<NominatimHit[]> {
+  const build = () =>
+    autocompleteUrl(pace.provider, {
+      query,
+      limit: 10,
+      language: "en",
+      ...(opts.areas ? { tags: DESTINATION_TAGS } : {}),
+      ...(opts.area ? { viewbox: opts.area.viewbox, bounded: opts.area.bounded } : {}),
+    });
   await refresh(pace);
-  const url = autocompleteUrl(pace.provider, {
-    query,
-    limit: 10,
-    language: "en",
-    ...(opts.areas ? { tags: DESTINATION_TAGS } : {}),
-    ...(opts.area ? { viewbox: opts.area.viewbox, bounded: opts.area.bounded } : {}),
-  });
-  if (!url) return [];
+  if (!build()) return [];
   const { geoFetch } = await import("@/lib/geo-provider.server");
   try {
     await wait(pace);
+    // Built after the wait, for whoever answers now: Geoapify can rest
+    // meanwhile, and a provider with no autocomplete answers nothing.
+    const url = build();
+    if (!url) return [];
     const res = await geoFetch(url, {
       headers: { "user-agent": UA, accept: "application/json" },
       signal: AbortSignal.timeout(5_000),

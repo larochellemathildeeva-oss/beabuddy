@@ -97,3 +97,29 @@ export function sharedTripView(
 export function shareUrl(origin: string, token: string): string {
   return `${origin.replace(/\/+$/, "")}/shared/${token}`;
 }
+
+/**
+ * The key a shared-trip reader is limited by: their address, or for IPv6 its
+ * /64, since one connection can be handed a whole /64 and rotate through it.
+ * IPv4 inside IPv6 (`::ffff:1.2.3.4`) is read as the IPv4 address.
+ */
+export function shareClientKey(address: string): string {
+  const raw = address
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/.exec(raw);
+  if (mapped) return mapped[1]!;
+  if (!raw.includes(":")) return raw || "unknown";
+  const [head = "", tail = ""] = raw.split("::");
+  const left = head ? head.split(":") : [];
+  const right = tail ? tail.split(":") : [];
+  const groups = raw.includes("::")
+    ? [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill("0"), ...right]
+    : left;
+  if (groups.length !== 8) return raw;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.replace(/^0+(?=.)/, ""))
+    .join(":")}::/64`;
+}

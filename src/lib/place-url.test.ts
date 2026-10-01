@@ -4,6 +4,7 @@ import {
   isMapHost,
   isMapPlaceUrl,
   isPublicHttpsUrl,
+  publicOnlyLookup,
   resolvesToPublicAddress,
 } from "./place-url.ts";
 
@@ -141,5 +142,70 @@ describe("isMapHost", () => {
     assert.equal(isMapPlaceUrl(url("https://www.yelp.com/biz/x")), true);
     assert.equal(isMapPlaceUrl(url("https://www.instagram.com/p/x/")), false);
     assert.equal(isPublicHttpsUrl(url("https://www.instagram.com/p/x/")), true);
+  });
+});
+
+describe("publicOnlyLookup (the connection's own lookup)", () => {
+  type Answer = { address: string; family: number };
+  const fake =
+    (answers: Answer[]) =>
+    (
+      _host: string,
+      _opts: unknown,
+      cb: (error: NodeJS.ErrnoException | null, addresses: Answer[]) => void,
+    ) =>
+      cb(null, answers);
+  const run = (answers: Answer[], options: { all?: boolean } = {}) =>
+    new Promise<{
+      error: NodeJS.ErrnoException | null;
+      address: unknown;
+      family: number | undefined;
+    }>((resolve) =>
+      publicOnlyLookup(fake(answers) as never)(
+        "rebind.example",
+        options,
+        (error, address, family) => resolve({ error, address, family }),
+      ),
+    );
+
+  it("connects to a public answer, in both callback shapes", async () => {
+    const one = await run([{ address: "93.184.216.34", family: 4 }]);
+    assert.equal(one.error, null);
+    assert.equal(one.address, "93.184.216.34");
+    assert.equal(one.family, 4);
+    const all = await run([{ address: "2606:2800:220:1::1", family: 6 }], { all: true });
+    assert.deepEqual(all.address, [{ address: "2606:2800:220:1::1", family: 6 }]);
+  });
+
+  it("refuses at connection time a name that now points somewhere private", async () => {
+    // The rebinding case: the earlier check saw a public address, the
+    // connection's own lookup gets a private one.
+    for (const address of [
+      "10.0.0.5",
+      "127.0.0.1",
+      "169.254.169.254",
+      "::1",
+      "::ffff:192.168.1.1",
+      "fd00::1",
+    ]) {
+      const result = await run([{ address, family: address.includes(":") ? 6 : 4 }]);
+      assert.equal(result.error?.code, "EACCES", address);
+    }
+  });
+
+  it("refuses when any answer is private, and when there is none", async () => {
+    const mixed = await run([
+      { address: "93.184.216.34", family: 4 },
+      { address: "10.1.2.3", family: 4 },
+    ]);
+    assert.equal(mixed.error?.code, "EACCES");
+    assert.equal((await run([])).error?.code, "EACCES");
+  });
+
+  it("with the real resolver, localhost is refused", async () => {
+    const result = await new Promise<NodeJS.ErrnoException | null>((resolve) =>
+      publicOnlyLookup()("localhost", {}, (error) => resolve(error)),
+    );
+    assert.equal(result?.code, "EACCES");
   });
 });

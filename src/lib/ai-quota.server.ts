@@ -3,6 +3,7 @@ import {
   AI_COST,
   AI_LIMIT_MESSAGE,
   AI_UNAVAILABLE_MESSAGE,
+  LOCAL_NAME_DAILY,
   MemoryQuota,
   aiDailyUnits,
   readQuotaReply,
@@ -38,11 +39,22 @@ let missingUntil = 0;
 let missingWarned = false;
 let errorLoggedAt = 0;
 
-async function askDatabase(userId: string, units: number, limit: number): Promise<QuotaReply> {
+/**
+ * Ask the database. Without `bucket`, the shared allowance through
+ * reserve_ai_units; with one, that bucket through reserve_ai_units_in (the
+ * ai_usage_buckets migration), so a missing second migration only affects
+ * what uses a bucket.
+ */
+async function askDatabase(
+  userId: string,
+  units: number,
+  limit: number,
+  bucket?: string,
+): Promise<QuotaReply> {
   let admin: {
     rpc: (
       name: string,
-      args: { _user_id: string; _units: number; _limit: number },
+      args: Record<string, string | number>,
     ) => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
   };
   try {
@@ -56,11 +68,18 @@ async function askDatabase(userId: string, units: number, limit: number): Promis
     return "missing";
   }
   try {
-    const { data, error } = await admin.rpc("reserve_ai_units", {
-      _user_id: userId,
-      _units: units,
-      _limit: limit,
-    });
+    const { data, error } = bucket
+      ? await admin.rpc("reserve_ai_units_in", {
+          _user_id: userId,
+          _bucket: bucket,
+          _units: units,
+          _limit: limit,
+        })
+      : await admin.rpc("reserve_ai_units", {
+          _user_id: userId,
+          _units: units,
+          _limit: limit,
+        });
     const reply = readQuotaReply(data, error);
     if (reply === "error" && Date.now() - errorLoggedAt > 60_000) {
       errorLoggedAt = Date.now();
@@ -112,4 +131,33 @@ export async function reserveAi(userId: string, operation: AiOperation): Promise
     }
   }
   if (!memory().reserve(userId, units, limit, now)) throw new Error(AI_LIMIT_MESSAGE);
+}
+
+let localNameMissingUntil = 0;
+
+/**
+ * One local-script name lookup, from the traveller's own small daily bucket
+ * (`LOCAL_NAME_DAILY`, 'local_name'), not the allowance meant for trip builds.
+ * True when reserved. Never throws: anything else means the search goes on
+ * without the local-script name. The deployed app skips the lookup when the
+ * bucket cannot be counted; run from source it is counted per process.
+ */
+export async function reserveLocalName(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  const now = Date.now();
+  const reply =
+    now < localNameMissingUntil
+      ? "missing"
+      : await askDatabase(userId, 1, LOCAL_NAME_DAILY, "local_name");
+  if (reply === "allowed") return true;
+  if (reply !== "missing") return false;
+  localNameMissingUntil = now + MISSING_RETRY_MS;
+  if (isDeployedBuild()) {
+    // Asked again hourly, not on every search, and said once.
+    console.warn(
+      "[ai-quota] local-name bucket unavailable (is the ai_usage_buckets migration applied?); searching without local-script names, asking again in an hour",
+    );
+    return false;
+  }
+  return memory().reserve(`local_name:${userId}`, 1, LOCAL_NAME_DAILY, now);
 }

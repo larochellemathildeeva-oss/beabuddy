@@ -1,5 +1,6 @@
 import { isIP } from "node:net";
 import { lookup as dnsLookup } from "node:dns/promises";
+import { lookup as dnsLookupCallback, type LookupAddress } from "node:dns";
 
 const PLACE_UA = "Mozilla/5.0 (compatible; BeaBot/1.0; +https://bea.travel)";
 const MAX_HTML_BYTES = 300_000;
@@ -205,12 +206,13 @@ export function isPublicHttpsUrl(url: URL): boolean {
  * wildcard-DNS services exist precisely to provide one. So the name is
  * resolved and every answer inspected before anything is fetched.
  *
- * A caveat worth keeping in view: undici resolves the name again when it
- * connects, so a record that changes between these two lookups is still a
- * window (DNS rebinding). Closing it needs the connection pinned to the
- * address vetted here, via a dispatcher with a custom `lookup` — which means
- * taking undici as a direct dependency — or an egress proxy that enforces the
- * same rule. Both are worth doing; neither is this function.
+ * This check alone would leave a window: the connection resolves the name
+ * again, and a record that changes in between (DNS rebinding) could point it
+ * somewhere private. So the fetch itself connects through `publicOnlyLookup`,
+ * which refuses at connection time the same addresses this refuses: the
+ * address connected to is one that was checked. This early check stays, so a
+ * plainly private name is refused before any connection is tried. An egress
+ * rule in the network blocking private ranges is still worth having as well.
  */
 export async function resolvesToPublicAddress(hostname: string): Promise<boolean> {
   const host = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
@@ -223,6 +225,72 @@ export async function resolvesToPublicAddress(hostname: string): Promise<boolean
     // A name that will not resolve is not one we can fetch anyway.
     return false;
   }
+}
+
+type LookupCallback = (
+  error: NodeJS.ErrnoException | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+type Resolver = (
+  hostname: string,
+  options: { all: true; verbatim: true; family?: number },
+  callback: (error: NodeJS.ErrnoException | null, addresses: LookupAddress[]) => void,
+) => void;
+
+/**
+ * A `lookup` for the connection itself (net.connect's signature), refusing
+ * any name with an answer in a blocked range: loopback, private, link-local,
+ * unique-local, unspecified, and IPv4 inside IPv6. This is what closes DNS
+ * rebinding: the address the socket connects to is the one checked here, at
+ * that moment, not one checked by an earlier, separate lookup. Every answer is
+ * checked, not only the first, as `resolvesToPublicAddress` does.
+ */
+export function publicOnlyLookup(resolve: Resolver = dnsLookupCallback as unknown as Resolver) {
+  return (
+    hostname: string,
+    options: { all?: boolean; family?: number } | number | undefined,
+    callback: LookupCallback,
+  ): void => {
+    const opts = typeof options === "object" && options ? options : {};
+    const family = typeof options === "number" ? options : opts.family;
+    resolve(
+      hostname,
+      { all: true, verbatim: true, ...(family ? { family } : {}) },
+      (error, addresses) => {
+        if (error) return callback(error, "");
+        if (!addresses.length || addresses.some((a) => isBlockedAddress(a.address))) {
+          const refused = new Error(
+            `Refusing to connect to ${hostname}: it resolves to a private or local address`,
+          ) as NodeJS.ErrnoException;
+          refused.code = "EACCES";
+          return callback(refused, "");
+        }
+        if (opts.all) return callback(null, addresses);
+        const first = addresses[0]!;
+        return callback(null, first.address, first.family);
+      },
+    );
+  };
+}
+
+type PinnedFetch = (url: string, init: RequestInit) => Promise<Response>;
+let pinnedFetch: PinnedFetch | null = null;
+
+/**
+ * `fetch` through an undici Agent whose connections resolve with
+ * `publicOnlyLookup`. Imported lazily: this file is also reached from code
+ * that ships to the browser, and undici is server-only.
+ */
+async function publicOnlyFetch(): Promise<PinnedFetch> {
+  if (pinnedFetch) return pinnedFetch;
+  const undici = await import("undici");
+  const dispatcher = new undici.Agent({
+    connect: { lookup: publicOnlyLookup() as never },
+  });
+  pinnedFetch = (url, init) =>
+    undici.fetch(url, { ...(init as object), dispatcher }) as unknown as Promise<Response>;
+  return pinnedFetch;
 }
 
 /** True for a link from a map site, whose URL is worth parsing structurally. */
@@ -300,7 +368,8 @@ async function fetchHtmlWithPolicy(
 
     let res: Response;
     try {
-      res = await fetch(current.toString(), {
+      const fetchPinned = await publicOnlyFetch();
+      res = await fetchPinned(current.toString(), {
         redirect: "manual",
         headers: {
           "user-agent": PLACE_UA,
