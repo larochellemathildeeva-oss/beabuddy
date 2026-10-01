@@ -97,6 +97,8 @@ export const comparePlaces = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ComparisonResult> => {
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "comparePlaces");
     const { withModelFallback, judgmentCall } = await import("@/lib/ai.server");
     const { getTravelPreferences, preferencePrompt } =
       await import("@/lib/travel-preferences.server");

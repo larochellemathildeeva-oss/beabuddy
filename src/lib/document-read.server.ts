@@ -2,6 +2,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
 import { AI_CALL, aiFailure, withModelFallback } from "@/lib/ai.server";
+import { reserveAi } from "@/lib/ai-quota.server";
 import { allowCall } from "@/lib/call-limit";
 import {
   DOCUMENT_READS_PER_HOUR,
@@ -45,6 +46,7 @@ export async function readDocument(
   if (file.text && !pasted) {
     throw new Error("Béa couldn't find booking details in that text. Fill it in by hand.");
   }
+  await reserveAi(userId, "documentRead");
   const part = pasted
     ? {
         type: "text" as const,

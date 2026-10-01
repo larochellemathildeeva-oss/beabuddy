@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { AI_IMAGE_DATA_URL_START, filePartsFromDataUrls } from "@/lib/ai-image";
 import { AI_CALL } from "@/lib/ai-errors";
 import { htmlToPlainText } from "@/lib/html-text";
 import { fetchPublicHtml, isPublicHttpsUrl, UnsupportedPlaceUrlError } from "@/lib/place-url";
@@ -10,7 +10,10 @@ import { RECO_LIST_MAX } from "@/lib/reco-list";
 
 const ParseRecoListInput = z
   .object({
-    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(4).nullable(),
+    imageDataUrls: z
+      .array(z.string().regex(AI_IMAGE_DATA_URL_START).max(3_000_000))
+      .max(4)
+      .nullable(),
     text: z.string().max(20_000).nullable(),
     pageUrl: z.string().url().max(2_000).nullish(),
   })
@@ -35,7 +38,7 @@ export type ParsedRecoList = z.infer<typeof ParsedRecoListSchema>;
 export const parseRecoList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseRecoListInput.parse(input))
-  .handler(async ({ data }): Promise<ParsedRecoList> => {
+  .handler(async ({ data, context }): Promise<ParsedRecoList> => {
     const { withModelFallback } = await import("@/lib/ai.server");
     let pageText: string | null = null;
     if (data.pageUrl?.trim()) {
@@ -61,6 +64,9 @@ export const parseRecoList = createServerFn({ method: "POST" })
         throw new Error("That page didn't send readable text. Paste the list of places instead.");
       }
     }
+
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "recoList");
 
     const fromPage = Boolean(pageText);
     const prompt = [

@@ -56,7 +56,10 @@ Supabase Auth (email + Google). Not a dashboard audit.
 - [x] In-app account delete exists (Profile → Legal; type `DELETE`)
 - [ ] Live delete smoke-tested on Canner (`SUPABASE_SERVICE_ROLE_KEY` must be set)
 
-**Red-team leftover:** dashboard auth settings still **Unknown**.
+**Red-team leftover:** dashboard auth settings still **Unknown**. The required
+values, where each lives and the checks to run are in
+[`AUTH_SECURITY_BASELINE.md`](AUTH_SECURITY_BASELINE.md); record what you find
+there.
 
 ---
 

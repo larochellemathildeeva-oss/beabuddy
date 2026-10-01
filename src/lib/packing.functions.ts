@@ -2,13 +2,16 @@ import { createServerFn } from "@tanstack/react-start";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartsFromDataUrls } from "@/lib/ai-image";
+import { AI_IMAGE_DATA_URL_START, filePartsFromDataUrls } from "@/lib/ai-image";
 import { AI_CALL } from "@/lib/ai-errors";
 import { SECTION_MAX_LEN } from "@/lib/packing-sections";
 
 const ParsePackingInput = z
   .object({
-    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(4).nullable(),
+    imageDataUrls: z
+      .array(z.string().regex(AI_IMAGE_DATA_URL_START).max(3_000_000))
+      .max(4)
+      .nullable(),
     text: z.string().max(20_000).nullable(),
   })
   .refine((v) => Boolean(v.imageDataUrls?.length || v.text?.trim()), {
@@ -46,7 +49,9 @@ const SECTION_HINTS = [
 export const parsePackingList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParsePackingInput.parse(input))
-  .handler(async ({ data }): Promise<ParsedPackingList> => {
+  .handler(async ({ data, context }): Promise<ParsedPackingList> => {
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "packing");
     const { withModelFallback } = await import("@/lib/ai.server");
     const prompt = [
       "Read this packing list (photo and/or pasted or uploaded text) and extract every item.",

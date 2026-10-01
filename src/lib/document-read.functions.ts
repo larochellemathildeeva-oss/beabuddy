@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { AI_IMAGE_DATA_URL_START } from "@/lib/ai-image";
 import { AI_IMAGE_MAX_CHARS } from "@/lib/image";
 import { MAX_PDF_DATA_URL_LENGTH } from "@/lib/itinerary-pdf";
 import { PASTED_TEXT_MAX, type DocumentRead } from "@/lib/document-read";
@@ -12,7 +13,7 @@ const ReadInput = z
       .startsWith("data:application/pdf;base64,")
       .max(MAX_PDF_DATA_URL_LENGTH)
       .nullable(),
-    imageDataUrl: z.string().startsWith("data:image/").max(AI_IMAGE_MAX_CHARS).nullable(),
+    imageDataUrl: z.string().regex(AI_IMAGE_DATA_URL_START).max(AI_IMAGE_MAX_CHARS).nullable(),
     /** Text pasted from a confirmation email or message, already cleaned in the browser. */
     text: z.string().trim().min(1).max(PASTED_TEXT_MAX).nullable().default(null),
     today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

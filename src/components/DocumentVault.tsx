@@ -21,7 +21,7 @@ type Vault = ReturnType<typeof useVault>;
 
 type Keyboard = "numeric" | "text";
 
-/** A PIN keyboard by default; a passphrase needs letters. */
+/** Switch between the number pad and a full keyboard. */
 function KeyboardToggle({ keyboard, set }: { keyboard: Keyboard; set: (k: Keyboard) => void }) {
   return (
     <button
@@ -72,7 +72,9 @@ export function VaultUnlock({
   const [confirmCode, setConfirmCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [keyboard, setKeyboard] = useState<Keyboard>("numeric");
+  // Unlocking an existing vault starts on the number pad (most older ones
+  // are PINs); a new passcode is a passphrase, so it starts on letters.
+  const [keyboard, setKeyboard] = useState<Keyboard>(v.hasVault ? "numeric" : "text");
   // Unlocking takes any passcode a vault was made with; a new one must pass
   // today's rule (vault-passcode.ts).
   const check = validateVaultPasscode(passcode);
@@ -263,7 +265,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
   const [dismissed, setDismissed] = useState(false);
   const [passcode, setPasscode] = useState("");
   const [confirmCode, setConfirmCode] = useState("");
-  const [keyboard, setKeyboard] = useState<Keyboard>("numeric");
+  const [keyboard, setKeyboard] = useState<Keyboard>("text");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -275,8 +277,8 @@ function StrongerPasscode({ v }: { v: Vault }) {
       <p className="flex items-start gap-1.5 text-[13px]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         <span>
-          Your passcode is shorter than Béa now asks for. A longer one is much harder to guess.{" "}
-          {VAULT_PASSCODE_HINT}
+          Your passcode was set under an older, shorter rule. A longer one is much harder to guess,
+          and what is inside is re-encrypted on this device. {VAULT_PASSCODE_HINT}
         </span>
       </p>
       {!asking ? (

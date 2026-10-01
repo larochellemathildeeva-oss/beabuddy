@@ -382,6 +382,24 @@ shown with its Search Suggestions, unaltered, and its sources:
 `SearchGroundingNote` does that under the plan. `GEMINI_SEARCH_GROUNDING=off`
 turns it off. A failed check never stops the plan.
 
+## AI usage per traveller
+
+Every Gemini call costs money, so each AI operation reserves units from the
+traveller's day before Gemini is asked (`reserveAi` in `ai-quota.server.ts`;
+costs in `AI_COST`, `ai-quota.ts`, pure and tested): a trip build 4, comparing
+two plans 6, a receipt 2, and so on, `AI_DAILY_UNITS` a UTC day (100 unless
+that env var says otherwise). One operation reserves once, however many models
+`withModelFallback` tries, and before the web check. The user ID always comes
+from the verified session (`context.userId`). The count is held in
+`ai_daily_usage` by `reserve_ai_units` (service role only, atomic), so restarts
+and several instances share it. When the database cannot be asked, the
+operation fails closed with a plain message. The migration is applied by hand;
+until it is, or where there is no service-role client (local runs, unit tests,
+the import audit), the same ceiling is counted per process with one warning,
+and the database is asked again hourly. The older hourly limits (document
+reads, plan edits, local-script names) stay as they were. A new AI entry point
+reserves too: add its cost to `AI_COST`.
+
 ## Reading a booking file
 
 In Trip documents, a new PDF or photo can be read with **"Fill in from this
@@ -403,9 +421,10 @@ dropped, capped at `PASTED_TEXT_MAX`). The pasted text is not saved.
 Protected is encrypted in the browser with a key from the traveller's
 passcode (PBKDF2 then AES-GCM, `vaultCrypto.ts`). Anyone with a copy of
 `vault_settings` can try passcodes offline against its verifier, so the
-passcode is the weak part, not the cipher. A new passcode must be a PIN of at
-least 6 digits or a passphrase of at least 10 characters
-(`validateVaultPasscode` in `vault-passcode.ts`, pure and tested), enforced
+passcode is the weak part, not the cipher. A new passcode must be at least 12
+characters, and one made only of digits at least 12 digits: a six-digit PIN
+falls to an offline search in hours (`validateVaultPasscode` in
+`vault-passcode.ts`, pure and tested), enforced
 in `useVault`'s `createVault` as well as the form. Older vaults with a shorter
 passcode still unlock; on unlock they are asked to choose a stronger one
 (`changePasscode`): every document is re-encrypted in the browser and written
@@ -436,7 +455,8 @@ Country names are matched in any language through `src/lib/country-names.ts`.
 ## Notes
 
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
-  Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`.
+  Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`;
+  sign-in settings that live in the Supabase dashboard: `docs/AUTH_SECURITY_BASELINE.md`.
   Never position Béa as “AI travel planner.” Prefer privacy copy that matches reality
   (*designed to / private by default / may*), not absolute guarantees.
 - `vite.config.ts` lists the whole plugin chain itself: Tailwind, tsconfig
