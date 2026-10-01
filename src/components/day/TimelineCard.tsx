@@ -1337,39 +1337,23 @@ export function TravelConnector({
   const leave = showTime && leg ? leaveBy(to.time_label, leg) : null;
   const steps = leg?.steps ?? [];
   const walking = mode === "walking";
-  const heading =
-    showTime && isMeasured
-      ? walking
-        ? "Walk to next stop"
-        : mode === "transit"
-          ? "Transit to next stop"
-          : "Drive to next stop"
-      : `Travelling to ${to.title}`;
-  const sub =
-    showTime && isMeasured && leg
-      ? `${leg.estimated ? "~" : ""}${prettyDuration(leg.duration)} · ${prettyDistance(leg.distance)}`
-      : showTime
-        ? "Not measured yet"
-        : "Directions in Maps";
+  const how = walking ? "walk" : mode === "transit" ? "transit" : "drive";
+  const LegGlyph =
+    !isMeasured || !showTime ? PawPrint : walking ? Footprints : mode === "transit" ? Bus : Car;
+  // A journey is a step between two stops, not a stop: a small mark on the
+  // day's dashed line and one quiet line of text, so the cards stay the
+  // places and the line between them stays the travel.
   return (
     <li className="list-none">
       <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
-        <span />
-        <div className="my-1 overflow-hidden rounded-2xl bg-elevated">
-          <div className="flex items-center gap-2 py-1 pl-2.5 pr-1">
-            {isMeasured && showTime ? (
-              walking ? (
-                <Footprints className="size-5 shrink-0" aria-hidden />
-              ) : mode === "transit" ? (
-                <Bus className="size-5 shrink-0" aria-hidden />
-              ) : (
-                <Car className="size-5 shrink-0" aria-hidden />
-              )
-            ) : (
-              <PawPrint className="size-4 shrink-0 text-primary" aria-hidden />
-            )}
-            <div className="min-w-0 flex-1 py-0.5">
-              <p className="truncate text-[13.5px] font-semibold">{heading}</p>
+        <span className="flex justify-center pt-2" aria-hidden>
+          <span className="grid size-6 place-items-center rounded-full border border-primary/30 bg-card text-primary">
+            <LegGlyph className="size-3.5" />
+          </span>
+        </span>
+        <div className="min-w-0">
+          <div className="flex min-h-10 items-center gap-1">
+            <div className="min-w-0 flex-1">
               {leg?.farApartKm ? (
                 // One of the two pins is wrong; a drive between them would be
                 // a confident answer to the wrong question.
@@ -1378,11 +1362,26 @@ export function TravelConnector({
                   probably in the wrong place. Tap it to check.
                 </p>
               ) : (
-                <p className="flex flex-wrap items-center gap-x-2 text-[12.5px] text-muted-foreground">
-                  <span className="whitespace-nowrap">{sub}</span>
-                  {leave?.kind === "time" && (
-                    <span className="font-semibold text-primary">Leave by {leave.at}</span>
+                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-muted-foreground">
+                  {showTime && isMeasured && leg ? (
+                    <>
+                      <span className="whitespace-nowrap font-semibold text-foreground">
+                        {leg.estimated ? "~" : ""}
+                        {prettyDuration(leg.duration)} {how}
+                      </span>
+                      <span className="whitespace-nowrap">· {prettyDistance(leg.distance)}</span>
+                    </>
+                  ) : (
+                    <span className="whitespace-nowrap">
+                      {showTime ? "Journey not measured yet" : "Directions in Maps"}
+                    </span>
                   )}
+                  {leave?.kind === "time" && (
+                    <span className="whitespace-nowrap font-semibold text-primary">
+                      · Leave by {leave.at}
+                    </span>
+                  )}
+                  <span className="sr-only">, to {to.title}</span>
                 </p>
               )}
             </div>
@@ -1392,102 +1391,105 @@ export function TravelConnector({
               rel="noreferrer"
               aria-label={`Directions from ${from.title} to ${to.title} in Maps`}
               title="Open in Maps"
-              className="tap-44 grid size-9 shrink-0 place-items-center border-l border-border text-foreground transition-colors hover:text-primary"
+              className="tap-44 grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:text-primary"
             >
-              <MapIcon className="size-5" aria-hidden />
+              <MapIcon className="size-[18px]" aria-hidden />
             </a>
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-label={open ? "Hide directions" : "See directions"}
-              className="tap-44 grid size-9 shrink-0 place-items-center border-l border-border text-foreground"
+              className="tap-44 grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground"
             >
               <ChevronDown
-                className={`size-5 transition-transform ${open ? "rotate-180" : ""}`}
+                className={`size-[18px] transition-transform ${open ? "rotate-180" : ""}`}
                 aria-hidden
               />
             </button>
           </div>
-          {open && (
-            <LegMiniMap
-              from={
-                leg?.fromLat != null && leg.fromLon != null
-                  ? { lat: leg.fromLat, lon: leg.fromLon }
-                  : from.lat != null && from.lon != null
-                    ? { lat: from.lat, lon: from.lon }
-                    : null
-              }
-              to={
-                leg?.toLat != null && leg.toLon != null
-                  ? { lat: leg.toLat, lon: leg.toLon }
-                  : to.lat != null && to.lon != null
-                    ? { lat: to.lat, lon: to.lon }
-                    : null
-              }
-              walking={walking}
-              transit={mode === "transit"}
-              fromNumber={fromNumber}
-            />
-          )}
-          {open && (
-            <div className="space-y-2 border-t border-border bg-card/60 px-3 py-2.5">
-              {steps.length > 0 ? (
-                <ol className="space-y-1.5">
-                  {steps.map((step, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[12.5px]">
-                      <StepArrow instruction={step.instruction} />
-                      <span className="min-w-0 flex-1 leading-snug">{step.instruction}</span>
-                      {step.distance > 0 && (
-                        <span className="shrink-0 text-[11.5px] text-muted-foreground">
-                          {prettyDistance(step.distance)}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <p className="text-[12.5px] text-muted-foreground">
-                  {leg ? unroutedLegCopy(leg) : "Béa has not measured this walk yet"}. Open in Maps
-                  for the full route, or save directions in the trip menu to see the steps here.
-                </p>
-              )}
-              <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
-                >
-                  <ExternalLink className="size-3.5" aria-hidden />
-                  Open in Maps
-                </a>
-                {/* Maps knows the metro: which line, which stop to get on and
-                    where to get off. A transit leg's own link already opens it. */}
-                {mode !== "transit" && (
+          <div className={open ? "mb-1.5 overflow-hidden rounded-2xl bg-elevated" : "hidden"}>
+            {open && (
+              <LegMiniMap
+                from={
+                  leg?.fromLat != null && leg.fromLon != null
+                    ? { lat: leg.fromLat, lon: leg.fromLon }
+                    : from.lat != null && from.lon != null
+                      ? { lat: from.lat, lon: from.lon }
+                      : null
+                }
+                to={
+                  leg?.toLat != null && leg.toLon != null
+                    ? { lat: leg.toLat, lon: leg.toLon }
+                    : to.lat != null && to.lon != null
+                      ? { lat: to.lat, lon: to.lon }
+                      : null
+                }
+                walking={walking}
+                transit={mode === "transit"}
+                fromNumber={fromNumber}
+              />
+            )}
+            {open && (
+              <div className="space-y-2 border-t border-border bg-card/60 px-3 py-2.5">
+                {steps.length > 0 ? (
+                  <ol className="space-y-1.5">
+                    {steps.map((step, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-[12.5px]">
+                        <StepArrow instruction={step.instruction} />
+                        <span className="min-w-0 flex-1 leading-snug">{step.instruction}</span>
+                        {step.distance > 0 && (
+                          <span className="shrink-0 text-[11.5px] text-muted-foreground">
+                            {prettyDistance(step.distance)}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-[12.5px] text-muted-foreground">
+                    {leg ? unroutedLegCopy(leg) : "Béa has not measured this walk yet"}. Open in
+                    Maps for the full route, or save directions in the trip menu to see the steps
+                    here.
+                  </p>
+                )}
+                <div className="flex flex-wrap items-center gap-3">
                   <a
-                    href={mapsDirUrl(from, to, area, "transit")}
+                    href={href}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
                   >
                     <ExternalLink className="size-3.5" aria-hidden />
-                    Public transport in Maps
+                    Open in Maps
                   </a>
-                )}
-                {onAddBetween && (
-                  <button
-                    type="button"
-                    onClick={onAddBetween}
-                    className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary"
-                  >
-                    <Plus className="size-3.5" aria-hidden />
-                    Add a stop between
-                  </button>
-                )}
+                  {/* Maps knows the metro: which line, which stop to get on and
+                    where to get off. A transit leg's own link already opens it. */}
+                  {mode !== "transit" && (
+                    <a
+                      href={mapsDirUrl(from, to, area, "transit")}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary hover:underline"
+                    >
+                      <ExternalLink className="size-3.5" aria-hidden />
+                      Public transport in Maps
+                    </a>
+                  )}
+                  {onAddBetween && (
+                    <button
+                      type="button"
+                      onClick={onAddBetween}
+                      className="inline-flex items-center gap-1 text-[12.5px] font-bold text-primary"
+                    >
+                      <Plus className="size-3.5" aria-hidden />
+                      Add a stop between
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </li>

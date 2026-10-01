@@ -78,7 +78,8 @@ than the redesign gains.
   and inserts after the anchor. Further stops added from the same open sheet
   chain after the previous one.
 - **Customize** (`day/CustomizeTrip.tsx`, `useTripViewPrefs`): live journey,
-  ribbon and walk times, on by default, saved per device.
+  ribbon and walk times, saved per device. Live journey and walk times are on
+  by default; the ribbon is off, since Now already lists the day twice.
 - Stay length shows on the Day cards and the Map tab's cards.
 
 ## Still to build from the prototype

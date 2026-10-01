@@ -189,9 +189,7 @@ export function NowPanel({
       href={mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)}
       target="_blank"
       rel="noreferrer"
-      className={`inline-flex min-h-10 items-center gap-1 rounded-full px-4 text-[14px] font-semibold shadow-2xs transition-all active:scale-95 ${
-        phase === "at" ? "bg-primary text-primary-foreground" : "border border-border bg-card"
-      }`}
+      className="inline-flex min-h-10 items-center gap-1 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs transition-all active:scale-95"
     >
       Navigate
       <ChevronRight className="size-4" aria-hidden />
@@ -295,16 +293,6 @@ export function NowPanel({
                 </span>
               )}
             </p>
-            {current.planned_stay_minutes ? (
-              <p className="tile-fill-4 shrink-0 rounded-xl border border-border/60 px-2.5 py-1 text-right leading-tight">
-                <span className="block text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Planned stay
-                </span>
-                <span className="block text-[15px] font-semibold">
-                  {stayLabel(current.planned_stay_minutes)}
-                </span>
-              </p>
-            ) : null}
           </div>
           <div className="flex items-start gap-3">
             <StopArt item={current} className="aspect-square w-[38%] max-w-[160px] rounded-2xl" />
@@ -318,13 +306,16 @@ export function NowPanel({
                   <span className="min-w-0">{current.address}</span>
                 </p>
               )}
+              {current.planned_stay_minutes ? (
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  Planned stay {stayLabel(current.planned_stay_minutes)}
+                </p>
+              ) : null}
               <StayLine stop={current} now={now} />
             </div>
           </div>
           <BookingAtHandCard stop={current} docs={bookingDocs} />
           {says && <BeaSays line={says} />}
-          {/* When to set off belongs where you are standing, not on the next card. */}
-          {leavePanel}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -365,6 +356,21 @@ export function NowPanel({
       )}
 
       {next && (
+        <JourneyStep leg={measured(leg) ? leg : null}>
+          {leavePanel}
+          {live.loading && (
+            <p className="py-1 text-[12.5px] text-muted-foreground">Working out the journey…</p>
+          )}
+          {offMap && (
+            <p className="py-1 text-[12.5px] text-muted-foreground">
+              {offMap.title} isn't on the map yet, so there's no time to leave by. Add its address
+              in the Timeline.
+            </p>
+          )}
+        </JourneyStep>
+      )}
+
+      {next && (
         <section className="plain-card space-y-3 p-3.5" aria-labelledby="now-next">
           <div className="flex items-start gap-3">
             <StopArt item={next} className="h-[84px] w-[104px] rounded-xl" />
@@ -390,7 +396,6 @@ export function NowPanel({
                 </p>
               )}
             </div>
-            {phase === "at" && measured(leg) && <LegPill leg={leg} />}
           </div>
           <BookingAtHandCard stop={next} docs={bookingDocs} />
           <PlaceFacts
@@ -401,16 +406,6 @@ export function NowPanel({
             time={next.time_label}
             auto
           />
-          {phase !== "at" && leavePanel}
-          {live.loading && (
-            <p className="text-[12.5px] text-muted-foreground">Working out the journey…</p>
-          )}
-          {offMap && (
-            <p className="text-[12.5px] text-muted-foreground">
-              {offMap.title} isn't on the map yet, so there's no time to leave by. Add its address
-              in the Timeline.
-            </p>
-          )}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
@@ -443,30 +438,6 @@ export function NowPanel({
       )}
 
       {progress}
-
-      {onEase && easeTarget && (
-        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-3.5">
-          <p id="now-ease" className="text-[13.5px] font-semibold">
-            Make {easeLabel} easier
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {EASE_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => onEase(preset, easeTarget, easeLabel)}
-                className="min-h-9 rounded-full border border-border bg-card px-3 text-[13px] font-medium"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[12px] text-muted-foreground">
-            Béa rearranges that day only, keeps every booking where it is, and shows you the change
-            before anything is saved.
-          </p>
-        </section>
-      )}
 
       {later.length > 0 && (
         <section aria-labelledby="now-later">
@@ -529,6 +500,30 @@ export function NowPanel({
         </section>
       )}
 
+      {onEase && easeTarget && (
+        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-3.5">
+          <p id="now-ease" className="text-[13.5px] font-semibold">
+            Make {easeLabel} easier
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {EASE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => onEase(preset, easeTarget, easeLabel)}
+                className="min-h-9 rounded-full border border-border bg-card px-3 text-[13px] font-medium"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[12px] text-muted-foreground">
+            Béa rearranges that day only, keeps every booking where it is, and shows you the change
+            before anything is saved.
+          </p>
+        </section>
+      )}
+
       {error && (
         <p role="alert" className="text-[13px] font-semibold text-destructive">
           {error}
@@ -579,17 +574,28 @@ function BookingAtHandCard({
   );
 }
 
-/** The walk or drive to the next stop, as a small pill. */
-function LegPill({ leg }: { leg: RouteLeg }) {
-  const words = legWords(leg);
+/**
+ * The journey to the next stop, drawn as a step between the two cards rather
+ * than a card of its own: the mode's mark on a dashed line, and when to leave
+ * beside it. Where you are, how you get there, where you are going.
+ */
+function JourneyStep({ leg, children }: { leg: RouteLeg | null; children: ReactNode }) {
+  const words = leg ? legWords(leg) : null;
   return (
-    <p className="tile-fill-2 flex shrink-0 items-center gap-1.5 rounded-xl border border-border/60 px-2.5 py-1.5 leading-tight">
-      <LegIcon walking={words.walking} mode={words.mode} className="size-5" />
-      <span>
-        <span className="block text-[14px] font-bold">{words.time}</span>
-        <span className="block text-[11.5px] text-muted-foreground">{words.distance}</span>
-      </span>
-    </p>
+    <div className="flex items-stretch gap-2.5" aria-label="Getting there" role="group">
+      <div className="flex w-10 shrink-0 flex-col items-center" aria-hidden>
+        <span className="w-0 flex-1 border-l-2 border-dashed border-primary/35" />
+        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-primary/30 bg-card text-primary">
+          {words ? (
+            <LegIcon walking={words.walking} mode={words.mode} className="size-4" />
+          ) : (
+            <Clock className="size-4" />
+          )}
+        </span>
+        <span className="w-0 flex-1 border-l-2 border-dashed border-primary/35" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1 py-1.5">{children}</div>
+    </div>
   );
 }
 
@@ -656,7 +662,6 @@ function LeavePanel({
       {big && words ? <span aria-hidden className="h-9 w-px shrink-0 bg-border" /> : null}
       {words ? (
         <span className="flex min-w-0 flex-1 items-center gap-2">
-          <LegIcon walking={words.walking} mode={words.mode} className="size-6 shrink-0" />
           <span className="leading-tight">
             <span className="block text-[14px]">
               {words.time} {words.how}
