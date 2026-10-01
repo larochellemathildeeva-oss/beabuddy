@@ -6,6 +6,7 @@ import { allowCall } from "@/lib/call-limit";
 import {
   DOCUMENT_READS_PER_HOUR,
   cleanDocumentRead,
+  cleanPastedText,
   documentReadPrompt,
   isEmptyRead,
   type DocumentRead,
@@ -32,7 +33,7 @@ const reads = new Map<string, number[]>();
 
 export async function readDocument(
   userId: string,
-  file: { pdfDataUrl: string | null; imageDataUrl: string | null },
+  file: { pdfDataUrl: string | null; imageDataUrl: string | null; text?: string | null },
   today: string,
 ): Promise<DocumentRead> {
   if (!allowCall(reads, userId, Date.now(), DOCUMENT_READS_PER_HOUR, 60 * 60_000)) {
@@ -40,9 +41,18 @@ export async function readDocument(
       "Béa has read a lot of files this hour. Fill this one in by hand, or try later.",
     );
   }
-  const part = file.pdfDataUrl
-    ? pdfPartFromDataUrl(file.pdfDataUrl)
-    : filePartsFromDataUrls([file.imageDataUrl ?? ""])[0]!;
+  const pasted = file.text ? cleanPastedText(file.text) : "";
+  if (file.text && !pasted) {
+    throw new Error("Béa couldn't find booking details in that text. Fill it in by hand.");
+  }
+  const part = pasted
+    ? {
+        type: "text" as const,
+        text: `The traveller pasted this text from the confirmation:\n<<<\n${pasted}\n>>>`,
+      }
+    : file.pdfDataUrl
+      ? pdfPartFromDataUrl(file.pdfDataUrl)
+      : filePartsFromDataUrls([file.imageDataUrl ?? ""])[0]!;
   try {
     const result = await withModelFallback((model) =>
       generateText({
@@ -60,12 +70,18 @@ export async function readDocument(
     );
     const read = cleanDocumentRead(result.output);
     if (isEmptyRead(read)) {
-      throw new Error("Béa couldn't find booking details in that file. Fill it in by hand.");
+      throw new Error(
+        `Béa couldn't find booking details in that ${pasted ? "text" : "file"}. Fill it in by hand.`,
+      );
     }
     return read;
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
-      throw new Error("Béa couldn't read that file. Fill it in by hand, or try a clearer photo.");
+      throw new Error(
+        pasted
+          ? "Béa couldn't read that text. Fill it in by hand."
+          : "Béa couldn't read that file. Fill it in by hand, or try a clearer photo.",
+      );
     }
     if (error instanceof Error && error.message.startsWith("Béa couldn't")) throw error;
     throw aiFailure(error);

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { AI_IMAGE_MAX_CHARS } from "@/lib/image";
 import { MAX_PDF_DATA_URL_LENGTH } from "@/lib/itinerary-pdf";
-import type { DocumentRead } from "@/lib/document-read";
+import { PASTED_TEXT_MAX, type DocumentRead } from "@/lib/document-read";
 
 const ReadInput = z
   .object({
@@ -13,13 +13,15 @@ const ReadInput = z
       .max(MAX_PDF_DATA_URL_LENGTH)
       .nullable(),
     imageDataUrl: z.string().startsWith("data:image/").max(AI_IMAGE_MAX_CHARS).nullable(),
+    /** Text pasted from a confirmation email or message, already cleaned in the browser. */
+    text: z.string().trim().min(1).max(PASTED_TEXT_MAX).nullable().default(null),
     today: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   })
-  .refine((v) => Boolean(v.pdfDataUrl) !== Boolean(v.imageDataUrl), {
-    message: "Send one PDF or one photo.",
+  .refine((v) => [v.pdfDataUrl, v.imageDataUrl, v.text].filter(Boolean).length === 1, {
+    message: "Send one PDF, one photo or some text.",
   });
 
-/** "Fill in from this file": the fields read off a confirmation or ticket. Saves nothing. */
+/** "Fill in from this file" (or pasted text): the fields read off a confirmation or ticket. Saves nothing. */
 export const readDocumentFile = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReadInput.parse(input))

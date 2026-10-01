@@ -393,6 +393,10 @@ e-ticket numbers stay) dropped, and its date used to pick the trip
 (`tripForDate`) and stop (`stopForRead`) only when the choice is clear. It
 fills the form, marks each field "from file" until it is edited, and saves
 nothing. Other file types (.pkpass, .eml, .docx) do not offer it.
+"Paste text" in Add document opens the same form with a box for a
+confirmation email's or message's text; **"Fill in from this text"** sends it
+through the same reader, cleaned first by `cleanPastedText` (card numbers
+dropped, capped at `PASTED_TEXT_MAX`). The pasted text is not saved.
 
 ## Protected passcodes
 

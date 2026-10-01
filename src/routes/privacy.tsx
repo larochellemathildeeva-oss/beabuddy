@@ -201,9 +201,11 @@ function PrivacyPage() {
           <p>
             In Trip documents, when you choose &ldquo;Fill in from this file&rdquo; on a
             confirmation or ticket you are adding, that file is sent to Gemini to read its booking
-            details. It is sent only when you choose it, and what comes back is shown for you to
-            check; nothing is saved until you do. Béa asks Gemini not to copy card, passport or ID
-            numbers, and drops anything that looks like a card number.
+            details; with &ldquo;Paste text&rdquo;, &ldquo;Fill in from this text&rdquo; sends the
+            text you pasted instead, and the text itself is not kept. It is sent only when you
+            choose it, and what comes back is shown for you to check; nothing is saved until you do.
+            Béa asks Gemini not to copy card, passport or ID numbers, and drops anything that looks
+            like a card number.
           </p>
           <p>
             This content is used only to generate your result; it is not sold and not used for

@@ -4,6 +4,7 @@ import {
   Camera,
   CheckCircle2,
   ChevronRight,
+  ClipboardList,
   FilePdf,
   FileText,
   FolderOpen,
@@ -15,7 +16,6 @@ import {
   Sparkles,
   Trash2,
   Unlink,
-  Upload,
 } from "@/components/icons";
 import { Switch } from "@/components/ui/switch";
 import { BookingFields } from "@/components/documents/BookingDetail";
@@ -28,7 +28,14 @@ import {
 } from "@/components/documents/DocumentParts";
 import { useTripEvents, type EventOption } from "@/hooks/useTripDocuments";
 import { aiFailure } from "@/lib/ai-errors";
-import { readableAs, stopForRead, tripForDate, type DocumentRead } from "@/lib/document-read";
+import {
+  PASTED_TEXT_MAX,
+  cleanPastedText,
+  readableAs,
+  stopForRead,
+  tripForDate,
+  type DocumentRead,
+} from "@/lib/document-read";
 import { readDocumentFile } from "@/lib/document-read.functions";
 import { downscaleImage } from "@/lib/image";
 import { MAX_PDF_BYTES, pdfProblem, type PdfProblem } from "@/lib/itinerary-pdf";
@@ -88,20 +95,23 @@ function OptionRow({
 }
 
 /**
- * Upload a file, take a photo, import from the device — or enter the booking
- * without a file. Forwarding by email is a separate project and not offered.
+ * Paste a confirmation's text, take a photo, import a file from the device —
+ * or enter the booking without a file. Forwarding by email is a separate
+ * project and not offered.
  */
 export function AddDocumentSheet({
   open,
   onClose,
   onPick,
+  onPaste,
 }: {
   open: boolean;
   onClose: () => void;
   /** A chosen file, or null for "Enter details only". */
   onPick: (file: File | null) => void;
+  /** "Paste text": the form, with a box for the confirmation's text. */
+  onPaste: () => void;
 }) {
-  const upload = useRef<HTMLInputElement>(null);
   const camera = useRef<HTMLInputElement>(null);
   const device = useRef<HTMLInputElement>(null);
   const take = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,11 +123,11 @@ export function AddDocumentSheet({
     <Sheet open={open} onClose={onClose} title="Add document" width="sm">
       <div className="plain-card divide-y divide-border overflow-hidden">
         <OptionRow
-          icon={<Upload className="size-5" aria-hidden />}
-          title="Upload file"
-          subtitle="PDF or image"
+          icon={<ClipboardList className="size-5" aria-hidden />}
+          title="Paste text"
+          subtitle="From a confirmation email or message"
           fill="tile-fill-2"
-          onClick={() => upload.current?.click()}
+          onClick={onPaste}
         />
         <OptionRow
           icon={<Camera className="size-5" aria-hidden />}
@@ -145,13 +155,6 @@ export function AddDocumentSheet({
         For bookings, confirmations and tickets. Passports, payment cards and passwords belong in
         Protected.
       </p>
-      <input
-        ref={upload}
-        type="file"
-        accept="application/pdf,image/*"
-        className="hidden"
-        onChange={take}
-      />
       <input
         ref={camera}
         type="file"
@@ -285,12 +288,12 @@ export type AssignDraft = {
 /** Which fields "Fill in from this file" set, so each can say so until it is edited. */
 type FilledField = "title" | "kind" | "lines" | "reference" | "trip" | "event" | "notes";
 
-function FromFile({ show }: { show: boolean }) {
+function FromFile({ show, text = false }: { show: boolean; text?: boolean }) {
   if (!show) return null;
   return (
     <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-primary">
       <Sparkles className="size-3" aria-hidden />
-      from file
+      {text ? "from text" : "from file"}
     </span>
   );
 }
@@ -367,6 +370,7 @@ export function AssignSheet({
   onClose,
   isNew,
   file,
+  pasted = false,
   doc,
   initial,
   trips,
@@ -376,6 +380,8 @@ export function AssignSheet({
   onClose: () => void;
   isNew: boolean;
   file?: File | null;
+  /** Added with "Paste text": a box for the confirmation's text, read on request. */
+  pasted?: boolean;
   /** The existing document, when reassigning. */
   doc?: TripDocument | null;
   initial: AssignDraft;
@@ -390,6 +396,8 @@ export function AssignSheet({
   const [error, setError] = useState("");
   const { events, loading, loadedFor } = useTripEvents(open ? draft.trip_id : null);
   const readAs = isNew && file ? readableAs(file) : null;
+  const [text, setText] = useState("");
+  const pasteMode = isNew && pasted && !file;
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState("");
   const [filled, setFilled] = useState<ReadonlySet<FilledField>>(new Set());
@@ -401,6 +409,8 @@ export function AssignSheet({
   const touched = useRef(new Set<FilledField>());
   /** The draft as last rendered, for a read that finishes long after it began. */
   const latest = useRef(draft);
+  /** Bumped on each edit of the pasted text, so a read of older text is dropped. */
+  const textRev = useRef(0);
   latest.current = draft;
 
   useEffect(() => {
@@ -412,6 +422,7 @@ export function AssignSheet({
       setFilled(new Set());
       setStopFor(null);
       setReading(false);
+      setText("");
     }
     session.current++;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -429,17 +440,30 @@ export function AssignSheet({
   };
 
   const readFile = async () => {
-    if (!file || !readAs || reading) return;
+    if (reading) return;
+    const clean = pasteMode ? cleanPastedText(text) : "";
+    if (pasteMode && !clean) {
+      setReadError("Paste the confirmation's text first.");
+      return;
+    }
+    if (!pasteMode && (!file || !readAs)) return;
     const mine = session.current;
+    const rev = textRev.current;
     touched.current = new Set();
     setReading(true);
     setReadError("");
     try {
-      const sent = await fileForReading(file, readAs);
+      const sent = pasteMode
+        ? { pdfDataUrl: null, imageDataUrl: null, text: clean }
+        : await fileForReading(file!, readAs!);
       const read = await readDocumentFile({
         data: { ...sent, today: toLocalISODate(new Date()) },
       });
       if (mine !== session.current) return;
+      if (rev !== textRev.current) {
+        setReadError("The text changed while Béa was reading it. Tap Fill in again.");
+        return;
+      }
       const skip = touched.current;
       const set = new Set<FilledField>();
       // Applied to the draft as it is now, not as it was when the read began.
@@ -574,25 +598,46 @@ export function AssignSheet({
                 {l}
               </p>
             ))}
-            {isNew && file && (
+            {isNew && (file || pasteMode) && (
               <p className="truncate text-[12px] text-muted-foreground">
-                {file.name}
-                <FromFile show={filled.has("title")} />
+                {file ? file.name : "Pasted text"}
+                <FromFile show={filled.has("title")} text={pasteMode} />
               </p>
             )}
           </div>
         </div>
 
-        {readAs && (
+        {(readAs || pasteMode) && (
           <div className="plain-card space-y-2 p-3">
+            {pasteMode && (
+              <textarea
+                value={text}
+                onChange={(e) => {
+                  textRev.current++;
+                  setText(e.target.value);
+                }}
+                maxLength={PASTED_TEXT_MAX}
+                rows={6}
+                autoFocus
+                placeholder="Paste the confirmation email or message here"
+                aria-label="Confirmation text"
+                className="w-full resize-y rounded-xl border border-border bg-card px-3 py-2 text-[14px]"
+              />
+            )}
             <button
               type="button"
-              disabled={reading}
+              disabled={reading || (pasteMode && !text.trim())}
               onClick={() => void readFile()}
               className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-4 text-[14.5px] font-semibold text-primary disabled:opacity-60"
             >
               <Sparkles className="size-4" aria-hidden />
-              {reading ? "Reading…" : filled.size ? "Read it again" : "Fill in from this file"}
+              {reading
+                ? "Reading…"
+                : filled.size
+                  ? "Read it again"
+                  : pasteMode
+                    ? "Fill in from this text"
+                    : "Fill in from this file"}
             </button>
             {readError ? (
               <p role="alert" className="text-[12.5px] font-semibold text-destructive">
@@ -600,7 +645,12 @@ export function AssignSheet({
               </p>
             ) : filled.size ? (
               <p className="text-[12.5px] text-muted-foreground">
-                Filled in from the file. Check it before you press Done.
+                Filled in from the {pasteMode ? "text" : "file"}. Check it before you press Done.
+              </p>
+            ) : pasteMode ? (
+              <p className="text-[12.5px] text-muted-foreground">
+                Béa sends this text to Google Gemini to read it, without anything that looks like a
+                card number. The text itself is not kept, and nothing is saved until you press Done.
               </p>
             ) : (
               <p className="text-[12.5px] text-muted-foreground">
@@ -615,7 +665,7 @@ export function AssignSheet({
           <div>
             <p className="mb-1.5 text-[13px] font-semibold text-muted-foreground">
               Type
-              <FromFile show={filled.has("kind")} />
+              <FromFile show={filled.has("kind")} text={pasteMode} />
             </p>
             <KindChips
               value={draft.kind}
@@ -632,7 +682,7 @@ export function AssignSheet({
             <label className="block space-y-1">
               <span className="text-[13px] font-semibold text-muted-foreground">
                 Short lines (optional)
-                <FromFile show={filled.has("lines")} />
+                <FromFile show={filled.has("lines")} text={pasteMode} />
               </span>
               <input
                 value={draft.lines?.[0] ?? ""}
@@ -659,7 +709,7 @@ export function AssignSheet({
             <label className="block space-y-1">
               <span className="text-[13px] font-semibold text-muted-foreground">
                 Booking reference (optional)
-                <FromFile show={filled.has("reference")} />
+                <FromFile show={filled.has("reference")} text={pasteMode} />
               </span>
               <input
                 value={draft.reference ?? ""}
@@ -679,7 +729,7 @@ export function AssignSheet({
         <div>
           <p className="mb-1.5 text-[15px] font-semibold">
             Assign to trip
-            <FromFile show={filled.has("trip")} />
+            <FromFile show={filled.has("trip")} text={pasteMode} />
           </p>
           <div className="plain-card overflow-hidden">
             <LinkRow
@@ -719,7 +769,7 @@ export function AssignSheet({
           <div>
             <p className="mb-1.5 text-[15px] font-semibold">
               Select event
-              <FromFile show={filled.has("event")} />
+              <FromFile show={filled.has("event")} text={pasteMode} />
             </p>
             <div className="plain-card overflow-hidden">
               <LinkRow
@@ -735,7 +785,7 @@ export function AssignSheet({
         <label className="block">
           <span className="mb-1.5 block text-[15px] font-semibold">
             Add notes (optional)
-            <FromFile show={filled.has("notes")} />
+            <FromFile show={filled.has("notes")} text={pasteMode} />
           </span>
           <textarea
             value={draft.notes}
