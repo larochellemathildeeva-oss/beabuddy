@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { preferenceGroups } from "@/data/atlas";
 import { supabase } from "@/integrations/supabase/client";
+import { TRAVEL_BUDGETS, TRAVEL_STYLES, TRIP_PACES } from "@/lib/travel-style-options";
 import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/preferences")({
@@ -27,24 +28,9 @@ export const Route = createFileRoute("/preferences")({
   component: PreferencesPage,
 });
 
-const styles = [
-  { value: "Comfort seeker", hint: "Nice bed, easy days, no roughing it." },
-  { value: "Explorer", hint: "Out early, wander far, see everything." },
-  { value: "Culture first", hint: "Museums, history, architecture, local life." },
-  { value: "Food led", hint: "The trip is planned around meals." },
-  { value: "Outdoors", hint: "Trails, water, mountains, fresh air." },
-  { value: "Family friendly", hint: "Kid-proof pacing and places." },
-  { value: "Romantic", hint: "Quiet corners and long dinners." },
-  { value: "Work & wander", hint: "Wifi, cafés, a few good breaks." },
-];
+const styles = TRAVEL_STYLES;
 
-const budgets = [
-  { value: "Shoestring", hint: "Hostels, street food, buses." },
-  { value: "Value", hint: "Simple hotels, good cheap eats." },
-  { value: "Comfortable", hint: "Solid 3–4 star, a few treats." },
-  { value: "Premium", hint: "Lovely hotels, tasting menus." },
-  { value: "No limit", hint: "Pick the best, always." },
-];
+const budgets = TRAVEL_BUDGETS;
 
 /** Budget nuances kept as interest tags, shown under Budget rather than in Interests. */
 const splurges = ["Splurge on food", "Splurge on stays"];
@@ -58,11 +44,7 @@ const TAGS_MAX = 40;
 
 const NOTE_SAVE_DELAY_MS = 800;
 
-const paces = [
-  { value: "Slow", hint: "One or two things a day." },
-  { value: "Balanced", hint: "A highlight plus room to breathe." },
-  { value: "Full", hint: "Pack the day, rest at home." },
-];
+const paces = TRIP_PACES;
 
 const currencies = ["CAD", "USD", "EUR", "GBP", "AUD", "CHF", "JPY", "MXN"];
 

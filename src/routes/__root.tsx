@@ -13,6 +13,7 @@ import { reportError } from "@/lib/report";
 
 import appCss from "../styles.css?url";
 import { Tour, useTourControl } from "../components/Tour";
+import { Welcome } from "../components/Welcome";
 import {
   DEFAULT_THEME,
   readTheme,
@@ -156,7 +157,7 @@ function useServiceWorker() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const { open, setOpen, intent } = useTourControl();
+  const { open, setOpen, intent, startMode } = useTourControl();
   // Stable close handler — a new inline fn every render restarted the tour's
   // "Finding that bit…" wait forever (effect cleanup cancelled every poll).
   const closeTour = useCallback(() => setOpen(false), [setOpen]);
@@ -170,7 +171,8 @@ function RootComponent() {
       <BeaProvider>
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
-        <Tour open={open} onClose={closeTour} intent={intent} />
+        <Tour open={open} onClose={closeTour} intent={intent} startMode={startMode} />
+        <Welcome />
       </BeaProvider>
     </QueryClientProvider>
   );

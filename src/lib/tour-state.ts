@@ -12,7 +12,7 @@
  * mark (nothing does, now — it is only ever set), and replay never touches it.
  */
 
-import type { TourMode } from "./tour.ts";
+import { isTourMode, type TourMode } from "./tour.ts";
 
 /** Set once the traveller has finished or dismissed the walk. */
 export const TOUR_SEEN_KEY = "bea-tour-seen";
@@ -23,8 +23,9 @@ export const TOUR_SEEN_KEY = "bea-tour-seen";
  * number means. Rename the key (bump the suffix) whenever the steps are
  * reordered: an old saved walk then starts again from the top rather than
  * landing on another step. v2: planning moved up to step 2 of the quick walk.
+ * v3: the Deep Dive became one walk per goal.
  */
-export const TOUR_PROGRESS_KEY = "bea-tour-progress-v2";
+export const TOUR_PROGRESS_KEY = "bea-tour-progress-v3";
 
 export type TourProgress = { mode: TourMode; step: number };
 
@@ -50,7 +51,7 @@ export function readTourProgress(storage: TourStorage): TourProgress | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<TourProgress>;
-    if (parsed.mode !== "quick" && parsed.mode !== "deep") return null;
+    if (!isTourMode(parsed.mode)) return null;
     if (typeof parsed.step !== "number" || !Number.isInteger(parsed.step) || parsed.step < 0) {
       return null;
     }

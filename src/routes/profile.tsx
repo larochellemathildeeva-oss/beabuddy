@@ -825,9 +825,9 @@ function TourRow({ onReplay }: { onReplay: () => void }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-elevated p-3">
       <div>
-        <p className="text-[14.5px] font-medium">Take the tour again</p>
+        <p className="text-[14.5px] font-medium">Show me around</p>
         <p className="text-[12.5px] text-muted-foreground">
-          Replay the story walk, or the Deep Dive on what makes Béa different.
+          A step-by-step walk for planning, importing, saving places, the trip itself, or your map.
         </p>
       </div>
       <button
@@ -835,7 +835,7 @@ function TourRow({ onReplay }: { onReplay: () => void }) {
         onClick={onReplay}
         className="shrink-0 rounded-full border border-border bg-card px-3.5 py-2 text-[14.5px] font-semibold"
       >
-        Replay
+        Start
       </button>
     </div>
   );

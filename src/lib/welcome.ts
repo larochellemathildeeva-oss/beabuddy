@@ -1,0 +1,88 @@
+/**
+ * The welcome a new account sees once, right after signing up: what Béa does,
+ * what the traveller came for, how they travel, and a look — then straight to
+ * their first step. Pure, so the rules about who sees it are tested.
+ */
+import type { TourStorage } from "./tour-state.ts";
+import type { WalkId } from "./tour.ts";
+
+export const WELCOME_DONE_KEY = "bea-welcome-done";
+
+/** Accounts older than this never see it: it is a welcome, not news. */
+export const WELCOME_WINDOW_MS = 14 * 86_400_000;
+
+/** Pages where a welcome would sit on top of something more urgent. */
+const QUIET_PATHS = [
+  "/auth",
+  "/forgot-password",
+  "/reset-password",
+  "/shared/",
+  "/privacy",
+  "/terms",
+];
+
+export type WelcomeGoal = {
+  id: WalkId;
+  title: string;
+  hint: string;
+  /** Where the last screen sends them. */
+  to: string;
+  go: string;
+};
+
+export const WELCOME_GOALS: WelcomeGoal[] = [
+  {
+    id: "plan",
+    title: "Plan a trip",
+    hint: "Béa drafts the days from what you love.",
+    to: "/trips/plan",
+    go: "Start planning",
+  },
+  {
+    id: "import",
+    title: "I already have a plan",
+    hint: "From a friend, an email, a PDF or another assistant.",
+    to: "/trips/plan",
+    go: "Bring it in",
+  },
+  {
+    id: "save",
+    title: "Save places for later",
+    hint: "Every tip a friend gave you, in one place.",
+    to: "/recommendations",
+    go: "Save my first place",
+  },
+  {
+    id: "map",
+    title: "Map where I've been",
+    hint: "Countries, cities and photos on one globe.",
+    to: "/world",
+    go: "Open my globe",
+  },
+];
+
+function doneKey(userId: string): string {
+  return `${WELCOME_DONE_KEY}:${userId}`;
+}
+
+export function shouldShowWelcome(
+  storage: TourStorage,
+  context: {
+    userId: string | null | undefined;
+    createdAt: string | null | undefined;
+    path: string;
+    now: number;
+  },
+): boolean {
+  if (!context.userId || !context.createdAt) return false;
+  if (QUIET_PATHS.some((p) => context.path === p || context.path.startsWith(p))) return false;
+  if (storage.getItem(doneKey(context.userId)) === "yes") return false;
+  const created = Date.parse(context.createdAt);
+  if (!Number.isFinite(created)) return false;
+  return context.now - created <= WELCOME_WINDOW_MS;
+}
+
+/** Finishing and closing are the same: it never asks again on this device. */
+export function markWelcomeDone(storage: TourStorage, userId: string): void {
+  storage.setItem(doneKey(userId), "yes");
+}

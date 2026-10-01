@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import { DEEP_BODY_MAX, QUICK_BODY_MAX, wordCount } from "./tour-copy.ts";
-import { DEEP_STEPS, QUICK_STEPS, routeNeedsAuth, tourSteps } from "./tour.ts";
+import { QUICK_STEPS, routeNeedsAuth, tourSteps, WALKS, isTourMode } from "./tour.ts";
+
+const WALK_STEPS = WALKS.flatMap((walk) => walk.steps);
 
 test("quick tour is a story walk around the block", () => {
   assert.equal(QUICK_STEPS.length, 7);
@@ -45,7 +47,7 @@ test("quick tour is a story walk around the block", () => {
 });
 
 test("no step names the old planner label", () => {
-  for (const s of [...QUICK_STEPS, ...DEEP_STEPS]) {
+  for (const s of [...QUICK_STEPS, ...WALK_STEPS]) {
     assert.ok(!/let béa plan/i.test(`${s.title} ${s.body}`), `${s.title} says Let Béa plan`);
   }
 });
@@ -64,7 +66,7 @@ const WORLD_VIEW_OF: Record<string, string> = {
 };
 
 test("World steps open the view their control lives on", () => {
-  for (const s of [...QUICK_STEPS, ...DEEP_STEPS]) {
+  for (const s of [...QUICK_STEPS, ...WALK_STEPS]) {
     if (s.to !== "/world") continue;
     const target = s.selector?.match(/data-guide='([a-z0-9-]+)'/)?.[1];
     if (!target || !(target in WORLD_VIEW_OF)) continue;
@@ -79,7 +81,7 @@ test("quick and deep bodies stay under the word caps", () => {
       `${s.title} is ${wordCount(s.body)} words (max ${QUICK_BODY_MAX})`,
     );
   }
-  for (const s of DEEP_STEPS) {
+  for (const s of WALK_STEPS) {
     assert.ok(
       wordCount(s.body) <= DEEP_BODY_MAX,
       `${s.title} is ${wordCount(s.body)} words (max ${DEEP_BODY_MAX})`,
@@ -87,44 +89,52 @@ test("quick and deep bodies stay under the word caps", () => {
   }
 });
 
-test("deep dive is six pillars of differentiation", () => {
-  assert.ok(DEEP_STEPS.length > QUICK_STEPS.length);
-  const blob = DEEP_STEPS.map((s) => `${s.title} ${s.body}`)
+test("each walk teaches one goal, in a few steps", () => {
+  const ids = WALKS.map((walk) => walk.id);
+  assert.deepEqual(ids, ["plan", "import", "save", "on-trip", "map"]);
+  for (const walk of WALKS) {
+    assert.ok(walk.title.trim() && walk.hint.trim(), `${walk.id} needs a title and a hint`);
+    assert.ok(
+      walk.steps.length >= 3 && walk.steps.length <= 6,
+      `${walk.id} has ${walk.steps.length} steps`,
+    );
+    assert.ok(isTourMode(walk.id));
+    // A walk that never leaves one screen teaches a page, not a goal.
+    assert.ok(
+      walk.steps.every((step) => step.to && step.selector),
+      `${walk.id} steps need a screen`,
+    );
+  }
+  // Planning comes first: it is what most travellers came for.
+  assert.equal(WALKS[0]?.id, "plan");
+  const blob = WALK_STEPS.map((s) => `${s.title} ${s.body}`)
     .join(" ")
     .toLowerCase();
   for (const needle of [
-    "pillar 1",
-    "pillar 2",
-    "pillar 3",
-    "pillar 4",
-    "pillar 5",
-    "pillar 6",
-    "future me",
-    "help me choose",
-    "assets",
-    "optimize",
     "plan with béa",
-    "day trip",
-    "playback",
-    "near",
+    "build my trip",
+    "import a plan",
+    "help me choose",
+    "offline",
+    "directions",
   ]) {
-    assert.ok(blob.includes(needle), `deep dive should mention ${needle}`);
+    assert.ok(blob.includes(needle), `the walks should mention ${needle}`);
   }
-  // Supporting utilities stay out of the differentiation walk
-  for (const avoid of ["receipt", "document vault", "packing list", "dark mode"]) {
-    assert.ok(!blob.includes(avoid), `deep dive should not dwell on ${avoid}`);
+  // Explaining Béa against other apps is the job of the story page, not a how-to.
+  for (const avoid of ["pillar", "competitor", "most apps"]) {
+    assert.ok(!blob.includes(avoid), `walks should not talk about ${avoid}`);
   }
 });
 
 test("tourSteps returns stable array references", () => {
   assert.equal(tourSteps("quick"), tourSteps("quick"));
-  assert.equal(tourSteps("deep"), tourSteps("deep"));
-  assert.notEqual(tourSteps("quick"), tourSteps("deep"));
+  assert.equal(tourSteps("plan"), tourSteps("plan"));
+  assert.notEqual(tourSteps("quick"), tourSteps("plan"));
 });
 
 test("tourSteps picks the walk and tags gated routes", () => {
   assert.equal(tourSteps("quick").length, QUICK_STEPS.length);
-  assert.equal(tourSteps("deep").length, DEEP_STEPS.length);
+  for (const walk of WALKS) assert.equal(tourSteps(walk.id).length, walk.steps.length);
   const world = tourSteps("quick").find((s) => s.to === "/world");
   assert.equal(world?.needsAuth, true);
   const home = tourSteps("quick").find((s) => s.to === "/" && s.selector);
@@ -144,7 +154,7 @@ test("tourSteps picks the walk and tags gated routes", () => {
  */
 test("steps on controls a fresh account lacks have a fallback", () => {
   const dataOnly = ["home-near", "compare-pins", "places-list", "future-me", "story-play"];
-  for (const s of [...QUICK_STEPS, ...DEEP_STEPS]) {
+  for (const s of [...QUICK_STEPS, ...WALK_STEPS]) {
     const target = s.selector?.match(/data-guide='([a-z0-9-]+)'/)?.[1];
     if (!target || !dataOnly.includes(target)) continue;
     assert.ok(s.fallback, `${s.title} points at ${target} with nothing to fall back on`);

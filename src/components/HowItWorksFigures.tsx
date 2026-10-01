@@ -1,3 +1,8 @@
+import { useMemo } from "react";
+import { geoGraticule10, geoOrthographic, geoPath } from "d3-geo";
+import { feature } from "topojson-client";
+import type { FeatureCollection, Geometry } from "geojson";
+import worldTopo from "world-atlas/countries-110m.json";
 import { Bed, Landmark, MapPin, Utensils } from "@/components/icons";
 import type { SceneFigure } from "@/lib/how-it-works";
 
@@ -181,27 +186,91 @@ function Compare() {
   );
 }
 
+/** Where the drawing's travels went: lon, lat. Also the countries it shades. */
+const MAP_TRIPS: { lon: number; lat: number; country: string }[] = [
+  { lon: -9.14, lat: 38.72, country: "Portugal" },
+  { lon: 2.35, lat: 48.86, country: "France" },
+  { lon: 12.5, lat: 41.9, country: "Italy" },
+  { lon: -3.7, lat: 40.42, country: "Spain" },
+  { lon: 13.4, lat: 52.52, country: "Germany" },
+  { lon: -0.13, lat: 51.51, country: "United Kingdom" },
+  { lon: -6.84, lat: 34.02, country: "Morocco" },
+];
+
+const mapWorld = (() => {
+  const topo = worldTopo as unknown as Parameters<typeof feature>[0];
+  return feature(topo, topo.objects["countries"]!) as unknown as FeatureCollection<
+    Geometry,
+    { name?: string }
+  >;
+})();
+
+/** A still globe in the app's own palette, filled in by six years of trips. */
 function MapFills() {
-  const pins = [
-    { x: 22, y: 34 },
-    { x: 34, y: 52 },
-    { x: 48, y: 28 },
-    { x: 58, y: 46 },
-    { x: 66, y: 62 },
-    { x: 78, y: 38 },
-  ];
+  const drawn = useMemo(() => {
+    const projection = geoOrthographic().scale(62).translate([100, 70]).rotate([-4, -38]);
+    const path = geoPath(projection);
+    const been = new Set(MAP_TRIPS.map((t) => t.country));
+    return {
+      sphere: path({ type: "Sphere" }) ?? "",
+      grid: path(geoGraticule10()) ?? "",
+      land: mapWorld.features.map((f, i) => ({
+        key: String(f.id ?? i),
+        d: path(f) ?? "",
+        been: been.has(f.properties?.name ?? ""),
+      })),
+      dots: MAP_TRIPS.map((t) => projection([t.lon, t.lat])).filter((p): p is [number, number] =>
+        Boolean(p),
+      ),
+    };
+  }, []);
+
   return (
     <div className="relative h-[168px] w-full overflow-hidden rounded-2xl bg-elevated">
-      <svg viewBox="0 0 100 60" className="size-full" aria-hidden>
-        <ellipse cx="50" cy="30" rx="46" ry="26" className="fill-card" />
-        {pins.map((pin, i) => (
+      <svg viewBox="0 0 200 160" className="size-full" aria-hidden>
+        <defs>
+          <radialGradient id="how-map-sea" cx="38%" cy="32%" r="75%">
+            <stop
+              offset="0%"
+              style={{ stopColor: "color-mix(in oklab, var(--visited) 8%, var(--card))" }}
+            />
+            <stop
+              offset="100%"
+              style={{ stopColor: "color-mix(in oklab, var(--visited) 30%, var(--card))" }}
+            />
+          </radialGradient>
+          <radialGradient id="how-map-shade" cx="40%" cy="35%" r="68%">
+            <stop offset="60%" stopColor="#000" stopOpacity={0} />
+            <stop offset="100%" stopColor="#000" stopOpacity={0.16} />
+          </radialGradient>
+        </defs>
+        <path d={drawn.sphere} fill="url(#how-map-sea)" />
+        <path d={drawn.grid} fill="none" stroke="var(--visited)" strokeWidth={0.3} opacity={0.14} />
+        {drawn.land.map((c) =>
+          c.d ? (
+            <path
+              key={c.key}
+              d={c.d}
+              style={{
+                fill: c.been
+                  ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
+                  : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
+              }}
+              stroke="var(--card)"
+              strokeWidth={0.35}
+            />
+          ) : null,
+        )}
+        <path d={drawn.sphere} fill="url(#how-map-shade)" />
+        {drawn.dots.map(([x, y], i) => (
           <circle
             key={i}
-            cx={pin.x}
-            cy={pin.y * 0.6}
-            r={1.6}
-            className="fill-primary"
-            opacity={0.45 + i * 0.09}
+            cx={x}
+            cy={y}
+            r={2.1}
+            fill="var(--visited)"
+            stroke="var(--card)"
+            strokeWidth={0.8}
           />
         ))}
       </svg>

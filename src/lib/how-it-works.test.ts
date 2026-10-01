@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { HOW_CLOSING, HOW_SCENES } from "./how-it-works.ts";
-import { BEA_MISSION, BEA_SIGNATURE } from "./bea-voice.ts";
+import { BEA_HELPS, BEA_MISSION, BEA_SIGNATURE } from "./bea-voice.ts";
 
 describe("HOW_SCENES", () => {
   it("tells the whole arc", () => {
@@ -48,6 +48,7 @@ describe("HOW_SCENES", () => {
   });
 
   it("closes on the mission and the strongest tagline", () => {
+    assert.equal(HOW_CLOSING.helps, BEA_HELPS);
     assert.equal(HOW_CLOSING.mission, BEA_MISSION);
     assert.equal(HOW_CLOSING.tagline, "Remember everywhere. Go anywhere.");
   });
