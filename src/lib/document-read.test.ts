@@ -209,6 +209,15 @@ test("pasted text is tidied, capped and loses card numbers before it is sent", (
   assert.match(clean, /Booking ABC123/);
   assert.ok(!clean.includes("\r") && !clean.includes("\u0007"));
   assert.doesNotMatch(clean, /\n{3}/);
+  for (const card of [
+    "4111.1111.1111.1111",
+    "4111\u00a01111\u00a01111\u00a01111",
+    "4111\u202f1111\u202f1111\u202f1111",
+    "4111\u20131111\u20131111\u20131111",
+  ]) {
+    assert.doesNotMatch(cleanPastedText(`Paid with ${card} today`), /4111/, card);
+  }
+  assert.match(cleanPastedText("PNR 1234.5678.9012.3456"), /1234\.5678/);
   assert.equal(cleanPastedText("  \n\n  "), "");
   assert.equal(cleanPastedText("x".repeat(PASTED_TEXT_MAX + 50)).length, PASTED_TEXT_MAX);
 });

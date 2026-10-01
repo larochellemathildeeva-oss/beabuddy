@@ -100,8 +100,11 @@ export function documentReadPrompt(today: string): string {
   ].join("\n");
 }
 
-/** 13–19 digits, with spaces or dashes between: maybe a card number. */
-const LONG_NUMBER = /\b(?:\d[ -]?){12,18}\d\b/g;
+/**
+ * 13–19 digits, with one space, dot or dash of any kind between: maybe a card
+ * number. Pasted text brings no-break and thin spaces, and en dashes.
+ */
+const LONG_NUMBER = /\b(?:\d[ .\u00a0\u2007\u2009\u202f\u2010-\u2015-]?){12,18}\d\b/g;
 
 /**
  * Card issuers' opening digits and lengths: Visa, Mastercard, Amex, Discover,

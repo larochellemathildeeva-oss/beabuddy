@@ -409,6 +409,8 @@ export function AssignSheet({
   const touched = useRef(new Set<FilledField>());
   /** The draft as last rendered, for a read that finishes long after it began. */
   const latest = useRef(draft);
+  /** Bumped on each edit of the pasted text, so a read of older text is dropped. */
+  const textRev = useRef(0);
   latest.current = draft;
 
   useEffect(() => {
@@ -446,6 +448,7 @@ export function AssignSheet({
     }
     if (!pasteMode && (!file || !readAs)) return;
     const mine = session.current;
+    const rev = textRev.current;
     touched.current = new Set();
     setReading(true);
     setReadError("");
@@ -457,6 +460,10 @@ export function AssignSheet({
         data: { ...sent, today: toLocalISODate(new Date()) },
       });
       if (mine !== session.current) return;
+      if (rev !== textRev.current) {
+        setReadError("The text changed while Béa was reading it. Tap Fill in again.");
+        return;
+      }
       const skip = touched.current;
       const set = new Set<FilledField>();
       // Applied to the draft as it is now, not as it was when the read began.
@@ -605,7 +612,10 @@ export function AssignSheet({
             {pasteMode && (
               <textarea
                 value={text}
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => {
+                  textRev.current++;
+                  setText(e.target.value);
+                }}
                 maxLength={PASTED_TEXT_MAX}
                 rows={6}
                 autoFocus
