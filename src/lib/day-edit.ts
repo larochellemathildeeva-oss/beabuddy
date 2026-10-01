@@ -83,13 +83,22 @@ const dayRef = (index: number) => `d${index + 1}`;
 const clean = (text: string | undefined, max: number) =>
   (text ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 
-/** The asks so far as one request: the first, then each refinement. */
+/**
+ * The asks so far as one request: the first, then each refinement. When they
+ * no longer fit, the oldest go first, so the newest words always reach Béa.
+ */
 export function joinAsks(asks: readonly string[]): string {
   const asked = asks.map((ask) => ask.trim().slice(0, DAY_EDIT_MAX_ASK)).filter(Boolean);
-  return asked
-    .map((ask, i) => (i === 0 ? ask : `Then: ${ask}`))
-    .join("\n")
-    .slice(0, DAY_EDIT_MAX_REQUEST);
+  const lines = asked.map((ask, i) => (i === 0 ? ask : `Then: ${ask}`));
+  const kept: string[] = [];
+  let length = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const add = lines[i]!.length + (kept.length ? 1 : 0);
+    if (kept.length && length + add > DAY_EDIT_MAX_REQUEST) break;
+    kept.unshift(lines[i]!);
+    length += add;
+  }
+  return kept.join("\n");
 }
 
 /** The day as the model reads it, ticked stops marked as the ones it may change. */

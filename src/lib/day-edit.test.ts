@@ -232,6 +232,13 @@ test("new places need a name, never a booking kind, and are capped", () => {
   assert.equal(fresh[0]!.fresh!.title, "Place 1");
 });
 
+test("when asks no longer fit, the oldest go and the newest always stays", () => {
+  const long = "x".repeat(400);
+  const joined = joinAsks([long, long, long, "Lunch at 1"]);
+  assert.ok(joined.length <= 1200);
+  assert.match(joined, /Then: Lunch at 1$/);
+});
+
 test("asks join as a first request and its refinements", () => {
   assert.equal(joinAsks(["Slower morning", " ", "Lunch at 1"]), "Slower morning\nThen: Lunch at 1");
 });

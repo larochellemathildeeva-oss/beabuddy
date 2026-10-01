@@ -5,6 +5,8 @@ import { ArrowRight, Check, CloudRain, Lock, MapPin, RotateCcw, Sun, X } from "@
 import { askDayEdit } from "@/lib/day-edit.functions";
 import {
   DAY_EDIT_MAX_ASK,
+  DAY_EDIT_MAX_DAYS,
+  DAY_EDIT_MAX_STOPS,
   dayEditChanges,
   dayEditRows,
   dayEditSchedule,
@@ -68,7 +70,9 @@ export type DayEditSave = {
 
 /** The day as Béa read it, to tell whether it changed before Apply. */
 const dayKey = (stops: readonly Stop[]) =>
-  stops.map((s) => `${s.id}|${s.time_label ?? ""}|${s.position}`).join("\n");
+  stops
+    .map((s) => `${s.id}|${s.time_label ?? ""}|${s.position}|${s.title}|${s.kind ?? ""}`)
+    .join("\n");
 
 /**
  * "Change a day": pick the day, tick the stops Béa may touch (all by
@@ -80,7 +84,7 @@ export function DayEditSheet({
   open,
   onClose,
   tripId,
-  stops,
+  stops: allStops,
   days,
   initialDay,
   initialAsk,
@@ -124,6 +128,8 @@ export function DayEditSheet({
   const [proposal, setProposal] = useState<{
     plan: DayEditPlan;
     basis: string;
+    /** The stops Béa was allowed to change, as sent. */
+    picked: Set<string>;
     /** Suggested places found on the map, by entry id; missing ones were not. */
     found: Record<string, Found>;
   } | null>(null);
@@ -131,7 +137,12 @@ export function DayEditSheet({
   const [skipped, setSkipped] = useState<Set<string>>(new Set());
   const [placing, setPlacing] = useState(false);
 
+  // The stops Béa can read: the server leaves out rows with no name.
+  const stops = useMemo(() => allStops.filter((s) => s.title.trim()), [allStops]);
   const dayStops = useMemo(() => (day ? stopsOfDay(stops, day) : []), [stops, day]);
+  /** Too much for one ask: the server would refuse it, so it is not offered. */
+  const tooLong = days.length > DAY_EDIT_MAX_DAYS;
+  const tooFull = dayStops.length > DAY_EDIT_MAX_STOPS;
   const filled = days.filter((d) => stops.some((s) => s.day_date === d));
 
   const chooseDay = (next: string | null) => {
@@ -269,6 +280,7 @@ export function DayEditSheet({
   const run = async (nextAsks: string[]) => {
     if (!day) return;
     const stopIds = dayStops.filter((s) => picked.has(s.id)).map((s) => s.id);
+    if (tooLong || tooFull) return;
     if (stopIds.length === 0) {
       setProblem("Tick at least one stop Béa may change.");
       return;
@@ -297,7 +309,7 @@ export function DayEditSheet({
       const found = await findPlaces(plan, day);
       setAsks(nextAsks);
       setSkipped(new Set());
-      setProposal({ plan, basis, found });
+      setProposal({ plan, basis, found, picked: new Set(stopIds) });
       setRefining(false);
       setText("");
     } catch (err) {
@@ -383,7 +395,7 @@ export function DayEditSheet({
       />
       <button
         type="submit"
-        disabled={busy || !text.trim() || picked.size === 0}
+        disabled={busy || !text.trim() || picked.size === 0 || tooLong || tooFull}
         className="mt-2 min-h-11 w-full rounded-xl bg-primary text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
       >
         {placing ? "Finding the new places on the map…" : busy ? "Béa is reworking the day…" : send}
@@ -463,6 +475,7 @@ export function DayEditSheet({
                       key={d}
                       type="button"
                       aria-pressed={d === day}
+                      disabled={busy}
                       onClick={() => chooseDay(d)}
                       className={chip(d === day)}
                     >
@@ -479,12 +492,21 @@ export function DayEditSheet({
 
           {weatherCard}
 
+          {(tooLong || (day && tooFull)) && (
+            <p className="rounded-xl bg-card px-3 py-2 text-[13px] text-muted-foreground">
+              {tooLong
+                ? `This trip has more than ${DAY_EDIT_MAX_DAYS} days, too long for Béa to rework a day of it. Move stops one by one.`
+                : `This day has more than ${DAY_EDIT_MAX_STOPS} stops, too many for Béa in one go. Move stops one by one.`}
+            </p>
+          )}
+
           {day && dayStops.length > 0 && (
             <div>
               <div className="mb-1.5 flex items-center justify-between gap-2">
                 <p className="label-caps">2 · Which stops may change?</p>
                 <button
                   type="button"
+                  disabled={busy}
                   onClick={() =>
                     setPicked(allPicked ? new Set() : new Set(dayStops.map((s) => s.id)))
                   }
@@ -506,6 +528,7 @@ export function DayEditSheet({
                       <input
                         type="checkbox"
                         checked={picked.has(stop.id)}
+                        disabled={busy}
                         onChange={() => toggle(stop.id)}
                         className="size-4 accent-[var(--primary)]"
                       />
@@ -655,7 +678,9 @@ export function DayEditSheet({
                         <span className={row.retimed ? "font-semibold text-primary" : ""}>
                           {row.time_label ?? "No time"}
                         </span>
-                        {!picked.has(row.id) && <Lock className="size-3" aria-label="Kept" />}
+                        {!proposal.picked.has(row.id) && (
+                          <Lock className="size-3" aria-label="Kept" />
+                        )}
                       </p>
                       <p className="break-words text-[13.5px] font-medium">{row.title}</p>
                       {changed && (
