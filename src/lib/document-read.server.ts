@@ -46,7 +46,7 @@ export async function readDocument(
   if (file.text && !pasted) {
     throw new Error("Béa couldn't find booking details in that text. Fill it in by hand.");
   }
-  await reserveAi(userId, "documentRead");
+  // The file is checked first, so a refused one costs no AI units.
   const part = pasted
     ? {
         type: "text" as const,
@@ -55,6 +55,7 @@ export async function readDocument(
     : file.pdfDataUrl
       ? pdfPartFromDataUrl(file.pdfDataUrl)
       : filePartsFromDataUrls([file.imageDataUrl ?? ""])[0]!;
+  await reserveAi(userId, "documentRead");
   try {
     const result = await withModelFallback((model) =>
       generateText({

@@ -8,7 +8,11 @@ import {
   randomB64,
   reencryptRows,
 } from "@/lib/vaultCrypto";
-import { validateVaultPasscode } from "@/lib/vault-passcode";
+import {
+  VAULT_PASSCODE_RULE,
+  deviceUnlockNeedsCheck,
+  validateVaultPasscode,
+} from "@/lib/vault-passcode";
 import {
   deriveKeyBits,
   enrolPasskey as enrolDevicePasskey,
@@ -61,7 +65,7 @@ export function useVault() {
    * Unlocked with a passcode shorter than today's rule (vault-passcode.ts):
    * a vault made before it. Asked to choose a stronger one.
    */
-  const [weakPasscode, setWeakPasscode] = useState(false);
+  const [weakPasscode, setWeakPasscode] = useState<false | "short" | "older">(false);
   /**
    * The verifier this device unlocked with. A passcode change sends it, so a
    * change made meanwhile on another device is refused rather than
@@ -102,6 +106,45 @@ export function useVault() {
     return () => sub.subscription.unsubscribe();
   }, [load]);
 
+  /**
+   * Which passcode rule the vault is known to meet (`passcode_rule`), or
+   * undefined when it cannot be read: the column's migration may not be
+   * applied, so this is read on its own and never breaks loading or
+   * unlocking.
+   */
+  const readPasscodeRule = useCallback(async (): Promise<number | null | undefined> => {
+    const { data, error } = await supabase
+      .from("vault_settings")
+      .select("passcode_rule")
+      .maybeSingle();
+    if (error || !data) return undefined;
+    return data.passcode_rule ?? null;
+  }, []);
+
+  /** Record that the passcode meets today's rule. Best effort. */
+  const markPasscodeRule = useCallback(async () => {
+    if (!uid) return;
+    const { error } = await supabase
+      .from("vault_settings")
+      .update({ passcode_rule: VAULT_PASSCODE_RULE })
+      .eq("user_id", uid);
+    if (error) console.warn("[vault] could not record the passcode rule:", error.message);
+  }, [uid]);
+
+  /** A typed passcode: prompt if it is short, else record that it meets the rule. */
+  const judgeTypedPasscode = useCallback(
+    async (passcode: string) => {
+      if (!validateVaultPasscode(passcode).valid) {
+        setWeakPasscode("short");
+        return;
+      }
+      setWeakPasscode(false);
+      const rule = await readPasscodeRule();
+      if (rule !== undefined && deviceUnlockNeedsCheck(rule)) await markPasscodeRule();
+    },
+    [readPasscodeRule, markPasscodeRule],
+  );
+
   const createVault = useCallback(
     async (passcode: string) => {
       if (!uid) throw new Error("Sign in first");
@@ -117,28 +160,32 @@ export function useVault() {
       unlockedVerifier.current = ciphertext;
       setKey(k);
       setHasVault(true);
+      await markPasscodeRule();
       await load();
     },
-    [uid, load],
+    [uid, load, markPasscodeRule],
   );
 
-  const unlock = useCallback(async (passcode: string) => {
-    const { data: settings, error } = await supabase
-      .from("vault_settings")
-      .select("salt, verifier, verifier_iv")
-      .maybeSingle();
-    if (error || !settings) throw new Error("No vault yet");
-    const k = await deriveKey(passcode, settings.salt);
-    try {
-      const check = await decryptJson<string>(k, settings.verifier, settings.verifier_iv);
-      if (check !== VERIFIER) throw new Error("bad");
-    } catch {
-      throw new Error("That passcode doesn't match");
-    }
-    unlockedVerifier.current = settings.verifier;
-    setKey(k);
-    setWeakPasscode(!validateVaultPasscode(passcode).valid);
-  }, []);
+  const unlock = useCallback(
+    async (passcode: string) => {
+      const { data: settings, error } = await supabase
+        .from("vault_settings")
+        .select("salt, verifier, verifier_iv")
+        .maybeSingle();
+      if (error || !settings) throw new Error("No vault yet");
+      const k = await deriveKey(passcode, settings.salt);
+      try {
+        const check = await decryptJson<string>(k, settings.verifier, settings.verifier_iv);
+        if (check !== VERIFIER) throw new Error("bad");
+      } catch {
+        throw new Error("That passcode doesn't match");
+      }
+      unlockedVerifier.current = settings.verifier;
+      setKey(k);
+      void judgeTypedPasscode(passcode);
+    },
+    [judgeTypedPasscode],
+  );
 
   /** Checks a key against the vault's verifier before accepting it. */
   const acceptKey = useCallback(async (k: CryptoKey) => {
@@ -163,7 +210,9 @@ export function useVault() {
     const record = readPasskeyRecord(uid);
     if (!record) throw new Error("Face ID or fingerprint is not set up on this device");
     await acceptKey(await unlockWithPasskey(record));
-  }, [uid, acceptKey]);
+    // Face ID never sees the passcode; ask if the vault may predate the rule.
+    if (deviceUnlockNeedsCheck(await readPasscodeRule())) setWeakPasscode("older");
+  }, [uid, acceptKey, readPasscodeRule]);
 
   /** Sets up Face ID / fingerprint, after the passcode is checked once more. */
   const enrolDevice = useCallback(
@@ -183,10 +232,10 @@ export function useVault() {
       await enrolDevicePasskey(uid, raw);
       setHasPasskey(true);
       // A Face ID unlock never sees the passcode, so this is the moment to
-      // ask for a stronger one if it needs it.
-      setWeakPasscode(!validateVaultPasscode(passcode).valid);
+      // ask for a stronger one if it needs it, or record that it does not.
+      await judgeTypedPasscode(passcode);
     },
-    [uid, acceptKey],
+    [uid, acceptKey, judgeTypedPasscode],
   );
 
   const forgetDevice = useCallback(() => {
@@ -262,9 +311,10 @@ export function useVault() {
       setHasPasskey(false);
       setKey(k);
       setWeakPasscode(false);
+      await markPasscodeRule();
       await load();
     },
-    [uid, key, load],
+    [uid, key, load, markPasscodeRule],
   );
 
   const lock = useCallback(() => {

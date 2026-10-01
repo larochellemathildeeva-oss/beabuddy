@@ -389,14 +389,18 @@ traveller's day before Gemini is asked (`reserveAi` in `ai-quota.server.ts`;
 costs in `AI_COST`, `ai-quota.ts`, pure and tested): a trip build 4, comparing
 two plans 6, a receipt 2, and so on, `AI_DAILY_UNITS` a UTC day (100 unless
 that env var says otherwise). One operation reserves once, however many models
-`withModelFallback` tries, and before the web check. The user ID always comes
+`withModelFallback` tries, before the web check and after its pictures are
+checked (a refused picture costs nothing). Local-script names looked up in the
+background of a search reserve nothing: they keep their own hourly cap. The user ID always comes
 from the verified session (`context.userId`). The count is held in
 `ai_daily_usage` by `reserve_ai_units` (service role only, atomic), so restarts
 and several instances share it. When the database cannot be asked, the
-operation fails closed with a plain message. The migration is applied by hand;
-until it is, or where there is no service-role client (local runs, unit tests,
-the import audit), the same ceiling is counted per process with one warning,
-and the database is asked again hourly. The older hourly limits (document
+operation fails closed with a plain message, and so does the deployed app
+(`isDeployedBuild` in `deployed.ts`) when the ledger is missing altogether.
+Only run from source (local runs, unit tests, the import audit) is the same
+ceiling counted per process, with one warning. The Geoapify ledger follows the
+same rule: in the deployed app no ledger means no Geoapify, so lookups use the
+fallback. The migration is applied by hand. The older hourly limits (document
 reads, plan edits, local-script names) stay as they were. A new AI entry point
 reserves too: add its cost to `AI_COST`.
 
@@ -438,7 +442,10 @@ traveller's `vault_settings` row, by trigger), and `addDoc` re-reads the
 verifier afterwards, deleting its row and asking to unlock again if the
 passcode changed meanwhile. Face ID / fingerprint on that device is
 forgotten, since it held the old key; a Face ID unlock never sees the
-passcode, so the short-passcode prompt also appears when Face ID is set up. The
+passcode, so it reads `vault_settings.passcode_rule` (the rule the passcode is
+known to meet, written when one is created, changed, or typed and found long
+enough; `VAULT_PASSCODE_RULE`) and asks when it is missing or older. A typed
+short passcode is asked about too, and so is one given to set up Face ID. The
 migration is applied by hand; until it is, the change fails with nothing
 written and the old passcode keeps working.
 

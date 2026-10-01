@@ -5,6 +5,7 @@ import {
   type GeoProvider,
 } from "./geo-endpoints.ts";
 import { CreditGuard, GEOAPIFY_DAILY_CREDITS, geoapifyCredits } from "./geo-credits.ts";
+import { isDeployedBuild } from "./deployed.ts";
 import { ERROR_PAUSE_MS, GeoLedger, type GeoReserveResult } from "./geo-ledger.ts";
 
 /**
@@ -67,7 +68,7 @@ function logReserveFailure(detail: unknown): void {
   console.warn("[geo] Geoapify database reservation failed:", detail);
 }
 
-async function reserveSharedGeoapifyCredits(credits: number): Promise<GeoReserveResult> {
+async function askGeoapifyLedger(credits: number): Promise<GeoReserveResult> {
   let admin: ReserveRpcClient;
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -99,6 +100,23 @@ async function reserveSharedGeoapifyCredits(credits: number): Promise<GeoReserve
     logReserveFailure(error);
     return "error";
   }
+}
+
+/**
+ * The shared reservation, except that the deployed app never runs unmetered:
+ * there, no ledger (no service-role client, or the migration gone) is a
+ * failure, so nothing is sent to Geoapify and lookups move to the fallback.
+ * Unit tests, the import audit and local runs keep the in-memory count.
+ */
+async function reserveSharedGeoapifyCredits(credits: number): Promise<GeoReserveResult> {
+  const result = await askGeoapifyLedger(credits);
+  if (result === "missing" && isDeployedBuild()) {
+    logReserveFailure(
+      "no shared ledger in the deployed app (service-role client or geoapify_daily_usage migration missing)",
+    );
+    return "error";
+  }
+  return result;
 }
 
 const LEDGER_KEY = Symbol.for("bea.geoapifyDailyLedger");

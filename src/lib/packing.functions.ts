@@ -50,6 +50,8 @@ export const parsePackingList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParsePackingInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedPackingList> => {
+    // Pictures are checked first, so a refused one costs no AI units.
+    const pictures = filePartsFromDataUrls(data.imageDataUrls ?? []);
     const { reserveAi } = await import("@/lib/ai-quota.server");
     await reserveAi(context.userId, "packing");
     const { withModelFallback } = await import("@/lib/ai.server");
@@ -80,7 +82,7 @@ export const parsePackingList = createServerFn({ method: "POST" })
                       type: "text" as const,
                       text: data.text?.trim() ? `${prompt}\n\nExtra notes:\n${data.text}` : prompt,
                     },
-                    ...filePartsFromDataUrls(data.imageDataUrls),
+                    ...pictures,
                   ]
                 : [
                     {

@@ -1,3 +1,4 @@
+import { isDeployedBuild } from "./deployed.ts";
 import {
   AI_COST,
   AI_LIMIT_MESSAGE,
@@ -19,9 +20,10 @@ import {
  *
  * Throws with a message fit to show when today's units are spent, or when the
  * database cannot be asked (fail closed: paid work is not done unaccounted).
- * Until the migration is applied, or where there is no service-role client,
- * the same ceiling is counted in this process, with one warning, and the
- * database is asked again hourly.
+ * Run from source (unit tests, the import audit, local runs) with no
+ * migration or no service-role client, the same ceiling is counted in this
+ * process, with one warning, and the database is asked again hourly. The
+ * deployed app refuses instead (`isDeployedBuild`).
  */
 
 const MEMORY_KEY = Symbol.for("bea.aiMemoryQuota");
@@ -88,7 +90,18 @@ export async function reserveAi(userId: string, operation: AiOperation): Promise
   if (reply === "refused") throw new Error(AI_LIMIT_MESSAGE);
   if (reply === "error") throw new Error(AI_UNAVAILABLE_MESSAGE);
 
-  // "missing": no ledger yet. Count here, and ask the database again later.
+  // "missing": no ledger. The deployed app never counts per process — that
+  // would give every restart and every instance a fresh day — so there it
+  // fails closed. Tests, scripts and local runs count here instead.
+  if (isDeployedBuild()) {
+    if (Date.now() - errorLoggedAt > 60_000) {
+      errorLoggedAt = Date.now();
+      console.error(
+        "[ai-quota] no shared AI ledger in the deployed app (service-role client or ai_daily_usage migration missing); AI is refused",
+      );
+    }
+    throw new Error(AI_UNAVAILABLE_MESSAGE);
+  }
   if (now >= missingUntil) {
     missingUntil = now + MISSING_RETRY_MS;
     if (!missingWarned) {

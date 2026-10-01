@@ -7,7 +7,10 @@
  * per-traveller, per-UTC-day row in the database before Gemini is asked
  * (reserve_ai_units, the ai_daily_usage migration). The units are Béa's own:
  * a rough weight per operation, not Google's bill. One operation reserves
- * once, however many models `withModelFallback` tries.
+ * once, however many models `withModelFallback` tries. Local-script names
+ * looked up in the background of a search reserve nothing: they have their
+ * own hourly cap, and must not spend the allowance meant for what a
+ * traveller asks for.
  *
  * Pure and tested; the reservation itself is in ai-quota.server.ts.
  */
@@ -17,7 +20,6 @@ export const AI_DAILY_UNITS_DEFAULT = 100;
 
 /** What each operation reserves. About 25 trip builds, or 50 receipt scans, a day. */
 export const AI_COST = {
-  localName: 1,
   receipt: 2,
   packing: 2,
   comparePlaces: 2,

@@ -1,6 +1,8 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  VAULT_PASSCODE_RULE,
+  deviceUnlockNeedsCheck,
   VAULT_NUMERIC_MIN_DIGITS,
   VAULT_PASSPHRASE_MIN_CHARS,
   validateVaultPasscode,
@@ -36,4 +38,15 @@ test("blank or whitespace is refused with a message", () => {
   assert.equal(blank.valid, false);
   if (!blank.valid) assert.ok(blank.message.length > 0);
   assert.equal(validateVaultPasscode(" ".repeat(20)).valid, false);
+});
+
+test("a Face ID unlock asks about a vault not known to meet today's rule", () => {
+  assert.equal(deviceUnlockNeedsCheck(null), true, "set before the rule was recorded");
+  assert.equal(deviceUnlockNeedsCheck(1), true);
+  assert.equal(deviceUnlockNeedsCheck(VAULT_PASSCODE_RULE), false);
+  assert.equal(
+    deviceUnlockNeedsCheck(undefined),
+    false,
+    "column unreadable: no prompt for everyone",
+  );
 });

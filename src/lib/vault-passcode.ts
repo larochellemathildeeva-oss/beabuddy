@@ -48,3 +48,21 @@ export function validateVaultPasscode(value: string): PasscodeCheck {
 
 /** The rule, as the form states it. */
 export const VAULT_PASSCODE_HINT = `At least ${VAULT_PASSPHRASE_MIN_CHARS} characters, such as a few words with spaces.`;
+
+/**
+ * Which passcode rule a vault's passcode is known to meet, kept in
+ * `vault_settings.passcode_rule`: 2 is today's (12 characters). Written when
+ * a passcode is created or changed, or typed and found to meet the rule. It
+ * says nothing about the passcode beyond that.
+ */
+export const VAULT_PASSCODE_RULE = 2;
+
+/**
+ * After a Face ID unlock, which never sees the passcode: whether the vault
+ * may predate today's rule. `undefined` means the column could not be read
+ * (its migration not applied yet): no prompt, rather than one for everyone.
+ */
+export function deviceUnlockNeedsCheck(rule: number | null | undefined): boolean {
+  if (rule === undefined) return false;
+  return rule === null || rule < VAULT_PASSCODE_RULE;
+}
