@@ -455,7 +455,8 @@ Country names are matched in any language through `src/lib/country-names.ts`.
 ## Notes
 
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
-  Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`.
+  Voice: `src/lib/bea-voice.ts`. Security checklist: `docs/SECURITY_REVIEW_CHECKLIST.md`;
+  sign-in settings that live in the Supabase dashboard: `docs/AUTH_SECURITY_BASELINE.md`.
   Never position Béa as “AI travel planner.” Prefer privacy copy that matches reality
   (*designed to / private by default / may*), not absolute guarantees.
 - `vite.config.ts` lists the whole plugin chain itself: Tailwind, tsconfig
