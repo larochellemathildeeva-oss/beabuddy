@@ -1035,6 +1035,7 @@ export type Database = {
         Row: {
           biometric_credential_id: string | null
           created_at: string
+          passcode_rule: number | null
           salt: string
           updated_at: string
           user_id: string
@@ -1044,6 +1045,7 @@ export type Database = {
         Insert: {
           biometric_credential_id?: string | null
           created_at?: string
+          passcode_rule?: number | null
           salt: string
           updated_at?: string
           user_id: string
@@ -1053,6 +1055,7 @@ export type Database = {
         Update: {
           biometric_credential_id?: string | null
           created_at?: string
+          passcode_rule?: number | null
           salt?: string
           updated_at?: string
           user_id?: string

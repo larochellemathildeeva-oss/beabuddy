@@ -27,6 +27,8 @@ export const extractReceiptFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReceiptInput.parse(input))
   .handler(async ({ data, context }): Promise<ReceiptExtraction> => {
+    // The picture is checked first, so a refused one costs no AI units.
+    const picture = filePartFromDataUrl(data.imageDataUrl);
     const { reserveAi } = await import("@/lib/ai-quota.server");
     await reserveAi(context.userId, "receipt");
     const { withModelFallback } = await import("@/lib/ai.server");
@@ -52,7 +54,7 @@ export const extractReceiptFields = createServerFn({ method: "POST" })
                     "If a field is not readable, return null for it. Never guess an amount.",
                   ].join("\n"),
                 },
-                filePartFromDataUrl(data.imageDataUrl),
+                picture,
               ],
             },
           ],

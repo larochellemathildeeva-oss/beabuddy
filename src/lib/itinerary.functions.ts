@@ -556,6 +556,12 @@ export const parseItinerary = createServerFn({ method: "POST" })
         text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
       };
     }
+    // The plan's files are checked first, so a refused one costs no AI units;
+    // runParse builds the same parts again from the same, now-checked data.
+    if (data.mode === "import") {
+      if (data.pdfDataUrl) pdfPartFromDataUrl(data.pdfDataUrl);
+      filePartsFromDataUrls(data.imageDataUrls ?? []);
+    }
     await reserveAi(context.userId, "itinerary");
     const { extra, recosForTag, tagVaultItems, grounding } = await loadPlanExtra(
       context,

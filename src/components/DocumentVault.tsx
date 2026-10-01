@@ -277,8 +277,10 @@ function StrongerPasscode({ v }: { v: Vault }) {
       <p className="flex items-start gap-1.5 text-[13px]">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         <span>
-          Your passcode was set under an older, shorter rule. A longer one is much harder to guess,
-          and what is inside is re-encrypted on this device. {VAULT_PASSCODE_HINT}
+          {v.weakPasscode === "short"
+            ? "Your passcode was set under an older, shorter rule. A longer one is much harder to guess, and what is inside is re-encrypted on this device."
+            : "Your passcode was set before Béa's current rule. If it is shorter than 12 characters, choose a longer one; what is inside is re-encrypted on this device."}{" "}
+          {VAULT_PASSCODE_HINT}
         </span>
       </p>
       {!asking ? (

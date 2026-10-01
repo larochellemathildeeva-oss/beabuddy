@@ -65,6 +65,8 @@ export const parseRecoList = createServerFn({ method: "POST" })
       }
     }
 
+    // Pictures are checked first, so a refused one costs no AI units.
+    const pictures = filePartsFromDataUrls(data.imageDataUrls ?? []);
     const { reserveAi } = await import("@/lib/ai-quota.server");
     await reserveAi(context.userId, "recoList");
 
@@ -106,7 +108,7 @@ export const parseRecoList = createServerFn({ method: "POST" })
                       type: "text" as const,
                       text: extras ? `${prompt}\n\n${extras}` : prompt,
                     },
-                    ...filePartsFromDataUrls(data.imageDataUrls),
+                    ...pictures,
                   ]
                 : [
                     {
