@@ -8,6 +8,7 @@ import {
   legFromDirectionRow,
   legsToTimelineItems,
   placedFromLegs,
+  savedLegStillFits,
   stripEmbeddedMapsUrl,
   syncDetailDraft,
 } from "./timeline-directions.ts";
@@ -332,4 +333,13 @@ test("a saved walk keeps the stop it leaves from, and is found by both ends", as
   );
   assert.equal(directionSource(item!.detail), "Nishiki Market");
   assert.equal(directionSource("Walk · 800 m · 10 min"), "");
+});
+
+test("a journey saved as 'spot unknown' is dropped once both stops are pinned", () => {
+  const unknown = { ...walk, distance: 0, duration: 0, unknownSpot: true };
+  const pinned = { lat: 34.67, lon: 135.5 };
+  assert.equal(savedLegStillFits(unknown, pinned, { lat: 34.68, lon: 135.51 }), undefined);
+  assert.equal(savedLegStillFits(unknown, pinned, { lat: null, lon: null }), unknown);
+  assert.equal(savedLegStillFits(walk, pinned, pinned), walk);
+  assert.equal(savedLegStillFits(undefined, pinned, pinned), undefined);
 });
