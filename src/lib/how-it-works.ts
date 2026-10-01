@@ -35,6 +35,14 @@ export const HOW_SCENES: readonly Scene[] = [
     figure: "scatter",
   },
   {
+    id: "assemble",
+    eyebrow: "Planning",
+    heading: "Béa plans the trip with you.",
+    body: "Start a trip and Béa drafts the days from the places you saved, or reads a plan you already have. She puts each day in a sensible order, checks for events, strikes and closures on your dates, and gives directions the way you like to get around — kept offline for when there is no signal. Nothing changes until you say so.",
+    signature: BEA_SIGNATURE.planning,
+    figure: "assemble",
+  },
+  {
     id: "capture",
     eyebrow: "Capture",
     heading: "Paste a link. Keep the parts you want.",
@@ -49,14 +57,6 @@ export const HOW_SCENES: readonly Scene[] = [
     body: "Visited, Next time, Wishlist, Recommendation. Every place you save carries who told you about it and where it is on the map. Send a handful to a friend and they keep the ones they want, with your name on them.",
     signature: BEA_SIGNATURE.recs,
     figure: "vault",
-  },
-  {
-    id: "assemble",
-    eyebrow: "Planning",
-    heading: "A trip built from what you already saved.",
-    body: "Start a trip and your own places are already there, the ones nearby floating to the top. Drop them into days. Ask Béa to tighten the route and it shows you the new order before anything moves.",
-    signature: BEA_SIGNATURE.planning,
-    figure: "assemble",
   },
   {
     id: "nearby",

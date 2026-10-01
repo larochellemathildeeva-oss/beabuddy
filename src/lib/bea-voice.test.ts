@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  BEA_HELPS,
   BEA_MISSION,
   BEA_POSITION,
   BEA_SIGNATURE,
@@ -43,6 +44,8 @@ test("mission and position reject AI-planner framing", () => {
   assert.match(BEA_POSITION, /travel life/i);
   assert.ok(!BEA_MISSION.toLowerCase().includes("ai travel"));
   assert.ok(!BEA_POSITION.toLowerCase().includes("ai travel"));
+  assert.match(BEA_HELPS, /trip/i);
+  assert.ok(!BEA_HELPS.toLowerCase().includes("ai travel"));
 });
 
 test("beaLine rotates by calendar day", () => {

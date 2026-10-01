@@ -51,8 +51,9 @@ function withAuthFlags(steps: TourStep[]): TourStep[] {
 /**
  * First-run “walk around the block” — story, not a feature TOC.
  *
- * Thread: Béa remembers your travel life, helps you choose what to do next,
- * and turns saved ideas into real trips.
+ * Thread: Béa turns saved ideas into real trips and helps on the way, then
+ * remembers your travel life and helps you choose what to do next. Planning
+ * comes straight after the welcome — it is what a new traveller came for.
  *
  * Every step names only what a fresh account can see too: the sample data is
  * opt-in, so no step promises Paris or Lisbon. Steps on World name the view
@@ -65,20 +66,25 @@ function withAuthFlags(steps: TourStep[]): TourStep[] {
 export const QUICK_STEPS: TourStep[] = [
   {
     title: "What is Béa?",
-    body: "Béa remembers your travel life so Future You doesn't miss what matters. This walk points at the real screens, one at a time. Skip anytime.",
+    body: "Béa turns the places you saved into a real trip, then helps every day you're on it — and remembers your travel life so Future You doesn't miss what matters. Skip anytime.",
   },
   {
-    title: "Your travel globe",
-    body: "Everywhere you've been, on one globe: the countries, their provinces or states, and a dot for each city. Drag to spin it. Add places, beside it, fills in more.",
-    to: "/world",
-    search: { tab: "map" },
-    selector: "[data-guide='globe']",
+    title: "Ideas become trips",
+    body: "Each trip holds its days, stops, bookings and to-dos. Plan with Béa drafts the days from places you saved, or reads a plan you have. On the road she gives directions, even offline. You approve every change.",
+    to: "/trips",
+    selector: "[data-guide='plan-with-bea']",
   },
   {
     title: "Never forget a tip",
     body: "That restaurant a friend mentioned months ago? Béa keeps who told you, the note and travel tags — a recommendation you can find again and plan with.",
     to: "/recommendations",
     selector: "[data-guide='reco-list']",
+  },
+  {
+    title: "Near something you saved",
+    body: "Share your location and Home shows your own saves within reach, nearest first. Tick a few and Béa arranges a day trip around them.",
+    to: "/",
+    selector: "[data-guide='home-near']",
   },
   {
     title: "Where next?",
@@ -88,16 +94,11 @@ export const QUICK_STEPS: TourStep[] = [
     selector: "[data-guide='compare-pins']",
   },
   {
-    title: "Ideas become trips",
-    body: "Each trip is one folder: days, stops, bookings, to-dos. Plan with Béa builds one from the places you already saved, or reads a plan you have. Nothing changes until you approve.",
-    to: "/trips",
-    selector: "[data-guide='plan-with-bea']",
-  },
-  {
-    title: "Near something you saved",
-    body: "Share your location and Home shows your own saves within reach, nearest first. Tick a few and Béa arranges a day trip around them.",
-    to: "/",
-    selector: "[data-guide='home-near']",
+    title: "Your travel globe",
+    body: "Everywhere you've been, on one globe: the countries, their provinces or states, and a dot for each city. Drag to spin it. Add places, beside it, fills in more.",
+    to: "/world",
+    search: { tab: "map" },
+    selector: "[data-guide='globe']",
   },
   {
     title: "Your travel story",
@@ -115,13 +116,13 @@ export const QUICK_STEPS: TourStep[] = [
 export const DEEP_STEPS: TourStep[] = [
   {
     title: "Deep Dive — six pillars",
-    body: "This walk is the unique thread: memory, recommendations, decisions, opportunities, planning from your vault, and the connected system. Skip anytime.",
+    body: "This walk is the unique thread: memory, recommendations, decisions, opportunities, trips planned from your vault, and the connected system. Skip anytime.",
   },
 
   // —— Pillar 1: The Memory Layer ——
   {
     title: "Pillar 1 — Memory",
-    body: "Most travel apps focus on planning. Béa focuses on remembering your travel life across years — not just one trip.",
+    body: "Most travel apps forget you once the trip is over. Béa plans with you and remembers your travel life across years — not just one trip.",
     to: "/world",
     search: { tab: "map" },
     selector: "[data-guide='globe']",
@@ -237,7 +238,7 @@ export const DEEP_STEPS: TourStep[] = [
   },
   {
     title: "You're all set",
-    body: "Three things to remember: save tips from anyone, see them when you're near, and keep a searchable travel history. Replay from You → About Béa anytime.",
+    body: "Four things to remember: Béa plans trips from your saves, keeps tips from anyone, shows them when you're near, and keeps a searchable travel history. Replay from You → About Béa anytime.",
     to: "/",
   },
 ];

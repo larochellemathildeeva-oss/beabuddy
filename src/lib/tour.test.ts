@@ -7,6 +7,9 @@ test("quick tour is a story walk around the block", () => {
   assert.equal(QUICK_STEPS.length, 7);
   assert.equal(QUICK_STEPS[0]?.title, "What is Béa?");
   assert.equal(QUICK_STEPS.at(-1)?.title, "Your travel story");
+  // Planning is what a new traveller came for: it follows the welcome, not
+  // four memory screens.
+  assert.equal(QUICK_STEPS[1]?.selector, "[data-guide='plan-with-bea']");
   assert.ok(
     QUICK_STEPS.some((s) => s.selector),
     "quick walk spotlights real controls",

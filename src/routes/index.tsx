@@ -30,7 +30,7 @@ import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
-import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
+import { beaLine, BEA_HELPS, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { isAreaPlace } from "@/lib/reco-place";
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Béa remembers your travel life so Future You doesn't miss what matters. Save recommendations, plan from your ideas, and rediscover opportunities nearby.",
+          "Béa turns the places you saved into a real trip: she drafts the days, orders them, gives directions and keeps your bookings — then remembers where you've been.",
       },
       { property: "og:title", content: "Béa — Your travel life, all in one place" },
       {
@@ -86,9 +86,9 @@ function LandingPage() {
     <AppShell publicPage eyebrow={BEA_TAGLINES.strongest} title={BEA_POSITION}>
       <div className="space-y-6">
         <p className="text-[15px] leading-relaxed text-muted-foreground">
-          {BEA_MISSION} Save recommendations from friends, track where you've been, plan trips from
-          your saved ideas, and rediscover opportunities when you're nearby — because the best plans
-          start with what matters to you.
+          {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
+          puts them in a sensible order, gives directions and keeps your bookings together. Save
+          tips from friends, see them when you're nearby, and keep a map of everywhere you've been.
         </p>
         {/* The way in first, where a thumb reaches it without scrolling. */}
         <div className="grid gap-2 sm:grid-cols-2">
