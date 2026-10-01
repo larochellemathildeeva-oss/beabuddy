@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  hiddenFromRecs,
   isAreaPlace,
   isCityLevelPlace,
   isCountryLevelPlace,
@@ -81,6 +82,24 @@ test("isAreaPlace keeps countries and cities off the Recs list, venues on it", (
   assert.equal(isAreaPlace({ name: "Lisbon", city: "Lisbon", category: "City" }), true);
   assert.equal(
     isAreaPlace({ name: "Time Out Market", city: "Lisbon", country: "Portugal", category: "Food" }),
+    false,
+  );
+});
+
+test("hiddenFromRecs hides a visited country but keeps a wishlist one", () => {
+  const japan = { name: "Japan", city: "Japan", country: "Japan", category: "Country" };
+  assert.equal(hiddenFromRecs(japan, "visited"), true);
+  assert.equal(hiddenFromRecs(japan, "wishlist"), false);
+  assert.equal(hiddenFromRecs(japan, "nexttime"), false);
+  assert.equal(
+    hiddenFromRecs({ name: "Kyoto", city: "Kyoto", category: "City" }, "wishlist"),
+    true,
+  );
+  assert.equal(
+    hiddenFromRecs(
+      { name: "Ichiran", city: "Kyoto", country: "Japan", category: "Food" },
+      "visited",
+    ),
     false,
   );
 });

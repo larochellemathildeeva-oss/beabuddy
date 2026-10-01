@@ -73,7 +73,7 @@ import {
   toNewReco,
 } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";
-import { isAreaPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
+import { hiddenFromRecs, isAreaPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -255,7 +255,7 @@ function RecommendationsPage() {
           removable: false,
         };
 
-  const venues = saved.filter((r) => !isAreaPlace(r));
+  const venues = saved.filter((r) => !hiddenFromRecs(r, "created_at" in r ? r.pin_type : r.type));
   const views = venues.map(rowView);
   const places = ["All places", ...uniqueRecCities(saved)];
   // "cafe" and "Cafe" are one filter, not two.
@@ -671,14 +671,14 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
-  const counts = listCounts(vault.rows.filter((r) => !isAreaPlace(r)));
+  const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type)));
   const recent = recentlySaved(
-    vault.rows.filter((r) => !isAreaPlace(r)),
+    vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type)),
     3,
   );
   const latestIn = (t: PinType) =>
     recentlySaved(
-      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !isAreaPlace(r)),
+      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !hiddenFromRecs(r, r.pin_type)),
       1,
     )[0];
 

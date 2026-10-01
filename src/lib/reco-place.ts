@@ -63,11 +63,20 @@ export function isCityLevelPlace(place: RecoPlaceFields): boolean {
 
 /**
  * True when the saved row is a whole country or city — a place on the globe,
- * not a venue. Recs and Home's suggestion list venues only, so a country added
- * on the World tab does not turn up among bookmarks.
+ * not a venue. Home's suggestion lists venues only.
  */
 export function isAreaPlace(place: RecoPlaceFields): boolean {
   return isCountryLevelPlace(place) || isCityLevelPlace(place);
+}
+
+/**
+ * True when Recs leaves the row out: cities (filters there, not recs), and a
+ * country you have been to, which belongs on the globe. A country saved to the
+ * wishlist or next time stays, since saving it says it went to Recs.
+ */
+export function hiddenFromRecs(place: RecoPlaceFields, type: string | null | undefined): boolean {
+  if (isCityLevelPlace(place)) return true;
+  return isCountryLevelPlace(place) && type === "visited";
 }
 
 /** Unique city/place chips from saved recs' city fields — not from city-as-pin rows. */
