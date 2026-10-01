@@ -44,6 +44,12 @@ async function trimAssets() {
   for (let i = 0; i < extra; i++) await cache.delete(keys[i]);
 }
 
+/** This page's own kept copy, or nothing. */
+async function keptCopy(pathname) {
+  return (await caches.open(PAGES)).match(pathname);
+}
+
+/** With no network at all: this page's copy, else the trips list, else Home. */
 async function keptPage(pathname) {
   const cache = await caches.open(PAGES);
   return (await cache.match(pathname)) || (await cache.match("/trips")) || (await cache.match("/"));
@@ -106,8 +112,9 @@ self.addEventListener("fetch", (event) => {
         try {
           const first = await Promise.race([network, timedOut]);
           if (first !== "timeout") return first;
-          // Slow, not dead: a kept copy now if there is one, else keep waiting.
-          return (await keptPage(url.pathname)) || (await network);
+          // Slow, not dead: this page's own copy now if there is one, else keep
+          // waiting. Never another page's copy: the network may yet answer.
+          return (await keptCopy(url.pathname)) || (await network);
         } catch {
           return (
             (await keptPage(url.pathname)) ||

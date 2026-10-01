@@ -140,8 +140,8 @@ export function Globe({
   /**
    * In a page that scrolls past it (the welcome page): an up-and-down swipe
    * scrolls the page, and only sideways drags turn the globe. Without it a
-   * thumb that started on the globe could not scroll on. Pinch then belongs
-   * to the page; the zoom buttons still work.
+   * thumb that started on the globe could not scroll on. Pinch then zooms
+   * the page, as everywhere else; the globe's zoom buttons still work.
    */
   scrollFriendly?: boolean | undefined;
 }) {
@@ -439,7 +439,7 @@ export function Globe({
           e.preventDefault();
           stopInertia();
         }}
-        className={`relative ${scrollFriendly ? "touch-pan-y" : "touch-none"} overflow-hidden rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
+        className={`relative ${scrollFriendly ? "touch-pan-y touch-pinch-zoom" : "touch-none"} overflow-hidden rounded-3xl outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] focus-visible:ring-offset-2 ${
           open ? "" : "border border-border bg-elevated"
         }`}
         onPointerDown={(e) => {
@@ -479,6 +479,9 @@ export function Globe({
             gestureConsumed.current = true;
             didPinch.current = true;
             velocity.current = [0, 0];
+            // On a page that scrolls past it, a pinch zooms the page, not
+            // the globe; the browser takes the gesture.
+            if (scrollFriendly) return;
             const pts = [...pointers.current.values()];
             const a = pts[0];
             const b = pts[1];

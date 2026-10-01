@@ -27,3 +27,40 @@ export function browserHasStoredSession(): boolean {
     return false;
   }
 }
+
+/**
+ * The user in a saved Supabase session's JSON, or null. Used only when the
+ * session cannot be refreshed for want of a network: the token may have
+ * expired, but the traveller is still the one signed in on this phone, and
+ * the pages kept offline are theirs. Every query still needs a live token.
+ */
+export function userFromStoredSession(raw: string | null): { id: string } | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    const user = (parsed as { user?: unknown } | null)?.user;
+    if (user && typeof user === "object" && typeof (user as { id?: unknown }).id === "string") {
+      return user as { id: string };
+    }
+  } catch {
+    // Not a session.
+  }
+  return null;
+}
+
+/** The signed-in user saved in this browser, read without the network. */
+export function browserStoredSessionUser(): { id: string } | null {
+  try {
+    const store = window.localStorage;
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key && hasStoredSessionKey([key])) {
+        const user = userFromStoredSession(store.getItem(key));
+        if (user) return user;
+      }
+    }
+  } catch {
+    // Storage blocked.
+  }
+  return null;
+}

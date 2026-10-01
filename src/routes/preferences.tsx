@@ -123,7 +123,11 @@ function PreferencesPage() {
   const { user } = useAuth();
   // Nothing is shown to tap until the saved answers are in: a tap made on the
   // empty defaults was overwritten on screen when they arrived.
-  const [loaded, setLoaded] = useState(false);
+  const [load, setLoad] = useState<"loading" | "ok" | "error">("loading");
+  const [loadTry, setLoadTry] = useState(0);
+  const loaded = load === "ok";
+  /** Saves still on their way, so "Saved ✓" waits for the last of them. */
+  const pending = useRef(0);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -154,9 +158,15 @@ function PreferencesPage() {
       )
       .eq("id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (!active) return;
-        setLoaded(true);
+        // A failed read must not unlock the page on empty defaults: the next
+        // tap would save over the traveller's real answers.
+        if (error) {
+          setLoad("error");
+          return;
+        }
+        setLoad("ok");
         if (!data) return;
         setPrefs({
           preferences: data.preferences ?? [],
@@ -172,30 +182,39 @@ function PreferencesPage() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [user, loadTry]);
 
   const save = async (patch: Partial<Prefs>) => {
     const before = prefs;
     setPrefs((p) => ({ ...p, ...patch }));
     if (!user) return;
     if (savedTimer.current) clearTimeout(savedTimer.current);
+    pending.current += 1;
     setSaveState("saving");
     const { error } = await supabase.from("profiles").upsert({ id: user.id, ...patch });
+    pending.current -= 1;
     if (error) {
       // Put a tapped choice back, so the screen never shows what was not
-      // saved. Typed notes stay in their box to try again.
-      const undo: Partial<Prefs> = {};
-      for (const key of Object.keys(patch) as Array<keyof Prefs>) {
-        if (key !== "dietary_notes" && key !== "avoid_notes") {
-          (undo as Record<string, unknown>)[key] = before[key];
+      // saved; but only where this save's value is still the one showing.
+      // A newer tap on the same choice owns it now. Typed notes stay in
+      // their box to try again.
+      setPrefs((p) => {
+        const undo: Partial<Prefs> = {};
+        for (const key of Object.keys(patch) as Array<keyof Prefs>) {
+          if (key === "dietary_notes" || key === "avoid_notes") continue;
+          if (p[key] === patch[key]) (undo as Record<string, unknown>)[key] = before[key];
         }
-      }
-      setPrefs((p) => ({ ...p, ...undo }));
+        return { ...p, ...undo };
+      });
       setSaveState("error");
       return;
     }
-    setSaveState("saved");
-    savedTimer.current = setTimeout(() => setSaveState("idle"), 1500);
+    if (pending.current > 0) return;
+    setSaveState((cur) => (cur === "error" ? cur : "saved"));
+    savedTimer.current = setTimeout(
+      () => setSaveState((cur) => (cur === "saved" ? "idle" : cur)),
+      1500,
+    );
   };
 
   const toggleIn = (list: string[], value: string) =>
@@ -217,7 +236,23 @@ function PreferencesPage() {
           itineraries, restaurant picks and trip comparisons land to what you actually want.
         </p>
 
-        {!loaded ? (
+        {load === "error" ? (
+          <div className="card-soft space-y-3 p-4">
+            <p className="text-[14.5px]">
+              Your preferences didn't load, so nothing can be changed yet. Check your connection.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setLoad("loading");
+                setLoadTry((n) => n + 1);
+              }}
+              className="btn-primary flex w-full items-center justify-center px-4"
+            >
+              Try again
+            </button>
+          </div>
+        ) : !loaded ? (
           <div className="space-y-4" aria-busy="true" aria-label="Loading your preferences">
             <div className="card-soft h-56 animate-pulse" />
             <div className="card-soft h-40 animate-pulse" />

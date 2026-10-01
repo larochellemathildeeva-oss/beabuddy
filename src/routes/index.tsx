@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
+import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import {
@@ -61,7 +62,13 @@ function HomePage() {
   // While sign-in is still being checked, a browser with no saved session is
   // a visitor: show them the welcome page now rather than "Loading…" first.
   // The server cannot know, so it paints the neutral opening screen.
-  const maybeSignedIn = useSyncExternalStore(noSubscribe, browserHasStoredSession, () => true);
+  // Back from Google, the session is not saved yet but is about to be: that
+  // counts as signed in too, or the welcome page flashes before Home.
+  const maybeSignedIn = useSyncExternalStore(
+    noSubscribe,
+    () => browserHasStoredSession() || hasPendingOAuthResultInWindow(),
+    () => true,
+  );
 
   if (!user && (!loading || !maybeSignedIn)) {
     return <LandingPage />;
