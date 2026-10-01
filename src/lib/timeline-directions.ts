@@ -1,5 +1,5 @@
 import type { RouteLeg, RouteStep } from "./directions.functions.ts";
-import { isSavedDirectionItem, type DirectionStop } from "./direction-stops.ts";
+import { hasCoords, isSavedDirectionItem, type DirectionStop } from "./direction-stops.ts";
 import { modeFromWord, modeWord } from "./travel-mode.ts";
 
 export type { DirectionStop } from "./direction-stops.ts";
@@ -93,6 +93,20 @@ export function unroutedLegCopy(
   if (leg.capped) return "Turn-by-turn paused here — open in maps for this stretch";
   if (leg.unknownSpot) return "Exact spot unknown — open in maps to search it";
   return "Open in maps for this stretch";
+}
+
+/**
+ * A saved journey that still describes the stops. One saved as "Exact spot
+ * unknown" while a stop had no pin is out of date once both stops are on the
+ * map: kept, it went on saying the spot was unknown after it was found.
+ */
+export function savedLegStillFits<L extends Pick<RouteLeg, "unknownSpot">>(
+  leg: L | undefined,
+  from: { lat?: number | null; lon?: number | null },
+  to: { lat?: number | null; lon?: number | null },
+): L | undefined {
+  if (leg?.unknownSpot && hasCoords(from) && hasCoords(to)) return undefined;
+  return leg;
 }
 
 /** How a saved row's summary names the stop it leaves from. */

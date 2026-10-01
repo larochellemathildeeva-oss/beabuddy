@@ -106,6 +106,7 @@ import { autoPinTrusted } from "@/lib/match-confidence";
 import {
   directionKey,
   legsToTimelineItems,
+  savedLegStillFits,
   splitDirectionRows,
   unroutedLegCopy,
 } from "@/lib/timeline-directions";
@@ -701,12 +702,16 @@ export function TripDetail({
    */
   const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
     legFor(from.id, to.id) ??
-    savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
-    savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
-    (strict
-      ? undefined
-      : (savedTravel.get(directionKey(to.day_date, to.title)) ??
-        savedTravel.get(directionKey(from.day_date, to.title))));
+    savedLegStillFits(
+      savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
+        savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
+        (strict
+          ? undefined
+          : (savedTravel.get(directionKey(to.day_date, to.title)) ??
+            savedTravel.get(directionKey(from.day_date, to.title)))),
+      from,
+      to,
+    );
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
