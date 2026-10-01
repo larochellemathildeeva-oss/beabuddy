@@ -299,14 +299,18 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const { geoProvider } = await import("@/lib/geo-provider.server");
     // Re-read before every lookup and route: Geoapify can rest mid-batch.
     let provider = geoProvider();
-    let lookupsLeft = provider.name === "nominatim" ? LOOKUP_BUDGET : KEYED_LOOKUP_BUDGET;
+    // Counted, and held to the cap of whoever answers now: Geoapify resting
+    // mid-batch moves lookups to the public servers, whose cap is lower.
+    let lookupsDone = 0;
+    const lookupsSpent = () =>
+      lookupsDone >= (geoProvider().name === "nominatim" ? LOOKUP_BUDGET : KEYED_LOOKUP_BUDGET);
     /** Timestamps of requests made, so both the burst and minute caps hold. */
     const sent: number[] = [];
     let box: AreaBox | null = null;
     const lookup = async (query: string, within: AreaBox | null = box) => {
       const cacheKey = `${query.toLowerCase()}|${within ? boxViewbox(within) : ""}`;
       if (queryCache.has(cacheKey)) return queryCache.get(cacheKey) ?? null;
-      if (lookupsLeft <= 0 || Date.now() > deadline) return null;
+      if (lookupsSpent() || Date.now() > deadline) return null;
       provider = geoProvider();
       // The provider's own pace, honouring the minute cap as well as the gap,
       // rather than a number written in here.
@@ -322,7 +326,9 @@ export const buildRoutes = createServerFn({ method: "POST" })
         if (current.name === provider.name) break;
         provider = current;
       }
-      lookupsLeft -= 1;
+      // The provider may have changed during the wait: its cap applies.
+      if (lookupsSpent()) return null;
+      lookupsDone += 1;
       sent.push(Date.now());
       const found = await geocode(provider, query, within);
       queryCache.set(cacheKey, found);
@@ -342,7 +348,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const anchors = sameDayAnchors(data.stops);
     /** Stops not found beside their day's anchor, for a wider look after. */
     const missedNearAnchor: { index: number; anchor: { lat: number; lon: number } }[] = [];
-    const outOfTime = () => lookupsLeft <= 0 || Date.now() > deadline;
+    const outOfTime = () => lookupsSpent() || Date.now() > deadline;
     for (const [index, stop] of data.stops.entries()) {
       if (hasCoords(stop)) {
         const pin = { lat: stop.lat, lon: stop.lon };
@@ -355,7 +361,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
         points.push(reuse);
         continue;
       }
-      if (lookupsLeft <= 0 || Date.now() > deadline) {
+      if (lookupsSpent() || Date.now() > deadline) {
         if (!deferred.includes(stop.title)) deferred.push(stop.title);
         points.push(null);
         continue;

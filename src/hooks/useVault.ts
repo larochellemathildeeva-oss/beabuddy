@@ -263,6 +263,16 @@ export function useVault() {
       } catch {
         throw new Error("That passcode doesn't match");
       }
+      // Changed on another device since this one unlocked: the key held here
+      // is the old one, so ask for a fresh unlock rather than vouching for it.
+      if (unlockedVerifier.current && settings.verifier !== unlockedVerifier.current) {
+        unlockedVerifier.current = null;
+        setKey(null);
+        setWeakPasscode(false);
+        throw new Error(
+          "The Protected passcode was changed on another device. Unlock with the new one.",
+        );
+      }
       await judgeTypedPasscode(passcode);
     },
     [judgeTypedPasscode],

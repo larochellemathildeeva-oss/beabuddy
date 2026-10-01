@@ -1,6 +1,12 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { isShareToken, newShareToken, sharedTripView, shareUrl } from "./trip-share.ts";
+import {
+  isShareToken,
+  newShareToken,
+  shareClientKey,
+  sharedTripView,
+  shareUrl,
+} from "./trip-share.ts";
 
 test("tokens are 256 random bits, url-safe, and never repeat", () => {
   const a = newShareToken();
@@ -81,4 +87,17 @@ test("the view shows the plan and nothing private", () => {
 
 test("the link", () => {
   assert.equal(shareUrl("https://bea.app/", "abc"), "https://bea.app/shared/abc");
+});
+
+test("readers are limited by address, and IPv6 ones by their /64", () => {
+  assert.equal(shareClientKey("203.0.113.7"), "203.0.113.7");
+  assert.equal(shareClientKey("::ffff:203.0.113.7"), "203.0.113.7");
+  // Every address in one /64 shares a key, however it is written.
+  const a = shareClientKey("2001:db8:abcd:12:1111:2222:3333:4444");
+  assert.equal(a, "2001:db8:abcd:12::/64");
+  assert.equal(shareClientKey("2001:0db8:abcd:0012::9"), a);
+  assert.equal(shareClientKey("[2001:db8:abcd:12:ffff::1]"), a);
+  assert.notEqual(shareClientKey("2001:db8:abcd:13::1"), a);
+  assert.equal(shareClientKey("::1"), "0:0:0:0::/64");
+  assert.equal(shareClientKey(""), "unknown");
 });

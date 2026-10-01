@@ -151,7 +151,13 @@ export async function reserveLocalName(userId: string): Promise<boolean> {
       : await askDatabase(userId, 1, LOCAL_NAME_DAILY, "local_name");
   if (reply === "allowed") return true;
   if (reply !== "missing") return false;
-  if (isDeployedBuild()) return false;
   localNameMissingUntil = now + MISSING_RETRY_MS;
+  if (isDeployedBuild()) {
+    // Asked again hourly, not on every search, and said once.
+    console.warn(
+      "[ai-quota] local-name bucket unavailable (is the ai_usage_buckets migration applied?); searching without local-script names, asking again in an hour",
+    );
+    return false;
+  }
   return memory().reserve(`local_name:${userId}`, 1, LOCAL_NAME_DAILY, now);
 }
