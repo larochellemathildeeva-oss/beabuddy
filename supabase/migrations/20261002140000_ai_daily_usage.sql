@@ -11,8 +11,12 @@
 -- reserve_ai_units. Nothing for anon or authenticated: a traveller cannot
 -- read or reset their own count. Rows go with the account (ON DELETE CASCADE).
 --
--- Applied by hand; safe to re-run. Until it is applied the server counts the
--- same ceiling per process, with one warning, and asks again hourly.
+-- Applied by hand; safe to re-run.
+--
+-- The deployed app fails closed without it: no Gemini request is sent when
+-- this ledger cannot be reached (isDeployedBuild, ai-quota.server.ts). Only
+-- local runs, unit tests and the repository's audit scripts fall back to a
+-- per-process count, so they need no live service-role connection.
 
 CREATE TABLE IF NOT EXISTS public.ai_daily_usage (
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,

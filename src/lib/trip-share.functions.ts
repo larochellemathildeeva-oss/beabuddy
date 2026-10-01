@@ -1,12 +1,30 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { allowCall } from "@/lib/call-limit";
 import { isShareToken, type SharedTrip } from "@/lib/trip-share";
+import { TileRateLimiter as ReadLimiter, tileClientKey as clientKey } from "@/lib/tile-rate-limit";
 
-/** Reads per link, per server: plenty for a family, not enough to hammer. */
-const PER_LINK = 120;
+/**
+ * Three ceilings before the database is asked, each a token bucket that
+ * refills over ten minutes and holds a bounded number of keys (the oldest
+ * is dropped, never the whole table, so flooding it resets no one else):
+ *
+ * - per link: plenty for a family, not enough to hammer one trip;
+ * - per client (the address Canner's proxy appends): the token is chosen by
+ *   whoever asks, so a limit keyed on it alone gave every made-up token a
+ *   fresh allowance;
+ * - for the whole server: what anonymous readers may cost in all.
+ *
+ * Per process, like the other request limits; the edge can add its own.
+ */
 const WINDOW_MS = 10 * 60 * 1000;
-const reads = new Map<string, number[]>();
+const PER_LINK = 120;
+const PER_CLIENT = 60;
+const ALL_READS = 600;
+const byLink = new ReadLimiter(PER_LINK, WINDOW_MS, 5_000);
+const byClient = new ReadLimiter(PER_CLIENT, WINDOW_MS, 10_000);
+const overall = new ReadLimiter(ALL_READS, WINDOW_MS, 1);
+
+const BUSY = "This link has been opened a lot just now. Try again in a few minutes.";
 
 /**
  * A shared trip, by its link's token. No sign-in: this is the one read Béa
@@ -17,11 +35,12 @@ export const readSharedTrip = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ token: z.string().max(64) }).parse(data))
   .handler(async ({ data }): Promise<SharedTrip | null> => {
     if (!isShareToken(data.token)) return null;
-    // Only tokens of the right shape reach here, but keep the log bounded.
-    if (reads.size > 5_000) reads.clear();
-    if (!allowCall(reads, data.token, Date.now(), PER_LINK, WINDOW_MS)) {
-      throw new Error("This link has been opened a lot just now. Try again in a few minutes.");
-    }
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const now = Date.now();
+    // Cheapest refusal first; each check spends only when the ones before passed.
+    if (!byClient.allow(clientKey(getRequest().headers), now)) throw new Error(BUSY);
+    if (!overall.allow("all", now)) throw new Error(BUSY);
+    if (!byLink.allow(data.token, now)) throw new Error(BUSY);
     const server = await import("@/lib/trip-share.server");
     return server.readSharedTrip(data.token);
   });
