@@ -31,6 +31,7 @@ import { demoGlobePins, loadDemoSeed } from "@/lib/demo-seed";
 import { beaLine, BEA_MISSION, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
+import { isAreaPlace } from "@/lib/reco-place";
 
 export const Route = createFileRoute("/")({
   staticData: { plane: "tab" },
@@ -162,10 +163,17 @@ function SignedInHome() {
     shownName({ profileName: displayName, profileLoaded, email: user?.email }).split(" ")[0] ?? "";
 
   const topReco = useMemo(() => {
-    const ranked = rankOpportunities(vault.comparePins, scorePrefs);
+    // A city or country added on the World tab is a place you have been, not
+    // a saved spot waiting for you.
+    const venues = vault.rows.filter((row) => !isAreaPlace(row));
+    const ids = new Set(venues.map((row) => `reco-${row.id}`));
+    const ranked = rankOpportunities(
+      vault.comparePins.filter((pin) => ids.has(pin.id)),
+      scorePrefs,
+    );
     const winner = ranked[0]?.pin;
-    if (!winner) return vault.rows[0];
-    return vault.rows.find((row) => `reco-${row.id}` === winner.id) ?? vault.rows[0];
+    if (!winner) return venues[0];
+    return venues.find((row) => `reco-${row.id}` === winner.id) ?? venues[0];
   }, [vault.comparePins, vault.rows, scorePrefs]);
   const topNote = notes.rows[0];
   const empty = photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;

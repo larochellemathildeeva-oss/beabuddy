@@ -61,6 +61,15 @@ export function isCityLevelPlace(place: RecoPlaceFields): boolean {
   return name === city || name === cityHead;
 }
 
+/**
+ * True when the saved row is a whole country or city — a place on the globe,
+ * not a venue. Recs and Home's suggestion list venues only, so a country added
+ * on the World tab does not turn up among bookmarks.
+ */
+export function isAreaPlace(place: RecoPlaceFields): boolean {
+  return isCountryLevelPlace(place) || isCityLevelPlace(place);
+}
+
 /** Unique city/place chips from saved recs' city fields — not from city-as-pin rows. */
 export function uniqueRecCities(places: readonly RecoPlaceFields[]): string[] {
   const items: { head: string; country: string }[] = [];

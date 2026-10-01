@@ -73,12 +73,7 @@ import {
   toNewReco,
 } from "@/lib/captured-place";
 import { fuzzyRank } from "@/lib/fuzzy";
-import {
-  isCityLevelPlace,
-  isCountryLevelPlace,
-  recMatchesPlace,
-  uniqueRecCities,
-} from "@/lib/reco-place";
+import { isAreaPlace, recMatchesPlace, uniqueRecCities } from "@/lib/reco-place";
 import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { draftFromTyped, recMapsUrl } from "@/lib/reco-open";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -260,7 +255,7 @@ function RecommendationsPage() {
           removable: false,
         };
 
-  const venues = saved.filter((r) => !isCityLevelPlace(r));
+  const venues = saved.filter((r) => !isAreaPlace(r));
   const views = venues.map(rowView);
   const places = ["All places", ...uniqueRecCities(saved)];
   // "cafe" and "Cafe" are one filter, not two.
@@ -676,14 +671,14 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
-  const counts = listCounts(vault.rows.filter((r) => !isCityLevelPlace(r)));
+  const counts = listCounts(vault.rows.filter((r) => !isAreaPlace(r)));
   const recent = recentlySaved(
-    vault.rows.filter((r) => !isCityLevelPlace(r)),
+    vault.rows.filter((r) => !isAreaPlace(r)),
     3,
   );
   const latestIn = (t: PinType) =>
     recentlySaved(
-      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !isCityLevelPlace(r)),
+      vault.rows.filter((r) => (r.pin_type ?? "reco") === t && !isAreaPlace(r)),
       1,
     )[0];
 
@@ -936,7 +931,7 @@ function RecommendationsPage() {
                                 {/* Hours on request: one lookup per card tapped,
                                     not one per card listed. A country or a city
                                     has no opening hours, so it gets no button. */}
-                                {!isCountryLevelPlace(row) && !isCityLevelPlace(row) && (
+                                {!isAreaPlace(row) && (
                                   <PlaceFacts name={row.name} lat={row.lat} lon={row.lon} />
                                 )}
                               </div>
