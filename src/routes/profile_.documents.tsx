@@ -87,7 +87,7 @@ const RECENT_COUNT = 5;
 type Panel =
   | { kind: "none" }
   | { kind: "add" }
-  | { kind: "assign-new"; file: File | null }
+  | { kind: "assign-new"; file: File | null; pasted?: boolean }
   | { kind: "reassign"; doc: TripDocument }
   | { kind: "more"; doc: TripDocument }
   | { kind: "edit"; doc: TripDocument }
@@ -538,6 +538,7 @@ function DocumentsPage() {
         open={panel.kind === "add"}
         onClose={close}
         onPick={(file) => setPanel({ kind: "assign-new", file })}
+        onPaste={() => setPanel({ kind: "assign-new", file: null, pasted: true })}
       />
 
       {panel.kind === "assign-new" && (
@@ -546,6 +547,7 @@ function DocumentsPage() {
           onClose={close}
           isNew
           file={panel.file}
+          pasted={!!panel.pasted}
           trips={trips}
           initial={{
             title: panel.file ? titleFromFileName(panel.file.name) : "",

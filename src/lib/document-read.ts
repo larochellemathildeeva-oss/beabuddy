@@ -31,6 +31,28 @@ export function readableAs(file: { type: string; name: string }): "pdf" | "image
   return null;
 }
 
+/** Pasted confirmation text is cut to this many characters before it is read. */
+export const PASTED_TEXT_MAX = 20_000;
+
+/**
+ * Text pasted from a confirmation email or message, made ready to send: line
+ * endings made one kind, control characters and anything that looks like a
+ * card number dropped, long runs of blank lines shortened, capped.
+ */
+export function cleanPastedText(text: string): string {
+  return dropCardNumbers(
+    text
+      .replace(/\r\n?/g, "\n")
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, ""),
+  )
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, PASTED_TEXT_MAX)
+    .trim();
+}
+
 /** What the model is asked for. Every field may be null. */
 export type RawDocumentRead = {
   kind: string | null;
@@ -59,7 +81,7 @@ export type DocumentRead = {
 
 export function documentReadPrompt(today: string): string {
   return [
-    "This is a travel booking confirmation, e-ticket, boarding pass or reservation.",
+    "This is a travel booking confirmation, e-ticket, boarding pass or reservation (a file, or text pasted from an email or message).",
     "Read it and fill in the fields below for the traveller's trip documents. Use only what the document says; leave a field null when it is not there.",
     "",
     `kind: one of flight, train (also bus and ferry), car (car rental), accommodation, restaurant, activity (tours, museums, shows), ticket (any other entry ticket), other.`,

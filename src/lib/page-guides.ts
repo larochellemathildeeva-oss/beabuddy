@@ -498,8 +498,8 @@ export const guides: Record<string, Guide> = {
     about:
       "Bookings, tickets and confirmations for your trips, shared with the people on them. Protected holds what only you should see.",
     features: [
-      "Add a PDF, photo or file for a trip",
-      "Fill in from this file: Béa reads the booking and fills the form (only when you tap it)",
+      "Add a PDF, photo or file for a trip, or paste a confirmation's text",
+      "Fill in from this file or text: Béa reads the booking and fills the form (only when you tap it)",
       "Search, sort and choose which documents to show",
       "Keep private files in Protected, encrypted on your device with your passcode",
       "Lock Trip documents on this phone behind Face ID, fingerprint or your passcode",

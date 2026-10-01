@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  PASTED_TEXT_MAX,
   cleanDocumentRead,
+  cleanPastedText,
   documentReadPrompt,
   isEmptyRead,
   looksLikeCardNumber,
@@ -196,4 +198,17 @@ test("stopForRead leaves it to the traveller when unsure", () => {
   assert.equal(stopForRead(otherDay, stops), null);
   const undated = { date: null, kind: "flight" as const, place: "", title: "Flight to Lisbon" };
   assert.equal(stopForRead(undated, stops), null);
+});
+
+test("pasted text is tidied, capped and loses card numbers before it is sent", () => {
+  const pasted =
+    "Booking ABC123\r\nCard 4111 1111 1111 1111\r\n\r\n\r\n\r\nE-ticket 0142345678901 \u0007\n";
+  const clean = cleanPastedText(pasted);
+  assert.doesNotMatch(clean, /4111/);
+  assert.match(clean, /E-ticket 0142345678901/);
+  assert.match(clean, /Booking ABC123/);
+  assert.ok(!clean.includes("\r") && !clean.includes("\u0007"));
+  assert.doesNotMatch(clean, /\n{3}/);
+  assert.equal(cleanPastedText("  \n\n  "), "");
+  assert.equal(cleanPastedText("x".repeat(PASTED_TEXT_MAX + 50)).length, PASTED_TEXT_MAX);
 });
