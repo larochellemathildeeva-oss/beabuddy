@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { preferenceGroups } from "@/data/atlas";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,6 +52,11 @@ const splurges = ["Splurge on food", "Splurge on stays"];
 const listedTags = new Set([...preferenceGroups.flatMap((g) => g.tags), ...splurges]);
 
 const CUSTOM_TAG_MAX = 40;
+
+/** Planning and Opportunities read only this many interests (`travel-preferences.server.ts`, `useScorePrefs`). */
+const TAGS_MAX = 40;
+
+const NOTE_SAVE_DELAY_MS = 800;
 
 const paces = [
   { value: "Slow", hint: "One or two things a day." },
@@ -139,6 +144,12 @@ function PreferencesPage() {
   const [countryDraft, setCountryDraft] = useState("");
   const [tagDraft, setTagDraft] = useState("");
   const [saved, setSaved] = useState(false);
+  const [tagNotice, setTagNotice] = useState<string | null>(null);
+  // The latest preferences, so quick taps build on each other, and a queue so
+  // an older save never lands after a newer one.
+  const prefsRef = useRef(prefs);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -152,7 +163,7 @@ function PreferencesPage() {
       .maybeSingle()
       .then(({ data }) => {
         if (!active || !data) return;
-        setPrefs({
+        prefsRef.current = {
           preferences: data.preferences ?? [],
           travel_style: data.travel_style,
           budget_level: data.budget_level,
@@ -161,20 +172,65 @@ function PreferencesPage() {
           dietary_notes: data.dietary_notes ?? "",
           avoid_notes: data.avoid_notes ?? "",
           home_currency: data.home_currency,
-        });
+        };
+        setPrefs(prefsRef.current);
       });
     return () => {
       active = false;
     };
   }, [user]);
 
-  const save = async (patch: Partial<Prefs>) => {
-    setPrefs((p) => ({ ...p, ...patch }));
+  const save = (patch: Partial<Prefs>) => {
+    prefsRef.current = { ...prefsRef.current, ...patch };
+    setPrefs(prefsRef.current);
     if (!user) return;
-    await supabase.from("profiles").upsert({ id: user.id, ...patch });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    const id = user.id;
+    saveQueue.current = saveQueue.current.then(async () => {
+      await supabase.from("profiles").upsert({ id, ...patch });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    });
   };
+
+  /** Changes the interests from their latest value, refusing to grow past TAGS_MAX. */
+  const editTags = (change: (tags: string[]) => string[]) => {
+    const current = prefsRef.current.preferences;
+    const next = change(current);
+    if (next.length > current.length && next.length > TAGS_MAX) {
+      setTagNotice(`Up to ${TAGS_MAX} interests — remove one to add another.`);
+      return;
+    }
+    setTagNotice(null);
+    save({ preferences: next });
+  };
+
+  // Case-blind, so an older hand-typed "museums" is cleared by the Museums chip, not doubled.
+  const toggleTag = (tag: string) =>
+    editTags((tags) => {
+      const same = (t: string) => t.toLowerCase() === tag.toLowerCase();
+      return tags.some(same) ? tags.filter((t) => !same(t)) : [...tags, tag];
+    });
+
+  // Notes save after a pause in typing, on leaving the box, or on leaving the page.
+  const flushNotes = useRef(() => {});
+  flushNotes.current = () => {
+    if (!noteTimer.current) return;
+    clearTimeout(noteTimer.current);
+    noteTimer.current = null;
+    save({
+      dietary_notes: prefsRef.current.dietary_notes,
+      avoid_notes: prefsRef.current.avoid_notes,
+    });
+  };
+
+  const editNote = (field: "dietary_notes" | "avoid_notes", value: string) => {
+    prefsRef.current = { ...prefsRef.current, [field]: value };
+    setPrefs(prefsRef.current);
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    noteTimer.current = setTimeout(() => flushNotes.current(), NOTE_SAVE_DELAY_MS);
+  };
+
+  useEffect(() => () => flushNotes.current(), []);
 
   const toggleIn = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -190,10 +246,13 @@ function PreferencesPage() {
   const customTags = prefs.preferences.filter((t) => !listedTags.has(t));
 
   const addTag = () => {
-    const value = tagDraft.trim().replace(/\s+/g, " ").slice(0, CUSTOM_TAG_MAX);
-    if (!value) return;
-    const exists = prefs.preferences.some((t) => t.toLowerCase() === value.toLowerCase());
-    if (!exists) void save({ preferences: [...prefs.preferences, value] });
+    const typed = tagDraft.trim().replace(/\s+/g, " ").slice(0, CUSTOM_TAG_MAX);
+    if (!typed) return;
+    // A listed interest typed by hand selects its chip rather than saving a second spelling.
+    const value = [...listedTags].find((t) => t.toLowerCase() === typed.toLowerCase()) ?? typed;
+    editTags((tags) =>
+      tags.some((t) => t.toLowerCase() === value.toLowerCase()) ? tags : [...tags, value],
+    );
     setTagDraft("");
   };
 
@@ -256,7 +315,7 @@ function PreferencesPage() {
             {splurges.map((tag) => (
               <button
                 key={tag}
-                onClick={() => void save({ preferences: toggleIn(prefs.preferences, tag) })}
+                onClick={() => toggleTag(tag)}
                 aria-pressed={prefs.preferences.includes(tag)}
                 className={`rounded-full border px-3 py-1.5 text-[13px] ${
                   prefs.preferences.includes(tag)
@@ -377,7 +436,7 @@ function PreferencesPage() {
                   {group.tags.map((tag) => (
                     <button
                       key={tag}
-                      onClick={() => void save({ preferences: toggleIn(prefs.preferences, tag) })}
+                      onClick={() => toggleTag(tag)}
                       aria-pressed={prefs.preferences.includes(tag)}
                       className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
                         prefs.preferences.includes(tag)
@@ -401,9 +460,7 @@ function PreferencesPage() {
                   {customTags.map((tag) => (
                     <button
                       key={tag}
-                      onClick={() =>
-                        void save({ preferences: prefs.preferences.filter((t) => t !== tag) })
-                      }
+                      onClick={() => editTags((tags) => tags.filter((t) => t !== tag))}
                       aria-label={`Remove ${tag}`}
                       className="rounded-full border border-primary bg-primary px-3 py-1.5 text-[13px] text-primary-foreground"
                     >
@@ -433,6 +490,11 @@ function PreferencesPage() {
                   Add
                 </button>
               </div>
+              {tagNotice && (
+                <p role="status" className="mt-2 text-[12.5px] text-muted-foreground">
+                  {tagNotice}
+                </p>
+              )}
             </div>
           </div>
         </section>
@@ -444,16 +506,16 @@ function PreferencesPage() {
           </p>
           <textarea
             value={prefs.dietary_notes ?? ""}
-            onChange={(e) => setPrefs((p) => ({ ...p, dietary_notes: e.target.value }))}
-            onBlur={() => void save({ dietary_notes: prefs.dietary_notes })}
+            onChange={(e) => editNote("dietary_notes", e.target.value)}
+            onBlur={() => flushNotes.current()}
             rows={2}
             placeholder="Food: e.g. no shellfish, vegetarian dinners"
             className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
           />
           <textarea
             value={prefs.avoid_notes ?? ""}
-            onChange={(e) => setPrefs((p) => ({ ...p, avoid_notes: e.target.value }))}
-            onBlur={() => void save({ avoid_notes: prefs.avoid_notes })}
+            onChange={(e) => editNote("avoid_notes", e.target.value)}
+            onBlur={() => flushNotes.current()}
             rows={2}
             placeholder="Avoid: e.g. long hikes, crowded nightlife, early flights"
             className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
