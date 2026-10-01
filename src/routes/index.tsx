@@ -110,6 +110,7 @@ function LandingPage() {
           selectedId={selectedId}
           onSelect={(pin) => setSelectedId(pin.id)}
           scrollFriendly
+          autoSpin
         />
         <p className="text-[13px] text-muted-foreground">
           The globe shows sample places. Once you've signed in, you can load sample data to try

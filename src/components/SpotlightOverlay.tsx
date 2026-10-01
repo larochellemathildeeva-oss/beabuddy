@@ -3,15 +3,21 @@ import { guideTargetLooksVisible } from "@/lib/guide-target";
 
 export type SpotlightBox = { top: number; left: number; width: number; height: number };
 
-/** Resolve a guide/tour selector to a visible element, or null. */
+/**
+ * Resolve a guide/tour selector to a visible element, or null.
+ *
+ * The first *visible* match, not the first match: a page can mark the same
+ * spot twice (Recs has an empty list section above its empty-vault card), and
+ * taking only the first left the walk pointing at nothing.
+ */
 export function findGuideTarget(selector?: string): HTMLElement | null {
   if (!selector || typeof document === "undefined") return null;
-  const el = document.querySelector<HTMLElement>(selector);
-  if (!el) return null;
-  const rect = el.getBoundingClientRect();
-  const style = window.getComputedStyle(el);
-  if (!guideTargetLooksVisible(rect, style)) return null;
-  return el;
+  for (const el of document.querySelectorAll<HTMLElement>(selector)) {
+    const rect = el.getBoundingClientRect();
+    const style = window.getComputedStyle(el);
+    if (guideTargetLooksVisible(rect, style)) return el;
+  }
+  return null;
 }
 
 export function measureGuideTarget(el: HTMLElement): SpotlightBox {
