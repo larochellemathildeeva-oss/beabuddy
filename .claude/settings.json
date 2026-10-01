@@ -1,0 +1,25 @@
+{
+  "extraKnownMarketplaces": {
+    "impeccable": {
+      "source": {
+        "source": "settings",
+        "name": "impeccable",
+        "plugins": [
+          {
+            "name": "impeccable",
+            "source": {
+              "source": "git-subdir",
+              "url": "https://github.com/pbakaus/impeccable.git",
+              "path": "plugin",
+              "ref": "main",
+              "sha": "5efd0eeee80b7a627233b53539fe829f05b5a60f"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "enabledPlugins": {
+    "impeccable@impeccable": true
+  }
+}
