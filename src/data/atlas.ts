@@ -111,11 +111,6 @@ export const preferenceGroups: { title: string; hint: string; tags: string[] }[]
     ],
   },
   {
-    title: "Budget",
-    hint: "How much you like to spend.",
-    tags: ["Shoestring", "Comfortable", "Treat yourself", "Splurge on food", "Splurge on stays"],
-  },
-  {
     title: "Who you travel with",
     hint: "Changes what Béa recommends.",
     tags: ["Solo", "Partner", "Friends", "Kids", "Family", "Work"],

@@ -46,6 +46,13 @@ const budgets = [
   { value: "No limit", hint: "Pick the best, always." },
 ];
 
+/** Budget nuances kept as interest tags, shown under Budget rather than in Interests. */
+const splurges = ["Splurge on food", "Splurge on stays"];
+
+const listedTags = new Set([...preferenceGroups.flatMap((g) => g.tags), ...splurges]);
+
+const CUSTOM_TAG_MAX = 40;
+
 const paces = [
   { value: "Slow", hint: "One or two things a day." },
   { value: "Balanced", hint: "A highlight plus room to breathe." },
@@ -130,6 +137,7 @@ function PreferencesPage() {
     home_currency: null,
   });
   const [countryDraft, setCountryDraft] = useState("");
+  const [tagDraft, setTagDraft] = useState("");
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -179,12 +187,25 @@ function PreferencesPage() {
     setCountryDraft("");
   };
 
+  const customTags = prefs.preferences.filter((t) => !listedTags.has(t));
+
+  const addTag = () => {
+    const value = tagDraft.trim().replace(/\s+/g, " ").slice(0, CUSTOM_TAG_MAX);
+    if (!value) return;
+    const exists = prefs.preferences.some((t) => t.toLowerCase() === value.toLowerCase());
+    if (!exists) void save({ preferences: [...prefs.preferences, value] });
+    setTagDraft("");
+  };
+
   return (
     <AppShell eyebrow="Béa's brain" title="Travel preferences">
       <div className="space-y-4">
         <p className="text-[14.5px] text-muted-foreground">
           Everything here goes straight into Béa's planning. The more you set, the closer her
           itineraries, restaurant picks and trip comparisons land to what you actually want.
+        </p>
+        <p className="text-[13px] text-muted-foreground">
+          Changes save automatically — no button to press.
         </p>
 
         {!loading && !user && (
@@ -228,6 +249,23 @@ function PreferencesPage() {
                   void save({ budget_level: prefs.budget_level === b.value ? null : b.value })
                 }
               />
+            ))}
+          </div>
+          <p className="label-caps mt-4 text-foreground">Worth a splurge</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {splurges.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => void save({ preferences: toggleIn(prefs.preferences, tag) })}
+                aria-pressed={prefs.preferences.includes(tag)}
+                className={`rounded-full border px-3 py-1.5 text-[13px] ${
+                  prefs.preferences.includes(tag)
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-muted-foreground"
+                }`}
+              >
+                {tag}
+              </button>
             ))}
           </div>
           <p className="label-caps mt-4 text-foreground">Show prices in</p>
@@ -353,6 +391,49 @@ function PreferencesPage() {
                 </div>
               </div>
             ))}
+            <div>
+              <p className="text-[14.5px] font-medium">Your own</p>
+              <p className="text-[12.5px] text-muted-foreground">
+                Anything not listed — add it in your own words.
+              </p>
+              {customTags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {customTags.map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() =>
+                        void save({ preferences: prefs.preferences.filter((t) => t !== tag) })
+                      }
+                      aria-label={`Remove ${tag}`}
+                      className="rounded-full border border-primary bg-primary px-3 py-1.5 text-[13px] text-primary-foreground"
+                    >
+                      {tag} ✕
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  maxLength={CUSTOM_TAG_MAX}
+                  placeholder="e.g. Jazz bars, ceramics, rooftop views"
+                  className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                />
+                <button
+                  onClick={addTag}
+                  className="rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -380,7 +461,7 @@ function PreferencesPage() {
         </section>
 
         <p className="pb-2 text-center text-[13px] text-muted-foreground">
-          {saved ? "Saved ✓" : "Everything saves as you tap."}
+          {saved ? "Saved ✓" : "Everything saves automatically as you tap or type."}
         </p>
       </div>
     </AppShell>
