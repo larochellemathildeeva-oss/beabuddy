@@ -27,6 +27,7 @@ export const AI_COST = {
   packing: 2,
   comparePlaces: 2,
   planEdit: 2,
+  dayEdit: 2,
   recoList: 3,
   optimize: 3,
   itinerary: 4,

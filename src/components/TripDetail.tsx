@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   Route,
+  CalendarDays,
   Signpost,
   ListChecks,
   MoreHorizontal,
@@ -43,6 +44,7 @@ import {
 import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
+import { DayEditSheet } from "@/components/day/DayEditSheet";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
 import { printHtml } from "@/lib/print-page";
 import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
@@ -765,6 +767,8 @@ export function TripDetail({
   };
   /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
   const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
+  /** "Change a day": pick a day and its stops, say what to change, compare. */
+  const [dayEditOpen, setDayEditOpen] = useState(false);
   /**
    * The clock, for the line that says where you are in today.
    *
@@ -2128,6 +2132,16 @@ export function TripDetail({
             />
           </Sheet>
 
+          <DayEditSheet
+            open={dayEditOpen}
+            onClose={() => setDayEditOpen(false)}
+            tripId={trip.id}
+            stops={stopItems}
+            days={moveDays}
+            initialDay={addToDay}
+            onApply={(moves, summary) => moveStops(moves, summary)}
+          />
+
           <MoveStopSheet
             stop={movingStop}
             stops={stopItems}
@@ -2214,6 +2228,19 @@ export function TripDetail({
                       <Pencil className="size-4 text-primary" aria-hidden />
                     )}
                     {editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                  </button>
+                )}
+                {stopItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setDayEditOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <CalendarDays className="size-4 text-primary" aria-hidden />
+                    Change a day
                   </button>
                 )}
                 {stopItems.length >= 2 && (
