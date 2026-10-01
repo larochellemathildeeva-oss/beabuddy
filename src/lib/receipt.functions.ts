@@ -2,12 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartFromDataUrl } from "@/lib/ai-image";
+import { AI_IMAGE_DATA_URL_START, filePartFromDataUrl } from "@/lib/ai-image";
 import { AI_CALL } from "@/lib/ai-errors";
 
 const ReceiptInput = z.object({
   // Downscaled image as a data URL (image/jpeg …), kept small by the client.
-  imageDataUrl: z.string().startsWith("data:image/").max(3_000_000),
+  imageDataUrl: z.string().regex(AI_IMAGE_DATA_URL_START).max(3_000_000),
 });
 
 const ReceiptSchema = z.object({

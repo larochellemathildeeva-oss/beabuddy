@@ -4,7 +4,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
+import { AI_IMAGE_DATA_URL_START, filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
 import { MAX_PDF_DATA_URL_LENGTH, PDF_DATA_URL_PREFIX } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary } from "@/lib/itinerary-ics";
 import { readFetchedLink } from "@/lib/itinerary-link";
@@ -46,7 +46,10 @@ const TravelChoiceField = z
 
 const ParseInput = z
   .object({
-    imageDataUrls: z.array(z.string().startsWith("data:image/").max(3_000_000)).max(6).nullable(),
+    imageDataUrls: z
+      .array(z.string().regex(AI_IMAGE_DATA_URL_START).max(3_000_000))
+      .max(6)
+      .nullable(),
     /** One PDF of the plan: a booking confirmation, a tour document, an export. */
     pdfDataUrl: z.string().startsWith(PDF_DATA_URL_PREFIX).max(MAX_PDF_DATA_URL_LENGTH).nullish(),
     text: z.string().max(20_000).nullable(),
