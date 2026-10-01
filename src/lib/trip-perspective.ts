@@ -41,8 +41,7 @@ export const TRIP_PERSPECTIVES = [
   },
   {
     id: "timeline",
-    label: "Timeline Editor",
-    shortLabel: "Timeline",
+    label: "Timeline",
     hint: "The day in order: reorder, retime, add and edit.",
   },
   {

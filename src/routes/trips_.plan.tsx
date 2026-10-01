@@ -9,7 +9,8 @@ import { CalendarDays, ChevronRight, Plus, Users } from "@/components/icons";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useTrips, type TripRow } from "@/hooks/useTrips";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
-import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
+import { pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
+import { planTripChoices, startsNewTrip } from "@/lib/plan-trip-choices";
 import { tripDateLine } from "@/lib/trip-card";
 import { toLocalISODate } from "@/lib/trip-dates";
 
@@ -46,18 +47,12 @@ function PlanPage() {
     () => pickActiveTrip(t.trips, today) ?? pastTrips(t.trips, today, 1)[0] ?? null,
     [t.trips, today],
   );
-  /** Trips to pick from: the recent one, what comes after it, then the ones behind you. */
-  const choices = useMemo(() => {
-    const active = pickActiveTrip(t.trips, today);
-    const list = [
-      ...(active ? [active] : []),
-      ...laterTrips(t.trips, active, today),
-      ...pastTrips(t.trips, today, 6),
-    ];
-    const seen = new Set<string>();
-    return list.filter((trip) => (seen.has(trip.id) ? false : (seen.add(trip.id), true)));
-  }, [t.trips, today]);
   const [asking, setAsking] = useState<Ask | null>(null);
+  /** Trips the sheet offers for the card that opened it (`plan-trip-choices.ts`). */
+  const choices = useMemo(
+    () => (asking ? planTripChoices(t.trips, today, asking.tab) : []),
+    [asking, t.trips, today],
+  );
 
   const openTrip = (trip: TripRow, ask: Ask) =>
     void navigate({
@@ -71,12 +66,14 @@ function PlanPage() {
       to: "/trips",
       search: { new: true, plan: ask.tab, ...(ask.ask ? { ask: ask.ask } : {}) },
     });
-  /** One trip and nothing to choose: straight in. Otherwise ask which. */
+  /**
+   * Build or Import with no trip ahead goes straight to a new one; anything
+   * else asks which trip. Optimize and Compare with no trip at all still open
+   * the sheet, which then offers a way to start one rather than a dead end.
+   */
   const start = (ask: Ask) => {
-    const canStartNew = ask.tab === "build" || ask.tab === "import";
-    if (choices.length === 0) {
-      if (canStartNew) newTrip(ask);
-      else setAsking(ask);
+    if (startsNewTrip(ask.tab) && planTripChoices(t.trips, today, ask.tab).length === 0) {
+      newTrip(ask);
       return;
     }
     setAsking(ask);
@@ -124,41 +121,50 @@ function PlanPage() {
         onClose={() => setAsking(null)}
         title="Which trip?"
         hint={
-          asking?.tab === "optimize"
-            ? "Béa reorders the stops already on a trip."
-            : asking?.tab === "compare"
-              ? "Compare plans for one of your trips."
-              : "Plan a new trip, or add to one you have."
+          asking && !startsNewTrip(asking.tab) && choices.length === 0
+            ? "Béa needs a trip with a few stops first. Start one here."
+            : asking?.tab === "optimize"
+              ? "Béa reorders the stops already on a trip."
+              : asking?.tab === "compare"
+                ? "Compare plans for one of your trips."
+                : "Plan a new trip, or add to one you have."
         }
         width="sm"
       >
         <div className="space-y-2">
-          {(asking?.tab === "build" || asking?.tab === "import") && (
-            <button
-              type="button"
+          {asking && startsNewTrip(asking.tab) && (
+            <NewTripButton
+              title="A new trip"
+              body="Where and when, then Béa takes it from there."
               onClick={() => {
                 const ask = asking;
                 setAsking(null);
                 newTrip(ask);
               }}
-              className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-primary/50 px-3 py-3 text-left"
-            >
-              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                <Plus className="size-5" aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[15.5px] font-semibold">A new trip</span>
-                <span className="block text-[12.5px] text-muted-foreground">
-                  Where and when, then Béa takes it from there.
-                </span>
-              </span>
-            </button>
+            />
           )}
-          {choices.length === 0 ? (
-            <p className="px-1 py-2 text-[14px] text-muted-foreground">
-              No trips yet. Start one under Trips, then come back.
-            </p>
-          ) : (
+          {/* No trip to optimize or compare: start one from here, never "come back later". */}
+          {asking && !startsNewTrip(asking.tab) && choices.length === 0 && (
+            <>
+              <NewTripButton
+                title="Import a plan"
+                body="A photo, PDF, calendar or pasted plan becomes a trip."
+                onClick={() => {
+                  setAsking(null);
+                  newTrip({ tab: "import" });
+                }}
+              />
+              <NewTripButton
+                title="Plan a new trip"
+                body="Where and when, then Béa drafts the days."
+                onClick={() => {
+                  setAsking(null);
+                  newTrip({ tab: "build" });
+                }}
+              />
+            </>
+          )}
+          {choices.length === 0 ? null : (
             <div className="plain-card divide-y divide-border overflow-hidden">
               {choices.map((trip) => (
                 <button
@@ -190,6 +196,33 @@ function PlanPage() {
         </div>
       </Sheet>
     </AppShell>
+  );
+}
+
+/** A dashed row that starts a new trip, at the top of the "Which trip?" sheet. */
+function NewTripButton({
+  title,
+  body,
+  onClick,
+}: {
+  title: string;
+  body: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-primary/50 px-3 py-3 text-left"
+    >
+      <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+        <Plus className="size-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[15.5px] font-semibold">{title}</span>
+        <span className="block text-[12.5px] text-muted-foreground">{body}</span>
+      </span>
+    </button>
   );
 }
 

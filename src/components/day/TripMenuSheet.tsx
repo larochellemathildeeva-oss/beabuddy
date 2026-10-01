@@ -45,7 +45,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   offline: "Offline maps",
   packing: "Packing",
   cities: "Destinations",
-  customize: "Customize trip",
+  customize: "Customize view",
   checkup: "Trip checkup",
   again: "Do it again",
   preferences: "Just for this trip",
@@ -234,7 +234,7 @@ export function TripMenuSheet({
     {
       key: "customize",
       icon: Settings2,
-      title: "Customize trip",
+      title: "Customize view",
       note: "What the trip page shows",
       onClick: () => onSection("customize"),
     },

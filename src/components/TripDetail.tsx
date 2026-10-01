@@ -977,7 +977,7 @@ export function TripDetail({
   const viewKey = `bea-trip-page-${trip.id}`;
   /** Timeline shows only the stops not yet visited. Undo on the toast brings one back. */
   const [hideDone, setHideDone] = useState(false);
-  /** Timeline Editor grouped by area (Neighbourhood) rather than by time. */
+  /** Timeline grouped by area (Neighbourhood) rather than by time. */
   const [byArea, setByArea] = useState(false);
   /** One line a stop, tap to open: for reading a long day at a glance. */
   const [compactCards, setCompactCards] = useState(false);
@@ -1603,9 +1603,33 @@ export function TripDetail({
                 </p>
                 <p className="text-[14px] text-muted-foreground">
                   {stopItems.length === 0
-                    ? "Add stops in the Timeline Editor, or let Béa draft the days from a plan you already have."
+                    ? "Add stops in the Timeline, or let Béa draft the days from a plan you already have."
                     : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
                 </p>
+                {/* An empty trip gets its way in right here, never "go elsewhere first". */}
+                {stopItems.length === 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlannerTab("build");
+                        setPlannerOpen(true);
+                      }}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13.5px] font-semibold text-primary-foreground"
+                    >
+                      <img src={logo} alt="" className="size-5 object-contain" />
+                      Plan with Béa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddOpen(true)}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[13.5px] font-semibold"
+                    >
+                      <Plus className="size-4 text-primary" aria-hidden />
+                      Add a stop
+                    </button>
+                  </div>
+                )}
                 {/* The days right here, so the prompt is never a dead end. */}
                 {stopItems.length > 0 && (
                   <div
@@ -2282,7 +2306,7 @@ export function TripDetail({
             <span>
               <span className="block text-[15px] font-semibold">A stop on the itinerary</span>
               <span className="block text-[12px] text-muted-foreground">
-                A place, meal or activity, in the Timeline Editor.
+                A place, meal or activity, in the Timeline.
               </span>
             </span>
           </button>
@@ -2672,7 +2696,7 @@ export function TripDetail({
                   <p className="text-[12px] text-muted-foreground">
                     {Object.keys(dayMaps.maps).length} day{" "}
                     {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a day
-                    in the Timeline Editor to see it offline.
+                    in the Timeline to see it offline.
                   </p>
                 )}
                 {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}

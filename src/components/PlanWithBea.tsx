@@ -46,7 +46,7 @@ export function PlanHero({ compact = false }: { compact?: boolean }) {
           What would you like to do?
         </p>
         <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
-          I can build a new trip, import your plan, optimize it or compare options.
+          Béa can build a new trip, import your plan, optimize it or compare options.
         </p>
       </div>
     </div>
@@ -84,7 +84,7 @@ export function PlanCards({
       key: "build",
       icon: Plus,
       title: "Build my trip",
-      body: "Tell me your preferences and I'll create a personalized day-by-day itinerary.",
+      body: "Share your preferences and Béa drafts a personalized day-by-day itinerary.",
       tone: 5,
       art: <MapArt />,
       onClick: onBuild,
@@ -93,7 +93,7 @@ export function PlanCards({
       key: "import",
       icon: Upload,
       title: "Import a plan",
-      body: "Upload a photo, PDF, calendar or paste your plan and I'll turn it into a trip.",
+      body: "Upload a photo, PDF, calendar or paste your plan, and Béa turns it into a trip.",
       tone: 3,
       art: <PhotoArt />,
       onClick: onImport,
@@ -102,7 +102,7 @@ export function PlanCards({
       key: "optimize",
       icon: Sliders,
       title: "Optimize my trip",
-      body: "I'll improve the order, reduce travel time and find the best flow.",
+      body: "Béa improves the order, cuts travel time and finds the best flow.",
       tone: 4,
       art: <SignpostArt />,
       ...(optimizeNote ? { note: optimizeNote } : {}),
@@ -196,7 +196,7 @@ export function PlanExamples({ onPick }: { onPick: (ask: string) => void }) {
   );
 }
 
-/** "Or just tell me what you need…" — anything else, in your own words. */
+/** "Or just tell Béa what you need…" — anything else, in your own words. */
 export function PlanAsk({ onSend }: { onSend: (ask: string) => void }) {
   const [ask, setAsk] = useState("");
   return (
@@ -218,7 +218,7 @@ export function PlanAsk({ onSend }: { onSend: (ask: string) => void }) {
         value={ask}
         onChange={(e) => setAsk(e.target.value)}
         maxLength={2000}
-        placeholder="Or just tell me what you need…"
+        placeholder="Or just tell Béa what you need…"
         aria-label="Tell Béa what you need"
         className="min-w-0 flex-1 bg-transparent py-2 text-[15px] outline-none"
       />
