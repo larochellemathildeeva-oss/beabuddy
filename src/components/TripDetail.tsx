@@ -701,7 +701,7 @@ export function TripDetail({
    * times "Leave by" from it, so it works that journey out itself instead.
    */
   const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
-    legFor(from.id, to.id) ??
+    savedLegStillFits(legFor(from.id, to.id), from, to) ??
     savedLegStillFits(
       savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
         savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??

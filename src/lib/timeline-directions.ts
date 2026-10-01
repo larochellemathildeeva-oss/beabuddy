@@ -96,9 +96,10 @@ export function unroutedLegCopy(
 }
 
 /**
- * A saved journey that still describes the stops. One saved as "Exact spot
- * unknown" while a stop had no pin is out of date once both stops are on the
- * map: kept, it went on saying the spot was unknown after it was found.
+ * A saved or earlier-worked-out journey that still describes the stops. One
+ * marked "Exact spot unknown" while a stop had no pin is out of date once both
+ * stops are on the map: kept, it went on saying the spot was unknown after it
+ * was found.
  */
 export function savedLegStillFits<L extends Pick<RouteLeg, "unknownSpot">>(
   leg: L | undefined,
