@@ -184,6 +184,8 @@ export function Globe({
   const rafDrag = useRef<number | null>(null);
   const rafInertia = useRef<number | null>(null);
   const rafSpin = useRef<number | null>(null);
+  /** Set by the first touch, key or button: the auto-spin never comes back. */
+  const spinStopped = useRef(false);
 
   const visitedKeys = useMemo(() => {
     const keys = shadePinCountries ? visitedCountryKeySet(pins) : new Set<string>();
@@ -320,6 +322,7 @@ export function Globe({
   const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
 
   const applyZoom = (next: number) => {
+    stopSpin();
     const z = clampZoom(next);
     liveZoom.current = z;
     setZoom(z);
@@ -332,6 +335,7 @@ export function Globe({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      stopSpin();
       const next = clampZoom(liveZoom.current + (e.deltaY > 0 ? -0.12 : 0.12));
       liveZoom.current = next;
       setZoom(next);
@@ -350,28 +354,72 @@ export function Globe({
 
   // About a turn a minute: enough to show it is a globe, slow enough to read.
   useEffect(() => {
-    if (!autoSpin || prefersReducedMotion()) return;
+    if (!autoSpin || typeof window === "undefined" || prefersReducedMotion()) return;
     let last = 0;
+    let owed = 0;
     const tick = (now: number) => {
-      const dt = last ? Math.min(now - last, 64) : 0;
+      owed += last ? Math.min(now - last, 64) : 0;
       last = now;
-      if (dt) applyDelta(dt * 0.006, 0);
+      // Each turn redraws every country, so step about twenty times a second
+      // rather than every frame: still smooth at this speed, a third the work.
+      if (owed >= 50) {
+        applyDelta(owed * 0.006, 0);
+        owed = 0;
+      }
       rafSpin.current = requestAnimationFrame(tick);
     };
-    rafSpin.current = requestAnimationFrame(tick);
-    return () => {
+    const pause = () => {
       if (rafSpin.current != null) cancelAnimationFrame(rafSpin.current);
       rafSpin.current = null;
     };
-    // applyDelta reads refs only; the spin starts once.
+    const resume = () => {
+      if (spinStopped.current || rafSpin.current != null) return;
+      last = 0;
+      rafSpin.current = requestAnimationFrame(tick);
+    };
+    resume();
+
+    // Scrolled past, it is not worth a frame.
+    const io =
+      typeof IntersectionObserver === "function" && frameRef.current
+        ? new IntersectionObserver(([entry]) => (entry?.isIntersecting ? resume() : pause()))
+        : null;
+    if (io && frameRef.current) io.observe(frameRef.current);
+
+    // Reduced motion switched on while the page is open stops it too.
+    const motion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const onMotion = () => {
+      if (motion?.matches) stopSpin();
+    };
+    motion?.addEventListener?.("change", onMotion);
+
+    return () => {
+      pause();
+      io?.disconnect();
+      motion?.removeEventListener?.("change", onMotion);
+    };
+    // applyDelta and stopSpin read refs only; the spin starts once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSpin]);
 
-  const stopSpin = () => {
+  function stopSpin() {
+    spinStopped.current = true;
     if (rafSpin.current != null) {
       cancelAnimationFrame(rafSpin.current);
       rafSpin.current = null;
     }
+  }
+
+  /**
+   * Jump straight to a rotation, dropping any turn a drag or the spin had
+   * queued for the next frame — or it lands after, and undoes, the jump.
+   */
+  const jumpTo = (next: [number, number]) => {
+    if (rafDrag.current != null) cancelAnimationFrame(rafDrag.current);
+    rafDrag.current = null;
+    pending.current = null;
+    live.current = next;
+    setRotation(next);
   };
 
   const stopInertia = () => {
@@ -423,8 +471,7 @@ export function Globe({
     const next: [number, number] = [-lon, -Math.max(-85, Math.min(85, lat))];
     stopInertia();
     velocity.current = [0, 0];
-    live.current = next;
-    setRotation(next);
+    jumpTo(next);
   };
 
   // Selecting a pin anywhere (the list below, a country tap, a search) spins the
@@ -443,8 +490,7 @@ export function Globe({
   const resetView = () => {
     stopInertia();
     velocity.current = [0, 0];
-    live.current = [-10, -18];
-    setRotation([-10, -18]);
+    jumpTo([-10, -18]);
     applyZoom(1);
   };
 
@@ -474,8 +520,8 @@ export function Globe({
           else if (e.key === "+" || e.key === "=") applyZoom(liveZoom.current + 0.2);
           else if (e.key === "-" || e.key === "_") applyZoom(liveZoom.current - 0.2);
           else if (e.key === "Home") {
-            live.current = [-10, -18];
-            setRotation([-10, -18]);
+            stopInertia();
+            jumpTo([-10, -18]);
             applyZoom(1);
           } else return;
           e.preventDefault();

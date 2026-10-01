@@ -211,9 +211,8 @@ export function Tour({
     const onResizeOrScroll = () => measureRef.current();
     const tick = () => {
       if (cancelled) return;
-      const el =
-        findGuideTarget(stepSelector) ??
-        (tries >= FALLBACK_AFTER ? findGuideTarget(stepFallback) : null);
+      const primary = findGuideTarget(stepSelector);
+      const el = primary ?? (tries >= FALLBACK_AFTER ? findGuideTarget(stepFallback) : null);
       if (el) {
         targetRef.current = el;
         el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
@@ -234,6 +233,9 @@ export function Tour({
           retryTimer = window.setTimeout(tick, TARGET_RETRY_MS);
         });
         setTargetMissing(false);
+        // On the fallback, keep watching for the real control: saves that
+        // load late should still move the spotlight onto it.
+        if (!primary) watchPrimary(el);
         return;
       }
       setBox(null);
@@ -242,6 +244,14 @@ export function Tour({
         return;
       }
       setTargetMissing(true);
+    };
+    const watchPrimary = (fallbackEl: HTMLElement) => {
+      if (tries++ >= TARGET_TRIES) return;
+      retryTimer = window.setTimeout(() => {
+        if (cancelled || targetRef.current !== fallbackEl) return;
+        if (findGuideTarget(stepSelector)) tick();
+        else watchPrimary(fallbackEl);
+      }, TARGET_RETRY_MS);
     };
     const frame = window.requestAnimationFrame(tick);
     window.addEventListener("resize", onResizeOrScroll);
