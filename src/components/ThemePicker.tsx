@@ -25,7 +25,7 @@ const LABELS: Record<ThemeName, { name: string; hint: string }> = {
  * are the real tokens, not a copy of them that could drift.
  */
 export function ThemePicker() {
-  const [theme, setTheme] = useState<ThemeName>("calm");
+  const [theme, setTheme] = useState<ThemeName>(DEFAULT_THEME);
 
   useEffect(() => {
     setTheme(readTheme());
