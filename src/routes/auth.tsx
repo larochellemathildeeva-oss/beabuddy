@@ -16,9 +16,17 @@ import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 import { CONSENT_TYPES, LEGAL_VERSION } from "@/lib/legal";
+import { rememberReturnPath, safeRedirectPath } from "@/lib/auth-redirect";
+import { friendlyAuthError } from "@/lib/auth-errors";
+import { safeStorage } from "@/lib/tour-state";
 
 export const Route = createFileRoute("/auth")({
   staticData: { plane: "detail" },
+  // Where to go once signed in: the page that sent the traveller here.
+  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+    const to = safeRedirectPath(search["redirect"]);
+    return to ? { redirect: to } : {};
+  },
   head: () => ({
     meta: [
       { title: "Sign in — Béa" },
@@ -39,6 +47,7 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { redirect: returnTo } = Route.useSearch();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
@@ -53,20 +62,28 @@ function AuthPage() {
   // Google sign-in preference: "auto" continues silently with the current
   // Google account; "ask" always shows Google's account chooser first.
   const [googleMode, setGoogleModeState] = useState<"auto" | "ask">(() =>
-    typeof window !== "undefined" && window.localStorage.getItem("bea-google-signin") === "ask"
-      ? "ask"
-      : "auto",
+    safeStorage().getItem("bea-google-signin") === "ask" ? "ask" : "auto",
   );
   const setGoogleMode = (mode: "auto" | "ask") => {
     setGoogleModeState(mode);
-    window.localStorage.setItem("bea-google-signin", mode);
+    safeStorage().setItem("bea-google-signin", mode);
   };
 
   const consented = agreeTerms && agreeDisclaimer;
 
+  // Google and the confirmation email come back to the site's origin, not
+  // here, so the return address waits in this tab for the shell to take.
   useEffect(() => {
-    if (!loading && user) navigate({ to: "/" });
-  }, [loading, user, navigate]);
+    rememberReturnPath(returnTo ?? null);
+  }, [returnTo]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    rememberReturnPath(null);
+    // A path checked by safeRedirectPath; the router takes it as typed.
+    if (returnTo) void navigate({ href: returnTo, replace: true });
+    else void navigate({ to: "/", replace: true });
+  }, [loading, user, navigate, returnTo]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +128,7 @@ function AuthPage() {
         if (err) throw err;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Try again.");
+      setError(friendlyAuthError(err));
     } finally {
       setBusy(false);
     }
@@ -121,8 +138,7 @@ function AuthPage() {
     setError(null);
     setBusy(true);
     // "Ask me every time" forces Google's account chooser on each sign-in.
-    const askEveryTime =
-      typeof window !== "undefined" && window.localStorage.getItem("bea-google-signin") === "ask";
+    const askEveryTime = safeStorage().getItem("bea-google-signin") === "ask";
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -249,7 +265,7 @@ function AuthPage() {
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               aria-pressed={showPassword}
-              className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground"
+              className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
             >
               {showPassword ? (
                 <Eye className="size-5" aria-hidden />

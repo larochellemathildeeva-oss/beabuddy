@@ -14,10 +14,46 @@
  * traveller kept offline (bea-map-…) are theirs, not the worker's: they stay
  * until the traveller, sign-out or erasure removes them.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const PAGES = `bea-pages-${VERSION}`;
 const ASSETS = `bea-assets-${VERSION}`;
-const SHELL = ["/", "/trips", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+const SHELL = [
+  "/",
+  "/trips",
+  "/manifest.webmanifest",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-512.png",
+];
+/**
+ * How long a page may wait on the network before the copy kept here is
+ * shown. On a weak signal the request neither answers nor fails; without
+ * this, the traveller watched a blank screen until it did.
+ */
+const NAVIGATE_TIMEOUT_MS = 3500;
+/**
+ * Built files kept at most. Each build adds new names and nothing removed
+ * the old ones, so the cache only grew; the oldest go first.
+ */
+const MAX_ASSETS = 250;
+
+async function trimAssets() {
+  const cache = await caches.open(ASSETS);
+  const keys = await cache.keys();
+  const extra = keys.length - MAX_ASSETS;
+  for (let i = 0; i < extra; i++) await cache.delete(keys[i]);
+}
+
+/** This page's own kept copy, or nothing. */
+async function keptCopy(pathname) {
+  return (await caches.open(PAGES)).match(pathname);
+}
+
+/** With no network at all: this page's copy, else the trips list, else Home. */
+async function keptPage(pathname) {
+  const cache = await caches.open(PAGES);
+  return (await cache.match(pathname)) || (await cache.match("/trips")) || (await cache.match("/"));
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -59,26 +95,36 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
+      (async () => {
+        const network = fetch(request).then((response) => {
           if (response.ok) {
             const copy = response.clone();
             void caches.open(PAGES).then((cache) => cache.put(url.pathname, copy));
           }
           return response;
-        })
-        .catch(async () => {
-          const cache = await caches.open(PAGES);
+        });
+        // The network keeps going after a timeout, so the kept copy is
+        // refreshed for next time even when this visit used the old one.
+        event.waitUntil(network.catch(() => {}));
+        const timedOut = new Promise((resolve) =>
+          setTimeout(() => resolve("timeout"), NAVIGATE_TIMEOUT_MS),
+        );
+        try {
+          const first = await Promise.race([network, timedOut]);
+          if (first !== "timeout") return first;
+          // Slow, not dead: this page's own copy now if there is one, else keep
+          // waiting. Never another page's copy: the network may yet answer.
+          return (await keptCopy(url.pathname)) || (await network);
+        } catch {
           return (
-            (await cache.match(url.pathname)) ||
-            (await cache.match("/trips")) ||
-            (await cache.match("/")) ||
+            (await keptPage(url.pathname)) ||
             new Response("Béa needs a connection to open this page for the first time.", {
               status: 503,
               headers: { "content-type": "text/plain; charset=utf-8" },
             })
           );
-        }),
+        }
+      })(),
     );
     return;
   }
@@ -89,7 +135,9 @@ self.addEventListener("fetch", (event) => {
         const hit = await cache.match(request);
         if (hit) return hit;
         const response = await fetch(request);
-        if (response.ok) void cache.put(request, response.clone());
+        if (response.ok) {
+          event.waitUntil(cache.put(request, response.clone()).then(trimAssets));
+        }
         return response;
       }),
     );

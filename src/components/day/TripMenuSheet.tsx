@@ -282,7 +282,7 @@ export function TripMenuSheet({
         aria-modal="true"
         aria-label={section ? SECTION_TITLES[section] : `${title}: trip menu`}
         onClick={(e) => e.stopPropagation()}
-        className="rise card-raised flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px]"
+        className="rise card-raised flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px]"
       >
         <span aria-hidden className="mx-auto mt-2 block h-1 w-10 shrink-0 rounded-full bg-border" />
         {section ? (

@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
+import { AUTH_SUBMIT, AuthField } from "@/components/AuthField";
 import { supabase } from "@/integrations/supabase/client";
+import { friendlyAuthError } from "@/lib/auth-errors";
 
 export const Route = createFileRoute("/forgot-password")({
   staticData: { plane: "detail" },
@@ -39,7 +41,7 @@ function ForgotPasswordPage() {
     });
     setBusy(false);
     if (err) {
-      setError(err.message);
+      setError(friendlyAuthError(err));
       return;
     }
     setSent(true);
@@ -62,21 +64,22 @@ function ForgotPasswordPage() {
             </p>
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-3">
-              <input
+              <AuthField
+                label="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
+                inputMode="email"
                 required
-                placeholder="Email"
                 autoComplete="email"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+                enterKeyHint="send"
               />
-              {error && <p className="text-[13px] text-destructive">{error}</p>}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
-              >
+              {error && (
+                <p role="alert" className="text-[13px] text-destructive">
+                  {error}
+                </p>
+              )}
+              <button type="submit" disabled={busy} className={AUTH_SUBMIT}>
                 {busy ? "Sending…" : "Send reset link"}
               </button>
             </form>
@@ -84,7 +87,7 @@ function ForgotPasswordPage() {
 
           <Link
             to="/auth"
-            className="mt-6 text-[14.5px] text-muted-foreground underline underline-offset-4"
+            className="mt-4 inline-flex min-h-11 items-center self-start text-[14.5px] text-muted-foreground underline underline-offset-4"
           >
             Back to sign in
           </Link>

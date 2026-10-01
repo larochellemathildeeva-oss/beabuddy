@@ -221,31 +221,25 @@ function DocumentsPage() {
     </p>
   );
 
-  if (!authLoading && !uid) {
+  // Signed out never reaches here: AppShell sends the traveller to sign in.
+  if (authLoading || !uid || v.loading || !lock.ready) {
     return (
       <AppShell title="Trip documents">
-        <div className="space-y-4">
+        {/* The shape of the library, so nothing jumps when it arrives. */}
+        <div className="space-y-4" aria-busy="true" aria-label="Opening Trip documents">
           {intro}
-          <div className="plain-card p-4 text-center">
-            <p className="text-[14.5px]">Sign in to keep your bookings and tickets together.</p>
-            <Link
-              to="/auth"
-              className="btn-primary mt-3 flex w-full items-center justify-center px-4"
-            >
-              Sign in
-            </Link>
+          <div className="h-11 animate-pulse rounded-full bg-muted" />
+          <div className="plain-card divide-y divide-border overflow-hidden">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3">
+                <div className="size-11 shrink-0 animate-pulse rounded-xl bg-muted" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="h-3.5 w-2/3 animate-pulse rounded bg-muted" />
+                  <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </AppShell>
-    );
-  }
-
-  if (authLoading || v.loading || !lock.ready) {
-    return (
-      <AppShell title="Trip documents">
-        <div className="space-y-4">
-          {intro}
-          <div className="plain-card h-40 animate-pulse" />
         </div>
       </AppShell>
     );

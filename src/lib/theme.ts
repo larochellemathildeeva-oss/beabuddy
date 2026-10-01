@@ -40,11 +40,31 @@ export function readTheme(): ThemeName {
   return DEFAULT_THEME;
 }
 
+/**
+ * Each theme's page colour, for the phone's status bar and the installed
+ * app's frame (`<meta name="theme-color">`). Kept beside `--background` in
+ * styles.css; a light bar over the dark theme looked like a stray strip.
+ */
+export const THEME_COLORS: Record<ThemeName, string> = {
+  calm: "#f7f2e9",
+  colorful: "#ffffff",
+  dark: "#171513",
+};
+
+/** Points the theme-color meta at the theme now showing. */
+export function syncThemeColor(theme: ThemeName): void {
+  if (typeof document === "undefined" || typeof document.querySelector !== "function") return;
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", THEME_COLORS[theme] ?? THEME_COLORS.calm);
+}
+
 export function applyTheme(theme: ThemeName): void {
   if (typeof document !== "undefined") {
     const root = document.documentElement;
     root.setAttribute("data-theme", theme);
     root.classList.toggle("dark", theme === "dark");
+    syncThemeColor(theme);
   }
   try {
     globalThis.localStorage?.setItem(THEME_KEY, theme);

@@ -297,7 +297,7 @@ function MapButton({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className={`z-[500] inline-flex min-h-10 min-w-10 items-center justify-center gap-1.5 rounded-full bg-[rgb(248_245_241/0.95)] px-2.5 text-[12.5px] font-semibold text-[#443d36] shadow-[0_1px_3px_rgb(68_61_54/0.2)] backdrop-blur-sm ${className}`}
+      className={`z-[500] inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-(--journal-control) px-2.5 text-[12.5px] font-semibold text-(--journal-ink) shadow-(--journal-control-shadow) backdrop-blur-sm ${className}`}
     >
       {children}
     </button>
@@ -309,7 +309,7 @@ function Legend({ model }: { model: DayMapModel }) {
   const tones = tonesUsed(model.pins);
   if (tones.length < 2) return null;
   return (
-    <div className="pointer-events-none absolute bottom-3 right-3 z-[500] space-y-1.5 rounded-2xl bg-[rgb(248_245_241/0.94)] px-3 py-2.5 text-[11.5px] font-medium text-[#443d36] shadow-[0_1px_3px_rgb(68_61_54/0.16)]">
+    <div className="pointer-events-none absolute bottom-3 right-3 z-[500] space-y-1.5 rounded-2xl bg-(--journal-control) px-3 py-2.5 text-[11.5px] font-medium text-(--journal-ink) shadow-(--journal-control-shadow)">
       {tones.map(({ tone, label }) => (
         <p key={tone} className="flex items-center gap-2">
           <span className={`journal-legend-dot journal-legend-dot--${tone}`} aria-hidden />
@@ -596,10 +596,10 @@ function LiveLayout({
               onClick={() => onSelect(p.id)}
               aria-current={p.id === selectedId ? "step" : undefined}
               aria-label={`${p.number}. ${p.title}`}
-              className={`grid size-10 shrink-0 place-items-center rounded-full text-[13px] font-semibold tabular-nums shadow-[0_1px_3px_rgb(68_61_54/0.2)] ${
+              className={`grid size-11 shrink-0 place-items-center rounded-full text-[13px] font-semibold tabular-nums shadow-(--journal-control-shadow) ${
                 p.id === selectedId
                   ? "bg-primary text-primary-foreground"
-                  : "bg-[rgb(248_245_241/0.95)] text-[#443d36]"
+                  : "bg-(--journal-control) text-(--journal-ink)"
               }`}
             >
               {p.number}

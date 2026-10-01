@@ -46,3 +46,48 @@ export function hasPendingOAuthResultInWindow(): boolean {
   if (typeof window === "undefined") return false;
   return hasPendingOAuthResult(window.location.search, window.location.hash);
 }
+
+/** Pages that must never be the place sign-in returns to. */
+const NO_RETURN = ["/auth", "/forgot-password", "/reset-password"];
+
+/**
+ * Where to go after signing in, from an untrusted `?redirect=` value: a path
+ * on this site only (never `//other.host` or `https://…`, which would make
+ * the sign-in page an open redirect), and never back to a sign-in page.
+ * Anything else answers null, and the caller goes Home.
+ */
+export function safeRedirectPath(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 2000) return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return null;
+  // No control characters: a newline or tab can split a path into a host.
+  for (let i = 0; i < value.length; i++) if (value.charCodeAt(i) < 0x20) return null;
+  const path = value.split(/[?#]/)[0] ?? "";
+  if (NO_RETURN.some((p) => path === p || path.startsWith(`${p}/`))) return null;
+  return value;
+}
+
+/**
+ * Google returns to the site's origin, not to `/auth?redirect=…`, so the
+ * return address waits in this tab's sessionStorage until the shell sees the
+ * signed-in user and takes it, once.
+ */
+const PENDING_KEY = "bea-after-sign-in";
+
+export function rememberReturnPath(path: string | null): void {
+  try {
+    if (path) window.sessionStorage.setItem(PENDING_KEY, path);
+    else window.sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    // Storage blocked: sign-in still works and lands on Home.
+  }
+}
+
+export function takeReturnPath(): string | null {
+  try {
+    const value = window.sessionStorage.getItem(PENDING_KEY);
+    window.sessionStorage.removeItem(PENDING_KEY);
+    return safeRedirectPath(value);
+  } catch {
+    return null;
+  }
+}

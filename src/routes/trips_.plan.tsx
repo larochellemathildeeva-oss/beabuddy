@@ -150,7 +150,22 @@ function PlanPage() {
           )}
           {/* No trip to optimize or compare: start one from here, never "come back later". */}
           {t.loading && choices.length === 0 && (
-            <p className="px-1 py-2 text-[14px] text-muted-foreground">Fetching your trips…</p>
+            // Rows the shape of the trips to come, so the sheet does not jump.
+            <div
+              className="plain-card divide-y divide-border overflow-hidden"
+              aria-busy="true"
+              aria-label="Fetching your trips"
+            >
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="size-12 shrink-0 animate-pulse rounded-xl bg-muted" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+                    <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
           {asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0 && (
             <>

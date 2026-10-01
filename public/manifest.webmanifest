@@ -1,4 +1,5 @@
 {
+  "id": "/",
   "name": "Béa",
   "short_name": "Béa",
   "description": "Your trips, the places you saved, and where you have been.",
@@ -8,7 +9,23 @@
   "background_color": "#f7f2e9",
   "theme_color": "#f7f2e9",
   "icons": [
-    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
