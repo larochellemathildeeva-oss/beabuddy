@@ -838,6 +838,11 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         parent_index?: number;
         /** Why its place is worth a second look (pin-check.ts). */
         pin_check?: string | null;
+        /**
+         * Exactly where in its day, when the caller has numbered the day
+         * itself ("Change a day"). Used only when every addition has one.
+         */
+        position?: number;
       }>,
     ) => {
       const id = tripIdRef.current;
@@ -876,8 +881,9 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       // Into a trip that already has stops, each goes in by its day and time,
       // as a stop added by hand does: a hotel asked for on day 1 at 15:00 was
       // saved after the last stop of the trip. Into an empty trip, in order.
-      const placed =
-        items.length > 0
+      const placed = additions.every((item) => item.position != null)
+        ? { positions: additions.map((item) => item.position!), shifts: [] }
+        : items.length > 0
           ? chronologicalPositions(items, additions, clockMinutes)
           : { positions: additions.map((_, index) => index), shifts: [] };
       await shiftPositions(placed.shifts, authorId);

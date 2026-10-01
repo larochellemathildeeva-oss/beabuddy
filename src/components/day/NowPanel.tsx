@@ -62,6 +62,7 @@ export function NowPanel({
   reminderItems = [],
   nextDay = null,
   onEase,
+  onRework,
   onProgress,
   progress,
   onLook,
@@ -88,6 +89,8 @@ export function NowPanel({
   nextDay?: string | null;
   /** Run one of Optimize's one-tap requests on a day. */
   onEase?: ((preset: EasePreset, day: string, dayLabel: string) => void) | undefined;
+  /** Open "Change a day" on a day, with words already typed. */
+  onRework?: ((day: string, ask: string) => void) | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
   /** Today's progress, drawn after the next stop as in the master. */
   progress?: ReactNode;
@@ -257,6 +260,15 @@ export function NowPanel({
             ? {
                 onIndoors: (from: string, until: string | null) =>
                   onEase(rainPreset(from, until), thisDay, dayLabelFor(thisDay, placeDay)),
+              }
+            : {})}
+          {...(onRework && thisDay
+            ? {
+                onSwap: (from: string, until: string | null) =>
+                  onRework(
+                    thisDay,
+                    `Rain is forecast ${until ? `from ${from} to ${until}` : `from ${from}`}: swap the outdoor stops in that time for indoor places nearby.`,
+                  ),
               }
             : {})}
         />
@@ -762,12 +774,15 @@ function RainAhead({
   forecast,
   now,
   onIndoors,
+  onSwap,
 }: {
   stops: ItineraryRow[];
   forecast: RainForecast | null;
   now: Date | null;
   /** Rearrange the day so the indoor stops fall in the rain. */
   onIndoors?: ((from: string, until: string | null) => void) | undefined;
+  /** Have Béa suggest indoor places in place of the outdoor stops. */
+  onSwap?: ((from: string, until: string | null) => void) | undefined;
 }) {
   const day = stops.find((s) => s.day_date)?.day_date ?? null;
   const notice = forecast && day && now ? rainNotice(forecast, day, now) : null;
@@ -793,6 +808,15 @@ function RainAhead({
             className="mt-1 block min-h-8 text-[13px] font-semibold text-primary underline underline-offset-2"
           >
             Put the indoor stops in the rain
+          </button>
+        )}
+        {onSwap && (
+          <button
+            type="button"
+            onClick={() => onSwap(notice.from, notice.until)}
+            className="mt-1 block min-h-8 text-[13px] font-semibold text-primary underline underline-offset-2"
+          >
+            Swap outdoor stops for indoor places
           </button>
         )}
       </span>
