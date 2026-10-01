@@ -70,9 +70,14 @@ function PlanPage() {
    * Build or Import with no trip ahead goes straight to a new one; anything
    * else asks which trip. Optimize and Compare with no trip at all still open
    * the sheet, which then offers a way to start one rather than a dead end.
+   * While the list is still loading nothing is decided: the sheet waits.
    */
   const start = (ask: Ask) => {
-    if (startsNewTrip(ask.tab) && planTripChoices(t.trips, today, ask.tab).length === 0) {
+    if (
+      !t.loading &&
+      startsNewTrip(ask.tab) &&
+      planTripChoices(t.trips, today, ask.tab).length === 0
+    ) {
       newTrip(ask);
       return;
     }
@@ -121,7 +126,7 @@ function PlanPage() {
         onClose={() => setAsking(null)}
         title="Which trip?"
         hint={
-          asking && !startsNewTrip(asking.tab) && choices.length === 0
+          asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0
             ? "Béa needs a trip with a few stops first. Start one here."
             : asking?.tab === "optimize"
               ? "Béa reorders the stops already on a trip."
@@ -144,7 +149,10 @@ function PlanPage() {
             />
           )}
           {/* No trip to optimize or compare: start one from here, never "come back later". */}
-          {asking && !startsNewTrip(asking.tab) && choices.length === 0 && (
+          {t.loading && choices.length === 0 && (
+            <p className="px-1 py-2 text-[14px] text-muted-foreground">Fetching your trips…</p>
+          )}
+          {asking && !t.loading && !startsNewTrip(asking.tab) && choices.length === 0 && (
             <>
               <NewTripButton
                 title="Import a plan"

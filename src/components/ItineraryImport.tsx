@@ -1983,7 +1983,8 @@ function OptimizePanel({
       {items.length < 2 ? (
         <div className="space-y-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
           <p className="text-[13px] text-muted-foreground">
-            There isn&apos;t enough on this trip to rearrange yet. Béa needs at least two stops.
+            There isn&apos;t enough planned for {preset ? preset.dayLabel : "this trip"} to
+            rearrange yet. Béa needs at least two stops.
           </p>
           {(onImport || onBuild) && (
             <div className="flex flex-wrap gap-2">
