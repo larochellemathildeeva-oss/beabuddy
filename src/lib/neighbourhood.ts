@@ -1,5 +1,5 @@
 /**
- * Stops grouped by the part of town they are in, for the Timeline Editor's
+ * Stops grouped by the part of town they are in, for the Timeline's
  * Neighbourhood view: which of the day's stops share an area, so a day can be
  * read as "the Peace Park stops, then Miyajima".
  *

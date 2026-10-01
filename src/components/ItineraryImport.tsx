@@ -403,6 +403,8 @@ export function ItineraryImport({
           items={existingItems}
           cities={cities}
           onApplySchedule={onApplySchedule}
+          onImport={() => openPlan("import")}
+          onBuild={() => openPlan("build")}
         />
       )}
       {tab === "compare" && <ComparePanel />}
@@ -1841,6 +1843,8 @@ function OptimizePanel({
   items,
   cities,
   onApplySchedule,
+  onImport,
+  onBuild,
 }: {
   preset?: OptimizePreset | undefined;
   tripPreferences?: string[];
@@ -1860,6 +1864,12 @@ function OptimizePanel({
         }>,
       ) => Promise<void>)
     | undefined;
+  /**
+   * With fewer than two stops on the trip: bring a plan in, or have Béa draft
+   * one, right here. Not offered for a single day, whose other days may be full.
+   */
+  onImport?: () => void;
+  onBuild?: () => void;
 }) {
   const run = useServerFn(optimizeItinerary);
   const [goals, setGoals] = useState<OptimizeGoalId[]>(preset?.goals ?? ["closest"]);
@@ -1972,9 +1982,34 @@ function OptimizePanel({
       )}
 
       {items.length < 2 ? (
-        <p className="rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] text-muted-foreground">
-          Add at least two timeline stops first, then come back to rearrange them.
-        </p>
+        <div className="space-y-2.5 rounded-xl border border-border bg-card px-3 py-2.5">
+          <p className="text-[13px] text-muted-foreground">
+            There isn&apos;t enough planned for {preset ? preset.dayLabel : "this trip"} to
+            rearrange yet. Béa needs at least two stops.
+          </p>
+          {(onImport || onBuild) && (
+            <div className="flex flex-wrap gap-2">
+              {onImport && (
+                <button
+                  type="button"
+                  onClick={onImport}
+                  className="min-h-10 rounded-full bg-primary px-4 text-[13.5px] font-semibold text-primary-foreground"
+                >
+                  Import a plan
+                </button>
+              )}
+              {onBuild && (
+                <button
+                  type="button"
+                  onClick={onBuild}
+                  className="min-h-10 rounded-full border border-border bg-card px-4 text-[13.5px] font-semibold"
+                >
+                  Let Béa draft the days
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       ) : (
         <>
           <PlanPanel

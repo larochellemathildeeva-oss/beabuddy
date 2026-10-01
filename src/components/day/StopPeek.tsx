@@ -24,7 +24,7 @@ export function StopPeek({
   stop: ItineraryRow;
   number: number;
   onClose: () => void;
-  /** Open the Timeline Editor, where the stop can be changed. */
+  /** Open the Timeline, where the stop can be changed. */
   onEdit: () => void;
 }) {
   const time = timeForRail(stop.time_label);
@@ -96,7 +96,7 @@ export function StopPeek({
           onClick={onEdit}
           className="inline-flex min-h-9 items-center rounded-xl border border-border px-3 text-[12.5px] font-semibold text-muted-foreground"
         >
-          Edit in Timeline Editor
+          Edit in Timeline
         </button>
       </div>
     </section>
