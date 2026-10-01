@@ -123,3 +123,15 @@ export function shareClientKey(address: string): string {
     .map((g) => g.replace(/^0+(?=.)/, ""))
     .join(":")}::/64`;
 }
+
+/**
+ * A maps search for a stop on a shared plan, by its name and address, so the
+ * friend reading it on the go can tap through to directions. A link, not an
+ * API call: nothing is looked up, and nothing beyond what the page already
+ * shows is sent. Null when there is nothing to search for.
+ */
+export function sharedStopMapsUrl(stop: Pick<SharedStop, "title" | "address">): string | null {
+  const query = [stop.title.trim(), stop.address.trim()].filter(Boolean).join(", ");
+  if (!stop.address.trim() || !query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}

@@ -1,5 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { browserHasStoredSession } from "@/lib/stored-session";
+import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
 import {
@@ -54,10 +56,22 @@ export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
+const noSubscribe = () => () => {};
+
 function HomePage() {
   const { user, loading } = useAuth();
+  // While sign-in is still being checked, a browser with no saved session is
+  // a visitor: show them the welcome page now rather than "Loading…" first.
+  // The server cannot know, so it paints the neutral opening screen.
+  // Back from Google, the session is not saved yet but is about to be: that
+  // counts as signed in too, or the welcome page flashes before Home.
+  const maybeSignedIn = useSyncExternalStore(
+    noSubscribe,
+    () => browserHasStoredSession() || hasPendingOAuthResultInWindow(),
+    () => true,
+  );
 
-  if (!loading && !user) {
+  if (!user && (!loading || !maybeSignedIn)) {
     return <LandingPage />;
   }
 
@@ -76,25 +90,30 @@ function LandingPage() {
           your saved ideas, and rediscover opportunities when you're nearby — because the best plans
           start with what matters to you.
         </p>
-        <Globe pins={pins} selectedId={selectedId} onSelect={(pin) => setSelectedId(pin.id)} />
+        {/* The way in first, where a thumb reaches it without scrolling. */}
         <div className="grid gap-2 sm:grid-cols-2">
           <Link
             to="/auth"
-            className="rounded-xl bg-primary px-4 py-3 text-center text-[14.5px] font-semibold text-primary-foreground"
+            className="btn-primary flex items-center justify-center px-4 text-center text-[14.5px]"
           >
             Create an account
           </Link>
           <Link
             to="/how-it-works"
-            className="rounded-xl border border-border px-4 py-3 text-center text-[14.5px] font-semibold"
+            className="flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border px-4 text-center text-[14.5px] font-semibold"
           >
             How Béa works
           </Link>
         </div>
+        <Globe
+          pins={pins}
+          selectedId={selectedId}
+          onSelect={(pin) => setSelectedId(pin.id)}
+          scrollFriendly
+        />
         <p className="text-[13px] text-muted-foreground">
-          The globe above is sample data. After you sign in, Load sample travel data on Home (or You
-          → Data & imports) fills your account to try things out, and You → About Béa → Replay walks
-          you around.
+          The globe shows sample places. Once you've signed in, you can load sample data to try
+          everything out.
         </p>
       </div>
     </AppShell>

@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
+import { AUTH_SUBMIT, AuthField } from "@/components/AuthField";
 import { supabase } from "@/integrations/supabase/client";
+import { friendlyAuthError } from "@/lib/auth-errors";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 
 export const Route = createFileRoute("/reset-password")({
@@ -60,13 +62,13 @@ function ResetPasswordPage() {
       await assertNewPasswordAllowed(password);
       const { error: err } = await supabase.auth.updateUser({ password });
       if (err) {
-        setError(err.message);
+        setError(friendlyAuthError(err));
         return;
       }
       setDone(true);
       setTimeout(() => navigate({ to: "/", replace: true }), 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save that password.");
+      setError(err ? friendlyAuthError(err) : "Could not save that password.");
     } finally {
       setBusy(false);
     }
@@ -94,36 +96,36 @@ function ResetPasswordPage() {
             </p>
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-3">
-              <input
+              <AuthField
+                label="New password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 required
                 minLength={MIN_NEW_PASSWORD_LENGTH}
-                placeholder="New password"
                 autoComplete="new-password"
                 aria-describedby="password-rules"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+                enterKeyHint="next"
               />
-              <input
+              <AuthField
+                label="Repeat new password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 type="password"
                 required
                 minLength={MIN_NEW_PASSWORD_LENGTH}
-                placeholder="Repeat new password"
                 autoComplete="new-password"
-                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-[15px] outline-none focus:border-primary"
+                enterKeyHint="done"
               />
               <div id="password-rules">
                 <PasswordCreationRules password={password} />
               </div>
-              {error && <p className="text-[13px] text-destructive">{error}</p>}
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
-              >
+              {error && (
+                <p role="alert" className="text-[13px] text-destructive">
+                  {error}
+                </p>
+              )}
+              <button type="submit" disabled={busy} className={AUTH_SUBMIT}>
                 {busy ? "Saving…" : "Save new password"}
               </button>
             </form>

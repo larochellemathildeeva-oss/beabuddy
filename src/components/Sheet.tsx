@@ -6,6 +6,16 @@ import { ArrowLeft, X } from "@/components/icons";
 const PULL_CLOSE_PX = 90;
 
 /**
+ * The sheets open right now, oldest first. Escape and the focus trap belong
+ * to the top one only: with a listener each, one Escape closed a
+ * confirmation and the settings sheet under it together.
+ */
+const openSheets: symbol[] = [];
+
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
  * The fifth primitive: anything that opens over the page.
  *
  * Six screens hand-rolled this — a fixed-inset scrim, a panel, a close button
@@ -32,6 +42,7 @@ export function Sheet({
   showClose = true,
   above = false,
   tall = false,
+  dismissible = true,
   children,
 }: {
   open: boolean;
@@ -57,20 +68,72 @@ export function Sheet({
   above?: boolean;
   /** Nearly the whole screen, for a sheet whose forms should fit without scrolling. */
   tall?: boolean;
+  /**
+   * False while work is running that closing would hide (Béa drafting a
+   * plan): the scrim, a pull and Escape then do nothing. The close button
+   * stays, so there is always a deliberate way out.
+   */
+  dismissible?: boolean;
   children: ReactNode;
 }) {
+  const panel = useRef<HTMLDivElement | null>(null);
+  // The latest values, read by the listener without re-adding it each render
+  // (callers often pass a fresh onClose closure).
+  const latest = useRef({ onClose, dismissible });
+  latest.current = { onClose, dismissible };
+
   useEffect(() => {
     if (!open) return;
+    const me = Symbol("sheet");
+    openSheets.push(me);
+    // Pages outside the app frame scroll the body; hold it while any sheet
+    // is open, and let go only when the last one closes.
+    if (openSheets.length === 1) document.body.style.overflow = "hidden";
+    const isTop = () => openSheets[openSheets.length - 1] === me;
+    // Focus goes into the sheet, and back to what opened it afterwards.
+    // React has already run autoFocus inside the sheet by now, so the opener
+    // is only what had focus if it sits outside the panel.
+    const active = document.activeElement;
+    const opener =
+      active instanceof HTMLElement && !panel.current?.contains(active) ? active : null;
+    // A field that focused itself (autoFocus) keeps it; otherwise the sheet
+    // takes focus, so the keyboard and a screen reader start inside it.
+    if (!panel.current?.contains(document.activeElement)) {
+      const first = panel.current?.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current;
+      first?.focus({ preventScroll: true });
+    }
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (!isTop()) return;
+      if (e.key === "Escape") {
+        if (latest.current.dismissible) latest.current.onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panel.current) return;
+      const items = Array.from(panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.offsetParent !== null,
+      );
+      if (items.length === 0) return;
+      const firstItem = items[0]!;
+      const lastItem = items[items.length - 1]!;
+      const now = document.activeElement;
+      if (e.shiftKey && (now === firstItem || now === panel.current)) {
+        e.preventDefault();
+        lastItem.focus();
+      } else if (!e.shiftKey && now === lastItem) {
+        e.preventDefault();
+        firstItem.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      const at = openSheets.indexOf(me);
+      if (at !== -1) openSheets.splice(at, 1);
+      if (openSheets.length === 0) document.body.style.overflow = "";
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
-  }, [open, onClose]);
+  }, [open]);
 
   // Pull the top of the sheet down to close it, as on a phone's own sheets.
   // Only from the handle and the header, never the body, which scrolls; and
@@ -90,7 +153,7 @@ export function Sheet({
   const onPullEnd = () => {
     if (pullFrom.current == null) return;
     pullFrom.current = null;
-    if (pull > PULL_CLOSE_PX) onClose();
+    if (pull > PULL_CLOSE_PX && dismissible) onClose();
     setPull(0);
   };
 
@@ -101,15 +164,17 @@ export function Sheet({
       className={`fixed inset-0 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4 ${
         above ? "z-[60]" : "z-50"
       }`}
-      onClick={onClose}
+      onClick={dismissible ? onClose : undefined}
     >
       <div
+        ref={panel}
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={pull ? { transform: `translateY(${pull}px)`, transition: "none" } : undefined}
-        className={`rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88vh]"} w-full flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl ${
+        className={`rise card-raised transition-transform flex ${tall ? "max-h-[94dvh]" : "max-h-[88dvh]"} w-full flex-col overflow-hidden outline-none rounded-t-2xl sm:rounded-2xl ${
           width === "sm" ? "max-w-sm" : width === "lg" ? "max-w-xl" : "max-w-md"
         }`}
       >
@@ -130,9 +195,11 @@ export function Sheet({
                 type="button"
                 onClick={onBack}
                 aria-label="Back"
-                className="grid size-8 shrink-0 place-items-center self-center rounded-full border border-border text-muted-foreground"
+                className="tap-target -my-1.5 -ml-1.5 grid shrink-0 place-items-center self-center rounded-full"
               >
-                <ArrowLeft className="size-4" aria-hidden />
+                <span className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground">
+                  <ArrowLeft className="size-4" aria-hidden />
+                </span>
               </button>
             )}
             {icon && <div className="shrink-0">{icon}</div>}
@@ -146,15 +213,21 @@ export function Sheet({
                 type="button"
                 onClick={onClose}
                 aria-label={`Close ${title.toLowerCase()}`}
-                className="grid size-8 shrink-0 place-items-center rounded-full border border-border text-muted-foreground"
+                className="tap-target -my-1.5 -mr-1.5 grid shrink-0 place-items-center rounded-full"
               >
-                <X className="size-4" aria-hidden />
+                <span className="grid size-8 place-items-center rounded-full border border-border text-muted-foreground">
+                  <X className="size-4" aria-hidden />
+                </span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4 pt-3">{children}</div>
+        {/* Its own scroll, which never hands the page a swipe; and clear of
+            the home indicator on a phone with one. */}
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {children}
+        </div>
       </div>
     </div>,
     document.body,
