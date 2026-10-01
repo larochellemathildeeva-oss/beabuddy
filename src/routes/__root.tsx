@@ -22,6 +22,7 @@ import {
   THEME_COLORS,
 } from "@/lib/theme";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
+import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
@@ -127,6 +128,7 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_COLOR_BOOT_SCRIPT }} />

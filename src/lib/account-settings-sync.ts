@@ -11,6 +11,7 @@ import {
   type SyncedSetting,
 } from "@/lib/account-settings";
 import { getStored, setStored } from "@/lib/settings-storage";
+import { ACCESSIBILITY_KEY, applyAccessibility, parseAccessibility } from "@/lib/accessibility";
 import { applyStopPictures, asStopPictures, STOP_PICTURES_KEY } from "@/lib/stop-pictures";
 import { applyTheme, DEFAULT_THEME, isThemeName, THEME_KEY, type ThemeName } from "@/lib/theme";
 
@@ -74,6 +75,9 @@ function writeDevice(name: SyncedSetting, id: string, value: string | null) {
   setStored(key, value);
   if (name === "theme") applyTheme(themeFrom(value));
   if (name === "pictures") applyStopPictures(asStopPictures(value), document.documentElement);
+  if (name === "accessibility") {
+    applyAccessibility(parseAccessibility(value), document.documentElement);
+  }
   // The same signal another tab's change gives, which every settings hook
   // listens for.
   window.dispatchEvent(new StorageEvent("storage", { key, newValue: value }));
@@ -186,7 +190,7 @@ export function startAccountSettingsSync(): void {
     if (document.visibilityState === "visible") resume();
   });
   window.addEventListener("online", resume);
-  // A theme or pictures choice made in another tab: paint this one too, not
+  // A theme, pictures or reading choice made in another tab: paint this one too, not
   // only the picker.
   window.addEventListener("storage", (e) => {
     if (e.key === THEME_KEY) {
@@ -195,6 +199,8 @@ export function startAccountSettingsSync(): void {
       document.documentElement.classList.toggle("dark", theme === "dark");
     } else if (e.key === STOP_PICTURES_KEY) {
       applyStopPictures(asStopPictures(e.newValue), document.documentElement);
+    } else if (e.key === ACCESSIBILITY_KEY) {
+      applyAccessibility(parseAccessibility(e.newValue), document.documentElement);
     }
   });
 }

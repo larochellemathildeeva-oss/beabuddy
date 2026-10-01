@@ -454,6 +454,20 @@ passcode, typed once and checked, is recorded as meeting the rule. The
 migration is applied by hand; until it is, the change fails with nothing
 written and the old passcode keeps working.
 
+## Reading settings
+
+You → Appearance → Reading (`AccessibilityPicker`) sets text size, font
+(Béa's, Atkinson Hyperlegible, Lexend or the device's), reduced motion, more
+contrast and bolder text (`accessibility.ts`, pure and tested; synced with the
+account as `accessibility`). Text size works because every pixel `font-size`
+and `line-height` in the CSS is rewritten at build time to
+`calc(<n>px * var(--text-scale, 1))` (`text-scale-css.ts`, a lightningcss
+visitor in `vite.config.ts`), and the `--text-*` theme sizes are written the
+same way. So keep writing sizes in px; a size inside `calc()`, `var()` or the
+`font` shorthand is not scaled. The rest are `data-font`, `data-motion`,
+`data-contrast` and `data-bold` on `<html>`, styled at the end of
+`styles.css`; `ACCESSIBILITY_BOOT_SCRIPT` puts them on before first paint.
+
 ## World globe data
 
 The World tab shades provinces and states from `public/geo/admin1/` — one

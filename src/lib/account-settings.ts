@@ -17,6 +17,7 @@
  * is "keep on this phone"), a trip's travel mode and currency pair, offline
  * copies, and the tour and one-time notices.
  */
+import { ACCESSIBILITY_KEY } from "./accessibility.ts";
 import { STOP_PICTURES_KEY } from "./stop-pictures.ts";
 import { THEME_KEY } from "./theme.ts";
 
@@ -28,6 +29,7 @@ export const SYNCED_SETTINGS = [
   "tripView",
   "statsLayout",
   "homeCurrency",
+  "accessibility",
 ] as const;
 export type SyncedSetting = (typeof SYNCED_SETTINGS)[number];
 
@@ -57,6 +59,8 @@ export function settingStorageKey(name: SyncedSetting, uid: string): string {
       return statsLayoutKey(uid);
     case "homeCurrency":
       return HOME_CURRENCY_KEY;
+    case "accessibility":
+      return ACCESSIBILITY_KEY;
   }
 }
 
@@ -69,6 +73,7 @@ export const DEVICE_WIDE_SETTINGS: readonly SyncedSetting[] = [
   "personality",
   "pictures",
   "homeCurrency",
+  "accessibility",
 ];
 
 /** The account whose settings this device last held. */

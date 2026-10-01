@@ -6,6 +6,7 @@ import viteReact from "@vitejs/plugin-react";
 import { nitro } from "nitro/vite";
 import { defineConfig } from "vite";
 import tsConfigPaths from "vite-tsconfig-paths";
+import { textScaleVisitor } from "./src/lib/text-scale-css.ts";
 
 /**
  * The version shown in the app header lives in package.json and is bumped
@@ -51,7 +52,8 @@ export default defineConfig(({ command }) => ({
       "@tanstack/query-core",
     ],
   },
-  css: { transformer: "lightningcss" },
+  // Every pixel font size follows the reading text size (accessibility.ts).
+  css: { transformer: "lightningcss", lightningcss: { visitor: textScaleVisitor } },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },
