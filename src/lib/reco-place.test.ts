@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  isAreaPlace,
   isCityLevelPlace,
   isCountryLevelPlace,
   recMatchesPlace,
@@ -70,4 +71,16 @@ test("recMatchesPlace filters venues in that city and ignores name collisions", 
   assert.equal(recMatchesPlace(flore, "Paris"), true);
   assert.equal(recMatchesPlace(joe, "Paris"), false);
   assert.equal(recMatchesPlace(flore, "Paris, France"), true);
+});
+
+test("isAreaPlace keeps countries and cities off the Recs list, venues on it", () => {
+  assert.equal(
+    isAreaPlace({ name: "Portugal", city: "Portugal", country: "Portugal", category: "Country" }),
+    true,
+  );
+  assert.equal(isAreaPlace({ name: "Lisbon", city: "Lisbon", category: "City" }), true);
+  assert.equal(
+    isAreaPlace({ name: "Time Out Market", city: "Lisbon", country: "Portugal", category: "Food" }),
+    false,
+  );
 });

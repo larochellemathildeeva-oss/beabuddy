@@ -18,6 +18,7 @@ import { homeStopFollow } from "@/lib/trip-cities";
 import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import { readOfflineTrip, readOfflineTrips, saveOfflineTrip } from "@/lib/offline-trip";
+import { ownTrips } from "@/lib/own-trips";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -319,6 +320,7 @@ export function useTrips() {
       setLoading(false);
       return;
     }
+    ({ trips: rows, members: memberRows } = ownTrips(rows, memberRows, user.id));
     // Together, so a card never draws with its trip but without its people.
     setTrips(rows);
     setMembers(memberRows);
