@@ -1,4 +1,4 @@
-import { BEA_MISSION, BEA_SIGNATURE, BEA_TAGLINES } from "./bea-voice.ts";
+import { BEA_HELPS, BEA_MISSION, BEA_SIGNATURE, BEA_TAGLINES } from "./bea-voice.ts";
 
 /**
  * The story Béa tells someone who has not signed up yet.
@@ -85,6 +85,8 @@ export const HOW_SCENES: readonly Scene[] = [
 ] as const;
 
 export const HOW_CLOSING = {
+  /** What she does for you — the page's title and its last word. */
+  helps: BEA_HELPS,
   mission: BEA_MISSION,
   tagline: BEA_TAGLINES.strongest,
 } as const;

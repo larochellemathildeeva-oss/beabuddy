@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "@tanstack/react-router";
-import { BookOpen, PlayCircle, X } from "@/components/icons";
+import { BookOpen, ChevronRight, PlayCircle, X } from "@/components/icons";
 import { useAuth } from "@/hooks/useAuth";
-import { type TourMode, tourSteps } from "@/lib/tour";
+import { type TourMode, tourLabel, tourSteps, WALKS } from "@/lib/tour";
 import {
   beginTourReplay,
   markTourSeen,
@@ -32,29 +32,33 @@ const EMPTY_STEPS: ReturnType<typeof tourSteps> = [];
 
 export type TourIntent = "first-run" | "replay";
 
-type TourStartDetail = { intent: TourIntent };
+type TourStartDetail = { intent: TourIntent; mode?: TourMode };
 
 export function useTourControl() {
   const [open, setOpen] = useState(false);
   const [intent, setIntent] = useState<TourIntent>("first-run");
+  const [startMode, setStartMode] = useState<TourMode | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const reopen = (event: Event) => {
       const detail = (event as CustomEvent<TourStartDetail>).detail;
       setIntent(detail?.intent === "replay" ? "replay" : "first-run");
+      setStartMode(detail?.mode ?? null);
       setOpen(true);
     };
     window.addEventListener(TOUR_EVENT, reopen);
     return () => window.removeEventListener(TOUR_EVENT, reopen);
   }, []);
 
-  return { open, setOpen, intent };
+  return { open, setOpen, intent, startMode };
 }
 
-function openTourSheet(intent: TourIntent) {
+function openTourSheet(intent: TourIntent, mode?: TourMode) {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent<TourStartDetail>(TOUR_EVENT, { detail: { intent } }));
+  window.dispatchEvent(
+    new CustomEvent<TourStartDetail>(TOUR_EVENT, { detail: { intent, ...(mode ? { mode } : {}) } }),
+  );
 }
 
 /**
@@ -81,10 +85,13 @@ export function Tour({
   open,
   onClose,
   intent = "first-run",
+  startMode = null,
 }: {
   open: boolean;
   onClose: () => void;
   intent?: TourIntent;
+  /** Open this walk directly instead of the chooser. */
+  startMode?: TourMode | null;
 }) {
   const [i, setI] = useState(0);
   const [mode, setMode] = useState<TourMode | null>(null);
@@ -120,6 +127,11 @@ export function Tour({
 
   useEffect(() => {
     if (!open) return;
+    if (startMode) {
+      setMode(startMode);
+      setI(0);
+      return;
+    }
     const saved = readTourProgress(safeStorage());
     if (saved) {
       setMode(saved.mode);
@@ -135,7 +147,7 @@ export function Tour({
       setMode(null);
       setI(0);
     }
-  }, [open, intent]);
+  }, [open, intent, startMode]);
 
   // Write on every move, so closing the tab mid-Deep-Dive costs one step, not
   // all forty-two. Nothing is stored until they have a mode.
@@ -208,6 +220,7 @@ export function Tour({
     let tries = 0;
     let retryTimer = 0;
     let stopSettle: (() => void) | null = null;
+    let rescrolls = 0;
     const onResizeOrScroll = () => measureRef.current();
     const tick = () => {
       if (cancelled) return;
@@ -224,6 +237,11 @@ export function Tour({
           // zero-size box in the corner.
           const rect = el.getBoundingClientRect();
           if (el.isConnected && rect.width >= 1 && rect.height >= 1) {
+            // A page that lays out late (Help's answers, a list loading in)
+            // can leave the target below the fold after the first scroll.
+            if ((rect.top > window.innerHeight || rect.bottom < 0) && rescrolls++ < 3) {
+              el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+            }
             setBox(next);
             return;
           }
@@ -288,28 +306,55 @@ export function Tour({
       <div className="pointer-events-none fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-4">
         <div className="pointer-events-auto w-full max-w-[480px] rounded-3xl border border-border bg-background p-5 shadow-xl">
           <div className="flex items-center justify-between">
-            <p className="label-caps">Replay</p>
+            <p className="label-caps">Show me around</p>
             <button onClick={finish} className="text-[13px] text-muted-foreground underline">
-              Skip
+              Close
             </button>
           </div>
 
-          <h2 className="mt-2 font-display text-[23px] leading-tight">How shall we walk?</h2>
-          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-            {demoVideo
-              ? "Watch the short film, walk the app, or open the Deep Dive."
-              : "See the whole story on one page, walk the app again, or open the Deep Dive."}
+          <h2 className="mt-2 font-display text-[23px] leading-tight">
+            What would you like to do?
+          </h2>
+          <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">
+            Béa walks you through it on the real screens, one step at a time.
           </p>
 
-          <div className="mt-4 space-y-2">
-            {/* The visual answer comes first, whichever one this deploy has.
-                Without a film that is the story page, which exists today —
-                gating the only visual option on a video nobody has made left
-                this chooser looking exactly as it always did. */}
+          <div className="mt-4 max-h-[min(60vh,520px)] space-y-2 overflow-y-auto">
+            {WALKS.map((walk) => (
+              <button
+                key={walk.id}
+                onClick={() => pick(walk.id)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left transition-colors hover:bg-elevated"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold">{walk.title}</span>
+                  <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                    {walk.hint}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[12px] text-muted-foreground">
+                  {walk.steps.length} steps
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </button>
+            ))}
+
+            <p className="label-caps pt-2">Or the big picture</p>
+            <button
+              onClick={() => pick("quick")}
+              className="w-full rounded-2xl border border-border px-4 py-3 text-left transition-colors hover:bg-elevated"
+            >
+              <span className="block text-[15px] font-semibold">The one-minute walk</span>
+              <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                Everything Béa does, one screen at a time.
+              </span>
+            </button>
+            {/* The visual answer, whichever one this deploy has: the film, or
+                the story page, which always exists. */}
             {demoVideo ? (
               <button
                 onClick={() => setWatching(true)}
-                className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
+                className="w-full rounded-2xl border border-border px-4 py-3 text-left transition-colors hover:bg-elevated"
               >
                 <span className="flex items-center gap-2 text-[15px] font-semibold">
                   <PlayCircle className="size-4 text-primary" aria-hidden />
@@ -325,35 +370,17 @@ export function Tour({
                   finish();
                   void navigate({ to: "/how-it-works" });
                 }}
-                className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
+                className="w-full rounded-2xl border border-border px-4 py-3 text-left transition-colors hover:bg-elevated"
               >
                 <span className="flex items-center gap-2 text-[15px] font-semibold">
                   <BookOpen className="size-4 text-primary" aria-hidden />
                   See how Béa works
                 </span>
                 <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                  The whole story on one page. Plan → save → rediscover → choose → remember.
+                  The whole story on one page.
                 </span>
               </button>
             )}
-            <button
-              onClick={() => pick("quick")}
-              className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
-            >
-              <span className="block text-[15px] font-semibold">A quick walk around the block</span>
-              <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                Béa points at the real screens, one at a time. About a minute.
-              </span>
-            </button>
-            <button
-              onClick={() => pick("deep")}
-              className="w-full rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:bg-elevated"
-            >
-              <span className="block text-[15px] font-semibold">Deep Dive</span>
-              <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                Six pillars competitors miss. Bring a coffee.
-              </span>
-            </button>
           </div>
         </div>
         {watching && demoVideo ? (
@@ -370,9 +397,9 @@ export function Tour({
 
   const sheet = (
     <div className="w-full max-w-[420px] rounded-2xl border border-border bg-background p-3.5 shadow-2xl">
-      <div className="flex items-center justify-between">
-        <p className="label-caps">
-          {mode === "deep" ? "Deep Dive" : "Around the block"} · {i + 1} of {steps.length}
+      <div className="flex items-center justify-between gap-3">
+        <p className="label-caps min-w-0 truncate">
+          {tourLabel(mode)} · {i + 1} of {steps.length}
         </p>
         <button onClick={finish} aria-label="Skip tour" className="text-muted-foreground">
           <X className="size-4" />
@@ -402,23 +429,14 @@ export function Tour({
         </p>
       )}
 
-      {mode === "deep" ? (
-        <div className="mt-3 h-1 rounded-full bg-border">
-          <div
-            className="h-1 rounded-full bg-primary transition-[width] duration-(--t-move) ease-(--ease-standard)"
-            style={{ width: `${((i + 1) / steps.length) * 100}%` }}
+      <div className="mt-3 flex gap-1">
+        {steps.map((_, n) => (
+          <span
+            key={n}
+            className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
           />
-        </div>
-      ) : (
-        <div className="mt-3 flex gap-1">
-          {steps.map((_, n) => (
-            <span
-              key={n}
-              className={`h-1 flex-1 rounded-full ${n <= i ? "bg-primary" : "bg-border"}`}
-            />
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
 
       <div className="mt-3 flex gap-2">
         <button
@@ -438,7 +456,7 @@ export function Tour({
           onClick={() => (last ? finish() : setI(i + 1))}
           className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
         >
-          {last ? "Start using Béa" : "Next"}
+          {last ? (mode === "quick" ? "Start using Béa" : "Done") : "Next"}
         </button>
       </div>
     </div>

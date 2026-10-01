@@ -43,8 +43,8 @@ describe("tour storage lifecycle", () => {
     // The bug: progress was only written on completion, so quitting on step 9
     // of 42 meant reading all of it again.
     const s = fakeStorage();
-    saveTourProgress(s, { mode: "deep", step: 9 });
-    assert.deepEqual(readTourProgress(s), { mode: "deep", step: 9 });
+    saveTourProgress(s, { mode: "plan", step: 3 });
+    assert.deepEqual(readTourProgress(s), { mode: "plan", step: 3 });
   });
 
   it("replay does not un-mark the tour as seen", () => {
@@ -60,7 +60,7 @@ describe("tour storage lifecycle", () => {
 
   it("finishing clears progress so a later replay starts clean", () => {
     const s = fakeStorage();
-    saveTourProgress(s, { mode: "deep", step: 20 });
+    saveTourProgress(s, { mode: "map", step: 2 });
     markTourSeen(s);
     assert.equal(s.map.get(TOUR_SEEN_KEY), "yes");
     assert.equal(s.map.has(TOUR_PROGRESS_KEY), false);

@@ -5,7 +5,6 @@ import { AppShell } from "@/components/AppShell";
 import { DemoVideo } from "@/components/DemoVideo";
 import { SceneFigureView } from "@/components/HowItWorksFigures";
 import { configuredDemoVideo } from "@/lib/demo-video";
-import { BEA_HELPS } from "@/lib/bea-voice";
 import { HOW_CLOSING, HOW_SCENES, WATCH_LABEL, type Scene } from "@/lib/how-it-works";
 
 export const Route = createFileRoute("/how-it-works")({
@@ -105,13 +104,12 @@ function HowItWorksPage() {
   const [watching, setWatching] = useState(false);
 
   return (
-    <AppShell publicPage eyebrow="How it works" title={HOW_CLOSING.mission}>
+    <AppShell publicPage eyebrow="How it works" title={HOW_CLOSING.helps}>
       <div className="space-y-12 pb-4">
         <div className="space-y-3">
           <p className="text-[15px] leading-relaxed text-muted-foreground">
-            {BEA_HELPS} She starts from what you saved and who told you about it, not a list
-            invented for you — and remembers where you have been for next time. Here is the whole of
-            it, in order.
+            Béa starts from what you saved and who told you about it, not a list invented for you —
+            and remembers where you have been for next time. Here is the whole of it, in order.
           </p>
           {video ? (
             <button
@@ -132,7 +130,7 @@ function HowItWorksPage() {
         <section className="surface border border-border/50 p-5 text-center">
           <p className="font-display text-[24px] leading-tight">{HOW_CLOSING.tagline}</p>
           <p className="mx-auto mt-2 max-w-md text-[14.5px] text-muted-foreground">
-            {HOW_CLOSING.mission}
+            {HOW_CLOSING.helps}
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Link to="/auth" className="btn-primary px-4 py-3 text-center text-[14.5px]">

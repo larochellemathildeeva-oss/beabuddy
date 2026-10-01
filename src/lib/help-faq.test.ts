@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME } from "./help-faq.ts";
+import { HELP_CLOSING, HELP_FAQ_GROUPS, HELP_WELCOME, searchHelp } from "./help-faq.ts";
 import { BEA_MISSION } from "./bea-voice.ts";
 import { IDLE_LOGOUT_MS } from "./idle-logout.ts";
 import { INVITE_CODE_LENGTH, INVITE_TTL_MS } from "./trip-invite.ts";
@@ -123,5 +123,52 @@ describe("FAQ does not contradict the brand", () => {
         `sounds like a booking promise: ${item.q}`,
       );
     }
+  });
+});
+
+describe("Help is laid out for what people came to do", () => {
+  it("puts planning straight after getting started", () => {
+    assert.equal(HELP_FAQ_GROUPS[0]?.title, "Getting started");
+    assert.equal(HELP_FAQ_GROUPS[1]?.title, "Planning a trip");
+  });
+
+  it("speaks about Béa in the third person", () => {
+    // Questions are the traveller's voice; answers and the welcome are Béa's.
+    // "I'm here" is a button's name, not Béa talking.
+    const answers = [
+      HELP_WELCOME.title,
+      HELP_WELCOME.lead,
+      HELP_WELCOME.body,
+      ...ALL.map((i) => i.a),
+    ];
+    for (const text of answers) {
+      assert.equal(
+        /\bI('m| am| remember)\b/.test(text.replace(/I'm here/g, "")),
+        false,
+        `first person: ${text.slice(0, 60)}`,
+      );
+    }
+  });
+
+  it("offers a walk on the answers a screen explains best", () => {
+    const walks = new Set(ALL.map((i) => i.walk).filter(Boolean));
+    for (const id of ["plan", "import", "save", "on-trip", "map"]) {
+      assert.ok(walks.has(id as never), `no answer offers the ${id} walk`);
+    }
+  });
+});
+
+describe("searchHelp", () => {
+  it("gives everything back for an empty search", () => {
+    assert.equal(searchHelp("  ").length, HELP_FAQ_GROUPS.length);
+  });
+
+  it("matches every word, ignoring accents and case", () => {
+    const found = searchHelp("BEA book").flatMap((g) => g.items.map((i) => i.q));
+    assert.ok(found.includes("Does Béa automatically book anything?"));
+  });
+
+  it("drops groups with nothing left", () => {
+    assert.deepEqual(searchHelp("zzzz-not-a-word"), []);
   });
 });

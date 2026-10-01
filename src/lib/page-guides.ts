@@ -375,7 +375,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Replay the tour",
-        body: "About Béa holds How Béa works, the quick walk and the Deep Dive — Béa will not start either until you ask.",
+        body: "About Béa holds How Béa works and the step-by-step walks — planning, importing, saving places, the trip itself and your map.",
         selector: "[data-guide='replay-tour']",
       },
     ],

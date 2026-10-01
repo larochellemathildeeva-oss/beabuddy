@@ -6,5 +6,5 @@ export function wordCount(text: string): number {
 
 /** First-run / quick walk bodies stay short enough to read on a phone. */
 export const QUICK_BODY_MAX = 40;
-/** Deep Dive can be a beat longer; still not a paragraph essay. */
+/** A goal walk can be a beat longer; still not a paragraph essay. */
 export const DEEP_BODY_MAX = 45;

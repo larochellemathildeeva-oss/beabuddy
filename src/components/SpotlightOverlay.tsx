@@ -94,13 +94,17 @@ export function SpotlightOverlay({
     return () => observer.disconnect();
   }, []);
 
-  const belowTarget = box ? box.top + box.height < window.innerHeight * 0.55 : true;
+  // A target still off screen (the page has not scrolled to it yet) is no
+  // place to hang the sheet from: it would be pushed off screen with it.
+  const onScreen = !!box && box.top < window.innerHeight && box.top + box.height > 0;
+  const placeBy = onScreen ? box : null;
+  const belowTarget = placeBy ? placeBy.top + placeBy.height < window.innerHeight * 0.55 : true;
   // A target low on the screen (the last card on a page cannot scroll to the
   // middle) gets the sheet above it when there is room, not pinned to the
   // bottom on top of the very thing it is pointing at.
   // Measured, not guessed, so a tall sheet never runs off the top.
   const aboveTarget =
-    !belowTarget && !!box && sheetHeight > 0 && box.top >= sheetHeight + SHEET_GAP + EDGE;
+    !belowTarget && !!placeBy && sheetHeight > 0 && placeBy.top >= sheetHeight + SHEET_GAP + EDGE;
 
   return (
     <div role="presentation" className="pointer-events-none fixed inset-0 z-[60]">
@@ -138,7 +142,7 @@ export function SpotlightOverlay({
       <div
         ref={sheetRef}
         className="pointer-events-auto absolute inset-x-0 flex justify-center overflow-y-auto px-4"
-        style={sheetPlacement(box, belowTarget, aboveTarget)}
+        style={sheetPlacement(placeBy, belowTarget, aboveTarget)}
       >
         {children}
       </div>

@@ -137,7 +137,7 @@ export function PageGuide() {
           onClick={() => setOpen(false)}
           className="mt-3 inline-block text-[13px] font-semibold text-primary underline underline-offset-2"
         >
-          More questions? Help & FAQ
+          Step-by-step walks and answers: Help
         </Link>
       )}
       <div className="mt-3 flex gap-2">

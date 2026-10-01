@@ -671,7 +671,7 @@ export function Globe({
                 style={{
                   fill: c.visited
                     ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
-                    : "color-mix(in oklab, var(--primary) 30%, var(--card))",
+                    : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
                 }}
                 stroke="var(--card)"
                 strokeWidth={0.45}

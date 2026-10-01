@@ -1,4 +1,4 @@
-export type TourMode = "quick" | "deep";
+export type TourMode = "quick" | "plan" | "import" | "save" | "on-trip" | "map";
 
 export type TourStep = {
   title: string;
@@ -110,7 +110,7 @@ export const QUICK_STEPS: TourStep[] = [
   },
   {
     title: "Your travel story",
-    body: "Every trip becomes part of your memory: Been there lists each place, Stats counts them. Replay this walk, or the Deep Dive, from You → About Béa.",
+    body: "Every trip becomes part of your memory: Been there lists each place, Stats counts them. Help has a step-by-step walk for each thing Béa does.",
     to: "/world",
     search: { tab: "been" },
     selector: "[data-guide='world-tabs']",
@@ -118,150 +118,215 @@ export const QUICK_STEPS: TourStep[] = [
 ];
 
 /**
- * Deep Dive — what competitors miss, in six pillars. Replay from You only.
- * Supporting tools (budget, packing, vault, calendar) stay out of this walk.
+ * Walks that each teach one thing a traveller came to do, start to finish,
+ * on the real screens. They replace the old "six pillars" Deep Dive, which
+ * described Béa against its competitors instead of showing how to use it.
+ *
+ * Every step names only what a fresh account can see too, or carries a
+ * `fallback` that one has (`tour.test.ts` checks).
  */
-export const DEEP_STEPS: TourStep[] = [
-  {
-    title: "Deep Dive — six pillars",
-    body: "This walk is the unique thread: memory, recommendations, decisions, opportunities, trips planned from your vault, and the connected system. Skip anytime.",
-  },
+export type WalkId = "plan" | "import" | "save" | "on-trip" | "map";
 
-  // —— Pillar 1: The Memory Layer ——
-  {
-    title: "Pillar 1 — Memory",
-    body: "Most travel apps forget you once the trip is over. Béa plans with you and remembers your travel life across years — not just one trip.",
-    to: "/world",
-    search: { tab: "map" },
-    selector: "[data-guide='globe']",
-  },
-  {
-    title: "Everywhere you've been",
-    body: "Been there lists the countries, provinces and states you've visited, and your cities — in any language you saved them in. Tap a city and the globe spins to it.",
-    to: "/world",
-    search: { tab: "been" },
-    selector: "[data-guide='places-list']",
-    fallback: "[data-guide='world-tabs']",
-  },
-  {
-    title: "Travel statistics",
-    body: "Countries, cities, trips and pins — choose which counters to show. Your history feels alive, not buried in folders.",
-    to: "/world",
-    search: { tab: "stats" },
-    selector: "[data-guide='travel-stats']",
-  },
-  {
-    title: "Photos become places",
-    body: "Import pictures from You → Data & imports. Béa reads where they were taken and builds city memories. A privacy note comes before every upload.",
-    to: "/photos",
-    selector: "[data-guide='photo-privacy']",
-  },
-  {
-    title: "City memories",
-    body: "Each city gets a page — visits years apart, photos, and spots you cared about. Competitors stop when the trip ends; Béa keeps going.",
-    to: "/memories",
-    selector: "[data-guide='city-memories']",
-  },
-  {
-    title: "Future Me notes",
-    body: "Open a city and leave a note for next time — a rooftop, a warning, a bakery. Béa hands it back when you return.",
-    to: "/memories",
-    selector: "[data-guide='future-me']",
-    fallback: "[data-guide='city-memories']",
-  },
-  {
-    title: "Travel story playback",
-    body: "From City memories, playback walks the cities in your photos in the order you were there. Your story, not a new itinerary.",
-    to: "/story",
-    selector: "[data-guide='story-play']",
-    fallback: "[data-guide='story-empty']",
-  },
+export type Walk = {
+  id: WalkId;
+  /** "Show me how to…" finishes with this. */
+  title: string;
+  /** One line under the title in the chooser and in Help. */
+  hint: string;
+  steps: TourStep[];
+};
 
-  // —— Pillar 2: The Recommendation Vault ——
+export const WALKS: Walk[] = [
   {
-    title: "Pillar 2 — Recommendations",
-    body: '"You HAVE to try that place in Lisbon" usually disappears. Béa treats recommendations like assets — who, note, tags, city — not bookmarks.',
-    to: "/recommendations",
-    selector: "[data-guide='reco-list']",
+    id: "plan",
+    title: "Plan a trip",
+    hint: "From your saved places to a day-by-day plan.",
+    steps: [
+      {
+        title: "Start with Plan with Béa",
+        body: "Everything starts here, at the top of Trips. Tell Béa where and when; she drafts the days from the places you saved and how you like to travel.",
+        to: "/trips",
+        selector: "[data-guide='plan-with-bea']",
+      },
+      {
+        title: "Build my trip",
+        body: "Build my trip drafts the days. The other cards read a plan you already have, put a trip's stops in a better order, or compare two plans. Nothing saves until you approve it.",
+        to: "/trips/plan",
+        selector: "[data-guide='plan-cards']",
+      },
+      {
+        title: "Say it your way",
+        body: "A pace, a budget, who is coming, what to skip. Béa takes it into the draft. Not sure what to ask? The examples start one for you.",
+        to: "/trips/plan",
+        selector: "[data-guide='plan-ask']",
+        fallback: "[data-guide='plan-examples']",
+      },
+      {
+        title: "Teach her how you travel",
+        body: "Style, budget and pace live in Travel preferences. Béa reads them every time she plans, so set them once.",
+        to: "/preferences",
+        selector: "[data-guide='pref-style']",
+      },
+      {
+        title: "Or start one yourself",
+        body: "The + starts an empty trip: a name, a city, dates if you know them. Add stops as you go, and ask Béa to tidy the order later.",
+        to: "/trips",
+        selector: "[data-guide='new-trip']",
+      },
+    ],
   },
   {
-    title: "Ways to capture a tip",
-    body: "Type a name or paste a map link in the field, or save From my trips or I'm here now just below. The + at the top adds by hand or a pasted list. You review before it saves.",
-    to: "/recommendations",
-    selector: "[data-guide='reco-add']",
+    id: "import",
+    title: "Bring in a plan you already have",
+    hint: "From a friend, a PDF, an email or another assistant.",
+    steps: [
+      {
+        title: "Import a plan",
+        body: "On Plan with Béa, Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, each stop pinned on the map.",
+        to: "/trips/plan",
+        selector: "[data-guide='plan-cards']",
+      },
+      {
+        title: "Planning somewhere else?",
+        body: "Copy this prompt into the assistant you use. It asks for the shape Béa reads best, so the plan comes in cleanly when you paste the answer back.",
+        to: "/help",
+        selector: "[data-guide='plan-prompt']",
+      },
+      {
+        title: "Bookings too",
+        body: "Confirmations and tickets go in Trip documents. Add a PDF or photo and Fill in from this file reads the dates and details for you.",
+        to: "/trips",
+        selector: "[data-guide='document-vault']",
+      },
+    ],
   },
   {
-    title: "Search your vault",
-    body: "The button beside the field opens everything you saved: search by place, city or who told you — typos and missing accents still match — then filter by City and Type.",
-    to: "/recommendations",
-    selector: "[data-guide='reco-search']",
-  },
-
-  // —— Pillar 3: Decision Support ——
-  {
-    title: "Pillar 3 — Help me choose",
-    body: 'Most apps answer "What should I do in Paris?" Béa answers: of the places you already care about, which one next? Tick two to five and she ranks them, with reasons.',
-    to: "/world",
-    search: { tab: "bucket" },
-    selector: "[data-guide='compare-pins']",
-    fallback: "[data-guide='bucket-list']",
-  },
-
-  // —— Pillar 4: Opportunity Engine ——
-  {
-    title: "Pillar 4 — Opportunities",
-    body: "You saved a restaurant, a museum, a hike months ago. Share your location and Home shows which of them are near you now. Snooze when it's not the moment.",
-    to: "/",
-    selector: "[data-guide='home-near']",
-    fallback: "[data-guide='home-empty']",
-  },
-  {
-    title: "Day trip from your vault",
-    body: "Tap Plan a day trip, tick nearby saves, pick a pace, Arrange with Béa, then save it as a trip — still starting from places you already kept.",
-    to: "/",
-    selector: "[data-guide='home-near']",
-    fallback: "[data-guide='home-empty']",
-  },
-
-  // —— Pillar 5: Planning Without a Blank Page ——
-  {
-    title: "Pillar 5 — Plan from you",
-    body: "Most planners open a blank page. Béa starts with your saved places, preferences, recommendations and travel style — set them here.",
-    to: "/preferences",
-    selector: "[data-guide='pref-style']",
+    id: "save",
+    title: "Save places from friends",
+    hint: "Keep every tip, with who told you, ready to plan with.",
+    steps: [
+      {
+        title: "One field takes anything",
+        body: "Type a name, or paste a Maps, Instagram or blog link. Béa finds the place; tap Save. Add who told you and why, so the tip keeps its story.",
+        to: "/recommendations",
+        selector: "[data-guide='reco-add']",
+      },
+      {
+        title: "Find it again",
+        body: "Search by place, city or who told you. Typos and missing accents still match.",
+        to: "/recommendations",
+        selector: "[data-guide='reco-search']",
+      },
+      {
+        title: "Your saved places",
+        body: "Everything you kept, grouped and on the map. When you plan a trip there, Béa starts from these.",
+        to: "/recommendations",
+        selector: "[data-guide='reco-list']",
+      },
+      {
+        title: "Can't decide?",
+        body: "Help me choose weighs two to five places you saved and says which fits you best, with its reasons.",
+        to: "/world",
+        search: { tab: "bucket" },
+        selector: "[data-guide='compare-pins']",
+        fallback: "[data-guide='bucket-list']",
+      },
+    ],
   },
   {
-    title: "Plan with Béa",
-    body: "Build my trip drafts days from what you saved. Import reads a plan you already have. Optimize improves a trip's order; Compare weighs two plans. You approve before anything saves.",
-    to: "/trips/plan",
-    selector: "[data-guide='plan-cards']",
+    id: "on-trip",
+    title: "Use Béa on the trip",
+    hint: "Today's plan, directions, bookings and what's nearby.",
+    steps: [
+      {
+        title: "Home knows where you are in the trip",
+        body: "The trip you're on sits at the top of Home, with the next stop. Shortcuts jump to the itinerary, to-dos and packing.",
+        to: "/",
+        selector: "[data-guide='home-trip']",
+        fallback: "[data-guide='home-empty']",
+      },
+      {
+        title: "Open the trip",
+        body: "Inside a trip, Now follows the day with you and says when to leave. Map draws it, and Get directions walks or drives you there, the way you like to get around.",
+        to: "/trips",
+        selector: "[data-guide='trip-list']",
+        fallback: "[data-guide='new-trip']",
+      },
+      {
+        title: "Tickets at hand",
+        body: "Bookings, tickets and confirmations, shared with everyone on the trip. Anything private goes in Protected, locked with your passcode.",
+        to: "/trips",
+        selector: "[data-guide='document-vault']",
+      },
+      {
+        title: "No signal? Keep it offline",
+        body: "In a trip's menu (•••), Offline maps keeps the plan, the directions and the map on this phone. They are listed here.",
+        to: "/profile",
+        selector: "[data-guide='offline-options']",
+      },
+      {
+        title: "Saved places nearby",
+        body: "Share your location and Home lists the places you saved within reach. Tick a few and Béa arranges a day trip.",
+        to: "/",
+        selector: "[data-guide='home-near']",
+        fallback: "[data-guide='home-empty']",
+      },
+    ],
   },
-
-  // —— Pillar 6: Travel Operating System ——
   {
-    title: "Pillar 6 — One system",
-    body: "Map → recommendations → decisions → trips → photos → memories → the next opportunity. Most apps solve one problem; Béa connects them.",
-    to: "/",
-    selector: "[data-guide='home-near']",
-    fallback: "[data-guide='home-empty']",
-  },
-  {
-    title: "Help on every page",
-    body: "The ? at the top right of each page says what it does and can show you around. Plan with Béa, on Trips or inside a trip, is the planner.",
-    to: "/help",
-    selector: "[data-guide='help-faq']",
-  },
-  {
-    title: "You're all set",
-    body: "Four things to remember: Béa plans trips from your saves, keeps tips from anyone, shows them when you're near, and keeps a searchable travel history. Replay from You → About Béa anytime.",
-    to: "/",
+    id: "map",
+    title: "Map where you've been",
+    hint: "Your countries, cities and memories on one globe.",
+    steps: [
+      {
+        title: "Your globe",
+        body: "Every country and city you've been to, shaded in. Drag to spin it.",
+        to: "/world",
+        search: { tab: "map" },
+        selector: "[data-guide='globe']",
+      },
+      {
+        title: "Add places",
+        body: "Add the cities and countries you've been to, one by one or as a list.",
+        to: "/world",
+        search: { tab: "map" },
+        selector: "[data-guide='add-city']",
+      },
+      {
+        title: "From your photos",
+        body: "Import photos and Béa reads where they were taken. A privacy note comes before every upload, and you choose what is kept.",
+        to: "/photos",
+        selector: "[data-guide='photo-privacy']",
+      },
+      {
+        title: "City memories",
+        body: "Each city gets a page: your visits, photos, and notes you left for next time.",
+        to: "/memories",
+        selector: "[data-guide='city-memories']",
+      },
+    ],
   },
 ];
 
 const QUICK_TOUR = withAuthFlags(QUICK_STEPS);
-const DEEP_TOUR = withAuthFlags(DEEP_STEPS);
+const WALK_TOURS = new Map<TourMode, TourStep[]>(
+  WALKS.map((walk) => [walk.id, withAuthFlags(walk.steps)]),
+);
+
+export const TOUR_MODES: readonly TourMode[] = ["quick", ...WALKS.map((walk) => walk.id)];
+
+export function isTourMode(value: unknown): value is TourMode {
+  return typeof value === "string" && (TOUR_MODES as readonly string[]).includes(value);
+}
+
+/** The label the walk's sheet wears: "Around the block", or the walk's title. */
+export function tourLabel(mode: TourMode): string {
+  return mode === "quick"
+    ? "Around the block"
+    : (WALKS.find((walk) => walk.id === mode)?.title ?? "Show me");
+}
 
 /** Stable arrays — new objects every call would re-trigger Tour effects and freeze the app. */
 export function tourSteps(mode: TourMode): TourStep[] {
-  return mode === "deep" ? DEEP_TOUR : QUICK_TOUR;
+  return mode === "quick" ? QUICK_TOUR : (WALK_TOURS.get(mode) ?? QUICK_TOUR);
 }
