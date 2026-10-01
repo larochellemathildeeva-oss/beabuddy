@@ -403,9 +403,10 @@ dropped, capped at `PASTED_TEXT_MAX`). The pasted text is not saved.
 Protected is encrypted in the browser with a key from the traveller's
 passcode (PBKDF2 then AES-GCM, `vaultCrypto.ts`). Anyone with a copy of
 `vault_settings` can try passcodes offline against its verifier, so the
-passcode is the weak part, not the cipher. A new passcode must be a PIN of at
-least 6 digits or a passphrase of at least 10 characters
-(`validateVaultPasscode` in `vault-passcode.ts`, pure and tested), enforced
+passcode is the weak part, not the cipher. A new passcode must be at least 12
+characters, and one made only of digits at least 12 digits: a six-digit PIN
+falls to an offline search in hours (`validateVaultPasscode` in
+`vault-passcode.ts`, pure and tested), enforced
 in `useVault`'s `createVault` as well as the form. Older vaults with a shorter
 passcode still unlock; on unlock they are asked to choose a stronger one
 (`changePasscode`): every document is re-encrypted in the browser and written
