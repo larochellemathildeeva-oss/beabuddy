@@ -22,6 +22,8 @@ export default tseslint.config(
       ".vinxi",
       // Helper agents' worktrees: separate checkouts, not this app.
       ".claude",
+      // Third-party agent skills (Impeccable), installed by their own tool.
+      ".agents",
       // Scratch output of the audit and bench scripts, git-ignored.
       "scripts/*/out",
       "src/integrations/supabase/types.ts",
