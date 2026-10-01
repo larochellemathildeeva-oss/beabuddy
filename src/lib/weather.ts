@@ -204,6 +204,19 @@ export function rainDayMayBeAhead(day: string, now: Date): boolean {
   return day >= earliest;
 }
 
+/**
+ * The day's waking hours as the planner reads them: "09:00 10%, 10:00 70%…".
+ * Null when the forecast does not cover the day.
+ */
+export function rainHoursLine(forecast: RainForecast, day: string): string | null {
+  const hours = forecast.hours.filter((h) => {
+    const hour = Number(h.time.slice(11, 13));
+    return h.time.startsWith(`${day}T`) && hour >= RAIN_FIRST_HOUR && hour <= RAIN_LAST_HOUR;
+  });
+  if (!hours.length) return null;
+  return hours.map((h) => `${h.time.slice(11, 16)} ${Math.round(h.chance)}%`).join(", ");
+}
+
 /** "Rain likely from 16:00 to 19:00 (80%). Worth packing a layer." */
 export function rainLine(notice: RainNotice): string {
   const when = notice.until ? `from ${notice.from} to ${notice.until}` : `from ${notice.from}`;

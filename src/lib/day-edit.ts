@@ -99,7 +99,12 @@ export function dayEditPrompt(
   selected: ReadonlySet<string>,
   days: readonly string[],
   day: string,
-  area?: string | null,
+  context: {
+    /** The day's town: "Paris, France". */
+    area?: string | null | undefined;
+    /** The day's chance of rain by hour, from `rainHoursLine`. */
+    rain?: string | null | undefined;
+  } = {},
 ): string {
   const dayIndex = days.indexOf(day);
   const stopLines = dayStops.map(
@@ -111,7 +116,8 @@ export function dayEditPrompt(
   const dayLines = days.map(
     (d, index) => `  ${dayRef(index)} ${d}${index === dayIndex ? " (this day)" : ""}`,
   );
-  const where = clean(area ?? "", 120);
+  const where = clean(context.area ?? "", 120);
+  const rain = clean(context.rain ?? "", 400);
   return [
     `You rework one day of a travel plan: ${dayIndex >= 0 ? `${dayRef(dayIndex)}, ` : ""}${day}${
       where ? `, in ${where}` : ""
@@ -122,6 +128,9 @@ export function dayEditPrompt(
     "The trip's days:",
     dayLines.join("\n"),
     "",
+    ...(rain
+      ? ["The forecast for this day, chance of rain by hour (from Open-Meteo):", `  ${rain}`, ""]
+      : []),
     "The traveller asks:",
     request.trim().slice(0, DAY_EDIT_MAX_REQUEST),
     "",
@@ -143,6 +152,14 @@ export function dayEditPrompt(
     "stop to replace means something better suited, close to the stops around it.",
     "Keep the times in order through the day. Change only what the request needs, and use",
     "sensible times: meals at meal times, places open when visited.",
+    ...(rain
+      ? [
+          "Check the forecast against the plan yourself. When rain is likely (60% or more) while",
+          "an outdoor stop is planned, say so in reply with the hours, and plan around it unless",
+          "the traveller's request rules that out: outdoor stops in the dry hours, indoor places",
+          "(museums, markets, cafés, galleries) in the wet ones, new ones if needed.",
+        ]
+      : []),
     "reply: one to three short, friendly lines of advice: what you changed and why, in",
     "plain words, or why you could not. If the request is not about this day's plan,",
     "change nothing and say so in reply.",

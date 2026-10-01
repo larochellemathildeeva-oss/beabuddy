@@ -4,6 +4,7 @@ import {
   describeWeather,
   formatTemp,
   rainDayMayBeAhead,
+  rainHoursLine,
   rainLine,
   rainNotice,
   rainUrl,
@@ -172,4 +173,18 @@ test("a trip day is still asked for while its place may be on it, whatever the p
     until: "21:00",
     chance: 80,
   });
+});
+
+test("the planner reads the day's waking hours of rain", () => {
+  const forecast = {
+    utcOffsetSeconds: 0,
+    hours: [
+      { time: "2026-10-02T03:00", chance: 90 },
+      { time: "2026-10-02T09:00", chance: 10 },
+      { time: "2026-10-02T14:00", chance: 72.4 },
+      { time: "2026-10-03T09:00", chance: 50 },
+    ],
+  };
+  assert.equal(rainHoursLine(forecast, "2026-10-02"), "09:00 10%, 14:00 72%");
+  assert.equal(rainHoursLine(forecast, "2026-10-05"), null);
 });

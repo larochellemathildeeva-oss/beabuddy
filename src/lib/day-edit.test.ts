@@ -27,6 +27,17 @@ test("the prompt marks which stops may change, and never shows row ids", () => {
   assert.match(text, /s4 19:30 Dinner \[meal\] \(keep as is\)/);
   assert.match(text, /d2 2026-10-02 \(this day\)/);
   assert.doesNotMatch(text, /id-a/);
+  assert.doesNotMatch(text, /forecast/i);
+});
+
+test("with a forecast, Béa is told the hours and to plan around rain", () => {
+  const text = dayEditPrompt("make it better", stops, all, days, day, {
+    area: "Paris, France",
+    rain: "09:00 10%, 14:00 80%",
+  });
+  assert.match(text, /, in Paris, France\./);
+  assert.match(text, /chance of rain by hour \(from Open-Meteo\):\n {2}09:00 10%, 14:00 80%/);
+  assert.match(text, /indoor places/);
 });
 
 test("refs become the new order, times and days", () => {

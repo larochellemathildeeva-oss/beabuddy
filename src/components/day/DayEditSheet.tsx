@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Sheet } from "@/components/Sheet";
-import { ArrowRight, Check, Lock, MapPin, RotateCcw, X } from "@/components/icons";
+import { ArrowRight, Check, CloudRain, Lock, MapPin, RotateCcw, Sun, X } from "@/components/icons";
 import { askDayEdit } from "@/lib/day-edit.functions";
 import {
   DAY_EDIT_MAX_ASK,
@@ -19,6 +19,11 @@ import { stopsOfDay, type ScheduleUpdate } from "@/lib/stop-move";
 import type { TimelineKind } from "@/lib/timeline-kind";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { readableError } from "@/lib/optimistic";
+import { lookupRain } from "@/lib/weather.functions";
+import { rainDayMayBeAhead, rainNotice, WEATHER_ATTRIBUTION, type RainNotice } from "@/lib/weather";
+
+/** Open-Meteo forecasts about 16 days ahead; later days are not asked about. */
+const FORECAST_DAYS = 16;
 
 type Stop = {
   id: string;
@@ -102,6 +107,12 @@ export function DayEditSheet({
 }) {
   const ask = useServerFn(askDayEdit);
   const place = useServerFn(geocodePlanStops);
+  const rainFor = useServerFn(lookupRain);
+  /**
+   * Each upcoming day's next spell of rain, null when it looks dry, or
+   * "unknown" when there is no forecast for it (too far ahead, or no answer).
+   */
+  const [rain, setRain] = useState<Record<string, RainNotice | null | "unknown">>({});
   const [day, setDay] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [text, setText] = useState("");
@@ -145,6 +156,48 @@ export function DayEditSheet({
     setText(initialAsk ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- on opening only
   }, [open, initialDay, initialAsk]);
+
+  // Béa checks the weather herself: every upcoming day with stops, at the
+  // middle of its stops or town, so a rainy day is flagged before it is picked.
+  const spots = open
+    ? filled.flatMap((d) => {
+        const now = new Date();
+        const reach = new Date(now.getTime() + FORECAST_DAYS * 86_400_000)
+          .toISOString()
+          .slice(0, 10);
+        const at = d <= reach && rainDayMayBeAhead(d, now) ? center?.(d) : null;
+        return at
+          ? [{ day: d, lat: Math.round(at.lat * 100) / 100, lon: Math.round(at.lon * 100) / 100 }]
+          : [];
+      })
+    : [];
+  const spotsKey = JSON.stringify(spots);
+  useEffect(() => {
+    let active = true;
+    for (const spot of JSON.parse(spotsKey) as typeof spots) {
+      if (spot.day in rain) continue;
+      rainFor({ data: spot })
+        .then((forecast) => {
+          if (!active) return;
+          setRain((cur) => ({
+            ...cur,
+            [spot.day]: forecast ? rainNotice(forecast, spot.day, new Date()) : "unknown",
+          }));
+        })
+        .catch(() => undefined);
+    }
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per set of days
+  }, [spotsKey]);
+  const known = (d: string) => {
+    const notice = rain[d];
+    return notice === "unknown" ? undefined : notice;
+  };
+  const dayRain = day ? known(day) : undefined;
+  const rainAsk = (notice: RainNotice) =>
+    `Rain is forecast ${notice.until ? `from ${notice.from} to ${notice.until}` : `from ${notice.from}`}: swap the outdoor stops in that time for indoor places nearby.`;
 
   const dayName = (d: string | null) => {
     if (!d) return "No date";
@@ -224,8 +277,19 @@ export function DayEditSheet({
     setProblem("");
     const basis = dayKey(dayStops);
     try {
-      // The server reads the day itself; only which day, which stops and the words go.
-      const plan = await ask({ data: { tripId, day, stopIds, request: joinAsks(nextAsks) } });
+      // The server reads the day itself; only which day, which stops, the
+      // words, and the day's town and middle (for its places and weather) go.
+      const near = center?.(day) ?? null;
+      const plan = await ask({
+        data: {
+          tripId,
+          day,
+          stopIds,
+          request: joinAsks(nextAsks),
+          area: area?.(day) ?? null,
+          near,
+        },
+      });
       if (!dayEditChanges(plan, dayStops)) {
         setProblem(plan.reply || "Béa didn't find anything to change for that.");
         return;
@@ -335,6 +399,38 @@ export function DayEditSheet({
       })
     : [];
 
+  const weatherCard = day && dayRain !== undefined && (
+    <div
+      role="status"
+      className={`flex items-start gap-2 rounded-xl px-3 py-2 text-[13px] ${
+        dayRain ? "bg-primary-soft" : "bg-card"
+      }`}
+    >
+      {dayRain ? (
+        <CloudRain className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+      ) : (
+        <Sun className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+      )}
+      <span className="min-w-0">
+        {dayRain
+          ? `Rain likely on ${dayName(day)} ${
+              dayRain.until ? `from ${dayRain.from} to ${dayRain.until}` : `from ${dayRain.from}`
+            } (${dayRain.chance}%). Béa will plan around it.`
+          : `No rain expected on ${dayName(day)}.`}{" "}
+        <span className="text-[10px] text-muted-foreground">{WEATHER_ATTRIBUTION}</span>
+        {dayRain && !proposal && (
+          <button
+            type="button"
+            onClick={() => setText(rainAsk(dayRain))}
+            className="mt-1 block min-h-8 text-[13px] font-semibold text-primary underline underline-offset-2"
+          >
+            Swap outdoor stops for indoor places
+          </button>
+        )}
+      </span>
+    </div>
+  );
+
   return (
     <Sheet
       open={open}
@@ -371,12 +467,17 @@ export function DayEditSheet({
                       className={chip(d === day)}
                     >
                       Day {i + 1} · {formatTimelineDayLabel(d)} · {count}
+                      {known(d) && (
+                        <CloudRain className="ml-1 inline size-3.5" aria-label="Rain likely" />
+                      )}
                     </button>
                   );
                 })}
               </div>
             )}
           </div>
+
+          {weatherCard}
 
           {day && dayStops.length > 0 && (
             <div>
@@ -448,6 +549,7 @@ export function DayEditSheet({
         </div>
       ) : (
         <div className="space-y-3">
+          {weatherCard}
           {proposal.plan.reply && (
             <p className="rounded-xl bg-primary-soft px-3 py-2 text-[13.5px] text-foreground">
               {proposal.plan.reply}

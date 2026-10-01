@@ -13,6 +13,7 @@ import {
   type DayEditPlan,
 } from "@/lib/day-edit";
 import { tripDays } from "@/lib/stop-move";
+import { rainDayMayBeAhead, rainHoursLine } from "@/lib/weather";
 
 const DayEditInput = z.object({
   tripId: z.string().uuid(),
@@ -21,6 +22,10 @@ const DayEditInput = z.object({
   request: z.string().trim().min(1).max(DAY_EDIT_MAX_REQUEST),
   /** The day's town ("Paris, France"), so suggested places are looked for there. */
   area: z.string().trim().max(120).nullish(),
+  /** The middle of the day's stops or town, for its weather. Rounded before it is sent on. */
+  near: z
+    .object({ lat: z.number().gte(-90).lte(90), lon: z.number().gte(-180).lte(180) })
+    .nullish(),
 });
 
 const DayEditSchema = z.object({
@@ -85,6 +90,16 @@ export const askDayEdit = createServerFn({ method: "POST" })
     const selected = new Set(data.stopIds.filter((id) => onDay.has(id)));
     if (selected.size === 0) throw new Error("Those stops aren't on that day any more.");
 
+    // Béa checks the day's weather herself, so rain is planned around even
+    // when the traveller did not mention it. A failed forecast never stops
+    // the plan.
+    let rain: string | null = null;
+    if (data.near && rainDayMayBeAhead(data.day, new Date())) {
+      const { rainForecastFor } = await import("@/lib/weather-rain.server");
+      const forecast = await rainForecastFor(data.near.lat, data.near.lon, data.day);
+      rain = forecast ? rainHoursLine(forecast, data.day) : null;
+    }
+
     const { reserveAi } = await import("@/lib/ai-quota.server");
     await reserveAi(context.userId, "dayEdit");
     const { withModelFallback } = await import("@/lib/ai.server");
@@ -95,7 +110,10 @@ export const askDayEdit = createServerFn({ method: "POST" })
           ...AI_CALL,
           output: Output.object({ schema: DayEditSchema }),
           reasoning: "low",
-          prompt: dayEditPrompt(data.request, dayStops, selected, days, data.day, data.area),
+          prompt: dayEditPrompt(data.request, dayStops, selected, days, data.day, {
+            area: data.area,
+            rain,
+          }),
         }),
       );
       return readDayEdit(
