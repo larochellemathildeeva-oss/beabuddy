@@ -1070,6 +1070,10 @@ export type Database = {
         Args: { patch: Json }
         Returns: undefined
       }
+      reserve_ai_units: {
+        Args: { _user_id: string; _units: number; _limit: number }
+        Returns: boolean
+      }
       reserve_geo_credits: {
         Args: { _credits: number; _limit: number }
         Returns: boolean

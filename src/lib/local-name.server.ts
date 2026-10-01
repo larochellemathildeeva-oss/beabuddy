@@ -1,5 +1,7 @@
 import { generateText } from "ai";
 import { AI_CALL, withModelFallback } from "@/lib/ai.server";
+import { AI_LIMIT_MESSAGE } from "@/lib/ai-quota";
+import { reserveAi } from "@/lib/ai-quota.server";
 import { takeFromHour } from "@/lib/pexels";
 import countryBoxes from "../../public/geo/admin1/index.json";
 import { countryCode } from "@/lib/country-names";
@@ -46,17 +48,23 @@ export function localName(
   const known = cache.get(key);
   if (known) return known;
   if (!allowed(userId, Date.now())) return Promise.resolve(null);
-  const answer = withModelFallback((model) =>
-    generateText({
-      model,
-      ...AI_CALL,
-      reasoning: "low",
-      prompt: localNamePrompt(name.trim(), language, country),
-    }),
-  )
+  const answer = reserveAi(userId, "localName")
+    .then(() =>
+      withModelFallback((model) =>
+        generateText({
+          model,
+          ...AI_CALL,
+          reasoning: "low",
+          prompt: localNamePrompt(name.trim(), language, country),
+        }),
+      ),
+    )
     .then((result) => readLocalName(result.text, name))
     .catch((error: unknown) => {
-      console.error("[places] local-script name failed:", error);
+      // Out of AI units: search without the local-script name, quietly.
+      if (!(error instanceof Error && error.message === AI_LIMIT_MESSAGE)) {
+        console.error("[places] local-script name failed:", error);
+      }
       cache.delete(key);
       return null;
     });

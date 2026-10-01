@@ -75,6 +75,8 @@ export const askPlanEdit = createServerFn({ method: "POST" })
       );
     }
 
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "planEdit");
     const { withModelFallback } = await import("@/lib/ai.server");
     try {
       const result = await withModelFallback((model) =>

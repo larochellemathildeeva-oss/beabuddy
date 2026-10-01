@@ -4,6 +4,7 @@ import { NoObjectGeneratedError, Output, generateText } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { AiOperation } from "@/lib/ai-quota";
 import { AI_IMAGE_DATA_URL_START, filePartsFromDataUrls, pdfPartFromDataUrl } from "@/lib/ai-image";
 import { MAX_PDF_DATA_URL_LENGTH, PDF_DATA_URL_PREFIX } from "@/lib/itinerary-pdf";
 import { IcsReadError, icsToParsedItinerary } from "@/lib/itinerary-ics";
@@ -144,6 +145,16 @@ export type ParsedItinerary = z.infer<typeof ParsedSchema> & {
   grounding?: SearchGrounding | null;
 };
 export type ParsedItineraryItem = z.infer<typeof ItemSchema>;
+
+/**
+ * Reserve the traveller's AI units for this operation (ai-quota.server.ts)
+ * before any Gemini call it makes, the web check included. Throws a message
+ * fit to show when today's units are spent.
+ */
+async function reserveAi(userId: string, operation: AiOperation): Promise<void> {
+  const quota = await import("@/lib/ai-quota.server");
+  await quota.reserveAi(userId, operation);
+}
 
 /** Prefer withGemini so a rate-limit can fall through to GEMINI_FALLBACK_MODEL. */
 async function withGemini<T>(
@@ -545,6 +556,7 @@ export const parseItinerary = createServerFn({ method: "POST" })
         text: `The itinerary below is the text of the web page ${page.url}. Skip navigation, adverts, comments, author bios and related posts.\n\n${page.text}${data.text?.trim() ? `\n\nThe traveller's notes:\n${data.text}` : ""}`,
       };
     }
+    await reserveAi(context.userId, "itinerary");
     const { extra, recosForTag, tagVaultItems, grounding } = await loadPlanExtra(
       context,
       data,
@@ -626,6 +638,7 @@ export const reviseItinerary = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReviseInput.parse(input))
   .handler(async ({ data, context }): Promise<ParsedItinerary> => {
+    await reserveAi(context.userId, "itinerary");
     const { extra, recosForTag, tagVaultItems, grounding } = await loadPlanExtra(
       context,
       data,
@@ -811,6 +824,7 @@ export const compareItineraries = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CompareInput.parse(input))
   .handler(async ({ data, context }): Promise<ItineraryComparison> => {
+    await reserveAi(context.userId, "compareItineraries");
     const { getTravelPreferences, preferencePrompt } =
       await import("@/lib/travel-preferences.server");
     const preferences = await getTravelPreferences(context);
@@ -1137,6 +1151,7 @@ export const optimizeItinerary = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n");
 
+    await reserveAi(context.userId, "optimize");
     try {
       const result = await withGemini((model) =>
         generateText({
@@ -1367,6 +1382,7 @@ export const planDayTrip = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n");
 
+    await reserveAi(context.userId, "dayTrip");
     try {
       const result = await withGemini((model) =>
         generateText({

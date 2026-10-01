@@ -26,7 +26,9 @@ const CATEGORIES = ["Meals", "Transport", "Flights", "Lodging", "Client", "Suppl
 export const extractReceiptFields = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ReceiptInput.parse(input))
-  .handler(async ({ data }): Promise<ReceiptExtraction> => {
+  .handler(async ({ data, context }): Promise<ReceiptExtraction> => {
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "receipt");
     const { withModelFallback } = await import("@/lib/ai.server");
 
     try {

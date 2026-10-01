@@ -38,7 +38,7 @@ export type ParsedRecoList = z.infer<typeof ParsedRecoListSchema>;
 export const parseRecoList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParseRecoListInput.parse(input))
-  .handler(async ({ data }): Promise<ParsedRecoList> => {
+  .handler(async ({ data, context }): Promise<ParsedRecoList> => {
     const { withModelFallback } = await import("@/lib/ai.server");
     let pageText: string | null = null;
     if (data.pageUrl?.trim()) {
@@ -64,6 +64,9 @@ export const parseRecoList = createServerFn({ method: "POST" })
         throw new Error("That page didn't send readable text. Paste the list of places instead.");
       }
     }
+
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "recoList");
 
     const fromPage = Boolean(pageText);
     const prompt = [

@@ -49,7 +49,9 @@ const SECTION_HINTS = [
 export const parsePackingList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ParsePackingInput.parse(input))
-  .handler(async ({ data }): Promise<ParsedPackingList> => {
+  .handler(async ({ data, context }): Promise<ParsedPackingList> => {
+    const { reserveAi } = await import("@/lib/ai-quota.server");
+    await reserveAi(context.userId, "packing");
     const { withModelFallback } = await import("@/lib/ai.server");
     const prompt = [
       "Read this packing list (photo and/or pasted or uploaded text) and extract every item.",

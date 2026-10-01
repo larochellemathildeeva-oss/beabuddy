@@ -72,6 +72,10 @@ async function reserveSharedGeoapifyCredits(credits: number): Promise<GeoReserve
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     admin = supabaseAdmin as unknown as ReserveRpcClient;
+    // Touching the client is part of the check: the import audit's stand-in
+    // (no-database.ts) throws on any property, and so does a client built
+    // without its environment variables.
+    if (typeof admin.rpc !== "function") return "missing";
   } catch {
     // No admin client in this environment (no service-role key, a unit test,
     // the import audit): there is no ledger to ask, as with a missing migration.

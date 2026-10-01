@@ -382,6 +382,24 @@ shown with its Search Suggestions, unaltered, and its sources:
 `SearchGroundingNote` does that under the plan. `GEMINI_SEARCH_GROUNDING=off`
 turns it off. A failed check never stops the plan.
 
+## AI usage per traveller
+
+Every Gemini call costs money, so each AI operation reserves units from the
+traveller's day before Gemini is asked (`reserveAi` in `ai-quota.server.ts`;
+costs in `AI_COST`, `ai-quota.ts`, pure and tested): a trip build 4, comparing
+two plans 6, a receipt 2, and so on, `AI_DAILY_UNITS` a UTC day (100 unless
+that env var says otherwise). One operation reserves once, however many models
+`withModelFallback` tries, and before the web check. The user ID always comes
+from the verified session (`context.userId`). The count is held in
+`ai_daily_usage` by `reserve_ai_units` (service role only, atomic), so restarts
+and several instances share it. When the database cannot be asked, the
+operation fails closed with a plain message. The migration is applied by hand;
+until it is, or where there is no service-role client (local runs, unit tests,
+the import audit), the same ceiling is counted per process with one warning,
+and the database is asked again hourly. The older hourly limits (document
+reads, plan edits, local-script names) stay as they were. A new AI entry point
+reserves too: add its cost to `AI_COST`.
+
 ## Reading a booking file
 
 In Trip documents, a new PDF or photo can be read with **"Fill in from this
