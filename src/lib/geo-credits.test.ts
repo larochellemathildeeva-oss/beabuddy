@@ -101,3 +101,16 @@ test("the request that reaches the ceiling is the last one counted", () => {
   assert.equal(guard.spend(2, noon), true);
   assert.equal(guard.resting(noon), true, "geoFetch sends nothing after this");
 });
+
+test("restFor rests Geoapify briefly without shortening a longer rest", () => {
+  const guard = new CreditGuard(10);
+  guard.restFor(60_000, noon);
+  assert.equal(guard.reason, "unverified");
+  assert.equal(guard.resting(noon + 59_999), true);
+  assert.equal(guard.resting(noon + 60_000), false);
+
+  guard.restForDay(noon);
+  guard.restFor(60_000, noon);
+  assert.equal(guard.reason, "ceiling");
+  assert.equal(guard.resting(noon + 120_000), true);
+});

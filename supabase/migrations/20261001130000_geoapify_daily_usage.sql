@@ -29,7 +29,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  _today date := (now() AT TIME ZONE 'utc')::date;
+  -- clock_timestamp(), not now(): the day this call runs, not the day its
+  -- transaction started, so a call just after midnight counts toward the new day.
+  _today date := (clock_timestamp() AT TIME ZONE 'utc')::date;
   _reserved integer;
 BEGIN
   IF _credits IS NULL OR _credits <= 0 THEN

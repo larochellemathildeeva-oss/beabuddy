@@ -5,7 +5,7 @@ import {
   type GeoProvider,
 } from "./geo-endpoints.ts";
 import { CreditGuard, GEOAPIFY_DAILY_CREDITS, geoapifyCredits } from "./geo-credits.ts";
-import { GeoLedger, type GeoReserveResult } from "./geo-ledger.ts";
+import { ERROR_PAUSE_MS, GeoLedger, type GeoReserveResult } from "./geo-ledger.ts";
 
 /**
  * The geocoding token, on the server and nowhere else.
@@ -56,20 +56,43 @@ function missingReserveFunction(error: ReserveRpcError): boolean {
   );
 }
 
+/** When the last reservation failure was logged; at most one a minute. */
+let reserveFailureLoggedAt = 0;
+function logReserveFailure(detail: unknown): void {
+  const now = Date.now();
+  if (now - reserveFailureLoggedAt < 60_000) return;
+  reserveFailureLoggedAt = now;
+  // Error code and message, or the thrown error with its stack; never the
+  // request, which carries the service-role key.
+  console.warn("[geo] Geoapify database reservation failed:", detail);
+}
+
 async function reserveSharedGeoapifyCredits(credits: number): Promise<GeoReserveResult> {
+  let admin: ReserveRpcClient;
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const admin = supabaseAdmin as unknown as ReserveRpcClient;
+    admin = supabaseAdmin as unknown as ReserveRpcClient;
+  } catch {
+    // No admin client in this environment (no service-role key, a unit test,
+    // the import audit): there is no ledger to ask, as with a missing migration.
+    return "missing";
+  }
+  try {
     const { data, error } = await admin.rpc("reserve_geoapify_credits", {
       _credits: credits,
       _limit: guard().ceiling,
     });
-    if (error) return missingReserveFunction(error) ? "missing" : "error";
+    if (error) {
+      if (missingReserveFunction(error)) return "missing";
+      logReserveFailure({ code: error.code, message: error.message });
+      return "error";
+    }
     return data === true ? "ok" : "denied";
   } catch (error) {
     if (error && typeof error === "object" && missingReserveFunction(error as ReserveRpcError)) {
       return "missing";
     }
+    logReserveFailure(error);
     return "error";
   }
 }
@@ -83,11 +106,11 @@ function ledger(): GeoLedger {
   return store[LEDGER_KEY];
 }
 
-type LedgerLogState = { missing: boolean; errorUntil: number };
+type LedgerLogState = { missing: boolean };
 const LEDGER_LOG_KEY = Symbol.for("bea.geoapifyDailyLedgerLogState");
 function ledgerLogState(): LedgerLogState {
   const store = globalThis as { [LEDGER_LOG_KEY]?: LedgerLogState };
-  if (!store[LEDGER_LOG_KEY]) store[LEDGER_LOG_KEY] = { missing: false, errorUntil: 0 };
+  if (!store[LEDGER_LOG_KEY]) store[LEDGER_LOG_KEY] = { missing: false };
   return store[LEDGER_LOG_KEY];
 }
 
@@ -108,36 +131,42 @@ export async function geoFetch(url: string, init?: RequestInit): Promise<Respons
   const credits = geoapifyCredits(url);
   if (!credits) return fetch(url, init);
   const g = guard();
-  const now = Date.now();
   // A URL built before Geoapify rested (a batch, a request in flight) is not
   // sent: callers read a 503 as "try later", and pick the fallback next time.
-  if (g.resting(now)) return new Response(null, { status: 503 });
+  if (g.resting(Date.now())) return new Response(null, { status: 503 });
 
-  const reservation = await ledger().spend(credits, now);
+  const reservation = await ledger().spend(credits);
+  // The clock and the guard are read again: the reservation may have waited,
+  // and another answer may have rested Geoapify meanwhile.
+  const now = Date.now();
   if (reservation === "unmetered") {
     const log = ledgerLogState();
     if (!log.missing) {
       log.missing = true;
       console.warn(
-        "[geo] Geoapify database ledger unavailable (is the geoapify_daily_usage migration applied?); using the in-memory daily count",
+        "[geo] Geoapify database ledger unavailable (is the geoapify_daily_usage migration applied?); using the in-memory daily count, asking again hourly",
       );
     }
   } else if (reservation === "denied") {
     if (!g.resting(now)) {
-      g.restForDay(now);
       console.warn(
         `[geo] Geoapify database daily ceiling is ${g.ceiling}; lookups move to ${fallbackName()} until midnight UTC`,
       );
     }
+    g.restForDay(now);
     return new Response(null, { status: 503 });
   } else if (reservation === "error") {
-    const log = ledgerLogState();
-    if (now >= log.errorUntil) {
-      log.errorUntil = now + 60_000;
-      console.warn("[geo] Geoapify database reservation failed; Geoapify pauses for 60 seconds");
+    // Fail closed, and rest Geoapify for the pause so geoProvider() moves
+    // lookups to the fallback instead of handing out 503s for a minute.
+    if (!g.resting(now)) {
+      console.warn(
+        `[geo] Geoapify database reservation failed; nothing sent, lookups move to ${fallbackName()} for 60 seconds`,
+      );
     }
+    g.restFor(ERROR_PAUSE_MS, now);
     return new Response(null, { status: 503 });
   }
+  if (g.resting(now)) return new Response(null, { status: 503 });
 
   if (g.spend(credits, now)) {
     console.warn(
