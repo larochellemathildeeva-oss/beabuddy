@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import beaLogo from "@/assets/bea-logo.png";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -127,6 +127,10 @@ function TripsPage() {
   const [withBudget, setWithBudget] = useState(false);
   const packing = usePacking(null);
   const [packTemplateId, setPackTemplateId] = useState("");
+  // One trip per tap: on a slow connection, taps while the first save is on
+  // its way each made another copy of the trip.
+  const saving = useRef(false);
+  const [saveBusy, setSaveBusy] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
@@ -476,10 +480,14 @@ function TripsPage() {
                 <p className="px-1 text-[12px] text-muted-foreground">{tripStillEditableNote()}</p>
                 <button
                   disabled={
+                    saveBusy ||
                     (!form.title.trim() && !suggestedName) ||
                     !!(form.start_date && form.end_date && form.end_date < form.start_date)
                   }
                   onClick={async () => {
+                    if (saving.current) return;
+                    saving.current = true;
+                    setSaveBusy(true);
                     setError("");
                     try {
                       const id = await t.createTrip({
@@ -533,11 +541,14 @@ function TripsPage() {
                       setCreating(false);
                     } catch (e) {
                       setError(e instanceof Error ? e.message : "Couldn't create the trip");
+                    } finally {
+                      saving.current = false;
+                      setSaveBusy(false);
                     }
                   }}
                   className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
-                  Create trip
+                  {saveBusy ? "Creating…" : "Create trip"}
                 </button>
               </div>
             )}
