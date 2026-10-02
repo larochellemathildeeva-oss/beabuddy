@@ -1,9 +1,11 @@
 import {
+  checkChange,
   itineraryClockMinutes,
   type ChangeSet,
   type ConsequenceResult,
   type ProposedChange,
   type ScheduleStop,
+  type TravelLeg,
 } from "./itinerary-change.ts";
 import type { ScheduleUpdate } from "./itinerary-schedule-write.ts";
 import { chronologicalSlot } from "./timeline-order.ts";
@@ -14,6 +16,12 @@ type PatchableSchedule = Pick<
   "day_date" | "time_label" | "planned_stay_minutes"
 >;
 
+export type ReviewProposal = {
+  changeSet: ChangeSet;
+  /** Stops the traveller explicitly acted on; displaced rows are not direct edits. */
+  directIds: Set<string>;
+};
+
 function owns<T extends object>(value: T, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
@@ -22,15 +30,15 @@ function owns<T extends object>(value: T, key: PropertyKey): boolean {
  * Represent one old-style stop move as the shared ChangeSet model.
  *
  * `rearrange` also renumbers the rows displaced by the move. Those position
- * changes still belong in the ChangeSet so the proposed order is exact, but
- * they are marked indirect so `checkChange` does not mistake them for stops
- * the traveller explicitly edited when it counts downstream consequences.
+ * changes still belong in the ChangeSet so the proposed order is exact. The
+ * separate `directIds` set lets the review threshold distinguish the stop the
+ * traveller moved from rows that only made room for it.
  */
 export function changeSetForMoves<T extends ScheduleStop>(
   stops: readonly T[],
   moves: readonly StopMove[],
   id = "manual-move",
-): ChangeSet | null {
+): ReviewProposal | null {
   const updates = rearrange(stops, moves);
   if (updates.length === 0) return null;
   const before = new Map(stops.map((stop) => [stop.id, stop] as const));
@@ -44,7 +52,6 @@ export function changeSetForMoves<T extends ScheduleStop>(
       id: `${id}:${index}`,
       type: "move",
       stopId: update.id,
-      indirect: !directIds.has(update.id),
       from: { dayDate: was.day_date, position: was.position },
       to: {
         dayDate: update.day_date,
@@ -55,21 +62,23 @@ export function changeSetForMoves<T extends ScheduleStop>(
   }
 
   if (changes.length === 0) return null;
-  return { id, source: "manual", changes, createdAt: Date.now() };
+  return {
+    changeSet: { id, source: "manual", changes, createdAt: Date.now() },
+    directIds,
+  };
 }
 
 /**
  * Turn a card's day/time/duration edit into the same ChangeSet used by drag.
- * Position shifts caused by a new day or time are included as indirect moves,
- * so Review and the eventual atomic write see the exact order the card would
- * produce.
+ * Position shifts caused by a new day or time are included so Review and the
+ * eventual atomic write see the exact order the card would produce.
  */
 export function changeSetForSchedulePatch<T extends ScheduleStop>(
   stops: readonly T[],
   stopId: string,
   patch: Partial<PatchableSchedule>,
   id = "manual-card",
-): ChangeSet | null {
+): ReviewProposal | null {
   const current = stops.find((stop) => stop.id === stopId);
   if (!current) return null;
   const changes: ProposedChange[] = [];
@@ -96,7 +105,6 @@ export function changeSetForSchedulePatch<T extends ScheduleStop>(
         id: `${id}:shift:${index++}`,
         type: "move",
         stopId: stop.id,
-        indirect: true,
         from: { dayDate: stop.day_date, position: stop.position },
         to: { dayDate: stop.day_date, position },
       });
@@ -128,7 +136,41 @@ export function changeSetForSchedulePatch<T extends ScheduleStop>(
   }
 
   if (changes.length === 0) return null;
-  return { id, source: "manual", changes, createdAt: Date.now() };
+  return {
+    changeSet: { id, source: "manual", changes, createdAt: Date.now() },
+    directIds: new Set([stopId]),
+  };
+}
+
+/**
+ * Run the canonical consequence engine, then classify displaced rows as
+ * downstream rather than explicit edits. This keeps the 2-stop / 30-minute
+ * threshold about consequences, not the bookkeeping needed to renumber a day.
+ */
+export function checkReviewProposal<T extends ScheduleStop>(
+  stops: readonly T[],
+  proposal: ReviewProposal,
+  options: { travelLegs?: readonly TravelLeg[] } = {},
+): ConsequenceResult {
+  const checked = checkChange(stops, proposal.changeSet, options);
+  const shifts = checked.shifts.map((shift) => ({
+    ...shift,
+    downstream: !proposal.directIds.has(shift.stopId),
+  }));
+  const downstream = shifts.filter((shift) => shift.downstream);
+  const reasons = checked.reasons.filter(
+    (reason) => reason !== "too-many-shifts" && reason !== "large-shift",
+  );
+  if (downstream.length > 2) reasons.push("too-many-shifts");
+  if (downstream.some((shift) => shift.deltaMinutes == null || Math.abs(shift.deltaMinutes) > 30)) {
+    reasons.push("large-shift");
+  }
+  return {
+    ...checked,
+    shifts,
+    reasons,
+    decision: checked.decision === "blocked" ? "blocked" : reasons.length ? "review" : "auto-apply",
+  };
 }
 
 /** Atomic updates that turn `before` into `result.proposedSchedule`. */
