@@ -137,13 +137,29 @@ function SharedTripError({ error }: { error: Error }) {
   );
 }
 
-/** Today on the friend's own calendar; null until the page is in the browser. */
+/** The friend's local date, as YYYY-MM-DD. */
+function localDate(): string {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/**
+ * Today on the friend's own calendar; null until the page is in the
+ * browser. Asked again every minute and on coming back to the page, so a
+ * page left open past midnight moves on to the new day.
+ */
 function useToday(): string | null {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => {
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
-    setToday(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+    const update = () => setToday(localDate());
+    update();
+    const timer = window.setInterval(update, 60_000);
+    document.addEventListener("visibilitychange", update);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", update);
+    };
   }, []);
   return today;
 }
@@ -276,7 +292,7 @@ function LiveCard({ live }: { live: SharedLive }) {
       <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
         <span className="relative flex size-2.5" aria-hidden>
           <span
-            className={`absolute inline-flex size-full rounded-full ${live.now ? "animate-ping bg-primary/60" : ""}`}
+            className={`absolute inline-flex size-full rounded-full ${live.now ? "animate-ping bg-primary/60 motion-reduce:animate-none" : ""}`}
           />
           <span
             className={`relative inline-flex size-2.5 rounded-full ${live.now ? "bg-primary" : "bg-muted-foreground/40"}`}
@@ -285,7 +301,7 @@ function LiveCard({ live }: { live: SharedLive }) {
         Live
         {live.day && live.day.total > 0 && (
           <span className="font-normal text-muted-foreground">
-            · {live.day.done} of {live.day.total} stops done
+            · {live.day.done} of {live.day.total} {live.day.total === 1 ? "stop" : "stops"} done
           </span>
         )}
       </p>

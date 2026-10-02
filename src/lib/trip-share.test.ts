@@ -251,3 +251,18 @@ test("the live card skips days that are over, and says nothing after the trip", 
   assert.equal(sharedLive(view, "2026-10-07").next, null);
   assert.equal(sharedLive(view, "2026-10-07").day, null);
 });
+
+test("the live card past midnight: still here from last night, next is today's", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("Fado bar", 0, { arrived_at: "2026-10-05T22:30:00Z" }), day_date: "2026-10-05" },
+      { ...stop("Late dinner", 1), day_date: "2026-10-05" },
+      { ...stop("Sintra", 0), day_date: "2026-10-06" },
+    ],
+    { following: true, now: Date.parse("2026-10-06T00:30:00Z") },
+  );
+  const live = sharedLive(view, "2026-10-06");
+  assert.equal(live.now?.stop.title, "Fado bar");
+  assert.equal(live.next?.stop.title, "Sintra");
+});

@@ -207,10 +207,9 @@ export type SharedLive = {
 
 /**
  * The live card of a link that follows along. Next is the first stop not
- * yet reached after the one they are at; when they are at none, after the
- * last one done, and not before `today` (the friend's own date, when the
- * page knows it) — so yesterday's last stop does not point at a day that
- * is over. Null days (undated stops) are never "next".
+ * yet reached after the one they are at, or when they are at none, after
+ * the last one done; never before `today` (the friend's own date, when the
+ * page knows it), so it does not point at a day that is over. Null days (undated stops) are never "next".
  */
 export function sharedLive(trip: SharedTrip, today: string | null = null): SharedLive {
   const flat: SharedPlace[] = trip.days.flatMap((d) =>
@@ -218,18 +217,19 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
   );
   const hereAt = flat.findIndex((p) => p.stop.status === "here");
   const now = hereAt >= 0 ? flat[hereAt]! : null;
-  let from: number;
+  let from = 0;
   if (now) {
     from = hereAt + 1;
   } else {
-    from = 0;
     flat.forEach((p, i) => {
       if (p.stop.status === "done") from = i + 1;
     });
-    if (today) {
-      const firstToday = flat.findIndex((p) => p.day !== null && p.day >= today);
-      from = Math.max(from, firstToday < 0 ? flat.length : firstToday);
-    }
+  }
+  // A late arrival yesterday can still read "here" after midnight; next is
+  // never on a day that is over, either way.
+  if (today) {
+    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= today);
+    from = Math.max(from, firstToday < 0 ? flat.length : firstToday);
   }
   const next = flat.slice(from).find((p) => !p.stop.status && p.day !== null) ?? null;
   const focus = now ?? next;
