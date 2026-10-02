@@ -1279,14 +1279,7 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         >
       >,
     ) => {
-      const {
-        inside,
-        day_date,
-        time_label,
-        planned_stay_minutes,
-        time_locked,
-        ...rest
-      } = patch;
+      const { inside, day_date, time_label, planned_stay_minutes, time_locked, ...rest } = patch;
       const owns = (key: keyof typeof patch) => Object.prototype.hasOwnProperty.call(patch, key);
       const changesSchedule =
         owns("day_date") ||
