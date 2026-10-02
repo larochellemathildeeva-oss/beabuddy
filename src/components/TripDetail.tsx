@@ -225,6 +225,21 @@ export function TripDetail({
   const activeId = trip.id;
   const board = useTripBoard(activeId, me);
   const { removeWithUndo } = useUndo();
+  /** A card's edit: the board puts it back if the save fails, and says so. */
+  const saveCard = (id: string, patch: Parameters<typeof board.updateItem>[1]) => {
+    void board.updateItem(id, patch).catch((e: unknown) => {
+      const code = (e as { code?: string } | null)?.code;
+      toast.error(
+        code === "ITINERARY_VERSION_CONFLICT"
+          ? "Someone else changed this stop just now. Béa kept their version."
+          : code === "ITINERARY_PARTLY_SAVED"
+            ? "Only part of that change saved. The stop shows what was kept."
+            : code === "TIME_LOCK_UNAVAILABLE"
+              ? "Fixed and Flexible aren't set up yet."
+              : "Couldn't save that change. Check your connection.",
+      );
+    });
+  };
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id, trip);
   /**
@@ -1919,7 +1934,7 @@ export function TripDetail({
                                       {...withNear(item.day_date)}
                                       {...nestProps(item)}
                                       onEdit={(field) => board.setEditing(field)}
-                                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                      onUpdate={(patch) => saveCard(item.id, patch)}
                                       onRemove={() => void removeTimelineItem(item)}
                                       tripStart={trip.start_date}
                                       tripEnd={trip.end_date}
@@ -1954,7 +1969,7 @@ export function TripDetail({
                                       {...withNear(item.day_date)}
                                       {...nestProps(item)}
                                       onEdit={(field) => board.setEditing(field)}
-                                      onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                                      onUpdate={(patch) => saveCard(item.id, patch)}
                                       onRemove={() => void removeTimelineItem(item)}
                                       {...moveProps(item)}
                                       tripStart={trip.start_date}
@@ -2062,7 +2077,7 @@ export function TripDetail({
                           {...withNear(item.day_date)}
                           {...nestProps(item)}
                           onEdit={(field) => board.setEditing(field)}
-                          onUpdate={(patch) => void board.updateItem(item.id, patch)}
+                          onUpdate={(patch) => saveCard(item.id, patch)}
                           onRemove={() => void removeTimelineItem(item)}
                           {...moveProps(item)}
                           tripStart={trip.start_date}

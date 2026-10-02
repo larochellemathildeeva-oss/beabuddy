@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  fieldsTheRpcDropped,
   isItineraryVersionConflict,
+  onlyOtherFieldsChanged,
   isMissingScheduleRpc,
   mergeCommittedRows,
   scheduleWritePlan,
@@ -113,4 +115,49 @@ test("committed versions fold into the board so the next save checks against the
 
 test("a non-array RPC answer leaves the board as it is", () => {
   assert.deepEqual(mergeCommittedRows(rows, null), rows);
+});
+
+test("a clash only in other fields (a title, a pin) can be sent again", () => {
+  const before = [
+    { id: "a", day_date: "2026-10-02", time_label: "10:00", position: 0, title: "Old" },
+  ];
+  const server = [
+    {
+      id: "a",
+      day_date: "2026-10-02",
+      time_label: "10:00",
+      position: 0,
+      title: "New",
+      updated_at: "2",
+    },
+  ];
+  assert.equal(onlyOtherFieldsChanged(before, server, new Set(["a"])), true);
+});
+
+test("a clash in the schedule itself is real", () => {
+  const before = [{ id: "a", day_date: "2026-10-02", time_label: "10:00", position: 0 }];
+  const server = [{ id: "a", day_date: "2026-10-02", time_label: "11:00", position: 0 }];
+  assert.equal(onlyOtherFieldsChanged(before, server, new Set(["a"])), false);
+  assert.equal(onlyOtherFieldsChanged(before, [], new Set(["a"])), false, "deleted is real too");
+});
+
+test("a column the server does not have yet is not counted as a change", () => {
+  const before = [{ id: "a", time_label: "10:00", time_locked: true }];
+  const server = [{ id: "a", time_label: "10:00" }];
+  assert.equal(onlyOtherFieldsChanged(before, server, new Set(["a"])), true);
+});
+
+test("duration and lock dropped by the Phase 1 function are found", () => {
+  const updates = [
+    { id: "a", planned_stay_minutes: 90, time_locked: true },
+    { id: "b", position: 2 },
+  ];
+  assert.deepEqual(fieldsTheRpcDropped(updates, [{ id: "a", position: 0 }, { id: "b" }]), [
+    { id: "a", planned_stay_minutes: 90, time_locked: true },
+  ]);
+  assert.deepEqual(
+    fieldsTheRpcDropped(updates, [{ id: "a", planned_stay_minutes: 90, time_locked: true }]),
+    [],
+  );
+  assert.deepEqual(fieldsTheRpcDropped(updates, null), []);
 });

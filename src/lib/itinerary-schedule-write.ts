@@ -137,3 +137,70 @@ export function mergeCommittedRows<T extends ScheduleWriteRow>(
     return next as T;
   });
 }
+
+/** The fields a schedule save writes. A version change elsewhere is not a clash. */
+const SCHEDULE_FIELDS = [
+  "day_date",
+  "time_label",
+  "position",
+  "planned_stay_minutes",
+  "time_locked",
+] as const;
+
+/**
+ * After a version conflict: true when every touched row on the server still
+ * has the schedule the save was built on, so only other fields moved (a
+ * title saved on blur, the auto-pin, a booking). The save can then be sent
+ * again against the server's versions; anything else is a real clash.
+ * A field the server row does not carry (a column not migrated yet) is skipped.
+ */
+export function onlyOtherFieldsChanged(
+  before: readonly Record<string, unknown>[],
+  server: readonly Record<string, unknown>[],
+  touchedIds: ReadonlySet<string>,
+): boolean {
+  const beforeById = new Map(before.map((row) => [row["id"], row] as const));
+  const serverById = new Map(server.map((row) => [row["id"], row] as const));
+  for (const id of touchedIds) {
+    const was = beforeById.get(id);
+    const now = serverById.get(id);
+    if (!was || !now) return false;
+    for (const field of SCHEDULE_FIELDS) {
+      if (!(field in now)) continue;
+      if ((was[field] ?? null) !== (now[field] ?? null)) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Duration and the time lock that the database dropped: the Phase 1 function
+ * writes only day, time and position, and answers without the newer fields.
+ * Returns what still needs an ordinary row write, or nothing.
+ */
+export function fieldsTheRpcDropped(
+  updates: readonly ScheduleUpdate[],
+  committed: unknown,
+): ScheduleUpdate[] {
+  if (!Array.isArray(committed)) return [];
+  const answered = new Map<string, Record<string, unknown>>();
+  for (const row of committed) {
+    if (row && typeof row === "object" && typeof (row as { id?: unknown }).id === "string") {
+      answered.set((row as { id: string }).id, row as Record<string, unknown>);
+    }
+  }
+  const missed: ScheduleUpdate[] = [];
+  for (const update of updates) {
+    const saved = answered.get(update.id);
+    if (!saved) continue;
+    const rest: ScheduleUpdate = { id: update.id };
+    if ("planned_stay_minutes" in update && !("planned_stay_minutes" in saved)) {
+      rest.planned_stay_minutes = update.planned_stay_minutes ?? null;
+    }
+    if ("time_locked" in update && !("time_locked" in saved)) {
+      rest.time_locked = update.time_locked ?? null;
+    }
+    if (Object.keys(rest).length > 1) missed.push(rest);
+  }
+  return missed;
+}

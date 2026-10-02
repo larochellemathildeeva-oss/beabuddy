@@ -54,7 +54,7 @@ import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone, leaveBy } from "@/lib/companion";
-import { timeModeFor, type TimeMode } from "@/lib/itinerary-change";
+import { itineraryClockMinutes, timeModeFor, type TimeMode } from "@/lib/itinerary-change";
 import type { RouteLeg } from "@/lib/directions.functions";
 import { mapsDirToUrl, mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import { rememberPlacePick, type ParsedPlace } from "@/lib/places.functions";
@@ -230,6 +230,9 @@ export function TimelineEntry({
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
   const timeMode = timeModeFor(item);
+  // The same reading the mode uses: "Morning" or "9h30" shows on the rail but
+  // is not a clock Fixed or Flexible can hold.
+  const hasClock = itineraryClockMinutes(item.time_label) != null;
   const done = isDone(item);
   const detail = stripEmbeddedMapsUrl(item.detail);
   const canKeep = Boolean(onKeep) && item.kind !== "note";
@@ -612,11 +615,14 @@ export function TimelineEntry({
         : "Keep its place in the day, without a clock time.";
 
   const chooseTimeMode = (mode: TimeMode) => {
+    if (mode === timeMode) return;
     if (mode === "sequence") {
-      onUpdate({ time_label: null, time_locked: null });
+      // Only a clock time is taken away. A label such as "Morning" is the
+      // traveller's own words and is already Sequence only.
+      onUpdate(hasClock ? { time_label: null, time_locked: null } : { time_locked: null });
       return;
     }
-    if (!rail) return;
+    if (!hasClock) return;
     onUpdate({ time_locked: mode === "fixed" });
   };
 
@@ -711,7 +717,7 @@ export function TimelineEntry({
         <div className="grid grid-cols-3 gap-1 rounded-xl bg-elevated p-1">
           {TIME_MODES.map((mode) => {
             const active = timeMode === mode.value;
-            const disabled = mode.value !== "sequence" && !rail;
+            const disabled = mode.value !== "sequence" && !hasClock;
             return (
               <button
                 key={mode.value}
@@ -732,7 +738,7 @@ export function TimelineEntry({
         </div>
         <p className="mt-1.5 px-0.5 text-[12px] leading-snug text-muted-foreground">
           {timeModeNote}
-          {!rail ? " Add a clock time to choose Fixed or Flexible." : ""}
+          {!hasClock ? " Add a clock time to choose Fixed or Flexible." : ""}
         </p>
       </fieldset>
 
