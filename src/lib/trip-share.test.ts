@@ -5,6 +5,8 @@ import {
   isShareToken,
   newShareToken,
   shareClientKey,
+  sharedNow,
+  sharedStopStatus,
   sharedTripView,
   shareUrl,
 } from "./trip-share.ts";
@@ -112,4 +114,96 @@ test("a shared stop with an address opens a maps search for it", () => {
 
 test("a shared stop with no address gets no maps link", () => {
   assert.equal(sharedStopMapsUrl({ title: "Free afternoon", address: "  " }), null);
+});
+
+const LISBON = {
+  title: "Lisbon",
+  city: "Lisbon",
+  country: "Portugal",
+  start_date: "2026-10-05",
+  end_date: "2026-10-05",
+};
+const NOW = Date.parse("2026-10-05T12:00:00Z");
+const stop = (title: string, position: number, extra: Record<string, string | null> = {}) => ({
+  day_date: "2026-10-05",
+  time_label: null,
+  kind: "sight",
+  title,
+  address: null,
+  position,
+  ...extra,
+});
+
+test("a link that follows along shows the stop they are at and the ones done", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T09:00:00Z", left_at: "2026-10-05T10:30:00Z" }),
+      stop("Alfama", 1, { arrived_at: "2026-10-05T11:15:00Z", left_at: null }),
+      stop("Dinner", 2),
+    ],
+    { following: true, now: NOW },
+  );
+  assert.equal(view.following, true);
+  assert.deepEqual(
+    view.days[0]!.stops.map((s) => s.status),
+    ["done", "here", undefined],
+  );
+  assert.equal(sharedNow(view)?.stop.title, "Alfama");
+  // The times of the taps never leave.
+  assert.doesNotMatch(JSON.stringify(view), /T09:00|T11:15|T10:30/);
+});
+
+test("a link that does not follow along shows no progress", () => {
+  const view = sharedTripView(
+    LISBON,
+    [stop("Alfama", 1, { arrived_at: "2026-10-05T11:15:00Z", left_at: null })],
+    { following: false, now: NOW },
+  );
+  assert.equal(view.following, false);
+  assert.equal(view.days[0]!.stops[0]!.status, undefined);
+  assert.equal(sharedNow(view), null);
+});
+
+test("an old arrival with no leaving is done, not here", () => {
+  assert.equal(
+    sharedStopStatus({ arrived_at: "2026-10-04T08:00:00Z", left_at: null }, NOW),
+    "done",
+  );
+  assert.equal(
+    sharedStopStatus({ arrived_at: "2026-10-05T08:00:00Z", left_at: null }, NOW),
+    "here",
+  );
+  assert.equal(sharedStopStatus({ arrived_at: null, left_at: null }, NOW), undefined);
+  assert.equal(sharedStopStatus({ arrived_at: "nonsense" }, NOW), undefined);
+});
+
+test("two stops marked here at once: the later one is where they are", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T09:00:00Z" }),
+      stop("Alfama", 1, { arrived_at: "2026-10-05T11:15:00Z" }),
+    ],
+    { following: true, now: NOW },
+  );
+  assert.deepEqual(
+    view.days[0]!.stops.map((s) => s.status),
+    ["done", "here"],
+  );
+});
+
+test("several stops here at once: the latest arrival wins, whatever the plan order", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T11:30:00Z" }),
+      stop("Alfama", 1, { arrived_at: "2026-10-05T09:00:00Z" }),
+    ],
+    { following: true, now: NOW },
+  );
+  assert.deepEqual(
+    view.days[0]!.stops.map((s) => s.status),
+    ["here", "done"],
+  );
 });

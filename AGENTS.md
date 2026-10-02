@@ -449,6 +449,17 @@ confirmation email's or message's text; **"Fill in from this text"** sends it
 through the same reader, cleaned first by `cleanPastedText` (card numbers
 dropped, capped at `PASTED_TEXT_MAX`). The pasted text is not saved.
 
+## Follow-along links
+
+A read-only share link (`ShareLinkCard`, `/shared/$token`, `trip-share.ts`)
+can also "follow along": the page marks the stop someone on the trip tapped
+"I'm here" at and the ones left (`sharedStopStatus`, pure and tested), and
+re-reads itself every two minutes while open. It is built from `arrived_at`
+and `left_at` only — never the phone's position or the times of the taps. An
+arrival older than 12 hours with no "Leaving" counts as done. It is the
+`follow_along` column on `trip_share_links`, off for older links; the
+migration is applied by hand, and until it is, links show the plan only.
+
 ## Protected passcodes
 
 Protected is encrypted in the browser with a key from the traveller's
