@@ -5,6 +5,7 @@ import {
   isShareToken,
   newShareToken,
   shareClientKey,
+  sharedLive,
   sharedNow,
   sharedStopStatus,
   sharedTripView,
@@ -206,4 +207,47 @@ test("several stops here at once: the latest arrival wins, whatever the plan ord
     view.days[0]!.stops.map((s) => s.status),
     ["here", "done"],
   );
+});
+
+test("the live card: where they are, the next stop, and the day so far", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T09:00:00Z", left_at: "2026-10-05T10:30:00Z" }),
+      stop("Alfama", 1, { arrived_at: "2026-10-05T11:15:00Z", left_at: null }),
+      stop("Dinner", 2),
+    ],
+    { following: true, now: NOW },
+  );
+  const live = sharedLive(view, "2026-10-05");
+  assert.equal(live.now?.stop.title, "Alfama");
+  assert.equal(live.next?.stop.title, "Dinner");
+  assert.deepEqual(live.day, { day: "2026-10-05", done: 1, total: 3 });
+});
+
+test("the live card between stops points at the one after the last done", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T09:00:00Z", left_at: "2026-10-05T10:30:00Z" }),
+      stop("Alfama", 1),
+      stop("Dinner", 2),
+    ],
+    { following: true, now: NOW },
+  );
+  const live = sharedLive(view, "2026-10-05");
+  assert.equal(live.now, null);
+  assert.equal(live.next?.stop.title, "Alfama");
+});
+
+test("the live card skips days that are over, and says nothing after the trip", () => {
+  const days = [
+    { ...stop("Belém", 0), day_date: "2026-10-04" },
+    { ...stop("Sintra", 0), day_date: "2026-10-06" },
+  ];
+  const view = sharedTripView(LISBON, days, { following: true, now: NOW });
+  assert.equal(sharedLive(view, "2026-10-05").next?.stop.title, "Sintra");
+  assert.equal(sharedLive(view, "2026-10-04").next?.stop.title, "Belém");
+  assert.equal(sharedLive(view, "2026-10-07").next, null);
+  assert.equal(sharedLive(view, "2026-10-07").day, null);
 });

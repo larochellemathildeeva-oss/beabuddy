@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { Check, MapPin } from "@/components/icons";
+import { Check, ChevronDown, MapPin } from "@/components/icons";
 import { readSharedTrip } from "@/lib/trip-share.functions";
-import { sharedNow, sharedStopMapsUrl, type SharedTrip } from "@/lib/trip-share";
+import {
+  sharedLive,
+  sharedStopMapsUrl,
+  type SharedLive,
+  type SharedStop,
+  type SharedTrip,
+} from "@/lib/trip-share";
 import { formatDateRangeLabel, parseLocalDate } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/shared/$token")({
@@ -131,14 +137,27 @@ function SharedTripError({ error }: { error: Error }) {
   );
 }
 
+/** Today on the friend's own calendar; null until the page is in the browser. */
+function useToday(): string | null {
+  const [today, setToday] = useState<string | null>(null);
+  useEffect(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setToday(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+  }, []);
+  return today;
+}
+
 /**
  * A trip someone shared with a read-only link: where they will be, and
  * when. No account needed, nothing to change, and only the plan itself —
- * never bookings, notes or documents.
+ * never bookings, notes or documents. A link that follows along opens on
+ * the live card and that day's stops, with the whole plan folded below.
  */
 function SharedTripPage() {
   const { token } = Route.useParams();
   const trip = useLatestTrip(token, Route.useLoaderData());
+  const today = useToday();
 
   if (!trip) {
     return (
@@ -153,7 +172,8 @@ function SharedTripPage() {
 
   const dates =
     trip.startDate && trip.endDate ? formatDateRangeLabel(trip.startDate, trip.endDate) : "";
-  const now = sharedNow(trip);
+  const live = trip.following ? sharedLive(trip, today) : null;
+  const liveDay = live?.day ? trip.days.find((d) => d.day === live.day!.day) : undefined;
   return (
     <AppShell
       publicPage
@@ -161,104 +181,47 @@ function SharedTripPage() {
       title={trip.title}
     >
       <div className="space-y-4 pb-6">
-        <p className="text-[13.5px] text-muted-foreground">
-          {trip.following
-            ? "A read-only copy of the plan, shared from Béa, following along: it marks the stop they're at and the ones they've done, and updates by itself. Tap an address to open it in Maps."
-            : "A read-only copy of the plan, shared from Béa. It shows the latest version each time you open it. Tap an address to open it in Maps."}
-        </p>
-        {trip.following && (
-          <div className="plain-card flex items-start gap-3 p-3.5" aria-live="polite">
-            <span
-              className={`mt-1.5 size-2.5 shrink-0 rounded-full ${now ? "bg-primary" : "bg-muted-foreground/40"}`}
-              aria-hidden
-            />
-            {now ? (
-              <span className="min-w-0">
-                <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Now at
-                </span>
-                <span className="block break-words font-display text-[19px] leading-tight">
-                  {now.stop.title}
-                </span>
-                <span className="block text-[12.5px] text-muted-foreground">
-                  {dayHeading(now.day)}
-                  {now.stop.time ? ` · planned for ${now.stop.time}` : ""}
-                </span>
-              </span>
-            ) : (
-              <span className="text-[14px] text-muted-foreground">
-                Not at a stop just now. You'll see it here when they get to the next one.
-              </span>
+        {live ? (
+          <>
+            <LiveCard live={live} />
+            {liveDay && <DayPlan day={liveDay} />}
+            {trip.days.length > (liveDay ? 1 : 0) && (
+              <details className="group" open={!liveDay}>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-0.5 text-[14px] font-semibold text-primary">
+                  <ChevronDown
+                    className="size-4 transition-transform group-open:rotate-180"
+                    aria-hidden
+                  />
+                  The whole plan
+                </summary>
+                <div className="mt-2 space-y-4">
+                  {trip.days.map((day) => (
+                    <DayPlan key={day.day ?? "undated"} day={day} />
+                  ))}
+                </div>
+              </details>
             )}
-          </div>
+            <p className="text-[12.5px] text-muted-foreground">
+              Following along, read-only: it shows the stop they tapped “I'm here” at — never their
+              location — and updates by itself.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[13.5px] text-muted-foreground">
+              A read-only copy of the plan, shared from Béa. It shows the latest version each time
+              you open it. Tap an address to open it in Maps.
+            </p>
+            {trip.days.length === 0 && (
+              <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
+                Nothing is planned yet.
+              </p>
+            )}
+            {trip.days.map((day) => (
+              <DayPlan key={day.day ?? "undated"} day={day} />
+            ))}
+          </>
         )}
-        {trip.days.length === 0 && (
-          <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
-            Nothing is planned yet.
-          </p>
-        )}
-        {trip.days.map((day) => (
-          <section key={day.day ?? "undated"} aria-label={dayHeading(day.day)}>
-            <h2 className="mb-2 px-0.5 font-display text-[21px] leading-tight">
-              {dayHeading(day.day)}
-            </h2>
-            <ol className="plain-card divide-y divide-border overflow-hidden">
-              {day.stops.map((stop, i) => {
-                const maps = sharedStopMapsUrl(stop);
-                const here = stop.status === "here";
-                const done = stop.status === "done";
-                return (
-                  // The plan has no stop ids to share; time and title keep a
-                  // row's key stable when the plan above it changes.
-                  <li
-                    key={`${stop.time}|${stop.title}|${i}`}
-                    className={`flex items-start gap-3 px-3.5 py-2.5 ${here ? "bg-primary/10" : ""}`}
-                    aria-current={here ? "location" : undefined}
-                  >
-                    <span className="w-12 shrink-0 pt-0.5 text-[14px] font-bold tabular-nums text-primary">
-                      {stop.time || "–"}
-                      {done && (
-                        <Check
-                          className="mt-0.5 block size-4 text-muted-foreground"
-                          aria-label="Done"
-                        />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        className={`block break-words text-[15px] leading-snug ${done ? "text-muted-foreground" : ""}`}
-                      >
-                        {stop.title}
-                        {here && (
-                          <span className="ms-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
-                            Here now
-                          </span>
-                        )}
-                      </span>
-                      {stop.address &&
-                        (maps ? (
-                          <a
-                            href={maps}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="-my-1 flex min-h-11 items-center gap-1 text-[12.5px] text-muted-foreground underline decoration-border underline-offset-2"
-                          >
-                            <MapPin className="size-3.5 shrink-0" aria-hidden />
-                            <span className="min-w-0">{stop.address}</span>
-                          </a>
-                        ) : (
-                          <span className="mt-0.5 flex items-start gap-1 text-[12.5px] text-muted-foreground">
-                            <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                            <span className="min-w-0">{stop.address}</span>
-                          </span>
-                        ))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        ))}
         <p className="text-center text-[12.5px] text-muted-foreground">
           Planned with{" "}
           <Link to="/" className="font-semibold text-primary underline underline-offset-2">
@@ -267,5 +230,140 @@ function SharedTripPage() {
         </p>
       </div>
     </AppShell>
+  );
+}
+
+/** One stop on the live card, with a tap through to Maps when it has an address. */
+function LiveStop({
+  label,
+  place,
+}: {
+  label: string;
+  place: { day: string | null; stop: SharedStop };
+}) {
+  const maps = sharedStopMapsUrl(place.stop);
+  return (
+    <span className="block min-w-0">
+      <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className="block break-words font-display text-[21px] leading-tight">
+        {place.stop.title}
+      </span>
+      <span className="block text-[12.5px] text-muted-foreground">
+        {dayHeading(place.day)}
+        {place.stop.time ? ` · planned for ${place.stop.time}` : ""}
+      </span>
+      {maps && (
+        <a
+          href={maps}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="-my-1 flex min-h-11 items-center gap-1 text-[12.5px] text-muted-foreground underline decoration-border underline-offset-2"
+        >
+          <MapPin className="size-3.5 shrink-0" aria-hidden />
+          <span className="min-w-0">{place.stop.address}</span>
+        </a>
+      )}
+    </span>
+  );
+}
+
+/** Where they are and where they go next: the first thing a following friend sees. */
+function LiveCard({ live }: { live: SharedLive }) {
+  return (
+    <section className="plain-card space-y-3 p-4" aria-live="polite" aria-label="Live">
+      <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
+        <span className="relative flex size-2.5" aria-hidden>
+          <span
+            className={`absolute inline-flex size-full rounded-full ${live.now ? "animate-ping bg-primary/60" : ""}`}
+          />
+          <span
+            className={`relative inline-flex size-2.5 rounded-full ${live.now ? "bg-primary" : "bg-muted-foreground/40"}`}
+          />
+        </span>
+        Live
+        {live.day && live.day.total > 0 && (
+          <span className="font-normal text-muted-foreground">
+            · {live.day.done} of {live.day.total} stops done
+          </span>
+        )}
+      </p>
+      {live.now ? (
+        <LiveStop label="Now at" place={live.now} />
+      ) : (
+        <p className="text-[14px] text-muted-foreground">
+          {live.next
+            ? "Not at a stop just now. You'll see it here when they get to the next one."
+            : "No stops left on the plan. The trip may be over."}
+        </p>
+      )}
+      {live.next && (
+        <div className="border-t border-border pt-3">
+          <LiveStop label={live.now ? "Next" : "Next up"} place={live.next} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** One day of the plan, marking what is done and where they are on a following link. */
+function DayPlan({ day }: { day: SharedTrip["days"][number] }) {
+  return (
+    <section aria-label={dayHeading(day.day)}>
+      <h2 className="mb-2 px-0.5 font-display text-[21px] leading-tight">{dayHeading(day.day)}</h2>
+      <ol className="plain-card divide-y divide-border overflow-hidden">
+        {day.stops.map((stop, i) => {
+          const maps = sharedStopMapsUrl(stop);
+          const here = stop.status === "here";
+          const done = stop.status === "done";
+          return (
+            // The plan has no stop ids to share; time and title keep a
+            // row's key stable when the plan above it changes.
+            <li
+              key={`${stop.time}|${stop.title}|${i}`}
+              className={`flex items-start gap-3 px-3.5 py-2.5 ${here ? "bg-primary/10" : ""}`}
+              aria-current={here ? "location" : undefined}
+            >
+              <span className="w-12 shrink-0 pt-0.5 text-[14px] font-bold tabular-nums text-primary">
+                {stop.time || "–"}
+                {done && (
+                  <Check className="mt-0.5 block size-4 text-muted-foreground" aria-label="Done" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className={`block break-words text-[15px] leading-snug ${done ? "text-muted-foreground" : ""}`}
+                >
+                  {stop.title}
+                  {here && (
+                    <span className="ms-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
+                      Here now
+                    </span>
+                  )}
+                </span>
+                {stop.address &&
+                  (maps ? (
+                    <a
+                      href={maps}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="-my-1 flex min-h-11 items-center gap-1 text-[12.5px] text-muted-foreground underline decoration-border underline-offset-2"
+                    >
+                      <MapPin className="size-3.5 shrink-0" aria-hidden />
+                      <span className="min-w-0">{stop.address}</span>
+                    </a>
+                  ) : (
+                    <span className="mt-0.5 flex items-start gap-1 text-[12.5px] text-muted-foreground">
+                      <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                      <span className="min-w-0">{stop.address}</span>
+                    </span>
+                  ))}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
   );
 }
