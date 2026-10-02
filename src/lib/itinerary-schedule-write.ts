@@ -73,10 +73,15 @@ export function scheduleWritePlan<T extends ScheduleWriteRow>(
 }
 
 /** The RPC reports optimistic concurrency failures with SQLSTATE 40001. */
-export function isItineraryVersionConflict(error: {
-  code?: string | null;
-  message?: string | null;
-} | null | undefined): boolean {
+export function isItineraryVersionConflict(
+  error:
+    | {
+        code?: string | null;
+        message?: string | null;
+      }
+    | null
+    | undefined,
+): boolean {
   return (
     error?.code === "40001" || Boolean(error?.message?.includes("itinerary_version_conflict:"))
   );
