@@ -13,8 +13,7 @@ import {
 import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
-import { BeaWordmark } from "@/components/BeaWordmark";
-import { ArrowRight, PlayCircle } from "@/components/icons";
+import { LandingHero } from "@/components/LandingHero";
 import { HomeNameAsk } from "@/components/HomeNameAsk";
 import { HomePendingPlan } from "@/components/HomePendingPlan";
 import { LandingSampleDay } from "@/components/LandingSampleDay";
@@ -37,7 +36,7 @@ import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { demoGlobePins } from "@/lib/demo-seed";
-import { beaLine, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
+import { beaLine, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { isAreaPlace } from "@/lib/reco-place";
@@ -90,94 +89,43 @@ function LandingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
-    <AppShell publicPage>
-      <div className="space-y-6">
+    // No app bar: the first screen is the painted hero, edge to edge, and the
+    // rest of the story follows it on the same scroll.
+    <div className="h-dvh overflow-y-auto bg-background">
+      <div className="mx-auto w-full max-w-[520px] border-x border-border/70 md:max-w-[680px]">
         <LandingHero />
-        <LandingSampleDay />
-        <LandingTryPlan />
-        <ul className="grid gap-2 sm:grid-cols-3">
-          {LANDING_POINTS.map((point) => (
-            <li key={point.title} className="surface border border-border/50 p-3.5">
-              <p className="font-display text-[17px] leading-snug">{point.title}</p>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-                {point.body}
-              </p>
-            </li>
-          ))}
-        </ul>
-        <Globe
-          pins={pins}
-          selectedId={selectedId}
-          onSelect={(pin) => setSelectedId(pin.id)}
-          scrollFriendly
-          autoSpin
-        />
-        <p className="text-[13px] text-muted-foreground">
-          The places on this globe are examples. Yours fill it in once you start saving.
-        </p>
-        <section className="surface border border-border/50 p-5 text-center">
-          <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
-          <div className="mt-4">
-            <StartFree />
-          </div>
-        </section>
+        <div className="space-y-6 px-4 pb-10 pt-8">
+          <LandingSampleDay />
+          <LandingTryPlan />
+          <ul className="grid gap-2 sm:grid-cols-3">
+            {LANDING_POINTS.map((point) => (
+              <li key={point.title} className="surface border border-border/50 p-3.5">
+                <p className="font-display text-[17px] leading-snug">{point.title}</p>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+                  {point.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+          <Globe
+            pins={pins}
+            selectedId={selectedId}
+            onSelect={(pin) => setSelectedId(pin.id)}
+            scrollFriendly
+            autoSpin
+          />
+          <p className="text-[13px] text-muted-foreground">
+            The places on this globe are examples. Yours fill it in once you start saving.
+          </p>
+          <section className="surface border border-border/50 p-5 text-center">
+            <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
+            <div className="mt-4">
+              <StartFree />
+            </div>
+          </section>
+        </div>
       </div>
-    </AppShell>
-  );
-}
-
-/**
- * The first screen: logo, the promise, the way in, and a picture of where
- * she takes you. Only true lines under the button — no counts or ratings.
- */
-function LandingHero() {
-  return (
-    <section className="rise space-y-5 pt-2">
-      <BeaWordmark size="lg" />
-      <div>
-        <h1 className="font-display text-[42px] leading-[1.02] tracking-[-0.01em]">
-          {BEA_POSITION}
-        </h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-muted-foreground">
-          Save places. Plan real trips. Follow the day. Remember it all.
-        </p>
-      </div>
-      <div className="space-y-2">
-        <Link
-          to="/auth"
-          search={{ mode: "signup" }}
-          className="flex min-h-[56px] items-center justify-between gap-3 rounded-full bg-foreground py-2 pl-6 pr-2 text-[16px] font-semibold text-background shadow-lg"
-        >
-          Create your free account
-          <span className="grid size-10 place-items-center rounded-full bg-primary text-primary-foreground">
-            <ArrowRight className="size-5" aria-hidden />
-          </span>
-        </Link>
-        <Link
-          to="/how-it-works"
-          className="inline-flex min-h-11 items-center gap-2.5 text-[15px] font-semibold"
-        >
-          <PlayCircle className="size-6" aria-hidden />
-          Watch how it works
-        </Link>
-      </div>
-      <img
-        src="/banners/coastal.webp"
-        alt="An illustrated harbour town on a sunny coast"
-        width={960}
-        height={540}
-        className="aspect-[4/3] w-full rounded-[28px] object-cover shadow-sm"
-      />
-      <p className="text-center text-[13px] text-muted-foreground">
-        Free to start · No card ·{" "}
-        <Link
-          to="/auth"
-          className="-my-3 inline-flex min-h-11 min-w-11 items-center justify-center underline underline-offset-4"
-        >
-          Sign in
-        </Link>
-      </p>
-    </section>
+    </div>
   );
 }
 

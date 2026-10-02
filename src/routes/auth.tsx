@@ -156,29 +156,43 @@ function AuthPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-background">
-      <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 pb-8 pt-10">
+    // Painted edge to edge, like the landing page: the words sit on the art's
+    // pale sky. In dark mode that sky is shaded, so themed text stays legible.
+    <div className="relative isolate min-h-[100dvh] bg-[#f6efe2] text-[#1d1a17] dark:bg-background dark:text-foreground">
+      <img
+        src="/onboarding/signup.webp"
+        alt=""
+        aria-hidden
+        width={768}
+        height={1376}
+        className="pointer-events-none fixed inset-x-0 bottom-0 -z-10 h-[40dvh] w-full object-cover object-bottom [mask-image:linear-gradient(to_bottom,transparent,black_22%)]"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 hidden bg-gradient-to-b from-background via-background/85 to-transparent dark:block"
+      />
+      <div className="mx-auto flex w-full max-w-[520px] flex-col px-6 pb-[40dvh] pt-7">
         <div className="rise">
-          <BeaWordmark />
+          <BeaWordmark ink />
         </div>
 
         <div className="rise mt-8">
-          <h1 className="font-display text-[52px] leading-[0.95]">
+          <h1 className="font-display text-[56px] leading-[0.95] tracking-[-0.02em]">
             {signup ? "Welcome." : "Welcome back."}
           </h1>
-          <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
+          <p className="mt-3 text-[16px] leading-snug text-[#5d564f] dark:text-muted-foreground">
             {signup
               ? "Create your account to start your travel life. Free, no card."
               : "Your places, trips and photo memories are saved to your account and follow you across devices."}
           </p>
         </div>
 
-        <div className="mt-6 space-y-3">
+        <div className="mt-7 space-y-3">
           <button
             type="button"
             onClick={() => social("google")}
             disabled={busy}
-            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
+            className="flex h-[58px] w-full items-center gap-3.5 rounded-2xl border border-black/5 bg-white/95 px-5 text-[16.5px] font-semibold text-[#1d1a17] shadow-[0_4px_16px_rgba(29,26,23,0.08)] backdrop-blur disabled:opacity-60 dark:border-border dark:bg-card dark:text-foreground"
           >
             <GoogleG />
             Continue with Google
@@ -206,16 +220,16 @@ function AuthPage() {
           )}
         </div>
 
-        <Divider>{signup ? "or" : "Or sign in with email"}</Divider>
+        <Divider>{signup ? "or" : "or sign in with email"}</Divider>
 
         {/* Signing up, email waits behind one tap so Google stays the quick way. */}
         {signup && !emailOpen ? (
           <button
             type="button"
             onClick={() => setEmailOpen(true)}
-            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-[17px] font-semibold shadow-sm"
+            className="flex h-[58px] w-full items-center gap-3.5 rounded-2xl border border-black/5 bg-white/95 px-5 text-[16.5px] font-semibold text-[#1d1a17] shadow-[0_4px_16px_rgba(29,26,23,0.08)] backdrop-blur disabled:opacity-60 dark:border-border dark:bg-card dark:text-foreground"
           >
-            <Mail className="size-5" aria-hidden />
+            <Mail className="size-6" aria-hidden />
             Continue with email
           </button>
         ) : (
@@ -304,35 +318,27 @@ function AuthPage() {
         {!signup && (
           <Link
             to="/forgot-password"
-            className="mx-auto mt-4 block text-[15px] text-muted-foreground underline underline-offset-4"
+            className="mx-auto mt-4 inline-flex min-h-11 items-center text-[15px] underline underline-offset-4 text-[#5d564f] dark:text-muted-foreground"
           >
             Forgot your password?
           </Link>
         )}
 
-        <Divider>{signup ? "Have an account?" : "New here?"}</Divider>
+        <p className="mt-4 text-center text-[15px] text-[#5d564f] dark:text-muted-foreground">
+          {signup ? "Already have an account? " : "New here? "}
+          <button
+            type="button"
+            onClick={switchMode}
+            className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4 text-[#1d1a17] dark:text-foreground"
+          >
+            {signup ? "Sign in" : "Create an account"}
+          </button>
+        </p>
 
-        <button
-          type="button"
-          onClick={switchMode}
-          className="mx-auto flex h-[52px] w-full max-w-[340px] items-center justify-center rounded-full border border-primary/70 px-4 text-[17px] font-semibold text-primary"
-        >
-          {signup ? "I already have an account" : "Create a new account"}
-        </button>
-
-        <img
-          src="/banners/coastal.webp"
-          alt=""
-          aria-hidden
-          width={960}
-          height={540}
-          className="mt-8 aspect-[16/9] w-full rounded-[28px] object-cover"
-        />
-
-        <p className="mt-6 text-center text-[13px] leading-relaxed text-muted-foreground">
-          By continuing you agree to our{" "}
+        <p className="mt-2 text-center text-[12.5px] leading-relaxed text-[#5d564f] dark:text-muted-foreground">
+          By continuing, you agree to our{" "}
           <Link to="/terms" className="underline underline-offset-4">
-            Terms of Service
+            Terms
           </Link>{" "}
           and{" "}
           <Link to="/privacy" className="underline underline-offset-4">
@@ -348,12 +354,10 @@ function AuthPage() {
 
 function Divider({ children }: { children: ReactNode }) {
   return (
-    <div className="my-6 flex items-center gap-3">
-      <span className="h-px flex-1 bg-border" />
-      <span className="text-[11.5px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-        {children}
-      </span>
-      <span className="h-px flex-1 bg-border" />
+    <div className="my-4 flex items-center gap-3">
+      <span className="h-px flex-1 bg-[#1d1a17]/15 dark:bg-border" />
+      <span className="text-[13px] text-[#5d564f] dark:text-muted-foreground">{children}</span>
+      <span className="h-px flex-1 bg-[#1d1a17]/15 dark:bg-border" />
     </div>
   );
 }

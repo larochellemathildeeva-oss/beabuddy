@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { BeaWordmark } from "@/components/BeaWordmark";
-import { Bookmark, ChevronRight, FileText, Globe, Route, X } from "@/components/icons";
+import { Bookmark, FileText, Globe, Route, X } from "@/components/icons";
 import { ThemePicker } from "@/components/ThemePicker";
 import { startWalk } from "@/lib/tour-start";
 import { useAuth } from "@/hooks/useAuth";
@@ -37,6 +37,14 @@ const GOAL_ICONS: Partial<Record<WelcomeGoal["id"], typeof Route>> = {
   import: FileText,
   save: Bookmark,
   map: Globe,
+};
+
+/** Each first step's own colour for its mark, as in the mockup. */
+const GOAL_TINTS: Partial<Record<WelcomeGoal["id"], { bg: string; fg: string }>> = {
+  plan: { bg: "#e4ecfb", fg: "#3a68c9" },
+  import: { bg: "#fbe4ec", fg: "#c8466d" },
+  save: { bg: "#fdecd9", fg: "#c86a1e" },
+  map: { bg: "#e2eef8", fg: "#2f74a8" },
 };
 
 /**
@@ -207,14 +215,17 @@ export function Welcome() {
       role="dialog"
       aria-modal="true"
       aria-label="Welcome to Béa"
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 sm:items-center"
+      className="fixed inset-0 z-[70] flex items-stretch justify-center bg-black/45 sm:items-center sm:p-3"
     >
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="flex h-dvh w-full max-w-[460px] flex-col overflow-hidden bg-background shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary sm:h-auto sm:max-h-[92vh] sm:rounded-3xl sm:border sm:border-border"
       >
-        <div className="flex items-center justify-between px-5 pt-4">
+        {/* The first screen is the mockup's own: no dots, no ×, just Skip. */}
+        <div
+          className={`flex items-center justify-between px-5 pt-4 ${step === "goal" ? "hidden" : ""}`}
+        >
           <div className="flex gap-1.5" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
             {STEPS.map((s, n) => (
               <span
@@ -241,15 +252,16 @@ export function Welcome() {
 
         <div className="overflow-y-auto px-5 pb-2 pt-3">
           {step === "goal" && (
-            <div className="space-y-4">
+            <div className="space-y-5 pt-5">
               <BeaWordmark />
-              <h2 className="font-display text-[30px] leading-[1.05]">
+              <h2 className="font-display text-[34px] leading-[1.04] tracking-[-0.01em]">
                 What should Béa help with first?
               </h2>
               {/* One tap picks and moves on: there is nothing else to decide here. */}
-              <ul className="space-y-2.5">
+              <ul className="space-y-3">
                 {WELCOME_GOALS.map((g) => {
                   const Icon = GOAL_ICONS[g.id] ?? Route;
+                  const tint = GOAL_TINTS[g.id] ?? GOAL_TINTS.plan!;
                   return (
                     <li key={g.id}>
                       <button
@@ -258,30 +270,31 @@ export function Welcome() {
                           setGoal(g);
                           setStep("style");
                         }}
-                        className="relative flex min-h-[76px] w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card pl-3.5 text-left shadow-sm"
+                        className="relative flex min-h-[88px] w-full items-center gap-3.5 overflow-hidden rounded-2xl border border-border/70 bg-card pl-4 text-left shadow-[0_4px_16px_rgba(29,26,23,0.07)]"
                       >
                         <img
                           src={g.picture}
                           alt=""
                           aria-hidden
-                          className="absolute inset-y-0 right-0 h-full w-[34%] object-cover"
+                          className="absolute inset-y-0 right-0 h-full w-[54%] object-cover"
                         />
                         {/* The picture fades into the card under the words. */}
                         <span
                           aria-hidden
-                          className="absolute inset-y-0 right-0 w-[34%] bg-gradient-to-r from-card via-card/30 to-transparent"
+                          className="absolute inset-y-0 right-0 w-[54%] bg-gradient-to-r from-card via-card/60 via-25% to-transparent to-60%"
                         />
-                        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+                        <span
+                          className="relative grid size-11 shrink-0 place-items-center rounded-xl"
+                          style={{ backgroundColor: tint.bg, color: tint.fg }}
+                        >
                           <Icon className="size-5" aria-hidden />
                         </span>
-                        <span className="relative min-w-0 flex-1 py-3 pr-[18%]">
-                          <span className="block text-[16px] font-semibold">{g.title}</span>
+                        <span className="relative min-w-0 flex-1 py-3 pr-[26%]">
+                          <span className="block text-[16px] font-semibold leading-snug">
+                            {g.title}
+                          </span>
                           <span className="block text-[13px] text-muted-foreground">{g.hint}</span>
                         </span>
-                        <ChevronRight
-                          className="relative mr-3 size-5 shrink-0 text-white drop-shadow"
-                          aria-hidden
-                        />
                       </button>
                     </li>
                   );
@@ -382,7 +395,9 @@ export function Welcome() {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-border/60 px-5 py-4">
+        <div
+          className={`flex flex-col gap-2 px-5 py-4 ${step === "goal" ? "mt-auto" : "border-t border-border/60"}`}
+        >
           {step === "ready" ? (
             <>
               <button
