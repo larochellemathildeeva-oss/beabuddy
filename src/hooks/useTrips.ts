@@ -237,9 +237,7 @@ const OPTIONAL_COLUMN_GROUPS = [
  * runs, asking for its columns fails the whole read, so it is asked again
  * without the unavailable group.
  */
-async function selectTripItems(
-  tripId: string,
-): Promise<{
+async function selectTripItems(tripId: string): Promise<{
   items: ItineraryRow[];
   nesting: boolean;
   pinCheck: boolean;
