@@ -186,8 +186,12 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     if (ride && (timelineGlyph(from) === "transport" || timelineGlyph(to) === "transport")) {
       continue;
     }
-    const need = Math.round(metres / (ride ? FASTEST_RIDE_METRES_PER_MIN : WALK_METRES_PER_MIN));
-    if (need - gap < MARGIN_MIN) continue;
+    const need = ride
+      ? Math.ceil(metres / FASTEST_RIDE_METRES_PER_MIN)
+      : Math.round(metres / WALK_METRES_PER_MIN);
+    // The ride time is already a bound nothing beats, so any shortfall is
+    // impossible; the margin is for the walk, which is only a fair guess.
+    if (ride ? need <= gap : need - gap < MARGIN_MIN) continue;
 
     const fromTitle = (from.title ?? "").trim();
     const toTitle = (to.title ?? "").trim();
@@ -203,7 +207,7 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
   const between = `${worst.gap} min between ${worst.title} and ${worst.nextTitle}`;
   return worst.km === null
     ? `${between}, and the walk alone is about ${worst.need}.`
-    : `${between}, about ${worst.km} km apart: even a fast train takes about ${worst.need}.`;
+    : `${between}, about ${worst.km} km apart: even at 200 km/h in a straight line that is about ${worst.need}.`;
 }
 
 /** "in 30 min", "in 2 h 10", or null when it is not worth saying. */

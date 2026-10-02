@@ -161,7 +161,7 @@ test("dayTightnessNote names a ride no train could make in the gap", () => {
   ];
   assert.equal(
     dayTightnessNote(day),
-    "30 min between Senso-ji and Nagoya Castle, about 269 km apart: even a fast train takes about 81.",
+    "30 min between Senso-ji and Nagoya Castle, about 269 km apart: even at 200 km/h in a straight line that is about 81.",
   );
 });
 
@@ -187,4 +187,13 @@ test("dayTightnessNote does not time a ride from a journey row", () => {
     { title: "Ramen lunch", time_label: "09:30", lat: 43.0618, lon: 141.3545 },
   ];
   assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote names a ride short by only a few minutes", () => {
+  // 75 minutes for 269 km: under the 81 even 200 km/h needs.
+  const day = [
+    { title: "Senso-ji", time_label: "09:00", lat: 35.7148, lon: 139.7967 },
+    { title: "Nagoya Castle", time_label: "10:15", lat: 35.1856, lon: 136.8991 },
+  ];
+  assert.match(dayTightnessNote(day) ?? "", /^75 min between Senso-ji and Nagoya Castle/);
 });
