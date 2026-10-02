@@ -87,24 +87,20 @@ function LandingPage() {
       <div className="space-y-6">
         <p className="text-[15px] leading-relaxed text-muted-foreground">
           {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
-          puts them in a sensible order, gives directions and keeps your bookings together. Save
-          tips from friends, see them when you're nearby, and keep a map of everywhere you've been.
+          puts them in a sensible order, gives directions and keeps your bookings together.
         </p>
         {/* The way in first, where a thumb reaches it without scrolling. */}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <Link
-            to="/auth"
-            className="btn-primary flex items-center justify-center px-4 text-center text-[14.5px]"
-          >
-            Create an account
-          </Link>
-          <Link
-            to="/how-it-works"
-            className="flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border px-4 text-center text-[14.5px] font-semibold"
-          >
-            How Béa works
-          </Link>
-        </div>
+        <StartFree />
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {LANDING_POINTS.map((point) => (
+            <li key={point.title} className="surface border border-border/50 p-3.5">
+              <p className="font-display text-[17px] leading-snug">{point.title}</p>
+              <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+                {point.body}
+              </p>
+            </li>
+          ))}
+        </ul>
         <Globe
           pins={pins}
           selectedId={selectedId}
@@ -115,8 +111,59 @@ function LandingPage() {
         <p className="text-[13px] text-muted-foreground">
           The places on this globe are examples. Yours fill it in once you start saving.
         </p>
+        <section className="surface border border-border/50 p-5 text-center">
+          <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
+          <div className="mt-4">
+            <StartFree />
+          </div>
+        </section>
       </div>
     </AppShell>
+  );
+}
+
+/** What a visitor gets, in their words rather than the features'. */
+const LANDING_POINTS = [
+  {
+    title: "Plan from what you saved",
+    body: "Paste links, friends' tips or a plan you already have. Béa turns them into days.",
+  },
+  {
+    title: "Help on the day",
+    body: "Directions, bookings and the café you saved months ago, when you're two streets away.",
+  },
+  {
+    title: "Remember everywhere",
+    body: "Every trip fills in your map, so Future You knows where to go back.",
+  },
+] as const;
+
+/** The sign-up button, with what it costs (nothing) right under it. */
+function StartFree() {
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Link
+          to="/auth"
+          search={{ mode: "signup" }}
+          className="btn-primary flex items-center justify-center px-4 text-center text-[14.5px]"
+        >
+          Start free
+        </Link>
+        <Link
+          to="/how-it-works"
+          className="flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border px-4 text-center text-[14.5px] font-semibold"
+        >
+          See how it works
+        </Link>
+      </div>
+      <p className="text-center text-[13px] text-muted-foreground">
+        Free · No card · One tap with Google ·{" "}
+        <Link to="/auth" className="underline underline-offset-4">
+          Sign in
+        </Link>
+      </p>
+    </div>
   );
 }
 

@@ -23,9 +23,14 @@ import { safeStorage } from "@/lib/tour-state";
 export const Route = createFileRoute("/auth")({
   staticData: { plane: "detail" },
   // Where to go once signed in: the page that sent the traveller here.
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
+  // `mode=signup` opens on account creation: a "Start free" button should not
+  // land a newcomer on "Welcome back".
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; mode?: "signup" } => {
     const to = safeRedirectPath(search["redirect"]);
-    return to ? { redirect: to } : {};
+    return {
+      ...(to ? { redirect: to } : {}),
+      ...(search["mode"] === "signup" ? { mode: "signup" as const } : {}),
+    };
   },
   head: () => ({
     meta: [
@@ -47,9 +52,9 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect: returnTo } = Route.useSearch();
+  const { redirect: returnTo, mode: startMode } = Route.useSearch();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<"signin" | "signup">(startMode ?? "signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -178,8 +183,9 @@ function AuthPage() {
               {signup ? "Start your vault" : "Welcome back"}
             </h1>
             <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
-              Your places, trips and photo memories are saved to your account and follow you across
-              devices.
+              {signup
+                ? "Free, no card. Your places, trips and photo memories follow you across devices."
+                : "Your places, trips and photo memories are saved to your account and follow you across devices."}
             </p>
           </div>
           <img
