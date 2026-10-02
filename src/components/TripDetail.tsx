@@ -76,6 +76,7 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
+import { useStopPhotos } from "@/hooks/useStopPhotos";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
 import { ShareLinkCard } from "@/components/day/ShareLinkCard";
@@ -800,6 +801,7 @@ export function TripDetail({
   /** Which kind the Bookings tab shows. */
   const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
   const bookingDocs = useTripBookingDocuments(trip.id);
+  const stopPhotos = useStopPhotos(trip.id, me.id, trip);
   const tripPrefs = useTripPreferences(trip.id);
   // A trip kept offline keeps its plan on the phone too, so it opens with no
   // signal: written each time the plan loads, and only for that trip.
@@ -1091,7 +1093,19 @@ export function TripDetail({
       doc.id,
     ]);
   }
-  const docProps = (item: ItineraryRow) => {
+  /** Documents linked to a stop, and its photos — every card gets both. */
+  const docProps = (item: ItineraryRow) => ({
+    ...linkedDocProps(item),
+    photos: {
+      title: item.title,
+      photos: stopPhotos.byStop.get(item.id) ?? [],
+      available: stopPhotos.available,
+      uid: me.id,
+      onAdd: (files: File[]) => stopPhotos.add(item, files),
+      onRemove: stopPhotos.remove,
+    },
+  });
+  const linkedDocProps = (item: ItineraryRow) => {
     const ids = docsByStop.get(item.id);
     if (!ids?.length) return {};
     return {

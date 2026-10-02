@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { readExif } from "@/lib/exif";
 import { reverseGeocode } from "@/lib/geocode";
 import { isNetworkFailure } from "@/lib/ai-errors";
-import { stripImageFileMetadata } from "@/lib/strip-image-meta";
+import { uploadPhotoFile } from "@/lib/photo-upload";
 
 export const Route = createFileRoute("/_authenticated/photos")({
   staticData: { plane: "detail" },
@@ -98,9 +98,14 @@ function PhotosPage() {
   }, [pending]);
 
   const load = async () => {
+    const uid = (await supabase.auth.getSession()).data.session?.user.id;
+    if (!uid) return;
+    // Only this traveller's own: a shared trip's stops can carry other
+    // travellers' photos, which are theirs to keep or delete.
     const { data } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, caption, taken_at")
+      .eq("user_id", uid)
       .order("created_at", { ascending: false });
     const list = (data ?? []) as PhotoRow[];
     setRows(list);
@@ -149,20 +154,10 @@ function PhotosPage() {
           continue;
         }
 
-        let path = `location-only:${crypto.randomUUID()}`;
-        if (keepPhotos) {
-          const ext = file.name.split(".").pop() ?? "jpg";
-          path = `${uid}/${crypto.randomUUID()}.${ext}`;
-          // Drop GPS from file bytes; lat/lon still go into photo_memories columns.
-          const uploadFile = await stripImageFileMetadata(file);
-          const uploadPath =
-            uploadFile.type === "image/jpeg" ? path.replace(/\.[^.]+$/, ".jpg") : path;
-          path = uploadPath;
-          const { error: upErr } = await supabase.storage
-            .from("photo-memories")
-            .upload(path, uploadFile, { contentType: uploadFile.type || "image/jpeg" });
-          if (upErr) throw upErr;
-        }
+        // GPS is dropped from the file bytes; lat/lon still go into the row.
+        const path = keepPhotos
+          ? await uploadPhotoFile(uid, file)
+          : `location-only:${crypto.randomUUID()}`;
 
         const { error: rowErr } = await supabase.from("photo_memories").insert({
           user_id: uid,

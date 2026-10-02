@@ -407,6 +407,18 @@ fallback. The migration is applied by hand. The older hourly limits (document
 reads, plan edits, local-script names) stay as they were. A new AI entry point
 reserves too: add its cost to `AI_COST`.
 
+## Photos on a stop
+
+A traveller can add their own photos to a stop, in the stop's sheet
+(`StopPhotos.tsx`, `useStopPhotos.ts`, read once per trip). Each is a row in
+`photo_memories` with `itinerary_item_id`, and its `trip_id` is set by a
+trigger from the stop, never trusted from the app. Everyone on the trip sees
+them (row policy and a storage read policy); only the owner deletes one. They
+are also the owner's Photo memories, so every personal read of
+`photo_memories` (Photos page, globe, Past You) filters on `user_id`. The
+migration is applied by hand; until it is, the sheet says photos are not
+set up yet.
+
 ## Reading a booking file
 
 In Trip documents, a new PDF or photo can be read with **"Fill in from this

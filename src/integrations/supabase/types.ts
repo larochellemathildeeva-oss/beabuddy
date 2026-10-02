@@ -408,10 +408,12 @@ export type Database = {
           country: string | null
           created_at: string
           id: string
+          itinerary_item_id: string | null
           lat: number | null
           lon: number | null
           storage_path: string
           taken_at: string | null
+          trip_id: string | null
           user_id: string
         }
         Insert: {
@@ -420,10 +422,12 @@ export type Database = {
           country?: string | null
           created_at?: string
           id?: string
+          itinerary_item_id?: string | null
           lat?: number | null
           lon?: number | null
           storage_path: string
           taken_at?: string | null
+          trip_id?: string | null
           user_id: string
         }
         Update: {
@@ -432,13 +436,30 @@ export type Database = {
           country?: string | null
           created_at?: string
           id?: string
+          itinerary_item_id?: string | null
           lat?: number | null
           lon?: number | null
           storage_path?: string
           taken_at?: string | null
+          trip_id?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "photo_memories_itinerary_item_id_fkey"
+            columns: ["itinerary_item_id"]
+            isOneToOne: false
+            referencedRelation: "itinerary_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_memories_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
