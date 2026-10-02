@@ -230,8 +230,8 @@ export function TimelineEntry({
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
   const timeMode = timeModeFor(item);
-  // The same reading the mode uses: "Morning" or "9h30" shows on the rail but
-  // is not a clock Fixed or Flexible can hold.
+  // The same reading the mode uses: "Morning" shows on the rail but is not a
+  // clock Fixed or Flexible can hold; "9h30" and "2pm" are.
   const hasClock = itineraryClockMinutes(item.time_label) != null;
   const done = isDone(item);
   const detail = stripEmbeddedMapsUrl(item.detail);

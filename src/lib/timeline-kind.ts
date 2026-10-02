@@ -105,6 +105,21 @@ export function timeForRail(timeLabel: string | null | undefined): string {
 }
 
 /**
+ * "14:05", "2pm", "14h30", "9.30", "9:00 AM" → minutes after midnight, or
+ * null for anything that is not a clock time ("Morning"). The rail, Now, the
+ * card's Fixed/Flexible and the schedule all read times through this one.
+ */
+export function clockMinutes(timeLabel: string | null | undefined): number | null {
+  const rail = timeForRail(timeLabel);
+  const m = /^(\d{2}):(\d{2})$/.exec(rail);
+  if (!m) return null;
+  const hours = Number(m[1]);
+  const minutes = Number(m[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+/**
  * The kinds a timeline entry is actually stored as.
  *
  * There used to be two vocabularies that never met. The add form wrote

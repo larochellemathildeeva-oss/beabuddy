@@ -15,7 +15,7 @@
 import type { RouteLeg } from "./directions.functions.ts";
 import { isSavedDirectionItem } from "./direction-stops.ts";
 import { isTravelLeg } from "./import-stop.ts";
-import { timeForRail } from "./timeline-kind.ts";
+import { clockMinutes } from "./timeline-kind.ts";
 
 export type CompanionStop = {
   id: string;
@@ -112,16 +112,8 @@ export function companionState<T extends CompanionStop>(stops: readonly T[]): Co
   return { phase: "between", current: null, previous, next, reached, total };
 }
 
-/** "14:05" → minutes after midnight, or null for anything that is not a clock time. */
-export function clockMinutes(timeLabel: string | null | undefined): number | null {
-  const rail = timeForRail(timeLabel);
-  const m = /^(\d{2}):(\d{2})$/.exec(rail);
-  if (!m) return null;
-  const hours = Number(m[1]);
-  const minutes = Number(m[2]);
-  if (hours > 23 || minutes > 59) return null;
-  return hours * 60 + minutes;
-}
+// The one reading of a clock time, shared with the rail and the schedule.
+export { clockMinutes };
 
 function formatClock(minutes: number): string {
   const wrapped = ((minutes % 1440) + 1440) % 1440;
