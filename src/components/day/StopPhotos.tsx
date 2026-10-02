@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { Sheet } from "@/components/Sheet";
-import { Camera, Trash2 } from "@/components/icons";
+import { Camera, ImageIcon, Trash2 } from "@/components/icons";
 import { useSignedPhoto } from "@/hooks/useTripPhotos";
 import { STOP_PHOTOS_PER_PICK, type StopPhoto, type StopPhotosAdded } from "@/hooks/useStopPhotos";
 import { isNetworkFailure } from "@/lib/ai-errors";
@@ -83,34 +83,24 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
               onOpen={() => setViewing(photo)}
             />
           ))}
-          {/* A label around the input, not a scripted click: iPhones do not
-              always open the picker for one. The ring shows keyboard focus,
-              which lands on the hidden input inside. */}
           {uid && (
-            <label
-              aria-disabled={busy}
-              className={`grid size-16 cursor-pointer place-items-center rounded-xl border border-dashed border-border bg-card text-center text-[11.5px] font-semibold text-muted-foreground focus-within:ring-2 focus-within:ring-primary ${
-                busy ? "pointer-events-none opacity-50" : ""
-              }`}
-            >
-              <span className="flex flex-col items-center gap-0.5">
-                <Camera className="size-4" aria-hidden />
-                {busy ? "Adding…" : "Add"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                disabled={busy}
-                aria-label={`Add photos of ${title}`}
-                className="sr-only"
-                onChange={(e) => {
-                  const files = Array.from(e.target.files ?? []);
-                  e.target.value = "";
-                  void add(files);
-                }}
+            <>
+              <PickTile
+                label={busy ? "Adding…" : "Take photo"}
+                icon={<Camera className="size-4" aria-hidden />}
+                ariaLabel={`Take a photo of ${title}`}
+                busy={busy}
+                camera
+                onFiles={add}
               />
-            </label>
+              <PickTile
+                label={busy ? "Adding…" : "From photos"}
+                icon={<ImageIcon className="size-4" aria-hidden />}
+                ariaLabel={`Add photos of ${title} from your phone`}
+                busy={busy}
+                onFiles={add}
+              />
+            </>
           )}
         </div>
       )}
@@ -139,6 +129,57 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
         onConfirm={() => confirming && remove(confirming)}
       />
     </div>
+  );
+}
+
+/**
+ * One way in: the camera, or the phone's photos. A label around its input,
+ * not a scripted click: iPhones do not always open the picker for one. The
+ * ring shows keyboard focus, which lands on the hidden input inside.
+ *
+ * The camera is its own tile because a picker that takes several photos
+ * leaves the camera out on many Android phones; `capture` opens it directly.
+ */
+function PickTile({
+  label,
+  icon,
+  ariaLabel,
+  busy,
+  camera = false,
+  onFiles,
+}: {
+  label: string;
+  icon: ReactNode;
+  ariaLabel: string;
+  busy: boolean;
+  camera?: boolean;
+  onFiles: (files: File[]) => Promise<void>;
+}) {
+  return (
+    <label
+      aria-disabled={busy}
+      className={`grid size-16 cursor-pointer place-items-center rounded-xl border border-dashed border-border bg-card px-1 text-center text-[11px] font-semibold leading-tight text-muted-foreground focus-within:ring-2 focus-within:ring-primary ${
+        busy ? "pointer-events-none opacity-50" : ""
+      }`}
+    >
+      <span className="flex flex-col items-center gap-0.5">
+        {icon}
+        {label}
+      </span>
+      <input
+        type="file"
+        accept="image/*"
+        {...(camera ? { capture: "environment" as const } : { multiple: true })}
+        disabled={busy}
+        aria-label={ariaLabel}
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          void onFiles(files);
+        }}
+      />
+    </label>
   );
 }
 
