@@ -1097,8 +1097,9 @@ export function TripDetail({
   const docProps = (item: ItineraryRow) => ({
     ...linkedDocProps(item),
     photos: {
+      title: item.title,
       photos: stopPhotos.byStop.get(item.id) ?? [],
-      ready: stopPhotos.ready,
+      available: stopPhotos.available,
       uid: me.id,
       onAdd: (files: File[]) => stopPhotos.add(item, files),
       onRemove: stopPhotos.remove,

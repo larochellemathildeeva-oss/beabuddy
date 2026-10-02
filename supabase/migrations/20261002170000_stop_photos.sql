@@ -32,6 +32,9 @@ ALTER TABLE public.photo_memories
 
 CREATE INDEX IF NOT EXISTS photo_memories_trip_idx ON public.photo_memories (trip_id);
 CREATE INDEX IF NOT EXISTS photo_memories_item_idx ON public.photo_memories (itinerary_item_id);
+-- The storage read policy below looks a file up by its path, on every
+-- signed URL asked for in the bucket.
+CREATE INDEX IF NOT EXISTS photo_memories_storage_path_idx ON public.photo_memories (storage_path);
 
 -- A file is always in the owner's own folder, or there is no file
 -- ("location-only:…"). Without this, a row on a trip could point at somebody
@@ -44,10 +47,14 @@ ALTER TABLE public.photo_memories ADD CONSTRAINT photo_memories_path_owner
     OR storage_path LIKE 'location-only:%'
   ) NOT VALID;
 
--- The trip always comes from the stop. Security definer so it can read the
--- stop whatever the caller sees; the write policies then refuse a trip the
--- caller is not on. Leaves trip_id alone when the trip is being deleted
--- (set to null with the stop still there for a moment).
+-- The trip always comes from the stop, on every insert and update of either
+-- column, so a linked photo cannot be moved off its stop's trip or left with
+-- none. Security definer so it can read the stop whatever the caller sees;
+-- the write policies then refuse a trip the caller is not on.
+--
+-- One exception: deleting a trip sets trip_id to null (ON DELETE SET NULL)
+-- after the trip row is gone, possibly with the stop not yet deleted. Then
+-- the null stays, or the trip's deletion would fail on the foreign key.
 CREATE OR REPLACE FUNCTION public.photo_memories_stop_trip()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -55,15 +62,19 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NEW.itinerary_item_id IS NOT NULL AND (
-    TG_OP = 'INSERT'
-    OR NEW.trip_id IS NOT NULL
-    OR NEW.itinerary_item_id IS DISTINCT FROM OLD.itinerary_item_id
-  ) THEN
-    SELECT i.trip_id INTO NEW.trip_id
-    FROM public.itinerary_items i
-    WHERE i.id = NEW.itinerary_item_id;
+  IF NEW.itinerary_item_id IS NULL THEN
+    RETURN NEW;
   END IF;
+  IF TG_OP = 'UPDATE'
+    AND NEW.trip_id IS NULL
+    AND OLD.trip_id IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM public.trips t WHERE t.id = OLD.trip_id)
+  THEN
+    RETURN NEW;
+  END IF;
+  SELECT i.trip_id INTO NEW.trip_id
+  FROM public.itinerary_items i
+  WHERE i.id = NEW.itinerary_item_id;
   RETURN NEW;
 END;
 $$;

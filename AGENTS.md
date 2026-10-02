@@ -417,7 +417,7 @@ them (row policy and a storage read policy); only the owner deletes one. They
 are also the owner's Photo memories, so every personal read of
 `photo_memories` (Photos page, globe, Past You) filters on `user_id`. The
 migration is applied by hand; until it is, the sheet says photos are not
-available.
+set up yet.
 
 ## Reading a booking file
 
