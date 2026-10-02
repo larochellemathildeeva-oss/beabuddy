@@ -3,7 +3,7 @@
  * told is tested: only the stops they acted on are "Your change", a move to
  * another day shows its new time too, and Apply is never off without a reason.
  */
-import type { ConsequenceResult, ScheduleStop } from "./itinerary-change.ts";
+import { timeModeFor, type ConsequenceResult, type ScheduleStop } from "./itinerary-change.ts";
 import type { ReviewableChange, ReviewChangeSet } from "./itinerary-review.ts";
 import { stayLabel } from "./planned-stay.ts";
 import { formatTimelineDayLabel } from "./timeline-groups.ts";
@@ -20,10 +20,15 @@ function dayLabel(day: string | null): string {
   return day ? formatTimelineDayLabel(day) : "No date";
 }
 
-function lockLabel(locked: boolean | null): string {
-  if (locked === true) return "Fixed";
-  if (locked === false) return "Flexible";
-  return "Béa decides";
+/** What the card shows for that lock: an unset lock reads as Béa's default. */
+function lockLabel(stop: NamedStop | undefined, locked: boolean | null): string {
+  if (!stop) return locked === true ? "Fixed" : locked === false ? "Flexible" : "Default";
+  const mode = timeModeFor({ ...stop, time_locked: locked });
+  return mode === "fixed" ? "Fixed" : mode === "flexible" ? "Flexible" : "Sequence only";
+}
+
+function dayAndTime(day: string | null, time: string | null): string {
+  return time ? `${dayLabel(day)} · ${time}` : dayLabel(day);
 }
 
 const signed = new Intl.NumberFormat(undefined, { signDisplay: "exceptZero" });
@@ -41,13 +46,14 @@ export function formatShortMinutes(minutes: number): string {
 
 function changeLine(change: ReviewableChange, stops: readonly NamedStop[]): ReviewLine {
   const stopId = change.stopId;
-  const title = stopName(stops, stopId);
+  const stop = stops.find((row) => row.id === stopId);
+  const title = stop?.title ?? "This stop";
   if (change.type === "lock") {
     return {
       stopId,
       title,
-      before: lockLabel(change.fromLocked),
-      after: lockLabel(change.toLocked),
+      before: lockLabel(stop, change.fromLocked),
+      after: lockLabel(stop, change.toLocked),
     };
   }
   if (change.type === "duration") {
@@ -66,16 +72,14 @@ function changeLine(change: ReviewableChange, stops: readonly NamedStop[]): Revi
       after: change.toTime ?? "No set time",
     };
   }
-  const current = stops.find((stop) => stop.id === stopId)?.time_label ?? null;
+  const current = stop?.time_label ?? null;
   if (change.from.dayDate !== change.to.dayDate) {
-    const timed = change.to.preferredTime !== undefined;
-    const at = (day: string | null, time: string | null) =>
-      timed ? `${dayLabel(day)} · ${time ?? "No set time"}` : dayLabel(day);
+    const next = change.to.preferredTime !== undefined ? change.to.preferredTime : current;
     return {
       stopId,
       title,
-      before: at(change.from.dayDate, current),
-      after: at(change.to.dayDate, change.to.preferredTime ?? null),
+      before: dayAndTime(change.from.dayDate, current),
+      after: dayAndTime(change.to.dayDate, next),
     };
   }
   if (change.to.preferredTime !== undefined) {

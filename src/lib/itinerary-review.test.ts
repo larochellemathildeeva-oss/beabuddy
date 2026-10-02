@@ -509,3 +509,20 @@ test("saved Walk rows are renumbered with the rest but the ripple steps over the
   assert.equal(result.proposedSchedule.find((s) => s.id === "b")?.time_label, "11:30");
   assert.equal(result.proposedSchedule.find((s) => s.id === "walk")?.time_label, "11:00");
 });
+
+test("a move to another day keeps showing the stop's time", () => {
+  const stops = [row("a", DAY1, 0, "10:00"), row("b", DAY2, 1, "09:00")];
+  const proposal = changeSetForMoves(stops, [{ id: "a", day_date: DAY2, at: "end" }]);
+  assert.ok(proposal);
+  const [line] = reviewLines(proposal.changeSet, proposal.directIds, stops);
+  assert.match(line?.before ?? "", /10:00/);
+  assert.match(line?.after ?? "", /10:00/);
+});
+
+test("an unset lock reads as the card's own default mode", () => {
+  const stops = [row("a", DAY1, 0, "10:00", { booked: true, time_locked: false })];
+  const proposal = changeSetForSchedulePatch(stops, "a", { time_locked: null });
+  assert.ok(proposal);
+  const [line] = reviewLines(proposal.changeSet, proposal.directIds, stops);
+  assert.deepEqual([line?.before, line?.after], ["Flexible", "Fixed"]);
+});

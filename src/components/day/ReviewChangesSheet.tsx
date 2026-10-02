@@ -66,13 +66,13 @@ export function ReviewChangesSheet({
                 >
                   <p className="text-[14px] font-semibold text-foreground">{line.title}</p>
                   {line.before && line.after ? (
-                    <p className="mt-0.5 text-[13px] text-muted-foreground">
+                    <p className="mt-0.5 text-[13px] text-foreground/80">
                       <span className="line-through">{line.before}</span>
                       <span aria-hidden> → </span>
                       <span className="font-semibold text-foreground">{line.after}</span>
                     </p>
                   ) : line.after ? (
-                    <p className="mt-0.5 text-[13px] text-muted-foreground">{line.after}</p>
+                    <p className="mt-0.5 text-[13px] text-foreground/80">{line.after}</p>
                   ) : null}
                 </div>
               ))}
