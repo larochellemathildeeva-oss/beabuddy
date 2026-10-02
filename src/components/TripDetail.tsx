@@ -228,11 +228,15 @@ export function TripDetail({
   /** A card's edit: the board puts it back if the save fails, and says so. */
   const saveCard = (id: string, patch: Parameters<typeof board.updateItem>[1]) => {
     void board.updateItem(id, patch).catch((e: unknown) => {
-      const clash = (e as { code?: string } | null)?.code === "ITINERARY_VERSION_CONFLICT";
+      const code = (e as { code?: string } | null)?.code;
       toast.error(
-        clash
+        code === "ITINERARY_VERSION_CONFLICT"
           ? "Someone else changed this stop just now. Béa kept their version."
-          : "Couldn't save that change. Check your connection.",
+          : code === "ITINERARY_PARTLY_SAVED"
+            ? "Only part of that change saved. The stop shows what was kept."
+            : code === "TIME_LOCK_UNAVAILABLE"
+              ? "Fixed and Flexible aren't set up yet."
+              : "Couldn't save that change. Check your connection.",
       );
     });
   };
