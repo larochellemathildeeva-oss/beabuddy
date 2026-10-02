@@ -107,6 +107,8 @@ export function sharedTripView(
         (a.day_date ?? "9999").localeCompare(b.day_date ?? "9999") || a.position - b.position,
     );
   const days: SharedTrip["days"] = [];
+  // Stops marked "here", with when — kept out of the view, only to choose one.
+  const here: { stop: SharedStop; at: number }[] = [];
   for (const item of shown) {
     let day = days.at(-1);
     if (!day || day.day !== item.day_date) {
@@ -121,14 +123,16 @@ export function sharedTripView(
     };
     const status = follow.following ? sharedStopStatus(item, follow.now) : undefined;
     if (status) stop.status = status;
+    if (status === "here") here.push({ stop, at: Date.parse(item.arrived_at!) });
     day.stops.push(stop);
   }
-  // Two stops "here" at once (a tap on another phone): the later in the plan
-  // is where they are now, and the one before is done.
-  if (follow.following) {
-    const here = days.flatMap((d) => d.stops).filter((s) => s.status === "here");
-    for (const stop of here.slice(0, -1)) stop.status = "done";
-  }
+  // Several stops "here" at once (a "Leaving" never tapped, or a tap on
+  // another phone): the latest arrival is where they are, the rest are done.
+  const latest = here.reduce<(typeof here)[number] | null>(
+    (best, h) => (!best || h.at >= best.at ? h : best),
+    null,
+  );
+  for (const h of here) if (h !== latest) h.stop.status = "done";
   return {
     title: trip.title,
     place: [trip.city?.split(",")[0]?.trim(), trip.country].filter(Boolean).join(", "),

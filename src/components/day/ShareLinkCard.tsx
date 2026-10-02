@@ -166,7 +166,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
               type="button"
               disabled={busy}
               onClick={() => void setFollowing(link.id, !link.follow_along)}
-              className="min-h-9 text-[13px] font-semibold text-primary disabled:opacity-60"
+              className="min-h-11 min-w-11 px-1 text-[13px] font-semibold text-foreground underline underline-offset-2 disabled:opacity-60"
             >
               {link.follow_along ? "Plan only" : "Follow along"}
             </button>

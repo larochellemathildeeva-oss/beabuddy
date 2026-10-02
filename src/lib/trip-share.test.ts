@@ -192,3 +192,18 @@ test("two stops marked here at once: the later one is where they are", () => {
     ["done", "here"],
   );
 });
+
+test("several stops here at once: the latest arrival wins, whatever the plan order", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      stop("Belém", 0, { arrived_at: "2026-10-05T11:30:00Z" }),
+      stop("Alfama", 1, { arrived_at: "2026-10-05T09:00:00Z" }),
+    ],
+    { following: true, now: NOW },
+  );
+  assert.deepEqual(
+    view.days[0]!.stops.map((s) => s.status),
+    ["here", "done"],
+  );
+});

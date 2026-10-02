@@ -1,9 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Check, MapPin } from "@/components/icons";
 import { readSharedTrip } from "@/lib/trip-share.functions";
-import { sharedNow, sharedStopMapsUrl } from "@/lib/trip-share";
+import { sharedNow, sharedStopMapsUrl, type SharedTrip } from "@/lib/trip-share";
 import { formatDateRangeLabel, parseLocalDate } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/shared/$token")({
@@ -36,27 +36,47 @@ export const Route = createFileRoute("/shared/$token")({
 });
 
 /**
- * How often a page that follows along asks again. Slow on purpose: the
- * link's own limit is shared by everyone reading it, and a stop changes
- * every hour or so, not every minute.
+ * How often an open page asks again. Slow on purpose: the link's own limit
+ * is shared by everyone reading it, and a stop changes every hour or so,
+ * not every minute.
  */
-const FOLLOW_REFRESH_MS = 2 * 60 * 1000;
+const REFRESH_MS = 2 * 60 * 1000;
 
-/** Ask again now and then while the page is in view, and on coming back to it. */
-function useFollowRefresh(on: boolean) {
-  const router = useRouter();
+/**
+ * The trip as last read: the loader's answer, then a quiet re-read every
+ * two minutes while the page is in view (and on coming back to it, at most
+ * that often). Plan-only pages ask too, so a link switched to "follow
+ * along" starts showing it. A failed re-read keeps the last good copy on
+ * screen and tries again next time, rather than replacing it with an error.
+ */
+function useLatestTrip(token: string, first: SharedTrip | null): SharedTrip | null {
+  const [trip, setTrip] = useState(first);
+  const lastAsked = useRef(Date.now());
+  useEffect(() => setTrip(first), [first]);
   useEffect(() => {
-    if (!on) return;
-    const refresh = () => {
-      if (document.visibilityState === "visible") void router.invalidate();
+    if (!first) return;
+    let alive = true;
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastAsked.current < REFRESH_MS - 5_000) return;
+      lastAsked.current = Date.now();
+      try {
+        const next = await readSharedTrip({ data: { token } });
+        if (alive) setTrip(next);
+      } catch {
+        // Busy or offline: keep what is shown, and ask again later.
+      }
     };
-    const timer = window.setInterval(refresh, FOLLOW_REFRESH_MS);
-    document.addEventListener("visibilitychange", refresh);
+    const timer = window.setInterval(() => void refresh(), REFRESH_MS);
+    const onShow = () => void refresh();
+    document.addEventListener("visibilitychange", onShow);
     return () => {
+      alive = false;
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", refresh);
+      document.removeEventListener("visibilitychange", onShow);
     };
-  }, [on, router]);
+  }, [token, first]);
+  return trip;
 }
 
 function dayHeading(day: string | null): string {
@@ -117,8 +137,8 @@ function SharedTripError({ error }: { error: Error }) {
  * never bookings, notes or documents.
  */
 function SharedTripPage() {
-  const trip = Route.useLoaderData();
-  useFollowRefresh(Boolean(trip?.following));
+  const { token } = Route.useParams();
+  const trip = useLatestTrip(token, Route.useLoaderData());
 
   if (!trip) {
     return (
@@ -196,10 +216,12 @@ function SharedTripPage() {
                     aria-current={here ? "location" : undefined}
                   >
                     <span className="w-12 shrink-0 pt-0.5 text-[14px] font-bold tabular-nums text-primary">
-                      {done ? (
-                        <Check className="size-4 text-muted-foreground" aria-label="Done" />
-                      ) : (
-                        stop.time || "–"
+                      {stop.time || "–"}
+                      {done && (
+                        <Check
+                          className="mt-0.5 block size-4 text-muted-foreground"
+                          aria-label="Done"
+                        />
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -208,7 +230,7 @@ function SharedTripPage() {
                       >
                         {stop.title}
                         {here && (
-                          <span className="ml-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
+                          <span className="ms-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
                             Here now
                           </span>
                         )}
