@@ -101,7 +101,9 @@ test("small ripple auto-applies: at most two flexible stops, at most 30 minutes"
   );
   assert.equal(result.decision, "auto-apply");
   assert.deepEqual(
-    result.shifts.filter((shift) => shift.downstream).map((shift) => [shift.stopId, shift.deltaMinutes]),
+    result.shifts
+      .filter((shift) => shift.downstream)
+      .map((shift) => [shift.stopId, shift.deltaMinutes]),
     [
       ["b", 15],
       ["c", 15],
@@ -140,10 +142,7 @@ test("more than two downstream shifts requires Review", () => {
 });
 
 test("a ripple over 30 minutes requires Review", () => {
-  const plan = [
-    stop("a", "10:00", 0, { planned_stay_minutes: 30 }),
-    stop("b", "10:45", 1),
-  ];
+  const plan = [stop("a", "10:00", 0, { planned_stay_minutes: 30 }), stop("b", "10:45", 1)];
   const result = checkChange(
     plan,
     changeSet([
