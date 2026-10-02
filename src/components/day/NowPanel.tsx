@@ -11,6 +11,7 @@ import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { FollowAlong, FromHereLine } from "@/components/day/FollowAlong";
+import { QuickPhoto, type StopPhotosProps } from "@/components/day/StopPhotos";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
@@ -72,6 +73,7 @@ export function NowPanel({
   onProgress,
   progress,
   onLook,
+  photosFor,
 }: {
   /** The chosen day's stops, in order, without Walk / Drive rows. */
   dayStops: ItineraryRow[];
@@ -102,6 +104,8 @@ export function NowPanel({
   progress?: ReactNode;
   /** Look at a later stop without moving Now. */
   onLook?: ((id: string) => void) | undefined;
+  /** A stop's photos and adding one, for "Take photo" where you are. */
+  photosFor?: ((stop: ItineraryRow) => StopPhotosProps) | undefined;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -353,6 +357,7 @@ export function NowPanel({
             >
               Not here yet
             </button>
+            {photosFor && <QuickPhoto photos={photosFor(current)} label="Take photo" />}
           </div>
         </section>
       )}

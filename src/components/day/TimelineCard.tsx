@@ -8,7 +8,6 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarDays,
-  Camera,
   Clock,
   FileText,
   CornerUpLeft,
@@ -45,7 +44,12 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { SwipeRow } from "@/components/day/SwipeRow";
 import { Sheet } from "@/components/Sheet";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
-import { StopPhotos, type StopPhotosProps } from "@/components/day/StopPhotos";
+import {
+  PhotoStrip,
+  QuickPhoto,
+  StopPhotos,
+  type StopPhotosProps,
+} from "@/components/day/StopPhotos";
 import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -414,18 +418,10 @@ export function TimelineEntry({
               <FileText className="size-4" aria-hidden />
             </button>
           ) : null}
-          {photos?.photos.length ? (
-            <button
-              type="button"
-              onClick={() => flip(true)}
-              aria-label={`${photos.photos.length === 1 ? "1 photo" : `${photos.photos.length} photos`} of ${item.title}`}
-              className="tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
-            >
-              <Camera className="size-4" aria-hidden />
-            </button>
-          ) : null}
+          {photos && <QuickPhoto photos={photos} />}
         </div>
       </div>
+      {photos && <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />}
       {pill && (
         <InsidePill
           label={pill}

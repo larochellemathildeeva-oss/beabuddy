@@ -1653,6 +1653,7 @@ export function TripDetail({
                     setDayEditOpen(true);
                   }}
                   onProgress={board.setProgress}
+                  photosFor={(stop) => docProps(stop).photos}
                   onLook={(id) => {
                     setPeekId(id);
                     window.scrollTo({ top: 0, behavior: "smooth" });

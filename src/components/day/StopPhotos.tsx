@@ -39,25 +39,121 @@ function addedMessage({ added, skipped, failed, error }: StopPhotosAdded): strin
   return parts.length ? parts.join(" ") : null;
 }
 
+/** Adding photos, with what to say when some did not go in. */
+function usePhotoAdd(onAdd: StopPhotosProps["onAdd"], confirmTo?: string) {
+  const [busy, setBusy] = useState(false);
+  const add = async (files: File[]) => {
+    if (!files.length) return;
+    setBusy(true);
+    try {
+      const result = await onAdd(files);
+      const message = addedMessage(result);
+      if (message) toast.error(message);
+      else if (confirmTo && result.added)
+        toast.success(`${plural(result.added)} added to ${confirmTo}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, add };
+}
+
+/**
+ * One tap to the camera for a stop, where the stop is shown: on its card and
+ * on Now. Nothing to open first; the photo goes straight onto the stop. Shown
+ * only where photos can be added (set up, and signed in).
+ */
+export function QuickPhoto({
+  photos,
+  label,
+  className,
+}: {
+  photos: StopPhotosProps;
+  /** Words beside the camera; without them, a round icon button. */
+  label?: string;
+  className?: string;
+}) {
+  const { busy, add } = usePhotoAdd(photos.onAdd, photos.title);
+  if (!photos.available || !photos.uid) return null;
+  return (
+    <label
+      aria-disabled={busy}
+      className={`cursor-pointer focus-within:ring-2 focus-within:ring-primary ${
+        label
+          ? "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs"
+          : "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs"
+      } ${busy ? "pointer-events-none opacity-50" : ""} ${className ?? ""}`}
+    >
+      <Camera className="size-4" aria-hidden />
+      {label ? <span>{busy ? "Adding…" : label}</span> : null}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        disabled={busy}
+        aria-label={`Take a photo of ${photos.title}`}
+        className="sr-only"
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          void add(files);
+        }}
+      />
+    </label>
+  );
+}
+
+/** The first few of a stop's photos, small, on its card. Tapping opens the stop. */
+export function PhotoStrip({
+  photos,
+  title,
+  onOpen,
+}: {
+  photos: StopPhoto[];
+  title: string;
+  onOpen: () => void;
+}) {
+  if (!photos.length) return null;
+  const shown = photos.slice(0, STRIP_MAX);
+  const more = photos.length - shown.length;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`${plural(photos.length)} of ${title}`}
+      className="mt-2 flex items-center gap-1"
+    >
+      {shown.map((photo) => (
+        <StripThumb key={photo.id} photo={photo} />
+      ))}
+      {more > 0 && (
+        <span className="grid size-10 place-items-center rounded-lg bg-elevated text-[12px] font-semibold text-muted-foreground">
+          +{more}
+        </span>
+      )}
+    </button>
+  );
+}
+
+const STRIP_MAX = 4;
+
+function StripThumb({ photo }: { photo: StopPhoto }) {
+  const url = useSignedPhoto(photo.storage_path);
+  return (
+    <span className="block size-10 overflow-hidden rounded-lg bg-elevated">
+      {url && <img src={url} alt="" loading="lazy" className="size-full object-cover" />}
+    </span>
+  );
+}
+
 /**
  * The traveller's own photos of a stop, in the stop's sheet. Everyone on the
  * trip sees them; each is also in its owner's Photo memories.
  */
 export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: StopPhotosProps) {
-  const [busy, setBusy] = useState(false);
+  const { busy, add } = usePhotoAdd(onAdd);
   const [viewing, setViewing] = useState<StopPhoto | null>(null);
   const [confirming, setConfirming] = useState<StopPhoto | null>(null);
-
-  const add = async (files: File[]) => {
-    if (!files.length) return;
-    setBusy(true);
-    try {
-      const message = addedMessage(await onAdd(files));
-      if (message) toast.error(message);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const remove = (photo: StopPhoto) => {
     setConfirming(null);
