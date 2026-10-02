@@ -133,8 +133,12 @@ function HowItWorksPage() {
             {HOW_CLOSING.helps}
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <Link to="/auth" className="btn-primary px-4 py-3 text-center text-[14.5px]">
-              Create an account
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="btn-primary px-4 py-3 text-center text-[14.5px]"
+            >
+              Start free
             </Link>
             <Link
               to="/help"
