@@ -357,7 +357,7 @@ export function NowPanel({
             >
               Not here yet
             </button>
-            {photosFor && <QuickPhoto photos={photosFor(current)} label="Take photo" />}
+            {photosFor && <QuickPhoto photos={photosFor(current)} />}
           </div>
         </section>
       )}

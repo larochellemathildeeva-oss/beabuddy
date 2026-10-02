@@ -9,7 +9,8 @@ export type StopPhoto = {
   id: string;
   user_id: string;
   storage_path: string;
-  itinerary_item_id: string;
+  /** The stop it was added to; null for a photo of the trip as a whole. */
+  itinerary_item_id: string | null;
   taken_at: string | null;
 };
 
@@ -28,8 +29,8 @@ export const STOP_PHOTOS_PER_PICK = 20;
 const PAGE = 1000;
 
 /**
- * Photos travellers added to a trip's stops: read once for the whole trip,
- * not per card. Each is also a photo memory of whoever added it, and the
+ * Photos travellers added to a trip, on its stops or to the trip as a whole
+ * (from the trip menu): read once for the whole trip, not per card. Each is also a photo memory of whoever added it, and the
  * database ties it to the stop's trip, so everyone on the trip sees it.
  *
  * `available` is false only while the stop_photos migration is not applied
@@ -54,7 +55,6 @@ export function useStopPhotos(
         .from("photo_memories")
         .select("id, user_id, storage_path, itinerary_item_id, taken_at")
         .eq("trip_id", tripId)
-        .not("itinerary_item_id", "is", null)
         .order("taken_at", { ascending: true })
         .order("id", { ascending: true })
         .range(from, from + PAGE - 1);
@@ -88,18 +88,19 @@ export function useStopPhotos(
   const byStop = useMemo(() => {
     const map = new Map<string, StopPhoto[]>();
     for (const p of photos) {
+      if (!p.itinerary_item_id) continue;
       map.set(p.itinerary_item_id, [...(map.get(p.itinerary_item_id) ?? []), p]);
     }
     return map;
   }, [photos]);
 
   /**
-   * Upload photos to one stop, in order, stopping at the first failure. The
-   * photos before it are kept, and the count says so, so a retry is of the
-   * rest only.
+   * Upload photos to one stop, or with no stop to the trip as a whole, in
+   * order, stopping at the first failure. The photos before it are kept, and
+   * the count says so, so a retry is of the rest only.
    */
   const add = useCallback(
-    async (item: ItineraryRow, files: File[]): Promise<StopPhotosAdded> => {
+    async (item: ItineraryRow | null, files: File[]): Promise<StopPhotosAdded> => {
       const images = files.filter((f) => f.type.startsWith("image/"));
       const picked = images.slice(0, STOP_PHOTOS_PER_PICK);
       const skipped = files.length - picked.length;
@@ -107,7 +108,8 @@ export function useStopPhotos(
       // Photos added to a stop were taken there: pinned at the stop and
       // named after its town (asked once for the batch). A stop with no
       // place yet gives the trip's town and no pin, so the two never disagree.
-      const placed = item.lat != null && item.lon != null;
+      // A photo of the trip as a whole is named after the trip's town, unpinned.
+      const placed = item != null && item.lat != null && item.lon != null;
       const town = placed ? await reverseGeocode(item.lat!, item.lon!) : null;
       const city = town?.city || trip?.city || null;
       const country = town?.country || trip?.country || null;
@@ -119,10 +121,10 @@ export function useStopPhotos(
           const { error } = await supabase.from("photo_memories").insert({
             user_id: uid,
             storage_path: path,
-            itinerary_item_id: item.id,
-            // Set by the database from the stop as well; sent so the row
-            // reads the same before the trigger is there to fill it.
-            trip_id: item.trip_id,
+            itinerary_item_id: item?.id ?? null,
+            // Set by the database from a stop as well; sent so the row reads
+            // the same before the trigger is there to fill it.
+            trip_id: item?.trip_id ?? tripId,
             city,
             country,
             lat: placed ? item.lat : null,
@@ -142,7 +144,7 @@ export function useStopPhotos(
         if (added) await load();
       }
     },
-    [uid, trip?.city, trip?.country, load],
+    [uid, tripId, trip?.city, trip?.country, load],
   );
 
   /**
@@ -160,5 +162,5 @@ export function useStopPhotos(
     setPhotos((list) => list.filter((p) => p.id !== photo.id));
   }, []);
 
-  return { available, byStop, add, remove };
+  return { available, photos, byStop, add, remove };
 }

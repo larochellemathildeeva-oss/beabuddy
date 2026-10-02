@@ -77,6 +77,7 @@ import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { useStopPhotos } from "@/hooks/useStopPhotos";
+import { StopPhotos } from "@/components/day/StopPhotos";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
 import { ShareLinkCard } from "@/components/day/ShareLinkCard";
@@ -2593,6 +2594,7 @@ export function TripDetail({
         budgetOn={Boolean(trip.budget_enabled)}
         checkupNote={checkup ? checkupPill(checkup) : ""}
         preferencesCount={tripPrefs.list.length}
+        photosCount={stopPhotos.photos.length}
         onCalendar={() => {
           setSettingsOpen(false);
           const blob = new Blob([tripCalendar(trip, stopItems)], {
@@ -2840,6 +2842,18 @@ export function TripDetail({
               </div>
             )}
           </div>
+        )}
+
+        {sheetSection === "photos" && (
+          <StopPhotos
+            scope="trip"
+            title={trip.title}
+            photos={stopPhotos.photos}
+            available={stopPhotos.available}
+            uid={me.id}
+            onAdd={(files) => stopPhotos.add(null, files)}
+            onRemove={stopPhotos.remove}
+          />
         )}
 
         {sheetSection === "budget" && (

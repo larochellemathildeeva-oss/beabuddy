@@ -1,10 +1,12 @@
-import { useEffect, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { joinSheetStack } from "@/components/sheet-stack";
 import {
   ArrowLeft,
   Backpack,
   Bed,
   CalendarDays,
+  Camera,
   Car,
   ChevronRight,
   Copy,
@@ -32,7 +34,8 @@ export type TripMenuSection =
   | "customize"
   | "checkup"
   | "again"
-  | "preferences";
+  | "preferences"
+  | "photos";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -49,6 +52,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   checkup: "Trip checkup",
   again: "Do it again",
   preferences: "Just for this trip",
+  photos: "Trip photos",
 };
 
 /**
@@ -77,6 +81,7 @@ export function TripMenuSheet({
   onPrint,
   onCalendar,
   preferencesCount,
+  photosCount,
   footer,
   children,
 }: {
@@ -104,26 +109,33 @@ export function TripMenuSheet({
   onCalendar?: (() => void) | undefined;
   /** How many "just for this trip" preferences are set. */
   preferencesCount?: number | undefined;
+  /** How many photos are on the trip, its stops' included. */
+  photosCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
   children: ReactNode;
 }) {
+  // The latest values, read by the listener without leaving the stack on
+  // every render (a sheet opened over the menu must stay above it).
+  const latest = useRef({ section, onSection, onClose });
+  latest.current = { section, onSection, onClose };
   useEffect(() => {
     if (!open) return;
+    // On the same stack as `Sheet`: a photo or confirmation opened over the
+    // menu takes Escape first, and closing it keeps the page held.
+    const { isTop, leave } = joinSheetStack();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (section) onSection(null);
-        else onClose();
-      }
+      if (e.key !== "Escape" || !isTop()) return;
+      if (latest.current.section) latest.current.onSection(null);
+      else latest.current.onClose();
     };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      leave();
     };
-  }, [open, onClose, onSection, section]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -185,6 +197,14 @@ export function TripMenuSheet({
       note: "Late mornings, less walking…",
       pill: preferencesCount ? `${preferencesCount} set` : "",
       onClick: () => onSection("preferences"),
+    },
+    {
+      key: "photos",
+      icon: Camera,
+      title: "Photos",
+      note: "Add pictures to the trip",
+      pill: count(photosCount ?? 0, "photo", "photos"),
+      onClick: () => onSection("photos"),
     },
     {
       key: "budget",
