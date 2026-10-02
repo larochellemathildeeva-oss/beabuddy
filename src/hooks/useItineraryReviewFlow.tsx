@@ -61,7 +61,10 @@ type VersionRow = { id: string; updated_at: string };
 type AtomicScheduleRpc = (
   name: "apply_itinerary_schedule",
   args: { _trip_id: string; _updates: Json; _expected_versions: Json },
-) => Promise<{ data: Json | null; error: { code?: string | null; message?: string | null } | null }>;
+) => Promise<{
+  data: Json | null;
+  error: { code?: string | null; message?: string | null } | null;
+}>;
 
 const SCHEDULE_KEYS = new Set<keyof CardPatch>([
   "day_date",
@@ -76,7 +79,8 @@ function scheduleStops(items: readonly ItineraryRow[]): ItineraryRow[] {
 
 function schedulePatch(patch: CardPatch): SchedulePatch {
   const picked: SchedulePatch = {};
-  if (Object.prototype.hasOwnProperty.call(patch, "day_date")) picked.day_date = patch.day_date ?? null;
+  if (Object.prototype.hasOwnProperty.call(patch, "day_date"))
+    picked.day_date = patch.day_date ?? null;
   if (Object.prototype.hasOwnProperty.call(patch, "time_label")) {
     picked.time_label = patch.time_label ?? null;
   }
@@ -138,7 +142,10 @@ function baselineFor(
   );
 }
 
-function baselineChanged(baseline: ReadonlyMap<string, string>, stops: readonly ItineraryRow[]): boolean {
+function baselineChanged(
+  baseline: ReadonlyMap<string, string>,
+  stops: readonly ItineraryRow[],
+): boolean {
   const current = new Map(stops.map((stop) => [stop.id, scheduleSignature(stop)] as const));
   for (const [id, signature] of baseline) {
     if (current.get(id) !== signature) return true;
@@ -163,7 +170,10 @@ async function freshTripItems(tripId: string): Promise<ItineraryRow[]> {
   return (data ?? []) as unknown as ItineraryRow[];
 }
 
-async function committedVersions(tripId: string, ids: readonly string[]): Promise<Record<string, string>> {
+async function committedVersions(
+  tripId: string,
+  ids: readonly string[],
+): Promise<Record<string, string>> {
   if (ids.length === 0) return {};
   const { data, error } = await supabase
     .from("itinerary_items")
@@ -261,7 +271,8 @@ export function useItineraryReviewFlow({
       updates.map((update) => update.id),
     );
     const direct = result.shifts.find((shift) => !shift.downstream);
-    const title = summary || (updates.length === 1 ? "Change saved" : `${updates.length} changes applied`);
+    const title =
+      summary || (updates.length === 1 ? "Change saved" : `${updates.length} changes applied`);
     toast(title, {
       ...(direct?.toDayDate && direct.fromDayDate !== direct.toDayDate
         ? { description: `Moved to ${direct.toDayDate}.` }
@@ -349,7 +360,8 @@ export function useItineraryReviewFlow({
     <ReviewChangesSheet
       open={Boolean(pending)}
       result={pending?.result ?? null}
-      proposal={pending?.proposal ?? null}
+      changeSet={pending?.proposal.changeSet ?? null}
+      directIds={pending?.proposal.directIds ?? new Set<string>()}
       stops={stops}
       busy={busy}
       refreshed={pending?.refreshed ?? false}
