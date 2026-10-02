@@ -1,6 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { isItineraryVersionConflict, scheduleWritePlan } from "./itinerary-schedule-write.ts";
+import {
+  isItineraryVersionConflict,
+  scheduleWritePlan,
+} from "./itinerary-schedule-write.ts";
 
 type Row = {
   id: string;
@@ -78,5 +81,8 @@ test("version conflicts recognise the RPC SQLSTATE and message fallback", () => 
     isItineraryVersionConflict({ message: "itinerary_version_conflict:abc" }),
     true,
   );
-  assert.equal(isItineraryVersionConflict({ code: "23505", message: "duplicate" }), false);
+  assert.equal(
+    isItineraryVersionConflict({ code: "23505", message: "duplicate" }),
+    false,
+  );
 });
