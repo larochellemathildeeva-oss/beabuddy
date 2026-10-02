@@ -341,7 +341,7 @@ export function TimelineEntry({
           type="button"
           onClick={() => flip(true)}
           aria-expanded={false}
-          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
+          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
           className="block min-w-0 flex-1 text-left"
         >
           {parentTitle ? (
@@ -354,9 +354,16 @@ export function TimelineEntry({
           ) : null}
           <span
             className={`block break-words font-display text-[18.5px] leading-[1.15] ${
-              done ? "text-muted-foreground line-through" : ""
+              done ? "text-muted-foreground" : ""
             }`}
           >
+            {done ? (
+              <Check
+                className="mr-1 inline size-[18px] align-[-2px] text-nexttime"
+                strokeWidth={3}
+                aria-hidden
+              />
+            ) : null}
             {item.title}
           </span>
           <StopChips
@@ -578,7 +585,7 @@ export function TimelineEntry({
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
-        aria-label={`${rail ? `${rail}, ` : ""}${item.title} — show the whole card`}
+        aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
         className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
       >
         <span
@@ -586,9 +593,12 @@ export function TimelineEntry({
         >
           {rail || "–"}
         </span>
+        {done ? (
+          <Check className="size-4 shrink-0 text-nexttime" strokeWidth={3} aria-hidden />
+        ) : null}
         <span
           className={`min-w-0 flex-1 truncate text-[15px] font-medium ${
-            done ? "text-muted-foreground line-through" : ""
+            done ? "text-muted-foreground" : ""
           }`}
         >
           {item.title}
@@ -1119,9 +1129,7 @@ function InsidePill({
                 >
                   {entry.done ? <Check className="size-2.5" strokeWidth={3} aria-hidden /> : null}
                 </span>
-                <span className={entry.done ? "text-muted-foreground line-through" : ""}>
-                  {entry.title}
-                </span>
+                <span className={entry.done ? "text-muted-foreground" : ""}>{entry.title}</span>
               </button>
               {entry.note || entry.address ? (
                 <p className="-mt-1 mb-1 pl-6 text-[12px] leading-snug text-muted-foreground">
