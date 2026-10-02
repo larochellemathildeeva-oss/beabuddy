@@ -86,3 +86,54 @@ export function isItineraryVersionConflict(
     error?.code === "40001" || Boolean(error?.message?.includes("itinerary_version_conflict:"))
   );
 }
+
+/**
+ * The atomic RPC is not in the database (its migration is applied by hand):
+ * PostgREST answers PGRST202, Postgres 42883.
+ */
+export function isMissingScheduleRpc(
+  error: { code?: string | null; message?: string | null } | null | undefined,
+): boolean {
+  if (!error) return false;
+  return (
+    error.code === "PGRST202" ||
+    error.code === "42883" ||
+    /could not find the function|function .*apply_itinerary_schedule.* does not exist/i.test(
+      error.message ?? "",
+    )
+  );
+}
+
+/**
+ * Fold the rows the RPC returns (with their new `updated_at`) into the board,
+ * so a save queued right behind this one is checked against the versions this
+ * one wrote, not the ones it replaced. Fields the RPC did not return stay.
+ */
+export function mergeCommittedRows<T extends ScheduleWriteRow>(
+  rows: readonly T[],
+  committed: unknown,
+): T[] {
+  if (!Array.isArray(committed)) return [...rows];
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const row of committed) {
+    if (row && typeof row === "object" && typeof (row as { id?: unknown }).id === "string") {
+      byId.set((row as { id: string }).id, row as Record<string, unknown>);
+    }
+  }
+  return rows.map((row) => {
+    const saved = byId.get(row.id);
+    if (!saved) return row;
+    const next = { ...row } as Record<string, unknown>;
+    for (const key of [
+      "updated_at",
+      "day_date",
+      "time_label",
+      "position",
+      "planned_stay_minutes",
+      "time_locked",
+    ] as const) {
+      if (key in saved) next[key] = saved[key];
+    }
+    return next as T;
+  });
+}

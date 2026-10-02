@@ -20,8 +20,11 @@ import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache
 import { readOfflineTrip, readOfflineTrips, saveOfflineTrip } from "@/lib/offline-trip";
 import { ownTrips } from "@/lib/own-trips";
 import { reconcileItinerarySnapshot } from "@/lib/itinerary-concurrency";
+import { baseVersionsFor } from "@/lib/itinerary-concurrency";
 import {
   isItineraryVersionConflict,
+  isMissingScheduleRpc,
+  mergeCommittedRows,
   scheduleWritePlan,
   type ScheduleUpdate,
 } from "@/lib/itinerary-schedule-write";
@@ -589,9 +592,13 @@ export function useTrips() {
 export type Presence = { userId: string; name: string; editing: string | null };
 
 type PendingSchedule = {
+  /** Every row any save in this run touches, kept local against realtime. */
   touchedIds: Set<string>;
   baseVersions: Record<string, string>;
+  /** The confirmed board before the first save of the run. */
   before: ItineraryRow[];
+  /** Saves of this run not finished yet. */
+  inFlight: number;
 };
 
 type AtomicScheduleError = { code?: string | null; message?: string | null };
@@ -620,6 +627,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   tripIdRef.current = tripId;
   const itemsRef = useRef<ItineraryRow[]>([]);
   const pendingScheduleRef = useRef<PendingSchedule | null>(null);
+  /** Schedule saves go one at a time, each checked against the one before. */
+  const scheduleChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  /** Moves on when a save fails, so the saves queued behind it are dropped. */
+  const scheduleRunRef = useRef(0);
   /** Whether the nesting columns answered the last read. */
   const nestingReady = useRef(true);
   /** Whether the pin_check column answered the last read. */
@@ -1204,39 +1215,88 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
    * Write schedule geometry as one optimistic, version-checked transaction.
    * Existing callers still pass day/time/position; Phase 2 also allows
    * duration and the explicit time lock to travel through this same path.
+   *
+   * The board is read from `itemsRef`, never from this render's `items`: Undo
+   * and the toast buttons hold a copy of this function from before the save
+   * they undo, and its `items` would carry the versions that save replaced.
+   * Saves are queued, so two quick taps on one stop are checked one after the
+   * other; each is shown at once. A failed save puts the confirmed board back
+   * and drops the saves queued behind it, which were built on top of it.
    */
   const applySchedule = useCallback(
     async (updates: ScheduleUpdate[]) => {
       const id = tripIdRef.current;
       if (!id) throw new Error("Open a trip first");
       if (updates.length === 0) return;
-      await liveUserId(me.id);
+      const authorId = await liveUserId(me.id);
 
-      const plan = scheduleWritePlan(items, updates);
-      if (!plan) return;
-      pendingScheduleRef.current = {
-        touchedIds: plan.touchedIds,
-        baseVersions: plan.baseVersions,
-        before: plan.before,
+      const shown = scheduleWritePlan(itemsRef.current, updates);
+      if (!shown) return;
+      const run = scheduleRunRef.current;
+      const pending: PendingSchedule = pendingScheduleRef.current ?? {
+        touchedIds: new Set(),
+        baseVersions: {},
+        before: shown.before,
+        inFlight: 0,
       };
-      itemsRef.current = plan.optimistic;
-      setItems(plan.optimistic);
+      for (const touched of shown.touchedIds) {
+        pending.touchedIds.add(touched);
+        if (!(touched in pending.baseVersions) && shown.baseVersions[touched]) {
+          pending.baseVersions[touched] = shown.baseVersions[touched]!;
+        }
+      }
+      pending.inFlight += 1;
+      pendingScheduleRef.current = pending;
+      itemsRef.current = shown.optimistic;
+      setItems(shown.optimistic);
 
       const rpc = supabase.rpc as unknown as AtomicScheduleRpc;
-      try {
-        const { error } = await rpc("apply_itinerary_schedule", {
+      const send = async () => {
+        if (scheduleRunRef.current !== run) {
+          throw Object.assign(new Error("itinerary_version_conflict: an earlier save failed"), {
+            code: "40001",
+          });
+        }
+        // Versions as they stand now: a save queued ahead of this one has
+        // already moved them.
+        const expected = baseVersionsFor(itemsRef.current, shown.touchedIds);
+        const { data, error } = await rpc("apply_itinerary_schedule", {
           _trip_id: id,
-          _updates: plan.updates as unknown as Json,
-          _expected_versions: plan.baseVersions as unknown as Json,
+          _updates: shown.updates as unknown as Json,
+          _expected_versions: expected as unknown as Json,
         });
+        if (error && isMissingScheduleRpc(error)) {
+          // The migration is applied by hand. Until it is, save a row at a
+          // time, as before, with no version check.
+          console.warn("apply_itinerary_schedule is missing; saving schedule row by row");
+          for (const row of shown.updates) {
+            const { id: rowId, ...fields } = row;
+            const { error: rowError } = await supabase
+              .from("itinerary_items")
+              // time_locked is not in the generated types until its migration.
+              .update({ ...fields, updated_by: authorId } as never)
+              .eq("id", rowId)
+              .eq("trip_id", id);
+            if (rowError) throw rowError;
+          }
+          return;
+        }
         if (error) throw error;
-        pendingScheduleRef.current = null;
-        await load();
+        itemsRef.current = mergeCommittedRows(itemsRef.current, data);
+        setItems(itemsRef.current);
+      };
+      const sent = scheduleChainRef.current.then(send);
+      scheduleChainRef.current = sent.catch(() => undefined);
+
+      try {
+        await sent;
       } catch (error) {
-        pendingScheduleRef.current = null;
-        itemsRef.current = plan.before;
-        setItems(plan.before);
-        await load();
+        // Only while this run is still the board's: not after the trip changed.
+        if (scheduleRunRef.current === run && pendingScheduleRef.current === pending) {
+          scheduleRunRef.current += 1;
+          itemsRef.current = pending.before;
+          setItems(pending.before);
+        }
         // Keep a recognisable message for Phase 3's Review UI while preserving
         // the original RPC error for existing callers and diagnostics.
         if (isItineraryVersionConflict(error as AtomicScheduleError)) {
@@ -1246,9 +1306,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           });
         }
         throw error;
+      } finally {
+        pending.inFlight -= 1;
+        if (pending.inFlight === 0 && pendingScheduleRef.current === pending) {
+          pendingScheduleRef.current = null;
+          await load();
+        }
       }
     },
-    [me.id, items, load],
+    [me.id, load],
   );
 
   const removeItem = useCallback(
