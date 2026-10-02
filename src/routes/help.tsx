@@ -5,6 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { AiPromptCopy } from "@/components/AiPromptSheet";
 import { startWalk } from "@/lib/tour-start";
 import { WalkCards } from "@/components/WalkCards";
+import { SupademoTourCard } from "@/components/SupademoTourCard";
 import { HELP_CLOSING, HELP_WELCOME, searchHelp, type Faq } from "@/lib/help-faq";
 
 export const Route = createFileRoute("/help")({
@@ -132,6 +133,8 @@ function HelpPage() {
             />
           </div>
         </section>
+
+        {!searching && <SupademoTourCard />}
 
         {!searching && (
           <section className="space-y-3">
