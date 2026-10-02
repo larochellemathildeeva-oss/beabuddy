@@ -11,12 +11,23 @@ import { TRAVEL_STYLES, TRIP_PACES } from "@/lib/travel-style-options";
 import {
   markWelcomeDone,
   shouldShowWelcome,
+  WELCOME_DONE_KEY,
   WELCOME_DONE_META,
   WELCOME_GOALS,
   type WelcomeGoal,
 } from "@/lib/welcome";
 
 const STEPS = ["intro", "goal", "style", "look", "ready"] as const;
+
+/** Tell the account the welcome is done, for every other device. */
+async function markAccountDone(): Promise<boolean> {
+  try {
+    const { error } = await supabase.auth.updateUser({ data: { [WELCOME_DONE_META]: true } });
+    return !error;
+  } catch {
+    return false;
+  }
+}
 type Step = (typeof STEPS)[number];
 
 /**
@@ -41,6 +52,13 @@ export function Welcome() {
    */
   const dismissed = useRef<Set<string>>(new Set());
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  /** Numbers each save, so only the latest one's answer counts. */
+  const saveSeq = useRef(0);
+  /** The save still on its way, if any: finishing waits for it. */
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  /** Accounts whose account-level mark was already retried this page load. */
+  const markRetried = useRef<Set<string>>(new Set());
 
   const userId = user?.id ?? null;
   const doneOnAccount = user?.user_metadata?.[WELCOME_DONE_META] === true;
@@ -54,7 +72,20 @@ export function Welcome() {
       setStyle(null);
       setPace(null);
       setSaveFailed(false);
+      saveSeq.current += 1;
+      pendingSave.current = null;
       return;
+    }
+    // Closed on this device, but the account never heard (the write failed):
+    // try once more, so the next device does not ask again.
+    if (
+      userId &&
+      !doneOnAccount &&
+      !markRetried.current.has(userId) &&
+      safeStorage().getItem(`${WELCOME_DONE_KEY}:${userId}`) === "yes"
+    ) {
+      markRetried.current.add(userId);
+      void markAccountDone();
     }
     if (openFor || !userId || dismissed.current.has(userId)) return;
     const show = shouldShowWelcome(safeStorage(), {
@@ -74,8 +105,9 @@ export function Welcome() {
     if (!open) return;
     const before = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
-    // After the portal paints, or the page keeps the focus it had.
-    const frame = requestAnimationFrame(() => dialogRef.current?.focus());
+    // After the portal paints, or the page keeps the focus it had. The panel
+    // takes it, ringed for keyboard users.
+    const frame = requestAnimationFrame(() => panelRef.current?.focus());
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Tab" || !dialog) return;
       const items = [
@@ -86,7 +118,10 @@ export function Welcome() {
       const first = items[0];
       const last = items[items.length - 1];
       if (!first || !last) return;
-      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+      if (
+        e.shiftKey &&
+        (document.activeElement === first || document.activeElement === panelRef.current)
+      ) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
@@ -107,28 +142,52 @@ export function Welcome() {
   const close = () => {
     dismissed.current.add(user.id);
     markWelcomeDone(safeStorage(), user.id);
-    // On the account too, so another device does not ask again. Best effort:
-    // the device mark above already keeps it closed here.
-    void supabase.auth.updateUser({ data: { [WELCOME_DONE_META]: true } }).then(
-      () => undefined,
-      () => undefined,
-    );
+    // On the account too, so another device does not ask again. If that
+    // fails, the next visit here tries again (above).
+    void markAccountDone();
     setOpenFor(null);
   };
 
-  const saveStyle = async () => {
-    if (!style && !pace) return;
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      ...(style ? { travel_style: style } : {}),
-      ...(pace ? { trip_pace: pace } : {}),
+  /** Leave the welcome, once any style save has answered: a failure shows first. */
+  const finish = async (then: () => void) => {
+    const saving = pendingSave.current;
+    // A failure stops the first tap, to show its message; the next tap goes.
+    pendingSave.current = null;
+    if (saving && !(await saving)) return;
+    close();
+    then();
+  };
+
+  const saveStyle = () => {
+    const seq = ++saveSeq.current;
+    setSaveFailed(false);
+    if (!style && !pace) {
+      pendingSave.current = null;
+      return;
+    }
+    const forAccount = user.id;
+    const saving = Promise.resolve(
+      supabase.from("profiles").upsert({
+        id: forAccount,
+        ...(style ? { travel_style: style } : {}),
+        ...(pace ? { trip_pace: pace } : {}),
+      }),
+    ).then(
+      ({ error }) => !error,
+      () => false,
+    );
+    pendingSave.current = saving.then((ok) => {
+      // Only the latest save gets a say; a change of account bumps the count,
+      // so an earlier account's answer never lands here.
+      if (seq !== saveSeq.current) return true;
+      setSaveFailed(!ok);
+      return ok;
     });
-    setSaveFailed(Boolean(error));
   };
 
   const index = STEPS.indexOf(step);
   const next = () => {
-    if (step === "style") void saveStyle();
+    if (step === "style") saveStyle();
     setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]!);
   };
   const back = () => setStep(STEPS[Math.max(index - 1, 0)]!);
@@ -136,13 +195,16 @@ export function Welcome() {
   return createPortal(
     <div
       ref={dialogRef}
-      tabIndex={-1}
       role="dialog"
       aria-modal="true"
       aria-label="Welcome to Béa"
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 outline-none sm:items-center"
+      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 sm:items-center"
     >
-      <div className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
         <div className="flex items-center justify-between px-5 pt-4">
           <div className="flex gap-1.5" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
             {STEPS.map((s, n) => (
@@ -342,8 +404,7 @@ export function Welcome() {
               <button
                 type="button"
                 onClick={() => {
-                  close();
-                  void navigate({ to: goal.to });
+                  void finish(() => void navigate({ to: goal.to }));
                 }}
                 className="btn-primary px-4 py-3 text-[15px]"
               >
@@ -352,8 +413,7 @@ export function Welcome() {
               <button
                 type="button"
                 onClick={() => {
-                  close();
-                  startWalk(goal.id);
+                  void finish(() => startWalk(goal.id));
                 }}
                 className="rounded-full border border-border px-4 py-2.5 text-[14.5px] font-semibold"
               >

@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { safeChoice } from "./travel-style-options.ts";
+import {
+  listedChoices,
+  TRAVEL_BUDGETS,
+  TRAVEL_STYLES,
+  TRIP_PACES,
+} from "./travel-style-options.ts";
 import type { Database } from "@/integrations/supabase/types";
 
 type PreferenceContext = {
@@ -44,9 +49,9 @@ export async function getTravelPreferences(context: PreferenceContext): Promise<
 
   return {
     tags: (data.preferences ?? []).filter(Boolean).slice(0, 40),
-    travelStyle: safeChoice(data.travel_style),
-    budgetLevel: safeChoice(data.budget_level),
-    tripPace: safeChoice(data.trip_pace),
+    travelStyle: listedChoices(data.travel_style, TRAVEL_STYLES),
+    budgetLevel: listedChoices(data.budget_level, TRAVEL_BUDGETS),
+    tripPace: listedChoices(data.trip_pace, TRIP_PACES),
     preferredCountries: (data.preferred_countries ?? []).filter(Boolean).slice(0, 30),
     dietaryNotes: data.dietary_notes ?? null,
     avoidNotes: data.avoid_notes ?? null,
