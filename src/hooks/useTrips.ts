@@ -19,6 +19,15 @@ import { generateInviteCode, inviteExpiresAt } from "@/lib/trip-invite";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 import { readOfflineTrip, readOfflineTrips, saveOfflineTrip } from "@/lib/offline-trip";
 import { ownTrips } from "@/lib/own-trips";
+import { reconcileItinerarySnapshot } from "@/lib/itinerary-concurrency";
+import { baseVersionsFor } from "@/lib/itinerary-concurrency";
+import {
+  isItineraryVersionConflict,
+  isMissingScheduleRpc,
+  mergeCommittedRows,
+  scheduleWritePlan,
+  type ScheduleUpdate,
+} from "@/lib/itinerary-schedule-write";
 
 /** Cached after the first select/insert: the live DB may not have this column yet. */
 let datesStatusColumnAvailable: boolean | null = null;
@@ -194,6 +203,11 @@ export type ItineraryRow = {
   booking_ref?: string | null;
   booking_details?: string | null;
   /**
+   * Traveller override for time semantics. null/undefined derives the default:
+   * booked + clock starts Fixed, another clock starts Flexible, no clock is Sequence-only.
+   */
+  time_locked?: boolean | null;
+  /**
    * The stop this one is inside (the Cenotaph in the park), and what to see
    * inside this one. Absent until the nesting migration is applied.
    */
@@ -211,18 +225,27 @@ const ITINERARY_COLUMNS =
 const BOOKING_COLUMN_NAMES = ["booked", "booking_ref", "booking_details"];
 const NESTING_COLUMN_NAMES = ["parent_id", "inside"];
 const PIN_CHECK_COLUMN_NAMES = ["pin_check"];
+const TIME_LOCK_COLUMN_NAMES = ["time_locked"];
 /** Columns that arrive with migrations applied by hand, asked for only while they answer. */
-const OPTIONAL_COLUMN_GROUPS = [BOOKING_COLUMN_NAMES, NESTING_COLUMN_NAMES, PIN_CHECK_COLUMN_NAMES];
+const OPTIONAL_COLUMN_GROUPS = [
+  BOOKING_COLUMN_NAMES,
+  NESTING_COLUMN_NAMES,
+  PIN_CHECK_COLUMN_NAMES,
+  TIME_LOCK_COLUMN_NAMES,
+];
 
 /**
  * A trip's timeline rows, or null when the read failed (no signal, an expired
- * token). The booking, nesting and pin-check columns arrive with migrations
- * applied by hand; until one runs, asking for its columns fails the whole read, so it is
- * asked again without them.
+ * token). Optional columns arrive with migrations applied by hand; until one
+ * runs, asking for its columns fails the whole read, so it is asked again
+ * without the unavailable group.
  */
-async function selectTripItems(
-  tripId: string,
-): Promise<{ items: ItineraryRow[]; nesting: boolean; pinCheck: boolean } | null> {
+async function selectTripItems(tripId: string): Promise<{
+  items: ItineraryRow[];
+  nesting: boolean;
+  pinCheck: boolean;
+  timeLock: boolean;
+} | null> {
   const query = (columns: string) =>
     supabase
       .from("itinerary_items")
@@ -242,6 +265,7 @@ async function selectTripItems(
   return {
     nesting: groups.includes(NESTING_COLUMN_NAMES),
     pinCheck: groups.includes(PIN_CHECK_COLUMN_NAMES),
+    timeLock: groups.includes(TIME_LOCK_COLUMN_NAMES),
     items: ((data ?? []) as unknown as (ItineraryRow & { inside?: unknown })[]).map((row) =>
       "inside" in row ? { ...row, inside: readInside(row.inside) } : row,
     ),
@@ -567,6 +591,23 @@ export function useTrips() {
 
 export type Presence = { userId: string; name: string; editing: string | null };
 
+type PendingSchedule = {
+  /** Every row any save in this run touches, kept local against realtime. */
+  touchedIds: Set<string>;
+  baseVersions: Record<string, string>;
+  /** The confirmed board before the first save of the run. */
+  before: ItineraryRow[];
+  /** Saves of this run not finished yet. */
+  inFlight: number;
+};
+
+type AtomicScheduleError = { code?: string | null; message?: string | null };
+
+type AtomicScheduleRpc = (
+  name: "apply_itinerary_schedule",
+  args: { _trip_id: string; _updates: Json; _expected_versions: Json },
+) => Promise<{ data: Json | null; error: AtomicScheduleError | null }>;
+
 export function useTripBoard(tripId: string | null, me: { id: string | null; name: string }) {
   const [items, setItems] = useState<ItineraryRow[]>([]);
   const [invites, setInvites] = useState<
@@ -584,6 +625,12 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   const channelRef = useRef<RealtimeChannel | null>(null);
   const tripIdRef = useRef(tripId);
   tripIdRef.current = tripId;
+  const itemsRef = useRef<ItineraryRow[]>([]);
+  const pendingScheduleRef = useRef<PendingSchedule | null>(null);
+  /** Schedule saves go one at a time, each checked against the one before. */
+  const scheduleChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  /** Moves on when a save fails, so the saves queued behind it are dropped. */
+  const scheduleRunRef = useRef(0);
   /** Whether the nesting columns answered the last read. */
   const nestingReady = useRef(true);
   /** Whether the pin_check column answered the last read. */
@@ -598,10 +645,10 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
    * is what "my directions got erased after leaving and coming back" was: the
    * rows were still in the database, and this had blanked the view.
    *
-   * Every path here reloads through this one function, including the realtime
-   * subscription that fires right after a batch of legs is added, so the
-   * window for it was wide. Keeping what we already have is always better
-   * than showing an empty trip we cannot vouch for.
+   * While an atomic schedule ChangeSet is still saving, realtime may deliver
+   * its own snapshot before the RPC resolves. Untouched rows may update, but a
+   * touched row keeps the optimistic local value until the write succeeds or
+   * fails, so collaboration never makes the card snap back under the finger.
    */
   const load = useCallback(async () => {
     if (!tripId) return;
@@ -611,13 +658,31 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       // phone, and only while nothing better is on screen.
       if (me.id) {
         const kept = readOfflineTrip<TripRow, MemberRow, ItineraryRow>(localStorage, tripId, me.id);
-        if (kept) setItems((cur) => (cur.length ? cur : kept.items));
+        if (kept)
+          setItems((cur) => {
+            if (cur.length) return cur;
+            itemsRef.current = kept.items;
+            return kept.items;
+          });
       }
       return;
     }
     nestingReady.current = read.nesting;
     pinCheckReady.current = read.pinCheck;
-    setItems(read.items);
+    const pending = pendingScheduleRef.current;
+    if (pending) {
+      const reconciled = reconcileItinerarySnapshot(
+        itemsRef.current,
+        read.items,
+        pending.touchedIds,
+        pending.baseVersions,
+      );
+      itemsRef.current = reconciled.rows;
+      setItems(reconciled.rows);
+    } else {
+      itemsRef.current = read.items;
+      setItems(read.items);
+    }
     const { data: inv, error: invError } = await supabase
       .from("trip_invites")
       .select("code, email, accepted_at, expires_at, revoked_at, use_count, max_uses")
@@ -628,6 +693,8 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   }, [tripId, me.id]);
 
   useEffect(() => {
+    itemsRef.current = [];
+    pendingScheduleRef.current = null;
     setItems([]);
     setPresent([]);
     void load();
@@ -1145,46 +1212,109 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
   );
 
   /**
-   * Write new days, times and places in the list, for Optimize and for
-   * moving stops (`stop-move.ts` works out which rows change).
+   * Write schedule geometry as one optimistic, version-checked transaction.
+   * Existing callers still pass day/time/position; Phase 2 also allows
+   * duration and the explicit time lock to travel through this same path.
+   *
+   * The board is read from `itemsRef`, never from this render's `items`: Undo
+   * and the toast buttons hold a copy of this function from before the save
+   * they undo, and its `items` would carry the versions that save replaced.
+   * Saves are queued, so two quick taps on one stop are checked one after the
+   * other; each is shown at once. A failed save puts the confirmed board back
+   * and drops the saves queued behind it, which were built on top of it.
    */
   const applySchedule = useCallback(
-    async (
-      updates: Array<{
-        id: string;
-        day_date: string | null;
-        time_label: string | null;
-        position: number;
-      }>,
-    ) => {
+    async (updates: ScheduleUpdate[]) => {
       const id = tripIdRef.current;
       if (!id) throw new Error("Open a trip first");
       if (updates.length === 0) return;
       const authorId = await liveUserId(me.id);
-      const known = new Set(items.map((item) => item.id));
-      // One write a row, not a transaction: when one fails part way, the
-      // list still reloads, so it shows what was saved rather than the plan
-      // before, and the error reaches the caller.
-      try {
-        for (const row of updates) {
-          if (!known.has(row.id)) continue;
-          const { error } = await supabase
-            .from("itinerary_items")
-            .update({
-              day_date: row.day_date,
-              time_label: row.time_label,
-              position: row.position,
-              updated_by: authorId,
-            })
-            .eq("id", row.id)
-            .eq("trip_id", id);
-          if (error) throw error;
+
+      const shown = scheduleWritePlan(itemsRef.current, updates);
+      if (!shown) return;
+      const run = scheduleRunRef.current;
+      const pending: PendingSchedule = pendingScheduleRef.current ?? {
+        touchedIds: new Set(),
+        baseVersions: {},
+        before: shown.before,
+        inFlight: 0,
+      };
+      for (const touched of shown.touchedIds) {
+        pending.touchedIds.add(touched);
+        if (!(touched in pending.baseVersions) && shown.baseVersions[touched]) {
+          pending.baseVersions[touched] = shown.baseVersions[touched]!;
         }
+      }
+      pending.inFlight += 1;
+      pendingScheduleRef.current = pending;
+      itemsRef.current = shown.optimistic;
+      setItems(shown.optimistic);
+
+      const rpc = supabase.rpc as unknown as AtomicScheduleRpc;
+      const send = async () => {
+        if (scheduleRunRef.current !== run) {
+          throw Object.assign(new Error("itinerary_version_conflict: an earlier save failed"), {
+            code: "40001",
+          });
+        }
+        // Versions as they stand now: a save queued ahead of this one has
+        // already moved them.
+        const expected = baseVersionsFor(itemsRef.current, shown.touchedIds);
+        const { data, error } = await rpc("apply_itinerary_schedule", {
+          _trip_id: id,
+          _updates: shown.updates as unknown as Json,
+          _expected_versions: expected as unknown as Json,
+        });
+        if (error && isMissingScheduleRpc(error)) {
+          // The migration is applied by hand. Until it is, save a row at a
+          // time, as before, with no version check.
+          console.warn("apply_itinerary_schedule is missing; saving schedule row by row");
+          for (const row of shown.updates) {
+            const { id: rowId, ...fields } = row;
+            const { error: rowError } = await supabase
+              .from("itinerary_items")
+              // time_locked is not in the generated types until its migration.
+              .update({ ...fields, updated_by: authorId } as never)
+              .eq("id", rowId)
+              .eq("trip_id", id);
+            if (rowError) throw rowError;
+          }
+          return;
+        }
+        if (error) throw error;
+        itemsRef.current = mergeCommittedRows(itemsRef.current, data);
+        setItems(itemsRef.current);
+      };
+      const sent = scheduleChainRef.current.then(send);
+      scheduleChainRef.current = sent.catch(() => undefined);
+
+      try {
+        await sent;
+      } catch (error) {
+        // Only while this run is still the board's: not after the trip changed.
+        if (scheduleRunRef.current === run && pendingScheduleRef.current === pending) {
+          scheduleRunRef.current += 1;
+          itemsRef.current = pending.before;
+          setItems(pending.before);
+        }
+        // Keep a recognisable message for Phase 3's Review UI while preserving
+        // the original RPC error for existing callers and diagnostics.
+        if (isItineraryVersionConflict(error as AtomicScheduleError)) {
+          throw Object.assign(new Error("The itinerary changed while you were editing."), {
+            cause: error,
+            code: "ITINERARY_VERSION_CONFLICT",
+          });
+        }
+        throw error;
       } finally {
-        await load();
+        pending.inFlight -= 1;
+        if (pending.inFlight === 0 && pendingScheduleRef.current === pending) {
+          pendingScheduleRef.current = null;
+          await load();
+        }
       }
     },
-    [me.id, items, load],
+    [me.id, load],
   );
 
   const removeItem = useCallback(
