@@ -54,6 +54,7 @@ import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { isDone, leaveBy } from "@/lib/companion";
+import { timeModeFor, type TimeMode } from "@/lib/itinerary-change";
 import type { RouteLeg } from "@/lib/directions.functions";
 import { mapsDirToUrl, mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
 import { rememberPlacePick, type ParsedPlace } from "@/lib/places.functions";
@@ -69,6 +70,12 @@ import {
   type TimelineKind,
 } from "@/lib/timeline-kind";
 import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini-map";
+
+const TIME_MODES: { value: TimeMode; label: string }[] = [
+  { value: "fixed", label: "Fixed" },
+  { value: "flexible", label: "Flexible" },
+  { value: "sequence", label: "Sequence only" },
+];
 
 /**
  * One stop on the Timeline tab, as a card with two sides.
@@ -142,6 +149,7 @@ export function TimelineEntry({
         | "lat"
         | "lon"
         | "planned_stay_minutes"
+        | "time_locked"
       >
     >,
   ) => void;
@@ -221,6 +229,7 @@ export function TimelineEntry({
   const insideDone = inside.filter((entry) => entry.done).length;
   const booked = isBooked(item);
   const rail = timeForRail(item.time_label);
+  const timeMode = timeModeFor(item);
   const done = isDone(item);
   const detail = stripEmbeddedMapsUrl(item.detail);
   const canKeep = Boolean(onKeep) && item.kind !== "note";
@@ -595,6 +604,21 @@ export function TimelineEntry({
   const field =
     "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
   const caption = "mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground";
+  const timeModeNote =
+    timeMode === "fixed"
+      ? "Keep this time. Béa won’t move it."
+      : timeMode === "flexible"
+        ? "Béa may shift this time to keep the day workable."
+        : "Keep its place in the day, without a clock time.";
+
+  const chooseTimeMode = (mode: TimeMode) => {
+    if (mode === "sequence") {
+      onUpdate({ time_label: null, time_locked: null });
+      return;
+    }
+    if (!rail) return;
+    onUpdate({ time_locked: mode === "fixed" });
+  };
 
   // The back: its # and kind over the fields. Each field is kept to one short
   // line, so a phone sees most of it at once.
@@ -624,7 +648,7 @@ export function TimelineEntry({
       </div>
 
       {/* Three across when the card has room; on a narrow phone (touch fields
-          are held at 16px) the date takes its own line, time and stay under it. */}
+          are held at 16px) the date takes its own line, time and duration under it. */}
       <div className="@container mt-2.5">
         <div className="grid grid-cols-2 gap-1.5 @[24rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <label className="col-span-2 min-w-0 @[24rem]:col-span-1">
@@ -660,7 +684,7 @@ export function TimelineEntry({
           <label className="min-w-0">
             <span className={caption}>
               <Hourglass className="size-3.5" aria-hidden />
-              Stay
+              Duration
             </span>
             <select
               value={item.planned_stay_minutes ?? ""}
@@ -678,6 +702,39 @@ export function TimelineEntry({
           </label>
         </div>
       </div>
+
+      <fieldset className="mt-2.5 min-w-0">
+        <legend className={caption}>
+          <Clock className="size-3.5" aria-hidden />
+          Time behavior
+        </legend>
+        <div className="grid grid-cols-3 gap-1 rounded-xl bg-elevated p-1">
+          {TIME_MODES.map((mode) => {
+            const active = timeMode === mode.value;
+            const disabled = mode.value !== "sequence" && !rail;
+            return (
+              <button
+                key={mode.value}
+                type="button"
+                aria-pressed={active}
+                disabled={disabled}
+                onClick={() => chooseTimeMode(mode.value)}
+                className={`min-h-10 rounded-lg px-2 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+                  active
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "bg-card text-muted-foreground"
+                }`}
+              >
+                {mode.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-1.5 px-0.5 text-[12px] leading-snug text-muted-foreground">
+          {timeModeNote}
+          {!rail ? " Add a clock time to choose Fixed or Flexible." : ""}
+        </p>
+      </fieldset>
 
       <div className="mt-2.5">
         <span className={caption}>

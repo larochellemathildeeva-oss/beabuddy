@@ -1109,78 +1109,6 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
     [tripId, me.id, items, load, shiftPositions],
   );
 
-  const updateItem = useCallback(
-    async (
-      id: string,
-      patch: Partial<
-        Pick<
-          ItineraryRow,
-          | "title"
-          | "detail"
-          | "time_label"
-          | "kind"
-          | "day_date"
-          | "address"
-          | "lat"
-          | "lon"
-          | "planned_stay_minutes"
-          | "booked"
-          | "booking_ref"
-          | "booking_details"
-          | "parent_id"
-          | "inside"
-          | "pin_check"
-        >
-      >,
-    ) => {
-      const { inside, ...rest } = patch;
-      // A new day or time moves the stop to its place on that day, so the
-      // list keeps reading in time order. Nothing else's time changes.
-      let position: number | undefined;
-      const current = items.find((item) => item.id === id);
-      if (current && ("day_date" in patch || "time_label" in patch)) {
-        const day = "day_date" in patch ? (patch.day_date ?? null) : current.day_date;
-        const time = "time_label" in patch ? (patch.time_label ?? null) : current.time_label;
-        const moved =
-          (day ?? "") !== (current.day_date ?? "") ||
-          clockMinutes(time) !== clockMinutes(current.time_label);
-        // Includes clearing a time: an untimed stop goes to the end of its day.
-        if (moved) {
-          const slot = chronologicalSlot(
-            items,
-            { day_date: day, time_label: time },
-            clockMinutes,
-            id,
-          );
-          await shiftPositions(slot.shifts, me.id);
-          position = slot.position;
-        }
-      }
-      // A place set by hand is the traveller's own: whatever Béa was unsure
-      // of about the old pin no longer applies.
-      const clearsCheck =
-        pinCheckReady.current && Boolean(current?.pin_check) && ("lat" in patch || "lon" in patch);
-      const write = (withCheck: boolean) =>
-        supabase
-          .from("itinerary_items")
-          .update({
-            ...rest,
-            ...(position !== undefined ? { position } : {}),
-            ...(inside ? { inside: inside as unknown as Json } : {}),
-            ...(withCheck ? { pin_check: null } : {}),
-            updated_by: me.id,
-          })
-          .eq("id", id);
-      let { error } = await write(clearsCheck);
-      if (error && clearsCheck && isMissingColumn(error, PIN_CHECK_COLUMN_NAMES)) {
-        ({ error } = await write(false));
-      }
-      if (error) throw error;
-      await load();
-    },
-    [me.id, items, load, shiftPositions],
-  );
-
   /**
    * Record arriving at or leaving stops, several rows in one gesture.
    *
@@ -1315,6 +1243,108 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       }
     },
     [me.id, load],
+  );
+
+  /**
+   * Update one card without making schedule fields a second write path.
+   *
+   * Day, time, duration and the Fixed/Flexible override all use the same
+   * optimistic/version-checked RPC as drag, Move to… and Béa edits. When a
+   * day or time change changes where the row belongs, every displaced
+   * position is part of that same transaction. Everything else on the card
+   * keeps the ordinary row update path.
+   */
+  const updateItem = useCallback(
+    async (
+      id: string,
+      patch: Partial<
+        Pick<
+          ItineraryRow,
+          | "title"
+          | "detail"
+          | "time_label"
+          | "kind"
+          | "day_date"
+          | "address"
+          | "lat"
+          | "lon"
+          | "planned_stay_minutes"
+          | "time_locked"
+          | "booked"
+          | "booking_ref"
+          | "booking_details"
+          | "parent_id"
+          | "inside"
+          | "pin_check"
+        >
+      >,
+    ) => {
+      const { inside, day_date, time_label, planned_stay_minutes, time_locked, ...rest } = patch;
+      const owns = (key: keyof typeof patch) => Object.prototype.hasOwnProperty.call(patch, key);
+      const changesSchedule =
+        owns("day_date") ||
+        owns("time_label") ||
+        owns("planned_stay_minutes") ||
+        owns("time_locked");
+      const current = itemsRef.current.find((item) => item.id === id);
+
+      if (changesSchedule) {
+        if (!current) throw new Error("That stop is no longer in the itinerary.");
+        const schedule: ScheduleUpdate = { id };
+        if (owns("day_date")) schedule.day_date = day_date ?? null;
+        if (owns("time_label")) schedule.time_label = time_label ?? null;
+        if (owns("planned_stay_minutes")) {
+          schedule.planned_stay_minutes = planned_stay_minutes ?? null;
+        }
+        if (owns("time_locked")) schedule.time_locked = time_locked ?? null;
+
+        const day = owns("day_date") ? (day_date ?? null) : current.day_date;
+        const time = owns("time_label") ? (time_label ?? null) : current.time_label;
+        const moved =
+          (day ?? "") !== (current.day_date ?? "") ||
+          clockMinutes(time) !== clockMinutes(current.time_label);
+        const updates: ScheduleUpdate[] = [];
+        if (moved) {
+          const slot = chronologicalSlot(
+            itemsRef.current,
+            { day_date: day, time_label: time },
+            clockMinutes,
+            id,
+          );
+          updates.push(...slot.shifts.map((shift) => ({ ...shift })));
+          schedule.position = slot.position;
+        }
+        updates.push(schedule);
+        await applySchedule(updates);
+      }
+
+      // Schedule-only edits are done. A mixed patch is still allowed for
+      // callers that update another field at the same time, but schedule
+      // geometry never leaks back into this ordinary row write.
+      if (Object.keys(rest).length === 0 && inside === undefined) return;
+
+      // A place set by hand is the traveller's own: whatever Béa was unsure
+      // of about the old pin no longer applies.
+      const clearsCheck =
+        pinCheckReady.current && Boolean(current?.pin_check) && ("lat" in rest || "lon" in rest);
+      const write = (withCheck: boolean) =>
+        supabase
+          .from("itinerary_items")
+          .update({
+            ...rest,
+            ...(inside ? { inside: inside as unknown as Json } : {}),
+            ...(withCheck ? { pin_check: null } : {}),
+            updated_by: me.id,
+          })
+          .eq("id", id);
+      let { error } = await write(clearsCheck);
+      if (error && clearsCheck && isMissingColumn(error, PIN_CHECK_COLUMN_NAMES)) {
+        ({ error } = await write(false));
+      }
+      if (error) throw error;
+      await load();
+    },
+    [me.id, load, applySchedule],
   );
 
   const removeItem = useCallback(
