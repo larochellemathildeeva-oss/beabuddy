@@ -232,7 +232,8 @@ function travelResolver(stops: readonly ScheduleStop[], options: CheckOptions) {
 
 function applyChange(schedule: ScheduleStop[], change: ProposedChange): boolean {
   if (change.type === "insert") {
-    if (schedule.some((stop) => stop.id === change.tempStopId || stop.id === change.stop.id)) return false;
+    if (schedule.some((stop) => stop.id === change.tempStopId || stop.id === change.stop.id))
+      return false;
     schedule.push({ ...change.stop, id: change.tempStopId || change.stop.id });
     return true;
   }
