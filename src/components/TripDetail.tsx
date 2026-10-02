@@ -95,6 +95,11 @@ import {
 } from "@/lib/trip-days";
 import { dropMove, rearrange, stepMove, timeFit, tripDays, type StopMove } from "@/lib/stop-move";
 import { MoveStopSheet } from "@/components/day/MoveStopSheet";
+import { ReviewChangesSheet } from "@/components/day/ReviewChangesSheet";
+import { useScheduleReview } from "@/hooks/useScheduleReview";
+import type { TravelLeg } from "@/lib/itinerary-change";
+import { changeSetForMoves, changeSetForSchedulePatch } from "@/lib/itinerary-review";
+import type { SchedulePatch, ScheduleUpdate } from "@/lib/itinerary-schedule-write";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { beaTripNote } from "@/lib/trip-note";
 import { dayTightnessNote, minutesUntilLabel, nextUp, nowDivider } from "@/lib/day-shape";
@@ -225,20 +230,53 @@ export function TripDetail({
   const activeId = trip.id;
   const board = useTripBoard(activeId, me);
   const { removeWithUndo } = useUndo();
-  /** A card's edit: the board puts it back if the save fails, and says so. */
+  /** What went wrong with a schedule save, in words. */
+  const scheduleErrorText = (e: unknown) => {
+    const code = (e as { code?: string } | null)?.code;
+    return code === "ITINERARY_VERSION_CONFLICT"
+      ? "Someone else changed this stop just now. Béa kept their version."
+      : code === "ITINERARY_PARTLY_SAVED"
+        ? "Only part of that change saved. The stop shows what was kept."
+        : code === "TIME_LOCK_UNAVAILABLE"
+          ? "Fixed and Flexible aren't set up yet."
+          : "Couldn't save that change. Check your connection.";
+  };
+  /**
+   * A card's edit: the board puts it back if the save fails, and says so.
+   * A day, time, duration or Fixed/Flexible change is checked first: what
+   * it moves along with it is saved in the same write, and a change with
+   * bigger consequences opens Review instead.
+   */
   const saveCard = (id: string, patch: Parameters<typeof board.updateItem>[1]) => {
-    void board.updateItem(id, patch).catch((e: unknown) => {
-      const code = (e as { code?: string } | null)?.code;
-      toast.error(
-        code === "ITINERARY_VERSION_CONFLICT"
-          ? "Someone else changed this stop just now. Béa kept their version."
-          : code === "ITINERARY_PARTLY_SAVED"
-            ? "Only part of that change saved. The stop shows what was kept."
-            : code === "TIME_LOCK_UNAVAILABLE"
-              ? "Fixed and Flexible aren't set up yet."
-              : "Couldn't save that change. Check your connection.",
-      );
-    });
+    const fail = (e: unknown) => void toast.error(scheduleErrorText(e));
+    const { day_date, time_label, planned_stay_minutes, time_locked, ...rest } = patch;
+    const owns = (key: keyof SchedulePatch) => Object.prototype.hasOwnProperty.call(patch, key);
+    const schedule: SchedulePatch = {
+      ...(owns("day_date") ? { day_date: day_date ?? null } : {}),
+      ...(owns("time_label") ? { time_label: time_label ?? null } : {}),
+      ...(owns("planned_stay_minutes")
+        ? { planned_stay_minutes: planned_stay_minutes ?? null }
+        : {}),
+      ...(owns("time_locked") ? { time_locked: time_locked ?? null } : {}),
+    };
+    const proposal =
+      Object.keys(schedule).length > 0
+        ? changeSetForSchedulePatch(board.items, id, schedule)
+        : null;
+    // Nothing whose consequences need checking ("9:00 AM" → "09:00" is
+    // only a label): the ordinary save.
+    if (!proposal) {
+      void board.updateItem(id, patch).catch(fail);
+      return;
+    }
+    const others = Object.keys(rest).length > 0 ? () => board.updateItem(id, rest) : undefined;
+    const now = scheduleReview.review("all", proposal, others);
+    if (!now) return;
+    void (async () => {
+      await board.applySchedule(now.updates);
+      setLiveLegs(null);
+      await others?.();
+    })().catch(fail);
   };
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id, trip);
@@ -842,6 +880,30 @@ export function TripDetail({
   const moveDays = tripDays(trip.start_date, trip.end_date, stopItems);
   /** The stop "Move to…" is open on. */
   const [movingId, setMovingId] = useState<string | null>(null);
+  /** Journeys already worked out between neighbours, for checking a change. */
+  const knownLegs: TravelLeg[] = directionStops.flatMap((stop, i) => {
+    const next = directionStops[i + 1];
+    if (!stop.id || !next?.id) return [];
+    const leg = legFor(stop.id, next.id);
+    if (!leg || leg.capped || leg.unknownSpot || leg.farApartKm != null) return [];
+    return [
+      {
+        fromId: stop.id,
+        toId: next.id,
+        seconds: leg.sameSpot ? 0 : leg.duration,
+        ...(leg.estimated ? { estimated: true } : {}),
+      },
+    ];
+  });
+  const scheduleReview = useScheduleReview({
+    stops: stopItems,
+    all: board.items,
+    travelChoice: travel,
+    travelLegs: knownLegs,
+    applySchedule: board.applySchedule,
+    onSaved: () => setLiveLegs(null),
+    errorText: scheduleErrorText,
+  });
   const movingStop = movingId ? (stopItems.find((item) => item.id === movingId) ?? null) : null;
 
   /**
@@ -850,7 +912,18 @@ export function TripDetail({
    * offer of one that does. A plain step inside a day stays quiet.
    */
   const moveStops = async (moves: StopMove[], summary?: string) => {
-    const updates = rearrange(stopItems, moves);
+    // The traveller's own moves are checked first; Béa's (with a summary)
+    // were planned as a whole and saved as they are.
+    let updates: ScheduleUpdate[];
+    if (summary) {
+      updates = rearrange(stopItems, moves);
+    } else {
+      const proposal = changeSetForMoves(stopItems, moves);
+      if (!proposal) return;
+      const now = scheduleReview.review("stops", proposal);
+      if (!now) return;
+      updates = now.updates;
+    }
     if (updates.length === 0) return;
     const previous = updates.flatMap((u) => {
       const row = board.items.find((item) => item.id === u.id);
@@ -2245,6 +2318,8 @@ export function TripDetail({
             onMove={(move) => moveStops([move])}
             onClose={() => setMovingId(null)}
           />
+
+          <ReviewChangesSheet {...scheduleReview.sheet} />
 
           {/* The list's own ⋯: which stops, in which order, and the tools. */}
           <Sheet

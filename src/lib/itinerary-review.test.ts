@@ -493,3 +493,19 @@ test("shift minutes are formatted with a sign", () => {
   assert.match(formatShiftMinutes(-15), /15 min$/);
   assert.equal(formatShiftMinutes(0), "0 min");
 });
+
+test("saved Walk rows are renumbered with the rest but the ripple steps over them", () => {
+  const stops = [
+    row("a", DAY1, 0, "10:00", { planned_stay_minutes: 60 }),
+    row("walk", DAY1, 1, "11:00", { title: "Walk to B", planned_stay_minutes: null }),
+    row("b", DAY1, 2, "11:15", { planned_stay_minutes: 60 }),
+  ];
+  const proposal = changeSetForSchedulePatch(stops, "a", { planned_stay_minutes: 80 });
+  assert.ok(proposal);
+  const result = checkReviewProposal(stops, proposal, {
+    travelLegs: [{ fromId: "a", toId: "b", seconds: 10 * 60 }],
+    travelRowIds: new Set(["walk"]),
+  });
+  assert.equal(result.proposedSchedule.find((s) => s.id === "b")?.time_label, "11:30");
+  assert.equal(result.proposedSchedule.find((s) => s.id === "walk")?.time_label, "11:00");
+});

@@ -152,6 +152,11 @@ export type CheckOptions = {
    * their day. Left out, every stop the ChangeSet names counts as edited.
    */
   directIds?: ReadonlySet<string>;
+  /**
+   * Saved "Walk to …" rows: renumbered with everything else, but they are the
+   * journey between two stops, not a stop, so the ripple steps over them.
+   */
+  travelRowIds?: ReadonlySet<string>;
 };
 
 const MINUTES_PER_DAY = 24 * 60;
@@ -408,9 +413,12 @@ export function checkChange(
 
   // Ripple day by day. A Flexible stop moves only as much as needed to remain
   // reachable from the stop immediately before it. Fixed times never move.
-  for (let i = 0; i < proposed.length - 1; i += 1) {
-    const from = proposed[i]!;
-    const to = proposed[i + 1]!;
+  const stopsInOrder = options.travelRowIds
+    ? proposed.filter((stop) => !options.travelRowIds!.has(stop.id))
+    : proposed;
+  for (let i = 0; i < stopsInOrder.length - 1; i += 1) {
+    const from = stopsInOrder[i]!;
+    const to = stopsInOrder[i + 1]!;
     if (!from.day_date || from.day_date !== to.day_date) continue;
     if (!affectedDays.has(from.day_date)) continue;
     const fromStart = itineraryDateMinutes(from.day_date, from.time_label);
