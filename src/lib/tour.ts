@@ -182,7 +182,7 @@ export const WALKS: Walk[] = [
     steps: [
       {
         title: "Import a plan",
-        body: "On Plan with Béa, Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, each stop pinned on the map.",
+        body: "On Plan with Béa, Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, pinning each stop she can find.",
         to: "/trips/plan",
         selector: "[data-guide='plan-cards']",
       },

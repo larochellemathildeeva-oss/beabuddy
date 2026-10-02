@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { Check, Globe, Navigation, Route, X } from "@/components/icons";
@@ -8,9 +8,26 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { safeStorage } from "@/lib/tour-state";
 import { TRAVEL_STYLES, TRIP_PACES } from "@/lib/travel-style-options";
-import { markWelcomeDone, shouldShowWelcome, WELCOME_GOALS, type WelcomeGoal } from "@/lib/welcome";
+import {
+  markWelcomeDone,
+  shouldShowWelcome,
+  WELCOME_DONE_KEY,
+  WELCOME_DONE_META,
+  WELCOME_GOALS,
+  type WelcomeGoal,
+} from "@/lib/welcome";
 
 const STEPS = ["intro", "goal", "style", "look", "ready"] as const;
+
+/** Tell the account the welcome is done, for every other device. */
+async function markAccountDone(): Promise<boolean> {
+  try {
+    const { error } = await supabase.auth.updateUser({ data: { [WELCOME_DONE_META]: true } });
+    return !error;
+  } catch {
+    return false;
+  }
+}
 type Step = (typeof STEPS)[number];
 
 /**
@@ -22,42 +39,150 @@ export function Welcome() {
   const { user } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
+  /** The account the welcome is showing for; null while closed. */
+  const [openFor, setOpenFor] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("intro");
   const [goal, setGoal] = useState<WelcomeGoal>(WELCOME_GOALS[0]!);
   const [style, setStyle] = useState<string | null>(null);
   const [pace, setPace] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /**
+   * Closed in this page load, whatever storage did with the mark: a browser
+   * that refuses storage would otherwise reopen it on every page.
+   */
+  const dismissed = useRef<Set<string>>(new Set());
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  /** Numbers each save, so only the latest one's answer counts. */
+  const saveSeq = useRef(0);
+  /** The save still on its way, if any: finishing waits for it. */
+  const pendingSave = useRef<Promise<boolean> | null>(null);
+  /** Accounts whose account-level mark was already retried this page load. */
+  const markRetried = useRef<Set<string>>(new Set());
+
+  const userId = user?.id ?? null;
+  const doneOnAccount = user?.user_metadata?.[WELCOME_DONE_META] === true;
 
   useEffect(() => {
-    if (open) return;
-    setOpen(
-      shouldShowWelcome(safeStorage(), {
-        userId: user?.id,
-        createdAt: user?.created_at,
-        path: pathname,
-        now: Date.now(),
-      }),
-    );
-  }, [user?.id, user?.created_at, pathname, open]);
+    // A different account (or none) never inherits another's welcome.
+    if (openFor && openFor !== userId) {
+      setOpenFor(null);
+      setStep("intro");
+      setGoal(WELCOME_GOALS[0]!);
+      setStyle(null);
+      setPace(null);
+      setSaveFailed(false);
+      saveSeq.current += 1;
+      pendingSave.current = null;
+      return;
+    }
+    // Closed on this device, but the account never heard (the write failed):
+    // try once more, so the next device does not ask again.
+    if (
+      userId &&
+      !doneOnAccount &&
+      !markRetried.current.has(userId) &&
+      safeStorage().getItem(`${WELCOME_DONE_KEY}:${userId}`) === "yes"
+    ) {
+      markRetried.current.add(userId);
+      void markAccountDone();
+    }
+    if (openFor || !userId || dismissed.current.has(userId)) return;
+    const show = shouldShowWelcome(safeStorage(), {
+      userId,
+      createdAt: user?.created_at,
+      path: pathname,
+      now: Date.now(),
+      doneOnAccount,
+    });
+    if (show) setOpenFor(userId);
+  }, [userId, user?.created_at, pathname, openFor, doneOnAccount]);
+
+  // A modal holds the keyboard: focus moves in, Tab stays in, and it goes
+  // back where it was on close.
+  const open = openFor !== null && openFor === userId;
+  useEffect(() => {
+    if (!open) return;
+    const before = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    // After the portal paints, or the page keeps the focus it had. The panel
+    // takes it, ringed for keyboard users.
+    const frame = requestAnimationFrame(() => panelRef.current?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab" || !dialog) return;
+      const items = [
+        ...dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input, [tabindex]:not([tabindex="-1"])',
+        ),
+      ];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (!first || !last) return;
+      if (
+        e.shiftKey &&
+        (document.activeElement === first || document.activeElement === panelRef.current)
+      ) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey);
+      before?.focus?.();
+    };
+  }, [open]);
 
   if (!open || !user || typeof document === "undefined") return null;
 
   const close = () => {
+    dismissed.current.add(user.id);
     markWelcomeDone(safeStorage(), user.id);
-    setOpen(false);
+    // On the account too, so another device does not ask again. If that
+    // fails, the next visit here tries again (above).
+    void markAccountDone();
+    setOpenFor(null);
+  };
+
+  /** Leave the welcome, once any style save has answered: a failure shows first. */
+  const finish = async (then: () => void) => {
+    const saving = pendingSave.current;
+    // A failure stops the first tap, to show its message; the next tap goes.
+    pendingSave.current = null;
+    if (saving && !(await saving)) return;
+    close();
+    then();
   };
 
   const saveStyle = () => {
-    if (!style && !pace) return;
-    // Best effort: Travel preferences shows and fixes whatever did not save.
-    void supabase
-      .from("profiles")
-      .upsert({
-        id: user.id,
+    const seq = ++saveSeq.current;
+    setSaveFailed(false);
+    if (!style && !pace) {
+      pendingSave.current = null;
+      return;
+    }
+    const forAccount = user.id;
+    const saving = Promise.resolve(
+      supabase.from("profiles").upsert({
+        id: forAccount,
         ...(style ? { travel_style: style } : {}),
         ...(pace ? { trip_pace: pace } : {}),
-      })
-      .then(() => undefined);
+      }),
+    ).then(
+      ({ error }) => !error,
+      () => false,
+    );
+    pendingSave.current = saving.then((ok) => {
+      // Only the latest save gets a say; a change of account bumps the count,
+      // so an earlier account's answer never lands here.
+      if (seq !== saveSeq.current) return true;
+      setSaveFailed(!ok);
+      return ok;
+    });
   };
 
   const index = STEPS.indexOf(step);
@@ -69,12 +194,17 @@ export function Welcome() {
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label="Welcome to Béa"
       className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 p-3 sm:items-center"
     >
-      <div className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-3xl border border-border bg-background shadow-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
         <div className="flex items-center justify-between px-5 pt-4">
           <div className="flex gap-1.5" aria-label={`Step ${index + 1} of ${STEPS.length}`}>
             {STEPS.map((s, n) => (
@@ -94,7 +224,7 @@ export function Welcome() {
             type="button"
             onClick={close}
             aria-label="Close the welcome"
-            className="grid size-9 place-items-center rounded-full text-muted-foreground hover:bg-elevated"
+            className="-mr-2 grid size-11 place-items-center rounded-full text-muted-foreground hover:bg-elevated"
           >
             <X className="size-4" />
           </button>
@@ -122,7 +252,7 @@ export function Welcome() {
                   {
                     Icon: Navigation,
                     title: "Helps on the way",
-                    body: "Today's plan, directions, bookings and tickets — even with no signal.",
+                    body: "Today's plan, directions and your bookings. Keep a trip offline for when there's no signal.",
                   },
                   {
                     Icon: Globe,
@@ -251,11 +381,16 @@ export function Welcome() {
                 {goal.id === "plan"
                   ? "Tell Béa where and when, and she drafts the days. Nothing saves until you say so."
                   : goal.id === "import"
-                    ? "Paste it, or add a photo or PDF. Béa pins every stop on the map."
+                    ? "Paste it, or add a photo or PDF. Béa pins each stop she finds and marks any to check."
                     : goal.id === "save"
                       ? "Type a name or paste a link. Béa finds the place and keeps who told you."
                       : "Add the cities you've been to, or let your photos fill the globe in."}
               </p>
+              {saveFailed && (
+                <p role="status" className="text-[13px] font-medium text-destructive">
+                  Your style and pace didn't save. Set them any time in You → Travel preferences.
+                </p>
+              )}
               <p className="text-[13px] text-muted-foreground">
                 Help, under the ? on every page, has a walk for everything else.
               </p>
@@ -269,8 +404,7 @@ export function Welcome() {
               <button
                 type="button"
                 onClick={() => {
-                  close();
-                  void navigate({ to: goal.to });
+                  void finish(() => void navigate({ to: goal.to }));
                 }}
                 className="btn-primary px-4 py-3 text-[15px]"
               >
@@ -279,8 +413,7 @@ export function Welcome() {
               <button
                 type="button"
                 onClick={() => {
-                  close();
-                  startWalk(goal.id);
+                  void finish(() => startWalk(goal.id));
                 }}
                 className="rounded-full border border-border px-4 py-2.5 text-[14.5px] font-semibold"
               >

@@ -29,3 +29,27 @@ export const TRIP_PACES: StyleOption[] = [
   { value: "Balanced", hint: "A highlight plus room to breathe." },
   { value: "Full", hint: "Pack the day, rest at home." },
 ];
+
+/**
+ * A saved style, budget or pace, as the planner may see it: only the listed
+ * options it holds, in their own words. Travel preferences stores several
+ * styles as one "A, B, C" value, so each part is checked on its own. Anything
+ * else (an older option, or text written straight to the API) is dropped:
+ * the app cannot show it, and free text must never steer the planner.
+ */
+export function listedChoices(
+  value: string | null | undefined,
+  options: StyleOption[],
+): string | null {
+  if (!value) return null;
+  const allowed = new Set(options.map((option) => option.value));
+  const kept = [
+    ...new Set(
+      value
+        .split(",")
+        .map((part) => part.replace(/\s+/g, " ").trim())
+        .filter((part) => allowed.has(part)),
+    ),
+  ];
+  return kept.length > 0 ? kept.join(", ") : null;
+}
