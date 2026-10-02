@@ -21,7 +21,7 @@ type TripSearch = {
   plan?: PlannerTab;
   /** Words to start Build with. */
   ask?: string;
-  /** Import the plan pasted on the landing page, which waits on the phone. */
+  /** Import the trip picked on the landing page, which waits on the phone. */
   from?: "try";
 };
 
@@ -65,7 +65,7 @@ function TripPage() {
   const t = useTrips();
   const { photos } = useTripPhotos(t.uid);
   const trip = t.trips.find((row) => row.id === tripId) ?? null;
-  // The plan pasted before sign-up comes from the phone's storage, not the
+  // The trip picked before sign-up comes from the phone's storage, not the
   // link, so it never sits in a URL or the history. Held here once read.
   const [tryAsk] = useState(() =>
     from === "try" && plan === "import" && !ask ? peekPendingTryPlan(safeStorage()) : null,

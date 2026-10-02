@@ -1,5 +1,5 @@
 /**
- * "Try it" on the landing page: a visitor pastes a plan and sees it read into
+ * "Try it" on the landing page: a visitor picks a preset plan and sees it read into
  * days before making an account. It uses the plain-list reader alone
  * (`plan-lines.ts`): in the browser, no AI, no request. The text waits on the
  * phone through sign-up, so the new trip's import opens with it.
@@ -8,18 +8,73 @@ import { readPlainPlan } from "./plan-lines.ts";
 import { kindChoiceLabel, normaliseKind } from "./timeline-kind.ts";
 import type { ParsedItinerary, ParsedItineraryItem } from "./itinerary.functions.ts";
 
-export const TRY_PLAN_SAMPLE = `Day 1 — Lisbon
-09:30 Pastéis de Belém
-10:15 Jerónimos Monastery
-12:30 Lunch at Time Out Market
-15:00 Alfama wander
-20:00 Dinner at Taberna da Rua das Flores
+/**
+ * The plans a visitor can try. Preset, not pasted: each is read cleanly by the
+ * list reader (tested) and every stop is named the way the map finds it in its
+ * own city — checked against OpenStreetMap's plain search, Béa's last fallback,
+ * when they were written. A first look at Béa never starts from a messy plan
+ * and a bad result. Change a stop only after checking it the same way.
+ */
+export type TryPreset = { id: string; label: string; blurb: string; text: string };
 
-Day 2 — Sintra
-09:00 Train to Sintra from Rossio
-10:30 Pena Palace
-13:00 Lunch at Tascantiga
-15:00 Quinta da Regaleira`;
+export const TRY_PLAN_PRESETS: readonly TryPreset[] = [
+  {
+    id: "paris",
+    label: "Paris",
+    blurb: "Two days, museums and cafés",
+    text: `Day 1 — Paris
+09:30 Louvre Museum
+12:30 Lunch at Café Marly
+14:30 Tuileries Garden
+16:00 Musée de l'Orangerie
+19:30 Dinner at Le Train Bleu
+
+Day 2 — Paris
+10:00 Sainte-Chapelle
+11:30 Notre-Dame Cathedral
+13:00 Lunch at Le Procope
+15:00 Jardin du Luxembourg
+18:00 Eiffel Tower`,
+  },
+  {
+    id: "tokyo",
+    label: "Tokyo",
+    blurb: "Two days, shrines and markets",
+    text: `Day 1 — Tokyo
+09:00 Senso-ji Temple
+11:00 Tokyo Skytree
+13:00 Lunch at Tsukiji Outer Market
+15:30 Hama-rikyu Gardens
+19:00 Dinner in Shinjuku Omoide Yokocho
+
+Day 2 — Tokyo
+09:30 Meiji Jingu
+11:30 Takeshita Street
+13:00 Lunch at Maisen Aoyama
+15:00 Shibuya Sky
+18:30 Shinjuku Gyoen`,
+  },
+  {
+    id: "rome",
+    label: "Rome",
+    blurb: "Two days, ruins and piazzas",
+    text: `Day 1 — Rome
+09:00 Colosseum
+11:00 Roman Forum
+13:00 Lunch at Roscioli
+15:00 Pantheon
+16:30 Trevi Fountain
+19:30 Dinner at Da Enzo al 29
+
+Day 2 — Rome
+09:30 Piazza Navona
+11:00 Campo de' Fiori
+13:00 Lunch at Armando al Pantheon
+15:30 Galleria Borghese
+17:30 Villa Borghese
+19:00 Spanish Steps`,
+  },
+];
 
 /** The trip planner's own cap on a plan handed over with `ask`. */
 export const TRY_PLAN_MAX = 2000;

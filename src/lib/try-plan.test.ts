@@ -6,7 +6,7 @@ import {
   readTryPlan,
   savePendingTryPlan,
   TRY_PLAN_MAX,
-  TRY_PLAN_SAMPLE,
+  TRY_PLAN_PRESETS,
   tryKindLabel,
 } from "./try-plan.ts";
 
@@ -19,15 +19,22 @@ function store() {
   };
 }
 
-test("the sample reads as two days, in order", () => {
-  const read = readTryPlan(TRY_PLAN_SAMPLE);
-  assert.ok(read);
-  assert.deepEqual(
-    read.days.map((d) => d.day),
-    [1, 2],
-  );
-  assert.equal(read.days[0]?.items[0]?.title, "Pastéis de Belém");
-  assert.equal(read.days[0]?.items[0]?.time_label, "09:30");
+test("every preset reads cleanly: every timed line a stop, two days, its town", () => {
+  for (const preset of TRY_PLAN_PRESETS) {
+    const read = readTryPlan(preset.text);
+    assert.ok(read, preset.id);
+    const timed = preset.text.split("\n").filter((l) => /^\d{2}:\d{2} /.test(l));
+    const stops = read.days.reduce((n, d) => n + d.items.length, 0);
+    assert.equal(stops, timed.length, `${preset.id}: no line folded or dropped`);
+    assert.deepEqual(
+      read.days.map((d) => d.day),
+      [1, 2],
+      preset.id,
+    );
+    assert.equal(read.plan.trip_title, preset.label, preset.id);
+    for (const item of read.plan.items) assert.equal(item.city, preset.label, item.title);
+    assert.ok(preset.text.length <= TRY_PLAN_MAX, preset.id);
+  }
 });
 
 test("prose is not read here", () => {
