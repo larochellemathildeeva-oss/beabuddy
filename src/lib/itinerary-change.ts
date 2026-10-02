@@ -1,6 +1,6 @@
 import { haversine, isLatLon } from "./geo.ts";
 import { estimatedLegSeconds } from "./route-estimate.ts";
-import type { LegMode } from "./travel-mode.ts";
+import { legModeFor, type LegMode } from "./travel-mode.ts";
 
 export type TimeMode = "fixed" | "flexible" | "sequence";
 
@@ -212,7 +212,6 @@ function travelResolver(stops: readonly ScheduleStop[], options: CheckOptions) {
   const known = new Map(
     (options.travelLegs ?? []).map((leg) => [legKey(leg.fromId, leg.toId), leg] as const),
   );
-  const mode = options.travelMode ?? "walking";
   const byId = new Map(stops.map((stop) => [stop.id, stop]));
   return (fromId: string, toId: string): TravelLeg | null => {
     const exact = known.get(legKey(fromId, toId));
@@ -221,6 +220,8 @@ function travelResolver(stops: readonly ScheduleStop[], options: CheckOptions) {
     const to = byId.get(toId);
     if (!from || !to || !isLatLon(from) || !isLatLon(to)) return null;
     const metres = haversine(from, to);
+    // No chosen mode: walk what is close, drive the rest, as directions do.
+    const mode = options.travelMode ?? legModeFor("auto", metres);
     return {
       fromId,
       toId,
@@ -230,10 +231,41 @@ function travelResolver(stops: readonly ScheduleStop[], options: CheckOptions) {
   };
 }
 
+/**
+ * Give `stop` a whole-number position just after or before `anchor` on the
+ * anchor's day, moving the stops past it up by one so no two share a position.
+ */
+function placeBeside(
+  schedule: ScheduleStop[],
+  stop: ScheduleStop,
+  anchor: ScheduleStop,
+  side: "after" | "before",
+) {
+  const day = sortSchedule(schedule.filter((row) => row.day_date === anchor.day_date));
+  const at = day.indexOf(anchor) + (side === "after" ? 1 : 0);
+  const start = day.length ? Math.min(...day.map((row) => row.position)) : 0;
+  day.forEach((row, index) => {
+    row.position = start + index + (index >= at ? 1 : 0);
+  });
+  stop.position = start + at;
+}
+
 function applyChange(schedule: ScheduleStop[], change: ProposedChange): boolean {
   if (change.type === "insert") {
-    if (schedule.some((stop) => stop.id === change.tempStopId || stop.id === change.stop.id)) return false;
-    schedule.push({ ...change.stop, id: change.tempStopId || change.stop.id });
+    if (schedule.some((stop) => stop.id === change.tempStopId || stop.id === change.stop.id))
+      return false;
+    const inserted = { ...change.stop, id: change.tempStopId || change.stop.id };
+    // The neighbours say where it goes; its own position is only a fallback,
+    // since a position equal to an existing stop's would fall back to ids.
+    const after = schedule.find((stop) => stop.id === change.afterStopId);
+    const before = schedule.find((stop) => stop.id === change.beforeStopId);
+    if ((change.afterStopId && !after) || (change.beforeStopId && !before)) return false;
+    const anchor = after ?? before;
+    if (anchor) {
+      inserted.day_date = anchor.day_date;
+      placeBeside(schedule, inserted, anchor, after ? "after" : "before");
+    }
+    schedule.push(inserted);
     return true;
   }
   if (change.type === "delete") {
@@ -325,15 +357,33 @@ export function checkChange(
   const original = cloneSchedule(stops);
   const proposed = cloneSchedule(stops);
   const editedIds = new Set<string>();
+  // Stops whose clock time the traveller set in this ChangeSet. The ripple
+  // never rewrites those: a time they typed is reported, not replaced.
+  const chosenTimeIds = new Set<string>();
+  // Only the days this ChangeSet touches are checked. A tight pair elsewhere
+  // on the trip is not this edit's consequence.
+  const affectedDays = new Set<string | null>();
+  const originalDay = new Map(original.map((stop) => [stop.id, stop.day_date] as const));
   let invalid = false;
   let crossesDay = false;
 
   for (const change of changeSet.changes) {
-    if ("stopId" in change) editedIds.add(change.stopId);
-    if (change.type === "insert") editedIds.add(change.tempStopId);
-    if (change.type === "move" && change.from.dayDate !== change.to.dayDate) crossesDay = true;
+    if ("stopId" in change) {
+      editedIds.add(change.stopId);
+      affectedDays.add(originalDay.get(change.stopId) ?? null);
+    }
+    if (change.type === "insert") {
+      editedIds.add(change.tempStopId);
+      chosenTimeIds.add(change.tempStopId);
+    }
+    if (change.type === "retime") chosenTimeIds.add(change.stopId);
+    if (change.type === "move") {
+      if (change.from.dayDate !== change.to.dayDate) crossesDay = true;
+      if (change.to.preferredTime !== undefined) chosenTimeIds.add(change.stopId);
+    }
     if (!applyChange(proposed, change)) invalid = true;
   }
+  for (const stop of proposed) if (editedIds.has(stop.id)) affectedDays.add(stop.day_date);
 
   sortSchedule(proposed);
   const travel = travelResolver(proposed, options);
@@ -347,6 +397,7 @@ export function checkChange(
     const from = proposed[i]!;
     const to = proposed[i + 1]!;
     if (!from.day_date || from.day_date !== to.day_date) continue;
+    if (!affectedDays.has(from.day_date)) continue;
     const fromStart = itineraryDateMinutes(from.day_date, from.time_label);
     const toStart = itineraryDateMinutes(to.day_date, to.time_label);
     if (fromStart == null || toStart == null) continue;
@@ -359,7 +410,12 @@ export function checkChange(
     const earliest = fromStart + stay + Math.ceil(leg.seconds / 60);
     if (toStart >= earliest) continue;
 
-    if (timeModeFor(to) === "flexible") {
+    // A Flexible stop slides later, but only within its own day: past
+    // midnight its clock would wrap to the morning and sort before the stop
+    // it follows. Those, and times the traveller just chose, stay put and are
+    // reported instead.
+    const endOfDay = (dayNumber(to.day_date) ?? 0) * MINUTES_PER_DAY + MINUTES_PER_DAY;
+    if (timeModeFor(to) === "flexible" && !chosenTimeIds.has(to.id) && earliest < endOfDay) {
       to.time_label = clockLabel(earliest);
       continue;
     }

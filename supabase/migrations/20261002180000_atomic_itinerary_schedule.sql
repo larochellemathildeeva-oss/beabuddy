@@ -72,7 +72,12 @@ BEGIN
       END;
     END IF;
 
-    IF v_expected IS NOT NULL AND v_current IS DISTINCT FROM v_expected THEN
+    -- A row may appear more than once (a move and a retime of one stop). Its
+    -- version is checked on the first update only: the first one moves
+    -- updated_at, and the later ones are this same call, not someone else.
+    IF v_expected IS NOT NULL
+      AND NOT (v_id = ANY(v_ids))
+      AND v_current IS DISTINCT FROM v_expected THEN
       RAISE EXCEPTION 'itinerary_version_conflict:%', v_id
         USING ERRCODE = '40001';
     END IF;
@@ -95,7 +100,9 @@ BEGIN
     WHERE id = v_id
       AND trip_id = _trip_id;
 
-    v_ids := array_append(v_ids, v_id);
+    IF NOT (v_id = ANY(v_ids)) THEN
+      v_ids := array_append(v_ids, v_id);
+    END IF;
   END LOOP;
 
   RETURN COALESCE(

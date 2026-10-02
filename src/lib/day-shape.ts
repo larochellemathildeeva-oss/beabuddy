@@ -16,6 +16,7 @@
 
 import { haversine } from "./geo.ts";
 import { estimatedLegSeconds } from "./route-estimate.ts";
+import { legModeFor } from "./travel-mode.ts";
 import { timelineGlyph, type TimelineGlyph } from "./timeline-kind.ts";
 import { timeForRail } from "./timeline-kind.ts";
 
@@ -156,7 +157,10 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     const b = placedPoint(to);
     if (!a || !b) continue;
 
-    const travel = Math.ceil(estimatedLegSeconds(haversine(a, b), "walking") / 60);
+    // Walk what is close, drive the rest: a walking estimate for two stations
+    // 40 km apart would read as eleven hours.
+    const metres = haversine(a, b);
+    const travel = Math.ceil(estimatedLegSeconds(metres, legModeFor("auto", metres)) / 60);
     const stay = Math.max(0, from.planned_stay_minutes ?? 0);
     const shortBy = stay + travel - gap;
     if (shortBy < MARGIN_MIN) continue;

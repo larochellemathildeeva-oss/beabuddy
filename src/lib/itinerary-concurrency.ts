@@ -15,8 +15,10 @@ export type ReconcileResult<T> = {
  * - untouched rows take the server's newest value immediately;
  * - touched rows keep the local proposal so realtime never overwrites an
  *   unsaved gesture;
- * - if a touched server row no longer has the ChangeSet's base version, the
- *   proposal is stale and Review must run the consequence check again.
+ * - if a touched server row no longer has the ChangeSet's base version, or
+ *   was deleted by someone else, the proposal is stale and Review must run
+ *   the consequence check again;
+ * - a touched row the local proposal deletes stays deleted.
  *
  * `incoming` is a complete snapshot, the shape useTripBoard already reloads.
  */
@@ -39,13 +41,20 @@ export function reconcileItinerarySnapshot<T extends VersionedItineraryRow>(
     const optimistic = localById.get(remote.id);
     const base = baseVersions[remote.id];
     if (base && remote.updated_at !== base) staleTouchedIds.push(remote.id);
+    // A touched row missing locally is a delete still waiting to save: the
+    // server's copy must not reappear before it lands.
     if (optimistic) result.push(optimistic);
-    else result.push(remote);
   }
 
-  // Locally inserted/optimistic rows are not in the remote snapshot yet.
   for (const id of touchedIds) {
     if (incomingById.has(id)) continue;
+    // Gone from the server. With a base version it existed when the ChangeSet
+    // was made, so someone else deleted it: the proposal is stale and the row
+    // stays gone. Without one it is a local insert not saved yet.
+    if (baseVersions[id]) {
+      staleTouchedIds.push(id);
+      continue;
+    }
     const optimistic = localById.get(id);
     if (optimistic) result.push(optimistic);
   }

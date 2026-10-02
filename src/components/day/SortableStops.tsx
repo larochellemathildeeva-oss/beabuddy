@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "@/components/icons";
 
 const dragTitle = (item: { data: { current?: Record<string, unknown> | undefined } }) => {
-  const title = item.data.current?.title;
+  const title = item.data.current?.["title"];
   return typeof title === "string" && title.trim() ? title : "stop";
 };
 
@@ -125,9 +125,7 @@ export function SortableStop({
   } = useSortable({ id, data: { title } });
   const translated = CSS.Translate.toString(transform);
   const liStyle: CSSProperties = {
-    transform: isDragging
-      ? `${translated || "translate3d(0, 0, 0)"} scale(1.02)`
-      : translated,
+    transform: isDragging ? `${translated || "translate3d(0, 0, 0)"} scale(1.02)` : translated,
     transition,
     transformOrigin: "center center",
     ...(isDragging

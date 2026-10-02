@@ -101,7 +101,9 @@ test("small ripple auto-applies: at most two flexible stops, at most 30 minutes"
   );
   assert.equal(result.decision, "auto-apply");
   assert.deepEqual(
-    result.shifts.filter((shift) => shift.downstream).map((shift) => [shift.stopId, shift.deltaMinutes]),
+    result.shifts
+      .filter((shift) => shift.downstream)
+      .map((shift) => [shift.stopId, shift.deltaMinutes]),
     [
       ["b", 15],
       ["c", 15],
@@ -140,10 +142,7 @@ test("more than two downstream shifts requires Review", () => {
 });
 
 test("a ripple over 30 minutes requires Review", () => {
-  const plan = [
-    stop("a", "10:00", 0, { planned_stay_minutes: 30 }),
-    stop("b", "10:45", 1),
-  ];
+  const plan = [stop("a", "10:00", 0, { planned_stay_minutes: 30 }), stop("b", "10:45", 1)];
   const result = checkChange(
     plan,
     changeSet([
@@ -222,4 +221,74 @@ test("unknown travel without two usable pins requires Review rather than pretend
   );
   assert.equal(result.decision, "review");
   assert.ok(result.reasons.includes("travel-unknown"));
+});
+
+test("a flexible stop pushed past midnight is not wrapped to the morning", () => {
+  const plan = [
+    stop("a", "22:00", 0, { planned_stay_minutes: 30 }),
+    stop("b", "23:30", 1),
+    stop("c", "23:45", 2),
+  ];
+  const result = checkChange(
+    plan,
+    changeSet([{ id: "d", type: "duration", stopId: "a", fromMinutes: 30, toMinutes: 150 }]),
+  );
+  const byId = new Map(result.proposedSchedule.map((row) => [row.id, row]));
+  assert.equal(byId.get("b")?.time_label, "23:30");
+  assert.deepEqual(
+    result.proposedSchedule.map((row) => row.id),
+    ["a", "b", "c"],
+  );
+  assert.ok(result.reasons.includes("unreachable"));
+  assert.equal(result.decision, "review");
+});
+
+test("a time the traveller just chose is never rewritten by the ripple", () => {
+  const plan = [stop("a", "10:00", 0, { planned_stay_minutes: 60 }), stop("b", "12:00", 1)];
+  const result = checkChange(
+    plan,
+    changeSet([{ id: "t", type: "retime", stopId: "b", fromTime: "12:00", toTime: "10:30" }]),
+  );
+  assert.equal(result.proposedSchedule.find((row) => row.id === "b")?.time_label, "10:30");
+  assert.ok(result.reasons.includes("unreachable"));
+  assert.equal(result.decision, "review");
+});
+
+test("an insert lands after its neighbour, even when its position ties", () => {
+  const plan = [stop("a", null, 0), stop("b", null, 1), stop("c", null, 2)];
+  const result = checkChange(
+    plan,
+    changeSet([
+      {
+        id: "i",
+        type: "insert",
+        tempStopId: "0-new",
+        afterStopId: "b",
+        beforeStopId: "c",
+        stop: stop("0-new", null, 1),
+      },
+    ]),
+  );
+  assert.deepEqual(
+    result.proposedSchedule.map((row) => row.id),
+    ["a", "b", "0-new", "c"],
+  );
+  const positions = result.proposedSchedule.map((row) => row.position);
+  assert.equal(new Set(positions).size, positions.length, "no two stops share a position");
+  assert.ok(positions.every(Number.isInteger));
+});
+
+test("a tight pair on another day does not send every edit to Review", () => {
+  const plan = [
+    stop("a", "10:00", 0, { planned_stay_minutes: 30 }),
+    stop("b", "12:00", 1),
+    stop("x", "10:00", 0, { day_date: NEXT, planned_stay_minutes: 120 }),
+    stop("y", "10:30", 1, { day_date: NEXT, booked: true }),
+  ];
+  const result = checkChange(
+    plan,
+    changeSet([{ id: "t", type: "retime", stopId: "b", fromTime: "12:00", toTime: "12:15" }]),
+  );
+  assert.equal(result.decision, "auto-apply");
+  assert.deepEqual(result.reachabilityConflicts, []);
 });
