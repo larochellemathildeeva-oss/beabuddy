@@ -13,6 +13,8 @@ import {
 import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
+import { HomeNameAsk } from "@/components/HomeNameAsk";
+import { shouldAskName } from "@/lib/name-ask";
 import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
 import { useNearMe } from "@/hooks/useNearMe";
 import { useTrips } from "@/hooks/useTrips";
@@ -225,6 +227,13 @@ function SignedInHome() {
   const firstName =
     shownName({ profileName: displayName, profileLoaded, email: user?.email }).split(" ")[0] ?? "";
 
+  const askName = shouldAskName(safeStorage(), {
+    userId: user?.id,
+    email: user?.email,
+    profileName: displayName,
+    profileLoaded,
+  });
+
   const topReco = useMemo(() => {
     // A city or country added on the World tab is a place you have been, not
     // a saved spot waiting for you.
@@ -264,6 +273,10 @@ function SignedInHome() {
       actionBesideEyebrow
     >
       <div className="space-y-5">
+        {user && askName && (
+          <HomeNameAsk userId={user.id} onSaved={(name) => setDisplayName(name)} />
+        )}
+
         {showTrip && (
           <HomeTripHero
             trip={trip}

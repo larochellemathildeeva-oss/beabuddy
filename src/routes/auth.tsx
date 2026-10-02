@@ -1,15 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import {
-  ArrowRight,
-  Check,
-  Eye,
-  EyeOff,
-  Lock,
-  Mail,
-  User,
-  type LucideProps,
-} from "@/components/icons";
+import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, type LucideProps } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
@@ -55,11 +46,9 @@ function AuthPage() {
   const { redirect: returnTo, mode: startMode } = Route.useSearch();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">(startMode ?? "signin");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [agreeTerms, setAgreeTerms] = useState(false);
-  const [agreeDisclaimer, setAgreeDisclaimer] = useState(false);
+  const [consented, setConsented] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -73,8 +62,6 @@ function AuthPage() {
     setGoogleModeState(mode);
     safeStorage().setItem("bea-google-signin", mode);
   };
-
-  const consented = agreeTerms && agreeDisclaimer;
 
   // Google and the confirmation email come back to the site's origin, not
   // here, so the return address waits in this tab for the shell to take.
@@ -106,7 +93,6 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { display_name: name },
           },
         });
         if (err) throw err;
@@ -232,18 +218,6 @@ function AuthPage() {
         <Divider>{signup ? "Or sign up with email" : "Or sign in with email"}</Divider>
 
         <form onSubmit={submit} className="space-y-3">
-          {signup && (
-            <PillField icon={User}>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your name"
-                aria-label="Your name"
-                autoComplete="name"
-                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
-              />
-            </PillField>
-          )}
           <PillField icon={Mail}>
             <input
               value={email}
@@ -289,40 +263,28 @@ function AuthPage() {
             </div>
           )}
           {signup && (
-            <div className="space-y-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5">
-              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                />
-                <span>
-                  I'm at least 16 and I agree to the{" "}
-                  <Link to="/terms" className="text-primary underline underline-offset-4">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/privacy" className="text-primary underline underline-offset-4">
-                    Privacy Policy
-                  </Link>
-                  .
-                </span>
-              </label>
-              <label className="flex cursor-pointer items-start gap-2.5 text-[14.5px] leading-relaxed">
-                <input
-                  type="checkbox"
-                  checked={agreeDisclaimer}
-                  onChange={(e) => setAgreeDisclaimer(e.target.checked)}
-                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
-                />
-                <span>
-                  I understand Béa is a personal organiser, not a travel adviser — suggestions,
-                  directions, exchange rates and AI picks may be wrong, my travel decisions are my
-                  own, and Béa's liability is limited as the Terms describe.
-                </span>
-              </label>
-            </div>
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5 text-[14.5px] leading-relaxed">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 accent-primary"
+              />
+              {/* One box, the same three consents (CONSENT_TYPES) as before. */}
+              <span>
+                I'm at least 16 and agree to the{" "}
+                <Link to="/terms" className="text-primary underline underline-offset-4">
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="text-primary underline underline-offset-4">
+                  Privacy Policy
+                </Link>
+                . I understand Béa is a personal organiser, not a travel adviser: suggestions,
+                directions, exchange rates and AI picks may be wrong, my travel decisions are my
+                own, and Béa's liability is limited as the Terms describe.
+              </span>
+            </label>
           )}
           {error && <p className="px-1 text-[13px] text-destructive">{error}</p>}
           {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
