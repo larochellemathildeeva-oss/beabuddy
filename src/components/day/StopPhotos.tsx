@@ -57,7 +57,9 @@ export function StopPhotos({ photos, ready, uid, onAdd, onRemove }: StopPhotosPr
         Photos
       </span>
       {!ready || !uid ? (
-        <p className="text-[12.5px] text-muted-foreground">Photos on stops aren't available right now.</p>
+        <p className="text-[12.5px] text-muted-foreground">
+          Photos on stops aren't available right now.
+        </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {photos.map((photo) => (
