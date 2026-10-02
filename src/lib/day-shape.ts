@@ -15,6 +15,8 @@
  */
 
 import { haversine } from "./geo.ts";
+import { estimatedLegSeconds } from "./route-estimate.ts";
+import { legModeFor } from "./travel-mode.ts";
 import { timelineGlyph, type TimelineGlyph } from "./timeline-kind.ts";
 import { timeForRail } from "./timeline-kind.ts";
 
@@ -24,10 +26,11 @@ export type ShapedItem = {
   time_label?: string | null;
 };
 
-/** A shaped item that may also know where it is. */
+/** A shaped item that may also know where it is and how long the stop lasts. */
 export type PacedItem = ShapedItem & {
   lat?: number | null;
   lon?: number | null;
+  planned_stay_minutes?: number | null;
 };
 
 /** Plural-aware names for the glyphs, for a heading rather than a tooltip. */
@@ -100,33 +103,20 @@ export function nextUp<T extends ShapedItem>(items: readonly T[], minutesNow: nu
 }
 
 /**
- * Metres a minute on foot. A city walk with crossings and a map check, not an
- * athlete on an empty road — the number is deliberately slow, because the
- * point of the note below is to be right rather than encouraging.
- */
-const WALK_METRES_PER_MIN = 70;
-
-/**
- * The gap has to be short of the walk by this much before it is worth saying.
- * Two minutes of daylight between them is rounding, not a problem, and a note
- * that fires on rounding is a note you learn to stop reading.
+ * The schedule has to miss by this much before it is worth interrupting the
+ * traveller. A couple of minutes is rounding, not a useful warning.
  */
 const MARGIN_MIN = 10;
 
 /**
- * Past this, straight line, nobody walks it: it is a train, a ferry or a
- * taxi, and a walking time for it ("the walk alone is about 252") is noise.
+ * Past this, straight line, the leg is between towns, where a fast train
+ * beats any drive: Tokyo to Nagoya is about 1 h 40 by Shinkansen and over
+ * four hours timed as a drive. So a leg this long is timed at 200 km/h along
+ * the straight line, faster than any train runs door to door, and named only
+ * when even that cannot fit: "Senso-ji 09:00, Nagoya Castle 09:30" is 269 km
+ * in half an hour.
  */
-const MAX_WALK_METRES = 5000;
-
-/**
- * Past a walk, the only claim worth making is that the gap is impossible,
- * not that it is tight: a ride between two pins could be a car, a metro or a
- * Shinkansen, and guessing which is how a fine plan gets a wrong warning. So
- * the ride is timed at 200 km/h along the straight line — faster than any
- * train runs door to door — and only a gap shorter than even that is named:
- * "Senso-ji 09:00, Nagoya Castle 09:30" is 269 km in half an hour.
- */
+const TRAIN_RANGE_METRES = 50_000;
 const FASTEST_RIDE_METRES_PER_MIN = 200_000 / 60;
 
 function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
@@ -141,15 +131,12 @@ function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
 /**
  * One sentence about a day that does not have enough time in it, or null.
  *
- * This is deliberately not a score. It says nothing about the day as a whole,
- * ranks nothing, and rates nothing — it names two stops and two numbers that
- * are both already written down, and leaves the conclusion to you. A day the
- * arithmetic cannot fault says nothing at all, which is most days.
- *
- * It only speaks when the plan gave it both halves: two clock times and two
- * positions. Guessing the walk between an unplaced stop and a vague one is how
- * you get a warning that is confidently wrong, and a wrong warning about your
- * own holiday is worse than silence.
+ * The old check compared only start times with a short walking estimate. That
+ * missed the time spent at the first stop and deliberately ignored pairs more
+ * than 5 km apart — exactly the journeys where an impossible schedule matters
+ * most. This version includes the planned stay and uses Béa's standard
+ * straight-line journey estimate whenever both pins are known. The shared
+ * consequence engine can later replace the estimate with a routed leg.
  *
  * At most one, for the tightest pair on the day. A list of these would be a
  * report card, which is the thing this must never become.
@@ -159,7 +146,9 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     title: string;
     nextTitle: string;
     gap: number;
-    need: number;
+    stay: number;
+    travel: number;
+    shortBy: number;
     km: number | null;
   } | null = null;
 
@@ -167,47 +156,62 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     const from = items[i]!;
     const to = items[i + 1]!;
 
-    const leaves = minutesOfDay(from.time_label);
-    const arrives = minutesOfDay(to.time_label);
-    if (leaves === null || arrives === null) continue;
+    const starts = minutesOfDay(from.time_label);
+    const nextStarts = minutesOfDay(to.time_label);
+    if (starts === null || nextStarts === null) continue;
 
-    const gap = arrives - leaves;
-    // Out of order, or so far apart the day is not the problem.
-    if (gap <= 0 || gap > 4 * 60) continue;
+    const gap = nextStarts - starts;
+    // A same-day glance cannot safely interpret an overnight pair. The full
+    // consequence engine uses day-qualified times for those.
+    if (gap <= 0) continue;
 
     const a = placedPoint(from);
     const b = placedPoint(to);
     if (!a || !b) continue;
 
+    // Walk what is close, drive the rest: a walking estimate for two stations
+    // 40 km apart would read as eleven hours.
     const metres = haversine(a, b);
-    const ride = metres > MAX_WALK_METRES;
+    const mode = legModeFor("auto", metres);
     // A journey row's time is when it leaves and its pin may be either end,
     // so the gap after it says nothing about the ride itself.
-    if (ride && (timelineGlyph(from) === "transport" || timelineGlyph(to) === "transport")) {
-      continue;
-    }
-    const need = ride
+    if (mode !== "walking" && (isJourney(from) || isJourney(to))) continue;
+    const long = metres > TRAIN_RANGE_METRES;
+    const travel = long
       ? Math.ceil(metres / FASTEST_RIDE_METRES_PER_MIN)
-      : Math.round(metres / WALK_METRES_PER_MIN);
-    // The ride time is already a bound nothing beats, so any shortfall is
-    // impossible; the margin is for the walk, which is only a fair guess.
-    if (ride ? need <= gap : need - gap < MARGIN_MIN) continue;
+      : Math.ceil(estimatedLegSeconds(metres, mode) / 60);
+    const stay = Math.max(0, from.planned_stay_minutes ?? 0);
+    const shortBy = stay + travel - gap;
+    // The long-leg time is already a bound nothing beats, so any shortfall is
+    // impossible; the margin is for estimates that are only a fair guess.
+    if (shortBy < (long ? 1 : MARGIN_MIN)) continue;
 
     const fromTitle = (from.title ?? "").trim();
     const toTitle = (to.title ?? "").trim();
     if (!fromTitle || !toTitle) continue;
 
-    if (!worst || need - gap > worst.need - worst.gap) {
-      const km = ride ? Math.round(metres / 1000) : null;
-      worst = { title: fromTitle, nextTitle: toTitle, gap, need, km };
+    if (!worst || shortBy > worst.shortBy) {
+      const km = long ? Math.round(metres / 1000) : null;
+      worst = { title: fromTitle, nextTitle: toTitle, gap, stay, travel, shortBy, km };
     }
   }
 
   if (!worst) return null;
-  const between = `${worst.gap} min between ${worst.title} and ${worst.nextTitle}`;
-  return worst.km === null
-    ? `${between}, and the walk alone is about ${worst.need}.`
-    : `${between}, about ${worst.km} km apart: even at 200 km/h in a straight line that is about ${worst.need}.`;
+  if (worst.km !== null) {
+    const ride = `even at 200 km/h in a straight line that is about ${worst.travel}`;
+    if (worst.stay > 0) {
+      return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, but ${worst.title} is planned for ${worst.stay} min and ${worst.nextTitle} is about ${worst.km} km away: ${ride}.`;
+    }
+    return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, about ${worst.km} km apart: ${ride}.`;
+  }
+  if (worst.stay > 0) {
+    return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, but ${worst.title} is planned for ${worst.stay} min and travel is about ${worst.travel}.`;
+  }
+  return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, and travel alone is about ${worst.travel}.`;
+}
+
+function isJourney(item: PacedItem): boolean {
+  return timelineGlyph(item) === "transport";
 }
 
 /** "in 30 min", "in 2 h 10", or null when it is not worth saying. */
