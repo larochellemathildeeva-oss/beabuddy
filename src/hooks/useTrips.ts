@@ -239,7 +239,12 @@ const OPTIONAL_COLUMN_GROUPS = [
  */
 async function selectTripItems(
   tripId: string,
-): Promise<{ items: ItineraryRow[]; nesting: boolean; pinCheck: boolean; timeLock: boolean } | null> {
+): Promise<{
+  items: ItineraryRow[];
+  nesting: boolean;
+  pinCheck: boolean;
+  timeLock: boolean;
+} | null> {
   const query = (columns: string) =>
     supabase
       .from("itinerary_items")
