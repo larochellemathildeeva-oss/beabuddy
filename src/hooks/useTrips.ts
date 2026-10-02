@@ -27,7 +27,9 @@ import {
   isMissingScheduleRpc,
   onlyOtherFieldsChanged,
   mergeCommittedRows,
+  scheduleUpdatesForPatch,
   scheduleWritePlan,
+  type SchedulePatch,
   type ScheduleUpdate,
 } from "@/lib/itinerary-schedule-write";
 
@@ -1363,32 +1365,15 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       const current = itemsRef.current.find((item) => item.id === id);
 
       if (changesSchedule) {
-        if (!current) throw new Error("That stop is no longer in the itinerary.");
-        const schedule: ScheduleUpdate = { id };
+        const schedule: SchedulePatch = {};
         if (owns("day_date")) schedule.day_date = day_date ?? null;
         if (owns("time_label")) schedule.time_label = time_label ?? null;
         if (owns("planned_stay_minutes")) {
           schedule.planned_stay_minutes = planned_stay_minutes ?? null;
         }
         if (owns("time_locked")) schedule.time_locked = time_locked ?? null;
-
-        const day = owns("day_date") ? (day_date ?? null) : current.day_date;
-        const time = owns("time_label") ? (time_label ?? null) : current.time_label;
-        const moved =
-          (day ?? "") !== (current.day_date ?? "") ||
-          clockMinutes(time) !== clockMinutes(current.time_label);
-        const updates: ScheduleUpdate[] = [];
-        if (moved) {
-          const slot = chronologicalSlot(
-            itemsRef.current,
-            { day_date: day, time_label: time },
-            clockMinutes,
-            id,
-          );
-          updates.push(...slot.shifts.map((shift) => ({ ...shift })));
-          schedule.position = slot.position;
-        }
-        updates.push(schedule);
+        const updates = scheduleUpdatesForPatch(itemsRef.current, id, schedule);
+        if (!updates) throw new Error("That stop is no longer in the itinerary.");
         await applySchedule(updates);
       }
 

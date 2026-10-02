@@ -1,4 +1,6 @@
 import { baseVersionsFor } from "./itinerary-concurrency.ts";
+import { clockMinutes } from "./timeline-kind.ts";
+import { chronologicalSlot } from "./timeline-order.ts";
 
 export type ScheduleWriteRow = {
   id: string;
@@ -19,6 +21,55 @@ export type ScheduleUpdate = {
   planned_stay_minutes?: number | null;
   time_locked?: boolean | null;
 };
+
+/** A card's day, time, duration and Fixed/Flexible edit. */
+export type SchedulePatch = Partial<
+  Pick<ScheduleUpdate, "day_date" | "time_label" | "planned_stay_minutes" | "time_locked">
+>;
+
+type SlotRow = {
+  id: string;
+  day_date: string | null;
+  time_label: string | null;
+  position: number;
+};
+
+/**
+ * The rows one card edit writes, in one transaction: the stop itself and,
+ * when its day or clock time changes where it belongs, every row displaced to
+ * make room (positions run across the whole trip). "9:00 AM" → "09:00" keeps
+ * its place; only the label is written. Null when the stop is gone.
+ */
+export function scheduleUpdatesForPatch<T extends SlotRow>(
+  rows: readonly T[],
+  id: string,
+  patch: SchedulePatch,
+): ScheduleUpdate[] | null {
+  const current = rows.find((row) => row.id === id);
+  if (!current) return null;
+  const owns = (key: keyof SchedulePatch) => Object.prototype.hasOwnProperty.call(patch, key);
+  const schedule: ScheduleUpdate = { id };
+  if (owns("day_date")) schedule.day_date = patch.day_date ?? null;
+  if (owns("time_label")) schedule.time_label = patch.time_label ?? null;
+  if (owns("planned_stay_minutes")) {
+    schedule.planned_stay_minutes = patch.planned_stay_minutes ?? null;
+  }
+  if (owns("time_locked")) schedule.time_locked = patch.time_locked ?? null;
+
+  const day = owns("day_date") ? (patch.day_date ?? null) : current.day_date;
+  const time = owns("time_label") ? (patch.time_label ?? null) : current.time_label;
+  const moved =
+    (day ?? "") !== (current.day_date ?? "") ||
+    clockMinutes(time) !== clockMinutes(current.time_label);
+  const updates: ScheduleUpdate[] = [];
+  if (moved) {
+    const slot = chronologicalSlot(rows, { day_date: day, time_label: time }, clockMinutes, id);
+    updates.push(...slot.shifts.map((shift) => ({ ...shift })));
+    schedule.position = slot.position;
+  }
+  updates.push(schedule);
+  return updates;
+}
 
 export type ScheduleWritePlan<T extends ScheduleWriteRow> = {
   updates: ScheduleUpdate[];
