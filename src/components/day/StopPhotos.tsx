@@ -8,8 +8,10 @@ import { STOP_PHOTOS_PER_PICK, type StopPhoto, type StopPhotosAdded } from "@/ho
 import { isNetworkFailure } from "@/lib/ai-errors";
 
 export type StopPhotosProps = {
-  /** The stop's name, to describe its photos. */
+  /** The stop's name (or the trip's), to describe its photos. */
   title: string;
+  /** "trip" for the trip menu's photos of the whole trip; a stop's otherwise. */
+  scope?: "stop" | "trip";
   photos: StopPhoto[];
   /** False while the stop_photos migration is not applied. */
   available: boolean;
@@ -150,7 +152,15 @@ function StripThumb({ photo }: { photo: StopPhoto }) {
  * The traveller's own photos of a stop, in the stop's sheet. Everyone on the
  * trip sees them; each is also in its owner's Photo memories.
  */
-export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: StopPhotosProps) {
+export function StopPhotos({
+  title,
+  scope = "stop",
+  photos,
+  available,
+  uid,
+  onAdd,
+  onRemove,
+}: StopPhotosProps) {
   const { busy, add } = usePhotoAdd(onAdd);
   const [viewing, setViewing] = useState<StopPhoto | null>(null);
   const [confirming, setConfirming] = useState<StopPhoto | null>(null);
@@ -162,13 +172,24 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
   };
 
   return (
-    <div className="mt-2.5">
-      <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground">
-        <Camera className="size-3.5" aria-hidden />
-        Photos
-      </span>
+    <div className={scope === "stop" ? "mt-2.5" : ""}>
+      {scope === "stop" ? (
+        <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground">
+          <Camera className="size-3.5" aria-hidden />
+          Photos
+        </span>
+      ) : (
+        <p className="mb-2.5 text-[13px] text-muted-foreground">
+          Photos of the whole trip, and the ones added to its stops. Everyone on the trip sees them,
+          and yours are in your Photo memories too.
+        </p>
+      )}
       {!available ? (
-        <p className="text-[12.5px] text-muted-foreground">Photos on stops aren't set up yet.</p>
+        <p className="text-[12.5px] text-muted-foreground">
+          {scope === "stop"
+            ? "Photos on stops aren't set up yet."
+            : "Trip photos aren't set up yet."}
+        </p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {photos.map((photo, i) => (
@@ -182,17 +203,15 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
           {uid && (
             <>
               <PickTile
-                label={busy ? "Adding…" : "Take photo"}
-                icon={<Camera className="size-4" aria-hidden />}
-                ariaLabel={`Take a photo of ${title}`}
+                icon={<Camera className="size-5" aria-hidden />}
+                ariaLabel={busy ? "Adding photos…" : `Take a photo of ${title}`}
                 busy={busy}
                 camera
                 onFiles={add}
               />
               <PickTile
-                label={busy ? "Adding…" : "From photos"}
-                icon={<ImageIcon className="size-4" aria-hidden />}
-                ariaLabel={`Add photos of ${title} from your phone`}
+                icon={<ImageIcon className="size-5" aria-hidden />}
+                ariaLabel={busy ? "Adding photos…" : `Add photos of ${title} from your phone`}
                 busy={busy}
                 onFiles={add}
               />
@@ -220,7 +239,7 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
         open={confirming !== null}
         onClose={() => setConfirming(null)}
         title="Delete this photo?"
-        body="It goes from this stop and from your Photo memories, for everyone on the trip."
+        body={`It goes from this ${scope} and from your Photo memories, for everyone on the trip.`}
         confirmLabel="Delete"
         onConfirm={() => confirming && remove(confirming)}
       />
@@ -237,14 +256,12 @@ export function StopPhotos({ title, photos, available, uid, onAdd, onRemove }: S
  * leaves the camera out on many Android phones; `capture` opens it directly.
  */
 function PickTile({
-  label,
   icon,
   ariaLabel,
   busy,
   camera = false,
   onFiles,
 }: {
-  label: string;
   icon: ReactNode;
   ariaLabel: string;
   busy: boolean;
@@ -254,14 +271,12 @@ function PickTile({
   return (
     <label
       aria-disabled={busy}
-      className={`grid size-16 cursor-pointer place-items-center rounded-xl border border-dashed border-border bg-card px-1 text-center text-[11px] font-semibold leading-tight text-muted-foreground focus-within:ring-2 focus-within:ring-primary ${
-        busy ? "pointer-events-none opacity-50" : ""
+      title={ariaLabel}
+      className={`grid size-16 cursor-pointer place-items-center rounded-xl border border-dashed border-border bg-card text-muted-foreground focus-within:ring-2 focus-within:ring-primary ${
+        busy ? "pointer-events-none animate-pulse opacity-50" : ""
       }`}
     >
-      <span className="flex flex-col items-center gap-0.5">
-        {icon}
-        {label}
-      </span>
+      {icon}
       <input
         type="file"
         accept="image/*"

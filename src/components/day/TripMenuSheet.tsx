@@ -5,6 +5,7 @@ import {
   Backpack,
   Bed,
   CalendarDays,
+  Camera,
   Car,
   ChevronRight,
   Copy,
@@ -32,7 +33,8 @@ export type TripMenuSection =
   | "customize"
   | "checkup"
   | "again"
-  | "preferences";
+  | "preferences"
+  | "photos";
 
 export type BookingTile = "flight" | "stay" | "transport" | "activity";
 
@@ -49,6 +51,7 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
   checkup: "Trip checkup",
   again: "Do it again",
   preferences: "Just for this trip",
+  photos: "Trip photos",
 };
 
 /**
@@ -77,6 +80,7 @@ export function TripMenuSheet({
   onPrint,
   onCalendar,
   preferencesCount,
+  photosCount,
   footer,
   children,
 }: {
@@ -104,6 +108,8 @@ export function TripMenuSheet({
   onCalendar?: (() => void) | undefined;
   /** How many "just for this trip" preferences are set. */
   preferencesCount?: number | undefined;
+  /** How many photos are on the trip, its stops' included. */
+  photosCount?: number | undefined;
   /** Delete trip (owner) — the confirmation lives with it. */
   footer: ReactNode;
   /** The open section's body. */
@@ -185,6 +191,14 @@ export function TripMenuSheet({
       note: "Late mornings, less walking…",
       pill: preferencesCount ? `${preferencesCount} set` : "",
       onClick: () => onSection("preferences"),
+    },
+    {
+      key: "photos",
+      icon: Camera,
+      title: "Photos",
+      note: "Add pictures to the trip",
+      pill: count(photosCount ?? 0, "photo", "photos"),
+      onClick: () => onSection("photos"),
     },
     {
       key: "budget",
