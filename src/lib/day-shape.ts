@@ -119,6 +119,16 @@ const MARGIN_MIN = 10;
  */
 const MAX_WALK_METRES = 5000;
 
+/**
+ * Past a walk, the only claim worth making is that the gap is impossible,
+ * not that it is tight: a ride between two pins could be a car, a metro or a
+ * Shinkansen, and guessing which is how a fine plan gets a wrong warning. So
+ * the ride is timed at 200 km/h along the straight line — faster than any
+ * train runs door to door — and only a gap shorter than even that is named:
+ * "Senso-ji 09:00, Nagoya Castle 09:30" is 269 km in half an hour.
+ */
+const FASTEST_RIDE_METRES_PER_MIN = 200_000 / 60;
+
 function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
   const { lat, lon } = item;
   if (typeof lat !== "number" || typeof lon !== "number") return null;
@@ -145,7 +155,13 @@ function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
  * report card, which is the thing this must never become.
  */
 export function dayTightnessNote(items: readonly PacedItem[]): string | null {
-  let worst: { title: string; nextTitle: string; gap: number; walk: number } | null = null;
+  let worst: {
+    title: string;
+    nextTitle: string;
+    gap: number;
+    need: number;
+    km: number | null;
+  } | null = null;
 
   for (let i = 0; i < items.length - 1; i += 1) {
     const from = items[i]!;
@@ -164,21 +180,30 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     if (!a || !b) continue;
 
     const metres = haversine(a, b);
-    if (metres > MAX_WALK_METRES) continue;
-    const walk = Math.round(metres / WALK_METRES_PER_MIN);
-    if (walk - gap < MARGIN_MIN) continue;
+    const ride = metres > MAX_WALK_METRES;
+    // A journey row's time is when it leaves and its pin may be either end,
+    // so the gap after it says nothing about the ride itself.
+    if (ride && (timelineGlyph(from) === "transport" || timelineGlyph(to) === "transport")) {
+      continue;
+    }
+    const need = Math.round(metres / (ride ? FASTEST_RIDE_METRES_PER_MIN : WALK_METRES_PER_MIN));
+    if (need - gap < MARGIN_MIN) continue;
 
     const fromTitle = (from.title ?? "").trim();
     const toTitle = (to.title ?? "").trim();
     if (!fromTitle || !toTitle) continue;
 
-    if (!worst || walk - gap > worst.walk - worst.gap) {
-      worst = { title: fromTitle, nextTitle: toTitle, gap, walk };
+    if (!worst || need - gap > worst.need - worst.gap) {
+      const km = ride ? Math.round(metres / 1000) : null;
+      worst = { title: fromTitle, nextTitle: toTitle, gap, need, km };
     }
   }
 
   if (!worst) return null;
-  return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, and the walk alone is about ${worst.walk}.`;
+  const between = `${worst.gap} min between ${worst.title} and ${worst.nextTitle}`;
+  return worst.km === null
+    ? `${between}, and the walk alone is about ${worst.need}.`
+    : `${between}, about ${worst.km} km apart: even a fast train takes about ${worst.need}.`;
 }
 
 /** "in 30 min", "in 2 h 10", or null when it is not worth saying. */

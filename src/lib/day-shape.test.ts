@@ -152,3 +152,39 @@ test("dayTightnessNote ignores an overnight or out-of-order pair", () => {
   const day = [placed("22:00", "Dinner"), placed("08:00", "Breakfast", ACROSS_TOWN)];
   assert.equal(dayTightnessNote(day), null);
 });
+
+test("dayTightnessNote names a ride no train could make in the gap", () => {
+  // Tokyo to Nagoya, 269 km, in half an hour.
+  const day = [
+    { title: "Senso-ji", time_label: "09:00", lat: 35.7148, lon: 139.7967 },
+    { title: "Nagoya Castle", time_label: "09:30", lat: 35.1856, lon: 136.8991 },
+  ];
+  assert.equal(
+    dayTightnessNote(day),
+    "30 min between Senso-ji and Nagoya Castle, about 269 km apart: even a fast train takes about 81.",
+  );
+});
+
+test("dayTightnessNote leaves a long ride alone when a fast train fits", () => {
+  // The same 269 km with two hours: a Shinkansen does it, so say nothing.
+  const day = [
+    { title: "Senso-ji", time_label: "09:00", lat: 35.7148, lon: 139.7967 },
+    { title: "Nagoya Castle", time_label: "11:00", lat: 35.1856, lon: 136.8991 },
+  ];
+  assert.equal(dayTightnessNote(day), null);
+});
+
+test("dayTightnessNote does not time a ride from a journey row", () => {
+  // A flight's time is when it leaves; its pin may be either airport.
+  const day = [
+    {
+      kind: "transport",
+      title: "Flight to Sapporo",
+      time_label: "09:00",
+      lat: 35.5494,
+      lon: 139.7798,
+    },
+    { title: "Ramen lunch", time_label: "09:30", lat: 43.0618, lon: 141.3545 },
+  ];
+  assert.equal(dayTightnessNote(day), null);
+});
