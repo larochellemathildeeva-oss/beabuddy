@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
+import { dateIn } from "./trip-clock.ts";
 import {
   sharedStopMapsUrl,
   isShareToken,
@@ -287,6 +288,26 @@ test("each day carries its time zone from its first pin, never the pins", () => 
   );
   assert.doesNotMatch(JSON.stringify(view), /135\.76|35\.01|100\.5/);
   assert.equal(sharedTripZone(view, "2026-10-06"), "Asia/Bangkok");
-  assert.equal(sharedTripZone(view, "2026-10-07"), "Asia/Tokyo");
+  assert.equal(sharedTripZone(view, "2026-10-07"), "Asia/Bangkok");
   assert.equal(sharedTripZone(view), "Asia/Tokyo");
+});
+
+test("each day is over on its own calendar, across time zones", () => {
+  // Tokyo then Los Angeles. At 06:00 UTC on 3 October it is the 3rd in
+  // Tokyo but still the 2nd in Los Angeles, where stops are left.
+  const at = Date.parse("2026-10-03T06:00:00Z");
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("Senso-ji", 0), day_date: "2026-10-01", lat: 35.7, lon: 139.8 },
+      { ...stop("Griffith", 0), day_date: "2026-10-02", lat: 34.1, lon: -118.3 },
+      { ...stop("Santa Monica", 1), day_date: "2026-10-02", lat: 34.0, lon: -118.5 },
+    ] as never,
+    { following: true, now: at },
+    (_lat, lon) => (lon > 0 ? "Asia/Tokyo" : "America/Los_Angeles"),
+  );
+  const todayIn = (zone: string | undefined) => dateIn(zone ?? "UTC", at);
+  assert.equal(sharedLive(view, todayIn).next?.stop.title, "Griffith");
+  // One date for the whole trip, Tokyo's, would have skipped them.
+  assert.equal(sharedLive(view, "2026-10-03").next, null);
 });

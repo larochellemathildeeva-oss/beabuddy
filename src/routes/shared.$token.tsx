@@ -3,7 +3,7 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { Check, ChevronDown, Clock, MapPin } from "@/components/icons";
 import { readSharedTrip } from "@/lib/trip-share.functions";
-import { clockIn, dateIn, wallTimeToInstant, zoneGap } from "@/lib/trip-clock";
+import { clockIn, dateIn, wallTimeToInstant, zoneGap, zoneLabel } from "@/lib/trip-clock";
 import {
   sharedLive,
   sharedTripZone,
@@ -174,7 +174,7 @@ function weekdayIn(zone: string, instant: number): string {
 }
 
 /** The trip's clock against the friend's, when they differ. */
-type Clocks = { trip: string; reader: string; now: number; where: string };
+type Clocks = { trip: string; reader: string; now: number };
 
 /**
  * A trip someone shared with a read-only link: where they will be, and
@@ -200,22 +200,29 @@ function SharedTripPage() {
 
   const dates =
     trip.startDate && trip.endDate ? formatDateRangeLabel(trip.startDate, trip.endDate) : "";
-  // Today is the trip's date, read in the trip's own zone: a friend a day
-  // ahead or behind would otherwise skip, or keep, the wrong stops.
-  const firstZone = sharedTripZone(trip, sharedLive(trip, null).day?.day);
-  const today = clock ? dateIn(firstZone ?? clock.zone, clock.now) : null;
+  // Each day is over on its own calendar, read in that day's zone: a
+  // friend a day ahead or behind would otherwise skip, or keep, the wrong
+  // stops. A trip with no pins falls back on the friend's own date.
+  const today = clock ? (zone: string | undefined) => dateIn(zone ?? clock.zone, clock.now) : null;
   const live = trip.following ? sharedLive(trip, today) : null;
   const liveDay = live?.day ? trip.days.find((d) => d.day === live.day!.day) : undefined;
   const tripZone = sharedTripZone(trip, live?.day?.day);
   const clocks: Clocks | null =
     clock && tripZone && zoneGap(tripZone, clock.zone, clock.now)
-      ? {
-          trip: tripZone,
-          reader: clock.zone,
-          now: clock.now,
-          where: trip.place.split(",")[0]?.trim() || "On the trip",
-        }
+      ? { trip: tripZone, reader: clock.zone, now: clock.now }
       : null;
+  // Planned times are read in their own day's zone, and converted whenever
+  // the friend's clock differs at that moment, even if it agrees today.
+  const readerTime = (place: { day: string | null; stop: SharedStop }): string | null => {
+    const zone = clock && place.day ? sharedTripZone(trip, place.day) : undefined;
+    const at =
+      zone && place.stop.time ? wallTimeToInstant(place.day!, place.stop.time, zone) : null;
+    if (!clock || at === null) return null;
+    const time = clockIn(clock.zone, at);
+    const date = dateIn(clock.zone, at);
+    if (time === place.stop.time && date === place.day) return null;
+    return time + (date !== place.day ? ` ${weekdayIn(clock.zone, at)}` : "");
+  };
   return (
     <AppShell
       publicPage
@@ -225,7 +232,7 @@ function SharedTripPage() {
       <div className="space-y-4 pb-6">
         {live ? (
           <>
-            <LiveCard live={live} clocks={clocks} />
+            <LiveCard live={live} clocks={clocks} readerTime={readerTime} />
             {liveDay && <DayPlan day={liveDay} />}
             {trip.days.length > (liveDay ? 1 : 0) && (
               <details className="group" open={!liveDay}>
@@ -280,23 +287,14 @@ function SharedTripPage() {
 function LiveStop({
   label,
   place,
-  clocks,
+  yours,
 }: {
   label: string;
   place: { day: string | null; stop: SharedStop };
-  clocks: Clocks | null;
+  /** The planned time on the friend's clock, when it differs. */
+  yours: string | null;
 }) {
   const maps = sharedStopMapsUrl(place.stop);
-  const at =
-    clocks && place.day && place.stop.time
-      ? wallTimeToInstant(place.day, place.stop.time, clocks.trip)
-      : null;
-  // The same moment on the friend's clock, with the day when it is another one.
-  const yours =
-    clocks && at !== null
-      ? clockIn(clocks.reader, at) +
-        (dateIn(clocks.reader, at) !== place.day ? ` ${weekdayIn(clocks.reader, at)}` : "")
-      : null;
   return (
     <span className="block min-w-0">
       <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -326,7 +324,15 @@ function LiveStop({
 }
 
 /** Where they are and where they go next: the first thing a following friend sees. */
-function LiveCard({ live, clocks }: { live: SharedLive; clocks: Clocks | null }) {
+function LiveCard({
+  live,
+  clocks,
+  readerTime,
+}: {
+  live: SharedLive;
+  clocks: Clocks | null;
+  readerTime: (place: { day: string | null; stop: SharedStop }) => string | null;
+}) {
   return (
     <section className="plain-card space-y-3 p-4" aria-live="polite" aria-label="Live">
       <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
@@ -346,7 +352,7 @@ function LiveCard({ live, clocks }: { live: SharedLive; clocks: Clocks | null })
         )}
       </p>
       {live.now ? (
-        <LiveStop label="Now at" place={live.now} clocks={clocks} />
+        <LiveStop label="Now at" place={live.now} yours={readerTime(live.now)} />
       ) : (
         <p className="text-[14px] text-muted-foreground">
           {live.next
@@ -357,7 +363,11 @@ function LiveCard({ live, clocks }: { live: SharedLive; clocks: Clocks | null })
       {clocks && <ClockLine clocks={clocks} />}
       {live.next && (
         <div className="border-t border-border pt-3">
-          <LiveStop label={live.now ? "Next" : "Next up"} place={live.next} clocks={clocks} />
+          <LiveStop
+            label={live.now ? "Next" : "Next up"}
+            place={live.next}
+            yours={readerTime(live.next)}
+          />
         </div>
       )}
     </section>
@@ -370,22 +380,26 @@ function LiveCard({ live, clocks }: { live: SharedLive; clocks: Clocks | null })
  */
 function ClockLine({ clocks }: { clocks: Clocks }) {
   const gap = zoneGap(clocks.trip, clocks.reader, clocks.now);
+  // Named after the zone's city ("Tokyo time"), which is what the clock is,
+  // rather than the trip's town, which may be in another zone.
+  const city = zoneLabel(clocks.trip);
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-elevated px-3 py-2 text-[13px]">
       <Clock className="size-4 shrink-0 text-primary" aria-hidden />
       <span>
-        <span className="font-semibold">In {clocks.where}:</span>{" "}
+        <span className="font-semibold">{city ? `${city} time:` : "Trip time:"}</span>{" "}
         <span className="tabular-nums">{clockIn(clocks.trip, clocks.now)}</span>{" "}
         {weekdayIn(clocks.trip, clocks.now)}
       </span>
       <span aria-hidden>·</span>
       <span>
-        <span className="font-semibold">You:</span>{" "}
+        <span className="font-semibold">Your time:</span>{" "}
         <span className="tabular-nums">{clockIn(clocks.reader, clocks.now)}</span>{" "}
         {weekdayIn(clocks.reader, clocks.now)}
       </span>
       <span className="basis-full text-[12px] text-muted-foreground">
-        Plan times are {clocks.where} time{gap ? `, ${gap} of you` : ""}.
+        {city ? `Plan times are ${city} time` : "Plan times are the trip's local time"}
+        {gap ? `, ${gap} of you` : ""}.
       </span>
     </p>
   );

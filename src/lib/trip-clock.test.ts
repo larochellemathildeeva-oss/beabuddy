@@ -1,6 +1,13 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { clockIn, dateIn, offsetMinutes, wallTimeToInstant, zoneGap } from "./trip-clock.ts";
+import {
+  clockIn,
+  dateIn,
+  offsetMinutes,
+  wallTimeToInstant,
+  zoneGap,
+  zoneLabel,
+} from "./trip-clock.ts";
 
 const AT = Date.parse("2026-10-02T23:14:00Z");
 
@@ -44,4 +51,23 @@ test("the gap between the trip and the reader", () => {
   assert.equal(zoneGap("America/Bahia", "Asia/Tokyo", AT), "12 h behind");
   assert.equal(zoneGap("Asia/Kolkata", "UTC", AT), "5 h 30 min ahead");
   assert.equal(zoneGap("Asia/Tokyo", "Asia/Seoul", AT), null);
+});
+
+test("a planned time that is not a real clock time on that day", () => {
+  // New York jumps from 02:00 to 03:00 on 8 March 2026.
+  assert.equal(wallTimeToInstant("2026-03-08", "02:30", "America/New_York"), null);
+  assert.equal(
+    wallTimeToInstant("2026-03-08", "03:30", "America/New_York"),
+    Date.parse("2026-03-08T07:30:00Z"),
+  );
+  assert.equal(wallTimeToInstant("2026-10-03", "25:99", "Asia/Tokyo"), null);
+  assert.equal(wallTimeToInstant("2026-10-03", "24:00", "Asia/Tokyo"), null);
+  assert.equal(wallTimeToInstant("2026-02-30", "10:00", "Asia/Tokyo"), null);
+});
+
+test("a zone's clock is named after its city", () => {
+  assert.equal(zoneLabel("Asia/Tokyo"), "Tokyo");
+  assert.equal(zoneLabel("America/Argentina/Buenos_Aires"), "Buenos Aires");
+  assert.equal(zoneLabel("UTC"), null);
+  assert.equal(zoneLabel("Etc/GMT+3"), null);
 });

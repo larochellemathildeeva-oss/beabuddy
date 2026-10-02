@@ -220,10 +220,14 @@ export type SharedLive = {
 /**
  * The live card of a link that follows along. Next is the first stop not
  * yet reached after the one they are at, or when they are at none, after
- * the last one done; never before `today` (the friend's own date, when the
- * page knows it), so it does not point at a day that is over. Null days (undated stops) are never "next".
+ * the last one done; never on a day that is over. `today` says what today
+ * is: one date for every day, or, for a trip across time zones, the date
+ * in a given day's own zone (each day is judged on its own calendar).
  */
-export function sharedLive(trip: SharedTrip, today: string | null = null): SharedLive {
+export function sharedLive(
+  trip: SharedTrip,
+  today: string | null | ((zone: string | undefined) => string) = null,
+): SharedLive {
   const flat: SharedPlace[] = trip.days.flatMap((d) =>
     d.stops.map((stop) => ({ day: d.day, stop })),
   );
@@ -240,7 +244,9 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
   // A late arrival yesterday can still read "here" after midnight; next is
   // never on a day that is over, either way.
   if (today) {
-    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= today);
+    const todayOf = (day: string) =>
+      typeof today === "string" ? today : today(sharedTripZone(trip, day));
+    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= todayOf(p.day));
     from = Math.max(from, firstToday < 0 ? flat.length : firstToday);
   }
   const next = flat.slice(from).find((p) => !p.stop.status && p.day !== null) ?? null;
@@ -260,10 +266,16 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
 }
 
 /**
- * The time zone a friend should read the trip in: the day the live card is
- * about, else the first day that has one. Undefined when no stop is pinned.
+ * The time zone a day of the trip is lived in: its own, else the last
+ * pinned day before it (a day with no pins is usually spent where the one
+ * before ended), else the first pinned day. Without a day, the first.
+ * Undefined when no stop is pinned at all.
  */
-export function sharedTripZone(trip: SharedTrip, focusDay?: string | null): string | undefined {
-  const focus = focusDay === undefined ? undefined : trip.days.find((d) => d.day === focusDay);
-  return focus?.zone ?? trip.days.find((d) => d.zone)?.zone;
+export function sharedTripZone(trip: SharedTrip, day?: string | null): string | undefined {
+  const at = day === undefined ? -1 : trip.days.findIndex((d) => d.day === day);
+  for (let i = at; i >= 0; i--) {
+    const zone = trip.days[i]!.zone;
+    if (zone) return zone;
+  }
+  return trip.days.find((d) => d.zone)?.zone;
 }

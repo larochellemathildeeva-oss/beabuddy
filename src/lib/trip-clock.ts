@@ -43,17 +43,27 @@ export function clockIn(zone: string, instant: number): string {
 
 /**
  * The instant a wall-clock time ("14:00" on 2026-10-03) happens in `zone`.
- * Null for anything that is not a clock time ("Morning"). Asked twice, so a
- * time just after a daylight-saving change lands on the right side of it.
+ * Null for anything that is not a real clock time on that day: "Morning",
+ * "25:99", or 02:30 on the night the clocks jump past it. Asked twice, so a
+ * time just after a daylight-saving change lands on the right side of it,
+ * then read back to be sure it is the time that was planned.
  */
 export function wallTimeToInstant(day: string, time: string, zone: string): number | null {
   const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
   const t = /^(\d{2}):(\d{2})$/.exec(time);
-  if (!d || !t) return null;
+  if (!d || !t || Number(t[1]) > 23 || Number(t[2]) > 59) return null;
   const naive = Date.UTC(Number(d[1]), Number(d[2]) - 1, Number(d[3]), Number(t[1]), Number(t[2]));
+  if (Number.isNaN(naive)) return null;
   let instant = naive - offsetMinutes(zone, naive) * 60_000;
   instant = naive - offsetMinutes(zone, instant) * 60_000;
+  if (dateIn(zone, instant) !== day || clockIn(zone, instant) !== time) return null;
   return instant;
+}
+
+/** What to call a zone's clock: "Tokyo" for Asia/Tokyo, "Buenos Aires" for …/Buenos_Aires. */
+export function zoneLabel(zone: string): string | null {
+  if (!zone.includes("/") || zone.startsWith("Etc/")) return null;
+  return zone.slice(zone.lastIndexOf("/") + 1).replace(/_/g, " ");
 }
 
 /** How far the trip is from the reader: "9 h ahead", "2 h 30 min behind", or null when level. */
