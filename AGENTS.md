@@ -419,6 +419,20 @@ are also the owner's Photo memories, so every personal read of
 migration is applied by hand; until it is, the sheet says photos are not
 set up yet.
 
+## Follow along (Now)
+
+"Follow along" on the Now view (`FollowAlong.tsx`; `live-companion.ts`, pure
+and tested) watches the phone's position, through the same `useLiveLocation`
+store as the day map, only after the traveller taps "Use my location" and
+only while the screen is open. It offers "Looks like you're at …" / "Looks
+like you've left …" (readings must be within ±75 m and agree for a minute,
+or be close and sure at once; only the next stop or the one after it, never
+one behind) and shows the time to the next stop from where they are, with
+the straight-line estimate (`route-estimate.ts`). It never writes
+`arrived_at` / `left_at` itself: those are on the trip for everyone on it,
+so the traveller's tap still saves them. The position is not sent to the
+server or kept.
+
 ## Reading a booking file
 
 In Trip documents, a new PDF or photo can be read with **"Fill in from this
