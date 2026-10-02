@@ -166,7 +166,11 @@ function StartFree() {
       </div>
       <p className="text-center text-[13px] text-muted-foreground">
         Free · No card · One tap with Google ·{" "}
-        <Link to="/auth" className="underline underline-offset-4">
+        {/* A full-size tap target, though it reads as a word in the line. */}
+        <Link
+          to="/auth"
+          className="-my-3 inline-flex min-h-11 min-w-11 items-center justify-center underline underline-offset-4"
+        >
           Sign in
         </Link>
       </p>

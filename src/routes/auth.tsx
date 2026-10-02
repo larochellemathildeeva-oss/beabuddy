@@ -25,13 +25,13 @@ export const Route = createFileRoute("/auth")({
   },
   head: () => ({
     meta: [
-      { title: "Sign in — Béa" },
+      { title: "Sign in or create an account — Béa" },
       {
         name: "description",
         content:
           "Create your Béa account with email or Google so your pins, trips and photo memories are saved to you.",
       },
-      { property: "og:title", content: "Sign in — Béa" },
+      { property: "og:title", content: "Sign in or create an account — Béa" },
       {
         property: "og:description",
         content: "Save your travel memories to your own Béa account.",
