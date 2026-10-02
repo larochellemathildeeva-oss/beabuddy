@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Check, Globe, Navigation, Route, X } from "@/components/icons";
+import { BeaWordmark } from "@/components/BeaWordmark";
+import { Bookmark, ChevronRight, FileText, Globe, Route, X } from "@/components/icons";
 import { ThemePicker } from "@/components/ThemePicker";
 import { startWalk } from "@/lib/tour-start";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +18,7 @@ import {
   type WelcomeGoal,
 } from "@/lib/welcome";
 
-const STEPS = ["intro", "goal", "style", "look", "ready"] as const;
+const STEPS = ["goal", "style", "look", "ready"] as const;
 
 /** Tell the account the welcome is done, for every other device. */
 async function markAccountDone(): Promise<boolean> {
@@ -30,6 +31,14 @@ async function markAccountDone(): Promise<boolean> {
 }
 type Step = (typeof STEPS)[number];
 
+/** The mark beside each first step on its card. */
+const GOAL_ICONS: Partial<Record<WelcomeGoal["id"], typeof Route>> = {
+  plan: Route,
+  import: FileText,
+  save: Bookmark,
+  map: Globe,
+};
+
 /**
  * The first thing a new account sees: what Béa does, what they came for, how
  * they travel and a look — five short screens, every one skippable — ending
@@ -41,7 +50,7 @@ export function Welcome() {
   const navigate = useNavigate();
   /** The account the welcome is showing for; null while closed. */
   const [openFor, setOpenFor] = useState<string | null>(null);
-  const [step, setStep] = useState<Step>("intro");
+  const [step, setStep] = useState<Step>("goal");
   const [goal, setGoal] = useState<WelcomeGoal>(WELCOME_GOALS[0]!);
   const [style, setStyle] = useState<string | null>(null);
   const [pace, setPace] = useState<string | null>(null);
@@ -67,7 +76,7 @@ export function Welcome() {
     // A different account (or none) never inherits another's welcome.
     if (openFor && openFor !== userId) {
       setOpenFor(null);
-      setStep("intro");
+      setStep("goal");
       setGoal(WELCOME_GOALS[0]!);
       setStyle(null);
       setPace(null);
@@ -231,78 +240,53 @@ export function Welcome() {
         </div>
 
         <div className="overflow-y-auto px-5 pb-2 pt-3">
-          {step === "intro" && (
-            <div className="space-y-4">
-              <img
-                src="/bea/bea-run-static.png"
-                alt=""
-                className="art-dim mx-auto size-28 object-contain"
-              />
-              <h2 className="text-center font-display text-[27px] leading-tight">Welcome to Béa</h2>
-              <p className="text-center text-[15px] text-muted-foreground">
-                Your travel buddy, from the first idea to the last photo.
-              </p>
-              <ul className="space-y-3">
-                {[
-                  {
-                    Icon: Route,
-                    title: "Plans your trips",
-                    body: "Day by day, from the places you've saved and how you like to travel.",
-                  },
-                  {
-                    Icon: Navigation,
-                    title: "Helps on the way",
-                    body: "Today's plan, directions and your bookings. Keep a trip offline for when there's no signal.",
-                  },
-                  {
-                    Icon: Globe,
-                    title: "Remembers where you've been",
-                    body: "Every country, city and photo on your own globe.",
-                  },
-                ].map(({ Icon, title, body }) => (
-                  <li key={title} className="flex gap-3">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
-                      <Icon className="size-5" aria-hidden />
-                    </span>
-                    <span>
-                      <span className="block text-[15px] font-semibold">{title}</span>
-                      <span className="block text-[13.5px] text-muted-foreground">{body}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
           {step === "goal" && (
-            <div className="space-y-3">
-              <h2 className="font-display text-[24px] leading-tight">What brings you here?</h2>
-              <p className="text-[14.5px] text-muted-foreground">
-                Pick one to start with. Everything else is a tap away later.
-              </p>
-              <div role="radiogroup" aria-label="What brings you here" className="space-y-2">
+            <div className="space-y-4">
+              <BeaWordmark />
+              <h2 className="font-display text-[30px] leading-[1.05]">
+                What should Béa help with first?
+              </h2>
+              {/* One tap picks and moves on: there is nothing else to decide here. */}
+              <ul className="space-y-2.5">
                 {WELCOME_GOALS.map((g) => {
-                  const on = g.id === goal.id;
+                  const Icon = GOAL_ICONS[g.id] ?? Route;
                   return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => setGoal(g)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-colors ${
-                        on ? "border-primary bg-primary-soft" : "border-border bg-card"
-                      }`}
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-semibold">{g.title}</span>
-                        <span className="block text-[13px] text-muted-foreground">{g.hint}</span>
-                      </span>
-                      {on && <Check className="size-5 shrink-0 text-primary" aria-hidden />}
-                    </button>
+                    <li key={g.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGoal(g);
+                          setStep("style");
+                        }}
+                        className="relative flex min-h-[76px] w-full items-center gap-3 overflow-hidden rounded-2xl border border-border bg-card pl-3.5 text-left shadow-sm"
+                      >
+                        <img
+                          src={g.picture}
+                          alt=""
+                          aria-hidden
+                          className="absolute inset-y-0 right-0 h-full w-[34%] object-cover"
+                        />
+                        {/* The picture fades into the card under the words. */}
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-0 right-0 w-[34%] bg-gradient-to-r from-card via-card/30 to-transparent"
+                        />
+                        <span className="relative grid size-10 shrink-0 place-items-center rounded-full bg-primary-soft text-primary">
+                          <Icon className="size-5" aria-hidden />
+                        </span>
+                        <span className="relative min-w-0 flex-1 py-3 pr-[18%]">
+                          <span className="block text-[16px] font-semibold">{g.title}</span>
+                          <span className="block text-[13px] text-muted-foreground">{g.hint}</span>
+                        </span>
+                        <ChevronRight
+                          className="relative mr-3 size-5 shrink-0 text-white drop-shadow"
+                          aria-hidden
+                        />
+                      </button>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </div>
           )}
 
@@ -420,6 +404,14 @@ export function Welcome() {
                 Show me how first
               </button>
             </>
+          ) : step === "goal" ? (
+            <button
+              type="button"
+              onClick={close}
+              className="min-h-11 rounded-full px-4 text-[14.5px] font-semibold text-muted-foreground"
+            >
+              Skip for now
+            </button>
           ) : (
             <div className="flex gap-2">
               {index > 0 && (
@@ -436,11 +428,7 @@ export function Welcome() {
                 onClick={next}
                 className="btn-primary flex-[2] px-4 py-2.5 text-[15px]"
               >
-                {step === "intro"
-                  ? "Let's go"
-                  : step === "style" && !style && !pace
-                    ? "Skip for now"
-                    : "Next"}
+                {step === "style" && !style && !pace ? "Skip for now" : "Next"}
               </button>
             </div>
           )}

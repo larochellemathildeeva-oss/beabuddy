@@ -3,6 +3,7 @@ import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { ArrowRight, Check, Eye, EyeOff, Lock, Mail, type LucideProps } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { BeaWordmark } from "@/components/BeaWordmark";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
@@ -46,6 +47,7 @@ function AuthPage() {
   const { redirect: returnTo, mode: startMode } = Route.useSearch();
   const { user, loading } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">(startMode ?? "signin");
+  const [emailOpen, setEmailOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [consented, setConsented] = useState(false);
@@ -157,29 +159,18 @@ function AuthPage() {
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 pb-8 pt-10">
         <div className="rise">
-          <p className="font-display text-[64px] leading-[0.9] text-primary">BÉA</p>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Trips · Places · Memories
-          </p>
+          <BeaWordmark />
         </div>
 
-        <div className="rise mt-6 flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-[52px] leading-[0.95]">
-              {signup ? "Start your vault" : "Welcome back"}
-            </h1>
-            <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
-              {signup
-                ? "Free, no card. Your places, trips and photo memories follow you across devices."
-                : "Your places, trips and photo memories are saved to your account and follow you across devices."}
-            </p>
-          </div>
-          <img
-            src="/bea/bea-think-static.png"
-            alt=""
-            aria-hidden
-            className="art-dim -mr-3 w-[48%] max-w-[230px] shrink-0 scale-125 object-contain"
-          />
+        <div className="rise mt-8">
+          <h1 className="font-display text-[52px] leading-[0.95]">
+            {signup ? "Welcome." : "Welcome back."}
+          </h1>
+          <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
+            {signup
+              ? "Create your account to start your travel life. Free, no card."
+              : "Your places, trips and photo memories are saved to your account and follow you across devices."}
+          </p>
         </div>
 
         <div className="mt-6 space-y-3">
@@ -215,88 +206,100 @@ function AuthPage() {
           )}
         </div>
 
-        <Divider>{signup ? "Or sign up with email" : "Or sign in with email"}</Divider>
+        <Divider>{signup ? "or" : "Or sign in with email"}</Divider>
 
-        <form onSubmit={submit} className="space-y-3">
-          <PillField icon={Mail}>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="email"
-              required
-              placeholder="Email"
-              aria-label="Email"
-              autoComplete="email"
-              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
-            />
-          </PillField>
-          <PillField icon={Lock}>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={signup ? MIN_NEW_PASSWORD_LENGTH : 6}
-              placeholder="Password"
-              aria-label="Password"
-              autoComplete={signup ? "new-password" : "current-password"}
-              aria-describedby={signup ? "password-rules" : undefined}
-              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              aria-pressed={showPassword}
-              className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
-            >
-              {showPassword ? (
-                <Eye className="size-5" aria-hidden />
-              ) : (
-                <EyeOff className="size-5" aria-hidden />
-              )}
-            </button>
-          </PillField>
-          {signup && (
-            <div id="password-rules">
-              <PasswordCreationRules password={password} />
-            </div>
-          )}
-          {signup && (
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5 text-[14.5px] leading-relaxed">
-              <input
-                type="checkbox"
-                checked={consented}
-                onChange={(e) => setConsented(e.target.checked)}
-                className="mt-1 h-4 w-4 shrink-0 accent-primary"
-              />
-              {/* One box, the same three consents (CONSENT_TYPES) as before. */}
-              <span>
-                I'm at least 16 and agree to the{" "}
-                <Link to="/terms" className="text-primary underline underline-offset-4">
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link to="/privacy" className="text-primary underline underline-offset-4">
-                  Privacy Policy
-                </Link>
-                . I understand Béa is a personal organiser, not a travel adviser: suggestions,
-                directions, exchange rates and AI picks may be wrong, my travel decisions are my
-                own, and Béa's liability is limited as the Terms describe.
-              </span>
-            </label>
-          )}
-          {error && <p className="px-1 text-[13px] text-destructive">{error}</p>}
-          {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
+        {/* Signing up, email waits behind one tap so Google stays the quick way. */}
+        {signup && !emailOpen ? (
           <button
-            type="submit"
-            disabled={busy || (signup && !consented)}
-            className="btn-primary flex w-full items-center justify-center gap-2 rounded-full px-4 text-[18px] disabled:opacity-60"
+            type="button"
+            onClick={() => setEmailOpen(true)}
+            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-[17px] font-semibold shadow-sm"
           >
-            {signup ? "Agree & create account" : "Sign in"}
-            {!signup && <ArrowRight className="size-5" aria-hidden />}
+            <Mail className="size-5" aria-hidden />
+            Continue with email
           </button>
-        </form>
+        ) : (
+          <form onSubmit={submit} className="space-y-3">
+            <PillField icon={Mail}>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                required
+                placeholder="Email"
+                aria-label="Email"
+                autoComplete="email"
+                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
+              />
+            </PillField>
+            <PillField icon={Lock}>
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type={showPassword ? "text" : "password"}
+                required
+                minLength={signup ? MIN_NEW_PASSWORD_LENGTH : 6}
+                placeholder="Password"
+                aria-label="Password"
+                autoComplete={signup ? "new-password" : "current-password"}
+                aria-describedby={signup ? "password-rules" : undefined}
+                className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
+              >
+                {showPassword ? (
+                  <Eye className="size-5" aria-hidden />
+                ) : (
+                  <EyeOff className="size-5" aria-hidden />
+                )}
+              </button>
+            </PillField>
+            {signup && (
+              <div id="password-rules">
+                <PasswordCreationRules password={password} />
+              </div>
+            )}
+            {signup && (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-[var(--r-card)] border border-border bg-card p-3.5 text-[14.5px] leading-relaxed">
+                <input
+                  type="checkbox"
+                  checked={consented}
+                  onChange={(e) => setConsented(e.target.checked)}
+                  className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                />
+                {/* One box, the same three consents (CONSENT_TYPES) as before. */}
+                <span>
+                  I'm at least 16 and agree to the{" "}
+                  <Link to="/terms" className="text-primary underline underline-offset-4">
+                    Terms
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/privacy" className="text-primary underline underline-offset-4">
+                    Privacy Policy
+                  </Link>
+                  . I understand Béa is a personal organiser, not a travel adviser: suggestions,
+                  directions, exchange rates and AI picks may be wrong, my travel decisions are my
+                  own, and Béa's liability is limited as the Terms describe.
+                </span>
+              </label>
+            )}
+            {error && <p className="px-1 text-[13px] text-destructive">{error}</p>}
+            {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
+            <button
+              type="submit"
+              disabled={busy || (signup && !consented)}
+              className="btn-primary flex w-full items-center justify-center gap-2 rounded-full px-4 text-[18px] disabled:opacity-60"
+            >
+              {signup ? "Agree & create account" : "Sign in"}
+              {!signup && <ArrowRight className="size-5" aria-hidden />}
+            </button>
+          </form>
+        )}
 
         {!signup && (
           <Link
@@ -316,6 +319,15 @@ function AuthPage() {
         >
           {signup ? "I already have an account" : "Create a new account"}
         </button>
+
+        <img
+          src="/banners/coastal.webp"
+          alt=""
+          aria-hidden
+          width={960}
+          height={540}
+          className="mt-8 aspect-[16/9] w-full rounded-[28px] object-cover"
+        />
 
         <p className="mt-6 text-center text-[13px] leading-relaxed text-muted-foreground">
           By continuing you agree to our{" "}
