@@ -149,10 +149,7 @@ export function changeSetForSchedulePatch<T extends ScheduleStop>(
     });
   }
 
-  if (
-    owns(patch, "time_locked") &&
-    (patch.time_locked ?? null) !== (current.time_locked ?? null)
-  ) {
+  if (owns(patch, "time_locked") && (patch.time_locked ?? null) !== (current.time_locked ?? null)) {
     changes.push({
       id: `${id}:time-lock`,
       type: "time-lock",
@@ -221,9 +218,12 @@ export function updatesForConsequence<T extends ScheduleStop>(
     [...beforeIds].every((id) => afterIds.has(id)) &&
     [...afterIds].every((id) => beforeIds.has(id));
   if (!sameRows) {
-    throw Object.assign(new Error("This review contains a stop add or remove that isn't supported yet."), {
-      code: "ITINERARY_REVIEW_UNSUPPORTED_CHANGE",
-    });
+    throw Object.assign(
+      new Error("This review contains a stop add or remove that isn't supported yet."),
+      {
+        code: "ITINERARY_REVIEW_UNSUPPORTED_CHANGE",
+      },
+    );
   }
 
   const was = new Map(before.map((stop) => [stop.id, stop] as const));
