@@ -37,6 +37,18 @@ export function FollowAlong({
   const sighting = useRef<Sighting>(null);
   const dismissed = useRef(new Set<string>());
   const [suggest, setSuggest] = useState<{ kind: FollowKind; stop: ItineraryRow } | null>(null);
+  /** Turned on here: then leaving Now turns it off, even if the map is open next. */
+  const startedHere = useRef(false);
+  useEffect(
+    () => () => {
+      if (startedHere.current) stopLiveLocation();
+    },
+    [],
+  );
+  const start = () => {
+    startedHere.current = true;
+    startLiveLocation();
+  };
 
   useEffect(() => {
     if (!live.on || !live.fix || live.stale) {
@@ -67,8 +79,8 @@ export function FollowAlong({
         </p>
         <button
           type="button"
-          onClick={startLiveLocation}
-          className="inline-flex min-h-10 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold"
+          onClick={start}
+          className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold"
         >
           Use my location
         </button>
@@ -94,8 +106,11 @@ export function FollowAlong({
         </p>
         <button
           type="button"
-          onClick={stopLiveLocation}
-          className="min-h-9 shrink-0 px-2 text-[13px] font-semibold text-primary underline underline-offset-2"
+          onClick={() => {
+            startedHere.current = false;
+            stopLiveLocation();
+          }}
+          className="min-h-11 min-w-11 shrink-0 px-2 text-[13px] font-semibold text-primary underline underline-offset-2"
         >
           Stop
         </button>
@@ -115,14 +130,14 @@ export function FollowAlong({
                 if (suggest.kind === "arrive") onArrive(suggest.stop);
                 else onLeave(suggest.stop);
               }}
-              className="inline-flex min-h-10 items-center rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
+              className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
             >
               {suggest.kind === "arrive" ? "I'm here" : "Leaving"}
             </button>
             <button
               type="button"
               onClick={() => wave(suggest.kind, suggest.stop)}
-              className="inline-flex min-h-10 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold text-muted-foreground"
+              className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold text-muted-foreground"
             >
               {suggest.kind === "arrive" ? "Not yet" : "Still here"}
             </button>

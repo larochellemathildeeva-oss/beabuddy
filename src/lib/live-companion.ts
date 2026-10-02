@@ -3,6 +3,7 @@ import { haversine } from "./geo.ts";
 import type { HereFix } from "./live-location.ts";
 import { estimatedLegSeconds } from "./route-estimate.ts";
 import { legModeFor, type LegMode, type TravelChoice } from "./travel-mode.ts";
+import { placed } from "./trip-map.ts";
 
 /**
  * "Follow along" on the Now view: the pure parts.
@@ -50,8 +51,9 @@ export type Sighting = { kind: FollowKind; stopId: string; since: number } | nul
 
 type Candidate<T> = { kind: FollowKind; stop: T; sure: boolean };
 
+/** The stop's pin, by the map's own rule: 0,0 is a failed lookup, not a place. */
 function pinOf(stop: FollowStop): { lat: number; lon: number } | null {
-  return stop.lat != null && stop.lon != null ? { lat: stop.lat, lon: stop.lon } : null;
+  return placed(stop) ? { lat: stop.lat, lon: stop.lon } : null;
 }
 
 /** What one reading points at, before it has lasted. */

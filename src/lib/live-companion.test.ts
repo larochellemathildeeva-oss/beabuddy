@@ -127,6 +127,8 @@ test("from here says nothing without a pin, with an unsure reading, or once ther
   assert.equal(fromHere(fix(louvre, 900), next, "walk", 600), null);
   assert.equal(fromHere(fix(flore), next, "walk", 600), null);
   assert.equal(fromHere(fix(louvre), { ...next, lat: null, lon: null }, "walk", 600), null);
+  // 0,0 is where a failed lookup lands, not a stop.
+  assert.equal(fromHere(fix(louvre), { ...next, lat: 0, lon: 0 }, "walk", 600), null);
 });
 
 test("from here without a time says only how far", () => {
