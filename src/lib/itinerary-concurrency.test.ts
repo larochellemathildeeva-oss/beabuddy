@@ -36,14 +36,11 @@ test("local inserted rows survive a server snapshot until their save lands", () 
 
 test("Undo is safe only for rows nobody touched after the ChangeSet committed", () => {
   const current = [row("a", "after-a"), row("b", "someone-else")];
-  assert.deepEqual(
-    undoSafety(current, { a: "after-a", b: "after-b", c: "after-c" }),
-    {
-      safeIds: ["a"],
-      changedIds: ["b"],
-      missingIds: ["c"],
-    },
-  );
+  assert.deepEqual(undoSafety(current, { a: "after-a", b: "after-b", c: "after-c" }), {
+    safeIds: ["a"],
+    changedIds: ["b"],
+    missingIds: ["c"],
+  });
 });
 
 test("baseVersionsFor captures only touched rows", () => {
