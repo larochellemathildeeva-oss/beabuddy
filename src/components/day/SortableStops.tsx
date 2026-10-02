@@ -18,10 +18,20 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "@/components/icons";
 
+const dragTitle = (item: { data: { current?: Record<string, unknown> | undefined } }) => {
+  const title = item.data.current?.title;
+  return typeof title === "string" && title.trim() ? title : "stop";
+};
+
 /**
  * One day's stops, reordered by dragging a grip. Only the grip starts a drag,
  * so scrolling the list and swiping a card keep working as before; a
  * keyboard can pick a stop up with Space and move it with the arrows.
+ *
+ * The list no longer asks the parent to remove connectors/Now/group labels
+ * while a drag is active. Removing those rows changed the list's height under
+ * the traveller's finger. Keeping the document in place is more important;
+ * the sortable rows themselves still animate around the lifted card.
  */
 export function SortableDay({
   ids,
@@ -32,7 +42,7 @@ export function SortableDay({
   /** The stops shown, in order. */
   ids: string[];
   onDrop: (activeId: string, overId: string) => void;
-  /** While a drag is on, the list hides what sits between the cards. */
+  /** Kept for the caller's settled-state cleanup; drag no longer collapses rows. */
   onDragging: (dragging: boolean) => void;
   children: ReactNode;
 }) {
@@ -52,7 +62,32 @@ export function SortableDay({
       sensors={sensors}
       collisionDetection={closestCenter}
       modifiers={[restrictToVerticalAxis]}
-      onDragStart={() => onDragging(true)}
+      accessibility={{
+        screenReaderInstructions: {
+          draggable:
+            "To move a stop, press Space. Use the arrow keys to choose its new place, then press Space again. Press Escape to cancel.",
+        },
+        announcements: {
+          onDragStart({ active }) {
+            return `Picked up ${dragTitle(active)}.`;
+          },
+          onDragOver({ active, over }) {
+            if (!over || active.id === over.id) return undefined;
+            return `${dragTitle(active)} is over ${dragTitle(over)}.`;
+          },
+          onDragEnd({ active, over }) {
+            if (!over || active.id === over.id) return `${dragTitle(active)} stayed where it was.`;
+            return `Moved ${dragTitle(active)} near ${dragTitle(over)}.`;
+          },
+          onDragCancel({ active }) {
+            return `Move cancelled. ${dragTitle(active)} returned to its place.`;
+          },
+        },
+      }}
+      onDragStart={() => {
+        // Intentionally do not set the parent's old "dragging" presentation:
+        // it removed non-sortable timeline rows and made the list shrink.
+      }}
       onDragCancel={() => onDragging(false)}
       onDragEnd={end}
     >
@@ -87,11 +122,22 @@ export function SortableStop({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id });
+  } = useSortable({ id, data: { title } });
+  const translated = CSS.Translate.toString(transform);
   const liStyle: CSSProperties = {
-    transform: CSS.Translate.toString(transform),
+    transform: isDragging
+      ? `${translated || "translate3d(0, 0, 0)"} scale(1.02)`
+      : translated,
     transition,
-    ...(isDragging ? { zIndex: 40, position: "relative", opacity: 0.92 } : {}),
+    transformOrigin: "center center",
+    ...(isDragging
+      ? {
+          zIndex: 40,
+          position: "relative",
+          opacity: 1,
+          filter: "drop-shadow(0 10px 14px rgb(0 0 0 / 0.12))",
+        }
+      : {}),
   };
   const dragHandle = (
     <button
