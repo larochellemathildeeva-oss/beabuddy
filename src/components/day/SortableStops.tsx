@@ -19,7 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "@/components/icons";
 
 const dragTitle = (item: { data: { current?: Record<string, unknown> | undefined } }) => {
-  const title = item.data.current?.title;
+  const title = item.data.current?.["title"];
   return typeof title === "string" && title.trim() ? title : "stop";
 };
 
