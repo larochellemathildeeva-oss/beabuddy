@@ -48,6 +48,8 @@ export type ShareSourceItem = {
   parent_id?: string | null;
   arrived_at?: string | null;
   left_at?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 /** Where the trip is on a stop, for a link that follows along. */
@@ -68,7 +70,12 @@ export type SharedTrip = {
   endDate: string | null;
   /** True when the link shows which stop the trip is at. */
   following: boolean;
-  days: { day: string | null; stops: SharedStop[] }[];
+  /**
+   * Each day with its time zone (IANA, from the day's first pin), so a
+   * friend elsewhere can read the plan's times against their own. Never the
+   * pins themselves.
+   */
+  days: { day: string | null; zone?: string; stops: SharedStop[] }[];
 };
 
 /**
@@ -93,6 +100,7 @@ export function sharedTripView(
   trip: ShareSourceTrip,
   items: readonly ShareSourceItem[],
   follow: { following: boolean; now: number } = { following: false, now: 0 },
+  zoneAt?: (lat: number, lon: number) => string | null,
 ): SharedTrip {
   const shown = items
     .filter(
@@ -121,6 +129,10 @@ export function sharedTripView(
       kind: timelineGlyph(item),
       address: item.address?.trim() ?? "",
     };
+    if (!day.zone && zoneAt && Number.isFinite(item.lat) && Number.isFinite(item.lon)) {
+      const zone = zoneAt(item.lat!, item.lon!);
+      if (zone) day.zone = zone;
+    }
     const status = follow.following ? sharedStopStatus(item, follow.now) : undefined;
     if (status) stop.status = status;
     if (status === "here") here.push({ stop, at: Date.parse(item.arrived_at!) });
@@ -208,10 +220,14 @@ export type SharedLive = {
 /**
  * The live card of a link that follows along. Next is the first stop not
  * yet reached after the one they are at, or when they are at none, after
- * the last one done; never before `today` (the friend's own date, when the
- * page knows it), so it does not point at a day that is over. Null days (undated stops) are never "next".
+ * the last one done; never on a day that is over. `today` says what today
+ * is: one date for every day, or, for a trip across time zones, the date
+ * in a given day's own zone (each day is judged on its own calendar).
  */
-export function sharedLive(trip: SharedTrip, today: string | null = null): SharedLive {
+export function sharedLive(
+  trip: SharedTrip,
+  today: string | null | ((zone: string | undefined) => string) = null,
+): SharedLive {
   const flat: SharedPlace[] = trip.days.flatMap((d) =>
     d.stops.map((stop) => ({ day: d.day, stop })),
   );
@@ -228,7 +244,9 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
   // A late arrival yesterday can still read "here" after midnight; next is
   // never on a day that is over, either way.
   if (today) {
-    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= today);
+    const todayOf = (day: string) =>
+      typeof today === "string" ? today : today(sharedTripZone(trip, day));
+    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= todayOf(p.day));
     from = Math.max(from, firstToday < 0 ? flat.length : firstToday);
   }
   const next = flat.slice(from).find((p) => !p.stop.status && p.day !== null) ?? null;
@@ -245,4 +263,19 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
         }
       : null,
   };
+}
+
+/**
+ * The time zone a day of the trip is lived in: its own, else the last
+ * pinned day before it (a day with no pins is usually spent where the one
+ * before ended), else the first pinned day. Without a day, the first.
+ * Undefined when no stop is pinned at all.
+ */
+export function sharedTripZone(trip: SharedTrip, day?: string | null): string | undefined {
+  const at = day === undefined ? -1 : trip.days.findIndex((d) => d.day === day);
+  for (let i = at; i >= 0; i--) {
+    const zone = trip.days[i]!.zone;
+    if (zone) return zone;
+  }
+  return trip.days.find((d) => d.zone)?.zone;
 }

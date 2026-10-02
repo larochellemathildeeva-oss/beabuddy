@@ -24,10 +24,20 @@ export async function readSharedTrip(token: string): Promise<SharedTrip | null> 
     readItems(db, link.trip_id, following),
   ]);
   if (!trip) return null;
-  return sharedTripView(trip as Parameters<typeof sharedTripView>[0], rows, {
-    following,
-    now: Date.now(),
-  });
+  const { default: tzlookup } = await import("@photostructure/tz-lookup");
+  const zoneAt = (lat: number, lon: number): string | null => {
+    try {
+      return tzlookup(lat, lon);
+    } catch {
+      return null;
+    }
+  };
+  return sharedTripView(
+    trip as Parameters<typeof sharedTripView>[0],
+    rows,
+    { following, now: Date.now() },
+    zoneAt,
+  );
 }
 
 type LinkRow = {
@@ -64,7 +74,7 @@ async function readItems(
   tripId: string,
   following: boolean,
 ): Promise<ShareSourceItem[]> {
-  const base = "day_date, time_label, kind, title, address, position";
+  const base = "day_date, time_label, kind, title, address, position, lat, lon";
   const attempts = [
     ...(following ? [`${base}, parent_id, arrived_at, left_at`] : []),
     `${base}, parent_id`,
