@@ -77,9 +77,17 @@ export function usePhotoMemories() {
   const reload = async () => {
     // A failed read is not an empty library. Blanking here would also empty
     // the globe and the city pages, which are built from these rows.
+    // Only the traveller's own: photos other travellers added to a shared
+    // trip's stops are readable too, and are not where this traveller has been.
+    const uid = (await supabase.auth.getSession()).data.session?.user.id;
+    if (!uid) {
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from("photo_memories")
       .select("id, storage_path, city, country, caption, taken_at, lat, lon")
+      .eq("user_id", uid)
       .order("taken_at", { ascending: false });
     if (!error) setRows((data ?? []) as PhotoRow[]);
     setLoading(false);

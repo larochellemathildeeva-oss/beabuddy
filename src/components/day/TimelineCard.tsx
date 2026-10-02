@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   CalendarDays,
+  Camera,
   Clock,
   FileText,
   CornerUpLeft,
@@ -44,6 +45,7 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { SwipeRow } from "@/components/day/SwipeRow";
 import { Sheet } from "@/components/Sheet";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
+import { StopPhotos, type StopPhotosProps } from "@/components/day/StopPhotos";
 import { isBooked } from "@/lib/bookings";
 import { prettyDistance, prettyDuration } from "@/hooks/useOfflineDirections";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -89,6 +91,7 @@ export function TimelineEntry({
   onMoveTo,
   linkedDocuments = 0,
   onOpenDocuments,
+  photos,
   canMoveUp = false,
   canMoveDown = false,
   tripStart,
@@ -150,6 +153,8 @@ export function TimelineEntry({
   linkedDocuments?: number;
   /** Open them: the same record the trip's Bookings and Trip documents open. */
   onOpenDocuments?: (() => void) | undefined;
+  /** Travellers' own photos of this stop, and adding one. Absent where photos are not offered. */
+  photos?: StopPhotosProps | undefined;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   tripStart?: string | null | undefined;
@@ -407,6 +412,16 @@ export function TimelineEntry({
               className="tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
             >
               <FileText className="size-4" aria-hidden />
+            </button>
+          ) : null}
+          {photos?.photos.length ? (
+            <button
+              type="button"
+              onClick={() => flip(true)}
+              aria-label={`${photos.photos.length === 1 ? "1 photo" : `${photos.photos.length} photos`} of ${item.title}`}
+              className="tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-primary-soft text-primary"
+            >
+              <Camera className="size-4" aria-hidden />
             </button>
           ) : null}
         </div>
@@ -727,6 +742,8 @@ export function TimelineEntry({
           auto
         />
       </div>
+
+      {photos && <StopPhotos {...photos} />}
 
       {canEditInside && onInside && (
         <div className="mt-2">

@@ -104,19 +104,29 @@ function usePastData(): PastData | null {
   const [data, setData] = useState<PastData | null>(null);
   useEffect(() => {
     let active = true;
-    void Promise.all([
-      supabase.from("future_notes").select("id, city, country, note, created_at"),
-      supabase.from("photo_memories").select("id, storage_path, city, country, taken_at"),
-      supabase.from("trips").select("id, title, city, country, start_date, end_date"),
-      supabase.from("recommendations").select("id, name, city, country, visited"),
-    ]).then(([notes, photos, trips, recs]) => {
-      if (!active) return;
-      setData({
-        notes: (notes.data ?? []) as PastNote[],
-        photos: (photos.data ?? []) as PastPhoto[],
-        trips: (trips.data ?? []) as PastTrip[],
-        recs: (recs.data ?? []) as PastRec[],
+    // Own photos only: other travellers' photos on a shared trip's stops are
+    // readable too, and are not Past You's.
+    const load = (uid: string) =>
+      Promise.all([
+        supabase.from("future_notes").select("id, city, country, note, created_at"),
+        supabase
+          .from("photo_memories")
+          .select("id, storage_path, city, country, taken_at")
+          .eq("user_id", uid),
+        supabase.from("trips").select("id, title, city, country, start_date, end_date"),
+        supabase.from("recommendations").select("id, name, city, country, visited"),
+      ]).then(([notes, photos, trips, recs]) => {
+        if (!active) return;
+        setData({
+          notes: (notes.data ?? []) as PastNote[],
+          photos: (photos.data ?? []) as PastPhoto[],
+          trips: (trips.data ?? []) as PastTrip[],
+          recs: (recs.data ?? []) as PastRec[],
+        });
       });
+    void supabase.auth.getSession().then(({ data: auth }) => {
+      const uid = auth.session?.user.id;
+      if (active && uid) void load(uid);
     });
     return () => {
       active = false;
