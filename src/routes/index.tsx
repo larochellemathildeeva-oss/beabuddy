@@ -14,6 +14,9 @@ import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
 import { HomeNameAsk } from "@/components/HomeNameAsk";
+import { HomePendingPlan } from "@/components/HomePendingPlan";
+import { LandingSampleDay } from "@/components/LandingSampleDay";
+import { LandingTryPlan } from "@/components/LandingTryPlan";
 import { shouldAskName } from "@/lib/name-ask";
 import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
 import { useNearMe } from "@/hooks/useNearMe";
@@ -93,6 +96,8 @@ function LandingPage() {
         </p>
         {/* The way in first, where a thumb reaches it without scrolling. */}
         <StartFree />
+        <LandingSampleDay />
+        <LandingTryPlan />
         <ul className="grid gap-2 sm:grid-cols-3">
           {LANDING_POINTS.map((point) => (
             <li key={point.title} className="surface border border-border/50 p-3.5">
@@ -276,6 +281,8 @@ function SignedInHome() {
         {user && askName && (
           <HomeNameAsk userId={user.id} onSaved={(name) => setDisplayName(name)} />
         )}
+
+        <HomePendingPlan />
 
         {showTrip && (
           <HomeTripHero
