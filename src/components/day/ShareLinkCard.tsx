@@ -126,12 +126,25 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         .eq("id", id)) as { error: unknown };
       if (error) throw error;
       await load();
-      toast("Link turned off", { description: "It no longer opens the trip." });
+      // One tap, right beside Copy: easy to hit by mistake, so it can be undone.
+      toast("Link turned off", {
+        description: "It no longer opens the trip.",
+        action: { label: "Undo", onClick: () => void restore(id) },
+      });
     } catch {
       toast.error("That didn't save. Try again.");
     } finally {
       setBusy(false);
     }
+  };
+
+  const restore = async (id: string) => {
+    const { error } = (await linksTable().update({ revoked_at: null }).eq("id", id)) as {
+      error: unknown;
+    };
+    if (error) toast.error("That didn't save. Try again.");
+    else toast.success("Link back on");
+    await load();
   };
 
   if (ready === false) return null;
@@ -159,8 +172,14 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
               month: "short",
               day: "numeric",
             })}
-            {link.follow_along ? " · following along" : ""}
           </span>
+          {canFollow && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${link.follow_along ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+            >
+              {link.follow_along ? "Live" : "Plan only"}
+            </span>
+          )}
           {canFollow && (
             <button
               type="button"
@@ -168,7 +187,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
               onClick={() => void setFollowing(link.id, !link.follow_along)}
               className="min-h-11 min-w-11 px-1 text-[13px] font-semibold text-foreground underline underline-offset-2 disabled:opacity-60"
             >
-              {link.follow_along ? "Plan only" : "Follow along"}
+              {link.follow_along ? "Stop following" : "Follow along"}
             </button>
           )}
           <button
