@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Copy, Link2 } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,8 +41,17 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
   // "Follow along" arrives with its own migration; until then, plan only.
   const [canFollow, setCanFollow] = useState(true);
   const [follow, setFollow] = useState(true);
+  // Only the latest read for the trip on screen is shown: an Undo tapped
+  // after switching trips, or a read overtaken by a newer one, is dropped.
+  const shownTrip = useRef(tripId);
+  shownTrip.current = tripId;
+  const lastRead = useRef(0);
 
   const load = useCallback(async () => {
+    // An Undo from another trip's card: its read must not cancel this one's.
+    if (shownTrip.current !== tripId) return;
+    const read = ++lastRead.current;
+    const stale = () => read !== lastRead.current || shownTrip.current !== tripId;
     const ask = (columns: string) =>
       linksTable()
         .select(columns)
@@ -53,9 +62,11 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         error: DbError;
       }>;
     let { data, error } = await ask("id, token, expires_at, revoked_at, follow_along");
+    if (stale()) return;
     if (isMissingColumn(error, ["follow_along"])) {
       setCanFollow(false);
       ({ data, error } = await ask("id, token, expires_at, revoked_at"));
+      if (stale()) return;
     }
     if (isMissingTable(error)) {
       setReady(false);
@@ -139,12 +150,19 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
   };
 
   const restore = async (id: string) => {
-    const { error } = (await linksTable().update({ revoked_at: null }).eq("id", id)) as {
-      error: unknown;
-    };
-    if (error) toast.error("That didn't save. Try again.");
-    else toast.success("Link back on");
-    await load();
+    setBusy(true);
+    try {
+      const { data, error } = (await linksTable()
+        .update({ revoked_at: null })
+        .eq("id", id)
+        .select("id")) as { data: { id: string }[] | null; error: unknown };
+      // No row back: the link is gone, or this traveller is no longer on the trip.
+      if (error || !data?.length) toast.error("That link couldn't be turned back on.");
+      else toast.success("Link back on");
+      await load();
+    } finally {
+      setBusy(false);
+    }
   };
 
   if (ready === false) return null;
@@ -175,7 +193,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
           </span>
           {canFollow && (
             <span
-              className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${link.follow_along ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+              className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${link.follow_along ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
             >
               {link.follow_along ? "Live" : "Plan only"}
             </span>
