@@ -194,3 +194,55 @@ export function sharedNow(trip: SharedTrip): { day: string | null; stop: SharedS
   }
   return null;
 }
+
+type SharedPlace = { day: string | null; stop: SharedStop };
+
+/** What a following friend sees first: where they are, where they go next. */
+export type SharedLive = {
+  now: SharedPlace | null;
+  next: SharedPlace | null;
+  /** The day the card is about, with its stops done and in all. */
+  day: { day: string | null; done: number; total: number } | null;
+};
+
+/**
+ * The live card of a link that follows along. Next is the first stop not
+ * yet reached after the one they are at, or when they are at none, after
+ * the last one done; never before `today` (the friend's own date, when the
+ * page knows it), so it does not point at a day that is over. Null days (undated stops) are never "next".
+ */
+export function sharedLive(trip: SharedTrip, today: string | null = null): SharedLive {
+  const flat: SharedPlace[] = trip.days.flatMap((d) =>
+    d.stops.map((stop) => ({ day: d.day, stop })),
+  );
+  const hereAt = flat.findIndex((p) => p.stop.status === "here");
+  const now = hereAt >= 0 ? flat[hereAt]! : null;
+  let from = 0;
+  if (now) {
+    from = hereAt + 1;
+  } else {
+    flat.forEach((p, i) => {
+      if (p.stop.status === "done") from = i + 1;
+    });
+  }
+  // A late arrival yesterday can still read "here" after midnight; next is
+  // never on a day that is over, either way.
+  if (today) {
+    const firstToday = flat.findIndex((p) => p.day !== null && p.day >= today);
+    from = Math.max(from, firstToday < 0 ? flat.length : firstToday);
+  }
+  const next = flat.slice(from).find((p) => !p.stop.status && p.day !== null) ?? null;
+  const focus = now ?? next;
+  const focusDay = focus ? trip.days.find((d) => d.day === focus.day) : undefined;
+  return {
+    now,
+    next,
+    day: focusDay
+      ? {
+          day: focusDay.day,
+          done: focusDay.stops.filter((s) => s.status === "done").length,
+          total: focusDay.stops.length,
+        }
+      : null,
+  };
+}
