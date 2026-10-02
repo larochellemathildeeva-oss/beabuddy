@@ -15,6 +15,8 @@
  */
 
 import { haversine } from "./geo.ts";
+import { estimatedLegSeconds } from "./route-estimate.ts";
+import { legModeFor } from "./travel-mode.ts";
 import { timelineGlyph, type TimelineGlyph } from "./timeline-kind.ts";
 import { timeForRail } from "./timeline-kind.ts";
 
@@ -24,10 +26,11 @@ export type ShapedItem = {
   time_label?: string | null;
 };
 
-/** A shaped item that may also know where it is. */
+/** A shaped item that may also know where it is and how long the stop lasts. */
 export type PacedItem = ShapedItem & {
   lat?: number | null;
   lon?: number | null;
+  planned_stay_minutes?: number | null;
 };
 
 /** Plural-aware names for the glyphs, for a heading rather than a tooltip. */
@@ -100,24 +103,10 @@ export function nextUp<T extends ShapedItem>(items: readonly T[], minutesNow: nu
 }
 
 /**
- * Metres a minute on foot. A city walk with crossings and a map check, not an
- * athlete on an empty road — the number is deliberately slow, because the
- * point of the note below is to be right rather than encouraging.
- */
-const WALK_METRES_PER_MIN = 70;
-
-/**
- * The gap has to be short of the walk by this much before it is worth saying.
- * Two minutes of daylight between them is rounding, not a problem, and a note
- * that fires on rounding is a note you learn to stop reading.
+ * The schedule has to miss by this much before it is worth interrupting the
+ * traveller. A couple of minutes is rounding, not a useful warning.
  */
 const MARGIN_MIN = 10;
-
-/**
- * Past this, straight line, nobody walks it: it is a train, a ferry or a
- * taxi, and a walking time for it ("the walk alone is about 252") is noise.
- */
-const MAX_WALK_METRES = 5000;
 
 function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
   const { lat, lon } = item;
@@ -131,54 +120,65 @@ function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
 /**
  * One sentence about a day that does not have enough time in it, or null.
  *
- * This is deliberately not a score. It says nothing about the day as a whole,
- * ranks nothing, and rates nothing — it names two stops and two numbers that
- * are both already written down, and leaves the conclusion to you. A day the
- * arithmetic cannot fault says nothing at all, which is most days.
- *
- * It only speaks when the plan gave it both halves: two clock times and two
- * positions. Guessing the walk between an unplaced stop and a vague one is how
- * you get a warning that is confidently wrong, and a wrong warning about your
- * own holiday is worse than silence.
+ * The old check compared only start times with a short walking estimate. That
+ * missed the time spent at the first stop and deliberately ignored pairs more
+ * than 5 km apart — exactly the journeys where an impossible schedule matters
+ * most. This version includes the planned stay and uses Béa's standard
+ * straight-line journey estimate whenever both pins are known. The shared
+ * consequence engine can later replace the estimate with a routed leg.
  *
  * At most one, for the tightest pair on the day. A list of these would be a
  * report card, which is the thing this must never become.
  */
 export function dayTightnessNote(items: readonly PacedItem[]): string | null {
-  let worst: { title: string; nextTitle: string; gap: number; walk: number } | null = null;
+  let worst: {
+    title: string;
+    nextTitle: string;
+    gap: number;
+    stay: number;
+    travel: number;
+    shortBy: number;
+  } | null = null;
 
   for (let i = 0; i < items.length - 1; i += 1) {
     const from = items[i]!;
     const to = items[i + 1]!;
 
-    const leaves = minutesOfDay(from.time_label);
-    const arrives = minutesOfDay(to.time_label);
-    if (leaves === null || arrives === null) continue;
+    const starts = minutesOfDay(from.time_label);
+    const nextStarts = minutesOfDay(to.time_label);
+    if (starts === null || nextStarts === null) continue;
 
-    const gap = arrives - leaves;
-    // Out of order, or so far apart the day is not the problem.
-    if (gap <= 0 || gap > 4 * 60) continue;
+    const gap = nextStarts - starts;
+    // A same-day glance cannot safely interpret an overnight pair. The full
+    // consequence engine uses day-qualified times for those.
+    if (gap <= 0) continue;
 
     const a = placedPoint(from);
     const b = placedPoint(to);
     if (!a || !b) continue;
 
+    // Walk what is close, drive the rest: a walking estimate for two stations
+    // 40 km apart would read as eleven hours.
     const metres = haversine(a, b);
-    if (metres > MAX_WALK_METRES) continue;
-    const walk = Math.round(metres / WALK_METRES_PER_MIN);
-    if (walk - gap < MARGIN_MIN) continue;
+    const travel = Math.ceil(estimatedLegSeconds(metres, legModeFor("auto", metres)) / 60);
+    const stay = Math.max(0, from.planned_stay_minutes ?? 0);
+    const shortBy = stay + travel - gap;
+    if (shortBy < MARGIN_MIN) continue;
 
     const fromTitle = (from.title ?? "").trim();
     const toTitle = (to.title ?? "").trim();
     if (!fromTitle || !toTitle) continue;
 
-    if (!worst || walk - gap > worst.walk - worst.gap) {
-      worst = { title: fromTitle, nextTitle: toTitle, gap, walk };
+    if (!worst || shortBy > worst.shortBy) {
+      worst = { title: fromTitle, nextTitle: toTitle, gap, stay, travel, shortBy };
     }
   }
 
   if (!worst) return null;
-  return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, and the walk alone is about ${worst.walk}.`;
+  if (worst.stay > 0) {
+    return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, but ${worst.title} is planned for ${worst.stay} min and travel is about ${worst.travel}.`;
+  }
+  return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, and travel alone is about ${worst.travel}.`;
 }
 
 /** "in 30 min", "in 2 h 10", or null when it is not worth saying. */
