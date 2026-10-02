@@ -1,23 +1,34 @@
 import {
   checkChange,
   itineraryClockMinutes,
+  sameItineraryTime,
   type ChangeSet,
   type ConsequenceResult,
   type ProposedChange,
+  type ReviewReason,
   type ScheduleStop,
   type TravelLeg,
 } from "./itinerary-change.ts";
 import type { ScheduleUpdate } from "./itinerary-schedule-write.ts";
-import { chronologicalSlot } from "./timeline-order.ts";
-import { rearrange, type StopMove } from "./stop-move.ts";
+import { rearrange, stopsOfDay, type StopMove } from "./stop-move.ts";
+import type { TravelChoice } from "./travel-mode.ts";
 
 type PatchableSchedule = Pick<
   ScheduleStop,
-  "day_date" | "time_label" | "planned_stay_minutes"
+  "day_date" | "time_label" | "planned_stay_minutes" | "time_locked"
 >;
 
+export type ScheduleReviewChange = Extract<
+  ProposedChange,
+  { type: "move" | "retime" | "duration" | "time-lock" }
+>;
+
+export type ScheduleReviewChangeSet = Omit<ChangeSet, "changes"> & {
+  changes: ScheduleReviewChange[];
+};
+
 export type ReviewProposal = {
-  changeSet: ChangeSet;
+  changeSet: ScheduleReviewChangeSet;
   /** Stops the traveller explicitly acted on; displaced rows are not direct edits. */
   directIds: Set<string>;
 };
@@ -26,24 +37,31 @@ function owns<T extends object>(value: T, key: PropertyKey): boolean {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
-/**
- * Represent one old-style stop move as the shared ChangeSet model.
- *
- * `rearrange` also renumbers the rows displaced by the move. Those position
- * changes still belong in the ChangeSet so the proposed order is exact. The
- * separate `directIds` set lets the review threshold distinguish the stop the
- * traveller moved from rows that only made room for it.
- */
-export function changeSetForMoves<T extends ScheduleStop>(
+function targetIndex<T extends ScheduleStop>(
+  stops: readonly T[],
+  stopId: string,
+  day: string | null,
+  time: string | null,
+): number {
+  const list = stopsOfDay(stops, day, stopId);
+  const at = itineraryClockMinutes(time);
+  if (at == null) return list.length;
+  const later = list.findIndex((stop) => {
+    const value = itineraryClockMinutes(stop.time_label);
+    return value != null && value > at;
+  });
+  return later < 0 ? list.length : later;
+}
+
+function changesFromRearrange<T extends ScheduleStop>(
   stops: readonly T[],
   moves: readonly StopMove[],
-  id = "manual-move",
-): ReviewProposal | null {
+  directIds: ReadonlySet<string>,
+  id: string,
+): ScheduleReviewChange[] {
   const updates = rearrange(stops, moves);
-  if (updates.length === 0) return null;
   const before = new Map(stops.map((stop) => [stop.id, stop] as const));
-  const directIds = new Set(moves.map((move) => move.id));
-  const changes: ProposedChange[] = [];
+  const changes: ScheduleReviewChange[] = [];
 
   for (const [index, update] of updates.entries()) {
     const was = before.get(update.id);
@@ -52,15 +70,33 @@ export function changeSetForMoves<T extends ScheduleStop>(
       id: `${id}:${index}`,
       type: "move",
       stopId: update.id,
+      indirect: !directIds.has(update.id),
       from: { dayDate: was.day_date, position: was.position },
       to: {
         dayDate: update.day_date,
         position: update.position,
-        ...(update.time_label !== was.time_label ? { preferredTime: update.time_label } : {}),
+        ...(!sameItineraryTime(update.time_label, was.time_label)
+          ? { preferredTime: update.time_label }
+          : {}),
       },
     });
   }
 
+  return changes;
+}
+
+/**
+ * Represent one old-style stop move as the shared ChangeSet model. `rearrange`
+ * only renumbers the source/target days, so moving Tuesday never turns every
+ * later day into part of the proposal.
+ */
+export function changeSetForMoves<T extends ScheduleStop>(
+  stops: readonly T[],
+  moves: readonly StopMove[],
+  id = "manual-move",
+): ReviewProposal | null {
+  const directIds = new Set(moves.map((move) => move.id));
+  const changes = changesFromRearrange(stops, moves, directIds, id);
   if (changes.length === 0) return null;
   return {
     changeSet: { id, source: "manual", changes, createdAt: Date.now() },
@@ -69,9 +105,9 @@ export function changeSetForMoves<T extends ScheduleStop>(
 }
 
 /**
- * Turn a card's day/time/duration edit into the same ChangeSet used by drag.
- * Position shifts caused by a new day or time are included so Review and the
- * eventual atomic write see the exact order the card would produce.
+ * Turn a card's day/time/duration/lock edit into the same ChangeSet used by
+ * drag. A day/time edit is expressed through `rearrange`, not the older global
+ * position helper, so only the day it leaves/enters gets renumbered.
  */
 export function changeSetForSchedulePatch<T extends ScheduleStop>(
   stops: readonly T[],
@@ -81,45 +117,23 @@ export function changeSetForSchedulePatch<T extends ScheduleStop>(
 ): ReviewProposal | null {
   const current = stops.find((stop) => stop.id === stopId);
   if (!current) return null;
-  const changes: ProposedChange[] = [];
+  const directIds = new Set([stopId]);
+  const changes: ScheduleReviewChange[] = [];
 
   const changesDay = owns(patch, "day_date") && (patch.day_date ?? null) !== current.day_date;
   const changesTime =
-    owns(patch, "time_label") && (patch.time_label ?? null) !== current.time_label;
+    owns(patch, "time_label") && !sameItineraryTime(patch.time_label ?? null, current.time_label);
 
   if (changesDay || changesTime) {
     const day = owns(patch, "day_date") ? (patch.day_date ?? null) : current.day_date;
     const time = owns(patch, "time_label") ? (patch.time_label ?? null) : current.time_label;
-    const slot = chronologicalSlot(
-      stops,
-      { day_date: day, time_label: time },
-      itineraryClockMinutes,
-      stopId,
-    );
-    const shifted = new Map(slot.shifts.map((shift) => [shift.id, shift.position] as const));
-    let index = 0;
-    for (const stop of stops) {
-      const position = shifted.get(stop.id);
-      if (position == null || position === stop.position) continue;
-      changes.push({
-        id: `${id}:shift:${index++}`,
-        type: "move",
-        stopId: stop.id,
-        from: { dayDate: stop.day_date, position: stop.position },
-        to: { dayDate: stop.day_date, position },
-      });
-    }
-    changes.push({
-      id: `${id}:move`,
-      type: "move",
-      stopId,
-      from: { dayDate: current.day_date, position: current.position },
-      to: {
-        dayDate: day,
-        position: slot.position,
-        ...(changesTime ? { preferredTime: time } : {}),
-      },
-    });
+    const move: StopMove = {
+      id: stopId,
+      day_date: day,
+      at: { index: targetIndex(stops, stopId, day, time) },
+      ...(changesTime ? { time_label: time } : {}),
+    };
+    changes.push(...changesFromRearrange(stops, [move], directIds, `${id}:move`));
   }
 
   if (
@@ -135,22 +149,38 @@ export function changeSetForSchedulePatch<T extends ScheduleStop>(
     });
   }
 
+  if (
+    owns(patch, "time_locked") &&
+    (patch.time_locked ?? null) !== (current.time_locked ?? null)
+  ) {
+    changes.push({
+      id: `${id}:time-lock`,
+      type: "time-lock",
+      stopId,
+      fromLocked: current.time_locked ?? null,
+      toLocked: patch.time_locked ?? null,
+    });
+  }
+
   if (changes.length === 0) return null;
   return {
     changeSet: { id, source: "manual", changes, createdAt: Date.now() },
-    directIds: new Set([stopId]),
+    directIds,
   };
 }
 
 /**
  * Run the canonical consequence engine, then classify displaced rows as
  * downstream rather than explicit edits. This keeps the 2-stop / 30-minute
- * threshold about consequences, not the bookkeeping needed to renumber a day.
+ * threshold about consequences, not position bookkeeping.
  */
 export function checkReviewProposal<T extends ScheduleStop>(
   stops: readonly T[],
   proposal: ReviewProposal,
-  options: { travelLegs?: readonly TravelLeg[] } = {},
+  options: {
+    travelLegs?: readonly TravelLeg[];
+    travelChoice?: TravelChoice;
+  } = {},
 ): ConsequenceResult {
   const checked = checkChange(stops, proposal.changeSet, options);
   const shifts = checked.shifts.map((shift) => ({
@@ -158,7 +188,7 @@ export function checkReviewProposal<T extends ScheduleStop>(
     downstream: !proposal.directIds.has(shift.stopId),
   }));
   const downstream = shifts.filter((shift) => shift.downstream);
-  const reasons = checked.reasons.filter(
+  const reasons: ReviewReason[] = checked.reasons.filter(
     (reason) => reason !== "too-many-shifts" && reason !== "large-shift",
   );
   if (downstream.length > 2) reasons.push("too-many-shifts");
@@ -173,11 +203,29 @@ export function checkReviewProposal<T extends ScheduleStop>(
   };
 }
 
-/** Atomic updates that turn `before` into `result.proposedSchedule`. */
+/**
+ * Atomic updates that turn `before` into `result.proposedSchedule`.
+ *
+ * Phase 3 review currently persists schedule edits to existing rows only. If a
+ * future caller passes an insert/delete proposal, fail loudly rather than
+ * approving a result the schedule RPC cannot actually save.
+ */
 export function updatesForConsequence<T extends ScheduleStop>(
   before: readonly T[],
   result: ConsequenceResult,
 ): ScheduleUpdate[] {
+  const beforeIds = new Set(before.map((stop) => stop.id));
+  const afterIds = new Set(result.proposedSchedule.map((stop) => stop.id));
+  const sameRows =
+    beforeIds.size === afterIds.size &&
+    [...beforeIds].every((id) => afterIds.has(id)) &&
+    [...afterIds].every((id) => beforeIds.has(id));
+  if (!sameRows) {
+    throw Object.assign(new Error("This review contains a stop add or remove that isn't supported yet."), {
+      code: "ITINERARY_REVIEW_UNSUPPORTED_CHANGE",
+    });
+  }
+
   const was = new Map(before.map((stop) => [stop.id, stop] as const));
   const updates: ScheduleUpdate[] = [];
 
@@ -190,6 +238,9 @@ export function updatesForConsequence<T extends ScheduleStop>(
     if (previous.position !== stop.position) update.position = stop.position;
     if ((previous.planned_stay_minutes ?? null) !== (stop.planned_stay_minutes ?? null)) {
       update.planned_stay_minutes = stop.planned_stay_minutes ?? null;
+    }
+    if ((previous.time_locked ?? null) !== (stop.time_locked ?? null)) {
+      update.time_locked = stop.time_locked ?? null;
     }
     if (Object.keys(update).length > 1) updates.push(update);
   }
