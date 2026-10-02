@@ -35,7 +35,9 @@ test("a reorder keeps displaced rows in the proposal without counting them as di
   assert.ok(proposal);
   assert.deepEqual([...proposal.directIds], ["a"]);
   assert.deepEqual(
-    proposal.changeSet.changes.filter((change) => change.type === "move" && !change.indirect).map((c) => c.stopId),
+    proposal.changeSet.changes
+      .filter((change) => change.type === "move" && !change.indirect)
+      .map((change) => change.stopId),
     ["a"],
   );
 
@@ -60,10 +62,10 @@ test("a time edit only renumbers its own day, never every later day", () => {
   ];
   const proposal = changeSetForSchedulePatch(stops, "a", { time_label: "12:00" });
   assert.ok(proposal);
-  assert.deepEqual(
-    [...new Set(proposal.changeSet.changes.map((change) => change.stopId))].sort(),
-    ["a", "b"],
-  );
+  assert.deepEqual([...new Set(proposal.changeSet.changes.map((change) => change.stopId))].sort(), [
+    "a",
+    "b",
+  ]);
   const result = checkReviewProposal(stops, proposal);
   assert.deepEqual(
     result.proposedSchedule
@@ -202,9 +204,7 @@ test("review persistence refuses insert/delete results rather than dropping them
 });
 
 test("inverse updates restore exactly the fields an applied consequence changed", () => {
-  const before = [
-    stop("a", 0, "10:00", { planned_stay_minutes: 60, time_locked: false }),
-  ];
+  const before = [stop("a", 0, "10:00", { planned_stay_minutes: 60, time_locked: false })];
   const inverse = inverseScheduleUpdates(before, [
     {
       id: "a",
