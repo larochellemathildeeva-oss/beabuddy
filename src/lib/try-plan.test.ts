@@ -5,7 +5,6 @@ import {
   peekPendingTryPlan,
   readTryPlan,
   savePendingTryPlan,
-  takePendingTryPlan,
   TRY_PLAN_MAX,
   TRY_PLAN_SAMPLE,
   tryKindLabel,
@@ -42,12 +41,26 @@ test("kinds get the timeline's words", () => {
   assert.notEqual(tryKindLabel("meal"), tryKindLabel("sight"));
 });
 
-test("a saved plan is taken once", () => {
+test("a saved plan is kept until cleared", () => {
   const s = store();
-  savePendingTryPlan(s, "  09:00 A\n10:00 B\n11:00 C  ", 1000);
+  assert.equal(savePendingTryPlan(s, "  09:00 A\n10:00 B\n11:00 C  ", 1000), true);
   assert.equal(peekPendingTryPlan(s, 2000), "09:00 A\n10:00 B\n11:00 C");
-  assert.equal(takePendingTryPlan(s, 2000), "09:00 A\n10:00 B\n11:00 C");
-  assert.equal(takePendingTryPlan(s, 2000), null);
+  assert.equal(peekPendingTryPlan(s, 2000), "09:00 A\n10:00 B\n11:00 C");
+  clearPendingTryPlan(s);
+  assert.equal(peekPendingTryPlan(s, 2000), null);
+});
+
+test("saving says so when the browser keeps nothing", () => {
+  const noop = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  assert.equal(savePendingTryPlan(noop, "09:00 A"), false);
+  const throwing = {
+    ...noop,
+    setItem: () => {
+      throw new Error("QuotaExceededError");
+    },
+  };
+  assert.equal(savePendingTryPlan(throwing, "09:00 A"), false);
+  assert.equal(savePendingTryPlan(store(), "   "), false);
 });
 
 test("a plan older than a week, or broken, is dropped", () => {

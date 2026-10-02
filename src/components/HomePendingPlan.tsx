@@ -11,9 +11,13 @@ import { clearPendingTryPlan, peekPendingTryPlan } from "@/lib/try-plan";
 export function HomePendingPlan() {
   const [waiting, setWaiting] = useState(false);
 
-  // Read after mount: the server cannot see the phone's storage.
+  // Read after mount (the server cannot see the phone's storage), and again
+  // when another tab saves, uses or discards the plan.
   useEffect(() => {
-    setWaiting(Boolean(peekPendingTryPlan(safeStorage())));
+    const check = () => setWaiting(Boolean(peekPendingTryPlan(safeStorage())));
+    check();
+    window.addEventListener("storage", check);
+    return () => window.removeEventListener("storage", check);
   }, []);
 
   if (!waiting) return null;
@@ -27,7 +31,14 @@ export function HomePendingPlan() {
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Link
           to="/trips"
-          search={{ new: true, plan: "import" }}
+          search={{ new: true, plan: "import", from: "try" }}
+          onClick={(e) => {
+            // Used or discarded in another tab since: nothing to carry.
+            if (!peekPendingTryPlan(safeStorage())) {
+              e.preventDefault();
+              setWaiting(false);
+            }
+          }}
           className="btn-primary grid place-items-center px-4 text-[14.5px]"
         >
           Make it a trip
@@ -38,7 +49,7 @@ export function HomePendingPlan() {
             clearPendingTryPlan(safeStorage());
             setWaiting(false);
           }}
-          className="text-[13px] text-muted-foreground underline underline-offset-4"
+          className="inline-flex min-h-11 min-w-11 items-center text-[13px] text-muted-foreground underline underline-offset-4"
         >
           Discard it
         </button>

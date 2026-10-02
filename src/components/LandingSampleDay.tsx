@@ -96,7 +96,7 @@ export function LandingSampleDay() {
                 </div>
               </div>
               {stop.next && (
-                <p className="my-1.5 ml-3 border-l border-dashed border-border py-1 pl-6 text-[12.5px] text-muted-foreground">
+                <p className="my-1.5 ms-3 border-s border-dashed border-border py-1 ps-6 text-[12.5px] text-muted-foreground">
                   {stop.next}
                 </p>
               )}

@@ -2,8 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import beaLogo from "@/assets/bea-logo.png";
 import { useRef, useState } from "react";
-import { safeStorage } from "@/lib/tour-state";
-import { clearPendingTryPlan, peekPendingTryPlan } from "@/lib/try-plan";
 import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
@@ -48,6 +46,8 @@ type TripsSearch = {
   /** Where the new trip's planner opens once it exists. */
   plan?: PlannerTab;
   ask?: string;
+  /** Came from the landing page's "Try it": the plan waits on the phone (`try-plan.ts`). */
+  from?: "try";
 };
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
@@ -62,6 +62,7 @@ export const Route = createFileRoute("/trips")({
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
       : {}),
+    ...(search["from"] === "try" ? { from: "try" as const } : {}),
   }),
   head: () => ({
     meta: [
@@ -95,16 +96,6 @@ function TripsPage() {
   // has that for free, and the note is gone.
   const search = Route.useSearch();
   const [creating, setCreating] = useState(Boolean(search.new));
-  // A plan pasted on the landing page before sign-up (`try-plan.ts`) opens
-  // the new trip's import with it. It waits until the trip is made.
-  const [planAsk] = useState(
-    () =>
-      search.ask ??
-      (search.new && search.plan === "import"
-        ? (peekPendingTryPlan(safeStorage()) ?? undefined)
-        : undefined),
-  );
-
   const [joining, setJoining] = useState(false);
   /** The master's four tabs. */
   const [view, setView] = useState<"upcoming" | "past" | "drafts" | "all">("upcoming");
@@ -534,11 +525,14 @@ function TripsPage() {
                         // Started from Plan with Béa: its planner opens on
                         // the new trip, with anything already typed.
                         search: search.plan
-                          ? { plan: search.plan, ...(planAsk ? { ask: planAsk } : {}) }
+                          ? {
+                              plan: search.plan,
+                              ...(search.ask ? { ask: search.ask } : {}),
+                              ...(search.from ? { from: search.from } : {}),
+                            }
                           : {},
                         viewTransition: true,
                       });
-                      if (planAsk) clearPendingTryPlan(safeStorage());
                       setForm({
                         title: "",
                         city: "",

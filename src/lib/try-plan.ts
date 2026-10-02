@@ -58,10 +58,17 @@ type Storage = {
   removeItem(key: string): void;
 };
 
-export function savePendingTryPlan(storage: Storage, text: string, now = Date.now()): void {
+/** Keep the plan for after sign-up; false when the browser would not keep it. */
+export function savePendingTryPlan(storage: Storage, text: string, now = Date.now()): boolean {
   const trimmed = text.trim().slice(0, TRY_PLAN_MAX);
-  if (!trimmed) return;
-  storage.setItem(KEY, JSON.stringify({ text: trimmed, at: now }));
+  if (!trimmed) return false;
+  try {
+    storage.setItem(KEY, JSON.stringify({ text: trimmed, at: now }));
+  } catch {
+    return false;
+  }
+  // A private window or blocked storage can accept the write and keep nothing.
+  return peekPendingTryPlan(storage, now) === trimmed;
 }
 
 /** The waiting plan, if any and still fresh, without using it up. */
@@ -87,13 +94,6 @@ export function peekPendingTryPlan(storage: Storage, now = Date.now()): string |
   }
   storage.removeItem(KEY);
   return null;
-}
-
-/** The waiting plan, once: it is removed as it is handed over. */
-export function takePendingTryPlan(storage: Storage, now = Date.now()): string | null {
-  const text = peekPendingTryPlan(storage, now);
-  storage.removeItem(KEY);
-  return text;
 }
 
 export function clearPendingTryPlan(storage: Storage): void {

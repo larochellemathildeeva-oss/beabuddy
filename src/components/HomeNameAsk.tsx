@@ -48,12 +48,14 @@ export function HomeNameAsk({
       <p className="mt-1 text-[14.5px] text-muted-foreground">
         It's how she greets you, and what friends see on a shared trip.
       </p>
-      <form onSubmit={save} className="mt-3 flex gap-2">
+      <label htmlFor="name-ask" className="mt-3 block text-[13.5px] font-semibold">
+        Your name
+      </label>
+      <form onSubmit={save} className="mt-1.5 flex gap-2">
         <input
+          id="name-ask"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-          aria-label="Your name"
           autoComplete="given-name"
           className="min-w-0 flex-1 rounded-[var(--r-button)] border border-border bg-card px-3 text-[16px] outline-none focus:border-primary"
         />
@@ -69,7 +71,7 @@ export function HomeNameAsk({
       <button
         type="button"
         onClick={dismiss}
-        className="mt-2 text-[13px] text-muted-foreground underline underline-offset-4"
+        className="mt-1 inline-flex min-h-11 min-w-11 items-center text-[13px] text-muted-foreground underline underline-offset-4"
       >
         Not now
       </button>
