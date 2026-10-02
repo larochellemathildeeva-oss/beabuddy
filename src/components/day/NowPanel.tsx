@@ -10,6 +10,7 @@ import { BeaSays, LegIcon, StopArt, StopDisc } from "@/components/day/stop-bits"
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
+import { FollowAlong, FromHereLine } from "@/components/day/FollowAlong";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { mapsDirUrl, mapsPlaceUrl } from "@/lib/direction-stops";
@@ -51,6 +52,11 @@ type Write = { id: string; patch: Partial<Pick<ItineraryRow, "arrived_at" | "lef
  * worked out for you is "Leave by", and it is shown only when both halves of
  * it are real: a clock time on the next stop and a routed leg to it — from
  * directions saved on the phone, or else routed here for that one journey.
+ *
+ * "Follow along", when the traveller turns it on, watches the phone's
+ * position while this screen is open and offers those same taps ("Looks
+ * like you're at…") with the time to the next stop from where they are. It
+ * offers; the tap still decides.
  */
 export function NowPanel({
   dayStops,
@@ -166,6 +172,8 @@ export function NowPanel({
     : null;
   const arrivalOpen = arrival && !dayStops.find((s) => s.id === arrival.stay.id)?.arrived_at;
   const easeLabel = easeTarget ? dayLabelFor(easeTarget, placeDay) : "";
+  // Following along means something only on the day itself, while it lasts.
+  const followable = Boolean(thisDay && placeDay && thisDay === placeDay && phase !== "done");
   const directionsHref = next
     ? leg?.mapUrl || mapsPlaceUrl(next.title, { lat: next.lat, lon: next.lon }, next.address)
     : "";
@@ -278,6 +286,18 @@ export function NowPanel({
         </p>
       )}
 
+      {followable && (
+        <FollowAlong
+          dayStops={dayStops}
+          busy={busy}
+          now={now}
+          onArrive={(stop) =>
+            void act(() => onProgress(arrivalWrites(dayStops, stop.id, new Date())))
+          }
+          onLeave={(stop) => void act(() => onProgress([leavingWrite(stop, new Date())]))}
+        />
+      )}
+
       {phase === "at" && current && (
         <section className="plain-card space-y-3 p-3.5" aria-labelledby="now-here">
           <div className="flex items-start justify-between gap-2">
@@ -358,6 +378,14 @@ export function NowPanel({
       {next && (
         <JourneyStep leg={measured(leg) ? leg : null}>
           {leavePanel}
+          {isToday && now && (
+            <FromHereLine
+              next={next}
+              travel={travel}
+              nowMinutes={placeClock(now, offset).minutes}
+              atAStop={phase === "at"}
+            />
+          )}
           {live.loading && (
             <p className="py-1 text-[12.5px] text-muted-foreground">Working out the journey…</p>
           )}
