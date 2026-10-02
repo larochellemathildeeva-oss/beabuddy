@@ -48,7 +48,7 @@ function Answer({ text, padded = true }: { text: string; padded?: boolean }) {
 
 function Item({ q, a, walk, open: startOpen }: Faq & { open?: boolean }) {
   // Starts open when a search narrows to a few answers, and still closes on
-  // a tap; a new search mounts it afresh (its key carries the query).
+  // a tap; it mounts afresh only when that auto-open state changes.
   const [shown, setOpen] = useState(Boolean(startOpen));
   return (
     <div className="border-b border-border/70 last:border-0">
@@ -105,6 +105,9 @@ function HelpPage() {
   const searching = query.trim().length > 0;
   const groups = useMemo(() => searchHelp(query), [query]);
   const count = groups.reduce((n, g) => n + g.items.length, 0);
+  // A search narrowed to a few answers opens them. The key follows only that,
+  // not the text, so an answer opened by hand stays open as you type.
+  const autoOpen = searching && count <= 3;
 
   return (
     <AppShell publicPage eyebrow="Help" title={HELP_WELCOME.title}>
@@ -151,7 +154,7 @@ function HelpPage() {
               <p className="label-caps mb-2 text-foreground">{g.title}</p>
               <div className="card-soft overflow-hidden">
                 {g.items.map((it) => (
-                  <Item key={`${query}\n${it.q}`} {...it} open={searching && count <= 3} />
+                  <Item key={`${autoOpen}\n${it.q}`} {...it} open={autoOpen} />
                 ))}
               </div>
             </section>
