@@ -1,16 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, X } from "@/components/icons";
+import { joinSheetStack } from "@/components/sheet-stack";
 
 /** How far the sheet must be pulled down before letting go closes it. */
 const PULL_CLOSE_PX = 90;
-
-/**
- * The sheets open right now, oldest first. Escape and the focus trap belong
- * to the top one only: with a listener each, one Escape closed a
- * confirmation and the settings sheet under it together.
- */
-const openSheets: symbol[] = [];
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -84,12 +78,7 @@ export function Sheet({
 
   useEffect(() => {
     if (!open) return;
-    const me = Symbol("sheet");
-    openSheets.push(me);
-    // Pages outside the app frame scroll the body; hold it while any sheet
-    // is open, and let go only when the last one closes.
-    if (openSheets.length === 1) document.body.style.overflow = "hidden";
-    const isTop = () => openSheets[openSheets.length - 1] === me;
+    const { isTop, leave } = joinSheetStack();
     // Focus goes into the sheet, and back to what opened it afterwards.
     // React has already run autoFocus inside the sheet by now, so the opener
     // is only what had focus if it sits outside the panel.
@@ -128,9 +117,7 @@ export function Sheet({
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      const at = openSheets.indexOf(me);
-      if (at !== -1) openSheets.splice(at, 1);
-      if (openSheets.length === 0) document.body.style.overflow = "";
+      leave();
       if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, [open]);

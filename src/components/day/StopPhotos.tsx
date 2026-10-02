@@ -80,6 +80,7 @@ export function QuickPhoto({
   return (
     <label
       aria-disabled={busy}
+      title={label ? undefined : `Take a photo of ${photos.title}`}
       className={`cursor-pointer focus-within:ring-2 focus-within:ring-primary ${
         label
           ? "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs"

@@ -1,5 +1,6 @@
-import { useEffect, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { joinSheetStack } from "@/components/sheet-stack";
 import {
   ArrowLeft,
   Backpack,
@@ -115,21 +116,26 @@ export function TripMenuSheet({
   /** The open section's body. */
   children: ReactNode;
 }) {
+  // The latest values, read by the listener without leaving the stack on
+  // every render (a sheet opened over the menu must stay above it).
+  const latest = useRef({ section, onSection, onClose });
+  latest.current = { section, onSection, onClose };
   useEffect(() => {
     if (!open) return;
+    // On the same stack as `Sheet`: a photo or confirmation opened over the
+    // menu takes Escape first, and closing it keeps the page held.
+    const { isTop, leave } = joinSheetStack();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (section) onSection(null);
-        else onClose();
-      }
+      if (e.key !== "Escape" || !isTop()) return;
+      if (latest.current.section) latest.current.onSection(null);
+      else latest.current.onClose();
     };
     window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      leave();
     };
-  }, [open, onClose, onSection, section]);
+  }, [open]);
 
   if (!open) return null;
 
