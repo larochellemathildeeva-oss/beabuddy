@@ -65,7 +65,7 @@ export const HELP_FAQ_GROUPS: { title: string; items: Faq[] }[] = [
       },
       {
         q: "Can I bring in a plan I already have?",
-        a: "Yes. Plan with Béa → Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip, each stop pinned on the map. Stops she isn't sure about are marked so you can check them.",
+        a: "Yes. Plan with Béa → Import a plan reads pasted text, a photo, a PDF or a calendar file and turns it into a trip. Each stop she can find is pinned on the map; any she can't place, or isn't sure about, is marked so you can check it.",
         walk: "import",
       },
       {

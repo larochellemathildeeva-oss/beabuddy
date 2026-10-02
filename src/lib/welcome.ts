@@ -8,6 +8,13 @@ import type { WalkId } from "./tour.ts";
 
 export const WELCOME_DONE_KEY = "bea-welcome-done";
 
+/**
+ * Set on the account (Supabase user metadata) when the welcome is finished or
+ * closed, so another phone or browser does not show it again. The device mark
+ * stays too: it answers at once, before the account is read.
+ */
+export const WELCOME_DONE_META = "bea_welcome_done";
+
 /** Accounts older than this never see it: it is a welcome, not news. */
 export const WELCOME_WINDOW_MS = 14 * 86_400_000;
 
@@ -72,9 +79,11 @@ export function shouldShowWelcome(
     createdAt: string | null | undefined;
     path: string;
     now: number;
+    /** The account says it already saw the welcome, on any device. */
+    doneOnAccount?: boolean;
   },
 ): boolean {
-  if (!context.userId || !context.createdAt) return false;
+  if (!context.userId || !context.createdAt || context.doneOnAccount) return false;
   if (QUIET_PATHS.some((p) => context.path === p || context.path.startsWith(p))) return false;
   if (storage.getItem(doneKey(context.userId)) === "yes") return false;
   const created = Date.parse(context.createdAt);

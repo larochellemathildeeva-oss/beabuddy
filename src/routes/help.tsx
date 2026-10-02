@@ -46,9 +46,10 @@ function Answer({ text, padded = true }: { text: string; padded?: boolean }) {
   );
 }
 
-function Item({ q, a, walk, open: forced }: Faq & { open?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const shown = forced || open;
+function Item({ q, a, walk, open: startOpen }: Faq & { open?: boolean }) {
+  // Starts open when a search narrows to a few answers, and still closes on
+  // a tap; a new search mounts it afresh (its key carries the query).
+  const [shown, setOpen] = useState(Boolean(startOpen));
   return (
     <div className="border-b border-border/70 last:border-0">
       <button
@@ -92,6 +93,13 @@ function PlanPrompt() {
   );
 }
 
+/** Help is written in English; the count follows English's plural rules. */
+const ANSWER_PLURALS = new Intl.PluralRules("en");
+const ANSWER_WORD: Partial<Record<Intl.LDMLPluralRule, string>> = {
+  one: "answer",
+  other: "answers",
+};
+
 function HelpPage() {
   const [query, setQuery] = useState("");
   const searching = query.trim().length > 0;
@@ -106,17 +114,20 @@ function HelpPage() {
             {HELP_WELCOME.lead}
           </p>
           <p className="text-[14.5px] leading-relaxed text-muted-foreground">{HELP_WELCOME.body}</p>
-          <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5">
+          <label htmlFor="help-search" className="label-caps block text-foreground">
+            Search help
+          </label>
+          <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5">
             <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
+              id="help-search"
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search help: directions, import, offline…"
-              aria-label="Search help"
+              placeholder="directions, import, offline…"
               className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
             />
-          </label>
+          </div>
         </section>
 
         {!searching && (
@@ -130,7 +141,7 @@ function HelpPage() {
           <p className="text-[14px] text-muted-foreground" aria-live="polite">
             {count === 0
               ? "Nothing matches that. Try another word, or ask through You → Feedback."
-              : `${count} answer${count === 1 ? "" : "s"}`}
+              : `${count} ${ANSWER_WORD[ANSWER_PLURALS.select(count)] ?? "answers"}`}
           </p>
         )}
 
@@ -140,7 +151,7 @@ function HelpPage() {
               <p className="label-caps mb-2 text-foreground">{g.title}</p>
               <div className="card-soft overflow-hidden">
                 {g.items.map((it) => (
-                  <Item key={it.q} {...it} open={searching && count <= 3} />
+                  <Item key={`${query}\n${it.q}`} {...it} open={searching && count <= 3} />
                 ))}
               </div>
             </section>

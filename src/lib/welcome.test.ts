@@ -24,6 +24,10 @@ test("a brand-new account sees the welcome once", () => {
   assert.equal(shouldShowWelcome(s, { ...fresh, userId: "u2" }), true);
 });
 
+test("an account that saw it on another device does not see it again", () => {
+  assert.equal(shouldShowWelcome(store(), { ...fresh, doneOnAccount: true }), false);
+});
+
 test("older accounts, signed-out visitors and quiet pages never see it", () => {
   const s = store();
   const old = new Date(now - WELCOME_WINDOW_MS - 1).toISOString();

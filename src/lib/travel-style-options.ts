@@ -29,3 +29,19 @@ export const TRIP_PACES: StyleOption[] = [
   { value: "Balanced", hint: "A highlight plus room to breathe." },
   { value: "Full", hint: "Pack the day, rest at home." },
 ];
+
+/** Longest style, budget or pace Béa will pass on to the planner. */
+export const CHOICE_MAX = 40;
+
+/**
+ * A saved style, budget or pace, made safe to hand the planner: the columns
+ * are free text, so anything not on the lists (an older option, or a value
+ * written straight to the API) is kept to one short line, never a paragraph
+ * smuggled into the planning prompt.
+ */
+export function safeChoice(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const line = value.replace(/\s+/g, " ").trim();
+  if (!line) return null;
+  return line.length > CHOICE_MAX ? line.slice(0, CHOICE_MAX).trim() : line;
+}
