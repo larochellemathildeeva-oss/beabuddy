@@ -212,7 +212,8 @@ export function ReviewChangesSheet({
                     <MapPin className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
                     <p className="text-[12.5px] leading-snug text-foreground">
                       {stopName(stops, conflict.fromStopId)} → {stopName(stops, conflict.toStopId)}:{" "}
-                      {conflict.estimated ? "likely " : ""}about {minuteNumber.format(short)} min short.
+                      {conflict.estimated ? "likely " : ""}about{" "}
+                      {minuteNumber.format(short)} min short.
                     </p>
                   </div>
                 );
