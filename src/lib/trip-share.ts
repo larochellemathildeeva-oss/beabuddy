@@ -48,6 +48,8 @@ export type ShareSourceItem = {
   parent_id?: string | null;
   arrived_at?: string | null;
   left_at?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 };
 
 /** Where the trip is on a stop, for a link that follows along. */
@@ -68,7 +70,12 @@ export type SharedTrip = {
   endDate: string | null;
   /** True when the link shows which stop the trip is at. */
   following: boolean;
-  days: { day: string | null; stops: SharedStop[] }[];
+  /**
+   * Each day with its time zone (IANA, from the day's first pin), so a
+   * friend elsewhere can read the plan's times against their own. Never the
+   * pins themselves.
+   */
+  days: { day: string | null; zone?: string; stops: SharedStop[] }[];
 };
 
 /**
@@ -93,6 +100,7 @@ export function sharedTripView(
   trip: ShareSourceTrip,
   items: readonly ShareSourceItem[],
   follow: { following: boolean; now: number } = { following: false, now: 0 },
+  zoneAt?: (lat: number, lon: number) => string | null,
 ): SharedTrip {
   const shown = items
     .filter(
@@ -121,6 +129,10 @@ export function sharedTripView(
       kind: timelineGlyph(item),
       address: item.address?.trim() ?? "",
     };
+    if (!day.zone && zoneAt && Number.isFinite(item.lat) && Number.isFinite(item.lon)) {
+      const zone = zoneAt(item.lat!, item.lon!);
+      if (zone) day.zone = zone;
+    }
     const status = follow.following ? sharedStopStatus(item, follow.now) : undefined;
     if (status) stop.status = status;
     if (status === "here") here.push({ stop, at: Date.parse(item.arrived_at!) });
@@ -245,4 +257,13 @@ export function sharedLive(trip: SharedTrip, today: string | null = null): Share
         }
       : null,
   };
+}
+
+/**
+ * The time zone a friend should read the trip in: the day the live card is
+ * about, else the first day that has one. Undefined when no stop is pinned.
+ */
+export function sharedTripZone(trip: SharedTrip, focusDay?: string | null): string | undefined {
+  const focus = focusDay === undefined ? undefined : trip.days.find((d) => d.day === focusDay);
+  return focus?.zone ?? trip.days.find((d) => d.zone)?.zone;
 }

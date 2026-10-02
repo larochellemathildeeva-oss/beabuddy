@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { Check, ChevronDown, MapPin } from "@/components/icons";
+import { Check, ChevronDown, Clock, MapPin } from "@/components/icons";
 import { readSharedTrip } from "@/lib/trip-share.functions";
+import { clockIn, dateIn, wallTimeToInstant, zoneGap } from "@/lib/trip-clock";
 import {
   sharedLive,
+  sharedTripZone,
   sharedStopMapsUrl,
   type SharedLive,
   type SharedStop,
@@ -137,22 +139,24 @@ function SharedTripError({ error }: { error: Error }) {
   );
 }
 
-/** The friend's local date, as YYYY-MM-DD. */
-function localDate(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+/** The friend's own time zone, as the browser reports it. */
+function readerZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
 }
 
 /**
- * Today on the friend's own calendar; null until the page is in the
- * browser. Asked again every minute and on coming back to the page, so a
- * page left open past midnight moves on to the new day.
+ * The time now, and the friend's time zone; null until the page is in the
+ * browser, so the server's clock never reaches the page. Asked again every
+ * minute and on coming back to the page, so the clocks and "Next" move on.
  */
-function useToday(): string | null {
-  const [today, setToday] = useState<string | null>(null);
+function useNow(): { now: number; zone: string } | null {
+  const [now, setNow] = useState<{ now: number; zone: string } | null>(null);
   useEffect(() => {
-    const update = () => setToday(localDate());
+    const update = () => setNow({ now: Date.now(), zone: readerZone() });
     update();
     const timer = window.setInterval(update, 60_000);
     document.addEventListener("visibilitychange", update);
@@ -161,8 +165,16 @@ function useToday(): string | null {
       document.removeEventListener("visibilitychange", update);
     };
   }, []);
-  return today;
+  return now;
 }
+
+/** "Sat" for `instant` in `zone`. */
+function weekdayIn(zone: string, instant: number): string {
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", timeZone: zone }).format(instant);
+}
+
+/** The trip's clock against the friend's, when they differ. */
+type Clocks = { trip: string; reader: string; now: number; where: string };
 
 /**
  * A trip someone shared with a read-only link: where they will be, and
@@ -173,7 +185,7 @@ function useToday(): string | null {
 function SharedTripPage() {
   const { token } = Route.useParams();
   const trip = useLatestTrip(token, Route.useLoaderData());
-  const today = useToday();
+  const clock = useNow();
 
   if (!trip) {
     return (
@@ -188,8 +200,22 @@ function SharedTripPage() {
 
   const dates =
     trip.startDate && trip.endDate ? formatDateRangeLabel(trip.startDate, trip.endDate) : "";
+  // Today is the trip's date, read in the trip's own zone: a friend a day
+  // ahead or behind would otherwise skip, or keep, the wrong stops.
+  const firstZone = sharedTripZone(trip, sharedLive(trip, null).day?.day);
+  const today = clock ? dateIn(firstZone ?? clock.zone, clock.now) : null;
   const live = trip.following ? sharedLive(trip, today) : null;
   const liveDay = live?.day ? trip.days.find((d) => d.day === live.day!.day) : undefined;
+  const tripZone = sharedTripZone(trip, live?.day?.day);
+  const clocks: Clocks | null =
+    clock && tripZone && zoneGap(tripZone, clock.zone, clock.now)
+      ? {
+          trip: tripZone,
+          reader: clock.zone,
+          now: clock.now,
+          where: trip.place.split(",")[0]?.trim() || "On the trip",
+        }
+      : null;
   return (
     <AppShell
       publicPage
@@ -199,7 +225,7 @@ function SharedTripPage() {
       <div className="space-y-4 pb-6">
         {live ? (
           <>
-            <LiveCard live={live} />
+            <LiveCard live={live} clocks={clocks} />
             {liveDay && <DayPlan day={liveDay} />}
             {trip.days.length > (liveDay ? 1 : 0) && (
               <details className="group" open={!liveDay}>
@@ -228,6 +254,7 @@ function SharedTripPage() {
               A read-only copy of the plan, shared from Béa. It shows the latest version each time
               you open it. Tap an address to open it in Maps.
             </p>
+            {clocks && <ClockLine clocks={clocks} />}
             {trip.days.length === 0 && (
               <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
                 Nothing is planned yet.
@@ -253,11 +280,23 @@ function SharedTripPage() {
 function LiveStop({
   label,
   place,
+  clocks,
 }: {
   label: string;
   place: { day: string | null; stop: SharedStop };
+  clocks: Clocks | null;
 }) {
   const maps = sharedStopMapsUrl(place.stop);
+  const at =
+    clocks && place.day && place.stop.time
+      ? wallTimeToInstant(place.day, place.stop.time, clocks.trip)
+      : null;
+  // The same moment on the friend's clock, with the day when it is another one.
+  const yours =
+    clocks && at !== null
+      ? clockIn(clocks.reader, at) +
+        (dateIn(clocks.reader, at) !== place.day ? ` ${weekdayIn(clocks.reader, at)}` : "")
+      : null;
   return (
     <span className="block min-w-0">
       <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -269,6 +308,7 @@ function LiveStop({
       <span className="block text-[12.5px] text-muted-foreground">
         {dayHeading(place.day)}
         {place.stop.time ? ` · planned for ${place.stop.time}` : ""}
+        {yours ? ` (${yours} your time)` : ""}
       </span>
       {maps && (
         <a
@@ -286,7 +326,7 @@ function LiveStop({
 }
 
 /** Where they are and where they go next: the first thing a following friend sees. */
-function LiveCard({ live }: { live: SharedLive }) {
+function LiveCard({ live, clocks }: { live: SharedLive; clocks: Clocks | null }) {
   return (
     <section className="plain-card space-y-3 p-4" aria-live="polite" aria-label="Live">
       <p className="flex items-center gap-2 text-[13px] font-semibold text-primary">
@@ -306,7 +346,7 @@ function LiveCard({ live }: { live: SharedLive }) {
         )}
       </p>
       {live.now ? (
-        <LiveStop label="Now at" place={live.now} />
+        <LiveStop label="Now at" place={live.now} clocks={clocks} />
       ) : (
         <p className="text-[14px] text-muted-foreground">
           {live.next
@@ -314,12 +354,40 @@ function LiveCard({ live }: { live: SharedLive }) {
             : "No stops left on the plan. The trip may be over."}
         </p>
       )}
+      {clocks && <ClockLine clocks={clocks} />}
       {live.next && (
         <div className="border-t border-border pt-3">
-          <LiveStop label={live.now ? "Next" : "Next up"} place={live.next} />
+          <LiveStop label={live.now ? "Next" : "Next up"} place={live.next} clocks={clocks} />
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * "In Japan: 08:14 Sat · You: 20:14 Fri — plan times are Japan time, 12 h
+ * ahead of you." Shown only when the two clocks differ.
+ */
+function ClockLine({ clocks }: { clocks: Clocks }) {
+  const gap = zoneGap(clocks.trip, clocks.reader, clocks.now);
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-elevated px-3 py-2 text-[13px]">
+      <Clock className="size-4 shrink-0 text-primary" aria-hidden />
+      <span>
+        <span className="font-semibold">In {clocks.where}:</span>{" "}
+        <span className="tabular-nums">{clockIn(clocks.trip, clocks.now)}</span>{" "}
+        {weekdayIn(clocks.trip, clocks.now)}
+      </span>
+      <span aria-hidden>·</span>
+      <span>
+        <span className="font-semibold">You:</span>{" "}
+        <span className="tabular-nums">{clockIn(clocks.reader, clocks.now)}</span>{" "}
+        {weekdayIn(clocks.reader, clocks.now)}
+      </span>
+      <span className="basis-full text-[12px] text-muted-foreground">
+        Plan times are {clocks.where} time{gap ? `, ${gap} of you` : ""}.
+      </span>
+    </p>
   );
 }
 

@@ -6,6 +6,7 @@ import {
   newShareToken,
   shareClientKey,
   sharedLive,
+  sharedTripZone,
   sharedNow,
   sharedStopStatus,
   sharedTripView,
@@ -265,4 +266,27 @@ test("the live card past midnight: still here from last night, next is today's",
   const live = sharedLive(view, "2026-10-06");
   assert.equal(live.now?.stop.title, "Fado bar");
   assert.equal(live.next?.stop.title, "Sintra");
+});
+
+test("each day carries its time zone from its first pin, never the pins", () => {
+  const zoneAt = (lat: number) => (lat > 30 ? "Asia/Tokyo" : "Asia/Bangkok");
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("No pin", 0), day_date: "2026-10-05" },
+      { ...stop("Kyoto", 1), day_date: "2026-10-05", lat: 35.01, lon: 135.76 },
+      { ...stop("Bangkok", 0), day_date: "2026-10-06", lat: 13.75, lon: 100.5 },
+      { ...stop("Nowhere", 0), day_date: "2026-10-07" },
+    ] as never,
+    { following: true, now: NOW },
+    zoneAt,
+  );
+  assert.deepEqual(
+    view.days.map((d) => d.zone),
+    ["Asia/Tokyo", "Asia/Bangkok", undefined],
+  );
+  assert.doesNotMatch(JSON.stringify(view), /135\.76|35\.01|100\.5/);
+  assert.equal(sharedTripZone(view, "2026-10-06"), "Asia/Bangkok");
+  assert.equal(sharedTripZone(view, "2026-10-07"), "Asia/Tokyo");
+  assert.equal(sharedTripZone(view), "Asia/Tokyo");
 });
