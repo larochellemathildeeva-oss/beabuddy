@@ -206,24 +206,27 @@ function AuthPage() {
             <GoogleG />
             Continue with Google
           </button>
-          <div
-            role="radiogroup"
-            aria-label="Google sign-in"
-            className="flex items-center justify-between gap-3 px-1"
-          >
-            <RoundChoice
-              name="google-signin-mode"
-              checked={googleMode === "auto"}
-              onChange={() => setGoogleMode("auto")}
-              label="Sign me in automatically"
-            />
-            <RoundChoice
-              name="google-signin-mode"
-              checked={googleMode === "ask"}
-              onChange={() => setGoogleMode("ask")}
-              label="Ask me every time"
-            />
-          </div>
+          {/* A sign-in preference: a newcomer has nothing to choose yet. */}
+          {!signup && (
+            <div
+              role="radiogroup"
+              aria-label="Google sign-in"
+              className="flex items-center justify-between gap-3 px-1"
+            >
+              <RoundChoice
+                name="google-signin-mode"
+                checked={googleMode === "auto"}
+                onChange={() => setGoogleMode("auto")}
+                label="Sign me in automatically"
+              />
+              <RoundChoice
+                name="google-signin-mode"
+                checked={googleMode === "ask"}
+                onChange={() => setGoogleMode("ask")}
+                label="Ask me every time"
+              />
+            </div>
+          )}
         </div>
 
         <Divider>{signup ? "Or sign up with email" : "Or sign in with email"}</Divider>
