@@ -1,6 +1,7 @@
+import { clockMinutes } from "./companion.ts";
 import { haversine, isLatLon } from "./geo.ts";
 import { estimatedLegSeconds } from "./route-estimate.ts";
-import { legModeFor, type LegMode } from "./travel-mode.ts";
+import { legModeFor, type TravelChoice } from "./travel-mode.ts";
 
 export type TimeMode = "fixed" | "flexible" | "sequence";
 
@@ -17,9 +18,6 @@ export type ScheduleStop = {
    * null/undefined = use Béa's default (booked + clock starts fixed),
    * true = traveller explicitly fixed it,
    * false = traveller explicitly made it flexible.
-   *
-   * Phase 1 accepts the field without requiring the migration yet; Phase 2
-   * persists it.
    */
   time_locked?: boolean | null;
 };
@@ -36,6 +34,8 @@ export type ProposedChange =
       id: string;
       type: "move";
       stopId: string;
+      /** Position bookkeeping for another direct move, not a traveller action. */
+      indirect?: boolean;
       from: { dayDate: string | null; position: number };
       to: { dayDate: string | null; position: number; preferredTime?: string | null };
     }
@@ -52,6 +52,13 @@ export type ProposedChange =
       stopId: string;
       fromMinutes: number | null;
       toMinutes: number | null;
+    }
+  | {
+      id: string;
+      type: "time-lock";
+      stopId: string;
+      fromLocked: boolean | null;
+      toLocked: boolean | null;
     }
   | {
       id: string;
@@ -134,30 +141,30 @@ export type ConsequenceResult = {
 
 type CheckOptions = {
   travelLegs?: readonly TravelLeg[];
-  travelMode?: LegMode;
+  /** The trip's actual travel preference, also used for straight-line fallbacks. */
+  travelChoice?: TravelChoice;
 };
 
 const MINUTES_PER_DAY = 24 * 60;
 
-/** Clock values Béa already stores: 09:00 and 9:00 AM. Words such as Morning stay untimed. */
+/**
+ * One clock parser for the whole Timeline. `timeForRail`/`clockMinutes` already
+ * understands 14:30, 14h30, 2pm and 9:00 AM; review must not invent a stricter
+ * dialect of its own.
+ */
 export function itineraryClockMinutes(label: string | null | undefined): number | null {
-  const value = label?.trim();
-  if (!value) return null;
-  const twentyFour = /^(\d{1,2}):(\d{2})$/.exec(value);
-  if (twentyFour) {
-    const hours = Number(twentyFour[1]);
-    const minutes = Number(twentyFour[2]);
-    if (hours < 24 && minutes < 60) return hours * 60 + minutes;
-    return null;
-  }
-  const twelve = /^(\d{1,2}):(\d{2})\s*([AP]M)$/i.exec(value);
-  if (!twelve) return null;
-  let hours = Number(twelve[1]);
-  const minutes = Number(twelve[2]);
-  if (hours < 1 || hours > 12 || minutes >= 60) return null;
-  const pm = twelve[3]!.toUpperCase() === "PM";
-  if (hours === 12) hours = 0;
-  return (hours + (pm ? 12 : 0)) * 60 + minutes;
+  return clockMinutes(label);
+}
+
+/** Whether two labels mean the same scheduling time, even when formatted differently. */
+export function sameItineraryTime(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const am = itineraryClockMinutes(a);
+  const bm = itineraryClockMinutes(b);
+  if (am != null || bm != null) return am === bm;
+  return (a ?? "").trim() === (b ?? "").trim();
 }
 
 /** Fixed/Flexible/Sequence is derived, never persisted as a second source of truth. */
@@ -220,8 +227,7 @@ function travelResolver(stops: readonly ScheduleStop[], options: CheckOptions) {
     const to = byId.get(toId);
     if (!from || !to || !isLatLon(from) || !isLatLon(to)) return null;
     const metres = haversine(from, to);
-    // No chosen mode: walk what is close, drive the rest, as directions do.
-    const mode = options.travelMode ?? legModeFor("auto", metres);
+    const mode = legModeFor(options.travelChoice ?? "auto", metres);
     return {
       fromId,
       toId,
@@ -288,6 +294,10 @@ function applyChange(schedule: ScheduleStop[], change: ProposedChange): boolean 
   }
   if (change.type === "duration") {
     stop.planned_stay_minutes = change.toMinutes;
+    return true;
+  }
+  if (change.type === "time-lock") {
+    stop.time_locked = change.toLocked;
     return true;
   }
   stop.lat = change.to?.lat ?? null;
@@ -360,15 +370,16 @@ export function checkChange(
   // Stops whose clock time the traveller set in this ChangeSet. The ripple
   // never rewrites those: a time they typed is reported, not replaced.
   const chosenTimeIds = new Set<string>();
-  // Only the days this ChangeSet touches are checked. A tight pair elsewhere
-  // on the trip is not this edit's consequence.
+  // Only the days this ChangeSet directly touches are checked. Position-only
+  // bookkeeping for another move must not make later days part of this edit.
   const affectedDays = new Set<string | null>();
   const originalDay = new Map(original.map((stop) => [stop.id, stop.day_date] as const));
   let invalid = false;
   let crossesDay = false;
 
   for (const change of changeSet.changes) {
-    if ("stopId" in change) {
+    const indirect = change.type === "move" && change.indirect === true;
+    if ("stopId" in change && !indirect) {
       editedIds.add(change.stopId);
       affectedDays.add(originalDay.get(change.stopId) ?? null);
     }
@@ -378,8 +389,8 @@ export function checkChange(
     }
     if (change.type === "retime") chosenTimeIds.add(change.stopId);
     if (change.type === "move") {
-      if (change.from.dayDate !== change.to.dayDate) crossesDay = true;
-      if (change.to.preferredTime !== undefined) chosenTimeIds.add(change.stopId);
+      if (!indirect && change.from.dayDate !== change.to.dayDate) crossesDay = true;
+      if (!indirect && change.to.preferredTime !== undefined) chosenTimeIds.add(change.stopId);
     }
     if (!applyChange(proposed, change)) invalid = true;
   }
@@ -439,7 +450,7 @@ export function checkChange(
     const fromMinutes = itineraryDateMinutes(before.day_date, before.time_label);
     const toMinutes = itineraryDateMinutes(stop.day_date, stop.time_label);
     const changedDay = before.day_date !== stop.day_date;
-    const changedTime = before.time_label !== stop.time_label;
+    const changedTime = !sameItineraryTime(before.time_label, stop.time_label);
     if (!changedDay && !changedTime) continue;
     shifts.push({
       stopId: stop.id,
