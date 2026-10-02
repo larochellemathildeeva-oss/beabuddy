@@ -5,7 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
 import { newShareToken, shareUrl } from "@/lib/trip-share";
 
-type LinkRow = { id: string; token: string; expires_at: string; revoked_at: string | null };
+type LinkRow = {
+  id: string;
+  token: string;
+  expires_at: string;
+  revoked_at: string | null;
+  follow_along?: boolean;
+};
+type DbError = { message?: string; code?: string } | null;
 type Query = ReturnType<typeof supabase.from>;
 
 function linksTable(): Query {
@@ -13,7 +20,7 @@ function linksTable(): Query {
 }
 
 /** The table arrives with a migration applied by hand; until then, no links. */
-function isMissingTable(error: { message?: string; code?: string } | null): boolean {
+function isMissingTable(error: DbError): boolean {
   if (!error) return false;
   return (
     error.code === "42P01" ||
@@ -31,16 +38,25 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [ready, setReady] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  // "Follow along" arrives with its own migration; until then, plan only.
+  const [canFollow, setCanFollow] = useState(true);
+  const [follow, setFollow] = useState(true);
 
   const load = useCallback(async () => {
-    const { data, error } = (await linksTable()
-      .select("id, token, expires_at, revoked_at")
-      .eq("trip_id", tripId)
-      .is("revoked_at", null)
-      .order("created_at", { ascending: false })) as {
-      data: LinkRow[] | null;
-      error: { message?: string; code?: string } | null;
-    };
+    const ask = (columns: string) =>
+      linksTable()
+        .select(columns)
+        .eq("trip_id", tripId)
+        .is("revoked_at", null)
+        .order("created_at", { ascending: false }) as unknown as Promise<{
+        data: LinkRow[] | null;
+        error: DbError;
+      }>;
+    let { data, error } = await ask("id, token, expires_at, revoked_at, follow_along");
+    if (isMissingColumn(error, ["follow_along"])) {
+      setCanFollow(false);
+      ({ data, error } = await ask("id, token, expires_at, revoked_at"));
+    }
     if (isMissingTable(error)) {
       setReady(false);
       return;
@@ -67,14 +83,36 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
     setBusy(true);
     try {
       const token = newShareToken();
-      const { error } = (await linksTable().insert({ trip_id: tripId, token })) as {
-        error: unknown;
-      };
+      const { error } = (await linksTable().insert(
+        canFollow && follow
+          ? { trip_id: tripId, token, follow_along: true }
+          : { trip_id: tripId, token },
+      )) as { error: unknown };
       if (error) throw error;
       await load();
       await copy(token);
     } catch {
       toast.error("The link didn't save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setFollowing = async (id: string, on: boolean) => {
+    setBusy(true);
+    try {
+      const { error } = (await linksTable().update({ follow_along: on }).eq("id", id)) as {
+        error: unknown;
+      };
+      if (error) throw error;
+      await load();
+      toast(on ? "Following along" : "Plan only", {
+        description: on
+          ? "The link now shows the stop you're at."
+          : "The link no longer shows where you are.",
+      });
+    } catch {
+      toast.error("That didn't save. Try again.");
     } finally {
       setBusy(false);
     }
@@ -107,6 +145,8 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         For family or friends without Béa: the plan's days, times, places and addresses, always up
         to date. Never bookings, notes, documents or who is going. A link lasts 90 days, and you can
         turn it off.
+        {canFollow &&
+          " Following along also shows the stop you tapped “I'm here” at and the ones you've left — never your location."}
       </p>
       {links.map((link) => (
         <div
@@ -119,7 +159,18 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
               month: "short",
               day: "numeric",
             })}
+            {link.follow_along ? " · following along" : ""}
           </span>
+          {canFollow && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void setFollowing(link.id, !link.follow_along)}
+              className="min-h-9 text-[13px] font-semibold text-primary disabled:opacity-60"
+            >
+              {link.follow_along ? "Plan only" : "Follow along"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void copy(link.token)}
@@ -138,6 +189,17 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
           </button>
         </div>
       ))}
+      {canFollow && (
+        <label className="flex min-h-11 items-center gap-2.5 text-[14px]">
+          <input
+            type="checkbox"
+            checked={follow}
+            onChange={(e) => setFollow(e.target.checked)}
+            className="size-4 accent-primary"
+          />
+          Let them follow along (shows the stop you're at)
+        </label>
+      )}
       <button
         type="button"
         disabled={busy || ready === null}

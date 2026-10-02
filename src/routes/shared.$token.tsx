@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { MapPin } from "@/components/icons";
+import { Check, MapPin } from "@/components/icons";
 import { readSharedTrip } from "@/lib/trip-share.functions";
-import { sharedStopMapsUrl } from "@/lib/trip-share";
+import { sharedNow, sharedStopMapsUrl } from "@/lib/trip-share";
 import { formatDateRangeLabel, parseLocalDate } from "@/lib/trip-dates";
 
 export const Route = createFileRoute("/shared/$token")({
@@ -33,6 +34,30 @@ export const Route = createFileRoute("/shared/$token")({
   errorComponent: SharedTripError,
   component: SharedTripPage,
 });
+
+/**
+ * How often a page that follows along asks again. Slow on purpose: the
+ * link's own limit is shared by everyone reading it, and a stop changes
+ * every hour or so, not every minute.
+ */
+const FOLLOW_REFRESH_MS = 2 * 60 * 1000;
+
+/** Ask again now and then while the page is in view, and on coming back to it. */
+function useFollowRefresh(on: boolean) {
+  const router = useRouter();
+  useEffect(() => {
+    if (!on) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void router.invalidate();
+    };
+    const timer = window.setInterval(refresh, FOLLOW_REFRESH_MS);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [on, router]);
+}
 
 function dayHeading(day: string | null): string {
   if (!day) return "Some time on the trip";
@@ -93,6 +118,7 @@ function SharedTripError({ error }: { error: Error }) {
  */
 function SharedTripPage() {
   const trip = Route.useLoaderData();
+  useFollowRefresh(Boolean(trip?.following));
 
   if (!trip) {
     return (
@@ -107,6 +133,7 @@ function SharedTripPage() {
 
   const dates =
     trip.startDate && trip.endDate ? formatDateRangeLabel(trip.startDate, trip.endDate) : "";
+  const now = sharedNow(trip);
   return (
     <AppShell
       publicPage
@@ -115,9 +142,36 @@ function SharedTripPage() {
     >
       <div className="space-y-4 pb-6">
         <p className="text-[13.5px] text-muted-foreground">
-          A read-only copy of the plan, shared from Béa. It shows the latest version each time you
-          open it. Tap an address to open it in Maps.
+          {trip.following
+            ? "A read-only copy of the plan, shared from Béa, following along: it marks the stop they're at and the ones they've done, and updates by itself. Tap an address to open it in Maps."
+            : "A read-only copy of the plan, shared from Béa. It shows the latest version each time you open it. Tap an address to open it in Maps."}
         </p>
+        {trip.following && (
+          <div className="plain-card flex items-start gap-3 p-3.5" aria-live="polite">
+            <span
+              className={`mt-1.5 size-2.5 shrink-0 rounded-full ${now ? "bg-primary" : "bg-muted-foreground/40"}`}
+              aria-hidden
+            />
+            {now ? (
+              <span className="min-w-0">
+                <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Now at
+                </span>
+                <span className="block break-words font-display text-[19px] leading-tight">
+                  {now.stop.title}
+                </span>
+                <span className="block text-[12.5px] text-muted-foreground">
+                  {dayHeading(now.day)}
+                  {now.stop.time ? ` · planned for ${now.stop.time}` : ""}
+                </span>
+              </span>
+            ) : (
+              <span className="text-[14px] text-muted-foreground">
+                Not at a stop just now. You'll see it here when they get to the next one.
+              </span>
+            )}
+          </div>
+        )}
         {trip.days.length === 0 && (
           <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
             Nothing is planned yet.
@@ -131,19 +185,33 @@ function SharedTripPage() {
             <ol className="plain-card divide-y divide-border overflow-hidden">
               {day.stops.map((stop, i) => {
                 const maps = sharedStopMapsUrl(stop);
+                const here = stop.status === "here";
+                const done = stop.status === "done";
                 return (
                   // The plan has no stop ids to share; time and title keep a
                   // row's key stable when the plan above it changes.
                   <li
                     key={`${stop.time}|${stop.title}|${i}`}
-                    className="flex items-start gap-3 px-3.5 py-2.5"
+                    className={`flex items-start gap-3 px-3.5 py-2.5 ${here ? "bg-primary/10" : ""}`}
+                    aria-current={here ? "location" : undefined}
                   >
                     <span className="w-12 shrink-0 pt-0.5 text-[14px] font-bold tabular-nums text-primary">
-                      {stop.time || "–"}
+                      {done ? (
+                        <Check className="size-4 text-muted-foreground" aria-label="Done" />
+                      ) : (
+                        stop.time || "–"
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block break-words text-[15px] leading-snug">
+                      <span
+                        className={`block break-words text-[15px] leading-snug ${done ? "text-muted-foreground" : ""}`}
+                      >
                         {stop.title}
+                        {here && (
+                          <span className="ml-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
+                            Here now
+                          </span>
+                        )}
                       </span>
                       {stop.address &&
                         (maps ? (

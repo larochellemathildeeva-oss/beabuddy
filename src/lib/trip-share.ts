@@ -7,6 +7,10 @@
  * address. Booking numbers, notes, documents, the people on the trip and
  * notes-to-self never leave — a "where will you be" page does not need them.
  *
+ * A link made to "follow along" also says which stop the trip is at and
+ * which are done, from the "I'm here" / "Leaving" taps on the trip — never
+ * the phone's position, and never the times of the taps.
+ *
  * Pure, so what is shown (and what is not) is tested.
  */
 
@@ -42,21 +46,53 @@ export type ShareSourceItem = {
   address: string | null;
   position: number;
   parent_id?: string | null;
+  arrived_at?: string | null;
+  left_at?: string | null;
 };
 
-export type SharedStop = { time: string; title: string; kind: string; address: string };
+/** Where the trip is on a stop, for a link that follows along. */
+export type SharedStopStatus = "here" | "done";
+
+export type SharedStop = {
+  time: string;
+  title: string;
+  kind: string;
+  address: string;
+  /** Only on a link that follows along, and only once the stop is reached. */
+  status?: SharedStopStatus;
+};
 export type SharedTrip = {
   title: string;
   place: string;
   startDate: string | null;
   endDate: string | null;
+  /** True when the link shows which stop the trip is at. */
+  following: boolean;
   days: { day: string | null; stops: SharedStop[] }[];
 };
+
+/**
+ * "I'm here" older than this with no "Leaving" is read as done: someone
+ * forgot to tap, and a friend should not see them at yesterday's museum.
+ */
+export const SHARED_HERE_MAX_MS = 12 * 60 * 60 * 1000;
+
+/** A stop's progress as a friend may see it: here, done, or nothing yet. */
+export function sharedStopStatus(
+  item: Pick<ShareSourceItem, "arrived_at" | "left_at">,
+  now: number,
+): SharedStopStatus | undefined {
+  const arrived = item.arrived_at ? Date.parse(item.arrived_at) : NaN;
+  if (!Number.isFinite(arrived)) return undefined;
+  if (item.left_at || now - arrived > SHARED_HERE_MAX_MS) return "done";
+  return "here";
+}
 
 /** The view a link shows; everything not named here stays private. */
 export function sharedTripView(
   trip: ShareSourceTrip,
   items: readonly ShareSourceItem[],
+  follow: { following: boolean; now: number } = { following: false, now: 0 },
 ): SharedTrip {
   const shown = items
     .filter(
@@ -77,18 +113,28 @@ export function sharedTripView(
       day = { day: item.day_date, stops: [] };
       days.push(day);
     }
-    day.stops.push({
+    const stop: SharedStop = {
       time: timeForRail(item.time_label),
       title: item.title.trim(),
       kind: timelineGlyph(item),
       address: item.address?.trim() ?? "",
-    });
+    };
+    const status = follow.following ? sharedStopStatus(item, follow.now) : undefined;
+    if (status) stop.status = status;
+    day.stops.push(stop);
+  }
+  // Two stops "here" at once (a tap on another phone): the later in the plan
+  // is where they are now, and the one before is done.
+  if (follow.following) {
+    const here = days.flatMap((d) => d.stops).filter((s) => s.status === "here");
+    for (const stop of here.slice(0, -1)) stop.status = "done";
   }
   return {
     title: trip.title,
     place: [trip.city?.split(",")[0]?.trim(), trip.country].filter(Boolean).join(", "),
     startDate: trip.start_date,
     endDate: trip.end_date,
+    following: follow.following,
     days,
   };
 }
@@ -134,4 +180,13 @@ export function sharedStopMapsUrl(stop: Pick<SharedStop, "title" | "address">): 
   const query = [stop.title.trim(), stop.address.trim()].filter(Boolean).join(", ");
   if (!stop.address.trim() || !query) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+/** The stop a following friend sees first: where the trip is now. */
+export function sharedNow(trip: SharedTrip): { day: string | null; stop: SharedStop } | null {
+  for (const day of trip.days) {
+    const stop = day.stops.find((s) => s.status === "here");
+    if (stop) return { day: day.day, stop };
+  }
+  return null;
 }
