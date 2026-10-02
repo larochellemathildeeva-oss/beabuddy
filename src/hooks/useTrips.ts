@@ -22,8 +22,10 @@ import { ownTrips } from "@/lib/own-trips";
 import { reconcileItinerarySnapshot } from "@/lib/itinerary-concurrency";
 import { baseVersionsFor } from "@/lib/itinerary-concurrency";
 import {
+  fieldsTheRpcDropped,
   isItineraryVersionConflict,
   isMissingScheduleRpc,
+  onlyOtherFieldsChanged,
   mergeCommittedRows,
   scheduleWritePlan,
   type ScheduleUpdate,
@@ -1187,12 +1189,42 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
         }
         // Versions as they stand now: a save queued ahead of this one has
         // already moved them.
-        const expected = baseVersionsFor(itemsRef.current, shown.touchedIds);
-        const { data, error } = await rpc("apply_itinerary_schedule", {
-          _trip_id: id,
-          _updates: shown.updates as unknown as Json,
-          _expected_versions: expected as unknown as Json,
-        });
+        const call = () =>
+          rpc("apply_itinerary_schedule", {
+            _trip_id: id,
+            _updates: shown.updates as unknown as Json,
+            _expected_versions: baseVersionsFor(
+              itemsRef.current,
+              shown.touchedIds,
+            ) as unknown as Json,
+          });
+        let { data, error } = await call();
+        if (error && isItineraryVersionConflict(error)) {
+          // The traveller's own save of another field (a title on blur, the
+          // auto-pin, a booking) also moves the version. When the server's
+          // schedule is still the one this save was built on, take its
+          // versions and send once more; otherwise it is a real clash.
+          const { data: fresh } = await supabase
+            .from("itinerary_items")
+            .select("*")
+            .eq("trip_id", id)
+            .in("id", [...shown.touchedIds]);
+          const rows = (fresh ?? []) as unknown as Record<string, unknown>[];
+          if (
+            rows.length &&
+            onlyOtherFieldsChanged(
+              shown.before as unknown as Record<string, unknown>[],
+              rows,
+              shown.touchedIds,
+            )
+          ) {
+            itemsRef.current = mergeCommittedRows(
+              itemsRef.current,
+              rows.map((row) => ({ id: row["id"], updated_at: row["updated_at"] })),
+            );
+            ({ data, error } = await call());
+          }
+        }
         if (error && isMissingScheduleRpc(error)) {
           // The migration is applied by hand. Until it is, save a row at a
           // time, as before, with no version check.
@@ -1210,6 +1242,18 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
           return;
         }
         if (error) throw error;
+        // The Phase 1 function writes only day, time and position and says
+        // nothing of the rest; save duration and the lock as a plain row.
+        for (const row of fieldsTheRpcDropped(shown.updates, data)) {
+          const { id: rowId, ...fields } = row;
+          const { error: rowError } = await supabase
+            .from("itinerary_items")
+            // time_locked is not in the generated types until its migration.
+            .update({ ...fields, updated_by: authorId } as never)
+            .eq("id", rowId)
+            .eq("trip_id", id);
+          if (rowError) throw rowError;
+        }
         itemsRef.current = mergeCommittedRows(itemsRef.current, data);
         setItems(itemsRef.current);
       };
