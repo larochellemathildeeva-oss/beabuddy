@@ -13,6 +13,8 @@ import {
   UserRound,
 } from "lucide-react";
 
+// The checked-in route tree is refreshed by Vite after a new file route is discovered.
+// @ts-ignore -- lets pre-build `tsc --noEmit` see the new preview route on its first pass.
 export const Route = createFileRoute("/home-visual-preview")({
   staticData: { plane: "tab" },
   head: () => ({ meta: [{ title: "Béa — Home visual foundation" }] }),
