@@ -7,6 +7,8 @@ import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
+import { useCityPositions } from "@/hooks/useCityPositions";
+import { tripCityStop, withCityPositions } from "@/lib/city-position";
 import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
 import { heroTags, routeLine } from "@/lib/trip-glance";
 
@@ -15,13 +17,23 @@ const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
 /**
  * The top of Home, as the "three moods" design draws it: what kind of moment
  * it is, the trip's name and how soon in large serif, a round arrow into it,
- * and under them the living map of its cities — or, for a trip whose places
- * have no position yet (a one-city trip keeps its city on the trip), its
- * picture and where it goes.
+ * and under them the living map of its cities — or, while their positions
+ * are looked up or when the map knows none of them, its picture and where it
+ * goes.
  */
 export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
-  const { stops } = useTripStops(trip.id, null);
-  const route = useMemo(() => routeStops(stops), [stops]);
+  const { stops, loading } = useTripStops(trip.id, null);
+  // A one-city trip keeps its city on the trip, not as a stop.
+  const cityStops = useMemo(
+    () => (stops.length || loading ? stops : tripCityStop(trip)),
+    [stops, loading, trip],
+  );
+  // A city typed rather than picked has no position: found by its name.
+  const positions = useCityPositions(cityStops);
+  const route = useMemo(
+    () => routeStops(withCityPositions(cityStops, positions)),
+    [cityStops, positions],
+  );
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
   const when = heroWhen(tags.when);
   const cities = route.map((s) => s.city).join(", ");
