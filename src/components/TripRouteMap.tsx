@@ -15,7 +15,11 @@ import {
   type RouteStop,
 } from "@/lib/home-route-map";
 
-/** The frame the map is drawn in; the SVG scales to the screen's width. */
+/**
+ * The frame the map is drawn in. On a phone the SVG scales to the screen's
+ * width; on a wider column the frame widens instead, so the map, its pills and
+ * the title over it keep their size rather than growing with the column.
+ */
 export const ROUTE_MAP_W = 390;
 export const ROUTE_MAP_H = 300;
 const PILL_H = 54;
@@ -49,6 +53,8 @@ function pillWidth(stop: RouteStop): number {
  */
 export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: string }) {
   const id = useId().replace(/:/g, "");
+  const [svg, setSvg] = useState<SVGSVGElement | null>(null);
+  const width = useFrameWidth(svg);
   const [land, setLand] = useState<Land | null>(null);
   useEffect(() => {
     let live = true;
@@ -84,8 +90,8 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
       .rotate([-center, 0])
       .fitExtent(
         [
-          [ROUTE_MAP_W * 0.16, ROUTE_MAP_H * 0.45],
-          [ROUTE_MAP_W * 0.84, ROUTE_MAP_H * 0.8],
+          [width * 0.16, ROUTE_MAP_H * 0.45],
+          [width * 0.84, ROUTE_MAP_H * 0.8],
         ],
         corners,
       );
@@ -96,14 +102,14 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
     const which = pillStops(stops);
     const widths = which.map((i) => pillWidth(stops[i]!));
     const pills = placePills(dots, which, {
-      width: ROUTE_MAP_W,
+      width,
       height: ROUTE_MAP_H,
       pillWidth: Math.max(...widths),
       pillHeight: PILL_H,
       top: TITLE_LINE,
     }).map((p) => ({ ...p, w: pillWidth(stops[p.index]!) }));
     return { projection, dots, pills };
-  }, [stops]);
+  }, [stops, width]);
 
   const landPath = useMemo(() => {
     if (!land || !drawn) return "";
@@ -113,17 +119,28 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
   if (!drawn) return null;
   const { dots, pills } = drawn;
   const first = dots[0]!;
-  const flight = flightTrail(first);
+  const flight = flightTrail(first, width);
 
   return (
     <svg
+      ref={setSvg}
       role="img"
       aria-label={label}
-      viewBox={`0 0 ${ROUTE_MAP_W} ${ROUTE_MAP_H}`}
+      viewBox={`0 0 ${width} ${ROUTE_MAP_H}`}
       className="route-map block h-auto w-full"
     >
       <defs>
-        <filter id={`${id}-relief`} x="0" y="0" width="100%" height="100%">
+        {/* Both land filters are bounded to the frame, not the coastline's box:
+            that box is the whole world, and Safari draws nothing at all for a
+            filter that large. */}
+        <filter
+          id={`${id}-relief`}
+          filterUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width={width}
+          height={ROUTE_MAP_H}
+        >
           <feTurbulence
             type="fractalNoise"
             baseFrequency="0.022"
@@ -162,7 +179,14 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
           <feBlend in="lit" in2="painted" mode="multiply" result="shaded" />
           <feComposite in="shaded" in2="SourceGraphic" operator="in" />
         </filter>
-        <filter id={`${id}-lift`}>
+        <filter
+          id={`${id}-lift`}
+          filterUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width={width}
+          height={ROUTE_MAP_H}
+        >
           <feDropShadow dx="1.5" dy="2.5" stdDeviation="2.5" className="map-shadow" />
         </filter>
         <filter id={`${id}-pill`} x="-20%" y="-30%" width="140%" height="170%">
@@ -186,7 +210,7 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
           <path d={landPath} className="map-land" filter={`url(#${id}-relief)`} />
         </g>
       ) : null}
-      <rect width={ROUTE_MAP_W} height={ROUTE_MAP_H} fill={`url(#${id}-fade)`} />
+      <rect width={width} height={ROUTE_MAP_H} fill={`url(#${id}-fade)`} />
 
       {/* The flight in: a dotted trail into the first city, with its plane. */}
       <path d={flight.path} className="route-trail" />
@@ -224,6 +248,26 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
       ))}
     </svg>
   );
+}
+
+/**
+ * The frame's width: the column's width in pixels, never under the phone frame
+ * (a narrower phone scales the phone frame down, as before).
+ */
+function useFrameWidth(el: SVGSVGElement | null): number {
+  const [width, setWidth] = useState(ROUTE_MAP_W);
+  useEffect(() => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const read = () => {
+      const w = el.getBoundingClientRect().width;
+      if (w > 0) setWidth(Math.max(ROUTE_MAP_W, Math.round(w)));
+    };
+    read();
+    const watch = new ResizeObserver(read);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [el]);
+  return width;
 }
 
 function StopPill({
@@ -286,10 +330,10 @@ function StopPill({
 }
 
 /** A dotted arc rising from the first city toward the top of the map, and where its plane sits. */
-function flightTrail(first: Point) {
+function flightTrail(first: Point, width: number) {
   const start = first;
   const end = {
-    x: Math.min(ROUTE_MAP_W - 40, first.x + 60),
+    x: Math.min(width - 40, first.x + 60),
     y: Math.max(TITLE_LINE + 10, first.y - 150),
   };
   const c = { x: first.x - 45, y: first.y - 80 };
