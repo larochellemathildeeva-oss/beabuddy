@@ -273,7 +273,7 @@ function SignedInHome() {
       <div className="space-y-5">
         {showTrip && (
           <div className="space-y-4">
-            <HomeUpcoming trip={trip} />
+            <HomeUpcoming trip={trip} photos={photos} />
             <HomeTripStats trip={trip} glance={glances[trip.id]} />
             <HomeWhereNext />
             <HomeSuggested trip={trip} />

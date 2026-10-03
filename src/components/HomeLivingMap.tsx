@@ -1,42 +1,45 @@
 import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Luggage, Plane, Search } from "@/components/icons";
+import { TripPicture } from "@/components/HomeTripCard";
 import { TripRouteMap } from "@/components/TripRouteMap";
+import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
 import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
-import { heroTags } from "@/lib/trip-glance";
+import { heroTags, routeLine } from "@/lib/trip-glance";
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
 
 /**
  * The top of Home, as the "three moods" design draws it: what kind of moment
  * it is, the trip's name and how soon in large serif, a round arrow into it,
- * and under them the living map of its cities.
+ * and under them the living map of its cities — or, for a trip whose places
+ * have no position yet (a one-city trip keeps its city on the trip), its
+ * picture and where it goes.
  */
-export function HomeUpcoming({ trip }: { trip: TripRow }) {
+export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
   const { stops } = useTripStops(trip.id, null);
   const route = useMemo(() => routeStops(stops), [stops]);
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
   const when = heroWhen(tags.when);
   const cities = route.map((s) => s.city).join(", ");
+  const stopCities = stops.map((s) => s.city).filter(Boolean);
+  const where =
+    routeLine(stopCities) || trip.city?.split(",")[0] || stopCities[0] || trip.country || "";
 
   return (
-    <section data-guide="home-trip" className="rise relative -mx-4">
+    <section data-guide="home-trip" className="relative -mx-4">
       <div className="relative z-10 flex items-start justify-between gap-3 px-5 pt-2">
         <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             {tags.label}
           </p>
-          <h2 className="mt-2 line-clamp-3 break-words font-display text-[50px] leading-[0.95] tracking-[-0.02em] [-webkit-text-stroke:0.6px_currentColor]">
-            {trip.title}
-            {when ? (
-              <>
-                <br />
-                {when}
-              </>
-            ) : null}
+          {/* The name is clamped, never the countdown under it. */}
+          <h2 className="mt-2 font-display text-[50px] leading-[0.95] tracking-[-0.02em] [-webkit-text-stroke:0.6px_currentColor]">
+            <span className="line-clamp-2 break-words">{trip.title}</span>
+            {when ? <span className="block">{when}</span> : null}
           </h2>
         </Link>
         <Link
@@ -54,7 +57,23 @@ export function HomeUpcoming({ trip }: { trip: TripRow }) {
           <TripRouteMap stops={route} label={`Map of the trip: ${cities}`} />
         </div>
       ) : (
-        <div className="h-4" />
+        <Link
+          to="/trips/$tripId"
+          params={{ tripId: trip.id }}
+          viewTransition
+          className="relative mx-4 mt-4 block h-[180px] overflow-hidden rounded-[var(--r-card)] bg-muted"
+        >
+          <TripPicture trip={trip} photos={photos} cities={stopCities} />
+          <span
+            aria-hidden
+            className="absolute inset-0 bg-[linear-gradient(to_top,rgb(0_0_0/0.5),transparent_55%)]"
+          />
+          {where ? (
+            <span className="absolute inset-x-4 bottom-3 truncate text-[15px] font-semibold text-white">
+              {where}
+            </span>
+          ) : null}
+        </Link>
       )}
     </section>
   );
@@ -80,13 +99,16 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
   const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
   const packing = glance?.packing ?? null;
   const percent = packing ? Math.round(packing.ratio * 100) : 0;
+  const packed = packing
+    ? new Intl.NumberFormat(undefined, { style: "percent" }).format(percent / 100)
+    : "—";
   const cell = "flex min-w-0 items-center gap-2 px-2.5 py-1";
 
   return (
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`rise relative z-10 -mt-6 grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
+      className={`relative z-10 -mt-6 grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
     >
       <Link
         to="/trips/$tripId"
@@ -130,7 +152,7 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
       >
         <Luggage className="size-6 shrink-0" />
         <span className="min-w-0 flex-1">
-          <Stat big={packing ? `${percent}%` : "—"} small={packing ? "packed" : "Packing list"} />
+          <Stat big={packed} small={packing ? "packed" : "Packing list"} />
           <span
             aria-hidden
             className="mt-1.5 block h-1 w-full max-w-[90px] overflow-hidden rounded-full bg-[var(--stat-track)]"
@@ -162,7 +184,7 @@ export function HomeWhereNext() {
   return (
     <Link
       to="/trips/plan"
-      className={`rise flex h-14 items-center gap-3 rounded-full bg-[var(--home-search)] pl-5 pr-1 ${SOFT_SHADOW}`}
+      className={`flex h-14 items-center gap-3 rounded-full bg-[var(--home-search)] ps-5 pe-1 ${SOFT_SHADOW}`}
     >
       <Search className="size-5 shrink-0 text-foreground" />
       <span className="flex-1 text-[15.5px] text-muted-foreground">Where to next?</span>
@@ -199,12 +221,12 @@ export function HomeSuggested({ trip }: { trip: TripRow }) {
     },
   ];
   return (
-    <section data-guide="home-suggested" className="rise">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
+    <section data-guide="home-suggested">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
         <h2 className="font-sans text-[16.5px] font-semibold">Suggested for your trip</h2>
         <Link
           to="/recommendations"
-          className="flex shrink-0 items-center gap-1 text-[14px] font-medium"
+          className="-me-2 flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-1 px-2 text-[14px] font-medium"
         >
           See all
           <ArrowRight className="size-4" />

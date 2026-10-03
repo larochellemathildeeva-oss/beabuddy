@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  centerLon,
   flightParts,
   heroWhen,
   mapBounds,
@@ -33,6 +34,8 @@ test("routeStops keeps placed stops in order and merges a city twice in a row", 
     { city: "Nowhere", lat: null, lon: null },
     { city: "Prague", lat: 50.08, lon: 14.43, arrive_on: "2026-04-15", depart_on: "2026-04-16" },
     { city: "Berlin", lat: 52.52, lon: 13.4 },
+    { city: "Typo", lat: 152.5, lon: 13.4 },
+    { city: "Swapped", lat: 13.4, lon: 252.5 },
   ]);
   assert.deepEqual(
     stops.map((s) => [s.city, s.days]),
@@ -45,16 +48,29 @@ test("routeStops keeps placed stops in order and merges a city twice in a row", 
 });
 
 test("mapBounds pads the stops and gives one city a region around it", () => {
-  const [[w, s], [e, n]] = mapBounds([{ lat: 35.68, lon: 139.69 }]);
+  const one = mapBounds([{ lat: 35.68, lon: 139.69 }]);
+  const [[w, s], [e, n]] = one.corners;
+  assert.ok(Math.abs(one.center - 139.69) < 1e-9);
   assert.ok(e - w >= 9 - 1e-9);
   assert.ok(n - s >= 6 - 1e-9);
-  assert.ok(w < 139.69 && e > 139.69 && s < 35.68 && n > 35.68);
+  assert.ok(w < 0 && e > 0 && s < 35.68 && n > 35.68);
 
   const wide = mapBounds([
     { lat: 48.86, lon: 2.35 },
     { lat: 52.52, lon: 13.4 },
   ]);
-  assert.ok(wide[0][0] < 2.35 && wide[1][0] > 13.4);
+  assert.ok(wide.corners[0][0] + wide.center < 2.35 && wide.corners[1][0] + wide.center > 13.4);
+});
+
+test("a trip across the 180° line is a short span, not a lap of the world", () => {
+  assert.ok(Math.abs(Math.abs(centerLon([179, -179])) - 180) < 1e-9);
+  assert.ok(Math.abs(centerLon([2, 14]) - 8) < 1e-9);
+  const { corners } = mapBounds([
+    { lat: -17.7, lon: 178.4 }, // Fiji
+    { lat: -13.8, lon: -171.8 }, // Samoa
+  ]);
+  const span = corners[1][0] - corners[0][0];
+  assert.ok(span < 40, `span ${span}`);
 });
 
 test("smoothPath passes through every point", () => {
@@ -146,6 +162,30 @@ test("placePills finds a free side when above and below are taken", () => {
     ],
   ])
     clearOf(dots, placePills(dots, [0, 1, 2], frame));
+});
+
+test("placePills leaves a pill off rather than let two overlap", () => {
+  const frame = { width: 390, height: 300, pillWidth: 150, pillHeight: 54, top: 112 };
+  // Four cities a few kilometres apart.
+  const dots = [
+    { x: 190, y: 200 },
+    { x: 200, y: 196 },
+    { x: 205, y: 205 },
+    { x: 196, y: 210 },
+  ];
+  const pills = placePills(dots, [0, 1, 2, 3], frame);
+  assert.ok(pills.length >= 1);
+  assert.ok(
+    pills.some((p) => p.index === 3),
+    "the last stop keeps its pill",
+  );
+  const boxes = pills.map((p) => ({ x0: p.x, y0: p.y, x1: p.x + 150, y1: p.y + 54 }));
+  for (let i = 0; i < boxes.length; i++)
+    for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i]!;
+      const b = boxes[j]!;
+      assert.ok(a.x1 <= b.x0 || b.x1 <= a.x0 || a.y1 <= b.y0 || b.y1 <= a.y0, "overlap");
+    }
 });
 
 function clearOf(dots: { x: number; y: number }[], pills: { x: number; y: number }[]) {

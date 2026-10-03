@@ -64,8 +64,11 @@ export function stayLabel(days: number | null): string {
 export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
   const out: RouteStop[] = [];
   for (const s of stops) {
+    // A position off the globe (a typo, a swapped pair) is left off the map
+    // rather than thrown across it.
     if (s.lat === null || s.lon === null || !Number.isFinite(s.lat) || !Number.isFinite(s.lon))
       continue;
+    if (Math.abs(s.lat) > 85 || Math.abs(s.lon) > 180) continue;
     const city = s.city.trim();
     if (!city) continue;
     const days = stayDays(s.arrive_on, s.depart_on);
@@ -79,18 +82,50 @@ export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
   return out;
 }
 
+/** A longitude in −180…180. */
+function wrapLon(lon: number): number {
+  return ((((lon + 180) % 360) + 360) % 360) - 180;
+}
+
 /**
- * The longitude/latitude box the map shows: the stops, padded, and never
- * smaller than a region (a one-city trip still shows its country around it).
- * Returned as two corners for a projection to fit.
+ * The middle of the shortest stretch of longitude holding every stop — across
+ * the 180° line when that is shorter, so a trip from Fiji to Samoa is a short
+ * hop and not a lap of the world.
+ */
+export function centerLon(lons: readonly number[]): number {
+  if (lons.length === 0) return 0;
+  const sorted = lons.map(wrapLon).sort((a, b) => a - b);
+  const n = sorted.length;
+  // The widest gap between neighbours (going round) is the part not shown.
+  let gapAfter = n - 1;
+  let gap = sorted[0]! + 360 - sorted[n - 1]!;
+  for (let i = 0; i < n - 1; i++) {
+    const g = sorted[i + 1]! - sorted[i]!;
+    if (g > gap) {
+      gap = g;
+      gapAfter = i;
+    }
+  }
+  const start = sorted[(gapAfter + 1) % n]!;
+  let end = sorted[gapAfter]!;
+  if (end < start) end += 360;
+  return wrapLon((start + end) / 2);
+}
+
+/**
+ * The box the map shows, around `centerLon` (the projection is turned so that
+ * longitude is its middle): the stops, padded, and never smaller than a region
+ * (a one-city trip still shows its country around it). Returned as two
+ * corners, in longitudes relative to the centre, for the projection to fit.
  */
 export function mapBounds(
   stops: readonly { lat: number; lon: number }[],
   minLon = 9,
   minLat = 6,
   pad = 0.35,
-): [[number, number], [number, number]] {
-  const lons = stops.map((s) => s.lon);
+): { center: number; corners: [[number, number], [number, number]] } {
+  const center = centerLon(stops.map((s) => s.lon));
+  const lons = stops.map((s) => wrapLon(s.lon - center));
   const lats = stops.map((s) => s.lat);
   let w = Math.min(...lons);
   let e = Math.max(...lons);
@@ -98,14 +133,17 @@ export function mapBounds(
   let n = Math.max(...lats);
   const padLon = Math.max((minLon - (e - w)) / 2, (e - w) * pad);
   const padLat = Math.max((minLat - (n - s)) / 2, (n - s) * pad);
-  w -= padLon;
-  e += padLon;
+  w = Math.max(-179.9, w - padLon);
+  e = Math.min(179.9, e + padLon);
   s = Math.max(-80, s - padLat);
   n = Math.min(84, n + padLat);
-  return [
-    [w, s],
-    [e, n],
-  ];
+  return {
+    center,
+    corners: [
+      [w, s],
+      [e, n],
+    ],
+  };
 }
 
 /**
@@ -155,9 +193,9 @@ const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 &
  * others below, as in the design, else to one side. Cities close together can
  * box each other in, so the pills are placed together: every combination of
  * spots is tried (at most four pills, a few spots each) and the first with no
- * pill on another pill or on a dot wins, in order of preference — or, when
- * none is clear, the least crowded. All of them stay inside the frame and
- * under the title.
+ * pill on another pill or on a dot wins, in order of preference. When none is
+ * clear, a pill is left off (never the last stop's) until the rest fit. All
+ * of them stay inside the frame and under the title.
  */
 export function placePills(
   dots: readonly Point[],
@@ -246,7 +284,18 @@ export function placePills(
     return false;
   };
   search(0, 0);
-  const chosen = (best as { picks: number[] } | null)?.picks ?? which.map(() => 0);
+  const found = best as { picks: number[]; crowd: number } | null;
+  if (found && found.crowd > 0 && which.length > 1) {
+    // Too close to label them all clear: leave one out — the stop before the
+    // last, then the next — and try again. The last stop keeps its pill.
+    const drop = which.length > 2 ? which.length - 2 : 0;
+    return placePills(
+      dots,
+      which.filter((_, i) => i !== drop),
+      frame,
+    );
+  }
+  const chosen = found?.picks ?? which.map(() => 0);
   return which.map((index, i) => {
     const { p } = options[i]![chosen[i]!]!;
     return { index, x: p.x, y: p.y };

@@ -4,6 +4,7 @@ import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { useTownPicture } from "@/hooks/useTownPicture";
+import { creditedOnPhoto } from "@/lib/wikimedia";
 import {
   mapBounds,
   pillStops,
@@ -65,22 +66,29 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
     if (stops.length === 0) return null;
     // Close around the cities, so they spread across the frame; a one-city
     // trip still gets a few degrees of its country around it.
-    const [[w, s], [e, n]] = mapBounds(stops, 4, 2.5, 0.06);
+    const {
+      center,
+      corners: [[w, s], [e, n]],
+    } = mapBounds(stops, 4, 2.5, 0.06);
+    // Turned so the trip is in the middle of the map: a trip across the 180°
+    // line stays in one piece.
     const corners = {
       type: "MultiPoint" as const,
       coordinates: [
-        [w, s],
-        [e, n],
+        [w + center, s],
+        [e + center, n],
       ],
     };
     // The cities sit in the lower part of the frame: the title is over the top.
-    const projection = geoMercator().fitExtent(
-      [
-        [ROUTE_MAP_W * 0.16, ROUTE_MAP_H * 0.45],
-        [ROUTE_MAP_W * 0.84, ROUTE_MAP_H * 0.8],
-      ],
-      corners,
-    );
+    const projection = geoMercator()
+      .rotate([-center, 0])
+      .fitExtent(
+        [
+          [ROUTE_MAP_W * 0.16, ROUTE_MAP_H * 0.45],
+          [ROUTE_MAP_W * 0.84, ROUTE_MAP_H * 0.8],
+        ],
+        corners,
+      );
     const dots: Point[] = stops.map((stop) => {
       const [x, y] = projection([stop.lon, stop.lat]) ?? [0, 0];
       return { x, y };
@@ -236,6 +244,9 @@ function StopPill({
   shadow: string;
 }) {
   const town = useTownPicture(false, stop.city, stop.country);
+  // A pill is too small to carry a photo's author and licence, so it shows
+  // only photos credited once for all (Pexels), else Béa's painting.
+  const photo = town.photo && !creditedOnPhoto(town.photo) ? town.photo : null;
   const art = bannerArtUrl(bannerSceneFor([stop.city, stop.country], stop.city));
   const cx = x + 4 + PHOTO / 2;
   const cy = y + PILL_H / 2;
@@ -252,14 +263,14 @@ function StopPill({
         filter={`url(#${shadow})`}
       />
       <image
-        href={town.photo?.url ?? art}
+        href={photo?.url ?? art}
         x={cx - PHOTO / 2}
         y={cy - PHOTO / 2}
         width={PHOTO}
         height={PHOTO}
         preserveAspectRatio="xMidYMid slice"
         clipPath={`url(#${clip})`}
-        onError={town.onError}
+        onError={photo ? town.onError : undefined}
       />
       <circle cx={cx} cy={cy} r={PHOTO / 2} className="route-photo-ring" />
       <text x={x + PHOTO + 16} y={days ? cy - 3 : cy + 5} className="route-city">
