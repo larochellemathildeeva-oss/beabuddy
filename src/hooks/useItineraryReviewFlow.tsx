@@ -237,7 +237,9 @@ export function useItineraryReviewFlow({
         });
         return;
       }
-      const rpc = supabase.rpc as unknown as AtomicScheduleRpc;
+      // Bound: `rpc` reads `this.rest`, so a bare `supabase.rpc` throws before
+      // sending anything, and every schedule save failed as "no connection".
+      const rpc = supabase.rpc.bind(supabase) as unknown as AtomicScheduleRpc;
       const { error } = await rpc("apply_itinerary_schedule", {
         _trip_id: tripId,
         _updates: inverse as unknown as Json,

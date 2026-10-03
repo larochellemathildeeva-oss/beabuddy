@@ -83,6 +83,7 @@ import { TripAgain } from "@/components/day/TripAgain";
 import { ShareLinkCard } from "@/components/day/ShareLinkCard";
 import { TripPreferencesPanel } from "@/components/day/TripPreferencesPanel";
 import { useTripPreferences } from "@/hooks/useTripPreferences";
+import { isNetworkFailure } from "@/lib/ai-errors";
 import { forgetOfflineTrip, saveOfflineTrip } from "@/lib/offline-trip";
 import { calendarFileName, tripCalendar } from "@/lib/itinerary-ics-export";
 import {
@@ -239,7 +240,9 @@ export function TripDetail({
         ? "Only part of that change saved. The stop shows what was kept."
         : code === "TIME_LOCK_UNAVAILABLE"
           ? "Fixed and Flexible aren't set up yet."
-          : "Couldn't save that change. Check your connection.";
+          : isNetworkFailure(e)
+            ? "Couldn't save that change. Check your connection."
+            : "Couldn't save that change. Try again in a moment.";
   };
   /**
    * A card's edit: the board puts it back if the save fails, and says so.
@@ -954,7 +957,9 @@ export function TripDetail({
       // failure. The list has reloaded to show them; offer to put it back.
       setLiveLegs(null);
       toast.error("Couldn't save all of that move.", {
-        description: "Check your connection. Some stops may already have moved.",
+        description: isNetworkFailure(e)
+          ? "Check your connection. Some stops may already have moved."
+          : "Some stops may already have moved.",
         duration: 10000,
         action: { label: "Put back", onClick: undo },
       });
