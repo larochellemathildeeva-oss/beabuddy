@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { geoMercator, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { FeatureCollection, Geometry } from "geojson";
@@ -26,6 +26,8 @@ const PILL_H = 54;
 /** Where the hero's words end over the map; pills stay below it. */
 const TITLE_LINE = 112;
 const PHOTO = 46;
+/** How far the land filters reach past the frame, for the shadow's blur. */
+const FILTER_BLEED = 12;
 
 type Land = FeatureCollection<Geometry>;
 let landPromise: Promise<Land> | null = null;
@@ -94,7 +96,13 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
           [width * 0.84, ROUTE_MAP_H * 0.8],
         ],
         corners,
-      );
+      )
+      // The coastline is cut to the frame before it is drawn: unclipped, the
+      // land is the size of the world, and Safari will not filter (or draw) it.
+      .clipExtent([
+        [-FILTER_BLEED, -FILTER_BLEED],
+        [width + FILTER_BLEED, ROUTE_MAP_H + FILTER_BLEED],
+      ]);
     const dots: Point[] = stops.map((stop) => {
       const [x, y] = projection([stop.lon, stop.lat]) ?? [0, 0];
       return { x, y };
@@ -132,14 +140,14 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
       <defs>
         {/* Both land filters are bounded to the frame, not the coastline's box:
             that box is the whole world, and Safari draws nothing at all for a
-            filter that large. */}
+            filter that large. A small bleed keeps the land's shadow whole at the edges. */}
         <filter
           id={`${id}-relief`}
           filterUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width={width}
-          height={ROUTE_MAP_H}
+          x={-FILTER_BLEED}
+          y={-FILTER_BLEED}
+          width={width + 2 * FILTER_BLEED}
+          height={ROUTE_MAP_H + 2 * FILTER_BLEED}
         >
           <feTurbulence
             type="fractalNoise"
@@ -182,10 +190,10 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
         <filter
           id={`${id}-lift`}
           filterUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width={width}
-          height={ROUTE_MAP_H}
+          x={-FILTER_BLEED}
+          y={-FILTER_BLEED}
+          width={width + 2 * FILTER_BLEED}
+          height={ROUTE_MAP_H + 2 * FILTER_BLEED}
         >
           <feDropShadow dx="1.5" dy="2.5" stdDeviation="2.5" className="map-shadow" />
         </filter>
@@ -256,16 +264,26 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
  */
 function useFrameWidth(el: SVGSVGElement | null): number {
   const [width, setWidth] = useState(ROUTE_MAP_W);
-  useEffect(() => {
-    if (!el || typeof ResizeObserver === "undefined") return;
+  // Measured before paint, so a wide column never shows the phone frame first;
+  // resizes are taken once a frame, since each one re-projects the coastline.
+  useLayoutEffect(() => {
+    if (!el) return;
     const read = () => {
       const w = el.getBoundingClientRect().width;
       if (w > 0) setWidth(Math.max(ROUTE_MAP_W, Math.round(w)));
     };
     read();
-    const watch = new ResizeObserver(read);
+    if (typeof ResizeObserver === "undefined") return;
+    let frame = 0;
+    const watch = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(read);
+    });
     watch.observe(el);
-    return () => watch.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      watch.disconnect();
+    };
   }, [el]);
   return width;
 }
