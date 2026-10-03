@@ -463,6 +463,19 @@ arrival older than 12 hours with no "Leaving" counts as done. It is the
 `follow_along` column on `trip_share_links`, off for older links; the
 migration is applied by hand, and until it is, links show the plan only.
 
+## Following a shared trip
+
+A signed-in traveller who opens a share link can tap **"Follow in Béa"**
+(`FollowButton` on `/shared/$token`) to keep the trip under **Trips →
+Following** (a tab shown only once they follow one; `FollowedTripList`).
+It is the same link, kept in their account: `trip_follows` holds one row per
+traveller and link, written only by the server after it checks the token
+(`trip-follow.server.ts`; no insert policy), and the trip is read through the
+link in its fixed view (`followedTripCard` in `trip-follow.ts`, pure and
+tested). A link turned off or expired drops out of the list and its row is
+cleared; Erase deletes the rows. The migration is applied by hand; until it
+is, the button and the tab do not show.
+
 ## Protected passcodes
 
 Protected is encrypted in the browser with a key from the traveller's

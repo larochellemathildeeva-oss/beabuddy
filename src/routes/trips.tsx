@@ -1,12 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import beaLogo from "@/assets/bea-logo.png";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, ChevronRight, FileText, Plus, X } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { TripCard } from "@/components/TripCard";
+import { FollowedTripList } from "@/components/FollowedTripList";
+import { listFollowedTrips } from "@/lib/trip-follow.functions";
+import type { FollowedTrip } from "@/lib/trip-follow";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { peopleOnTrip, tripTabs } from "@/lib/home-trip";
 import { pickTripPhoto } from "@/lib/trip-card";
@@ -94,8 +98,12 @@ function TripsPage() {
   const search = Route.useSearch();
   const [creating, setCreating] = useState(Boolean(search.new));
   const [joining, setJoining] = useState(false);
-  /** The master's three tabs. Undated trips sit at the end of Upcoming. */
-  const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
+  /**
+   * The master's tabs. Undated trips sit at the end of Upcoming; Following
+   * (trips others shared) shows once the traveller follows one.
+   */
+  const [view, setView] = useState<"upcoming" | "past" | "following" | "all">("upcoming");
+  const followed = useFollowedTrips(Boolean(user));
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -191,11 +199,16 @@ function TripsPage() {
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
 
-            <div role="tablist" aria-label="Which trips" className="grid grid-cols-3 gap-1.5">
+            <div
+              role="tablist"
+              aria-label="Which trips"
+              className={`grid gap-1.5 ${followed?.length ? "grid-cols-4" : "grid-cols-3"}`}
+            >
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
+                  ...(followed?.length ? ([["following", "Following"]] as const) : []),
                   ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
@@ -205,7 +218,7 @@ function TripsPage() {
                   role="tab"
                   aria-selected={view === value}
                   onClick={() => setView(value)}
-                  className={`h-10 rounded-full text-[14px] font-semibold transition-colors duration-(--t-tap) ${
+                  className={`h-10 min-w-0 truncate rounded-full px-1 text-[14px] font-semibold transition-colors duration-(--t-tap) ${
                     view === value
                       ? "bg-primary text-primary-foreground"
                       : "bg-elevated text-foreground hover:bg-accent"
@@ -652,7 +665,9 @@ function TripsPage() {
                 </>
               )}
 
-              {view !== "upcoming" && (
+              {view === "following" && <FollowedTripList trips={followed ?? []} />}
+
+              {(view === "past" || view === "all") && (
                 <div className="space-y-3">
                   {lists[view].map((trip) => (
                     <TripCard
@@ -673,7 +688,7 @@ function TripsPage() {
                 </div>
               )}
 
-              {t.trips.length === 0 && !t.loading && (
+              {t.trips.length === 0 && !t.loading && view !== "following" && (
                 <div className="flex flex-col items-center py-8 text-center">
                   <img
                     src="/bea/bea-think-static.png"
@@ -888,4 +903,25 @@ function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
       </span>
     </Link>
   );
+}
+
+/**
+ * The trips this traveller follows, read once when Trips opens; null until
+ * read, or while following is not set up (its migration), or on a failed
+ * read — the tab simply does not show.
+ */
+function useFollowedTrips(signedIn: boolean): FollowedTrip[] | null {
+  const list = useServerFn(listFollowedTrips);
+  const [trips, setTrips] = useState<FollowedTrip[] | null>(null);
+  useEffect(() => {
+    if (!signedIn) return;
+    let alive = true;
+    list()
+      .then((next) => alive && setTrips(next))
+      .catch(() => alive && setTrips(null));
+    return () => {
+      alive = false;
+    };
+  }, [signedIn, list]);
+  return signedIn ? trips : null;
 }

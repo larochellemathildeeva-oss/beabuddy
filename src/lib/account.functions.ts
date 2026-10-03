@@ -191,6 +191,14 @@ async function wipeUserContent(
     }
   }
 
+  // Trips followed through someone's share link; absent until its migration is applied.
+  {
+    const { error } = await admin.from("trip_follows").delete().eq("user_id", userId);
+    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+      throw new Error(`trip_follows: ${error.message}`);
+    }
+  }
+
   // Rate-limit log may be absent on older DBs; ignore missing-table errors.
   {
     const { error } = await admin.from("trip_invite_attempts").delete().eq("user_id", userId);
