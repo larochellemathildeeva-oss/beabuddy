@@ -7,6 +7,7 @@ import { useTownPicture } from "@/hooks/useTownPicture";
 import { creditedOnPhoto } from "@/lib/wikimedia";
 import {
   mapBounds,
+  pillLabel,
   pillStops,
   placePills,
   smoothPath,
@@ -44,8 +45,9 @@ function loadLand(): Promise<Land> {
 }
 
 function pillWidth(stop: RouteStop): number {
-  const longest = Math.max(stop.city.length, stayLabel(stop.days).length);
-  return Math.min(176, Math.max(118, PHOTO + 34 + longest * 8.6));
+  const longest = Math.max(pillLabel(stop.city).length, stayLabel(stop.days).length);
+  // Wide enough for the longest name a pill shows (PILL_LABEL_MAX letters).
+  return Math.min(220, Math.max(118, PHOTO + 34 + longest * 8.6));
 }
 
 /**
@@ -336,7 +338,7 @@ function StopPill({
       />
       <circle cx={cx} cy={cy} r={PHOTO / 2} className="route-photo-ring" />
       <text x={x + PHOTO + 16} y={days ? cy - 3 : cy + 5} className="route-city">
-        {stop.city}
+        {pillLabel(stop.city)}
       </text>
       {days ? (
         <text x={x + PHOTO + 16} y={cy + 14} className="route-days">
