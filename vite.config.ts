@@ -38,10 +38,7 @@ export default defineConfig(({ command }) => ({
       },
     }),
     // Canner is a Node host. node-server emits .output/server/index.mjs and listens on $PORT.
-    // Vercel sets VERCEL=1 while it builds; its preset emits .vercel/output (functions + static).
-    ...(command === "build"
-      ? [nitro({ preset: process.env["VERCEL"] ? "vercel" : "node-server" })]
-      : []),
+    ...(command === "build" ? [nitro({ preset: "node-server" })] : []),
     viteReact(),
   ],
   resolve: {

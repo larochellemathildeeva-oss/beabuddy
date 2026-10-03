@@ -67,19 +67,12 @@ async function walk(dir) {
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  // node-server (Canner) builds into .output/public; the vercel preset into .vercel/output/static.
-  const repo = resolve(fileURLToPath(import.meta.url), "../..");
-  const roots = [".output/public", ".vercel/output/static"].map((dir) => resolve(repo, dir));
-  const files = [];
-  for (const root of roots) {
-    try {
-      files.push(...(await walk(root)));
-    } catch {
-      // Not built for that host.
-    }
-  }
-  if (!files.length) {
-    console.error(`No build at ${roots.join(" or ")}: run npm run build first.`);
+  const root = resolve(fileURLToPath(import.meta.url), "../../.output/public");
+  let files;
+  try {
+    files = await walk(root);
+  } catch {
+    console.error(`No build at ${root}: run npm run build first.`);
     process.exit(1);
   }
   const hits = [];
