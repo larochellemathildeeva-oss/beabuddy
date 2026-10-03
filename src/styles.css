@@ -12,16 +12,16 @@
  * a screen at a time.
  */
 @theme {
-  --text-micro: calc(11px * var(--text-scale, 1));
-  --text-caption: calc(12.5px * var(--text-scale, 1));
-  --text-small: calc(13.5px * var(--text-scale, 1));
-  --text-body: calc(14.5px * var(--text-scale, 1));
-  --text-lead: calc(15px * var(--text-scale, 1));
-  --text-heading: calc(19px * var(--text-scale, 1));
+  --text-micro: calc(13px * var(--text-scale, 1));
+  --text-caption: calc(13px * var(--text-scale, 1));
+  --text-small: calc(14px * var(--text-scale, 1));
+  --text-body: calc(17px * var(--text-scale, 1));
+  --text-lead: calc(18px * var(--text-scale, 1));
+  --text-heading: calc(20px * var(--text-scale, 1));
   --text-title: calc(22px * var(--text-scale, 1));
-  --text-display: calc(27px * var(--text-scale, 1));
+  --text-display: calc(36px * var(--text-scale, 1));
   /* Tailwind's own sizes, scaled by the reading text size too (accessibility.ts). */
-  --text-xs: calc(0.75rem * var(--text-scale, 1));
+  --text-xs: calc(13px * var(--text-scale, 1));
   --text-sm: calc(0.875rem * var(--text-scale, 1));
   --text-base: calc(1rem * var(--text-scale, 1));
   --text-lg: calc(1.125rem * var(--text-scale, 1));
@@ -48,6 +48,8 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  /* Tailwind text colors have their own namespace, including hover and /alpha. */
+  --text-color-primary: var(--primary-ink);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -56,6 +58,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --text-color-destructive: var(--destructive-ink);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -84,16 +87,37 @@
   --font-display: "Instrument Serif", ui-serif, Georgia, serif;
 }
 
+/* The owner's six accent tokens. Blush and danger remain independent. */
+:root,
+[data-accent="pink"] {
+  --acc: #F6466E;
+  --acc2: #F24A70;
+  --acc-soft: #FDE3EA;
+  --acc-done: #F59AB0;
+  --acc-line: #F3B6C5;
+  --acc-track: #F3E4E8;
+  --acc-ink: #A51C3F;
+}
+[data-accent="periwinkle"] {
+  --acc: #6675FF;
+  --acc2: #5C6CF5;
+  --acc-soft: #ECEEFF;
+  --acc-done: #B3BAFF;
+  --acc-line: #C5CBFF;
+  --acc-track: #E3E6FF;
+  --acc-ink: #3B46AE;
+}
+
 :root,
 [data-theme="calm"] {
   --radius: 1.02rem;
 
   /* The master design's sizes (bea-design-tokens.json), the same in every theme. */
-  --r-card: 18px;
+  --r-card: 16px;
   --r-button: 16px;
   --r-sheet: 28px;
   --r-image: 16px;
-  --r-input: 14px;
+  --r-input: 13px;
   --h-button: 52px;
   --h-input: 52px;
   --h-row: 56px;
@@ -103,62 +127,57 @@
   --success: #58745c;
   --warning: #b47a35;
 
-  /* Calm. White and cream on light beige; a soft sand accent.
-     Cards sit *lighter* than the ground so depth comes from surface, not from
-     a border on every element. */
-  --background: #f7f2e9;
-  --foreground: #28231f;
-  --card: #fffdf8;
-  --card-foreground: #28231f;
-  --elevated: #efe8dc;
-  --popover: #ffffff;
-  --popover-foreground: #28231f;
-  --primary: #7a6552;
-  --primary-foreground: #ffffff;
-  /* A tint of the primary, for selected chips and quiet highlights. */
-  --primary-soft: rgb(122 101 82 / 0.12);
-  --secondary: #efe8dc;
-  --secondary-foreground: #28231f;
-  --muted: #f0eae0;
-  --muted-foreground: #746b63;
-  --accent: #ece3d6;
-  --accent-foreground: #28231f;
-  --destructive: #a94a46;
-  --destructive-foreground: oklch(0.99 0.008 86);
-  --border: #ddd3c7;
-  --input: #ddd3c7;
-  --ring: #7a6552;
+  /* Calm keeps a white ground. All themes share the chosen accent. */
+  --background: #FFFFFF;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --elevated: #F7F5F1;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
+  /* Near-black meets body-text contrast on either exact accent fill. */
+  --primary-foreground: #000000;
+  --primary-soft: var(--acc-soft);
+  --secondary: #F7F5F1;
+  --secondary-foreground: #111111;
+  --muted: #F7F5F1;
+  --muted-foreground: #6B6763;
+  --accent: var(--acc-soft);
+  --accent-foreground: #111111;
+  --destructive: #C22A52;
+  --destructive-ink: var(--destructive);
+  --destructive-foreground: #FFFFFF;
+  --border: #F2EDE6;
+  --input: #D9D3CC;
+  --ring: var(--acc-ink);
 
   --visited: oklch(0.55 0.135 249);
   --nexttime: oklch(0.56 0.12 158);
   --wishlist: oklch(0.66 0.135 84);
   --reco: oklch(0.545 0.155 305);
 
-  /* Tile fills. Calm and Dark keep them quiet; Colorful turns them pastel. */
+  --blush: #FBDCE7;
+  --powder: #DBECFA;
+  --mint: #DDF1E8;
+  --butter: #FCF2CC;
+  --lavender: #EAE3FA;
   --tile-1: var(--card);
   --tile-2: var(--card);
   --tile-3: var(--primary-soft);
   --tile-4: var(--elevated);
   --tile-5: var(--card);
+  --inverse-accent: var(--acc-done);
 
-  /* The tab accent's lightness and chroma; the hue walks along the tab bar. */
-  /* Accent text on an inverted surface (bg-foreground), e.g. the Now card. */
-  --inverse-accent: oklch(0.8 0.06 60);
-
-  --tab-l: 0.5;
-  --tab-c: 0.03;
-
-  /* Diffuse and low-contrast: modern depth is soft, not a hard drop shadow. */
-  --shadow-xs: 0 1px 2px oklch(0.3 0.02 60 / 0.04);
-  --shadow-sm: 0 2px 12px rgb(30 26 23 / 0.19);
-  --shadow-md: 0 2px 12px rgb(30 26 23 / 0.19);
-  --shadow-lg: 0 6px 24px rgb(30 26 23 / 0.22);
-  --shadow-primary: 0 6px 18px -8px rgb(122 101 82 / 0.45);
+  --shadow-xs: 0 1px 2px rgb(80 60 40 / 0.04);
+  --shadow-sm: 0 1px 10px rgb(80 60 40 / 0.07);
+  --shadow-md: 0 1px 10px rgb(80 60 40 / 0.07);
+  --shadow-lg: 0 6px 24px rgb(80 60 40 / 0.12);
+  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 45%, transparent);
   --shadow-soft: var(--shadow-md);
-
-  --gradient-clay: linear-gradient(142deg, #8a7560, #7a6552);
-  /* Barely-there warmth so the page is not a flat fill. */
-  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(1 0.006 80 / 0.9), transparent 70%);
+  --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
+  --page-wash: none;
 
   /**
    * Motion is configured where colour is configured — one place, not forty
@@ -195,55 +214,37 @@
   --ease-spring: var(--ease-confirm);
 }
 
-/* Colorful — the master's pastels (peach, sky, mint, butter, blush) on plain
-   white. The accent alternates between the pastels, one per tab (below). */
+/* Colorful: warm ground with the north star's five supporting pastels. */
 [data-theme="colorful"] {
-  --background: #ffffff;
-  --foreground: #29252a;
-  --card: #ffffff;
-  --card-foreground: #29252a;
-  --elevated: #f6eee8;
-  --popover: #ffffff;
-  --popover-foreground: #29252a;
-  --primary: #2f7bb0;
-  --primary-foreground: #ffffff;
-  --primary-soft: rgb(47 123 176 / 0.13);
-  --secondary: #f6eee8;
-  --secondary-foreground: #29252a;
-  --muted: #f7f0ea;
-  --muted-foreground: #766d76;
-  --accent: #f7d8c9;
-  --accent-foreground: #29252a;
-  --border: #e7dde2;
-  --input: #e7dde2;
-  --ring: #2f7bb0;
-
-  --visited: oklch(0.56 0.14 249);
-  --nexttime: oklch(0.56 0.12 175);
-  --wishlist: oklch(0.66 0.15 84);
-  --reco: oklch(0.56 0.16 320);
-
-  /* Peach, sky, mint, butter, blush — different enough that neighbouring
-     boxes read as different colours, which is the point of Colorful. */
-  --tile-1: color-mix(in oklch, #e6ddf3 62%, white);
-  --tile-2: color-mix(in oklch, #dceaf4 62%, white);
-  --tile-3: color-mix(in oklch, #dcecdd 62%, white);
-  --tile-4: color-mix(in oklch, #f4e7b9 62%, white);
-  --tile-5: color-mix(in oklch, #f4dce2 62%, white);
-
-  --inverse-accent: oklch(0.83 0.1 295);
-
-  --tab-l: 0.56;
-  --tab-c: 0.14;
-
-  --shadow-primary: 0 6px 18px -8px rgb(47 123 176 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2f7bb0 88%, white), #2f7bb0);
-  --page-wash: none;
-  --success: #5e806b;
-  --warning: #b9833e;
+  --background: #FCF9F4;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
+  --primary-foreground: #000000;
+  --primary-soft: var(--acc-soft);
+  --secondary-foreground: #111111;
+  --muted-foreground: #6B6763;
+  --destructive-ink: var(--destructive);
+  --accent: var(--acc-soft);
+  --accent-foreground: #111111;
+  --border: #E3DCD3;
+  --input: #D9D3CC;
+  --ring: var(--acc-ink);
+  --elevated: #F2EDE6;
+  --secondary: #F2EDE6;
+  --muted: #F2EDE6;
+  --tile-1: var(--lavender);
+  --tile-2: var(--powder);
+  --tile-3: var(--mint);
+  --tile-4: var(--butter);
+  --tile-5: var(--blush);
 }
 
-/* Dark — near-black with off-white text and a warm beige accent. */
+/* Dark keeps its existing near-black surfaces and the chosen accent. */
 .dark {
   --background: #171513;
   --foreground: #f6f0e8;
@@ -252,20 +253,22 @@
   --elevated: #2b2723;
   --popover: #2b2723;
   --popover-foreground: #f6f0e8;
-  --primary: #c9a27e;
-  --primary-foreground: #171513;
-  --primary-soft: rgb(201 162 126 / 0.16);
+  --primary: var(--acc);
+  --primary-ink: var(--acc-done);
+  --primary-foreground: #000000;
+  --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
   --secondary: #2b2723;
   --secondary-foreground: #f6f0e8;
   --muted: #2b2723;
   --muted-foreground: #b8aea4;
   --accent: #2b2723;
   --accent-foreground: #f6f0e8;
-  --destructive: #d97a76;
+  --destructive: #C22A52;
+  --destructive-ink: #F08AA3;
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #3a342f;
   --input: #3a342f;
-  --ring: #c9a27e;
+  --ring: var(--acc-done);
 
   --visited: oklch(0.7 0.135 249);
   --nexttime: oklch(0.72 0.13 158);
@@ -279,19 +282,17 @@
   --tile-5: var(--card);
 
   /* Dark inverts to an off-white card, so its accent text goes darker. */
-  --inverse-accent: oklch(0.5 0.06 60);
+  --inverse-accent: var(--acc-ink);
 
-  --tab-l: 0.83;
-  --tab-c: 0.045;
 
   --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.3);
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
   --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
   --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
-  --shadow-primary: 0 6px 18px -8px rgb(201 162 126 / 0.35);
+  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 35%, transparent);
   --shadow-soft: var(--shadow-md);
 
-  --gradient-clay: linear-gradient(142deg, #d4ad88, #b88d68);
+  --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
   --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
 
   --success: #86a78b;
@@ -312,8 +313,8 @@
     background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 22px;
+    font-size: 17px;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
@@ -421,112 +422,7 @@
   }
 }
 
-/**
- * Tab identity.
- *
- * Each tab gets one hue rotation of the same accent — never a different
- * colour. Lightness and chroma are fixed across the set, so every tab has
- * identical contrast against the page and against its own text. This is what
- * the palette being in oklch buys: rotating a hex accent changes its
- * perceived brightness, rotating an oklch hue does not.
- *
- * Two usages only, both in the shell: the active tab pill and the header rule.
- * The moment a third appears, the app has six colour schemes rather than one
- * with a compass.
- */
-/* The accent is computed on the element that carries the hue. Putting it on
-   :root would resolve var(--tab-hue) there — before any tab has set one — and
-   every tab would come out the same colour. */
-[data-tab] {
-  --tab-hue: 39;
-  --tab-accent: oklch(var(--tab-l) var(--tab-c) var(--tab-hue));
-}
-
-/* Lightness and chroma come from the theme (--tab-l, --tab-c), so Dark and
-   Colorful need no override of their own here. */
-
-/* Calm walks a quiet taupe band (low chroma, so the tabs differ by warmth,
-   not by colour); Dark walks the beige band. Colorful sets its own pastel
-   accent per tab below. */
-[data-tab="home"] {
-  --tab-hue: 39;
-}
-[data-tab="world"] {
-  --tab-hue: 49;
-}
-[data-tab="trips"] {
-  --tab-hue: 59;
-}
-[data-tab="recs"] {
-  --tab-hue: 69;
-}
-[data-tab="you"] {
-  --tab-hue: 79;
-}
-/* Colorful: the accent alternates between the pastels — each tab takes one,
-   deepened enough to read as text and to carry white on a button (blush,
-   sky, mint, lavender, butter; no terracotta). The whole tab's primary follows it, so its
-   buttons, links and active chips match the tab bar. */
-[data-theme="colorful"] [data-tab="home"] {
-  --tab-accent: #c24a67;
-  --primary: #c24a67;
-  --ring: #c24a67;
-  --primary-soft: rgb(194 74 103 / 0.13);
-  --shadow-primary: 0 6px 18px -8px rgb(194 74 103 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #c24a67 88%, white), #c24a67);
-}
-[data-theme="colorful"] [data-tab="world"] {
-  --tab-accent: #2f7bb0;
-  --primary: #2f7bb0;
-  --ring: #2f7bb0;
-  --primary-soft: rgb(47 123 176 / 0.13);
-  --shadow-primary: 0 6px 18px -8px rgb(47 123 176 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2f7bb0 88%, white), #2f7bb0);
-}
-[data-theme="colorful"] [data-tab="trips"] {
-  --tab-accent: #2a7f52;
-  --primary: #2a7f52;
-  --ring: #2a7f52;
-  --primary-soft: rgb(42 127 82 / 0.13);
-  --shadow-primary: 0 6px 18px -8px rgb(42 127 82 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #2a7f52 88%, white), #2a7f52);
-}
-[data-theme="colorful"] [data-tab="recs"] {
-  --tab-accent: #7a5aa8;
-  --primary: #7a5aa8;
-  --ring: #7a5aa8;
-  --primary-soft: rgb(122 90 168 / 0.13);
-  --shadow-primary: 0 6px 18px -8px rgb(122 90 168 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #7a5aa8 88%, white), #7a5aa8);
-}
-[data-theme="colorful"] [data-tab="you"] {
-  --tab-accent: #9a6a10;
-  --primary: #9a6a10;
-  --ring: #9a6a10;
-  --primary-soft: rgb(154 106 16 / 0.13);
-  --shadow-primary: 0 6px 18px -8px rgb(154 106 16 / 0.45);
-  --gradient-clay: linear-gradient(142deg, color-mix(in oklch, #9a6a10 88%, white), #9a6a10);
-}
-
-/** The moving tab pill and the rule under the header, and nowhere else. */
-@utility tab-tint {
-  background-color: color-mix(in oklch, var(--tab-accent, var(--color-primary)) 13%, transparent);
-}
-
-@utility tab-ink {
-  color: var(--tab-accent, var(--color-primary));
-}
-
-/**
- * The hairline under the app header, tinted by the tab you are in. It is the
- * quietest possible way to say "you are somewhere else now" — noticed only
- * once you move, which is exactly when it should be.
- */
-@utility tab-rule {
-  border-bottom: 1px solid
-    color-mix(in oklch, var(--tab-accent, var(--color-border)) 30%, var(--color-border));
-  transition: border-color var(--t-move) var(--ease-standard);
-}
+@utility tab-rule { border-bottom: 1px solid var(--border); }
 
 /**
  * A card lifts off the page rather than being drawn around. The hairline is
@@ -593,14 +489,14 @@
     color: var(--color-primary-foreground);
   }
   :is(.seq-text-1, .seq-text-2, .seq-text-3, .seq-text-4, .seq-text-5) {
-    color: var(--color-primary);
+    color: var(--primary-ink);
   }
-  [data-theme="colorful"] .seq-1 { background-color: #c24a67; color: #fff; }
+  [data-theme="colorful"] .seq-1 { background-color: var(--acc-ink); color: var(--card); }
   [data-theme="colorful"] .seq-2 { background-color: #2f7bb0; color: #fff; }
   [data-theme="colorful"] .seq-3 { background-color: #2a7f52; color: #fff; }
   [data-theme="colorful"] .seq-4 { background-color: #7a5aa8; color: #fff; }
   [data-theme="colorful"] .seq-5 { background-color: #a8730f; color: #fff; }
-  [data-theme="colorful"] .seq-text-1 { color: #c24a67; }
+  [data-theme="colorful"] .seq-text-1 { color: var(--acc-ink); }
   [data-theme="colorful"] .seq-text-2 { color: #2f7bb0; }
   [data-theme="colorful"] .seq-text-3 { color: #2a7f52; }
   [data-theme="colorful"] .seq-text-4 { color: #7a5aa8; }
@@ -715,8 +611,8 @@
  * larger and slightly tighter reads as deliberate instead of squinty.
  */
 @utility label-caps {
-  font-size: 11px;
-  line-height: 14px;
+  font-size: 13px;
+  line-height: 18px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
@@ -1071,6 +967,7 @@
   --journal-park: #dce6d3;
   --journal-ink: #443d36;
   --journal-accent: var(--color-primary);
+  --journal-pin-paper: var(--color-white);
   /* Buttons and notes over the map: the same paper, slightly see-through.
      They stay light in every theme because the map does. */
   --journal-control: rgb(248 245 241 / 0.95);
@@ -1107,10 +1004,10 @@
   height: 26px;
   margin: 4px;
   background: var(--journal-accent);
-  color: #fff;
+  color: var(--primary-foreground);
   font-size: 11.5px;
   box-shadow:
-    0 0 0 2px #fff,
+    0 0 0 2px var(--journal-pin-paper),
     0 2px 6px rgb(68 61 54 / 0.22);
   transition:
     width 150ms ease,
@@ -1132,11 +1029,9 @@
   width: 34px;
   height: 34px;
   margin: 0;
-  /* Deeper, in its own family's colour. */
-  filter: brightness(0.84) saturate(1.1);
   font-size: 13px;
   box-shadow:
-    0 0 0 3px #fff,
+    0 0 0 3px var(--journal-pin-paper),
     0 4px 12px rgb(68 61 54 / 0.3);
 }
 /* Inside another stop: a smaller ring beside its parent, numbered like its card. */
@@ -1144,8 +1039,8 @@
   width: 20px;
   height: 20px;
   margin: 7px;
-  background: #fff;
-  color: var(--journal-accent);
+  background: var(--journal-pin-paper);
+  color: var(--acc-ink);
   font-size: 9.5px;
   box-shadow:
     0 0 0 2.5px var(--journal-accent),
@@ -1375,8 +1270,7 @@
 }
 
 /* Quiet text and lines drawn closer to the text colour, in every theme. */
-:root[data-contrast="more"],
-:root[data-contrast="more"] [data-tab] {
+:root[data-contrast="more"] {
   --muted-foreground: color-mix(in oklch, var(--foreground) 84%, var(--background));
   --border: color-mix(in oklch, var(--foreground) 42%, var(--background));
   --input: color-mix(in oklch, var(--foreground) 50%, var(--background));
@@ -1405,9 +1299,7 @@
 [data-theme="calm"] {
   --home-ink: #1b1918;
   --home-ink-foreground: #ffffff;
-  --home-dot: #e4826f;
   --home-search: var(--card);
-  --home-tab-active: color-mix(in oklch, var(--foreground) 7%, transparent);
   --map-land: #efe9dd;
   --map-green: #87ad6b;
   --map-light: #ffffff;
@@ -1426,19 +1318,17 @@
   --stat-fill: linear-gradient(90deg, #8fcfc6, #6eb6dc);
 }
 [data-theme="colorful"] {
-  --home-ink: #f08aa3;
-  --home-ink-foreground: #ffffff;
-  --home-dot: #5bb5dc;
-  --home-search: #fdeef2;
-  --home-tab-active: #fde3ea;
+  --home-ink: var(--acc);
+  --home-ink-foreground: var(--primary-foreground);
+  --home-search: color-mix(in oklab, var(--color-primary) 8%, var(--background));
   --map-land: #f4efe7;
   --map-green: #8cc68d;
   --map-light: #ffffff;
   --map-shadow: rgb(110 90 110 / 0.26);
-  --route-line: #f08aa3;
-  --route-dot: #f08aa3;
-  --route-dot-start: #f08aa3;
-  --route-dot-end: #f08aa3;
+  --route-line: var(--acc2);
+  --route-dot: var(--acc2);
+  --route-dot-start: var(--acc2);
+  --route-dot-end: var(--acc2);
   --route-trail: #6c6470;
   --pill-0: #d9f2e6;
   --pill-1: #ebdffb;
@@ -1452,9 +1342,7 @@
 [data-theme="dark"] {
   --home-ink: #f6f3ee;
   --home-ink-foreground: #121212;
-  --home-dot: #f6f3ee;
   --home-search: var(--card);
-  --home-tab-active: rgb(255 255 255 / 0.1);
   --map-land: #3b3c38;
   --map-green: #36533a;
   --map-light: #dfe3d6;

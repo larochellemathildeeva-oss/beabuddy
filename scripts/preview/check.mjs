@@ -19,6 +19,7 @@
  * else the installed Google Chrome.
  */
 import { build } from "esbuild";
+import { runThemeChecks } from "./run-themes.mjs";
 import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -37,14 +38,20 @@ if (!css) {
 }
 
 const src = join(here, "src");
+if (process.env.PREVIEW_NO_BUILD !== "1") {
 await build({
-  entryPoints: [join(src, "main.tsx")],
+  entryPoints: { page: join(src, "main.tsx"), boot: join(src, "boot.ts") },
   bundle: true,
-  outfile: join(out, "page.js"),
+  outdir: out,
   jsx: "automatic",
   loader: { ".png": "dataurl", ".json": "json" },
   tsconfig: join(root, "tsconfig.json"),
   logLevel: "error",
+  plugins: [{ name: "preview-server-stubs", setup(build) {
+    build.onResolve({ filter: /^(node:|undici$|string_decoder$)/ }, () => ({ path: join(src, "fake-node.ts") }));
+    build.onResolve({ filter: /\?url$/ }, () => ({ path: "preview-url", namespace: "preview-url" }));
+    build.onLoad({ filter: /.*/, namespace: "preview-url" }, () => ({ contents: 'export default "";', loader: "js" }));
+  } }],
   alias: {
     "@/integrations/supabase/client": join(src, "fake-supabase.ts"),
     "@tanstack/react-start": join(src, "fake-start.ts"),
@@ -58,31 +65,51 @@ await build({
     "node:dns/promises": join(src, "fake-node.ts"),
   },
   define: {
+    "__APP_VERSION__": JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"))).version),
     "import.meta.env": JSON.stringify({ DEV: false, PROD: true, VITE_SUPABASE_URL: "x", VITE_SUPABASE_PUBLISHABLE_KEY: "x" }),
   },
 });
 writeFileSync(join(out, "app.css"), readFileSync(join(assets, css)));
+const fontLinks = process.env.PREVIEW_FONT_DIR
+  ? `<style>${[["Manrope", "200 800", "manrope.woff2"], ["Instrument Serif", "400", "serif.woff2"]].map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
+  : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap">';
 writeFileSync(
   join(out, "index.html"),
-  `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@400;500;600;700&display=swap">
+  `<!doctype html><html lang="en"><head><meta charset="utf-8"><script src="boot.js"></script>
+${fontLinks}
 <link rel="stylesheet" href="app.css"><link rel="stylesheet" href="page.css"></head>
 <body class="bg-background text-foreground font-sans antialiased"><div id="root"></div><script src="page.js"></script></body></html>`,
 );
 
+}
+
+if (process.env.PREVIEW_RENDER_ONLY === "1") process.exit(0);
+
+// The full gate exercises every control and feature flow in all three themes.
+if (!process.env.PREVIEW_THEME && process.env.PREVIEW_FLOWS_ONLY !== "1") {
+  const reports = await runThemeChecks({ script: fileURLToPath(import.meta.url), out });
+  process.exit(reports.some(({ code, failures }) => code !== 0 || failures.length > 0) ? 1 : 0);
+}
+const previewTheme = process.env.PREVIEW_THEME ?? "calm";
+
 const executablePath =
   process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
-const browser = await chromium.launch(executablePath ? { executablePath } : { channel: "chrome" });
+const browser = await chromium.launch(executablePath ? { executablePath, args: ["--no-sandbox"] } : { channel: "chrome", chromiumSandbox: true });
 
 // A plain map tile: this checks the page, not the tile server.
 const tile = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==",
   "base64",
 );
-const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png" };
+const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
 
 async function open(sample) {
   const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
+  page.setDefaultTimeout(5000);
+  await page.addInitScript((theme) => {
+    if (localStorage.getItem("bea-theme") === null) localStorage.setItem("bea-theme", theme);
+    if (localStorage.getItem("bea-accent") === null) localStorage.setItem("bea-accent", "pink");
+  }, previewTheme);
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route("**/*", (route) => {
@@ -92,12 +119,16 @@ async function open(sample) {
     if (url.host !== "preview.test") return route.abort();
     const file = url.pathname === "/" ? "/index.html" : url.pathname;
     try {
-      return route.fulfill({ body: readFileSync(join(out, file)), contentType: types[file.split(".").pop()] ?? "application/octet-stream" });
+      if (file === "/index.html") return route.fulfill({
+        body: readFileSync(join(out, file), "utf8").replace('<html lang="en">', `<html lang="en" data-theme="${previewTheme}" data-accent="pink" class="${previewTheme === "dark" ? "dark" : ""}">`),
+        contentType: "text/html",
+      });
+      return route.fulfill({ body: readFileSync(existsSync(join(out, file)) ? join(out, file) : join(root, "public", file)), contentType: types[file.split(".").pop()] ?? "application/octet-stream" });
     } catch {
       return route.fulfill({ status: 404 });
     }
   });
-  await page.goto(`http://preview.test/?sample=${sample}`);
+  await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(1200);
   return { page, errors };
 }
@@ -116,6 +147,8 @@ const note = (msg) => {
   console.log("  ✗", msg);
 };
 
+let clicked = 0;
+if (process.env.PREVIEW_FLOWS_ONLY !== "1") {
 // 1. Every sample, every tab: renders without errors; screenshot.
 for (const sample of ["default", "empty", "undated", "long", "guest"]) {
   const { page, errors } = await open(sample);
@@ -126,7 +159,7 @@ for (const sample of ["default", "empty", "undated", "long", "guest"]) {
     const day1 = page.getByRole("tab", { name: /Day 1/ });
     if ((await day1.count()) > 0) await day1.first().click().catch(() => {});
     await page.waitForTimeout(300);
-    await page.screenshot({ path: join(out, `${sample}-${name.replace(/\W+/g, "-").toLowerCase()}.png`), fullPage: true });
+    await page.screenshot({ path: join(out, `${previewTheme}-${sample}-${name.replace(/\W+/g, "-").toLowerCase()}.png`), fullPage: true });
   }
   // Asking for a day when there is no day strip to pick from is a dead end.
   await goTab(page, names[0]);
@@ -147,7 +180,7 @@ for (const sample of ["default", "empty", "undated", "long", "guest"]) {
     const day1 = page.getByRole("tab", { name: /Day 1/ });
     if ((await day1.count()) > 0) await day1.first().click().catch(() => {});
     await page.waitForTimeout(300);
-    await page.screenshot({ path: join(out, `dark-${name.replace(/\W+/g, "-").toLowerCase()}.png`), fullPage: true });
+    await page.screenshot({ path: join(out, `${previewTheme}-dark-${name.replace(/\W+/g, "-").toLowerCase()}.png`), fullPage: true });
   }
   if (errors.length) note(`dark: page errors: ${errors.join(" | ").slice(0, 300)}`);
   console.log("✓ dark: rendered every tab");
@@ -162,10 +195,10 @@ const snapshot = (page) =>
     count: document.querySelectorAll("*").length,
     writes: window.__writes.length,
     focus: document.activeElement?.outerHTML.slice(0, 80) ?? "",
+    map: Array.from(document.querySelectorAll(".leaflet-map-pane, .leaflet-tile-pane")).map((el) => el.getAttribute("style")).join("|"),
     dialogs: document.querySelectorAll('[role="dialog"], .fixed.inset-0').length,
   }));
 
-let clicked = 0;
 const tabs = await (async () => {
   const { page } = await open("default");
   const names = await tabNames(page);
@@ -214,9 +247,20 @@ for (const tab of tabs) {
     }
     // Switching to another page tab is covered by the render pass.
     if (info.role === "tab" && tabs.includes(info.tabName) && info.tabName !== tab) continue;
+    // Fit must be exercised from a changed camera/selection, not an already fitted map.
+    if (info.label === "Fit the whole day") {
+      const zoom = page.getByRole("button", { name: "Zoom in", exact: true }).first();
+      if (await zoom.count()) await zoom.click();
+      await page.waitForTimeout(400);
+    }
     const before = await snapshot(page);
     try {
-      await control.click({ timeout: 2000 });
+      if (info.label.startsWith("Drag to reorder ")) {
+        await control.focus();
+        await page.keyboard.press("Space");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("Space");
+      } else await control.click({ timeout: 2000 });
     } catch (e) {
       note(`${where}: could not be clicked (${String(e.message).split("\n")[0]})`);
       await reload();
@@ -232,7 +276,7 @@ for (const tab of tabs) {
       errors.length = 0;
     }
     const changed =
-      before.text !== after.text || before.count !== after.count || before.writes !== after.writes || before.focus !== after.focus;
+      before.text !== after.text || before.count !== after.count || before.writes !== after.writes || before.focus !== after.focus || before.map !== after.map;
     if (!changed) note(`${where}: click changed nothing (dead end)`);
     let dirty = after.writes !== before.writes;
     if (after.dialogs > before.dialogs) {
@@ -250,19 +294,246 @@ for (const tab of tabs) {
   console.log(`✓ clicked through ${tab}`);
 }
 
+}
+
 // 3. Feature flows, end to end.
-async function flow(name, run) {
-  const { page, errors } = await open("default");
+async function flow(name, run, sample = "default") {
+  if (process.env.PREVIEW_FLOW_FILTER && !name.includes(process.env.PREVIEW_FLOW_FILTER)) return;
+  const { page, errors } = await open(sample);
   try {
     await run(page);
     if (errors.length) note(`${name}: threw ${errors.join(" | ").slice(0, 200)}`);
     else console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
 const writes = (page) => page.evaluate(() => window.__writes);
+
+await flow("shell: every theme and accent saves, restores and responds to account changes", async (page) => {
+  for (const name of ["Dark", "Calm", "Colorful"]) {
+    await page.getByRole("radio", { name: new RegExp(`^${name}:`) }).click();
+    const live = await page.evaluate(() => ({ theme: document.documentElement.dataset.theme, stored: localStorage.getItem("bea-theme") }));
+    if (live.theme !== name.toLowerCase() || live.stored !== name.toLowerCase()) throw new Error(`${name} did not apply and save`);
+  }
+  for (const name of ["Periwinkle", "Pink", "Periwinkle"]) {
+    await page.getByRole("radio", { name, exact: true }).click();
+    await page.waitForTimeout(900);
+    const live = await page.evaluate(() => ({ accent: document.documentElement.dataset.accent, stored: localStorage.getItem("bea-accent") }));
+    if (live.accent !== name.toLowerCase() || live.stored !== name.toLowerCase()) throw new Error(`${name} did not apply and save`);
+    const ratios = await page.evaluate(() => {
+      const tokens = getComputedStyle(document.documentElement);
+      const luminance = (hex) => {
+        hex = hex.trim();
+        if (hex.length === 4) hex = `#${[...hex.slice(1)].map((digit) => digit + digit).join("")}`;
+        const rgb = [1, 3, 5].map((i) => parseInt(hex.trim().slice(i, i + 2), 16) / 255).map((n) => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4);
+        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      };
+      const ink = luminance(tokens.getPropertyValue("--primary-foreground"));
+      return ["--acc", "--acc2"].map((token) => (luminance(tokens.getPropertyValue(token)) + 0.05) / (ink + 0.05));
+    });
+    if (ratios.some((ratio) => !Number.isFinite(ratio) || ratio < 4.5)) throw new Error(`${name} button contrast: ${ratios}`);
+    if (!(await writes(page)).some((entry) => entry.table === "profiles" && entry.payload?.accent === name.toLowerCase())) throw new Error(`${name} was not sent to the account`);
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(400);
+  if (await page.getByRole("radio", { name: "Periwinkle", exact: true }).getAttribute("aria-checked") !== "true") throw new Error("the picker lost the saved accent on remount");
+  await page.evaluate(() => {
+    localStorage.setItem("bea-accent", "pink");
+    window.dispatchEvent(new StorageEvent("storage", { key: "bea-accent", newValue: "pink" }));
+  });
+  await page.waitForTimeout(100);
+  if (await page.getByRole("radio", { name: "Pink", exact: true }).getAttribute("aria-checked") !== "true") throw new Error("the picker missed a synced accent change");
+}, "shell");
+
+await flow("shell: brand, back, guide, five tabs and offline status remain reachable", async (page) => {
+  const labels = ["Home", "World", "Trips", "Recs", "You"];
+  const paths = ["/", "/world", "/trips", "/recommendations", "/profile"];
+  for (let i = 0; i < labels.length; i++) {
+    const link = page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: labels[i], exact: true });
+    if (await link.getAttribute("href") !== paths[i]) throw new Error(`${labels[i]} has the wrong route`);
+    await link.click();
+    await page.waitForTimeout(400);
+    if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: labels[i], exact: true }).getAttribute("aria-current") !== "page") throw new Error(`${labels[i]} is not active after navigation`);
+  }
+  await page.getByRole("link", { name: "Go back home", exact: true }).click();
+  await page.waitForTimeout(400);
+  await page.locator("header").getByRole("link").first().click();
+  await page.waitForTimeout(400);
+  const search = page.getByRole("link", { name: "Search your places", exact: true });
+  if (await search.getAttribute("href") !== "/recommendations") throw new Error("Home search lost its route");
+  await search.click();
+  await page.waitForTimeout(400);
+  await page.evaluate(() => history.replaceState(null, "", `${location.href}&back=yes`));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Go back", exact: true }).click();
+  await page.waitForTimeout(400);
+  if (await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link", { name: "Home", exact: true }).getAttribute("aria-current") !== "page") throw new Error("history back did not return Home");
+  await page.setViewportSize({ width: 760, height: 900 });
+  await page.locator("header").getByRole("link", { name: /Béa, version/ }).click();
+  await page.getByText("Travel Buddy", { exact: true }).waitFor({ state: "visible" });
+  if (await page.getByText("Travel Buddy", { exact: true }).count() !== 1) throw new Error("the desktop support label disappeared");
+  await page.setViewportSize({ width: 414, height: 900 });
+  const guide = page.getByRole("button", { name: /guide|help/i }).first();
+  await guide.click();
+  if (await page.getByRole("dialog").count() !== 1) throw new Error("the page guide did not open");
+  await page.keyboard.press("Escape");
+  await page.context().setOffline(true);
+  await page.getByRole("img", { name: "Offline", exact: true }).waitFor();
+  if (await page.getByRole("img", { name: "Offline", exact: true }).count() !== 1) throw new Error("the offline indicator disappeared");
+  if (await page.getByRole("status").filter({ hasText: "You're offline" }).count() !== 1) throw new Error("the offline explanation disappeared");
+  await page.context().setOffline(false);
+}, "shell");
+
+await flow("shell: phone widths and larger reading text keep labels and tap targets", async (page) => {
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => document.documentElement.style.setProperty("--text-scale", "1.35"));
+    const problems = await page.evaluate(() => {
+      const visible = (el) => el.getClientRects().length > 0;
+      const small = [...document.querySelectorAll("header span, h1, p, [role=radio], nav a span")].filter(visible).filter((el) => parseFloat(getComputedStyle(el).fontSize) < 13);
+      const short = [...document.querySelectorAll("header a, header button, nav a, [role=radio]")].filter(visible).filter((el) => el.getBoundingClientRect().height < 44 || el.getBoundingClientRect().width < 44);
+      return { small: small.map((el) => el.textContent), short: short.map((el) => el.textContent || el.getAttribute("aria-label")), overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    if (problems.small.length || problems.short.length || problems.overflow) throw new Error(`${width}px: ${JSON.stringify(problems)}`);
+    const version = page.locator("header span").filter({ hasText: /^v\d+\.\d+\.\d+$/ });
+    if (await version.isVisible() !== (width >= 390)) throw new Error(`${width}px: version visibility changed`);
+  }
+}, "shell");
+
+await flow("shell: short pages stay stable and moderate overflow still compresses", async (page) => {
+  for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 100]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate((scale) => {
+      document.documentElement.style.setProperty("--text-scale", String(scale));
+      document.querySelector("main").scrollTop = 0;
+      document.querySelector("[data-preview-spacer]").style.height = "1100px";
+    }, scale);
+    await page.waitForTimeout(250);
+    const range = await page.evaluate((overflow) => {
+      const main = document.querySelector("main");
+      const spacer = document.querySelector("[data-preview-spacer]");
+      spacer.style.height = "0px";
+      const style = getComputedStyle(main);
+      spacer.style.height = `${main.clientHeight + overflow - main.firstElementChild.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)}px`;
+      window.__compressionChanges = [];
+      window.__compressionObserver?.disconnect();
+      window.__compressionObserver = new MutationObserver((mutations) => window.__compressionChanges.push(...mutations.map((m) => m.oldValue)));
+      window.__compressionObserver.observe(document.querySelector("[data-compressed]") ?? document.querySelector("h1").closest(".group"), { attributes: true, attributeFilter: ["data-compressed"], attributeOldValue: true });
+      main.scrollTop = overflow;
+      return main.scrollHeight - main.clientHeight;
+    }, overflow);
+    if (Math.abs(range - overflow) > 1) throw new Error(`scroll fixture has ${range}px overflow`);
+    await page.waitForTimeout(1000);
+    const changes = await page.evaluate(() => window.__compressionChanges);
+    const compressed = await page.locator("[data-compressed]").count();
+    if (overflow === 50 ? changes.length || compressed : changes.length !== 1 || compressed !== 1) throw new Error(`${width}px at ${scale}, ${overflow}px overflow: header toggled ${changes.length} times, compressed=${compressed}`);
+  }
+}, "shell");
+
+await flow("shell: a null account accent resets visually without storing or uploading Pink", async (page) => {
+  await page.getByRole("radio", { name: "Periwinkle", exact: true }).click();
+  await page.waitForTimeout(900);
+  await page.goto("https://preview.test/?sample=shell&reset-accent=yes", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.waitForTimeout(1000);
+  const result = await page.evaluate(() => ({ accent: document.documentElement.dataset.accent, stored: localStorage.getItem("bea-accent"), uploaded: window.__writes.some((w) => w.table === "profiles" && w.payload?.accent === "pink") }));
+  if (result.accent !== "pink" || result.stored !== null || result.uploaded) throw new Error(`account accent reset: ${JSON.stringify(result)}`);
+}, "shell");
+
+await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
+  const title = "Places worth remembering on a long journey through several cities.";
+  for (const beside of [false, true]) {
+    await page.goto(`https://preview.test/?sample=shell&path=%2Fprofile&title=${encodeURIComponent(title)}${beside ? "&beside=yes" : ""}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1, name: title }).waitFor();
+    for (const scale of [1, 1.35]) {
+      await page.setViewportSize({ width: 320, height: 844 });
+      await page.evaluate((scale) => {
+        document.documentElement.style.setProperty("--text-scale", String(scale));
+        document.querySelector("main").scrollTop = 0;
+      }, scale);
+      await page.waitForTimeout(250);
+      const expanded = await page.locator("h1").boundingBox();
+      await page.locator("main").evaluate((el) => el.scrollTop = el.scrollHeight);
+      await page.locator("[data-compressed]").waitFor();
+      await page.waitForTimeout(300);
+      const compact = await page.locator("h1").evaluate((el) => {
+        const css = getComputedStyle(el);
+        return { height: el.getBoundingClientRect().height, lineHeight: parseFloat(css.lineHeight), whiteSpace: css.whiteSpace, ellipsis: css.textOverflow, overflow: el.scrollWidth > el.clientWidth, text: el.textContent };
+      });
+      if (compact.height > compact.lineHeight + 1 || compact.whiteSpace !== "nowrap" || compact.ellipsis !== "ellipsis" || !compact.overflow || compact.text !== title || compact.height >= expanded.height) throw new Error(`long-title layout: ${JSON.stringify(compact)}`);
+    }
+  }
+}, "shell");
+
+await flow("shell: text tokens cover hover, opacity, sequence and dark error contrast", async (page) => {
+  let previousSearchTint;
+  for (const accent of ["Pink", "Periwinkle"]) {
+    await page.getByRole("radio", { name: accent, exact: true }).click();
+    await page.evaluate(() => {
+      document.querySelector("[data-color-probes]")?.remove();
+      const probes = document.createElement("div");
+      probes.dataset.colorProbes = "";
+      probes.className = "bg-elevated";
+      for (const cls of ["text-primary", "text-primary/85", "text-foreground hover:text-primary", "text-destructive", "text-muted-foreground", "seq-text-1", "seq-1"]) {
+        const el = document.createElement("p");
+        el.className = cls;
+        el.textContent = cls;
+        probes.append(el);
+      }
+      const map = document.createElement("div");
+      map.className = "journal-map";
+      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay"]) for (const selected of ["", "journal-pin--on"]) {
+        const pin = document.createElement("p");
+        pin.className = `journal-pin ${tone} ${selected}`;
+        pin.textContent = "1";
+        map.append(pin);
+      }
+      probes.append(map);
+      const search = document.createElement("span");
+      search.dataset.searchTint = "";
+      search.style.backgroundColor = "var(--home-search)";
+      probes.append(search);
+      document.querySelector("main").prepend(probes);
+    });
+    await page.locator("[data-color-probes] p").nth(2).hover();
+    const results = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const rgb = (ink, ground) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = ground;
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.fillStyle = ink;
+        ctx.fillRect(0, 0, 1, 1);
+        return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+      };
+      const lum = (rgb) => rgb.map((c) => c / 255).map((c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4).reduce((n, c, i) => n + c * [0.2126, 0.7152, 0.0722][i], 0);
+      const ground = getComputedStyle(document.querySelector("[data-color-probes]")).backgroundColor;
+      const b = lum(rgb(ground, ground));
+      return [...document.querySelectorAll("[data-color-probes] p")].map((el) => {
+        const color = getComputedStyle(el).color;
+        const ownBackground = getComputedStyle(el).backgroundColor;
+        const surface = ownBackground === "rgba(0, 0, 0, 0)" ? ground : ownBackground;
+        const bg = ownBackground === "rgba(0, 0, 0, 0)" ? b : lum(rgb(surface, ground));
+        const f = lum(rgb(color, surface));
+        return { cls: el.className, ratio: (Math.max(bg, f) + 0.05) / (Math.min(bg, f) + 0.05), color };
+      });
+    });
+    const bad = results.filter((r) => r.ratio < 4.5);
+    if (bad.length) throw new Error(`${accent} text contrast: ${JSON.stringify(bad)}`);
+    if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
+    const searchTint = await page.locator("[data-search-tint]").evaluate((el) => getComputedStyle(el).backgroundColor);
+    if (previewTheme === "colorful" && searchTint === previousSearchTint) throw new Error("the Colorful search tint did not follow the accent");
+    previousSearchTint = searchTint;
+    console.log(`  ${accent} text contrast: ${results.map((r) => `${r.cls}=${r.ratio.toFixed(2)}`).join(", ")}`);
+  }
+}, "shell");
 
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
@@ -280,13 +551,26 @@ await flow("booking: mark booked with a reference", async (page) => {
 });
 
 await flow("saved places: add one to the chosen day", async (page) => {
+  await goTab(page, "Companion");
   await page.getByRole("tab", { name: /Day 1/ }).first().click();
-  await page.getByRole("button", { name: "Saved", exact: true }).click();
+  await page.getByRole("button", { name: /Add stop/ }).first().click();
+  await page.getByRole("button", { name: /^From Saved/ }).click();
   await page.locator("li", { hasText: "Nagata-ya" }).getByRole("button").click();
   await page.waitForTimeout(400);
   const w = (await writes(page)).find((x) => x.table === "itinerary_items" && x.op === "insert");
   if (!w) throw new Error("nothing was added to the itinerary");
   if (w.payload.day_date !== "2026-10-07") throw new Error(`added to ${w.payload.day_date}, not the chosen day`);
+  const added = page.locator("li", { hasText: "Nagata-ya" }).getByRole("button", { name: "Added", exact: true });
+  if (!await added.isDisabled()) throw new Error("Added did not retain its disabled state");
+  const green = await added.evaluate((el) => {
+    const probe = document.createElement("span");
+    probe.className = "text-nexttime";
+    el.parentElement.append(probe);
+    const matches = getComputedStyle(el).color === getComputedStyle(probe).color;
+    probe.remove();
+    return matches;
+  });
+  if (!green) throw new Error("text-primary overrides disabled:text-nexttime on Added");
 });
 
 await flow("trip actions: To do, Add stop to the itinerary, Offline and Customize in Settings", async (page) => {
@@ -294,18 +578,19 @@ await flow("trip actions: To do, Add stop to the itinerary, Offline and Customiz
   if ((await page.getByRole("button", { name: "Optimize route" }).count()) !== 0) throw new Error("Optimize route is still in the bar");
   if ((await page.getByRole("button", { name: /^To do$/ }).count()) === 0) throw new Error("no To do button");
   await page.getByRole("button", { name: /Add stop/ }).first().click();
+  await page.getByRole("button", { name: /^A stop on the itinerary/ }).click();
   await page.waitForTimeout(500);
   if ((await page.getByRole("tab", { name: "Timeline", exact: true }).getAttribute("aria-selected")) !== "true")
     throw new Error("Add stop did not open the Timeline");
   if ((await page.getByText("Add to the timeline").count()) === 0) throw new Error("Add stop did not open the add form");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
-  await page.getByRole("button", { name: /^Settings$/ }).first().click();
+  await page.getByRole("button", { name: "Trip menu", exact: true }).first().click();
   await page.waitForTimeout(400);
-  for (const label of ["Saved directions", "Cities on this trip", "Customize this page"]) {
+  for (const label of ["Offline maps", "Destinations", "Customize view"]) {
     if ((await page.getByRole("button", { name: new RegExp(label) }).count()) === 0) throw new Error(`Settings has no ${label}`);
   }
-  await page.getByRole("button", { name: /Customize this page/ }).click();
+  await page.getByRole("button", { name: /Customize view/ }).click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("switch").count()) === 0) throw new Error("Customize switches missing in Settings");
 });
@@ -313,9 +598,9 @@ await flow("trip actions: To do, Add stop to the itinerary, Offline and Customiz
 await flow("locate on map: opens Map Split on that stop", async (page) => {
   await goTab(page, "Timeline");
   await page.getByRole("button", { name: /Peace Memorial Museum.*tap to edit$/ }).click();
-  await page.getByRole("button", { name: /^Locate .* on the map$/ }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).click();
   await page.waitForTimeout(700);
-  const on = await page.getByRole("tab", { name: "Map Split", exact: true }).getAttribute("aria-selected");
+  const on = await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected");
   if (on !== "true") throw new Error("Map Split did not open");
   if ((await page.getByRole("button", { name: /Peace Memorial Museum|09:30/, pressed: true }).count()) === 0)
     throw new Error("the located stop is not the one selected");
@@ -323,7 +608,7 @@ await flow("locate on map: opens Map Split on that stop", async (page) => {
 
 await flow("companion: pick a day from the prompt itself", async (page) => {
   await goTab(page, "Companion");
-  await page.getByRole("tab", { name: /Whole trip/ }).first().click();
+  await page.getByRole("tab", { name: /^All.*Trip$/ }).first().click();
   await page.waitForTimeout(300);
   if ((await page.getByText("Pick a day to follow.").count()) === 0) throw new Error("no prompt on Whole trip");
   const days = page.getByRole("group", { name: "Day to follow" }).getByRole("button");
@@ -335,7 +620,7 @@ await flow("companion: pick a day from the prompt itself", async (page) => {
     throw new Error("the day strip does not show the picked day");
 });
 
-await flow("stop card: compact front turns over to edit, and back", async (page) => {
+await flow("stop card: one editor opens, saves and closes", async (page) => {
   await goTab(page, "Timeline");
   const front = page.getByRole("button", { name: /tap to edit$/ }).first();
   const box = await front.boundingBox();
@@ -345,38 +630,59 @@ await flow("stop card: compact front turns over to edit, and back", async (page)
   await front.click();
   await page.waitForTimeout(300);
   if ((await page.getByRole("textbox", { name: "Name" }).count()) !== 1) throw new Error("the back has no name field");
-  if ((await page.getByRole("button", { name: /tap to edit$/ }).count()) !== before - 1) throw new Error("more than one card turned");
+  if ((await page.getByRole("dialog").count()) !== 1) throw new Error("more than one editor opened");
   await page.getByRole("textbox", { name: "Name" }).fill("Renamed stop");
-  await page.getByRole("button", { name: /^Close / }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Done", exact: true }).click();
   await page.waitForTimeout(300);
   const w = (await writes(page)).find((x) => x.op === "update" && x.payload?.title === "Renamed stop");
   if (!w) throw new Error("renaming on the back did not save");
   if ((await page.getByRole("button", { name: /tap to edit$/ }).count()) !== before) throw new Error("Done did not turn the card back");
   // Every action on the back writes something.
-  for (const name of [/^Mark .* done$/, /^Move .* later$/, /^Save .* to your places$/, /^Delete /]) {
+  for (const name of [/^Mark .* done$/, /^Save .* to your places$/, /^Delete /]) {
     const n = (await writes(page)).length;
     await page.getByRole("button", { name: /tap to edit$/ }).first().click();
-    await page.getByRole("button", { name }).first().click();
+    await page.getByRole("dialog").getByRole("button", { name }).first().click();
     await page.waitForTimeout(400);
     if ((await writes(page)).length === n) throw new Error(`${name} on the back wrote nothing`);
-    const close = page.getByRole("button", { name: /^Close / });
-    if (await close.count()) await close.first().click();
+    await page.mouse.move(0, 0);
+    await page.keyboard.press("Escape");
   }
+});
+
+await flow("timeline editor: move a stop later and save its order", async (page) => {
+  await goTab(page, "Timeline");
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
+  await page.getByRole("button", { name: "Edit the itinerary", exact: true }).click();
+  const before = (await writes(page)).length;
+  await page.getByRole("button", { name: /^Move .* later$/ }).first().click();
+  await page.waitForTimeout(400);
+  const apply = page.getByRole("button", { name: "Apply changes", exact: true });
+  if (await apply.isVisible()) {
+    if ((await writes(page)).length !== before) throw new Error("the order changed before confirmation");
+    await apply.click();
+    await page.waitForTimeout(400);
+  }
+  if (!(await writes(page)).slice(before).some((entry) => entry.op === "update" && typeof entry.payload?.position === "number")) throw new Error("the order was not saved");
 });
 
 await flow("timeline: Not visited hides done stops, All brings them back", async (page) => {
   await goTab(page, "Timeline");
   const cards = () => page.getByRole("button", { name: /tap to edit$/ }).count();
   const all = await cards();
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
   await page.getByRole("button", { name: /^Not visited/ }).click();
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   const open = await cards();
   if (open >= all) throw new Error("Not visited hid nothing (the sample has a done stop)");
   // Done is on the card's front now, as in the prototype.
+  await page.getByRole("button", { name: /^Actions for / }).first().click();
   await page.getByRole("button", { name: /^Mark .* done$/ }).first().click();
   await page.waitForTimeout(500);
   if ((await cards()) !== open - 1) throw new Error("a stop marked done stayed on the Not visited list");
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
   await page.getByRole("button", { name: "All", exact: true }).click();
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   if ((await cards()) !== all) throw new Error("All did not bring every stop back");
 });
@@ -395,9 +701,9 @@ await flow("timeline: paws between stops open directions to the next one", async
 
 await flow("import: places, times and stays reach the timeline; doubtful pins are held back", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
-  await page.getByRole("button", { name: /I already have a plan/ }).click();
-  await page.getByPlaceholder(/Paste an itinerary here/).fill("Day 1: breakfast at the station 8-8:45, shrine at 10 for 90 min, lunch at Kakiya, evening stroll");
-  await page.getByRole("button", { name: "Read this itinerary" }).click();
+  await page.getByRole("button", { name: /^Import a plan/ }).click();
+  await page.getByRole("textbox", { name: "Paste your plan" }).fill("Day 1: breakfast at the station 8-8:45, shrine at 10 for 90 min, lunch at Kakiya, evening stroll");
+  await page.getByRole("button", { name: "Import plan", exact: true }).click();
   await page.waitForTimeout(800);
   // The trip page runs its own lookup for unplaced stops; this is the import's.
   const geo = await page.evaluate(() =>
@@ -436,9 +742,9 @@ await flow("import: places, times and stays reach the timeline; doubtful pins ar
 
 await flow("import: after alternatives, pins are looked up again, not carried by position", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
-  await page.getByRole("button", { name: /I already have a plan/ }).click();
-  await page.getByPlaceholder(/Paste an itinerary here/).fill("Day 1: breakfast, shrine, lunch, stroll");
-  await page.getByRole("button", { name: "Read this itinerary" }).click();
+  await page.getByRole("button", { name: /^Import a plan/ }).click();
+  await page.getByRole("textbox", { name: "Paste your plan" }).fill("Day 1: breakfast, shrine, lunch, stroll");
+  await page.getByRole("button", { name: "Import plan", exact: true }).click();
   await page.waitForTimeout(800);
   await page.getByPlaceholder(/Rainy-day activities/).fill("cheaper lunch please");
   await page.getByRole("button", { name: /find alternatives/ }).click();
@@ -462,7 +768,12 @@ await flow("background lookup: a doubtful match is not pinned onto a stop", asyn
   if (pinned) throw new Error("the namesake park was saved onto the stop");
 });
 
-await flow("companion: tapping the ribbon or the tracker shows that stop, Now stays", async (page) => {
+await flow("companion: tapping the ribbon or the tracker shows that stop, current stop stays", async (page) => {
+  await page.getByRole("button", { name: "Trip menu", exact: true }).click();
+  await page.getByRole("button", { name: /Customize view/ }).click();
+  await page.getByRole("switch", { name: /Itinerary ribbon/ }).click();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
   await goTab(page, "Companion");
   await page.getByRole("tab", { name: /Day 1/ }).first().click();
   await page.waitForTimeout(300);
@@ -485,31 +796,37 @@ await flow("companion: tapping the ribbon or the tracker shows that stop, Now st
 await flow("timeline editor: neighbourhood groups the day by area", async (page) => {
   await goTab(page, "Timeline");
   await page.getByRole("tab", { name: /Day 1/ }).first().click();
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
   await page.getByRole("button", { name: "Neighbourhood" }).click();
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
   const heading = (area) => page.locator("li").filter({ hasText: new RegExp(`^${area} · \\d+ stops?$`) });
   for (const area of ["Naka Ward", "Miyajima Omotesando", "No place yet"]) {
     if ((await heading(area).count()) === 0) throw new Error(`no ${area} group`);
   }
+  await page.getByRole("button", { name: "Timeline options", exact: true }).first().click();
   await page.getByRole("button", { name: "Timeline", exact: true }).click();
+  await page.keyboard.press("Escape");
   if ((await heading("Naka Ward").count()) !== 0) throw new Error("Timeline did not ungroup");
 });
 
-await flow("timeline editor: the travelling-to card opens its directions", async (page) => {
+await flow("timeline: directions between stops open from the day heading", async (page) => {
   await goTab(page, "Timeline");
-  const card = page.getByText(/^Travelling to /).first();
-  if ((await card.count()) === 0) throw new Error("no travelling-to card between stops");
-  await page.getByRole("button", { name: "See directions" }).first().click();
-  if ((await page.getByRole("button", { name: "Hide directions" }).count()) !== 1)
-    throw new Error("See directions did not open");
-  if ((await page.getByText("Open in Maps ↗").count()) === 0) throw new Error("no Maps link in the directions");
+  await page.getByRole("button", { name: "Directions between stops", exact: true }).first().click();
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("dialog").count()) !== 1) throw new Error("directions did not open");
+  await page.getByRole("dialog").getByRole("button", { name: "Get directions", exact: true }).click();
+  await page.waitForTimeout(500);
+  await page.keyboard.press("Escape");
+  if ((await page.getByRole("link", { name: /^Directions from / }).count()) === 0) throw new Error("no Maps link in the directions");
+  if ((await page.getByText("16 min walk", { exact: true }).count()) === 0) throw new Error("fresh directions did not reach the timeline");
 });
 
 await flow("optimize: estimated travel times, checked on real routes, days planned around opening hours", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Optimize", exact: true }).click();
-  await page.getByRole("button", { name: /Open when you get there/ }).click();
-  await page.getByRole("button", { name: "Ask Béa to rearrange" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Optimize my trip/ }).click();
+  await page.getByRole("button", { name: /Open at visit time/ }).click();
+  await page.getByRole("button", { name: "Optimize my trip", exact: true }).click();
   await page.waitForTimeout(500);
   const sent = await page.evaluate(() => (window.__optimizeCalls ?? [])[0]);
   if (!sent) throw new Error("Optimize was never asked");
@@ -524,15 +841,22 @@ await flow("optimize: estimated travel times, checked on real routes, days plann
   }
 });
 
-await flow("banner stays pinned while the page scrolls", async (page) => {
-  await goTab(page, "Timeline");
-  const bar = page.locator("article > div.sticky").first();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+await flow("shell header and navigation stay visible while the content scrolls", async (page) => {
+  const expanded = await page.locator("h1").evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const header = page.locator("header").first();
+  const before = await header.boundingBox();
+  await page.locator("main").evaluate((el) => el.scrollTop = el.scrollHeight);
   await page.waitForTimeout(300);
-  const box = await bar.boundingBox();
-  if (!box || Math.abs(box.y) > 2) throw new Error(`banner is at y=${box?.y}, not pinned to the top`);
-  if (box.height > 80) throw new Error(`banner is ${box.height}px tall, not thin`);
-});
+  if (await page.locator("main").evaluate((el) => el.scrollTop) < 100) throw new Error("the fixture never scrolled");
+  if (await page.locator("h1").evaluate((el) => parseFloat(getComputedStyle(el).fontSize)) >= expanded) throw new Error("the page header did not compress");
+  const after = await header.boundingBox();
+  if (!before || !after || Math.abs(after.y - before.y) > 2) throw new Error("shell header scrolled away");
+  const nav = await page.getByRole("navigation", { name: "Main" }).boundingBox();
+  if (!nav || nav.y + nav.height > 900) throw new Error("main navigation left the viewport");
+  await page.locator("main").evaluate((el) => el.scrollTop = 0);
+  await page.waitForTimeout(300);
+  if (await page.locator("h1").evaluate((el) => parseFloat(getComputedStyle(el).fontSize)) < expanded) throw new Error("the page header did not expand again");
+}, "shell");
 
 {
   const name = "a stop pinned far from the trip is flagged, and only that one";
@@ -546,16 +870,19 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     await card.click();
     if ((await page.getByText("may be a different place with the same name", { exact: false }).count()) !== 1)
       throw new Error("the back does not explain the flag");
-    await page.getByRole("button", { name: "Done" }).first().click();
+    await page.getByRole("dialog").getByRole("button", { name: "Done", exact: true }).click();
     // Directions between same-day stops hundreds of km apart are a warning, not a drive.
-    await page.getByRole("button", { name: /^(Get directions|Refresh)$/ }).first().click();
+    await page.getByRole("button", { name: "Directions between stops", exact: true }).first().click();
+    await page.getByRole("dialog").getByRole("button", { name: "Get directions", exact: true }).click();
     await page.waitForTimeout(600);
+    await page.keyboard.press("Escape");
     if ((await page.getByText(/km apart on the map on the same day/).count()) === 0)
       throw new Error("a 280 km same-day leg was shown as a journey");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
@@ -569,13 +896,14 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     await page.waitForTimeout(800);
     if ((await page.getByText("Plan to stay").count()) !== 0) throw new Error("Plan to stay is still offered");
     if ((await page.getByText(/Leave by \d|Be there by \d/).count()) === 0) throw new Error("no Leave by / Be there by chip");
-    if ((await page.getByText(/planned/).count()) !== 0) throw new Error("the stay line still talks about a plan");
+    if ((await page.getByText(/^\d.*planned.*stay/i).count()) !== 0) throw new Error("the stay line still talks about a plan");
     const tracker = page.getByRole("region", { name: "Live journey" });
     if ((await tracker.getByText("Head to Motoyasubashi Pier").count()) !== 0) throw new Error("a journey row is a tracker stop");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
@@ -592,7 +920,8 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
@@ -613,7 +942,8 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
@@ -634,7 +964,8 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
@@ -648,28 +979,29 @@ await flow("banner stays pinned while the page scrolls", async (page) => {
 }
 
 {
-  const name = "home: next-trip card shows the flight, the hotel, packing and the way in";
+  const name = "home: upcoming trip shows real flight, packing and planning links";
   const { page, errors } = await open("home");
   try {
-    for (const text of ["Your next trip", "Leaving in 2 days", "Flight out", "AC 781 · 08:15", "YUL → LAX", "Lodging", "The Line Hotel", "6 / 12 items", "5 scheduled stops"]) {
+    for (const text of ["Upcoming trip", "in 2 days", "AC781", "YUL → LAX", "67%", "Where to next?", "Suggested for your trip"]) {
       if ((await page.getByText(text, { exact: false }).count()) === 0) throw new Error(`missing "${text}"`);
     }
-    const open = page.getByRole("link", { name: /Open LA itinerary/ });
+    const open = page.getByRole("link", { name: /Open LA/ });
     if ((await open.count()) !== 1) throw new Error("no Open itinerary link");
     if ((await open.getAttribute("href")) !== "/trips/la") throw new Error(`Open itinerary goes to ${await open.getAttribute("href")}`);
-    const later = page.getByRole("link", { name: /JQAPALA A · Hiroshima & Miyajima/ });
+    const later = page.getByRole("link", { name: /JQAPALA A/ });
     if ((await later.count()) !== 1) throw new Error("the later trip is not listed");
     if ((await later.getAttribute("href")) !== "/trips/t1") throw new Error("the later trip does not open its page");
-    if ((await page.getByText(/^Later this /).count()) === 0) throw new Error("no later heading");
+    if ((await page.getByText("Your trips", { exact: true }).count()) === 0) throw new Error("no other-trips heading");
     if (errors.length) throw new Error(errors.join(" | "));
     console.log(`✓ ${name}`);
   } catch (e) {
-    note(`${name}: ${String(e.message).split("\n")[0]}`);
+    await page.screenshot({ path: join(out, `${previewTheme}-failure-${name.replace(/\W+/g, "-").toLowerCase()}.png`) });
+    note(`${name}: ${String(e.message).split("\n").slice(0, 12).join(" ")}`);
   }
   await page.close();
 }
 
 await browser.close();
-writeFileSync(join(out, "report.json"), JSON.stringify({ clicked, failures }, null, 2));
+writeFileSync(join(process.env.PREVIEW_REPORT_DIR ?? out, `report-${previewTheme}.json`), JSON.stringify({ clicked, failures }, null, 2));
 console.log(`\n${clicked} controls clicked, ${failures.length} problem(s). Screenshots in scripts/preview/out/`);
 process.exit(failures.length ? 1 : 0);

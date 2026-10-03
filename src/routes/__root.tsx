@@ -24,6 +24,7 @@ import {
 } from "@/lib/theme";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
 import { ACCESSIBILITY_BOOT_SCRIPT } from "@/lib/accessibility";
+import { ACCENT_BOOT_SCRIPT, DEFAULT_ACCENT } from "@/lib/accent";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
 
@@ -126,9 +127,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" data-theme={DEFAULT_THEME} suppressHydrationWarning>
+    <html
+      lang="en"
+      data-theme={DEFAULT_THEME}
+      data-accent={DEFAULT_ACCENT}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_BOOT_SCRIPT }} />
         <script dangerouslySetInnerHTML={{ __html: ACCESSIBILITY_BOOT_SCRIPT }} />
         <BeaFontLinks />
         <HeadContent />

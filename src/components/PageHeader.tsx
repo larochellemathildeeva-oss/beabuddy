@@ -1,4 +1,33 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
+import logo from "@/assets/bea-logo.png";
+
+/** Shared identity row; the shell keeps the Home link and header actions. */
+export function BrandMark({ version, large = false }: { version?: string; large?: boolean }) {
+  return (
+    <span className="flex min-h-11 items-center gap-2">
+      <img
+        src={logo}
+        alt="Béa logo"
+        className="size-9 shrink-0 object-contain"
+        width={36}
+        height={36}
+      />
+      <span className="leading-none">
+        <span
+          className={`block font-display tracking-[-0.035em] ${large ? "text-[40px]" : "text-[30px]"}`}
+        >
+          Béa<span className="text-[var(--acc)]">.</span>
+        </span>
+        {version && (
+          <span className="mt-1 hidden text-[13px] font-semibold text-muted-foreground min-[390px]:block">
+            v{version}
+          </span>
+        )}
+      </span>
+      <span className="label-caps hidden sm:inline">Travel Buddy</span>
+    </span>
+  );
+}
 
 /**
  * The top of every screen.
@@ -14,12 +43,14 @@ import type { ReactNode } from "react";
  * behaviour for free.
  */
 export function PageHeader({
+  ref,
   eyebrow,
   title,
   action,
   actionBesideEyebrow = false,
   compressed = false,
 }: {
+  ref?: Ref<HTMLDivElement>;
   eyebrow?: string | undefined;
   title?: ReactNode | undefined;
   /** One action, right-aligned. Two is a toolbar, and belongs in the content. */
@@ -32,6 +63,7 @@ export function PageHeader({
 
   return (
     <div
+      ref={ref}
       // The flag sits on the wrapper and the children read it through `group-`,
       // so there is one source of truth for the state rather than three.
       data-compressed={compressed ? "" : undefined}
@@ -43,27 +75,26 @@ export function PageHeader({
       {actionBesideEyebrow && action ? (
         <div>
           <div className="flex items-center justify-between gap-3">
-            <p className="label-caps min-w-0 truncate">{eyebrow}</p>
+            <p className="label-caps min-w-0">{eyebrow}</p>
             <div className="shrink-0">{action}</div>
           </div>
           {title && (
-            <h1 className="mt-1 truncate text-[30px] leading-[1.1] transition-[font-size] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:text-[18px]">
+            <h1 className="mt-1 break-words text-display leading-[1.1] transition-[font-size] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:truncate group-data-[compressed]:text-title">
               {title}
             </h1>
           )}
         </div>
       ) : (
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {eyebrow && (
-              // Collapsed by height rather than hidden, so the title slides up
-              // into its place instead of jumping.
-              <p className="label-caps max-h-5 overflow-hidden transition-[max-height,opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:max-h-0 group-data-[compressed]:opacity-0">
+              // Height and opacity collapse together, so the title slides upward.
+              <p className="label-caps max-h-[4lh] overflow-hidden transition-[max-height,opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:max-h-0 group-data-[compressed]:opacity-0">
                 {eyebrow}
               </p>
             )}
             {title && (
-              <h1 className="mt-1.5 text-[27px] leading-[1.06] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:truncate group-data-[compressed]:text-[18px] group-data-[compressed]:leading-[1.35]">
+              <h1 className="mt-1.5 break-words text-display leading-[1.1] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:truncate group-data-[compressed]:text-title group-data-[compressed]:leading-[1.35]">
                 {title}
               </h1>
             )}

@@ -1,21 +1,18 @@
+import { AppShell } from "@/components/AppShell";
+import { ThemePicker } from "@/components/ThemePicker";
 import { createRoot } from "react-dom/client";
 import { Toaster } from "sonner";
 import { TripDetail } from "@/components/TripDetail";
-import {
-  HomeLaterTrips,
-  HomeNextUp,
-  HomeSectionTitle,
-  HomeTripHero,
-} from "@/components/HomeTripCard";
+import { HomeYourTrips } from "@/components/HomeTripCard";
+import { HomeUpcoming, HomeTripStats, HomeWhereNext, HomeSuggested } from "@/components/HomeLivingMap";
 import { HomeWeather } from "@/components/HomeWeather";
-import { HomeSaveTile } from "@/components/HomeSaveTile";
 import { TripCard } from "@/components/TripCard";
 import { useTrips } from "@/hooks/useTrips";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { useNearMe } from "@/hooks/useNearMe";
 import { laterTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { db } from "./fake-supabase";
+import { startAccountSettingsSync } from "@/lib/account-settings-sync";
 
 /** Home below the header, as SignedInHome lays it out. */
 function HomePreview() {
@@ -25,25 +22,15 @@ function HomePreview() {
   const trip = pickActiveTrip(t.trips, today);
   const later = laterTrips(t.trips, trip, today);
   const { glances } = useTripGlances([trip?.id, ...later.map((x) => x.id)].filter(Boolean) as string[]);
-  const reco = db.recommendations?.[0] as { name: string; city: string } | undefined;
   if (!trip) return null;
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="label-caps">Monday, 28 September</p>
-        <h1 className="mt-1.5 text-[27px] leading-[1.06]">Good morning, Mattie.</h1>
-        <p className="mt-1 text-[15px] text-muted-foreground">Your next chapter is taking shape.</p>
-      </div>
-      <HomeTripHero trip={trip} glance={glances[trip.id]} photos={[]} peopleCount={peopleOnTrip(t.members, trip.id, t.uid)} />
-      <section>
-        <HomeSectionTitle title="At a glance" aside={<a>Los Angeles overview</a>} />
-        <div className="grid grid-cols-2 gap-3">
-          <HomeWeather near={near} />
-          <HomeSaveTile pins={[]} near={near} waiting={reco} />
-        </div>
-      </section>
-      <HomeNextUp trip={trip} glance={glances[trip.id]} uid={t.uid} />
-      <HomeLaterTrips trips={later} photos={[]} glances={glances} members={t.members} uid={t.uid} />
+    <div className="space-y-5">
+      <HomeUpcoming trip={trip} photos={[]} />
+      <HomeTripStats trip={trip} glance={glances[trip.id]} />
+      <HomeWhereNext />
+      <HomeSuggested trip={trip} />
+      <HomeWeather near={near} />
+      <HomeYourTrips trips={later} photos={[]} />
     </div>
   );
 }
@@ -76,7 +63,22 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample === "home" || sample === "home-trips") {
+if (sample === "shell") {
+  const shellParams = new URLSearchParams(location.search);
+  startAccountSettingsSync();
+  createRoot(document.getElementById("root")!).render(
+    <AppShell
+      eyebrow="Appearance"
+      title={shellParams.get("title") ?? "Your Béa."}
+      homeHeader={shellParams.get("path") === "/"}
+      actionBesideEyebrow={shellParams.get("beside") === "yes"}
+      headerAction={shellParams.has("beside") ? <span aria-hidden className="block size-11" /> : undefined}
+    >
+      <ThemePicker />
+      <div data-preview-spacer style={{ height: 1100 }} aria-hidden />
+    </AppShell>,
+  );
+} else if (sample === "home" || sample === "home-trips") {
   createRoot(document.getElementById("root")!).render(
     <div className="min-h-screen bg-background px-4 py-4">
       {sample === "home" ? <HomePreview /> : <TripsPreview />}

@@ -14,6 +14,7 @@ import { getStored, setStored } from "@/lib/settings-storage";
 import { ACCESSIBILITY_KEY, applyAccessibility, parseAccessibility } from "@/lib/accessibility";
 import { applyStopPictures, asStopPictures, STOP_PICTURES_KEY } from "@/lib/stop-pictures";
 import { applyTheme, DEFAULT_THEME, isThemeName, THEME_KEY, type ThemeName } from "@/lib/theme";
+import { ACCENT_KEY, applyAccent, DEFAULT_ACCENT, isAccentName } from "@/lib/accent";
 
 /*
  * Keeps the settings in account-settings.ts the same on every device the
@@ -74,6 +75,7 @@ function writeDevice(name: SyncedSetting, id: string, value: string | null) {
   const key = settingStorageKey(name, id);
   setStored(key, value);
   if (name === "theme") applyTheme(themeFrom(value));
+  if (name === "accent") applyAccent(isAccentName(value) ? value : DEFAULT_ACCENT, value !== null);
   if (name === "pictures") applyStopPictures(asStopPictures(value), document.documentElement);
   if (name === "accessibility") {
     applyAccessibility(parseAccessibility(value), document.documentElement);
@@ -190,13 +192,18 @@ export function startAccountSettingsSync(): void {
     if (document.visibilityState === "visible") resume();
   });
   window.addEventListener("online", resume);
-  // A theme, pictures or reading choice made in another tab: paint this one too, not
+  // An appearance or reading choice made in another tab: paint this one too, not
   // only the picker.
   window.addEventListener("storage", (e) => {
     if (e.key === THEME_KEY) {
       const theme = themeFrom(e.newValue);
       document.documentElement.setAttribute("data-theme", theme);
       document.documentElement.classList.toggle("dark", theme === "dark");
+    } else if (e.key === ACCENT_KEY) {
+      document.documentElement.setAttribute(
+        "data-accent",
+        isAccentName(e.newValue) ? e.newValue : DEFAULT_ACCENT,
+      );
     } else if (e.key === STOP_PICTURES_KEY) {
       applyStopPictures(asStopPictures(e.newValue), document.documentElement);
     } else if (e.key === ACCESSIBILITY_KEY) {

@@ -10,6 +10,15 @@ import {
   type ThemeName,
 } from "@/lib/theme";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
+import {
+  ACCENT_OPTIONS,
+  ACCENT_KEY,
+  applyAccent,
+  DEFAULT_ACCENT,
+  isAccentName,
+  readAccent,
+  type AccentName,
+} from "@/lib/accent";
 
 const LABELS: Record<ThemeName, { name: string; hint: string }> = {
   calm: { name: "Calm", hint: "White, cream and light beige" },
@@ -26,13 +35,20 @@ const LABELS: Record<ThemeName, { name: string; hint: string }> = {
  */
 export function ThemePicker() {
   const [theme, setTheme] = useState<ThemeName>(DEFAULT_THEME);
+  const [accent, setAccent] = useState<AccentName>(DEFAULT_ACCENT);
 
   useEffect(() => {
     setTheme(readTheme());
+    setAccent(readAccent());
     const onStorage = (e: StorageEvent) => {
       // The new value itself: this page may not be repainted yet.
       if (e.key === THEME_KEY) setTheme(isThemeName(e.newValue) ? e.newValue : DEFAULT_THEME);
-      else if (e.key === null) setTheme(readTheme());
+      else if (e.key === ACCENT_KEY)
+        setAccent(isAccentName(e.newValue) ? e.newValue : DEFAULT_ACCENT);
+      else if (e.key === null) {
+        setTheme(readTheme());
+        setAccent(readAccent());
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -40,8 +56,8 @@ export function ThemePicker() {
 
   return (
     <div className="rounded-xl bg-elevated p-3">
-      <p className="text-[14.5px] font-medium">Theme</p>
-      <p className="text-[12.5px] text-muted-foreground">
+      <p className="text-body font-semibold">Theme</p>
+      <p className="text-[16px] text-muted-foreground">
         Changes Béa’s colors on every device you sign in on.
       </p>
       <div role="radiogroup" aria-label="Theme" className="mt-3 grid grid-cols-3 gap-2">
@@ -59,7 +75,7 @@ export function ThemePicker() {
                 saveAccountSetting("theme", name);
                 setTheme(name);
               }}
-              className={`rounded-2xl border-2 p-1.5 text-center transition-colors duration-(--t-tap) ease-(--ease-standard) ${
+              className={`min-h-11 rounded-2xl border-2 p-1.5 text-center transition-colors duration-(--t-tap) ease-(--ease-standard) ${
                 on ? "border-primary" : "border-transparent"
               }`}
             >
@@ -82,6 +98,32 @@ export function ThemePicker() {
             </button>
           );
         })}
+      </div>
+      <p className="mt-4 text-body font-semibold">Accent</p>
+      <div role="radiogroup" aria-label="Accent" className="mt-2 flex flex-wrap gap-2">
+        {ACCENT_OPTIONS.map(({ name, label }) => (
+          <button
+            key={name}
+            type="button"
+            role="radio"
+            aria-checked={accent === name}
+            onClick={() => {
+              applyAccent(name);
+              saveAccountSetting("accent", name);
+              setAccent(name);
+            }}
+            className={`flex min-h-11 items-center gap-2 rounded-full border-2 px-3 py-2 text-[16px] font-semibold ${accent === name ? "border-primary bg-card" : "border-transparent"}`}
+          >
+            <span
+              data-accent={name}
+              aria-hidden
+              className="grid size-6 shrink-0 place-items-center rounded-full bg-[var(--acc)] text-[var(--primary-foreground)]"
+            >
+              {accent === name && <Check className="size-4" />}
+            </span>
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -9,9 +9,9 @@ import {
 } from "../lib/auth-redirect";
 import { useOnline } from "../hooks/useOnline";
 import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
-import { nextCompressed, tabIdForPath } from "../lib/page-header";
+import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
-import { PageHeader } from "./PageHeader";
+import { BrandMark, PageHeader } from "./PageHeader";
 
 import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, Search, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
@@ -78,9 +78,10 @@ export function AppShell({
   const canGoBack = useCanGoBack();
   const showBack = pathname !== "/";
   const tabIndex = activeTabIndex(pathname, tabs);
-  const tabId = tabIdForPath(pathname);
   const scrollRef = useRef<HTMLElement | null>(null);
+  const pageHeaderRef = useRef<HTMLDivElement | null>(null);
   const [compressed, setCompressed] = useState(false);
+  const compressedRef = useRef(false);
   const plane = planeFromMatches(matches);
 
   // A tab move drifts the way you travelled along the bar; everything else
@@ -114,11 +115,26 @@ export function AppShell({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const onScroll = () => setCompressed((cur) => nextCompressed(el.scrollTop, cur));
+    const onScroll = () => {
+      const scrollTop = el.scrollTop;
+      const current = compressedRef.current;
+      let dimensions;
+      if (!current && scrollTop >= COMPRESS_AT) {
+        dimensions = {
+          scrollRange: el.scrollHeight - el.clientHeight,
+          ...(pageHeaderRef.current ? measureHeaderHeights(pageHeaderRef.current) : {}),
+        };
+      }
+      const next = nextCompressed(scrollTop, current, dimensions);
+      if (next !== current) {
+        compressedRef.current = next;
+        setCompressed(next);
+      }
+    };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
-  }, [pathname]);
+  }, [pathname, loading, publicPage, user]);
 
   // The app frame is for members, except on pages a visitor has to be able to
   // read before they have an account.
@@ -160,7 +176,7 @@ export function AppShell({
             width={56}
             height={56}
           />
-          <p role="status" className="text-[14.5px] text-muted-foreground">
+          <p role="status" className="text-body text-muted-foreground">
             Opening Béa…
           </p>
         </div>
@@ -177,12 +193,8 @@ export function AppShell({
   // until iOS scroll/visual-viewport churn left it floating mid-page.
   return (
     <div className="h-dvh bg-background">
-      {/* One hue per tab, set once here. Everything that wants the current
-          tab's accent reads `--tab-accent`; nothing re-derives it from the
-          path. Lightness and chroma are fixed across the set, so contrast is
-          identical wherever you are. */}
+      {/* Every tab inherits the traveller's accent from the document. */}
       <div
-        data-tab={tabId ?? undefined}
         data-plane={plane}
         style={{ "--plane-dx": `${direction * 6}px` } as CSSProperties}
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"
@@ -190,9 +202,7 @@ export function AppShell({
         {homeHeader ? (
           <header className="z-20 flex shrink-0 items-center justify-between bg-background/75 px-5 pb-1 pt-3 backdrop-blur-xl">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
-              <span className="font-display text-[44px] leading-none tracking-[-0.035em] [-webkit-text-stroke:0.6px_currentColor]">
-                Béa<span className="text-[var(--home-dot)]">.</span>
-              </span>
+              <BrandMark large />
             </Link>
             <div className="flex items-center gap-2.5">
               <Link
@@ -241,33 +251,16 @@ export function AppShell({
                   </Link>
                 ))}
               <Link to="/" className="flex items-center gap-2">
-                <img
-                  src={logo}
-                  alt="Béa logo"
-                  className="size-9 object-contain"
-                  width={36}
-                  height={36}
-                />
-                <span className="flex items-center gap-2">
-                  <span className="leading-none">
-                    <span className="block font-display text-[23px]">Béa</span>
-                    {/* The version is for support, not for every screen of a small
-                      phone: from 390px wide only. */}
-                    <span className="hidden text-[10.5px] font-semibold uppercase text-muted-foreground min-[390px]:block">
-                      v{APP_VERSION}
-                    </span>
-                  </span>
-                  <span className="label-caps hidden sm:inline">Travel Buddy</span>
-                </span>
+                <BrandMark version={APP_VERSION} />
               </Link>
             </div>
 
             <div className="flex items-center gap-2">
-              {user && <PageGuide />}
+              {user && <PageGuide round />}
               {!user && (
                 <Link
                   to="/auth"
-                  className="rounded-xl bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground"
+                  className="flex min-h-11 items-center rounded-xl bg-primary px-3 py-1.5 text-[16px] font-semibold text-primary-foreground"
                 >
                   Sign in
                 </Link>
@@ -291,13 +284,14 @@ export function AppShell({
         {!online && (
           <p
             role="status"
-            className="z-10 shrink-0 bg-muted px-4 py-1.5 text-center text-[12.5px] font-semibold text-muted-foreground"
+            className="z-10 shrink-0 bg-muted px-4 py-1.5 text-center text-[14px] font-semibold text-muted-foreground"
           >
             You're offline. Kept trips still open; changes sync when you're back.
           </p>
         )}
 
         <PageHeader
+          ref={pageHeaderRef}
           eyebrow={eyebrow}
           title={title}
           action={headerAction}
@@ -332,8 +326,8 @@ export function AppShell({
             {/* A floating bar, as the "three moods" design draws it. The grid is
                 its own box so the indicator can be `inset-y-0` against exactly
                 the row of links. */}
-            <div className="relative grid grid-cols-5 rounded-[28px] bg-card px-1 py-1.5 shadow-[0_4px_18px_rgb(0_0_0/0.07)]">
-              {/* One soft circle that travels, rather than a class jumping between
+            <div className="relative grid grid-cols-5 rounded-[24px] border border-white/70 bg-card/88 px-1 py-1.5 shadow-[0_1px_10px_rgb(80_60_40/0.07)] backdrop-blur-xl dark:border-border">
+              {/* One soft bubble that travels, rather than a class jumping between
                   tabs. The tabs are equal columns, so the whole geometry is
                   index × 100% of the indicator's own width — nothing to measure
                   and nothing to go stale on resize.
@@ -347,7 +341,7 @@ export function AppShell({
                 }`}
                 style={{ transform: indicatorOffset(tabIndex) }}
               >
-                <span className="aspect-square h-full rounded-full bg-[var(--home-tab-active)]" />
+                <span className="h-full w-full rounded-[20px] bg-primary-soft" />
               </span>
 
               {tabs.map(({ to, label, icon: Icon }, i) => {
@@ -364,7 +358,7 @@ export function AppShell({
                     {/* Filled as well as darker, so the active tab survives a
                       glance without relying on colour alone. */}
                     <Icon className="size-6" weight={active ? "fill" : "regular"} />
-                    <span className={`text-[11px] ${active ? "font-semibold" : "font-medium"}`}>
+                    <span className={`text-[13px] ${active ? "font-semibold" : "font-medium"}`}>
                       {label}
                     </span>
                   </Link>

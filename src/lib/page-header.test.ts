@@ -26,6 +26,35 @@ describe("nextCompressed", () => {
       assert.equal(nextCompressed(top, once), once, `oscillates at ${top}`);
     }
   });
+
+  it("does not compress short pages whose scroll position would be clamped", () => {
+    for (const [expandedHeight, compactHeight] of [
+      [82, 50],
+      [110, 68],
+      [280, 55],
+    ] as const) {
+      const dimensions = { expandedHeight, compactHeight };
+      const difference = expandedHeight - compactHeight;
+      assert.equal(nextCompressed(48, false, { scrollRange: 50, ...dimensions }), false);
+      assert.equal(
+        nextCompressed(48, false, { scrollRange: difference + 47, ...dimensions }),
+        false,
+      );
+      assert.equal(
+        nextCompressed(48, false, { scrollRange: difference + 48, ...dimensions }),
+        true,
+      );
+      assert.equal(nextCompressed(48, true, { scrollRange: 48, ...dimensions }), true);
+      assert.equal(nextCompressed(0, true, { scrollRange: 48, ...dimensions }), false);
+    }
+  });
+
+  it("compresses moderate overflow when the height difference fits", () => {
+    assert.equal(
+      nextCompressed(48, false, { scrollRange: 80, expandedHeight: 82, compactHeight: 50 }),
+      true,
+    );
+  });
 });
 
 describe("tabIdForPath", () => {
