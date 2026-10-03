@@ -1397,3 +1397,158 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ── Home: the living map and the cards under it, in each mood ──────────────
+   Calm: white with black for what you tap and a coral dot. Colorful: Béa's
+   pastels with pink. Dark: black with white. */
+:root,
+[data-theme="calm"] {
+  --home-ink: #1b1918;
+  --home-ink-foreground: #ffffff;
+  --home-dot: #e4826f;
+  --home-search: var(--card);
+  --home-tab-active: color-mix(in oklch, var(--foreground) 7%, transparent);
+  --map-land: #efe9dd;
+  --map-green: #87ad6b;
+  --map-light: #ffffff;
+  --map-shadow: rgb(70 62 48 / 0.3);
+  --route-line: #ffffff;
+  --route-dot: #6f6658;
+  --route-dot-start: #2b2724;
+  --route-dot-end: #e4826f;
+  --route-trail: #4b443d;
+  --pill-0: #ffffff;
+  --pill-1: #ffffff;
+  --pill-2: #ffffff;
+  --pill-text: #1b1918;
+  --pill-shadow: rgb(40 34 28 / 0.16);
+  --stat-track: color-mix(in oklch, var(--foreground) 9%, transparent);
+  --stat-fill: linear-gradient(90deg, #8fcfc6, #6eb6dc);
+}
+[data-theme="colorful"] {
+  --home-ink: #f08aa3;
+  --home-ink-foreground: #ffffff;
+  --home-dot: #5bb5dc;
+  --home-search: #fdeef2;
+  --home-tab-active: #fde3ea;
+  --map-land: #f4efe7;
+  --map-green: #8cc68d;
+  --map-light: #ffffff;
+  --map-shadow: rgb(110 90 110 / 0.26);
+  --route-line: #f08aa3;
+  --route-dot: #f08aa3;
+  --route-dot-start: #f08aa3;
+  --route-dot-end: #f08aa3;
+  --route-trail: #6c6470;
+  --pill-0: #d9f2e6;
+  --pill-1: #ebdffb;
+  --pill-2: #fde1e8;
+  --pill-text: #29252a;
+  --pill-shadow: rgb(90 70 90 / 0.14);
+  --stat-track: #eef1f4;
+  --stat-fill: linear-gradient(90deg, #8fd3c8, #6cb7e0);
+}
+.dark,
+[data-theme="dark"] {
+  --home-ink: #f6f3ee;
+  --home-ink-foreground: #121212;
+  --home-dot: #f6f3ee;
+  --home-search: var(--card);
+  --home-tab-active: rgb(255 255 255 / 0.1);
+  --map-land: #3b3c38;
+  --map-green: #36533a;
+  --map-light: #dfe3d6;
+  --map-shadow: rgb(0 0 0 / 0.7);
+  --route-line: #f6f3ee;
+  --route-dot: #f6f3ee;
+  --route-dot-start: #f6f3ee;
+  --route-dot-end: #f6f3ee;
+  --route-trail: #d9d4cc;
+  --pill-0: rgb(28 28 27 / 0.86);
+  --pill-1: rgb(28 28 27 / 0.86);
+  --pill-2: rgb(28 28 27 / 0.86);
+  --pill-text: #f6f3ee;
+  --pill-shadow: rgb(0 0 0 / 0.45);
+  --stat-track: rgb(255 255 255 / 0.12);
+  --stat-fill: linear-gradient(90deg, #9ad8cf, #f6f3ee);
+}
+
+.route-map .map-land {
+  fill: var(--map-land);
+}
+.route-map .map-green {
+  flood-color: var(--map-green);
+}
+.route-map .map-light {
+  lighting-color: var(--map-light);
+}
+.route-map .map-shadow {
+  flood-color: var(--map-shadow);
+}
+.route-map .map-fade {
+  stop-color: var(--background);
+}
+.route-map .pill-shadow {
+  flood-color: var(--pill-shadow);
+}
+.route-map .route-line {
+  fill: none;
+  stroke: var(--route-line);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.18));
+}
+.route-map .route-trail {
+  fill: none;
+  stroke: var(--route-trail);
+  stroke-width: 1.6;
+  stroke-dasharray: 0.1 6;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+.route-map .route-plane {
+  fill: var(--route-trail);
+}
+.route-map .route-dot {
+  fill: var(--route-dot);
+  stroke: var(--route-line);
+  stroke-width: 3.5;
+}
+.route-map .route-dot-start {
+  fill: var(--route-dot-start);
+  stroke: var(--route-line);
+  stroke-width: 3;
+}
+.route-map .route-dot-end {
+  fill: var(--route-dot-end);
+  stroke: var(--route-line);
+  stroke-width: 3.5;
+}
+.route-map .route-pill-0 {
+  fill: var(--pill-0);
+}
+.route-map .route-pill-1 {
+  fill: var(--pill-1);
+}
+.route-map .route-pill-2 {
+  fill: var(--pill-2);
+}
+.route-map .route-photo-ring {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+}
+.route-map .route-city {
+  fill: var(--pill-text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 650;
+}
+.route-map .route-days {
+  fill: var(--pill-text);
+  opacity: 0.72;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+}
