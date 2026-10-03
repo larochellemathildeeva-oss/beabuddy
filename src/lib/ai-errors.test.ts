@@ -104,6 +104,21 @@ test("isNetworkFailure matches Safari and Chromium fetch failures", () => {
   assert.equal(isNetworkFailure(new TypeError("fetch is not a function")), false);
 });
 
+test("isNetworkFailure matches the failed fetch Supabase returns", () => {
+  // postgrest-js names the fetch error in front of its message.
+  const supabaseShape = (message: string) => ({ message, details: "", hint: "", code: "" });
+  assert.equal(isNetworkFailure(supabaseShape("TypeError: Load failed")), true);
+  assert.equal(isNetworkFailure(supabaseShape("TypeError: Failed to fetch")), true);
+  assert.equal(isNetworkFailure(supabaseShape("FetchError: Failed to fetch")), true);
+  assert.equal(isNetworkFailure(supabaseShape("TypeError: fetch is not a function")), false);
+  assert.equal(isNetworkFailure(supabaseShape("AbortError: The user aborted a request.")), false);
+  assert.equal(
+    isNetworkFailure({ code: "P0001", message: "You are not a member of this trip" }),
+    false,
+  );
+  assert.equal(isNetworkFailure(null), false);
+});
+
 test("normalizeGeminiModelId remaps retired 2.5 ids and strips models/", () => {
   assert.equal(normalizeGeminiModelId("models/gemini-2.5-flash-lite"), "gemini-3.5-flash-lite");
   assert.equal(normalizeGeminiModelId("gemini-2.5-flash"), "gemini-3.6-flash");

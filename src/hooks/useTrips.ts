@@ -1185,7 +1185,9 @@ export function useTripBoard(tripId: string | null, me: { id: string | null; nam
       itemsRef.current = shown.optimistic;
       setItems(shown.optimistic);
 
-      const rpc = supabase.rpc as unknown as AtomicScheduleRpc;
+      // Bound: `rpc` reads `this.rest`, so a bare `supabase.rpc` throws before
+      // sending anything, and every schedule save failed as "no connection".
+      const rpc = supabase.rpc.bind(supabase) as unknown as AtomicScheduleRpc;
       const send = async () => {
         if (scheduleRunRef.current !== run) {
           throw Object.assign(new Error("itinerary_version_conflict: an earlier save failed"), {

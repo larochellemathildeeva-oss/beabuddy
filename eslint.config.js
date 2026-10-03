@@ -101,6 +101,14 @@ export default tseslint.config(
           message:
             "Use an easing token: ease-(--ease-standard|--ease-exit|--ease-confirm), defined in src/styles.css.",
         },
+        {
+          // `supabase.rpc` and friends read `this`; held apart from the client
+          // they throw before sending, which is how every schedule save broke.
+          selector:
+            ":matches(VariableDeclarator, TSAsExpression) > MemberExpression[object.name='supabase'][property.name=/^(rpc|from|schema|channel|removeChannel)$/]",
+          message:
+            "Call it on the client (supabase.rpc(...)) or bind it: supabase.rpc.bind(supabase). A detached method loses `this`.",
+        },
       ],
     },
   },
