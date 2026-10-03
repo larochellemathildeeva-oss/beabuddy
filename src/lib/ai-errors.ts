@@ -167,7 +167,12 @@ export function isDailyQuota(error: unknown): boolean {
  * "fetch" (e.g. "fetch is not a function") as a connection blip.
  */
 export function isNetworkFailure(error: unknown): boolean {
-  const text = messageOf(error).toLowerCase();
+  // Supabase does not throw a failed fetch: it returns `{ message:
+  // "TypeError: Failed to fetch", … }`, a plain object or a PostgrestError,
+  // with the fetch error's name in front.
+  const own = (error as { message?: unknown } | null)?.message;
+  const raw = messageOf(error) || (typeof own === "string" ? own : "");
+  const text = raw.replace(/^(?:TypeError|FetchError): /i, "").toLowerCase();
   if (!text) return false;
   return (
     text === "load failed" ||
