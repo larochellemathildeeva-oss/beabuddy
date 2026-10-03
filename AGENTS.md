@@ -422,6 +422,21 @@ policies cover it, so no migration). The
 migration is applied by hand; until it is, the sheet says photos are not
 set up yet.
 
+## Home's living map
+
+Home with a trip ahead follows the "three moods" design
+(`.superdesign/handoff/15-home-moods.jpg`): "Béa." header (`homeHeader` on
+`AppShell`), "Upcoming trip / {title} in 2 days." over a map of the trip,
+a card of to-dos, the flight and how packed, "Where to next?", and three
+suggestions that open Plan with Béa with the request written but not sent
+(`HomeLivingMap.tsx`). The map (`TripRouteMap.tsx`) is drawn from the trip's
+own stops — real coastlines (`world-atlas` land-50m, loaded only when the map
+draws), a relief made by an SVG lighting filter, one smooth line through the
+cities and a pill beside each; the geometry and the pill placement are pure
+and tested (`home-route-map.ts`). Its colours are per mood (`--home-*`,
+`--map-*`, `--route-*`, `--pill-*` at the end of `styles.css`). No picture is
+generated for it.
+
 ## Follow along (Now)
 
 "Follow along" on the Now view (`FollowAlong.tsx`; `live-companion.ts`, pure

@@ -4,13 +4,14 @@ import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
 import { Globe } from "@/components/Globe";
+import { HomeYourTrips } from "@/components/HomeTripCard";
 import {
-  HomeBeforeTrip,
-  HomeShortcuts,
-  HomeTripHero,
-  HomeYourTrips,
-} from "@/components/HomeTripCard";
-import { laterTrips, pastTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
+  HomeSuggested,
+  HomeTripStats,
+  HomeUpcoming,
+  HomeWhereNext,
+} from "@/components/HomeLivingMap";
+import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
 import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
@@ -258,23 +259,32 @@ function SignedInHome() {
 
   return (
     <AppShell
-      eyebrow={today}
-      title={firstName ? `${greeting}, ${firstName}` : greeting}
-      headerAction={layout.weather ? <HomeWeather near={near} /> : undefined}
+      homeHeader
+      // With a trip ahead, the trip is the headline; without one, the greeting.
+      {...(showTrip
+        ? {}
+        : {
+            eyebrow: today,
+            title: firstName ? `${greeting}, ${firstName}` : greeting,
+            ...(layout.weather ? { headerAction: <HomeWeather near={near} /> } : {}),
+          })}
       actionBesideEyebrow
     >
       <div className="space-y-5">
         {showTrip && (
-          <HomeTripHero
-            trip={trip}
-            photos={photos}
-            peopleCount={peopleOnTrip(trips.members, trip.id, trips.uid)}
-          />
+          <div className="space-y-4">
+            <HomeUpcoming trip={trip} photos={photos} />
+            <HomeTripStats trip={trip} glance={glances[trip.id]} />
+            <HomeWhereNext />
+            <HomeSuggested trip={trip} />
+          </div>
         )}
 
-        {showTrip && <HomeBeforeTrip trip={trip} glance={glances[trip.id]} />}
-
-        {showTrip && <HomeShortcuts trip={trip} glance={glances[trip.id]} />}
+        {showTrip && layout.weather && (
+          <div className="flex justify-end">
+            <HomeWeather near={near} />
+          </div>
+        )}
 
         {layout.waiting && (
           <div className="pt-2">

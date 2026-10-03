@@ -13,7 +13,7 @@ import { nextCompressed, tabIdForPath } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { PageHeader } from "./PageHeader";
 
-import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, User } from "@/components/icons";
+import { ArrowLeft, Globe2, Home, MapPinned, Bookmark, Search, User } from "@/components/icons";
 import logo from "../assets/bea-logo.png";
 
 const APP_VERSION = typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "1.0.0";
@@ -42,6 +42,7 @@ export function AppShell({
   actionBesideEyebrow = false,
   publicPage = false,
   flush = false,
+  homeHeader = false,
 }: {
   children: ReactNode;
   eyebrow?: string;
@@ -61,6 +62,11 @@ export function AppShell({
    * pins its own header (the trip page) and needs the width on a phone.
    */
   flush?: boolean;
+  /**
+   * Home's own header: the "Béa." wordmark in large serif with the mood's dot,
+   * a round search and the round help button.
+   */
+  homeHeader?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const href = useRouterState({ select: (s) => s.location.href });
@@ -181,74 +187,104 @@ export function AppShell({
         style={{ "--plane-dx": `${direction * 6}px` } as CSSProperties}
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"
       >
-        <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
-          <div className="flex items-center gap-2">
-            {showBack &&
-              (canGoBack ? (
-                <button
-                  onClick={() => router.history.back()}
-                  aria-label="Go back"
-                  className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
-                >
-                  <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
-                    <ArrowLeft className="size-4" />
-                  </span>
-                </button>
-              ) : (
-                <Link
-                  to="/"
-                  aria-label="Go back home"
-                  className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
-                >
-                  <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
-                    <ArrowLeft className="size-4" />
-                  </span>
-                </Link>
-              ))}
-            <Link to="/" className="flex items-center gap-2">
-              <img
-                src={logo}
-                alt="Béa logo"
-                className="size-9 object-contain"
-                width={36}
-                height={36}
-              />
-              <span className="flex items-center gap-2">
-                <span className="leading-none">
-                  <span className="block font-display text-[23px]">Béa</span>
-                  {/* The version is for support, not for every screen of a small
-                      phone: from 390px wide only. */}
-                  <span className="hidden text-[10.5px] font-semibold uppercase text-muted-foreground min-[390px]:block">
-                    v{APP_VERSION}
-                  </span>
-                </span>
-                <span className="label-caps hidden sm:inline">Travel Buddy</span>
+        {homeHeader ? (
+          <header className="z-20 flex shrink-0 items-center justify-between bg-background/75 px-5 pb-1 pt-3 backdrop-blur-xl">
+            <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
+              <span className="font-display text-[44px] leading-none tracking-[-0.035em] [-webkit-text-stroke:0.6px_currentColor]">
+                Béa<span className="text-[var(--home-dot)]">.</span>
               </span>
             </Link>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {user && <PageGuide />}
-            {!user && (
+            <div className="flex items-center gap-2.5">
               <Link
-                to="/auth"
-                className="rounded-xl bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground"
+                to="/recommendations"
+                aria-label="Search your places"
+                className="grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_3px_12px_rgb(0_0_0/0.07)]"
               >
-                Sign in
+                <Search className="size-[19px]" />
               </Link>
-            )}
-            <span
-              role="img"
-              aria-label={online ? "Online" : "Offline"}
-              title={online ? "Online" : "Offline — changes may not sync"}
-              className="grid size-7 place-items-center rounded-full border border-border bg-card"
-            >
+              {user && <PageGuide round />}
+              {!online && (
+                <span
+                  role="img"
+                  aria-label="Offline"
+                  title="Offline — changes may not sync"
+                  className="grid size-7 place-items-center rounded-full border border-border bg-card"
+                >
+                  <span className="size-1.5 rounded-full bg-muted-foreground" />
+                </span>
+              )}
+            </div>
+          </header>
+        ) : (
+          <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
+            <div className="flex items-center gap-2">
+              {showBack &&
+                (canGoBack ? (
+                  <button
+                    onClick={() => router.history.back()}
+                    aria-label="Go back"
+                    className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
+                  >
+                    <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
+                      <ArrowLeft className="size-4" />
+                    </span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/"
+                    aria-label="Go back home"
+                    className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
+                  >
+                    <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
+                      <ArrowLeft className="size-4" />
+                    </span>
+                  </Link>
+                ))}
+              <Link to="/" className="flex items-center gap-2">
+                <img
+                  src={logo}
+                  alt="Béa logo"
+                  className="size-9 object-contain"
+                  width={36}
+                  height={36}
+                />
+                <span className="flex items-center gap-2">
+                  <span className="leading-none">
+                    <span className="block font-display text-[23px]">Béa</span>
+                    {/* The version is for support, not for every screen of a small
+                      phone: from 390px wide only. */}
+                    <span className="hidden text-[10.5px] font-semibold uppercase text-muted-foreground min-[390px]:block">
+                      v{APP_VERSION}
+                    </span>
+                  </span>
+                  <span className="label-caps hidden sm:inline">Travel Buddy</span>
+                </span>
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {user && <PageGuide />}
+              {!user && (
+                <Link
+                  to="/auth"
+                  className="rounded-xl bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground"
+                >
+                  Sign in
+                </Link>
+              )}
               <span
-                className={`size-1.5 rounded-full ${online ? "bg-nexttime" : "bg-muted-foreground"}`}
-              />
-            </span>
-          </div>
-        </header>
+                role="img"
+                aria-label={online ? "Online" : "Offline"}
+                title={online ? "Online" : "Offline — changes may not sync"}
+                className="grid size-7 place-items-center rounded-full border border-border bg-card"
+              >
+                <span
+                  className={`size-1.5 rounded-full ${online ? "bg-nexttime" : "bg-muted-foreground"}`}
+                />
+              </span>
+            </div>
+          </header>
+        )}
 
         {/* A dot alone is a tooltip a phone cannot show. Said once, in words,
             for as long as it is true. */}
@@ -291,27 +327,28 @@ export function AppShell({
         {showTabs && (
           <nav
             aria-label="Main"
-            className="z-20 shrink-0 border-t border-border/40 bg-background/80 px-2 pt-2 backdrop-blur-xl pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+            className="z-20 shrink-0 bg-background/80 px-3 pt-1.5 backdrop-blur-xl pb-[max(0.5rem,env(safe-area-inset-bottom))]"
           >
-            {/* The grid is its own box so the indicator can be `inset-0` against
-                exactly the row of links — anchoring it to the padded <nav>
-                instead would leave the pill hanging below them on a phone with
-                a home-indicator inset. */}
-            <div className="relative grid grid-cols-5">
-              {/* One pill that travels, rather than a class jumping between six.
-                  The tabs are equal columns, so the whole geometry is index ×
-                  100% of the indicator's own width — nothing to measure and
-                  nothing to go stale on resize.
+            {/* A floating bar, as the "three moods" design draws it. The grid is
+                its own box so the indicator can be `inset-y-0` against exactly
+                the row of links. */}
+            <div className="relative grid grid-cols-5 rounded-[28px] bg-card px-1 py-1.5 shadow-[0_4px_18px_rgb(0_0_0/0.07)]">
+              {/* One soft circle that travels, rather than a class jumping between
+                  tabs. The tabs are equal columns, so the whole geometry is
+                  index × 100% of the indicator's own width — nothing to measure
+                  and nothing to go stale on resize.
 
                   It is decorative: `aria-current` on the link is what a screen
                   reader announces, so this is hidden from the tree entirely. */}
               <span
                 aria-hidden
-                className={`pointer-events-none absolute inset-0 w-1/5 rounded-2xl tab-tint transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
+                className={`pointer-events-none absolute inset-y-1 left-1 flex w-[calc((100%-0.5rem)/5)] justify-center transition-[transform,opacity] duration-(--t-move) ease-(--ease-standard) ${
                   tabIndex === -1 ? "opacity-0" : "opacity-100"
                 }`}
                 style={{ transform: indicatorOffset(tabIndex) }}
-              />
+              >
+                <span className="aspect-square h-full rounded-full bg-[var(--home-tab-active)]" />
+              </span>
 
               {tabs.map(({ to, label, icon: Icon }, i) => {
                 const active = i === tabIndex;
@@ -320,17 +357,14 @@ export function AppShell({
                     key={to}
                     to={to}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex flex-col items-center gap-1 rounded-2xl py-1.5 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
-                      active ? "tab-ink" : "text-muted-foreground"
+                    className={`relative flex flex-col items-center gap-1 rounded-full py-1.5 transition-colors duration-(--t-tap) ease-(--ease-standard) ${
+                      active ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    {/* The stroke thickens as well as changing hue, so the active
-                      tab survives a glance without relying on colour alone. */}
-                    <Icon
-                      className="size-[19px] transition-[stroke-width] duration-(--t-shift) ease-(--ease-standard)"
-                      strokeWidth={active ? 2.3 : 1.7}
-                    />
-                    <span className="text-[11.5px] font-semibold uppercase tracking-[0.06em]">
+                    {/* Filled as well as darker, so the active tab survives a
+                      glance without relying on colour alone. */}
+                    <Icon className="size-6" weight={active ? "fill" : "regular"} />
+                    <span className={`text-[11px] ${active ? "font-semibold" : "font-medium"}`}>
                       {label}
                     </span>
                   </Link>

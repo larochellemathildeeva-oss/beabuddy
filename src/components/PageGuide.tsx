@@ -20,7 +20,8 @@ import {
  * it as help. The overview comes first because a walk can only point at what
  * is on screen, and an empty page has little to point at.
  */
-export function PageGuide() {
+/** `round`: Home's larger white button, beside its search. */
+export function PageGuide({ round = false }: { round?: boolean } = {}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
   /** -1 is the overview; 0 and up are the spotlight steps. */
@@ -100,16 +101,20 @@ export function PageGuide() {
         setI(-1);
         setOpen(true);
       }}
-      className={`grid size-7 place-items-center rounded-full border bg-card transition-colors ${
-        open
-          ? "border-primary text-primary"
-          : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-      }`}
+      className={
+        round
+          ? `grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_3px_12px_rgb(0_0_0/0.07)] transition-colors ${open ? "ring-2 ring-primary" : ""}`
+          : `grid size-7 place-items-center rounded-full border bg-card transition-colors ${
+              open
+                ? "border-primary text-primary"
+                : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+            }`
+      }
       aria-label={open ? "Close help" : `Help: what you can do on ${guide.name}`}
       aria-expanded={open}
       title={open ? "Close help" : "Help for this page"}
     >
-      <HelpCircle className="size-4" />
+      <HelpCircle className={round ? "size-[19px]" : "size-4"} />
     </button>
   );
 
