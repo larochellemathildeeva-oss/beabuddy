@@ -4,6 +4,8 @@ import { Check } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { legsToTimelineItems, placedFromLegs, type DirectionStop } from "@/lib/timeline-directions";
+import { directionsToAsk, mergeLegs, type KnownLeg } from "@/lib/directions-reuse";
+import { hasCoords } from "@/lib/direction-stops";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
 import {
   TRAVEL_CHOICES,
@@ -66,6 +68,7 @@ export function ItineraryDirections({
   open,
   onClose,
   stops,
+  known = [],
   area,
   travel = "auto",
   onTravel,
@@ -84,6 +87,12 @@ export function ItineraryDirections({
   open: boolean;
   onClose: () => void;
   stops: DirectionStop[];
+  /**
+   * Journeys already worked out, by leg (leg `i` runs from stop `i` to stop
+   * `i + 1`). Those that still hold are kept, so adding a stop asks only for
+   * the journeys into and out of it, not the whole trip again.
+   */
+  known?: (KnownLeg | undefined)[];
   area?: string;
   /** How the traveller gets around on this trip; asked here, kept per trip. */
   travel?: TravelChoice;
@@ -139,9 +148,24 @@ export function ItineraryDirections({
     setError("");
     setFound(null);
     try {
-      const result = (await run({
-        data: { stops, ...(area ? { area } : {}), travel },
-      })) as { legs: RouteLeg[]; unresolved: string[]; deferred?: string[] };
+      const { keep, ask } = directionsToAsk(stops, known, travel);
+      const partial = ask.length < stops.length - 1;
+      const answer = (await run({
+        data: { stops, ...(area ? { area } : {}), travel, ...(partial ? { legs: ask } : {}) },
+      })) as { legs: RouteLeg[]; at?: number[]; unresolved: string[]; deferred?: string[] };
+      const legs = partial ? mergeLegs(keep, answer.at ?? ask, answer.legs) : answer.legs;
+      if (!legs) throw new Error("Couldn't work out the directions.");
+      // Stops a kept journey still couldn't place are still worth naming.
+      const stillMissing = keep.flatMap((k, i) =>
+        k?.leg.unknownSpot
+          ? [stops[i]!, stops[i + 1]!].filter((s) => !hasCoords(s)).map((s) => s.title)
+          : [],
+      );
+      const result = {
+        legs,
+        unresolved: [...new Set([...answer.unresolved, ...stillMissing])],
+        ...(answer.deferred?.length ? { deferred: answer.deferred } : {}),
+      };
       setUnresolved(result.unresolved);
       setDeferred(result.deferred ?? []);
       setFound(result.legs.length);
@@ -157,7 +181,10 @@ export function ItineraryDirections({
 
       const saved: string[] = [];
       if (choice.timeline && onAddToTimeline) {
-        const items = legsToTimelineItems(result.legs, stops, existingTitles);
+        // Journeys already on the timeline stay as they are.
+        const items = legsToTimelineItems(result.legs, stops, existingTitles).filter(
+          (_, i) => !keep[i]?.onTimeline,
+        );
         if (items.length > 0) await onAddToTimeline(items);
         saved.push("added to the timeline");
       }

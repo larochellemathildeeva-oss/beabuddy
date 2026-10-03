@@ -43,6 +43,7 @@ import {
 } from "@/components/ItineraryImport";
 import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
+import type { KnownLeg } from "@/lib/directions-reuse";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { DayEditSheet, type DayEditSave } from "@/components/day/DayEditSheet";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
@@ -883,6 +884,22 @@ export function TripDetail({
   const moveDays = tripDays(trip.start_date, trip.end_date, stopItems);
   /** The stop "Move to…" is open on. */
   const [movingId, setMovingId] = useState<string | null>(null);
+  /**
+   * Journeys Béa already has, by leg, for the directions sheet to keep: the
+   * one worked out or kept on the phone, and whether it is on the timeline.
+   */
+  const knownDirections: (KnownLeg | undefined)[] = directionStops.slice(1).map((to, i) => {
+    const from = directionStops[i]!;
+    // The phone's copy by name too: a stop added since shifts its legs.
+    const live =
+      (from.id && to.id ? legFor(from.id, to.id) : undefined) ??
+      dir.saved?.legs.find((leg) => leg.from === from.title && leg.to === to.title);
+    const row =
+      savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
+      savedTravel.get(directionKey(from.day_date, to.title, from.title));
+    const leg = live ?? row;
+    return leg ? { leg, onTimeline: Boolean(row) } : undefined;
+  });
   /** Journeys already worked out between neighbours, for checking a change. */
   const knownLegs: TravelLeg[] = directionStops.flatMap((stop, i) => {
     const next = directionStops[i + 1];
@@ -2221,6 +2238,7 @@ export function TripDetail({
                 toast.success("Directions deleted from this phone");
               }}
               stops={directionStops}
+              known={knownDirections}
               travel={travel}
               onTravel={chooseTravel}
               existingTitles={board.items.map((i) => i.title)}
