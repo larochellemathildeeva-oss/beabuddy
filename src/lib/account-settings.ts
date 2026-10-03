@@ -20,9 +20,11 @@
 import { ACCESSIBILITY_KEY } from "./accessibility.ts";
 import { STOP_PICTURES_KEY } from "./stop-pictures.ts";
 import { THEME_KEY } from "./theme.ts";
+import { ACCENT_KEY } from "./accent.ts";
 
 export const SYNCED_SETTINGS = [
   "theme",
+  "accent",
   "personality",
   "pictures",
   "homeLayout",
@@ -47,6 +49,8 @@ export function settingStorageKey(name: SyncedSetting, uid: string): string {
   switch (name) {
     case "theme":
       return THEME_KEY;
+    case "accent":
+      return ACCENT_KEY;
     case "personality":
       return PERSONALITY_KEY;
     case "pictures":
@@ -70,6 +74,7 @@ export function settingStorageKey(name: SyncedSetting, uid: string): string {
  */
 export const DEVICE_WIDE_SETTINGS: readonly SyncedSetting[] = [
   "theme",
+  "accent",
   "personality",
   "pictures",
   "homeCurrency",
