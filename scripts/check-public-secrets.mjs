@@ -3,8 +3,7 @@
  *
  * `src/lib/*.functions.ts` ship to the client bundle, so a key read there, or
  * a server module imported eagerly, compiles into JavaScript anyone can
- * download (AGENTS.md). This scans the built client (`.output/public`, or
- * `.vercel/output/static` when VERCEL is set) for
+ * download (AGENTS.md). This scans the built client, `.output/public`, for
  * the names of the server-only environment variables and for anything shaped
  * like a Supabase secret key. It looks for names, never values: CI holds no
  * secrets, and must not be given them just to search for them.
@@ -68,18 +67,19 @@ async function walk(dir) {
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
-  // The same choice as vite.config.ts: the vercel preset builds into .vercel/output/static,
-  // node-server (Canner) into .output/public. Only that build is scanned, never a stale other one.
-  const output = process.env.VERCEL ? "../../.vercel/output/static" : "../../.output/public";
-  const root = resolve(fileURLToPath(import.meta.url), output);
-  let files;
-  try {
-    files = await walk(root);
-  } catch {
-    files = [];
+  // node-server (Canner) builds into .output/public; the vercel preset into .vercel/output/static.
+  const repo = resolve(fileURLToPath(import.meta.url), "../..");
+  const roots = [".output/public", ".vercel/output/static"].map((dir) => resolve(repo, dir));
+  const files = [];
+  for (const root of roots) {
+    try {
+      files.push(...(await walk(root)));
+    } catch {
+      // Not built for that host.
+    }
   }
   if (!files.length) {
-    console.error(`No build at ${root}: run npm run build first.`);
+    console.error(`No build at ${roots.join(" or ")}: run npm run build first.`);
     process.exit(1);
   }
   const hits = [];

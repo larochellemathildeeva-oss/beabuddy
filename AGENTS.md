@@ -26,18 +26,15 @@ The same repo also deploys on **Vercel** (import the GitHub repo; `vercel.json`
 sets the install and build commands). Vercel sets `VERCEL=1` while it builds,
 and `vite.config.ts` then uses Nitro's `vercel` preset, which writes
 `.vercel/output` (one Node function plus the static files) instead of
-`.output`. Canner builds are unchanged. `check:public-secrets` scans the
-output of the same choice, and Vercel runs it after the build, so a finding
-fails the deploy; CI builds and scans both ways.
+`.output`. Canner builds are unchanged. `check:public-secrets` scans whichever
+output exists.
 
 Before the first Vercel deploy: copy the server env vars from `.env.example`
 into the Vercel project, and add the Vercel domain to the Supabase auth
 redirect URLs. On Vercel the in-process caches and limits (tile cache, map
 rate limits, search memory) are per function instance and reset often; the
 database ledgers (AI units, Geoapify credits, search cache) are shared as
-before. The 600-credit tile share is per process too, so on Vercel the day
-map's vector tiles never fall back to Geoapify: OpenFreeMap, else the image
-tiles.
+before.
 
 ## App version (Canner)
 
