@@ -36,7 +36,7 @@ Behaviour: the repository decides what each page does (`AGENTS.md`, the checklis
 
 | Topic | Mockup | `VISUAL_NORTH_STAR.md` | What to do |
 | --- | --- | --- | --- |
-| Accent colour | Periwinkle `#6675FF` (soft `#ECEEFF` for selected states) | Same | **Owner decided (2026-10-03): periwinkle for Colorful.** The mockup now uses it. Blush stays one pastel among peers. |
+| Accent colour | User's choice: **Pink** `#F6466E` (default) or **Periwinkle** `#6675FF` | Periwinkle only | **Owner decided (2026-10-03): the traveller chooses, pink by default.** Update the north star's palette section to match. |
 | Fonts | Newsreader + Inter (stand-ins used in the mockup) | Instrument Serif + Manrope | Use the app's fonts (north star). Keep the mockup's sizes and weights as a guide. |
 | Mascot | Dog head beside the "Béa." wordmark in every header; a generated "sitting dog with lemon bandana" on empty states and the landing page | "No mascot or decorative character should be invented. Use only approved Béa artwork" | The dog head is the existing logo (`src/assets/bea-logo.png`) and the owner asked for it in every header: keep it. Do **not** ship the generated sitting dog or the generated landing illustrations; use approved artwork or ask. |
 | Pictures | Generated terrain, city maps, stop photos, faces | "Real content first … do not fabricate" | Use the app's real sources: your own photos, `banner-art.ts` scenes, Place Details / Wikimedia / Pexels photos (`stop-pictures.ts`, `PlacePicture.tsx`), the day map. New terrain art for Home/Trips needs owner-approved artwork. |
@@ -56,7 +56,18 @@ Behaviour: the repository decides what each page does (`AGENTS.md`, the checklis
 - Overview shows **trip progress by days and cities**; the day views show **progress by stops**, as named dots.
 - Companion contains, in this order: compact itinerary ribbon (no part-of-day filters), current stop with Béa's one-line leave-by and the Leaving / I'm here button, next stop, a short summary of the rest of the day (Later today), Make the day easier.
 - Béa says the leave time once (not twice).
-- **Colorful accent is periwinkle `#6675FF`** (soft `#ECEEFF` for selected tabs, chips and bubbles). Owner, 2026-10-03.
+- **Accent colour is the traveller's choice**, under You → Theme: **Pink** (default) or **Periwinkle**. Owner, 2026-10-03. Implement as tokens switched by an attribute on `<html>` (the mockup uses `data-accent`), saved with the account like the theme, and applied before first paint like `ACCESSIBILITY_BOOT_SCRIPT`. Every accent use goes through the tokens, never a literal colour:
+
+  | Token | Pink | Periwinkle | Used for |
+  | --- | --- | --- | --- |
+  | `--acc` | `#F6466E` | `#6675FF` | primary buttons, live badges, current stop, active route |
+  | `--acc2` | `#F24A70` | `#5C6CF5` | pins and route on maps |
+  | `--acc-soft` | `#FDE3EA` | `#ECEEFF` | selected tabs, chips, bottom-bar bubble |
+  | `--acc-done` | `#F59AB0` | `#B3BAFF` | done stops and days |
+  | `--acc-line` | `#F3B6C5` | `#C5CBFF` | dashed lines between stops |
+  | `--acc-track` | `#F3E4E8` | `#E3E6FF` | progress bar tracks |
+
+  Check contrast for both: white text on `--acc` buttons must stay at least 4.5:1 at body size, or use bold 14+ (both accents pass for large or bold text). The danger red `#C22A52` and the blush pastel are separate from the accent and do not switch.
 - **Calm's base colour is white:** app ground `#FFFFFF` in Calm (cards separate by hairline and shadow, not by a tinted ground). Owner, 2026-10-03.
 - **Text sizes follow the mobile typography rules below** (owner, 2026-10-03).
 
