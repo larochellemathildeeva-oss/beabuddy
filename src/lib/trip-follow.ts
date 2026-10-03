@@ -6,8 +6,11 @@
 
 import { sharedNow, type SharedTrip } from "./trip-share.ts";
 
-/** Where a traveller stands with a shared trip; "unavailable" until its migration is in. */
-export type FollowState = "following" | "not-following" | "gone" | "unavailable";
+/**
+ * Where a traveller stands with a shared trip: "full" when they already
+ * follow as many as they may, "unavailable" until its migration is in.
+ */
+export type FollowState = "following" | "not-following" | "full" | "gone" | "unavailable";
 
 export type FollowedTrip = {
   /** The link's token: the card opens the shared page, nothing else. */

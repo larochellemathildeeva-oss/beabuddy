@@ -300,14 +300,18 @@ function FollowButton({ token }: { token: string }) {
   const { user, loading } = useAuth();
   const readState = useServerFn(readFollowState);
   const change = useServerFn(changeFollow);
-  const [state, setState] = useState<FollowState | null>(null);
+  // The state belongs to the account it was read for: another account
+  // signing in never sees it, even for a moment.
+  const [read, setState] = useState<{ userId: string; state: FollowState | null } | null>(null);
+  const state = user && read?.userId === user.id ? read.state : null;
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!user) return;
+    const userId = user.id;
     let alive = true;
     readState({ data: { token } })
-      .then((next) => alive && setState(next))
-      .catch(() => alive && setState(null));
+      .then((next) => alive && setState({ userId, state: next }))
+      .catch(() => alive && setState({ userId, state: null }));
     return () => {
       alive = false;
     };
@@ -318,7 +322,10 @@ function FollowButton({ token }: { token: string }) {
     return (
       <p className="text-[13px] text-muted-foreground">
         Have Béa?{" "}
-        <Link to="/auth" className="font-semibold text-primary underline underline-offset-2">
+        <Link
+          to="/auth"
+          className="-my-3 inline-flex min-h-11 items-center font-semibold text-primary underline underline-offset-2"
+        >
           Sign in
         </Link>{" "}
         to follow this trip from your Trips.
@@ -331,10 +338,14 @@ function FollowButton({ token }: { token: string }) {
     setBusy(true);
     try {
       const next = await change({ data: { token, follow: !following } });
-      setState(next);
+      if (next !== "full") setState({ userId: user.id, state: next });
       if (next === "following")
         toast.success("Following", { description: "It's under Trips → Following." });
       else if (next === "not-following") toast("Stopped following");
+      else if (next === "full")
+        toast.error("You're following as many trips as Béa keeps", {
+          description: "Stop following one under Trips → Following, then try again.",
+        });
       else toast.error("This trip can't be followed any more.");
     } catch {
       toast.error("That didn't save. Try again.");
