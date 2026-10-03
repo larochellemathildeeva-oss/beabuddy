@@ -472,8 +472,10 @@ It is the same link, kept in their account: `trip_follows` holds one row per
 traveller and link, written only by the server after it checks the token
 (`trip-follow.server.ts`; no insert policy), and the trip is read through the
 link in its fixed view (`followedTripCard` in `trip-follow.ts`, pure and
-tested). A link turned off or expired drops out of the list and its row is
-cleared; Erase deletes the rows. The migration is applied by hand; until it
+tested). A traveller follows at most `FOLLOW_MAX` (20) trips, read a few at
+a time and limited per traveller, since each is a read of its plan. A link
+turned off or expired drops out of the list and its row is cleared (only
+after a read that worked; a failed one throws); Erase deletes the rows. The migration is applied by hand; until it
 is, the button and the tab do not show.
 
 ## Protected passcodes

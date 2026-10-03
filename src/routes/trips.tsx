@@ -103,7 +103,7 @@ function TripsPage() {
    * (trips others shared) shows once the traveller follows one.
    */
   const [view, setView] = useState<"upcoming" | "past" | "following" | "all">("upcoming");
-  const followed = useFollowedTrips(Boolean(user));
+  const followed = useFollowedTrips(user?.id ?? null);
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -218,7 +218,7 @@ function TripsPage() {
                   role="tab"
                   aria-selected={view === value}
                   onClick={() => setView(value)}
-                  className={`h-10 min-w-0 truncate rounded-full px-1 text-[14px] font-semibold transition-colors duration-(--t-tap) ${
+                  className={`min-h-11 min-w-0 truncate rounded-full px-1 text-[14px] font-semibold transition-colors duration-(--t-tap) ${
                     view === value
                       ? "bg-primary text-primary-foreground"
                       : "bg-elevated text-foreground hover:bg-accent"
@@ -906,22 +906,24 @@ function PastTile({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
 }
 
 /**
- * The trips this traveller follows, read once when Trips opens; null until
- * read, or while following is not set up (its migration), or on a failed
- * read — the tab simply does not show.
+ * The trips this traveller follows, read when Trips opens and again for
+ * another account; null until read, while following is not set up (its
+ * migration), or when the read fails — the tab simply does not show. A
+ * list belongs to the account it was read for, so another account never
+ * sees it, even for a moment.
  */
-function useFollowedTrips(signedIn: boolean): FollowedTrip[] | null {
+function useFollowedTrips(userId: string | null): FollowedTrip[] | null {
   const list = useServerFn(listFollowedTrips);
-  const [trips, setTrips] = useState<FollowedTrip[] | null>(null);
+  const [read, setRead] = useState<{ userId: string; trips: FollowedTrip[] | null } | null>(null);
   useEffect(() => {
-    if (!signedIn) return;
+    if (!userId) return;
     let alive = true;
     list()
-      .then((next) => alive && setTrips(next))
-      .catch(() => alive && setTrips(null));
+      .then((trips) => alive && setRead({ userId, trips }))
+      .catch(() => alive && setRead({ userId, trips: null }));
     return () => {
       alive = false;
     };
-  }, [signedIn, list]);
-  return signedIn ? trips : null;
+  }, [userId, list]);
+  return userId && read?.userId === userId ? read.trips : null;
 }
