@@ -94,7 +94,7 @@ const previewTheme = process.env.PREVIEW_THEME ?? "calm";
 
 const executablePath =
   process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
-const browser = await chromium.launch({ ...(executablePath ? { executablePath } : { channel: "chrome" }), args: ["--no-sandbox"] });
+const browser = await chromium.launch(executablePath ? { executablePath, args: ["--no-sandbox"] } : { channel: "chrome", chromiumSandbox: true });
 
 // A plain map tile: this checks the page, not the tile server.
 const tile = Buffer.from(
@@ -404,8 +404,8 @@ await flow("shell: phone widths and larger reading text keep labels and tap targ
   }
 }, "shell");
 
-await flow("shell: short pages do not oscillate when compression would clamp scrollTop", async (page) => {
-  for (const width of [320, 390]) for (const scale of [1, 1.35]) {
+await flow("shell: short pages stay stable and moderate overflow still compresses", async (page) => {
+  for (const width of [320, 390]) for (const scale of [1, 1.35]) for (const overflow of [50, 100]) {
     await page.setViewportSize({ width, height: 900 });
     await page.evaluate((scale) => {
       document.documentElement.style.setProperty("--text-scale", String(scale));
@@ -413,24 +413,36 @@ await flow("shell: short pages do not oscillate when compression would clamp scr
       document.querySelector("[data-preview-spacer]").style.height = "1100px";
     }, scale);
     await page.waitForTimeout(250);
-    const range = await page.evaluate(() => {
+    const range = await page.evaluate((overflow) => {
       const main = document.querySelector("main");
       const spacer = document.querySelector("[data-preview-spacer]");
       spacer.style.height = "0px";
       const style = getComputedStyle(main);
-      spacer.style.height = `${main.clientHeight + 50 - main.firstElementChild.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)}px`;
+      spacer.style.height = `${main.clientHeight + overflow - main.firstElementChild.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)}px`;
       window.__compressionChanges = [];
       window.__compressionObserver?.disconnect();
       window.__compressionObserver = new MutationObserver((mutations) => window.__compressionChanges.push(...mutations.map((m) => m.oldValue)));
       window.__compressionObserver.observe(document.querySelector("[data-compressed]") ?? document.querySelector("h1").closest(".group"), { attributes: true, attributeFilter: ["data-compressed"], attributeOldValue: true });
-      main.scrollTop = 50;
+      main.scrollTop = overflow;
       return main.scrollHeight - main.clientHeight;
-    });
-    if (Math.abs(range - 50) > 1) throw new Error(`short-page fixture has ${range}px overflow`);
+    }, overflow);
+    if (Math.abs(range - overflow) > 1) throw new Error(`scroll fixture has ${range}px overflow`);
     await page.waitForTimeout(1000);
     const changes = await page.evaluate(() => window.__compressionChanges);
-    if (changes.length || await page.locator("[data-compressed]").count()) throw new Error(`${width}px at ${scale}: short header toggled ${changes.length} times`);
+    const compressed = await page.locator("[data-compressed]").count();
+    if (overflow === 50 ? changes.length || compressed : changes.length !== 1 || compressed !== 1) throw new Error(`${width}px at ${scale}, ${overflow}px overflow: header toggled ${changes.length} times, compressed=${compressed}`);
   }
+}, "shell");
+
+await flow("shell: a null account accent resets visually without storing or uploading Pink", async (page) => {
+  await page.getByRole("radio", { name: "Periwinkle", exact: true }).click();
+  await page.waitForTimeout(900);
+  await page.goto("https://preview.test/?sample=shell&reset-accent=yes", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(1000);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await page.waitForTimeout(1000);
+  const result = await page.evaluate(() => ({ accent: document.documentElement.dataset.accent, stored: localStorage.getItem("bea-accent"), uploaded: window.__writes.some((w) => w.table === "profiles" && w.payload?.accent === "pink") }));
+  if (result.accent !== "pink" || result.stored !== null || result.uploaded) throw new Error(`account accent reset: ${JSON.stringify(result)}`);
 }, "shell");
 
 await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
@@ -459,6 +471,7 @@ await flow("shell: compressed long titles stay on one line in both header layout
 }, "shell");
 
 await flow("shell: text tokens cover hover, opacity, sequence and dark error contrast", async (page) => {
+  let previousSearchTint;
   for (const accent of ["Pink", "Periwinkle"]) {
     await page.getByRole("radio", { name: accent, exact: true }).click();
     await page.evaluate(() => {
@@ -466,12 +479,25 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       const probes = document.createElement("div");
       probes.dataset.colorProbes = "";
       probes.className = "bg-elevated";
-      for (const cls of ["text-primary", "text-primary/85", "text-foreground hover:text-primary", "text-destructive", "text-muted-foreground", "seq-text-1"]) {
+      for (const cls of ["text-primary", "text-primary/85", "text-foreground hover:text-primary", "text-destructive", "text-muted-foreground", "seq-text-1", "seq-1"]) {
         const el = document.createElement("p");
         el.className = cls;
         el.textContent = cls;
         probes.append(el);
       }
+      const map = document.createElement("div");
+      map.className = "journal-map";
+      for (const tone of ["", "journal-pin--nested", "journal-pin--food", "journal-pin--transit", "journal-pin--stay"]) for (const selected of ["", "journal-pin--on"]) {
+        const pin = document.createElement("p");
+        pin.className = `journal-pin ${tone} ${selected}`;
+        pin.textContent = "1";
+        map.append(pin);
+      }
+      probes.append(map);
+      const search = document.createElement("span");
+      search.dataset.searchTint = "";
+      search.style.backgroundColor = "var(--home-search)";
+      probes.append(search);
       document.querySelector("main").prepend(probes);
     });
     await page.locator("[data-color-probes] p").nth(2).hover();
@@ -492,14 +518,19 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       const b = lum(rgb(ground, ground));
       return [...document.querySelectorAll("[data-color-probes] p")].map((el) => {
         const color = getComputedStyle(el).color;
-        const f = lum(rgb(color, ground));
-        return { cls: el.className, ratio: (Math.max(b, f) + 0.05) / (Math.min(b, f) + 0.05), color };
+        const ownBackground = getComputedStyle(el).backgroundColor;
+        const surface = ownBackground === "rgba(0, 0, 0, 0)" ? ground : ownBackground;
+        const bg = ownBackground === "rgba(0, 0, 0, 0)" ? b : lum(rgb(surface, ground));
+        const f = lum(rgb(color, surface));
+        return { cls: el.className, ratio: (Math.max(bg, f) + 0.05) / (Math.min(bg, f) + 0.05), color };
       });
     });
-    // Colorful's sequence colors mark categories on icons; Calm/Dark use accent ink.
-    const bad = results.filter((r) => r.ratio < (previewTheme === "colorful" && r.cls === "seq-text-1" ? 3 : 4.5));
+    const bad = results.filter((r) => r.ratio < 4.5);
     if (bad.length) throw new Error(`${accent} text contrast: ${JSON.stringify(bad)}`);
     if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
+    const searchTint = await page.locator("[data-search-tint]").evaluate((el) => getComputedStyle(el).backgroundColor);
+    if (previewTheme === "colorful" && searchTint === previousSearchTint) throw new Error("the Colorful search tint did not follow the accent");
+    previousSearchTint = searchTint;
     console.log(`  ${accent} text contrast: ${results.map((r) => `${r.cls}=${r.ratio.toFixed(2)}`).join(", ")}`);
   }
 }, "shell");

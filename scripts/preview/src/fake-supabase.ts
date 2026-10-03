@@ -120,7 +120,7 @@ const homeDb: Record<string, Row[]> = {
 };
 
 export const db: Record<string, Row[]> = sample === "home" || sample === "home-trips" ? homeDb : {
-  profiles: [{ id: "me", app_settings: {} }],
+  profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [
     { id: "rec1", user_id: "me", name: "Okonomiyaki at Nagata-ya", city: "Hiroshima", country: "Japan", address: "1-7-19 Otemachi", category: "Food", notes: null, recommended_by: "Kenji", source: null, url: null, lat: 34.3948, lon: 132.4547, visited: false, pin_type: "reco", created_at: ago(9000) },

@@ -28,20 +28,32 @@ describe("nextCompressed", () => {
   });
 
   it("does not compress short pages whose scroll position would be clamped", () => {
-    for (const headerHeight of [82, 110, 280]) {
-      assert.equal(nextCompressed(48, false, { scrollRange: 50, headerHeight }), false);
+    for (const [expandedHeight, compactHeight] of [
+      [82, 50],
+      [110, 68],
+      [280, 55],
+    ] as const) {
+      const dimensions = { expandedHeight, compactHeight };
+      const difference = expandedHeight - compactHeight;
+      assert.equal(nextCompressed(48, false, { scrollRange: 50, ...dimensions }), false);
       assert.equal(
-        nextCompressed(48, false, { scrollRange: headerHeight + 47, headerHeight }),
+        nextCompressed(48, false, { scrollRange: difference + 47, ...dimensions }),
         false,
       );
       assert.equal(
-        nextCompressed(48, false, { scrollRange: headerHeight + 48, headerHeight }),
+        nextCompressed(48, false, { scrollRange: difference + 48, ...dimensions }),
         true,
       );
-      // Even if the whole header vanished, a bottom-clamped page remains stable.
-      assert.equal(nextCompressed(48, true, { scrollRange: 48, headerHeight: 0 }), true);
-      assert.equal(nextCompressed(0, true, { scrollRange: 48, headerHeight: 0 }), false);
+      assert.equal(nextCompressed(48, true, { scrollRange: 48, ...dimensions }), true);
+      assert.equal(nextCompressed(0, true, { scrollRange: 48, ...dimensions }), false);
     }
+  });
+
+  it("compresses moderate overflow when the height difference fits", () => {
+    assert.equal(
+      nextCompressed(48, false, { scrollRange: 80, expandedHeight: 82, compactHeight: 50 }),
+      true,
+    );
   });
 });
 

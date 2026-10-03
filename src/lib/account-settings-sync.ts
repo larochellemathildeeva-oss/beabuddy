@@ -75,7 +75,7 @@ function writeDevice(name: SyncedSetting, id: string, value: string | null) {
   const key = settingStorageKey(name, id);
   setStored(key, value);
   if (name === "theme") applyTheme(themeFrom(value));
-  if (name === "accent") applyAccent(isAccentName(value) ? value : DEFAULT_ACCENT);
+  if (name === "accent") applyAccent(isAccentName(value) ? value : DEFAULT_ACCENT, value !== null);
   if (name === "pictures") applyStopPictures(asStopPictures(value), document.documentElement);
   if (name === "accessibility") {
     applyAccessibility(parseAccessibility(value), document.documentElement);

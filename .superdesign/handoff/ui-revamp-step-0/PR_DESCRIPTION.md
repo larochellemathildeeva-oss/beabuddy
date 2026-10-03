@@ -8,17 +8,30 @@ The preview now stubs server-only imports, uses current Home exports and real cu
 
 Review fixes on this same step 0 branch:
 
-- Header compression checks the available scroll range against the actual expanded header height. Short pages stay expanded, so browser scroll clamping cannot toggle the header repeatedly. Long titles wrap when expanded and truncate to one line in either compact header layout, including larger Reading text.
-- Tailwind's text-color namespace supplies accent ink to `text-primary`, hover and opacity variants without overriding disabled utilities. Calm/Dark sequence glyphs use the same ink; Colorful keeps its existing category colors for these non-text icons. The real Saved Places “Added” button is checked for its disabled green state.
+- Header compression checks the available scroll range against the measured expanded-to-compact height difference. Short pages stay stable and moderately scrolling pages can still compress. Long titles wrap when expanded and truncate to one line in either compact header layout, including larger Reading text. The eyebrow now collapses by animated max-height and opacity.
+- Tailwind's text-color namespace supplies accent ink to `text-primary`, hover and opacity variants without overriding disabled utilities. The first Colorful sequence color now follows the chosen accent, as does the Home search tint. The real Saved Places “Added” button is checked for its disabled green state.
 - Dark error text uses light danger ink, independent of the accent. Danger fill remains the owner's `#C22A52`. Secondary ink is darker on light beige surfaces. Rendered accent text at 85% opacity, error text and hint text are checked against 4.5:1.
 - Version text is hidden below 390px again. Removed the five unused tab/home style aliases identified in review, retaining the used `tab-rule` utility. Accent names, labels and bootstrap validation come from one list.
 - Preview workers write into a fresh directory per gate. Missing/malformed reports, launch errors and nonzero exits produce a failed current report; previous green reports cannot be reused. Regression tests exercise these failure cases.
+
+Follow-up review fixes:
+
+1. `styles.css`: map pin numbers use primary foreground on accent fills and accent ink on tokenized white nested pins. Removed the selected-pin dimming filter, which otherwise pushed number contrast below 4.5:1; size and outline still mark selection.
+2. `PageHeader.tsx`: the eyebrow collapses with max-height and opacity, keeping its title movement animated.
+3. `styles.css`: the Colorful Home search tint, first sequence badge and first sequence glyph derive from accent tokens.
+4. `account-settings-sync.ts`, `accent.ts`, `accent.test.ts`: null account accents paint the default without recreating a stored Pink preference; unit and browser regression checks cover reset and subsequent sync.
+5. `page-header.ts`, `page-header.test.ts`: reserve only the measured expanded-to-compact height difference; moderate overflow can compress safely.
+6. `styles.css`: Colorful hairlines are slightly darker than beige surfaces.
+7. `manifest.webmanifest`: launch background and theme colors match Colorful's `#fcf9f4`.
+8. `AppShell.tsx`: measure layout only when an expanded header reaches the compression threshold.
+9. `styles.css`, `AppShell.tsx`: removed the obsolete per-tab contrast selector and unused data attribute after checking its consumers.
+10. `scripts/preview/check.mjs`: only custom container Chromium receives `--no-sandbox`; developer Chrome enables its sandbox.
 
 ## Validation
 
 - [x] `npm run typecheck`
 - [x] `npm run lint` — 0 errors; the same 15 existing warnings
-- [x] `npm test` — 1,906 tests passed
+- [x] `npm test` — 1,908 tests passed
 - [x] `npm run build`
 - [x] `npm run check:public-secrets`
 - [x] `npm run db:check:ci`
@@ -27,7 +40,7 @@ Review fixes on this same step 0 branch:
 
 Clicked the five main destinations, both back paths, brand link, Home search, guide open/close, theme and accent choices. Checked offline/online indicators, account-setting writes, remount persistence, storage-event updates, header/nav position while main scrolls, and 320/390px widths with 135% Reading text. Primary labels use black: both exact accents and their gradient endpoints meet 4.5:1, including Periwinkle’s darker map/gradient token.
 
-Additional browser regressions cover a page with only 50px of overflow at 320/390px and 100%/135% Reading size, long compact titles with actions in either header position, version visibility, computed hover/opacity text colors, Dark error contrast, and the actual Saved Places disabled “Added” state. After screenshots have been refreshed following review.
+Additional browser regressions cover 50px and 100px of overflow at 320/390px and 100%/135% Reading size, long compact titles with actions in either header position, version visibility, account accent reset, computed hover/opacity text colors, all normal/selected/nested map-pin families, Dark error contrast, and the actual Saved Places disabled “Added” state. After screenshots have been refreshed following review.
 
 Computed browser colors on elevated surfaces: Colorful hint text 4.81:1, Pink text at 85% opacity 4.96:1, Periwinkle text at 85% opacity 4.81:1; Dark error text 6.26:1. All exceed the 4.5:1 text minimum.
 

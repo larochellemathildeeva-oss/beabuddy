@@ -26,7 +26,7 @@ export function readAccent(): AccentName {
   return isAccentName(saved) ? saved : DEFAULT_ACCENT;
 }
 
-export function applyAccent(accent: AccentName): void {
+export function applyAccent(accent: AccentName, persist = true): void {
   if (typeof document !== "undefined") document.documentElement.setAttribute("data-accent", accent);
-  setStored(ACCENT_KEY, accent);
+  if (persist) setStored(ACCENT_KEY, accent);
 }

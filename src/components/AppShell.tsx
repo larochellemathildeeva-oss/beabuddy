@@ -9,7 +9,7 @@ import {
 } from "../lib/auth-redirect";
 import { useOnline } from "../hooks/useOnline";
 import { activeTabIndex, indicatorOffset } from "../lib/tab-bar";
-import { nextCompressed, tabIdForPath } from "../lib/page-header";
+import { COMPRESS_AT, measureHeaderHeights, nextCompressed } from "../lib/page-header";
 import { planeFromMatches, planeIsUndeclared, travelDirection } from "../lib/route-plane";
 import { BrandMark, PageHeader } from "./PageHeader";
 
@@ -78,10 +78,10 @@ export function AppShell({
   const canGoBack = useCanGoBack();
   const showBack = pathname !== "/";
   const tabIndex = activeTabIndex(pathname, tabs);
-  const tabId = tabIdForPath(pathname);
   const scrollRef = useRef<HTMLElement | null>(null);
   const pageHeaderRef = useRef<HTMLDivElement | null>(null);
   const [compressed, setCompressed] = useState(false);
+  const compressedRef = useRef(false);
   const plane = planeFromMatches(matches);
 
   // A tab move drifts the way you travelled along the bar; everything else
@@ -117,9 +117,19 @@ export function AppShell({
     if (!el) return;
     const onScroll = () => {
       const scrollTop = el.scrollTop;
-      const scrollRange = el.scrollHeight - el.clientHeight;
-      const headerHeight = pageHeaderRef.current?.getBoundingClientRect().height ?? 0;
-      setCompressed((cur) => nextCompressed(scrollTop, cur, { scrollRange, headerHeight }));
+      const current = compressedRef.current;
+      let dimensions;
+      if (!current && scrollTop >= COMPRESS_AT) {
+        dimensions = {
+          scrollRange: el.scrollHeight - el.clientHeight,
+          ...(pageHeaderRef.current ? measureHeaderHeights(pageHeaderRef.current) : {}),
+        };
+      }
+      const next = nextCompressed(scrollTop, current, dimensions);
+      if (next !== current) {
+        compressedRef.current = next;
+        setCompressed(next);
+      }
     };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -185,7 +195,6 @@ export function AppShell({
     <div className="h-dvh bg-background">
       {/* Every tab inherits the traveller's accent from the document. */}
       <div
-        data-tab={tabId ?? undefined}
         data-plane={plane}
         style={{ "--plane-dx": `${direction * 6}px` } as CSSProperties}
         className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"

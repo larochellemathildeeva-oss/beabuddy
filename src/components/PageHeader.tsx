@@ -88,8 +88,8 @@ export function PageHeader({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             {eyebrow && (
-              // The kicker yields its space when compressed; expanded text wraps.
-              <p className="label-caps transition-[opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:hidden">
+              // Height and opacity collapse together, so the title slides upward.
+              <p className="label-caps max-h-[4lh] overflow-hidden transition-[max-height,opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:max-h-0 group-data-[compressed]:opacity-0">
                 {eyebrow}
               </p>
             )}
