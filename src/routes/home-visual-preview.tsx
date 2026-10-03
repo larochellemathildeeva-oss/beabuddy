@@ -162,11 +162,7 @@ function HomeVisualPreview() {
               </div>
 
               <div className="mx-3 -mt-2 grid grid-cols-3 rounded-[24px] border border-border bg-card p-3 shadow-[var(--shadow-sm)]">
-                <Metric
-                  icon={<CheckCircle2 className="size-4" />}
-                  value="3"
-                  label="to-dos"
-                />
+                <Metric icon={<CheckCircle2 className="size-4" />} value="3" label="to-dos" />
                 <Metric icon={<Plane className="size-4" />} value="BA932" label="LHR → BER" />
                 <Metric icon={<Luggage className="size-4" />} value="70%" label="packed" />
               </div>
