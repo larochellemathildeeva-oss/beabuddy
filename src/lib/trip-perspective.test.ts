@@ -8,10 +8,10 @@ import {
 } from "./trip-perspective.ts";
 
 describe("TRIP_PERSPECTIVES", () => {
-  it("is the Overview, the three day views, then Bookings", () => {
+  it("has exactly the four owner-approved views", () => {
     assert.deepEqual(
       TRIP_PERSPECTIVES.map((p) => p.id),
-      ["overview", "companion", "map", "timeline", "bookings"],
+      ["overview", "companion", "map", "timeline"],
     );
   });
 
@@ -37,6 +37,7 @@ describe("defaultPerspective", () => {
 
 describe("asPerspective", () => {
   it("accepts the known ids", () => {
+    assert.equal(asPerspective("bookings"), "overview", "legacy Bookings opens Overview");
     assert.equal(asPerspective("map"), "map");
     assert.equal(asPerspective("timeline"), "timeline");
     assert.equal(asPerspective("trip"), null, "a saved Trip view opens on the default");

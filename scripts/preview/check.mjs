@@ -555,6 +555,62 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
   }
 }, "shell");
 
+await flow("trip shell: four views, device positions and sticky bars keep the main navigation clear", async (page) => {
+  await page.goto("https://preview.test/?sample=default&frame=yes&path=/trips/t1");
+  const bar = page.getByRole("tablist", { name: "How to look at this trip" });
+  await bar.waitFor();
+  if (JSON.stringify(await tabNames(page)) !== JSON.stringify(["Overview", "Companion", "Map", "Timeline"])) throw new Error("wrong trip views");
+  for (const position of ["top", "bottom", "side"]) {
+    await page.getByRole("button", { name: "Trip menu", exact: true }).click();
+    await page.getByRole("button", { name: /Customize view/ }).click();
+    await page.getByRole("group", { name: "Views bar position" }).getByRole("button", { name: new RegExp(`^${position}$`, "i") }).click();
+    await page.getByRole("button", { name: "Close the trip menu" }).click();
+    if (await page.evaluate(() => localStorage.getItem("bea-trip-tabs")) !== position) throw new Error("position did not save");
+    if ((await writes(page)).some((w) => w.payload?.patch?.tripTabs)) throw new Error("device position uploaded to account");
+    await page.reload();
+    await page.locator(`[data-trip-bar="${position}"]`).waitFor();
+    for (const name of ["Overview", "Companion", "Map", "Timeline"]) await goTab(page, name);
+    await page.locator('[data-scroll-restoration-id="app-main"]').evaluate((el) => { el.scrollTop = 700; });
+    await page.waitForTimeout(250);
+    const geometry = await page.evaluate(() => {
+      const r = document.querySelector("[data-trip-bar]").getBoundingClientRect();
+      const main = document.querySelector('[data-scroll-restoration-id="app-main"]').getBoundingClientRect();
+      const nav = document.querySelector('nav[aria-label="Main"]').getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, mainTop: main.top, navTop: nav.top, width: innerWidth };
+    });
+    if (geometry.bottom > geometry.navTop || geometry.left < 0 || geometry.right > geometry.width || geometry.top < geometry.mainTop - 1) throw new Error(`${position} bad bounds: ${JSON.stringify(geometry)}`);
+  }
+  if ((await page.getByRole("navigation", { name: "Main", exact: true }).getByRole("link").count()) !== 5) throw new Error("lost global tabs");
+});
+
+await flow("trip shell: Bookings stays inside Overview with filters and booking saves", async (page) => {
+  await goTab(page, "Overview");
+  await page.getByRole("button", { name: /^Booked ·/ }).click();
+  const bookings = page.getByRole("region", { name: "Bookings", exact: true });
+  for (const name of ["Flights", "Stays", "Transport", "Activities", "All"]) await bookings.getByRole("button", { name, exact: true }).click();
+  if (await page.getByRole("tab", { name: "Bookings", exact: true }).count()) throw new Error("Bookings is still a fifth view");
+  await page.getByRole("button", { name: "Trip menu", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Flights/ }).click();
+  if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true") throw new Error("menu booking did not open Overview");
+  if (await bookings.getByRole("button", { name: "Flights", exact: true }).getAttribute("aria-pressed") !== "true") throw new Error("lost booking kind");
+  await page.evaluate(() => localStorage.setItem("bea-trip-page-t1", JSON.stringify({ perspective: "bookings" })));
+  await page.reload();
+  await page.waitForTimeout(500);
+  if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true" || !await bookings.getByRole("button", { name: "All", exact: true }).isVisible()) throw new Error("legacy booking preference was lost");
+});
+
+await flow("trip shell: day tracker opens a stop from every day view", async (page) => {
+  for (const name of ["Companion", "Map", "Timeline"]) {
+    await goTab(page, name);
+    const day = page.getByRole("tab", { name: /Day 1/ });
+    if (await day.count()) await day.first().click();
+    const tracker = page.getByRole("region", { name: "Today's progress" });
+    await tracker.getByRole("button").first().click();
+    await page.getByRole("button", { name: "Back to now" }).waitFor();
+    await page.getByRole("button", { name: "Back to now" }).click();
+  }
+});
+
 await flow("booking: mark booked with a reference", async (page) => {
   await goTab(page, "Timeline");
   await page.getByRole("button", { name: /tap to edit$/ }).first().click();
@@ -567,7 +623,8 @@ await flow("booking: mark booked with a reference", async (page) => {
   if (!w || w.payload.booked !== true) throw new Error("no booked update with the reference was written");
   if ((await page.getByText(/✓ Booked · MBAM-4471/).count()) === 0) throw new Error("card back shows no booking");
   await page.getByRole("button", { name: /^Close / }).first().click();
-  if ((await page.locator("li").first().getByText("Booked").count()) === 0) throw new Error("card front shows no Booked mark");
+  const bookedCard = page.getByRole("button", { name: /tap to edit$/ }).first().locator("xpath=ancestor::li[1]");
+  if ((await bookedCard.getByText("Booked", { exact: true }).count()) === 0) throw new Error("card front shows no Booked mark");
 });
 
 await flow("saved places: add one to the chosen day", async (page) => {

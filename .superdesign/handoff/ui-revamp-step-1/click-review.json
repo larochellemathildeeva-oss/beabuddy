@@ -1,0 +1,277 @@
+[
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Import a plan"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Optimize my trip"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Compare options"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Edit trip"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Invite and people"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Budget"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Destinations"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Packing"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Offline maps"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "clicked": "Customize view"
+  },
+  {
+    "theme": "calm",
+    "accent": "pink",
+    "checked": "320/390px, 135% reading size, all three bar positions, accessible labels and 44px targets"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Import a plan"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Optimize my trip"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Compare options"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Edit trip"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Invite and people"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Budget"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Destinations"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Packing"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Offline maps"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "clicked": "Customize view"
+  },
+  {
+    "theme": "colorful",
+    "accent": "pink",
+    "checked": "320/390px, 135% reading size, all three bar positions, accessible labels and 44px targets"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Import a plan"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Optimize my trip"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Compare options"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Edit trip"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Invite and people"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Budget"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Destinations"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Packing"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Offline maps"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "clicked": "Customize view"
+  },
+  {
+    "theme": "colorful",
+    "accent": "periwinkle",
+    "checked": "320/390px, 135% reading size, all three bar positions, accessible labels and 44px targets"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Import a plan"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Optimize my trip"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Compare options"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Edit trip"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Invite and people"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Budget"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Destinations"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Packing"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Offline maps"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "clicked": "Customize view"
+  },
+  {
+    "theme": "dark",
+    "accent": "pink",
+    "checked": "320/390px, 135% reading size, all three bar positions, accessible labels and 44px targets"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Import a plan"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Optimize my trip"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Compare options"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Edit trip"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Invite and people"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Budget"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Destinations"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Packing"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Offline maps"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "clicked": "Customize view"
+  },
+  {
+    "theme": "dark",
+    "accent": "periwinkle",
+    "checked": "320/390px, 135% reading size, all three bar positions, accessible labels and 44px targets"
+  }
+]

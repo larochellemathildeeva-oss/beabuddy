@@ -30,7 +30,7 @@ export function DayCards({
     if (next !== undefined) onChange(next);
   };
   const arrow =
-    "grid size-10 shrink-0 place-items-center rounded-full text-foreground disabled:opacity-30";
+    "grid size-11 shrink-0 place-items-center rounded-full text-foreground disabled:opacity-30";
 
   return (
     <div className="flex items-center gap-1">
@@ -117,12 +117,12 @@ function Card({
     >
       <span className="text-[14px] font-bold">{top}</span>
       <span
-        className={`text-[12.5px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
+        className={`text-[13px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
       >
         {middle}
       </span>
       <span
-        className={`text-[12.5px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
+        className={`text-[13px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
       >
         {bottom}
         {today ? " · Today" : ""}
