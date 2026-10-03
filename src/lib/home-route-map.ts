@@ -57,9 +57,27 @@ export function stayLabel(days: number | null): string {
   return days === 1 ? "1 day" : `${days} days`;
 }
 
+/** Closer than this, two stops in a row are one place on the map. */
+export const SAME_PLACE_KM = 25;
+
+/** Great-circle distance between two positions, in kilometres. */
+export function distanceKm(
+  a: { lat: number; lon: number },
+  b: { lat: number; lon: number },
+): number {
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 /**
  * The stops the map can draw: those with a position, in order, with a city
- * visited twice in a row (a hotel and then a day out from it) counted once.
+ * visited twice in a row (a hotel and then a day out from it, or a part of
+ * town after the town) counted once.
  */
 export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
   const out: RouteStop[] = [];
@@ -73,7 +91,13 @@ export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
     if (!city) continue;
     const days = stayDays(s.arrive_on, s.depart_on);
     const last = out.at(-1);
-    if (last && last.city.toLowerCase() === city.toLowerCase()) {
+    // The same place twice in a row is one stop on the map: the same name, or
+    // a spot inside the last one ("City of London" after "London").
+    if (
+      last &&
+      (last.city.toLowerCase() === city.toLowerCase() ||
+        distanceKm(last, { lat: s.lat, lon: s.lon }) < SAME_PLACE_KM)
+    ) {
       if (days !== null) last.days = (last.days ?? 0) + days;
       continue;
     }
@@ -352,4 +376,65 @@ export function heroWhen(when: string): string {
   const w = when.trim();
   if (!w) return "";
   return `${w.charAt(0).toLowerCase()}${w.slice(1)}.`;
+}
+
+/** The terrain tiles drawn under the map: Natural Earth II, `public/relief`. */
+export const RELIEF_MIN_Z = 2;
+export const RELIEF_MAX_Z = 6;
+const RELIEF_TILE_PX = 256;
+
+export type ReliefTile = {
+  /** The file: `/relief/{z}/{x}/{y}.webp`. */
+  z: number;
+  x: number;
+  y: number;
+  /** Where it is drawn, in the map's units. */
+  left: number;
+  top: number;
+  size: number;
+};
+
+/**
+ * The Web Mercator tiles covering the frame, for a projection turned to
+ * `center` with d3's `scale` and `translate`. The zoom is the least whose
+ * pixels are as fine as the screen's (`dpr`), within what was built; the
+ * columns wrap round the 180° line.
+ */
+export function reliefTiles(view: {
+  scale: number;
+  translate: readonly [number, number];
+  center: number;
+  width: number;
+  height: number;
+  dpr?: number;
+}): ReliefTile[] {
+  const { scale, width, height } = view;
+  const [tx, ty] = view.translate;
+  if (!(scale > 0) || !(width > 0) || !(height > 0)) return [];
+  const world = 2 * Math.PI * scale;
+  const wanted = Math.ceil(Math.log2((world * (view.dpr ?? 2)) / RELIEF_TILE_PX));
+  const z = Math.min(RELIEF_MAX_Z, Math.max(RELIEF_MIN_Z, wanted));
+  const n = 2 ** z;
+  const size = world / n;
+  // Where longitude −180 and the top of the Mercator world fall.
+  const originX = tx + (scale * ((-180 - view.center) * Math.PI)) / 180;
+  const originY = ty - scale * Math.PI;
+  const tiles: ReliefTile[] = [];
+  const firstRow = Math.max(0, Math.floor(-originY / size));
+  const lastRow = Math.min(n - 1, Math.floor((height - originY) / size));
+  const firstCol = Math.floor(-originX / size);
+  const lastCol = Math.floor((width - originX) / size);
+  for (let row = firstRow; row <= lastRow; row++) {
+    for (let col = firstCol; col <= lastCol; col++) {
+      tiles.push({
+        z,
+        x: ((col % n) + n) % n,
+        y: row,
+        left: originX + col * size,
+        top: originY + row * size,
+        size,
+      });
+    }
+  }
+  return tiles;
 }

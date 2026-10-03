@@ -2,12 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   centerLon,
+  distanceKm,
   flightParts,
   heroWhen,
   mapBounds,
   pillLabel,
   pillStops,
   placePills,
+  reliefTiles,
   routeStops,
   smoothPath,
   stayDays,
@@ -220,4 +222,96 @@ test("pillLabel shows the town alone, cut at a word when too long", () => {
   assert.equal(pillLabel("Washington, D.C., United States"), "Washington, D.C.");
   assert.equal(pillLabel("Paris, Île-de-France, France"), "Paris");
   assert.equal(pillLabel("Portland, OR"), "Portland");
+});
+
+test("routeStops counts a spot inside the last town as that town", () => {
+  const stops = routeStops([
+    { city: "London", lat: 51.507, lon: -0.128, arrive_on: "2026-10-01", depart_on: "2026-10-03" },
+    {
+      city: "City of London, England, United Kingdom",
+      lat: 51.512,
+      lon: -0.091,
+      arrive_on: "2026-10-03",
+      depart_on: "2026-10-04",
+    },
+    { city: "Oxford", lat: 51.752, lon: -1.258, arrive_on: "2026-10-04", depart_on: "2026-10-05" },
+  ]);
+  assert.deepEqual(
+    stops.map((s) => [s.city, s.days]),
+    [
+      ["London", 3],
+      ["Oxford", 1],
+    ],
+  );
+});
+
+test("distanceKm measures along the globe", () => {
+  assert.ok(
+    Math.abs(distanceKm({ lat: 51.507, lon: -0.128 }, { lat: 48.857, lon: 2.352 }) - 344) < 3,
+  );
+  assert.equal(distanceKm({ lat: 10, lon: 10 }, { lat: 10, lon: 10 }), 0);
+});
+
+test("reliefTiles covers the frame with the tile under each point", async () => {
+  const { geoMercator } = await import("d3-geo");
+  const center = 5;
+  const projection = geoMercator()
+    .rotate([-center, 0])
+    .fitExtent(
+      [
+        [60, 135],
+        [330, 240],
+      ],
+      {
+        type: "MultiPoint",
+        coordinates: [
+          [-5.13, 48.86],
+          [8.4, 52.52],
+        ],
+      },
+    );
+  const tiles = reliefTiles({
+    scale: projection.scale(),
+    translate: projection.translate(),
+    center,
+    width: 390,
+    height: 300,
+    dpr: 2,
+  });
+  assert.ok(tiles.length > 0);
+  const z = tiles[0]!.z;
+  assert.ok(z >= 2 && z <= 6);
+  // London's own tile, by the usual slippy-map sums, is drawn where London is.
+  const [lx, ly] = projection([-0.128, 51.507])!;
+  const n = 2 ** z;
+  const tileX = Math.floor(((-0.128 + 180) / 360) * n);
+  const lat = (51.507 * Math.PI) / 180;
+  const tileY = Math.floor(((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * n);
+  const hit = tiles.find((t) => t.x === tileX && t.y === tileY);
+  assert.ok(hit, "London's tile is in the cover");
+  assert.ok(lx >= hit.left && lx <= hit.left + hit.size);
+  assert.ok(ly >= hit.top && ly <= hit.top + hit.size);
+  // Every corner of the frame is under some tile.
+  for (const [x, y] of [
+    [0, 0],
+    [389, 0],
+    [0, 299],
+    [389, 299],
+  ] as const) {
+    assert.ok(
+      tiles.some((t) => x >= t.left && x <= t.left + t.size && y >= t.top && y <= t.top + t.size),
+    );
+  }
+});
+
+test("reliefTiles wraps columns across the 180° line", () => {
+  const tiles = reliefTiles({
+    scale: 300,
+    translate: [195, 150],
+    center: 179,
+    width: 390,
+    height: 300,
+  });
+  assert.ok(tiles.every((t) => t.x >= 0 && t.x < 2 ** t.z));
+  assert.ok(new Set(tiles.map((t) => t.x)).has(0));
 });

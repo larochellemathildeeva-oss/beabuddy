@@ -286,6 +286,9 @@ export const OPENFREEMAP_ATTRIBUTION = "Map tiles by OpenFreeMap © OpenMapTiles
 /** Stops the map misses are found in Overture's listings (CDLA Permissive 2.0). */
 export const OVERTURE_ATTRIBUTION = "Places © Overture Maps Foundation";
 
+/** Home's terrain (public/relief): public domain, credited because it asks nicely. */
+export const NATURAL_EARTH_ATTRIBUTION = "Terrain made with Natural Earth";
+
 /**
  * OSRM's profile names are not the same on both services.
  *
