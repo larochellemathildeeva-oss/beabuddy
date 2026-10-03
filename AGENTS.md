@@ -518,6 +518,21 @@ are static files, fetched only for the countries a user has been to; which
 province a city is in is worked out in the browser from its position.
 Country names are matched in any language through `src/lib/country-names.ts`.
 
+## Gemini spend from coding sessions
+
+A coding session's Gemini key bills the same Google project as the app.
+From 2026-09-03 to 2026-10-03, about 72% of the project's 25 CAD was image
+generation (Gemini 3 Pro Image, Gemini 3.1 Flash Image) by coding sessions
+painting the illustrations in `public/places/`, `public/banners/` and
+`.superdesign/handoff/`. The app itself never generates images.
+
+- **Never generate images with Gemini** (or any paid image model) unless
+  the owner asks for that picture in that session. Reuse
+  `public/places/` and `public/banners/`.
+- Text calls to Gemini from a session (the audits, quick tests) go through
+  the scripts' spend caps (`spend-guard.mjs`) and use the app's own model
+  (`DEFAULT_GEMINI_MODEL`), not a Pro or newer model.
+
 ## Notes
 
 - Product philosophy: `docs/WHAT_BEA_BELIEVES.md`. Brand: `docs/BRANDING.md`.
