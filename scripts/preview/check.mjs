@@ -106,6 +106,11 @@ const types = { js: "text/javascript", css: "text/css", html: "text/html", png: 
 async function open(sample) {
   const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
   page.setDefaultTimeout(5000);
+  // "Show where I am" on the day map asks the phone's position. Grant it a
+  // fixed one near the trip's city (Hiroshima) so the control exercises for
+  // real — a position fix, not a browser prompt that never resolves.
+  await page.context().grantPermissions(["geolocation"]);
+  await page.context().setGeolocation({ latitude: 34.3853, longitude: 132.4553 });
   await page.addInitScript((theme) => {
     if (localStorage.getItem("bea-theme") === null) localStorage.setItem("bea-theme", theme);
     if (localStorage.getItem("bea-accent") === null) localStorage.setItem("bea-accent", "pink");
@@ -128,7 +133,10 @@ async function open(sample) {
       return route.fulfill({ status: 404 });
     }
   });
-  await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded" });
+  // A full navigation of the large preview bundle, with three themes running
+  // in parallel, can take longer than the 5s interaction default; give it room
+  // so a slow reload does not crash the worker.
+  await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1200);
   return { page, errors };
 }
@@ -254,6 +262,7 @@ for (const tab of tabs) {
       await page.waitForTimeout(400);
     }
     const before = await snapshot(page);
+    const pressedBefore = await control.getAttribute("aria-pressed").catch(() => null);
     try {
       if (info.label.startsWith("Drag to reorder ")) {
         await control.focus();
@@ -270,13 +279,16 @@ for (const tab of tabs) {
     const after = await snapshot(page);
     // A click always focuses what was clicked; that alone is not an effect.
     if (await control.evaluate((el) => el === document.activeElement).catch(() => false)) after.focus = before.focus;
+    // A toggle flipping its own aria-pressed is an effect, even when the only
+    // visible change is an icon (e.g. "Show where I am" on the day map).
+    const pressedAfter = await control.getAttribute("aria-pressed").catch(() => null);
     clicked += 1;
     if (errors.length) {
       note(`${where}: threw ${errors.join(" | ").slice(0, 200)}`);
       errors.length = 0;
     }
     const changed =
-      before.text !== after.text || before.count !== after.count || before.writes !== after.writes || before.focus !== after.focus || before.map !== after.map;
+      before.text !== after.text || before.count !== after.count || before.writes !== after.writes || before.focus !== after.focus || before.map !== after.map || (pressedBefore !== null && pressedBefore !== pressedAfter);
     if (!changed) note(`${where}: click changed nothing (dead end)`);
     let dirty = after.writes !== before.writes;
     if (after.dialogs > before.dialogs) {
@@ -501,6 +513,14 @@ await flow("shell: text tokens cover hover, opacity, sequence and dark error con
       document.querySelector("main").prepend(probes);
     });
     await page.locator("[data-color-probes] p").nth(2).hover();
+    // Wait for :hover to actually repaint the probe before reading colours —
+    // under parallel load the hover can lag the getComputedStyle read, which
+    // otherwise reports the un-hovered colour. A real token miss still fails
+    // here (the wait times out and throws), it just stops flaking.
+    await page.waitForFunction(() => {
+      const ps = document.querySelectorAll("[data-color-probes] p");
+      return ps.length > 2 && getComputedStyle(ps[0]).color === getComputedStyle(ps[2]).color;
+    });
     const results = await page.evaluate(() => {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 1;
