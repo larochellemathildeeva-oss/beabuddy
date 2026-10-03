@@ -35,36 +35,42 @@ export type WelcomeGoal = {
   /** Where the last screen sends them. */
   to: string;
   go: string;
+  /** The picture on its card, from `public/banners/`. */
+  picture: string;
 };
 
 export const WELCOME_GOALS: WelcomeGoal[] = [
   {
     id: "plan",
     title: "Plan a trip",
-    hint: "Béa drafts the days from what you love.",
+    hint: "Create a new itinerary",
     to: "/trips/plan",
     go: "Start planning",
+    picture: "/banners/oldtown.webp",
   },
   {
     id: "import",
-    title: "I already have a plan",
-    hint: "From a friend, an email, a PDF or another assistant.",
+    title: "Bring in a plan",
+    hint: "Import an existing trip",
     to: "/trips/plan",
     go: "Bring it in",
+    picture: "/banners/skyline.webp",
   },
   {
     id: "save",
-    title: "Save places for later",
-    hint: "Every tip a friend gave you, in one place.",
+    title: "Save places",
+    hint: "Start your collection",
     to: "/recommendations",
     go: "Save my first place",
+    picture: "/banners/coastal.webp",
   },
   {
     id: "map",
     title: "Map where I've been",
-    hint: "Countries, cities and photos on one globe.",
+    hint: "See your travel history",
     to: "/world",
     go: "Open my globe",
+    picture: "/banners/mountain.webp",
   },
 ];
 
