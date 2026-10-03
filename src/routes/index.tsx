@@ -14,12 +14,6 @@ import {
 import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
-import { LandingHero } from "@/components/LandingHero";
-import { HomeNameAsk } from "@/components/HomeNameAsk";
-import { HomePendingPlan } from "@/components/HomePendingPlan";
-import { LandingSampleDay } from "@/components/LandingSampleDay";
-import { LandingTryPlan } from "@/components/LandingTryPlan";
-import { shouldAskName } from "@/lib/name-ask";
 import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
 import { useNearMe } from "@/hooks/useNearMe";
 import { useTrips } from "@/hooks/useTrips";
@@ -37,7 +31,7 @@ import { useScorePrefs } from "@/hooks/useScorePrefs";
 import { rankOpportunities } from "@/lib/score-opportunity";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { demoGlobePins } from "@/lib/demo-seed";
-import { beaLine, BEA_TAGLINES } from "@/lib/bea-voice";
+import { beaLine, BEA_HELPS, BEA_POSITION, BEA_TAGLINES } from "@/lib/bea-voice";
 import { safeStorage } from "@/lib/tour-state";
 import { rememberedProfileName, rememberProfileName, shownName } from "@/lib/profile-name";
 import { isAreaPlace } from "@/lib/reco-place";
@@ -90,43 +84,42 @@ function LandingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
-    // No app bar: the first screen is the painted hero, edge to edge, and the
-    // rest of the story follows it on the same scroll.
-    <div className="h-dvh overflow-y-auto bg-background">
-      <div className="mx-auto w-full max-w-[520px] border-x border-border/70 md:max-w-[680px]">
-        <LandingHero />
-        <div className="space-y-6 px-4 pb-10 pt-8">
-          <LandingSampleDay />
-          <LandingTryPlan />
-          <ul className="grid gap-2 sm:grid-cols-3">
-            {LANDING_POINTS.map((point) => (
-              <li key={point.title} className="surface border border-border/50 p-3.5">
-                <p className="font-display text-[17px] leading-snug">{point.title}</p>
-                <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-                  {point.body}
-                </p>
-              </li>
-            ))}
-          </ul>
-          <Globe
-            pins={pins}
-            selectedId={selectedId}
-            onSelect={(pin) => setSelectedId(pin.id)}
-            scrollFriendly
-            autoSpin
-          />
-          <p className="text-[13px] text-muted-foreground">
-            The places on this globe are examples. Yours fill it in once you start saving.
-          </p>
-          <section className="surface border border-border/50 p-5 text-center">
-            <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
-            <div className="mt-4">
-              <StartFree />
-            </div>
-          </section>
-        </div>
+    <AppShell publicPage eyebrow={BEA_TAGLINES.strongest} title={BEA_POSITION}>
+      <div className="space-y-6">
+        <p className="text-[15px] leading-relaxed text-muted-foreground">
+          {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
+          puts them in a sensible order, gives directions and keeps your bookings together.
+        </p>
+        {/* The way in first, where a thumb reaches it without scrolling. */}
+        <StartFree />
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {LANDING_POINTS.map((point) => (
+            <li key={point.title} className="surface border border-border/50 p-3.5">
+              <p className="font-display text-[17px] leading-snug">{point.title}</p>
+              <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
+                {point.body}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <Globe
+          pins={pins}
+          selectedId={selectedId}
+          onSelect={(pin) => setSelectedId(pin.id)}
+          scrollFriendly
+          autoSpin
+        />
+        <p className="text-[13px] text-muted-foreground">
+          The places on this globe are examples. Yours fill it in once you start saving.
+        </p>
+        <section className="surface border border-border/50 p-5 text-center">
+          <p className="font-display text-[22px] leading-tight">{BEA_TAGLINES.recommendations}</p>
+          <div className="mt-4">
+            <StartFree />
+          </div>
+        </section>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
@@ -167,11 +160,7 @@ function StartFree() {
       </div>
       <p className="text-center text-[13px] text-muted-foreground">
         Free · No card · One tap with Google ·{" "}
-        {/* A full-size tap target, though it reads as a word in the line. */}
-        <Link
-          to="/auth"
-          className="-my-3 inline-flex min-h-11 min-w-11 items-center justify-center underline underline-offset-4"
-        >
+        <Link to="/auth" className="underline underline-offset-4">
           Sign in
         </Link>
       </p>
@@ -237,13 +226,6 @@ function SignedInHome() {
   const firstName =
     shownName({ profileName: displayName, profileLoaded, email: user?.email }).split(" ")[0] ?? "";
 
-  const askName = shouldAskName(safeStorage(), {
-    userId: user?.id,
-    email: user?.email,
-    profileName: displayName,
-    profileLoaded,
-  });
-
   const topReco = useMemo(() => {
     // A city or country added on the World tab is a place you have been, not
     // a saved spot waiting for you.
@@ -289,12 +271,6 @@ function SignedInHome() {
       actionBesideEyebrow
     >
       <div className="space-y-5">
-        {user && askName && (
-          <HomeNameAsk userId={user.id} onSaved={(name) => setDisplayName(name)} />
-        )}
-
-        <HomePendingPlan />
-
         {showTrip && (
           <div className="space-y-4">
             <HomeUpcoming trip={trip} photos={photos} />

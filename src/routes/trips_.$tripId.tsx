@@ -1,5 +1,4 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TripDetail } from "@/components/TripDetail";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
@@ -8,8 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { tripCompanionsLine } from "@/lib/trip-copy";
 import { TripDetailSkeleton } from "@/components/Skeletons";
 import { clearOfflineMap } from "@/lib/offline-map";
-import { safeStorage } from "@/lib/tour-state";
-import { clearPendingTryPlan, peekPendingTryPlan } from "@/lib/try-plan";
 import type { PrepTab } from "@/components/TripPrep";
 import type { PlannerTab } from "@/components/ItineraryImport";
 
@@ -21,8 +18,6 @@ type TripSearch = {
   plan?: PlannerTab;
   /** Words to start Build with. */
   ask?: string;
-  /** Import the trip picked on the landing page, which waits on the phone. */
-  from?: "try";
 };
 
 const PLAN_ENTRIES: readonly PlannerTab[] = ["start", "build", "import", "optimize", "compare"];
@@ -40,7 +35,6 @@ export const Route = createFileRoute("/trips_/$tripId")({
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
       : {}),
-    ...(search["from"] === "try" ? { from: "try" as const } : {}),
   }),
   head: () => ({
     meta: [
@@ -59,21 +53,12 @@ export const Route = createFileRoute("/trips_/$tripId")({
 
 function TripPage() {
   const { tripId } = Route.useParams();
-  const { prep, view, plan, ask, from } = Route.useSearch();
+  const { prep, view, plan, ask } = Route.useSearch();
   const { user } = useAuth();
   const navigate = useNavigate();
   const t = useTrips();
   const { photos } = useTripPhotos(t.uid);
   const trip = t.trips.find((row) => row.id === tripId) ?? null;
-  // The trip picked before sign-up comes from the phone's storage, not the
-  // link, so it never sits in a URL or the history. Held here once read.
-  const [tryAsk] = useState(() =>
-    from === "try" && plan === "import" && !ask ? peekPendingTryPlan(safeStorage()) : null,
-  );
-  const tripFound = Boolean(trip);
-  useEffect(() => {
-    if (tryAsk && tripFound) clearPendingTryPlan(safeStorage());
-  }, [tryAsk, tripFound]);
 
   const myName =
     (user?.user_metadata?.["display_name"] as string | undefined) ??
@@ -119,7 +104,7 @@ function TripPage() {
         trip={trip}
         openPrep={prep}
         openView={view}
-        openPlan={plan ? { tab: plan, ask: ask ?? tryAsk ?? undefined } : undefined}
+        openPlan={plan ? { tab: plan, ask } : undefined}
         photos={photos}
         members={members}
         companionsLine={tripCompanionsLine(members, t.uid)}
