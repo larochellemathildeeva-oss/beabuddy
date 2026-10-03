@@ -108,6 +108,17 @@ export function nextUp<T extends ShapedItem>(items: readonly T[], minutesNow: nu
  */
 const MARGIN_MIN = 10;
 
+/**
+ * Past this, straight line, the leg is between towns, where a fast train
+ * beats any drive: Tokyo to Nagoya is about 1 h 40 by Shinkansen and over
+ * four hours timed as a drive. So a leg this long is timed at 200 km/h along
+ * the straight line, faster than any train runs door to door, and named only
+ * when even that cannot fit: "Senso-ji 09:00, Nagoya Castle 09:30" is 269 km
+ * in half an hour.
+ */
+const TRAIN_RANGE_METRES = 50_000;
+const FASTEST_RIDE_METRES_PER_MIN = 200_000 / 60;
+
 function placedPoint(item: PacedItem): { lat: number; lon: number } | null {
   const { lat, lon } = item;
   if (typeof lat !== "number" || typeof lon !== "number") return null;
@@ -138,6 +149,7 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     stay: number;
     travel: number;
     shortBy: number;
+    km: number | null;
   } | null = null;
 
   for (let i = 0; i < items.length - 1; i += 1) {
@@ -160,25 +172,46 @@ export function dayTightnessNote(items: readonly PacedItem[]): string | null {
     // Walk what is close, drive the rest: a walking estimate for two stations
     // 40 km apart would read as eleven hours.
     const metres = haversine(a, b);
-    const travel = Math.ceil(estimatedLegSeconds(metres, legModeFor("auto", metres)) / 60);
+    const mode = legModeFor("auto", metres);
+    // A journey row's time is when it leaves and its pin may be either end,
+    // so the gap after it says nothing about the ride itself.
+    if (mode !== "walking" && (isJourney(from) || isJourney(to))) continue;
+    const long = metres > TRAIN_RANGE_METRES;
+    const travel = long
+      ? Math.ceil(metres / FASTEST_RIDE_METRES_PER_MIN)
+      : Math.ceil(estimatedLegSeconds(metres, mode) / 60);
     const stay = Math.max(0, from.planned_stay_minutes ?? 0);
     const shortBy = stay + travel - gap;
-    if (shortBy < MARGIN_MIN) continue;
+    // The long-leg time is already a bound nothing beats, so any shortfall is
+    // impossible; the margin is for estimates that are only a fair guess.
+    if (shortBy < (long ? 1 : MARGIN_MIN)) continue;
 
     const fromTitle = (from.title ?? "").trim();
     const toTitle = (to.title ?? "").trim();
     if (!fromTitle || !toTitle) continue;
 
     if (!worst || shortBy > worst.shortBy) {
-      worst = { title: fromTitle, nextTitle: toTitle, gap, stay, travel, shortBy };
+      const km = long ? Math.round(metres / 1000) : null;
+      worst = { title: fromTitle, nextTitle: toTitle, gap, stay, travel, shortBy, km };
     }
   }
 
   if (!worst) return null;
+  if (worst.km !== null) {
+    const ride = `even at 200 km/h in a straight line that is about ${worst.travel}`;
+    if (worst.stay > 0) {
+      return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, but ${worst.title} is planned for ${worst.stay} min and ${worst.nextTitle} is about ${worst.km} km away: ${ride}.`;
+    }
+    return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, about ${worst.km} km apart: ${ride}.`;
+  }
   if (worst.stay > 0) {
     return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, but ${worst.title} is planned for ${worst.stay} min and travel is about ${worst.travel}.`;
   }
   return `${worst.gap} min between ${worst.title} and ${worst.nextTitle}, and travel alone is about ${worst.travel}.`;
+}
+
+function isJourney(item: PacedItem): boolean {
+  return timelineGlyph(item) === "transport";
 }
 
 /** "in 30 min", "in 2 h 10", or null when it is not worth saying. */
