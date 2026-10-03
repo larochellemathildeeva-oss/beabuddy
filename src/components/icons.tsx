@@ -88,6 +88,7 @@ import {
   PersonArmsSpread as PhPersonArmsSpread,
   Phone as PhPhone,
   Pill as PhPill,
+  Play as PhPlay,
   PlayCircle as PhPlayCircle,
   Plug as PhPlug,
   Plus as PhPlus,
@@ -247,6 +248,7 @@ export const Phone = icon(PhPhone, "Phone");
 export const Pill = icon(PhPill, "Pill");
 export const Plane = icon(PhAirplaneTilt, "Plane");
 export const PlaneTakeoff = icon(PhAirplaneTakeoff, "PlaneTakeoff");
+export const Play = icon(PhPlay, "Play");
 export const PlayCircle = icon(PhPlayCircle, "PlayCircle");
 export const Plug = icon(PhPlug, "Plug");
 export const Plus = icon(PhPlus, "Plus");

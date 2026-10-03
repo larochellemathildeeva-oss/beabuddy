@@ -50,6 +50,8 @@ type TripsSearch = {
   /** Where the new trip's planner opens once it exists. */
   plan?: PlannerTab;
   ask?: string;
+  /** Came from the landing page's "Try it": the plan waits on the phone (`try-plan.ts`). */
+  from?: "try";
 };
 
 const PLAN_AFTER_CREATE: readonly PlannerTab[] = ["build", "import"];
@@ -64,6 +66,7 @@ export const Route = createFileRoute("/trips")({
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
       : {}),
+    ...(search["from"] === "try" ? { from: "try" as const } : {}),
   }),
   head: () => ({
     meta: [
@@ -534,7 +537,11 @@ function TripsPage() {
                         // Started from Plan with Béa: its planner opens on
                         // the new trip, with anything already typed.
                         search: search.plan
-                          ? { plan: search.plan, ...(search.ask ? { ask: search.ask } : {}) }
+                          ? {
+                              plan: search.plan,
+                              ...(search.ask ? { ask: search.ask } : {}),
+                              ...(search.from ? { from: search.from } : {}),
+                            }
                           : {},
                         viewTransition: true,
                       });
