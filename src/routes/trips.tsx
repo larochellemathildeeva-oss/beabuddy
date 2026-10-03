@@ -621,7 +621,7 @@ function TripsPage() {
                   ) : null}
                   {lists.drafts.length > 0 ? (
                     <section className="rise">
-                      <ListHead title="No dates yet" />
+                      <ListHead title="Dates to set" />
                       <div className="space-y-3">
                         {lists.drafts.map((trip) => (
                           <TripCard

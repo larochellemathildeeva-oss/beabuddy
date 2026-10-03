@@ -253,9 +253,9 @@ export function splitTrips<T extends DatedTrip>(
 
 /**
  * The Trips lists. Upcoming is everything dated and not over (under way
- * included), soonest first; drafts are trips with no dates yet, shown under
- * Upcoming as "No dates yet"; Past is every ended trip, most recent first;
- * All is the three together.
+ * included), soonest first; drafts are trips with no start date yet (no
+ * dates at all, or only an end), shown under Upcoming as "Dates to set";
+ * Past is every ended trip, most recent first; All is the three together.
  */
 export function tripTabs<T extends DatedTrip>(
   trips: readonly T[],

@@ -259,3 +259,22 @@ test("Trips tabs: upcoming soonest first, undated drafts, past, and all", () => 
     ["a", "b", "draft", "old"],
   );
 });
+
+test("a trip with only an end date waits under Dates to set, not Upcoming", () => {
+  const tabs = tripTabs(
+    [
+      { id: "end-only", start_date: null, end_date: "2026-10-20" },
+      { id: "none", start_date: null, end_date: null },
+      { id: "dated", start_date: "2026-10-01", end_date: "2026-10-07" },
+    ],
+    "2026-09-27",
+  );
+  assert.deepEqual(
+    tabs.drafts.map((t) => t.id),
+    ["end-only", "none"],
+  );
+  assert.deepEqual(
+    tabs.upcoming.map((t) => t.id),
+    ["dated"],
+  );
+});
