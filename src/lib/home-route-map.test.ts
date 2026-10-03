@@ -5,6 +5,7 @@ import {
   flightParts,
   heroWhen,
   mapBounds,
+  pillLabel,
   pillStops,
   placePills,
   routeStops,
@@ -206,3 +207,17 @@ function clearOf(dots: { x: number; y: number }[], pills: { x: number; y: number
 function stop(over: { days: number | null }) {
   return { city: "X", country: null, lat: 0, lon: 0, ...over };
 }
+
+test("pillLabel shows the town alone, cut at a word when too long", () => {
+  assert.equal(pillLabel("City of London, England, United Kingdom"), "City of London");
+  assert.equal(pillLabel("Rio de Janeiro"), "Rio de Janeiro");
+  assert.equal(pillLabel("Llanfairpwllgwyngyll"), "Llanfairpwllgwy…");
+  assert.equal(pillLabel("Saint-Martin-de-Belleville Les Menuires"), "Saint-Martin-de…");
+  assert.equal(pillLabel("Santa Cruz de la Sierra"), "Santa Cruz de…");
+  assert.equal(pillLabel(", Paris"), "Paris");
+  // A comma inside the town's own name is kept.
+  assert.equal(pillLabel("Washington, D.C."), "Washington, D.C.");
+  assert.equal(pillLabel("Washington, D.C., United States"), "Washington, D.C.");
+  assert.equal(pillLabel("Paris, Île-de-France, France"), "Paris");
+  assert.equal(pillLabel("Portland, OR"), "Portland");
+});

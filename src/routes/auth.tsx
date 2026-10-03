@@ -20,6 +20,9 @@ import { rememberReturnPath, safeRedirectPath } from "@/lib/auth-redirect";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { safeStorage } from "@/lib/tour-state";
 
+/** The longest name kept on a new account. */
+const NAME_MAX = 80;
+
 export const Route = createFileRoute("/auth")({
   staticData: { plane: "detail" },
   // Where to go once signed in: the page that sent the traveller here.
@@ -101,12 +104,15 @@ function AuthPage() {
           throw new Error("Please accept the terms and disclaimer to create your account.");
         }
         await assertNewPasswordAllowed(password);
+        // A blank name is left out, so the account falls back to the email's
+        // name rather than saving an empty one.
+        const displayName = name.trim().slice(0, NAME_MAX);
         const { data, error: err } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { display_name: name },
+            data: displayName ? { display_name: displayName } : {},
           },
         });
         if (err) throw err;
@@ -192,6 +198,8 @@ function AuthPage() {
             src="/bea/bea-think-static.png"
             alt=""
             aria-hidden
+            width={256}
+            height={256}
             className="art-dim -mr-3 w-[48%] max-w-[230px] shrink-0 scale-125 object-contain"
           />
         </div>
@@ -239,6 +247,7 @@ function AuthPage() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
                 aria-label="Your name"
+                maxLength={NAME_MAX}
                 autoComplete="name"
                 className="min-w-0 flex-1 bg-transparent text-[16px] outline-none"
               />

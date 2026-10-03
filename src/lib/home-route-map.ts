@@ -169,6 +169,32 @@ export function smoothPath(points: readonly Point[], tension = 0.5): string {
   return d;
 }
 
+/** The most letters a pill's name shows before it is cut. */
+export const PILL_LABEL_MAX = 16;
+
+/**
+ * The name on a stop's pill: the town alone, not the address the search gave
+ * ("City of London, England, United Kingdom" → "City of London"; "Washington,
+ * D.C." stays whole), cut at a word with "…" when even that is too long for
+ * the pill.
+ */
+export function pillLabel(city: string, max = PILL_LABEL_MAX): string {
+  const parts = city
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  // A dotted abbreviation after the comma is part of the name ("Washington,
+  // D.C."), not the start of an address.
+  const town =
+    parts.length > 1 && /^(?:\p{Lu}\.){1,3}$/u.test(parts[1]!)
+      ? `${parts[0]}, ${parts[1]}`
+      : (parts[0] ?? "");
+  if (town.length <= max) return town;
+  const cut = town.slice(0, max - 1);
+  const atWord = cut.lastIndexOf(" ");
+  return `${(atWord >= max / 2 ? cut.slice(0, atWord) : cut).trimEnd()}…`;
+}
+
 /**
  * Which stops get a pill: all of them up to four; past that the first, the
  * last and the two longest stays, so a long trip stays readable.
