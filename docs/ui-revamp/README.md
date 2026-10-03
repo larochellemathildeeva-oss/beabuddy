@@ -36,7 +36,7 @@ Behaviour: the repository decides what each page does (`AGENTS.md`, the checklis
 
 | Topic | Mockup | `VISUAL_NORTH_STAR.md` | What to do |
 | --- | --- | --- | --- |
-| Accent colour | Pink `#F6466E` for primary buttons, active tabs, live states | Periwinkle `#6675FF` is the interaction accent; pink is one pastel among peers | **Ask the owner.** Until answered, use the north star. Every pink in the mockup is a token (`--accent`), so this is one switch. |
+| Accent colour | Periwinkle `#6675FF` (soft `#ECEEFF` for selected states) | Same | **Owner decided (2026-10-03): periwinkle for Colorful.** The mockup now uses it. Blush stays one pastel among peers. |
 | Fonts | Newsreader + Inter (stand-ins used in the mockup) | Instrument Serif + Manrope | Use the app's fonts (north star). Keep the mockup's sizes and weights as a guide. |
 | Mascot | Dog head beside the "Béa." wordmark in every header; a generated "sitting dog with lemon bandana" on empty states and the landing page | "No mascot or decorative character should be invented. Use only approved Béa artwork" | The dog head is the existing logo (`src/assets/bea-logo.png`) and the owner asked for it in every header: keep it. Do **not** ship the generated sitting dog or the generated landing illustrations; use approved artwork or ask. |
 | Pictures | Generated terrain, city maps, stop photos, faces | "Real content first … do not fabricate" | Use the app's real sources: your own photos, `banner-art.ts` scenes, Place Details / Wikimedia / Pexels photos (`stop-pictures.ts`, `PlacePicture.tsx`), the day map. New terrain art for Home/Trips needs owner-approved artwork. |
@@ -56,16 +56,40 @@ Behaviour: the repository decides what each page does (`AGENTS.md`, the checklis
 - Overview shows **trip progress by days and cities**; the day views show **progress by stops**, as named dots.
 - Companion contains, in this order: compact itinerary ribbon (no part-of-day filters), current stop with Béa's one-line leave-by and the Leaving / I'm here button, next stop, a short summary of the rest of the day (Later today), Make the day easier.
 - Béa says the leave time once (not twice).
+- **Colorful accent is periwinkle `#6675FF`** (soft `#ECEEFF` for selected tabs, chips and bubbles). Owner, 2026-10-03.
+- **Calm's base colour is white:** app ground `#FFFFFF` in Calm (cards separate by hairline and shadow, not by a tinted ground). Owner, 2026-10-03.
+- **Text sizes follow the mobile typography rules below** (owner, 2026-10-03).
 
 ## Design tokens (from the mockup; map them to the app's Colorful theme)
 
-- Ground `#FCF9F4`; cards `#FFFFFF` with `0 1px 10px rgba(80,60,40,.07)` and a 1px `rgba(255,255,255,.7)` edge; radius 16 (cards), 12–13 (small cards), 999 (pills).
+- Ground `#FCF9F4` in Colorful, `#FFFFFF` in Calm; cards `#FFFFFF` with `0 1px 10px rgba(80,60,40,.07)` and a 1px `rgba(255,255,255,.7)` edge; radius 16 (cards), 12–13 (small cards), 999 (pills).
 - Ink `#111`; secondary text `#77736F`; hairlines `#F2EDE6`.
 - Pastels: blush `#FDE3EA`, powder `#E9F1FC`, mint `#E3F3EF`, butter `#FEF3D5`, lavender `#F1ECFB` (use the north star's exact values).
 - Page header pattern (Home, World, Trips, Recs, You, trip subpages): logo row (dog + "Béa." + coral dot) at top-left, 1–3 round white 30 px buttons top-right; a spaced-out uppercase kicker (7 px, letter-spacing 2px); a large serif title ending with a full stop ("Your world.", "Places worth remembering.").
 - Trip banner pattern: full-bleed terrain or photo, haze at the top for the title, a white glowing route with labelled stops, current stop ringed, then a panel rising over it (radius 24 top corners).
 - Floating bottom bar: white, 88% opacity with blur, radius 24, active tab in a soft accent bubble with icon + label.
 - Text sizes in the mockup are for a 288 px frame. Scale up; keep the app's minimum 44 px touch targets and the reading-settings text scale (`text-scale-css.ts`).
+
+## Type scale (owner decision, 2026-10-03)
+
+Source: ["Guide for designing better mobile apps typography"](https://uxdesign.cc/guide-for-designing-better-mobile-apps-typography-5796495ef86f), which follows Apple (body at least 17pt), Material (body at least 16sp) and WCAG (18pt regular / 14pt bold counts as large text). Smaller text is only for captions the screen still makes sense without.
+
+Sizes in CSS px at a 390 px wide phone (1 CSS px = 1 pt on iOS):
+
+| Role | Size | Use |
+| --- | --- | --- |
+| Display title | 34–40, serif | Page titles ("Your world.", "Day 3 in Berlin.") |
+| Section heading | 20–22, serif | "Later today", "Your days" |
+| Card title | 17–18 | Stop and trip names |
+| **Body** | **16 minimum**, 17 preferred | Descriptions, notes, form fields, button labels |
+| Secondary / meta | 14 | Times, distances, dates under a title |
+| Caption | 13 minimum | Kickers, badges, tab labels, map labels. Never the only place important information appears. |
+
+- Nothing below 13. If something does not fit at these sizes, change the layout (wrap, stack, shorten the words), never shrink the text.
+- Line height 1.4–1.5 for body text, about 1.1 for display titles. Body lines at most about 60–70 characters.
+- Keep the app's Reading settings: every size is still written in px so `text-scale-css.ts` scales it.
+
+The mockup was rescaled to these sizes (its 288 px frame is 390 / 1.354, so 16 there is about 11.8 px). Where a card's fixed height no longer fitted, the layout was changed, not the text.
 
 ## Screen-by-screen mapping
 
