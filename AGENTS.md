@@ -437,6 +437,15 @@ and tested (`home-route-map.ts`). Its colours are per mood (`--home-*`,
 `--map-*`, `--route-*`, `--pill-*` at the end of `styles.css`). No picture is
 generated for it.
 
+A city typed rather than picked from the search has no position, so it is
+looked up by its name and country (`city-position.ts`, pure and tested;
+`city-locate.ts` asks `searchPlaces` with `areas: true`, one at a time, and
+keeps the answers on the phone). It happens when a trip is made or a city
+added (`createTrip`, `addStops`), and on Home for an older trip, the first time
+it shows (`useCityPositions`). The position is saved only on a stop that is
+the city itself and still has none: never on a hotel or address, never over a
+pin someone picked. A one-city trip's own city is looked up the same way.
+
 ## Follow along (Now)
 
 "Follow along" on the Now view (`FollowAlong.tsx`; `live-companion.ts`, pure

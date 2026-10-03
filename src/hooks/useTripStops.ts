@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { missingTripCity } from "@/lib/trip-cities";
+import { pinCityStops } from "@/lib/city-locate";
 import { lastLoaded, rememberLoaded, screenGeneration } from "@/lib/screen-cache";
 
 export type StopRow = {
@@ -114,24 +115,29 @@ export function useTripStops(tripId: string | null, uid: string | null, home?: T
       // shorter than its highest position, so two removes and two undos gave
       // two rows the same position and left moveStop unable to separate them.
       const next = stops.reduce((max, stop) => Math.max(max, stop.position + 1), 0);
-      const { error } = await supabase.from("trip_stops").insert(
-        rows.map((s, i) => ({
-          trip_id: tripId,
-          kind: s.kind ?? "destination",
-          city: s.city,
-          country: s.country || null,
-          place_name: s.place_name || null,
-          address: s.address || null,
-          lat: s.lat ?? null,
-          lon: s.lon ?? null,
-          arrive_on: s.arrive_on || null,
-          depart_on: s.depart_on || null,
-          notes: s.notes || null,
-          position: next + i,
-          created_by: authorId,
-        })),
-      );
+      const { data: saved, error } = await supabase
+        .from("trip_stops")
+        .insert(
+          rows.map((s, i) => ({
+            trip_id: tripId,
+            kind: s.kind ?? "destination",
+            city: s.city,
+            country: s.country || null,
+            place_name: s.place_name || null,
+            address: s.address || null,
+            lat: s.lat ?? null,
+            lon: s.lon ?? null,
+            arrive_on: s.arrive_on || null,
+            depart_on: s.depart_on || null,
+            notes: s.notes || null,
+            position: next + i,
+            created_by: authorId,
+          })),
+        )
+        .select("id, city, country, place_name, address, lat, lon");
       if (error) throw error;
+      // A city typed rather than picked is found by its name, in the background.
+      if (saved?.length) void pinCityStops(saved);
       await load();
     },
     [tripId, uid, stops, load, home],
@@ -151,17 +157,21 @@ export function useTripStops(tripId: string | null, uid: string | null, home?: T
     const { data: auth } = await supabase.auth.getUser();
     const authorId = auth.user?.id ?? uid;
     if (!authorId) throw new Error("Sign in first");
-    const { error } = await supabase.from("trip_stops").insert({
-      trip_id: tripId,
-      kind: "destination",
-      city: missingHome.city,
-      country: missingHome.country || null,
-      arrive_on: missingHome.arrive_on || null,
-      depart_on: missingHome.depart_on || null,
-      position: stops.reduce((min, stop) => Math.min(min, stop.position), 0) - 1,
-      created_by: authorId,
-    });
+    const { data: saved, error } = await supabase
+      .from("trip_stops")
+      .insert({
+        trip_id: tripId,
+        kind: "destination",
+        city: missingHome.city,
+        country: missingHome.country || null,
+        arrive_on: missingHome.arrive_on || null,
+        depart_on: missingHome.depart_on || null,
+        position: stops.reduce((min, stop) => Math.min(min, stop.position), 0) - 1,
+        created_by: authorId,
+      })
+      .select("id, city, country, lat, lon");
     if (error) throw error;
+    if (saved?.length) void pinCityStops(saved);
     await load();
   }, [tripId, uid, missingHome, stops, load]);
 

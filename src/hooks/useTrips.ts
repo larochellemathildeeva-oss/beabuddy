@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { pinCityStops } from "@/lib/city-locate";
 import type { Json } from "@/integrations/supabase/types";
 import { chronologicalPositions, chronologicalSlot, insertAfter } from "@/lib/timeline-order";
 import { clockMinutes } from "@/lib/companion";
@@ -407,20 +408,26 @@ export function useTrips() {
       };
       const created = await insertTrip(row);
       if (t.stops?.length) {
-        const { error } = await supabase.from("trip_stops").insert(
-          t.stops.map((stop, position) => ({
-            trip_id: created.id,
-            kind: stop.kind ?? "destination",
-            city: stop.city,
-            country: stop.country || null,
-            lat: stop.lat ?? null,
-            lon: stop.lon ?? null,
-            arrive_on: stop.arrive_on || null,
-            depart_on: stop.depart_on || null,
-            position,
-            created_by: ownerId,
-          })),
-        );
+        const { data: saved, error } = await supabase
+          .from("trip_stops")
+          .insert(
+            t.stops.map((stop, position) => ({
+              trip_id: created.id,
+              kind: stop.kind ?? "destination",
+              city: stop.city,
+              country: stop.country || null,
+              lat: stop.lat ?? null,
+              lon: stop.lon ?? null,
+              arrive_on: stop.arrive_on || null,
+              depart_on: stop.depart_on || null,
+              position,
+              created_by: ownerId,
+            })),
+          )
+          .select("id, city, country, lat, lon");
+        // A city typed rather than picked is found on the map by its name,
+        // in the background: the trip opens without waiting for it.
+        if (saved?.length) void pinCityStops(saved);
         // The trip is made either way, so open it and say what is missing
         // rather than report the whole trip as failed.
         if (error)

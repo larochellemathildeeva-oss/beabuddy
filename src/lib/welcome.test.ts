@@ -1,6 +1,5 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { existsSync } from "node:fs";
 import { markWelcomeDone, shouldShowWelcome, WELCOME_GOALS, WELCOME_WINDOW_MS } from "./welcome.ts";
 import { WALKS } from "./tour.ts";
 
@@ -46,6 +45,5 @@ test("every goal leads to a walk that exists, planning first", () => {
   for (const goal of WELCOME_GOALS) {
     assert.ok(walks.has(goal.id), goal.id);
     assert.ok(goal.to.startsWith("/") && goal.go.trim(), goal.id);
-    assert.ok(existsSync(`public${goal.picture}`), goal.picture);
   }
 });
