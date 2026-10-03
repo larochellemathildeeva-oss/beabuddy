@@ -87,3 +87,47 @@ test("an answer short of a leg is not merged", () => {
   const { keep, ask } = directionsToAsk([hotel, cafe, market], [], "auto");
   assert.equal(mergeLegs(keep, ask, [walk(hotel, cafe)]), null);
 });
+
+test("a pin cleared since the journey is a new journey", () => {
+  const cleared: DirectionStop = { id: "m", title: "Market" };
+  assert.equal(legStillHolds(walk(hotel, market), hotel, cleared, "auto"), false);
+});
+
+test("a timeline journey's start is checked against the journey before it", () => {
+  const fromRow = { ...walk(market, temple) };
+  delete fromRow.fromLat;
+  delete fromRow.fromLon;
+  const known = [
+    { leg: walk(hotel, market), onTimeline: true },
+    { leg: fromRow, onTimeline: true },
+  ];
+  assert.deepEqual(directionsToAsk([hotel, market, temple, cafe], known, "auto").ask, [2]);
+  // Market moved since: both journeys that touch it are asked again.
+  const moved = { ...market, lat: 35.02 };
+  assert.deepEqual(directionsToAsk([hotel, moved, temple, cafe], known, "auto").ask, [0, 1, 2]);
+});
+
+test("a timed train is kept only when transit is Béa's or the traveller's choice", () => {
+  const kyoto: DirectionStop = {
+    id: "k",
+    title: "Kyoto Station",
+    kind: "Transport",
+    day_date: "2026-11-02",
+    time_label: "09:00",
+    lat: 34.985,
+    lon: 135.758,
+  };
+  const osaka: DirectionStop = {
+    id: "o",
+    title: "Osaka Station",
+    kind: "Transport",
+    day_date: "2026-11-02",
+    time_label: "09:30",
+    lat: 34.702,
+    lon: 135.495,
+  };
+  const ride = { ...walk(kyoto, osaka), mode: "transit" as const, estimated: true };
+  assert.equal(legStillHolds(ride, kyoto, osaka, "auto"), true);
+  assert.equal(legStillHolds(ride, kyoto, osaka, "drive"), false);
+  assert.equal(legStillHolds(ride, kyoto, osaka, "walk"), false);
+});
