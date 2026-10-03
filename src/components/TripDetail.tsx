@@ -113,6 +113,7 @@ import { pinCheckFor, pinsToCheck } from "@/lib/pin-check";
 import { groupByArea } from "@/lib/neighbourhood";
 import { autoPinTrusted } from "@/lib/match-confidence";
 import {
+  directionDetail,
   directionKey,
   legsToTimelineItems,
   savedLegStillFits,
@@ -898,7 +899,9 @@ export function TripDetail({
       savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
       savedTravel.get(directionKey(from.day_date, to.title, from.title));
     const leg = live ?? row;
-    return leg ? { leg, onTimeline: Boolean(row) } : undefined;
+    // On the timeline only when the row says what this journey says.
+    const onTimeline = Boolean(row && (!live || directionDetail(live) === directionDetail(row)));
+    return leg ? { leg, onTimeline } : undefined;
   });
   /** Journeys already worked out between neighbours, for checking a change. */
   const knownLegs: TravelLeg[] = directionStops.flatMap((stop, i) => {

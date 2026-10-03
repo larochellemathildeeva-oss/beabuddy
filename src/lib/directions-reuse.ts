@@ -36,14 +36,40 @@ export function legStillHolds(
   }
   // "Exact spot unknown" is out of date once both stops are on the map.
   if (!savedLegStillFits(leg, from, to)) return false;
-  const moved = (lat: number | undefined, lon: number | undefined, stop: DirectionStop) =>
-    lat != null && lon != null && hasCoords(stop) && haversine({ lat, lon }, stop) > MOVED_M;
-  if (moved(leg.fromLat, leg.fromLon, from) || moved(leg.toLat, leg.toLon, to)) return false;
+  // Each end where the journey had it: a pin moved or cleared since, or one
+  // the journey cannot vouch for, is a new journey.
+  const sameEnd = (lat: number | undefined, lon: number | undefined, stop: DirectionStop) =>
+    lat == null || lon == null
+      ? !hasCoords(stop)
+      : hasCoords(stop) && haversine({ lat, lon }, stop) <= MOVED_M;
+  if (!sameEnd(leg.fromLat, leg.fromLon, from) || !sameEnd(leg.toLat, leg.toLon, to)) return false;
   if (leg.sameSpot || leg.unknownSpot || leg.farApartKm != null) return true;
-  if (!hasCoords(from) || !hasCoords(to)) return true;
+  if (!hasCoords(from) || !hasCoords(to)) return false;
   // Asked by another way of getting around than the one chosen now.
-  if (leg.mode === legModeFor(travel, haversine(from, to))) return true;
-  return leg.mode === "transit" && plannedRideSeconds(from, to) != null;
+  const straight = haversine(from, to);
+  const expected = legModeFor(travel, straight);
+  if (leg.mode === expected) return true;
+  // A timed ride between stations, which Béa takes only when transit is
+  // chosen or the choice is left to her (as buildRoutes does).
+  const rideAllowed = travel === "auto" || travel === "transit" || expected === "transit";
+  return leg.mode === "transit" && rideAllowed && plannedRideSeconds(from, to) != null;
+}
+
+/**
+ * A journey saved on the timeline keeps only where it arrives. Where it left
+ * from is where the journey before it arrived, when that one led to this stop.
+ */
+function withStart(
+  known: KnownLeg | undefined,
+  before: KnownLeg | undefined,
+  from: DirectionStop,
+): KnownLeg | undefined {
+  if (!known || known.leg.fromLat != null) return known;
+  const prev = before?.leg;
+  if (!prev || prev.toLat == null || prev.toLon == null || !sameName(prev.to, from.title)) {
+    return known;
+  }
+  return { ...known, leg: { ...known.leg, fromLat: prev.toLat, fromLon: prev.toLon } };
 }
 
 /**
@@ -60,7 +86,7 @@ export function directionsToAsk(
   const keep: (KnownLeg | undefined)[] = [];
   const ask: number[] = [];
   for (let i = 0; i < count; i++) {
-    const k = known[i];
+    const k = withStart(known[i], known[i - 1], stops[i]!);
     if (k && legStillHolds(k.leg, stops[i]!, stops[i + 1]!, travel)) keep.push(k);
     else {
       keep.push(undefined);

@@ -202,6 +202,7 @@ export function legFromDirectionRow(row: {
   };
   if (/^same place/i.test(summary)) leg.sameSpot = true;
   if (/exact spot unknown/i.test(summary)) leg.unknownSpot = true;
+  if (/^open in maps for this stretch/i.test(summary)) leg.capped = true;
   if (row.lat != null && row.lon != null) {
     leg.toLat = row.lat;
     leg.toLon = row.lon;

@@ -5,7 +5,7 @@ import { Sheet } from "@/components/Sheet";
 import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
 import { legsToTimelineItems, placedFromLegs, type DirectionStop } from "@/lib/timeline-directions";
 import { directionsToAsk, mergeLegs, type KnownLeg } from "@/lib/directions-reuse";
-import { hasCoords } from "@/lib/direction-stops";
+import { hasCoords, mapsDirUrl } from "@/lib/direction-stops";
 import { savedAgoLabel, savedIsStale } from "@/lib/offline-directions";
 import {
   TRAVEL_CHOICES,
@@ -153,8 +153,14 @@ export function ItineraryDirections({
       const answer = (await run({
         data: { stops, ...(area ? { area } : {}), travel, ...(partial ? { legs: ask } : {}) },
       })) as { legs: RouteLeg[]; at?: number[]; unresolved: string[]; deferred?: string[] };
-      const legs = partial ? mergeLegs(keep, answer.at ?? ask, answer.legs) : answer.legs;
-      if (!legs) throw new Error("Couldn't work out the directions.");
+      const merged = partial ? mergeLegs(keep, answer.at ?? ask, answer.legs) : answer.legs;
+      if (!merged) throw new Error("Couldn't work out the directions.");
+      // A journey read back from the timeline has no Maps link of its own.
+      const legs = merged.map((leg, i) =>
+        leg.mapUrl
+          ? leg
+          : { ...leg, mapUrl: mapsDirUrl(stops[i]!, stops[i + 1]!, area ?? "", leg.mode) },
+      );
       // Stops a kept journey still couldn't place are still worth naming.
       const stillMissing = keep.flatMap((k, i) =>
         k?.leg.unknownSpot
