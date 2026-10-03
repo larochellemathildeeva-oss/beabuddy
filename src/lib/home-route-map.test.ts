@@ -215,4 +215,9 @@ test("pillLabel shows the town alone, cut at a word when too long", () => {
   assert.equal(pillLabel("Saint-Martin-de-Belleville Les Menuires"), "Saint-Martin-de…");
   assert.equal(pillLabel("Santa Cruz de la Sierra"), "Santa Cruz de…");
   assert.equal(pillLabel(", Paris"), "Paris");
+  // A comma inside the town's own name is kept.
+  assert.equal(pillLabel("Washington, D.C."), "Washington, D.C.");
+  assert.equal(pillLabel("Washington, D.C., United States"), "Washington, D.C.");
+  assert.equal(pillLabel("Paris, Île-de-France, France"), "Paris");
+  assert.equal(pillLabel("Portland, OR"), "Portland");
 });

@@ -174,15 +174,21 @@ export const PILL_LABEL_MAX = 16;
 
 /**
  * The name on a stop's pill: the town alone, not the address the search gave
- * ("City of London, England, United Kingdom" → "City of London"), cut at a
- * word with "…" when even that is too long for the pill.
+ * ("City of London, England, United Kingdom" → "City of London"; "Washington,
+ * D.C." stays whole), cut at a word with "…" when even that is too long for
+ * the pill.
  */
 export function pillLabel(city: string, max = PILL_LABEL_MAX): string {
+  const parts = city
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  // A dotted abbreviation after the comma is part of the name ("Washington,
+  // D.C."), not the start of an address.
   const town =
-    city
-      .split(",")
-      .map((part) => part.trim())
-      .find(Boolean) ?? "";
+    parts.length > 1 && /^(?:\p{Lu}\.){1,3}$/u.test(parts[1]!)
+      ? `${parts[0]}, ${parts[1]}`
+      : (parts[0] ?? "");
   if (town.length <= max) return town;
   const cut = town.slice(0, max - 1);
   const atWord = cut.lastIndexOf(" ");
