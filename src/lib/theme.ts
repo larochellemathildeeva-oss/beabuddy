@@ -3,7 +3,7 @@
  * (account-settings.ts), with a copy on each device for first paint.
  *
  *   calm     — white, cream and light beige
- *   colorful — cheerful pastels (lilac, sky, teal, cyan, pink) with a violet accent (the default)
+ *   colorful — cheerful pastels with the traveller's Pink or Periwinkle accent
  *   dark     — near-black with off-white and beige
  *
  * The choice lands on `<html>` twice: as `data-theme`, which selects the
@@ -46,8 +46,8 @@ export function readTheme(): ThemeName {
  * styles.css; a light bar over the dark theme looked like a stray strip.
  */
 export const THEME_COLORS: Record<ThemeName, string> = {
-  calm: "#f7f2e9",
-  colorful: "#ffffff",
+  calm: "#ffffff",
+  colorful: "#fcf9f4",
   dark: "#171513",
 };
 

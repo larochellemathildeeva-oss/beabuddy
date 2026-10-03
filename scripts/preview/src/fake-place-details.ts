@@ -7,3 +7,5 @@ export const placeDetails = async ({ data }: { data: { name: string } }): Promis
 // A 1×1 JPEG stands in for a day's map.
 export const dayMapImage = async () =>
   "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+
+export const townPhoto = async () => null;

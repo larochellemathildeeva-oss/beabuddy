@@ -6,6 +6,8 @@ This document is the visual authority for Béa. It exists to stop design tools, 
 
 When design sources conflict, use this order:
 
+The owner's decisions in `docs/ui-revamp/README.md` take precedence over this document and the references.
+
 1. The approved Home and World reference boards supplied by the owner.
 2. This document.
 3. `DESIGN.md` and `.impeccable/design.json`.
@@ -35,24 +37,36 @@ Colorful is the primary exploration theme for current redesign work.
 
 ### Brand anchor
 
-- **Ink / near-black:** `#0A0A0A`
+- **Ink / near-black:** `#111111`
 - Used for large editorial type, important icons, structural controls, selected text, and high-confidence actions.
-- Ink is the visual anchor of Colorful. Pink is not the brand-defining accent.
+- Ink is the visual anchor of Colorful; the traveller chooses the interaction accent.
 
 ### Primary interaction accent
 
-- **Béa periwinkle-cobalt:** `#6675FF`
-- Soft: `#ECEEFF`
+- **Pink** is the default; **Periwinkle** is an option under You → Theme (owner, 2026-10-03).
+- Save the accent with the account, independently of theme, and set `data-accent` on `<html>` before first paint.
+
+| Token | Pink | Periwinkle |
+| --- | --- | --- |
+| `--acc` | `#F6466E` | `#6675FF` |
+| `--acc2` | `#F24A70` | `#5C6CF5` |
+| `--acc-soft` | `#FDE3EA` | `#ECEEFF` |
+| `--acc-done` | `#F59AB0` | `#B3BAFF` |
+| `--acc-line` | `#F3B6C5` | `#C5CBFF` |
+| `--acc-track` | `#F3E4E8` | `#E3E6FF` |
+
 - Use for focus rings, primary interactive emphasis, route selection, active controls where a chromatic accent is useful, and key progress states.
+- Every accent use reads the tokens. Danger `#C22A52` and the supporting blush are independent and do not switch.
+- Body text on accent buttons must meet 4.5:1; use near-black text on either exact accent fill. Small accent text may use a darker ink derived for readability.
 - Do not flood whole screens with it. Most screens should still read primarily as white/ink plus travel imagery.
 
 ### Base surfaces
 
-- **App ground:** `#FBF8F4`
+- **App ground:** `#FCF9F4` in Colorful, `#FFFFFF` in Calm. Dark keeps its dark surfaces.
 - **Card / floating surface:** `#FFFFFF`
-- **Primary text:** `#0A0A0A`
-- **Secondary text:** `#66615D`
-- **Hairline border:** `#E9E3DE`
+- **Primary text:** `#111111`
+- **Secondary text:** `#77736F`
+- **Hairline border:** `#F2EDE6`
 
 There should be one consistent app ground, not several unrelated shades of white from page to page.
 
@@ -71,7 +85,7 @@ Use them to distinguish modules, categories, secondary controls, moments, and su
 ### Color rules
 
 - No terracotta or burnt orange UI chrome.
-- Pink is allowed, but it is one pastel among peers.
+- Supporting blush is one pastel among peers, separate from the chosen accent.
 - Do not make each top-level tab a different brand color.
 - Do not tint an entire page with one pastel.
 - Natural travel imagery keeps its real colors.
@@ -86,6 +100,8 @@ Use them to distinguish modules, categories, secondary controls, moments, and su
 The serif/sans contrast is part of Béa's identity. Do not replace it with a generic all-sans startup system.
 
 Large editorial type is encouraged when a screen has one dominant idea. Dense utility screens should stay restrained.
+
+At phone width: display 34–40px serif, section 20–22px, card title 17–18px, body at least 16px (17px preferred), metadata 14px, captions at least 13px. Wrap or stack instead of shrinking text. Body line height is 1.4–1.5; display about 1.1. Keep pixel sizes so Reading settings continue to scale them.
 
 ## Composition rules
 
