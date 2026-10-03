@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Check, ChevronDown, Clock, MapPin } from "@/components/icons";
+import { useAuth } from "@/hooks/useAuth";
+import { changeFollow, readFollowState } from "@/lib/trip-follow.functions";
+import type { FollowState } from "@/lib/trip-follow";
 import { readSharedTrip } from "@/lib/trip-share.functions";
 import { clockIn, dateIn, wallTimeToInstant, zoneGap, zoneLabel } from "@/lib/trip-clock";
 import {
@@ -233,6 +238,7 @@ function SharedTripPage() {
         {live ? (
           <>
             <LiveCard live={live} clocks={clocks} readerTime={readerTime} />
+            <FollowButton token={token} />
             {liveDay && <DayPlan day={liveDay} />}
             {trip.days.length > (liveDay ? 1 : 0) && (
               <details className="group" open={!liveDay}>
@@ -262,6 +268,7 @@ function SharedTripPage() {
               you open it. Tap an address to open it in Maps.
             </p>
             {clocks && <ClockLine clocks={clocks} />}
+            <FollowButton token={token} />
             {trip.days.length === 0 && (
               <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
                 Nothing is planned yet.
@@ -280,6 +287,80 @@ function SharedTripPage() {
         </p>
       </div>
     </AppShell>
+  );
+}
+
+/**
+ * "Follow in Béa": a signed-in traveller keeps this trip under Trips →
+ * Following. It is the same link, kept in their account; if the link is
+ * turned off, the trip leaves their list. Hidden until following is set up
+ * (its migration), and for a link that no longer opens.
+ */
+function FollowButton({ token }: { token: string }) {
+  const { user, loading } = useAuth();
+  const readState = useServerFn(readFollowState);
+  const change = useServerFn(changeFollow);
+  const [state, setState] = useState<FollowState | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    readState({ data: { token } })
+      .then((next) => alive && setState(next))
+      .catch(() => alive && setState(null));
+    return () => {
+      alive = false;
+    };
+  }, [user, token, readState]);
+
+  if (loading) return null;
+  if (!user) {
+    return (
+      <p className="text-[13px] text-muted-foreground">
+        Have Béa?{" "}
+        <Link to="/auth" className="font-semibold text-primary underline underline-offset-2">
+          Sign in
+        </Link>{" "}
+        to follow this trip from your Trips.
+      </p>
+    );
+  }
+  if (state !== "following" && state !== "not-following") return null;
+  const following = state === "following";
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      const next = await change({ data: { token, follow: !following } });
+      setState(next);
+      if (next === "following")
+        toast.success("Following", { description: "It's under Trips → Following." });
+      else if (next === "not-following") toast("Stopped following");
+      else toast.error("This trip can't be followed any more.");
+    } catch {
+      toast.error("That didn't save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => void toggle()}
+      aria-pressed={following}
+      className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-[14.5px] font-semibold disabled:opacity-60 ${
+        following ? "border border-border bg-elevated text-foreground" : "btn-primary"
+      }`}
+    >
+      {following ? (
+        <>
+          <Check className="size-4" aria-hidden />
+          Following in Béa · tap to stop
+        </>
+      ) : (
+        "Follow in Béa"
+      )}
+    </button>
   );
 }
 
