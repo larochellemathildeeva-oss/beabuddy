@@ -9,7 +9,14 @@ function scrollRoot(from: HTMLElement | null): HTMLElement | null {
 }
 
 /** Room the bar takes, so a day's heading lands just under it. */
-const BAR_PX = 52;
+const BAR_PX = 58;
+
+function viewsBarHeight(from: HTMLElement | null): number {
+  const shell = from?.closest<HTMLElement>(".trip-shell");
+  return shell
+    ? parseFloat(getComputedStyle(shell).getPropertyValue("--trip-sticky-offset")) || 0
+    : 0;
+}
 
 /**
  * "Day 1 · Thu, Oct 1", pinned while the day cards are scrolled away.
@@ -62,7 +69,7 @@ export function StickyDayBar({
     let frame = 0;
     const read = () => {
       frame = 0;
-      const top = root.getBoundingClientRect().top + BAR_PX + 8;
+      const top = root.getBoundingClientRect().top + BAR_PX + viewsBarHeight(anchor.current) + 8;
       let key: string | null = null;
       for (const section of root.querySelectorAll<HTMLElement>("[data-day-key]")) {
         if (section.offsetParent === null) continue;
@@ -97,7 +104,10 @@ export function StickyDayBar({
     const section = root?.querySelector<HTMLElement>(`[data-day-key="${CSS.escape(key)}"]`);
     if (!root || !section) return;
     const offset = section.getBoundingClientRect().top - root.getBoundingClientRect().top;
-    root.scrollTo({ top: root.scrollTop + offset - BAR_PX, behavior: "smooth" });
+    root.scrollTo({
+      top: root.scrollTop + offset - BAR_PX - viewsBarHeight(anchor.current),
+      behavior: "smooth",
+    });
   };
 
   const step = (by: 1 | -1) => {
@@ -113,10 +123,10 @@ export function StickyDayBar({
   };
 
   const arrow =
-    "grid size-9 shrink-0 place-items-center rounded-full text-foreground disabled:opacity-30";
+    "grid size-11 shrink-0 place-items-center rounded-full text-foreground disabled:opacity-30";
 
   return (
-    <div className="sticky top-0 z-30 h-0" aria-hidden={!shown}>
+    <div className="sticky top-[var(--trip-sticky-offset,0px)] z-30 h-0" aria-hidden={!shown}>
       <div
         className={`absolute -inset-x-3 top-0 flex items-center gap-1 border-b border-border bg-background/90 px-2 py-1.5 backdrop-blur-xl transition-[opacity,transform] duration-200 ${
           shown ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
@@ -139,7 +149,7 @@ export function StickyDayBar({
           className="min-w-0 flex-1 truncate text-center font-display text-[16.5px]"
         >
           {label}
-          {chip?.isToday ? <span className="ml-1.5 text-[12px] text-primary">Today</span> : null}
+          {chip?.isToday ? <span className="ml-1.5 text-[13px] text-primary">Today</span> : null}
         </button>
         <button
           type="button"
@@ -158,7 +168,7 @@ export function StickyDayBar({
             tabIndex={shown ? 0 : -1}
             aria-label="Currency"
             title="Convert prices into your money"
-            className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-primary"
+            className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card text-primary"
           >
             <Coins className="size-4" aria-hidden />
           </button>

@@ -30,7 +30,6 @@ export const TRIP_PERSPECTIVES = [
   {
     id: "companion",
     label: "Companion",
-    shortLabel: "Now",
     hint: "Where you are now, what is next, and when to leave.",
   },
   {
@@ -43,13 +42,6 @@ export const TRIP_PERSPECTIVES = [
     id: "timeline",
     label: "Timeline",
     hint: "The day in order: reorder, retime, add and edit.",
-  },
-  {
-    id: "bookings",
-    label: "Bookings",
-    // Flights, stays, transport and tickets: the booked stops and the Trip
-    // documents filed to this trip, one list. Trip-wide, like the Overview.
-    hint: "",
   },
 ] as const;
 // The trip-wide "Trip" view is gone: its to-dos and packing live under the
@@ -74,6 +66,8 @@ export function defaultPerspective(isUnderway: boolean): TripPerspective {
 
 /** Read a perspective out of a URL or storage without trusting it. */
 export function asPerspective(raw: unknown): TripPerspective | null {
+  // Legacy links and saved tabs retain their trip-wide destination.
+  if (raw === "bookings") return "overview";
   const found = TRIP_PERSPECTIVES.find((p) => p.id === raw);
   return found ? found.id : null;
 }

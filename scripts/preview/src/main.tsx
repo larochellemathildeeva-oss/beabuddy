@@ -84,7 +84,8 @@ if (sample === "shell") {
       {sample === "home" ? <HomePreview /> : <TripsPreview />}
     </div>,
   );
-} else createRoot(document.getElementById("root")!).render(
+} else {
+const detail = (
   // Like the app shell on a phone: full width, no padding, page scrolls.
   <div className="min-h-screen bg-background pb-7">
     <Toaster />
@@ -104,5 +105,7 @@ if (sample === "shell") {
       onLeave={async () => {}}
       onRemoveMember={async () => {}}
     />
-  </div>,
+  </div>
 );
+createRoot(document.getElementById("root")!).render(new URLSearchParams(location.search).get("frame") === "yes" ? <AppShell flush>{detail}</AppShell> : detail);
+}

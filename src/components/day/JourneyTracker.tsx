@@ -59,10 +59,10 @@ export function JourneyTracker({
   return (
     <section aria-label="Today's progress" className="plain-card p-3.5">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           Today's progress
         </p>
-        <p className="text-[12px] tabular-nums text-muted-foreground">
+        <p className="text-[13px] tabular-nums text-muted-foreground">
           {state.reached} / {stops.length} stops ·{" "}
           {Math.round((state.reached / stops.length) * 100)}% complete
         </p>
@@ -72,7 +72,7 @@ export function JourneyTracker({
       <div ref={track} className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
         <ol
           className="relative flex items-start justify-between gap-1"
-          style={{ minWidth: `${stops.length * 64}px` }}
+          style={{ minWidth: `${stops.length * 100}px` }}
         >
           <span
             aria-hidden
@@ -90,14 +90,14 @@ export function JourneyTracker({
               <li
                 key={stop.id}
                 data-index={i}
-                className="relative z-10 flex w-16 shrink-0 flex-col items-center text-center"
+                className="relative z-10 flex w-[100px] shrink-0 flex-col items-center text-center"
               >
                 <button
                   type="button"
                   aria-pressed={i === pickedIndex}
                   onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
                   title={`${stop.title}, ${STATUS_WORD[status]}`}
-                  className={`tap-44 grid size-8 place-items-center rounded-full text-[12.5px] font-bold tabular-nums transition-all ${DOT[status]} ${
+                  className={`tap-44 grid size-8 place-items-center rounded-full text-[13px] font-bold tabular-nums transition-all ${DOT[status]} ${
                     i === pickedIndex ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : ""
                   }`}
                 >
@@ -108,18 +108,18 @@ export function JourneyTracker({
                   </span>
                 </button>
                 <span
-                  className={`mt-1.5 text-[11.5px] tabular-nums ${
+                  className={`mt-1.5 text-[13px] tabular-nums ${
                     status === "here" ? "font-bold text-primary" : "text-muted-foreground"
                   }`}
                 >
                   {time || "–"}
                 </span>
                 <span
-                  className={`line-clamp-2 text-[11px] leading-tight ${
+                  className={`break-words text-[13px] leading-tight ${
                     status === "here" ? "font-semibold text-primary" : "text-muted-foreground"
                   }`}
                 >
-                  {status === "here" ? "Now" : stop.title}
+                  {stop.title}
                 </span>
               </li>
             );
@@ -127,7 +127,7 @@ export function JourneyTracker({
         </ol>
       </div>
       {!state.next && !state.current && (
-        <p className="mt-2 text-[12.5px] font-semibold text-nexttime">
+        <p className="mt-2 text-[13px] font-semibold text-nexttime">
           Every stop behind you for this day.
         </p>
       )}

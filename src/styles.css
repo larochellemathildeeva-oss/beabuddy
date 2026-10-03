@@ -1428,3 +1428,40 @@
   font-size: 13px;
   font-weight: 500;
 }
+
+/* Step 1: the trip's four views share one device-positioned bar. */
+.trip-views {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 8%);
+  overflow-x: auto;
+}
+.trip-views button {
+  display: flex;
+  flex: 1 0 80px;
+  min-height: 56px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 18px;
+  color: var(--muted-foreground);
+  font-size: calc(13px * var(--text-scale, 1));
+}
+.trip-views button[aria-selected="true"] {
+  background: var(--primary-soft);
+  color: var(--foreground);
+  font-weight: 600;
+}
+.trip-views--bottom, .trip-views--side { position: fixed; z-index: 40; }
+.trip-views--side { flex-direction: column; width: 60px; border-radius: 28px; }
+.trip-views--side button { flex: 0 0 auto; min-height: 44px; padding: 4px; }
+.trip-shell[data-bar-position="side"] .trip-content { padding-right: 72px; }
+.trip-shell[data-bar-position="bottom"] { padding-bottom: calc(90px * var(--text-scale, 1)); }
+.trip-shell { --trip-sticky-offset: 0px; }
+.trip-shell[data-bar-position="top"] { --trip-sticky-offset: calc(84px * var(--text-scale, 1)); }

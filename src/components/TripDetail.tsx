@@ -23,7 +23,7 @@ import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { tripDateLine } from "@/lib/trip-card";
+import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
 import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
@@ -66,7 +66,10 @@ import { DayCards } from "@/components/day/DayCards";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
-import { CompanionBanner } from "@/components/day/CompanionBanner";
+import { TripBanner } from "@/components/TripBanner";
+import { BrandMark } from "@/components/PageHeader";
+import { TripViews, TripBarOptions } from "@/components/day/TripViews";
+import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import {
   TripMenuSheet,
   type BookingTile,
@@ -176,6 +179,7 @@ import {
  */
 export function TripDetail({
   trip,
+  photos = [],
   members,
   companionsLine,
   me,
@@ -190,7 +194,7 @@ export function TripDetail({
   openPlan,
 }: {
   trip: TripRow;
-  /** Kept for callers; the trip page no longer shows a banner photo. */
+  /** The trip's own photographs, shared with its cards. */
   photos?: TripPhotoRow[];
   members: MemberRow[];
   companionsLine: string;
@@ -209,6 +213,9 @@ export function TripDetail({
   openPlan?: { tab: PlannerTab; ask?: string | undefined } | undefined;
 }) {
   const navigate = useNavigate();
+  const [barPosition, setBarPosition] = useTripBarPosition();
+  const [bookingsOpen, setBookingsOpen] = useState(false);
+  const bookingsRef = useRef<HTMLElement>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [plannerTab, setPlannerTab] = useState<PlannerTab>("start");
   /** Words carried into Build from the Plan with Béa page. */
@@ -1173,6 +1180,7 @@ export function TripDetail({
       } | null;
       const p = asPerspective(saved?.perspective);
       if (p) setPerspective(p);
+      if (saved?.perspective === "bookings") setBookingsOpen(true);
       if (typeof saved?.day === "string") setDayChoice(saved.day);
       if (saved?.hideDone === true) setHideDone(true);
       if (saved?.byArea === true) setByArea(true);
@@ -1237,13 +1245,19 @@ export function TripDetail({
   /** The Bookings tab, on one kind — for the Overview's tiles and the trip menu. */
   const openBookings = (kind: BookingFilter) => {
     setBookingFilter(kind);
-    setPerspective("bookings");
+    setPerspective("overview");
+    setBookingsOpen(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        bookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      ),
+    );
   };
 
   // Arriving with a request in the link (Plan with Béa, a booking link):
   // after the saved tab is restored, so the request wins over it.
   useEffect(() => {
-    if (openView === "bookings") setPerspective("bookings");
+    if (openView === "bookings") openBookings("all");
     if (openPlan) {
       setPlannerTab(openPlan.tab);
       setPlannerAsk(openPlan.ask ?? "");
@@ -1418,59 +1432,150 @@ export function TripDetail({
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
     // not hidden: hidden makes this the scroll box and the pinned banner would
     // never stick.
-    <article className="overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card">
-      {/* The master's trip header: the name large, where and when under it,
-          and the trip menu. The same view-transition name as the card that
-          opened it, so the move reads as one object. */}
-      <header
-        className="flex items-start justify-between gap-3 px-4 pt-3"
-        style={{ viewTransitionName: `trip-photo-${trip.id}` }}
-      >
-        <div className="min-w-0">
-          <h1 className="break-words font-display text-[40px] leading-[1.02]">{trip.title}</h1>
-          <p className="mt-1 text-[14.5px] text-muted-foreground">
-            {[
-              formatTripLocation(trip.city?.split(",")[0], trip.country),
-              tripDateLine(trip.start_date, trip.end_date),
-              trip.dates_status === "tentative" ? "tentative" : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {companionsLine ? (
-            <p className="text-[13px] text-muted-foreground">{companionsLine}</p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {view.prefs.pinChecks && toCheck.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setPinReviewOpen(true)}
-              title="Pins to check"
-              aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
-              className="relative grid size-11 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive shadow-xs"
-            >
-              !
-              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[11px] font-bold leading-5 text-white">
-                {toCheck.length}
-              </span>
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setSheetSection(null);
-            }}
-            data-guide="trip-menu"
-            title="Trip menu"
-            aria-label="Trip menu"
-            className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
-          >
-            <MoreHorizontal className="size-5" aria-hidden />
-          </button>
-        </div>
-      </header>
+    <article
+      data-bar-position={barPosition}
+      className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
+    >
+      <TripBanner
+        variant="page"
+        pageArt={perspective === "overview" ? tripArt : companionArt}
+        title={trip.title}
+        city={trip.city}
+        country={trip.country}
+        cities={cityNames}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+        tentative={trip.dates_status === "tentative"}
+        companions={companionsLine}
+        photo={pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: cityNames })}
+        viewTransitionName={`trip-photo-${trip.id}`}
+        footer={
+          perspective !== "overview" && companionDay ? (
+            <p className="mt-2 text-[14px] font-semibold">
+              {[
+                companionOrdinal && `${companionOrdinal} of ${datedDayCount}`,
+                companionPlace,
+                companionDateLine,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              {nowStops.length > 0 && (
+                <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
+                  {companionState(nowStops).reached}/{nowStops.length} stops reached ·{" "}
+                  {Math.round((companionState(nowStops).reached / nowStops.length) * 100)}% complete
+                </span>
+              )}
+            </p>
+          ) : null
+        }
+        header={
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card/95 px-3 py-2 text-foreground">
+            <BrandMark />
+            <div className="flex items-center gap-2">
+              {view.prefs.pinChecks && toCheck.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPinReviewOpen(true)}
+                  title="Pins to check"
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
+                >
+                  !
+                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                    {toCheck.length}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPrepSignal((n) => n + 1)}
+                aria-label="To do and packing"
+                className="grid size-11 place-items-center rounded-full border border-border bg-card"
+              >
+                <ListChecks className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setSheetSection(null);
+                }}
+                data-guide="trip-menu"
+                title="Trip menu"
+                aria-label="Trip menu"
+                className="grid size-11 place-items-center rounded-full border border-border bg-card shadow-xs"
+              >
+                <MoreHorizontal className="size-5" aria-hidden />
+              </button>
+            </div>
+          </div>
+        }
+      />
+      <div className="px-3 py-2">
+        {perspective === "overview" || !companionDay ? (
+          <section aria-label="Your trip progress" className="plain-card p-3.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-display text-[22px]">Your trip</h2>
+              <p className="text-[14px] text-muted-foreground">
+                {moveDays.length} days ·{" "}
+                {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size}{" "}
+                cities · {doneCount}/{stopItems.length} stops reached
+              </p>
+            </div>
+            <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
+              {moveDays.map((day, i) => {
+                const group = allDayGroups.find((g) => g.key === day);
+                const reached = group?.items.filter(isDone).length ?? 0;
+                const total = group?.items.length ?? 0;
+                return (
+                  <li key={day} className="min-w-[100px] flex-1">
+                    <button
+                      type="button"
+                      aria-label={`Day ${i + 1}, ${routeCityOn(cities.stops, day) || trip.city || "Trip"}`}
+                      onClick={() => {
+                        setDayChoice(day);
+                        setCityChoice("");
+                        setPerspective("companion");
+                      }}
+                      className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
+                    >
+                      {i > 0 && (
+                        <span
+                          aria-hidden
+                          className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
+                        />
+                      )}
+                      <span
+                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "text-primary"}`}
+                      >
+                        {total > 0 && reached === total ? (
+                          <Check className="size-4" aria-hidden />
+                        ) : (
+                          i + 1
+                        )}
+                      </span>
+                      <span className="font-semibold">
+                        {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                      </span>
+                      <span className="text-[13px] text-muted-foreground">
+                        {formatTimelineDayLabel(day)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ) : (
+          view.prefs.journey && (
+            <JourneyTracker
+              stops={nowStops}
+              selectedId={peekStop?.id ?? null}
+              onSelect={setPeekId}
+            />
+          )
+        )}
+      </div>
       {/* Béa's line scrolls away with the page; only the bar above stays. */}
       {tripNote ? (
         <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
@@ -1485,7 +1590,7 @@ export function TripDetail({
             setPlannerTab("start");
             setPlannerOpen(true);
           }}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 text-xs font-semibold text-primary shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 min-h-11 text-[16px] font-semibold text-primary shadow-2xs transition-all active:scale-95"
         >
           <img src={logo} alt="" className="size-5 object-contain" />
           Plan with Béa
@@ -1494,7 +1599,7 @@ export function TripDetail({
           data-guide="trip-prep"
           title="To-dos and packing for this trip"
           onClick={() => setPrepSignal((n) => n + 1)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-2.5 min-h-11 text-[16px] font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
           <ListChecks className="size-3.5 text-primary" aria-hidden />
           To do
@@ -1502,7 +1607,7 @@ export function TripDetail({
         <button
           title="Convert prices into your money"
           onClick={() => setCurrencyOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-1.5 text-xs font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-2.5 min-h-11 text-[16px] font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
         >
           <Coins className="size-3.5 text-primary" aria-hidden />
           Currency
@@ -1511,12 +1616,12 @@ export function TripDetail({
           data-guide="add-stop"
           title="Add a stop, a saved place or a city"
           onClick={() => setAddOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-primary px-3 py-2.5 min-h-11 text-[16px] font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
         >
           <Plus className="size-3.5" aria-hidden />
           Add stop
         </button>
-        <span className="ml-auto hidden shrink-0 pl-1 text-[11px] text-muted-foreground sm:inline">
+        <span className="ml-auto shrink-0 pl-1 text-[13px] text-muted-foreground sm:inline">
           {[
             stopItems.length ? `${stopItems.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
@@ -1526,14 +1631,12 @@ export function TripDetail({
         </span>
       </div>
 
-      <div className="section-stagger border-t border-border px-3 pb-4 pt-3">
-        <div
-          hidden={others.length === 0}
-          className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-1.5"
-        >
+      <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
+      <div className="trip-content section-stagger px-3 pb-4 pt-3">
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-2.5">
           <div className="flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-            <p className="text-[11.5px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {others.length === 0
                 ? "You're the only one here right now"
                 : others.some((o) => o.editing)
@@ -1546,51 +1649,13 @@ export function TripDetail({
               <span
                 key={o.userId}
                 title={o.name}
-                className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[11.5px] font-semibold text-primary-foreground"
+                className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
               >
                 {o.name.slice(0, 1).toUpperCase()}
               </span>
             ))}
           </div>
         </div>
-
-        {/* The master's segmented control, holding Béa's four views, with
-            the chosen one filled in the theme accent. */}
-        <nav
-          data-guide="trip-tabs"
-          role="tablist"
-          aria-label="How to look at this trip"
-          className="mb-3 flex items-center gap-1 rounded-full bg-elevated p-1"
-        >
-          {TRIP_PERSPECTIVES.map((p) => {
-            const on = p.id === perspective;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                role="tab"
-                aria-selected={on}
-                aria-label={p.label}
-                onClick={() => setPerspective(p.id)}
-                className={`min-h-10 flex-1 whitespace-nowrap rounded-full px-2 text-center text-[14px] transition-colors sm:text-[15px] ${
-                  on
-                    ? "bg-primary font-semibold text-primary-foreground shadow-sm"
-                    : "text-muted-foreground"
-                }`}
-              >
-                {/* The master's short label on a phone. */}
-                {"shortLabel" in p ? (
-                  <>
-                    <span className="hidden sm:inline">{p.label}</span>
-                    <span className="sm:hidden">{p.shortLabel}</span>
-                  </>
-                ) : (
-                  p.label
-                )}
-              </button>
-            );
-          })}
-        </nav>
 
         {/* Several cities: pick one and the days, the map and Now all follow
             it, instead of scrolling past one city to reach the next. */}
@@ -1630,7 +1695,7 @@ export function TripDetail({
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-1.5 text-left transition-all ${
+                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-2.5 text-left transition-all ${
                         on
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-elevated text-foreground"
@@ -1639,7 +1704,7 @@ export function TripDetail({
                       <span className="whitespace-nowrap text-[13px] font-semibold">{c.city}</span>
                       {dates && (
                         <span
-                          className={`whitespace-nowrap text-[11px] ${on ? "opacity-80" : "text-muted-foreground"}`}
+                          className={`whitespace-nowrap text-[13px] ${on ? "opacity-80" : "text-muted-foreground"}`}
                         >
                           {dates}
                         </span>
@@ -1649,7 +1714,7 @@ export function TripDetail({
                 })}
               </div>
               {chosenCity && timelineGroups.length === 0 && (
-                <p className="mt-1.5 px-1 text-[12.5px] text-muted-foreground">
+                <p className="mt-1.5 px-1 text-[13px] text-muted-foreground">
                   Nothing planned in {chosenCity.city} yet
                   {chosenCity.arrive_on ? "" : " — give it dates under Cities on this trip"}.
                 </p>
@@ -1668,10 +1733,21 @@ export function TripDetail({
               <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
-        {activePerspective.hint && perspective !== "companion" ? (
-          <p className="mb-3 px-0.5 text-[12px] text-muted-foreground">{activePerspective.hint}</p>
+        {activePerspective.hint ? (
+          <p className="mb-3 px-0.5 text-[16px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
+        {peekStop && (
+          <StopPeek
+            stop={peekStop}
+            number={nowStops.indexOf(peekStop) + 1}
+            onClose={() => setPeekId(null)}
+            onEdit={() => {
+              setPeekId(null);
+              jumpToStop(peekStop.id);
+            }}
+          />
+        )}
         {/* Past You, for a trip still ahead or under way: not one already over. */}
         {perspective === "overview" &&
           todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
@@ -1706,45 +1782,45 @@ export function TripDetail({
           />
         )}
 
-        {perspective === "bookings" && (
-          <TripBookings
-            filter={bookingFilter}
-            onFilter={setBookingFilter}
-            stops={stopItems}
-            docs={bookingDocs.docs}
-            onSaveBooking={(id, patch) => board.updateItem(id, patch)}
-          />
+        {perspective === "overview" && (
+          <section
+            ref={bookingsRef}
+            aria-label="Bookings"
+            className="mt-4 scroll-mt-[var(--trip-sticky-offset)]"
+          >
+            <button
+              type="button"
+              aria-expanded={bookingsOpen}
+              onClick={() => setBookingsOpen((open) => !open)}
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-left"
+            >
+              <span className="font-display text-[22px]">
+                Booked · {Object.values(bookingCounts).reduce((n, count) => n + count, 0)}
+              </span>
+              <ChevronDown className={`size-5 ${bookingsOpen ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+            <div hidden={!bookingsOpen} className="mt-3">
+              <TripBookings
+                filter={bookingFilter}
+                onFilter={setBookingFilter}
+                stops={stopItems}
+                docs={bookingDocs.docs}
+                onSaveBooking={(id, patch) => board.updateItem(id, patch)}
+              />
+            </div>
+          </section>
         )}
 
         {perspective === "companion" && (
           <div className="space-y-3">
             {nowStops.length > 0 && companionDay ? (
               <>
-                <CompanionBanner
-                  art={companionArt}
-                  kicker={companionOrdinal ? `${companionOrdinal} of ${datedDayCount}` : ""}
-                  place={companionPlace}
-                  dateLine={companionDateLine}
-                  reached={companionState(nowStops).reached}
-                  total={nowStops.length}
-                />
                 {view.prefs.ribbon && (
                   <DayRibbon
                     stops={nowStops}
                     dayLabel={companionOrdinal || undefined}
                     selectedId={peekStop?.id ?? null}
                     onSelect={setPeekId}
-                  />
-                )}
-                {peekStop && (
-                  <StopPeek
-                    stop={peekStop}
-                    number={nowStops.indexOf(peekStop) + 1}
-                    onClose={() => setPeekId(null)}
-                    onEdit={() => {
-                      setPeekId(null);
-                      setPerspective("timeline");
-                    }}
                   />
                 )}
                 <NowPanel
@@ -1772,15 +1848,6 @@ export function TripDetail({
                     setPeekId(id);
                     window.scrollTo({ top: 0, behavior: "smooth" });
                   }}
-                  progress={
-                    view.prefs.journey ? (
-                      <JourneyTracker
-                        stops={nowStops}
-                        selectedId={peekStop?.id ?? null}
-                        onSelect={setPeekId}
-                      />
-                    ) : null
-                  }
                 />
               </>
             ) : (
@@ -3023,6 +3090,7 @@ export function TripDetail({
 
         {sheetSection === "customize" && (
           <div className="plain-card px-3.5 py-1">
+            <TripBarOptions value={barPosition} onChange={setBarPosition} />
             <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
           </div>
         )}
