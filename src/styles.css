@@ -1300,10 +1300,8 @@
   --home-ink: #1b1918;
   --home-ink-foreground: #ffffff;
   --home-search: var(--card);
-  --map-land: #efe9dd;
-  --map-green: #87ad6b;
-  --map-light: #ffffff;
-  --map-shadow: rgb(70 62 48 / 0.3);
+  /* A wash over the terrain tiles, for the mood. */
+  --map-wash: rgb(255 255 255 / 0.2);
   --route-line: #ffffff;
   --route-dot: #6f6658;
   --route-dot-start: #2b2724;
@@ -1321,10 +1319,7 @@
   --home-ink: var(--acc);
   --home-ink-foreground: var(--primary-foreground);
   --home-search: color-mix(in oklab, var(--color-primary) 8%, var(--background));
-  --map-land: #f4efe7;
-  --map-green: #8cc68d;
-  --map-light: #ffffff;
-  --map-shadow: rgb(110 90 110 / 0.26);
+  --map-wash: rgb(255 250 246 / 0.06);
   --route-line: var(--acc2);
   --route-dot: var(--acc2);
   --route-dot-start: var(--acc2);
@@ -1343,10 +1338,7 @@
   --home-ink: #f6f3ee;
   --home-ink-foreground: #121212;
   --home-search: var(--card);
-  --map-land: #3b3c38;
-  --map-green: #36533a;
-  --map-light: #dfe3d6;
-  --map-shadow: rgb(0 0 0 / 0.7);
+  --map-wash: rgb(12 13 12 / 0.7);
   --route-line: #f6f3ee;
   --route-dot: #f6f3ee;
   --route-dot-start: #f6f3ee;
@@ -1361,17 +1353,13 @@
   --stat-fill: linear-gradient(90deg, #9ad8cf, #f6f3ee);
 }
 
-.route-map .map-land {
-  fill: var(--map-land);
+/* The sea the terrain tiles were painted with (SEA in scripts/relief/build.py),
+   so open sea with no tile matches the sea inside one. */
+.route-map .map-sea {
+  fill: rgb(226 233 235);
 }
-.route-map .map-green {
-  flood-color: var(--map-green);
-}
-.route-map .map-light {
-  lighting-color: var(--map-light);
-}
-.route-map .map-shadow {
-  flood-color: var(--map-shadow);
+.route-map .map-wash {
+  fill: var(--map-wash);
 }
 .route-map .map-fade {
   stop-color: var(--background);

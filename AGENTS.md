@@ -430,12 +430,18 @@ Home with a trip ahead follows the "three moods" design
 a card of to-dos, the flight and how packed, "Where to next?", and three
 suggestions that open Plan with Béa with the request written but not sent
 (`HomeLivingMap.tsx`). The map (`TripRouteMap.tsx`) is drawn from the trip's
-own stops — real coastlines (`world-atlas` land-50m, loaded only when the map
-draws), a relief made by an SVG lighting filter, one smooth line through the
-cities and a pill beside each; the geometry and the pill placement are pure
-and tested (`home-route-map.ts`). Its colours are per mood (`--home-*`,
-`--map-*`, `--route-*`, `--pill-*` at the end of `styles.css`). No picture is
-generated for it.
+own stops — real terrain, one smooth line through the cities and a pill
+beside each; the geometry, the pill placement and the tile cover
+(`reliefTiles`) are pure and tested (`home-route-map.ts`). Two stops in a row
+under `SAME_PLACE_KM` apart are one pill ("City of London" after "London").
+The terrain is Natural Earth II with shaded relief and land cover (public
+domain, `NATURAL_EARTH_ATTRIBUTION` on the privacy page), cut into Web
+Mercator tiles in `public/relief/{z}/{x}/{y}.webp` (zoom 2–6, about 6 MB;
+open sea has no tile, and `index.json` lists those that exist) by
+`scripts/relief/build.py`, steps at its top. The sea is painted out to one
+pale colour in the tiles and the frame. Its colours are per mood (`--home-*`,
+`--map-wash`, `--route-*`, `--pill-*` at the end of `styles.css`). No picture
+is generated for it.
 
 A city typed rather than picked from the search has no position, so it is
 looked up by its name and country (`city-position.ts`, pure and tested;

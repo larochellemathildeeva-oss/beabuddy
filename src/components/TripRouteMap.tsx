@@ -1,7 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
-import { geoMercator, geoPath } from "d3-geo";
-import { feature } from "topojson-client";
-import type { FeatureCollection, Geometry } from "geojson";
+import { geoMercator } from "d3-geo";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { useTownPicture } from "@/hooks/useTownPicture";
 import { creditedOnPhoto } from "@/lib/wikimedia";
@@ -10,6 +8,7 @@ import {
   pillLabel,
   pillStops,
   placePills,
+  reliefTiles,
   smoothPath,
   stayLabel,
   type Point,
@@ -27,21 +26,23 @@ const PILL_H = 54;
 /** Where the hero's words end over the map; pills stay below it. */
 const TITLE_LINE = 112;
 const PHOTO = 46;
-/** How far the land filters reach past the frame, for the shadow's blur. */
-const FILTER_BLEED = 12;
+/** Which terrain tiles exist ("z/x/y"): open sea has none. */
+type ReliefIndex = ReadonlySet<string>;
+let reliefIndex: Promise<ReliefIndex> | null = null;
 
-type Land = FeatureCollection<Geometry>;
-let landPromise: Promise<Land> | null = null;
-
-/** The world's coastlines, fetched once and only when a map is drawn. */
-function loadLand(): Promise<Land> {
-  landPromise ??= import("world-atlas/land-50m.json").then((m) => {
-    const topo = (m.default ?? m) as unknown as Parameters<typeof feature>[0] & {
-      objects: { land: Parameters<typeof feature>[1] };
-    };
-    return feature(topo, topo.objects.land) as unknown as Land;
-  });
-  return landPromise;
+/** The list of terrain tiles, fetched once and only when a map is drawn. */
+function loadReliefIndex(): Promise<ReliefIndex> {
+  reliefIndex ??= fetch("/relief/index.json")
+    .then((r): Promise<Record<string, string[]>> => (r.ok ? r.json() : Promise.resolve({})))
+    .then(
+      (byZoom) =>
+        new Set(Object.entries(byZoom).flatMap(([z, keys]) => keys.map((k) => `${z}/${k}`))),
+    )
+    .catch(() => {
+      reliefIndex = null;
+      return new Set<string>();
+    });
+  return reliefIndex;
 }
 
 function pillWidth(stop: RouteStop): number {
@@ -51,27 +52,22 @@ function pillWidth(stop: RouteStop): number {
 }
 
 /**
- * Home's living map: the trip's part of the world in relief, its cities joined
- * by one line, a pill beside each saying how long you stay. Colours come from
+ * Home's living map: the trip's part of the world in real relief, its cities
+ * joined by one line, a pill beside each saying how long you stay. Colours come from
  * the mood (`--map-*`, `--route-*`, `--pill-*` in styles.css).
  */
 export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: string }) {
   const id = useId().replace(/:/g, "");
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
   const width = useFrameWidth(svg);
-  const [land, setLand] = useState<Land | null>(null);
+  const [relief, setRelief] = useState<ReliefIndex | null>(null);
   useEffect(() => {
     let live = true;
-    loadLand()
-      .then((l) => live && setLand(l))
-      .catch(() => {
-        // No coastline: the route still draws on the plain ground.
-      });
+    void loadReliefIndex().then((index) => live && setRelief(index));
     return () => {
       live = false;
     };
   }, []);
-
   const drawn = useMemo(() => {
     if (stops.length === 0) return null;
     // Close around the cities, so they spread across the frame; a one-city
@@ -79,7 +75,7 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
     const {
       center,
       corners: [[w, s], [e, n]],
-    } = mapBounds(stops, 4, 2.5, 0.06);
+    } = mapBounds(stops, 2.6, 1.4, 0.12);
     // Turned so the trip is in the middle of the map: a trip across the 180°
     // line stays in one piece.
     const corners = {
@@ -98,13 +94,7 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
           [width * 0.84, ROUTE_MAP_H * 0.8],
         ],
         corners,
-      )
-      // The coastline is cut to the frame before it is drawn: unclipped, the
-      // land is the size of the world, and Safari will not filter (or draw) it.
-      .clipExtent([
-        [-FILTER_BLEED, -FILTER_BLEED],
-        [width + FILTER_BLEED, ROUTE_MAP_H + FILTER_BLEED],
-      ]);
+      );
     const dots: Point[] = stops.map((stop) => {
       const [x, y] = projection([stop.lon, stop.lat]) ?? [0, 0];
       return { x, y };
@@ -118,16 +108,20 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
       pillHeight: PILL_H,
       top: TITLE_LINE,
     }).map((p) => ({ ...p, w: pillWidth(stops[p.index]!) }));
-    return { projection, dots, pills };
+    // The terrain under it all: real relief, as fine as the screen's pixels.
+    const tiles = reliefTiles({
+      scale: projection.scale(),
+      translate: projection.translate(),
+      center,
+      width,
+      height: ROUTE_MAP_H,
+      dpr: typeof window === "undefined" ? 2 : Math.max(1, window.devicePixelRatio || 1),
+    });
+    return { dots, pills, tiles };
   }, [stops, width]);
 
-  const landPath = useMemo(() => {
-    if (!land || !drawn) return "";
-    return geoPath(drawn.projection)(land) ?? "";
-  }, [land, drawn]);
-
   if (!drawn) return null;
-  const { dots, pills } = drawn;
+  const { dots, pills, tiles } = drawn;
   const first = dots[0]!;
   const flight = flightTrail(first, width);
 
@@ -140,72 +134,13 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
       className="route-map block h-auto w-full"
     >
       <defs>
-        {/* Both land filters are bounded to the frame, not the coastline's box:
-            that box is the whole world, and Safari draws nothing at all for a
-            filter that large. A small bleed keeps the land's shadow whole at the edges. */}
-        <filter
-          id={`${id}-relief`}
-          filterUnits="userSpaceOnUse"
-          x={-FILTER_BLEED}
-          y={-FILTER_BLEED}
-          width={width + 2 * FILTER_BLEED}
-          height={ROUTE_MAP_H + 2 * FILTER_BLEED}
-        >
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.022"
-            numOctaves="6"
-            seed="11"
-            result="noise"
-          />
-          <feDiffuseLighting in="noise" surfaceScale="9" result="rawLit" className="map-light">
-            <feDistantLight azimuth="225" elevation="46" />
-          </feDiffuseLighting>
-          {/* Soft shadows: the relief reads as raised paper, not as rock. */}
-          <feComponentTransfer in="rawLit" result="lit">
-            <feFuncR type="linear" slope="0.62" intercept="0.4" />
-            <feFuncG type="linear" slope="0.62" intercept="0.4" />
-            <feFuncB type="linear" slope="0.62" intercept="0.4" />
-          </feComponentTransfer>
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.012"
-            numOctaves="3"
-            seed="3"
-            result="patch"
-          />
-          <feColorMatrix
-            in="patch"
-            type="matrix"
-            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 9 -4.2"
-            result="mask"
-          />
-          <feFlood className="map-green" result="green" />
-          <feComposite in="green" in2="mask" operator="in" result="greens" />
-          <feMerge result="painted">
-            <feMergeNode in="SourceGraphic" />
-            <feMergeNode in="greens" />
-          </feMerge>
-          <feBlend in="lit" in2="painted" mode="multiply" result="shaded" />
-          <feComposite in="shaded" in2="SourceGraphic" operator="in" />
-        </filter>
-        <filter
-          id={`${id}-lift`}
-          filterUnits="userSpaceOnUse"
-          x={-FILTER_BLEED}
-          y={-FILTER_BLEED}
-          width={width + 2 * FILTER_BLEED}
-          height={ROUTE_MAP_H + 2 * FILTER_BLEED}
-        >
-          <feDropShadow dx="1.5" dy="2.5" stdDeviation="2.5" className="map-shadow" />
-        </filter>
         <filter id={`${id}-pill`} x="-20%" y="-30%" width="140%" height="170%">
           <feDropShadow dx="0" dy="4" stdDeviation="6" className="pill-shadow" />
         </filter>
         <linearGradient id={`${id}-fade`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" className="map-fade" stopOpacity="1" />
-          <stop offset="0.28" className="map-fade" stopOpacity="0" />
-          <stop offset="0.8" className="map-fade" stopOpacity="0" />
+          <stop offset="0" className="map-fade" stopOpacity="0.85" />
+          <stop offset="0.16" className="map-fade" stopOpacity="0" />
+          <stop offset="0.84" className="map-fade" stopOpacity="0" />
           <stop offset="1" className="map-fade" stopOpacity="1" />
         </linearGradient>
         {pills.map((p) => (
@@ -215,11 +150,26 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
         ))}
       </defs>
 
-      {landPath ? (
-        <g filter={`url(#${id}-lift)`}>
-          <path d={landPath} className="map-land" filter={`url(#${id}-relief)`} />
-        </g>
-      ) : null}
+      {/* The sea, then the land: Natural Earth II's shaded relief and land
+          cover (public domain), with its sea painted out. A tile of open sea
+          was never built, so the sea shows through where none answers. */}
+      <rect width={width} height={ROUTE_MAP_H} className="map-sea" />
+      {tiles
+        .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
+        .map((t) => (
+          <image
+            key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+            href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
+            x={t.left}
+            y={t.top}
+            // A hair over, so no seam shows between tiles.
+            width={t.size + 0.6}
+            height={t.size + 0.6}
+            preserveAspectRatio="none"
+          />
+        ))}
+      {/* The mood's wash over the terrain: lighter for Calm, darker for Dark. */}
+      <rect width={width} height={ROUTE_MAP_H} className="map-wash" />
       <rect width={width} height={ROUTE_MAP_H} fill={`url(#${id}-fade)`} />
 
       {/* The flight in: a dotted trail into the first city, with its plane. */}

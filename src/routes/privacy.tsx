@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import {
+  NATURAL_EARTH_ATTRIBUTION,
   OPENFREEMAP_ATTRIBUTION,
   OSM_ATTRIBUTION,
   OVERTURE_ATTRIBUTION,
@@ -261,6 +262,7 @@ function PrivacyPage() {
             {OVERTURE_ATTRIBUTION}, available under the Community Data License Agreement –
             Permissive 2.0.
           </p>
+          <p>{NATURAL_EARTH_ATTRIBUTION}, which is in the public domain.</p>
         </Section>
 
         <Section title="Your control">
