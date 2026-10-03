@@ -241,6 +241,13 @@ const BuildRoutesInput = z.object({
     .refine(isTravelChoice, "Unknown way of getting around.")
     .transform((v) => v as TravelChoice)
     .optional(),
+  /**
+   * Only these legs (leg `i` runs from stop `i` to stop `i + 1`): the ones
+   * the traveller does not have yet. The other stops are still sent, so a new
+   * stop is looked up beside the rest of its day, but are not looked up or
+   * routed. Without it, every leg.
+   */
+  legs: z.array(z.number().int().min(0).max(198)).max(199).optional(),
 });
 
 function mapsOnlyLeg(
@@ -285,10 +292,17 @@ export const buildRoutes = createServerFn({ method: "POST" })
       area?: string;
       near?: { lat: number; lon: number };
       travel?: TravelChoice;
+      legs?: number[];
     }) => BuildRoutesInput.parse(input),
   )
   .handler(async ({ data }) => {
     const area = data.area?.trim() ?? "";
+    const asked = data.legs
+      ? [...new Set(data.legs)].filter((i) => i < data.stops.length - 1).sort((a, b) => a - b)
+      : null;
+    const askedSet = asked ? new Set(asked) : null;
+    /** A stop at either end of a leg being worked out. */
+    const needed = (index: number) => !askedSet || askedSet.has(index) || askedSet.has(index - 1);
     const points: ({ lat: number; lon: number } | null)[] = [];
     const deferred: string[] = [];
     const remembered = new Map<string, { lat: number; lon: number }>();
@@ -337,7 +351,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
     // The area's box, once, before any stop that needs looking up. Without
     // it a stop's name alone could land anywhere — "Queue de Castor" in
     // Montreal was saved at a stand near Quebec City.
-    if (area && data.stops.some((stop) => !hasCoords(stop))) {
+    if (area && data.stops.some((stop, i) => needed(i) && !hasCoords(stop))) {
       const areaHit = await lookup(cleanArea(area));
       const areaBox = areaBoxFrom(areaHit?.boundingbox);
       if (areaBox) box = widenBox(areaBox);
@@ -359,6 +373,11 @@ export const buildRoutes = createServerFn({ method: "POST" })
       const reuse = remembered.get(reuseKeyForStop(stop));
       if (reuse) {
         points.push(reuse);
+        continue;
+      }
+      // Not on a leg being asked: not looked up.
+      if (!needed(index)) {
+        points.push(null);
         continue;
       }
       if (lookupsSpent() || Date.now() > deadline) {
@@ -479,6 +498,7 @@ export const buildRoutes = createServerFn({ method: "POST" })
     const legs: RouteLeg[] = [];
     const unresolved: string[] = [];
     for (let i = 0; i < data.stops.length - 1; i++) {
+      if (askedSet && !askedSet.has(i)) continue;
       const a = points[i];
       const b = points[i + 1];
       const fromName = data.stops[i]!.title;
@@ -593,5 +613,12 @@ export const buildRoutes = createServerFn({ method: "POST" })
       });
     }
 
-    return { legs, unresolved, deferred, savedAt: new Date().toISOString() };
+    return {
+      legs,
+      /** Which leg each of `legs` is, when only some were asked. */
+      ...(asked ? { at: asked } : {}),
+      unresolved,
+      deferred,
+      savedAt: new Date().toISOString(),
+    };
   });
