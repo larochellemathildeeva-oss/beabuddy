@@ -20,6 +20,22 @@ rules, build and the public-bundle secret scan on every push to `main` and
 every pull request. Do not push work that has not passed it
 locally first.
 
+## Vercel
+
+The same repo also deploys on **Vercel** (import the GitHub repo; `vercel.json`
+sets the install and build commands). Vercel sets `VERCEL=1` while it builds,
+and `vite.config.ts` then uses Nitro's `vercel` preset, which writes
+`.vercel/output` (one Node function plus the static files) instead of
+`.output`. Canner builds are unchanged. `check:public-secrets` scans whichever
+output exists.
+
+Before the first Vercel deploy: copy the server env vars from `.env.example`
+into the Vercel project, and add the Vercel domain to the Supabase auth
+redirect URLs. On Vercel the in-process caches and limits (tile cache, map
+rate limits, search memory) are per function instance and reset often; the
+database ledgers (AI units, Geoapify credits, search cache) are shared as
+before.
+
 ## App version (Canner)
 
 `package.json` `version` is the number shown in the app header. **Do not
