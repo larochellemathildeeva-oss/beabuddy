@@ -57,7 +57,7 @@ Colorful is the primary exploration theme for current redesign work.
 
 - Use for focus rings, primary interactive emphasis, route selection, active controls where a chromatic accent is useful, and key progress states.
 - Every accent use reads the tokens. Danger `#C22A52` and the supporting blush are independent and do not switch.
-- Body text on accent buttons must meet 4.5:1; use near-black text on either exact accent fill. Small accent text may use a darker ink derived for readability.
+- Body text on accent buttons must meet 4.5:1; use near-black text on either exact accent fill. Accent text uses separate ink tokens, including hover and opacity utilities; Dark uses light ink. Danger fill stays `#C22A52`, with lighter danger text in Dark.
 - Do not flood whole screens with it. Most screens should still read primarily as white/ink plus travel imagery.
 
 ### Base surfaces
@@ -65,7 +65,7 @@ Colorful is the primary exploration theme for current redesign work.
 - **App ground:** `#FCF9F4` in Colorful, `#FFFFFF` in Calm. Dark keeps its dark surfaces.
 - **Card / floating surface:** `#FFFFFF`
 - **Primary text:** `#111111`
-- **Secondary text:** `#77736F`
+- **Secondary text:** `#6B6763` in Calm/Colorful, for at least 4.5:1 on beige surfaces; Dark uses light secondary ink.
 - **Hairline border:** `#F2EDE6`
 
 There should be one consistent app ground, not several unrelated shades of white from page to page.

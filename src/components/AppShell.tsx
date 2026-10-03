@@ -80,6 +80,7 @@ export function AppShell({
   const tabIndex = activeTabIndex(pathname, tabs);
   const tabId = tabIdForPath(pathname);
   const scrollRef = useRef<HTMLElement | null>(null);
+  const pageHeaderRef = useRef<HTMLDivElement | null>(null);
   const [compressed, setCompressed] = useState(false);
   const plane = planeFromMatches(matches);
 
@@ -114,7 +115,12 @@ export function AppShell({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const onScroll = () => setCompressed((cur) => nextCompressed(el.scrollTop, cur));
+    const onScroll = () => {
+      const scrollTop = el.scrollTop;
+      const scrollRange = el.scrollHeight - el.clientHeight;
+      const headerHeight = pageHeaderRef.current?.getBoundingClientRect().height ?? 0;
+      setCompressed((cur) => nextCompressed(scrollTop, cur, { scrollRange, headerHeight }));
+    };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => el.removeEventListener("scroll", onScroll);
@@ -276,6 +282,7 @@ export function AppShell({
         )}
 
         <PageHeader
+          ref={pageHeaderRef}
           eyebrow={eyebrow}
           title={title}
           action={headerAction}

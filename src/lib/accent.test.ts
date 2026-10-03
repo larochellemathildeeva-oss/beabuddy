@@ -1,17 +1,17 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { runInNewContext } from "node:vm";
-import { ACCENT_BOOT_SCRIPT, ACCENT_KEY, DEFAULT_ACCENT, isAccentName } from "./accent.ts";
+import { ACCENTS, ACCENT_BOOT_SCRIPT, ACCENT_KEY, DEFAULT_ACCENT, isAccentName } from "./accent.ts";
 import { planSync, settingStorageKey } from "./account-settings.ts";
 
 test("accent is Pink by default; only Pink and Periwinkle are accepted", () => {
   assert.equal(DEFAULT_ACCENT, "pink");
-  for (const name of ["pink", "periwinkle"]) assert.ok(isAccentName(name));
+  for (const name of ACCENTS) assert.ok(isAccentName(name));
   for (const value of [null, "", "violet", {}, 1]) assert.equal(isAccentName(value), false);
 });
 
 test("first paint applies the saved accent, including invalid or blocked storage", () => {
-  for (const saved of [null, "pink", "periwinkle", "unknown", "blocked"]) {
+  for (const saved of [null, ...ACCENTS, "unknown", "blocked"]) {
     const attrs = new Map<string, string>();
     runInNewContext(ACCENT_BOOT_SCRIPT, {
       localStorage: {
@@ -24,7 +24,7 @@ test("first paint applies the saved accent, including invalid or blocked storage
         documentElement: { setAttribute: (key: string, value: string) => attrs.set(key, value) },
       },
     });
-    assert.equal(attrs.get("data-accent"), saved === "periwinkle" ? "periwinkle" : "pink");
+    assert.equal(attrs.get("data-accent"), isAccentName(saved) ? saved : DEFAULT_ACCENT);
   }
 });
 

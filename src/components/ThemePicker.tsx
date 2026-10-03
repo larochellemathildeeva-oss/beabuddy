@@ -11,7 +11,7 @@ import {
 } from "@/lib/theme";
 import { saveAccountSetting } from "@/lib/account-settings-sync";
 import {
-  ACCENTS,
+  ACCENT_OPTIONS,
   ACCENT_KEY,
   applyAccent,
   DEFAULT_ACCENT,
@@ -101,7 +101,7 @@ export function ThemePicker() {
       </div>
       <p className="mt-4 text-body font-semibold">Accent</p>
       <div role="radiogroup" aria-label="Accent" className="mt-2 flex flex-wrap gap-2">
-        {ACCENTS.map((name) => (
+        {ACCENT_OPTIONS.map(({ name, label }) => (
           <button
             key={name}
             type="button"
@@ -121,7 +121,7 @@ export function ThemePicker() {
             >
               {accent === name && <Check className="size-4" />}
             </span>
-            {name === "pink" ? "Pink" : "Periwinkle"}
+            {label}
           </button>
         ))}
       </div>

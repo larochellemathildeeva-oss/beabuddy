@@ -6,11 +6,19 @@ Only step 0 from `docs/ui-revamp/README.md`: tokens, shared header/navigation, t
 
 The preview now stubs server-only imports, uses current Home exports and real current control labels, models atomic schedule writes, and tests controls in Calm, Colorful and Dark. Assertions still check saved itinerary data, booking references, import pins and durations, selected days/stops, and navigation.
 
+Review fixes on this same step 0 branch:
+
+- Header compression checks the available scroll range against the actual expanded header height. Short pages stay expanded, so browser scroll clamping cannot toggle the header repeatedly. Long titles wrap when expanded and truncate to one line in either compact header layout, including larger Reading text.
+- Tailwind's text-color namespace supplies accent ink to `text-primary`, hover and opacity variants without overriding disabled utilities. Calm/Dark sequence glyphs use the same ink; Colorful keeps its existing category colors for these non-text icons. The real Saved Places “Added” button is checked for its disabled green state.
+- Dark error text uses light danger ink, independent of the accent. Danger fill remains the owner's `#C22A52`. Secondary ink is darker on light beige surfaces. Rendered accent text at 85% opacity, error text and hint text are checked against 4.5:1.
+- Version text is hidden below 390px again. Removed the five unused tab/home style aliases identified in review, retaining the used `tab-rule` utility. Accent names, labels and bootstrap validation come from one list.
+- Preview workers write into a fresh directory per gate. Missing/malformed reports, launch errors and nonzero exits produce a failed current report; previous green reports cannot be reused. Regression tests exercise these failure cases.
+
 ## Validation
 
 - [x] `npm run typecheck`
 - [x] `npm run lint` — 0 errors; the same 15 existing warnings
-- [x] `npm test` — 1,901 tests passed
+- [x] `npm test` — 1,906 tests passed
 - [x] `npm run build`
 - [x] `npm run check:public-secrets`
 - [x] `npm run db:check:ci`
@@ -18,6 +26,10 @@ The preview now stubs server-only imports, uses current Home exports and real cu
 - [x] `npm run preview:check` — 131 controls per theme, 393 total, 0 problems; feature flows also pass in Calm, Colorful and Dark
 
 Clicked the five main destinations, both back paths, brand link, Home search, guide open/close, theme and accent choices. Checked offline/online indicators, account-setting writes, remount persistence, storage-event updates, header/nav position while main scrolls, and 320/390px widths with 135% Reading text. Primary labels use black: both exact accents and their gradient endpoints meet 4.5:1, including Periwinkle’s darker map/gradient token.
+
+Additional browser regressions cover a page with only 50px of overflow at 320/390px and 100%/135% Reading size, long compact titles with actions in either header position, version visibility, computed hover/opacity text colors, Dark error contrast, and the actual Saved Places disabled “Added” state. After screenshots have been refreshed following review.
+
+Computed browser colors on elevated surfaces: Colorful hint text 4.81:1, Pink text at 85% opacity 4.96:1, Periwinkle text at 85% opacity 4.81:1; Dark error text 6.26:1. All exceed the 4.5:1 text minimum.
 
 Browser verification uses the repo’s component preview: real AppShell, PageHeader, ThemePicker and TripDetail with simulated Supabase/server responses. Physical-device sync against a live Supabase account was not exercised.
 

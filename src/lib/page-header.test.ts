@@ -26,6 +26,23 @@ describe("nextCompressed", () => {
       assert.equal(nextCompressed(top, once), once, `oscillates at ${top}`);
     }
   });
+
+  it("does not compress short pages whose scroll position would be clamped", () => {
+    for (const headerHeight of [82, 110, 280]) {
+      assert.equal(nextCompressed(48, false, { scrollRange: 50, headerHeight }), false);
+      assert.equal(
+        nextCompressed(48, false, { scrollRange: headerHeight + 47, headerHeight }),
+        false,
+      );
+      assert.equal(
+        nextCompressed(48, false, { scrollRange: headerHeight + 48, headerHeight }),
+        true,
+      );
+      // Even if the whole header vanished, a bottom-clamped page remains stable.
+      assert.equal(nextCompressed(48, true, { scrollRange: 48, headerHeight: 0 }), true);
+      assert.equal(nextCompressed(0, true, { scrollRange: 48, headerHeight: 0 }), false);
+    }
+  });
 });
 
 describe("tabIdForPath", () => {

@@ -64,11 +64,18 @@ const trip = {
 } as never;
 
 if (sample === "shell") {
+  const shellParams = new URLSearchParams(location.search);
   startAccountSettingsSync();
   createRoot(document.getElementById("root")!).render(
-    <AppShell eyebrow="Appearance" title="Your Béa." homeHeader={new URLSearchParams(location.search).get("path") === "/"}>
+    <AppShell
+      eyebrow="Appearance"
+      title={shellParams.get("title") ?? "Your Béa."}
+      homeHeader={shellParams.get("path") === "/"}
+      actionBesideEyebrow={shellParams.get("beside") === "yes"}
+      headerAction={shellParams.has("beside") ? <span aria-hidden className="block size-11" /> : undefined}
+    >
       <ThemePicker />
-      <div style={{ height: 1100 }} aria-hidden />
+      <div data-preview-spacer style={{ height: 1100 }} aria-hidden />
     </AppShell>,
   );
 } else if (sample === "home" || sample === "home-trips") {

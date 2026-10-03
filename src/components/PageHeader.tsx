@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import logo from "@/assets/bea-logo.png";
 
 /** Shared identity row; the shell keeps the Home link and header actions. */
@@ -19,7 +19,7 @@ export function BrandMark({ version, large = false }: { version?: string; large?
           Béa<span className="text-[var(--acc)]">.</span>
         </span>
         {version && (
-          <span className="mt-1 block text-[13px] font-semibold text-muted-foreground">
+          <span className="mt-1 hidden text-[13px] font-semibold text-muted-foreground min-[390px]:block">
             v{version}
           </span>
         )}
@@ -43,12 +43,14 @@ export function BrandMark({ version, large = false }: { version?: string; large?
  * behaviour for free.
  */
 export function PageHeader({
+  ref,
   eyebrow,
   title,
   action,
   actionBesideEyebrow = false,
   compressed = false,
 }: {
+  ref?: Ref<HTMLDivElement>;
   eyebrow?: string | undefined;
   title?: ReactNode | undefined;
   /** One action, right-aligned. Two is a toolbar, and belongs in the content. */
@@ -61,6 +63,7 @@ export function PageHeader({
 
   return (
     <div
+      ref={ref}
       // The flag sits on the wrapper and the children read it through `group-`,
       // so there is one source of truth for the state rather than three.
       data-compressed={compressed ? "" : undefined}
@@ -76,14 +79,14 @@ export function PageHeader({
             <div className="shrink-0">{action}</div>
           </div>
           {title && (
-            <h1 className="mt-1 break-words text-display leading-[1.1] transition-[font-size] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:text-title">
+            <h1 className="mt-1 break-words text-display leading-[1.1] transition-[font-size] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:truncate group-data-[compressed]:text-title">
               {title}
             </h1>
           )}
         </div>
       ) : (
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {eyebrow && (
               // The kicker yields its space when compressed; expanded text wraps.
               <p className="label-caps transition-[opacity] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:hidden">
@@ -91,7 +94,7 @@ export function PageHeader({
               </p>
             )}
             {title && (
-              <h1 className="mt-1.5 break-words text-display leading-[1.1] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:text-title group-data-[compressed]:leading-[1.35]">
+              <h1 className="mt-1.5 break-words text-display leading-[1.1] transition-[font-size,margin] duration-(--t-shift) ease-(--ease-standard) group-data-[compressed]:mt-0 group-data-[compressed]:truncate group-data-[compressed]:text-title group-data-[compressed]:leading-[1.35]">
                 {title}
               </h1>
             )}

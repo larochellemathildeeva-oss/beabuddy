@@ -48,6 +48,8 @@
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
+  /* Tailwind text colors have their own namespace, including hover and /alpha. */
+  --text-color-primary: var(--primary-ink);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -56,6 +58,7 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --text-color-destructive: var(--destructive-ink);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -93,7 +96,7 @@
   --acc-done: #F59AB0;
   --acc-line: #F3B6C5;
   --acc-track: #F3E4E8;
-  --acc-ink: #B92349;
+  --acc-ink: #A51C3F;
 }
 [data-accent="periwinkle"] {
   --acc: #6675FF;
@@ -102,7 +105,7 @@
   --acc-done: #B3BAFF;
   --acc-line: #C5CBFF;
   --acc-track: #E3E6FF;
-  --acc-ink: #4554C7;
+  --acc-ink: #3B46AE;
 }
 
 :root,
@@ -133,16 +136,18 @@
   --popover: #FFFFFF;
   --popover-foreground: #111111;
   --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
   /* Near-black meets body-text contrast on either exact accent fill. */
   --primary-foreground: #000000;
   --primary-soft: var(--acc-soft);
   --secondary: #F7F5F1;
   --secondary-foreground: #111111;
   --muted: #F7F5F1;
-  --muted-foreground: #77736F;
+  --muted-foreground: #6B6763;
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
   --destructive: #C22A52;
+  --destructive-ink: var(--destructive);
   --destructive-foreground: #FFFFFF;
   --border: #F2EDE6;
   --input: #D9D3CC;
@@ -218,10 +223,12 @@
   --popover: #FFFFFF;
   --popover-foreground: #111111;
   --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
   --primary-foreground: #000000;
   --primary-soft: var(--acc-soft);
   --secondary-foreground: #111111;
-  --muted-foreground: #77736F;
+  --muted-foreground: #6B6763;
+  --destructive-ink: var(--destructive);
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
   --border: #F2EDE6;
@@ -247,6 +254,7 @@
   --popover: #2b2723;
   --popover-foreground: #f6f0e8;
   --primary: var(--acc);
+  --primary-ink: var(--acc-done);
   --primary-foreground: #000000;
   --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
   --secondary: #2b2723;
@@ -256,6 +264,7 @@
   --accent: #2b2723;
   --accent-foreground: #f6f0e8;
   --destructive: #C22A52;
+  --destructive-ink: #F08AA3;
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #3a342f;
   --input: #3a342f;
@@ -413,15 +422,7 @@
   }
 }
 
-/* Compatibility aliases for the shell's former per-tab hues. */
-[data-tab] { --tab-accent: var(--acc); }
-@utility tab-tint { background-color: var(--primary-soft); }
-@utility tab-ink { color: var(--acc-ink); }
 @utility tab-rule { border-bottom: 1px solid var(--border); }
-
-/* Accent fills use the exact owner tokens; small accent text uses readable ink. */
-.text-primary { color: var(--acc-ink); }
-.dark .text-primary { color: var(--acc-done); }
 
 /**
  * A card lifts off the page rather than being drawn around. The hairline is
@@ -488,7 +489,7 @@
     color: var(--color-primary-foreground);
   }
   :is(.seq-text-1, .seq-text-2, .seq-text-3, .seq-text-4, .seq-text-5) {
-    color: var(--color-primary);
+    color: var(--primary-ink);
   }
   [data-theme="colorful"] .seq-1 { background-color: #c24a67; color: #fff; }
   [data-theme="colorful"] .seq-2 { background-color: #2f7bb0; color: #fff; }
@@ -1300,9 +1301,7 @@
 [data-theme="calm"] {
   --home-ink: #1b1918;
   --home-ink-foreground: #ffffff;
-  --home-dot: #e4826f;
   --home-search: var(--card);
-  --home-tab-active: color-mix(in oklch, var(--foreground) 7%, transparent);
   --map-land: #efe9dd;
   --map-green: #87ad6b;
   --map-light: #ffffff;
@@ -1323,9 +1322,7 @@
 [data-theme="colorful"] {
   --home-ink: var(--acc);
   --home-ink-foreground: var(--primary-foreground);
-  --home-dot: var(--acc);
   --home-search: #fdeef2;
-  --home-tab-active: var(--acc-soft);
   --map-land: #f4efe7;
   --map-green: #8cc68d;
   --map-light: #ffffff;
@@ -1347,9 +1344,7 @@
 [data-theme="dark"] {
   --home-ink: #f6f3ee;
   --home-ink-foreground: #121212;
-  --home-dot: #f6f3ee;
   --home-search: var(--card);
-  --home-tab-active: rgb(255 255 255 / 0.1);
   --map-land: #3b3c38;
   --map-green: #36533a;
   --map-light: #dfe3d6;

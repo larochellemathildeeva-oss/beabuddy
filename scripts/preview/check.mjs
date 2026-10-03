@@ -19,7 +19,7 @@
  * else the installed Google Chrome.
  */
 import { build } from "esbuild";
-import { spawn } from "node:child_process";
+import { runThemeChecks } from "./run-themes.mjs";
 import { chromium } from "playwright-core";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -87,19 +87,8 @@ if (process.env.PREVIEW_RENDER_ONLY === "1") process.exit(0);
 
 // The full gate exercises every control and feature flow in all three themes.
 if (!process.env.PREVIEW_THEME && process.env.PREVIEW_FLOWS_ONLY !== "1") {
-  const results = await Promise.all(["calm", "colorful", "dark"].map((theme) => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [fileURLToPath(import.meta.url)], {
-      env: { ...process.env, PREVIEW_THEME: theme, PREVIEW_NO_BUILD: "1" },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    child.stdout.on("data", (chunk) => process.stdout.write(`[${theme}] ${chunk}`));
-    child.stderr.on("data", (chunk) => process.stderr.write(`[${theme}] ${chunk}`));
-    child.on("error", reject);
-    child.on("close", (code) => resolve({ theme, code }));
-  })));
-  const reports = results.map(({ theme, code }) => ({ theme, code, ...JSON.parse(readFileSync(join(out, `report-${theme}.json`))) }));
-  writeFileSync(join(out, "report.json"), JSON.stringify(reports, null, 2));
-  process.exit(results.some(({ code }) => code !== 0) ? 1 : 0);
+  const reports = await runThemeChecks({ script: fileURLToPath(import.meta.url), out });
+  process.exit(reports.some(({ code, failures }) => code !== 0 || failures.length > 0) ? 1 : 0);
 }
 const previewTheme = process.env.PREVIEW_THEME ?? "calm";
 
@@ -410,6 +399,108 @@ await flow("shell: phone widths and larger reading text keep labels and tap targ
       return { small: small.map((el) => el.textContent), short: short.map((el) => el.textContent || el.getAttribute("aria-label")), overflow: document.documentElement.scrollWidth > innerWidth };
     });
     if (problems.small.length || problems.short.length || problems.overflow) throw new Error(`${width}px: ${JSON.stringify(problems)}`);
+    const version = page.locator("header span").filter({ hasText: /^v\d+\.\d+\.\d+$/ });
+    if (await version.isVisible() !== (width >= 390)) throw new Error(`${width}px: version visibility changed`);
+  }
+}, "shell");
+
+await flow("shell: short pages do not oscillate when compression would clamp scrollTop", async (page) => {
+  for (const width of [320, 390]) for (const scale of [1, 1.35]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate((scale) => {
+      document.documentElement.style.setProperty("--text-scale", String(scale));
+      document.querySelector("main").scrollTop = 0;
+      document.querySelector("[data-preview-spacer]").style.height = "1100px";
+    }, scale);
+    await page.waitForTimeout(250);
+    const range = await page.evaluate(() => {
+      const main = document.querySelector("main");
+      const spacer = document.querySelector("[data-preview-spacer]");
+      spacer.style.height = "0px";
+      const style = getComputedStyle(main);
+      spacer.style.height = `${main.clientHeight + 50 - main.firstElementChild.getBoundingClientRect().height - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)}px`;
+      window.__compressionChanges = [];
+      window.__compressionObserver?.disconnect();
+      window.__compressionObserver = new MutationObserver((mutations) => window.__compressionChanges.push(...mutations.map((m) => m.oldValue)));
+      window.__compressionObserver.observe(document.querySelector("[data-compressed]") ?? document.querySelector("h1").closest(".group"), { attributes: true, attributeFilter: ["data-compressed"], attributeOldValue: true });
+      main.scrollTop = 50;
+      return main.scrollHeight - main.clientHeight;
+    });
+    if (Math.abs(range - 50) > 1) throw new Error(`short-page fixture has ${range}px overflow`);
+    await page.waitForTimeout(1000);
+    const changes = await page.evaluate(() => window.__compressionChanges);
+    if (changes.length || await page.locator("[data-compressed]").count()) throw new Error(`${width}px at ${scale}: short header toggled ${changes.length} times`);
+  }
+}, "shell");
+
+await flow("shell: compressed long titles stay on one line in both header layouts", async (page) => {
+  const title = "Places worth remembering on a long journey through several cities.";
+  for (const beside of [false, true]) {
+    await page.goto(`https://preview.test/?sample=shell&path=%2Fprofile&title=${encodeURIComponent(title)}${beside ? "&beside=yes" : ""}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1, name: title }).waitFor();
+    for (const scale of [1, 1.35]) {
+      await page.setViewportSize({ width: 320, height: 844 });
+      await page.evaluate((scale) => {
+        document.documentElement.style.setProperty("--text-scale", String(scale));
+        document.querySelector("main").scrollTop = 0;
+      }, scale);
+      await page.waitForTimeout(250);
+      const expanded = await page.locator("h1").boundingBox();
+      await page.locator("main").evaluate((el) => el.scrollTop = el.scrollHeight);
+      await page.locator("[data-compressed]").waitFor();
+      await page.waitForTimeout(300);
+      const compact = await page.locator("h1").evaluate((el) => {
+        const css = getComputedStyle(el);
+        return { height: el.getBoundingClientRect().height, lineHeight: parseFloat(css.lineHeight), whiteSpace: css.whiteSpace, ellipsis: css.textOverflow, overflow: el.scrollWidth > el.clientWidth, text: el.textContent };
+      });
+      if (compact.height > compact.lineHeight + 1 || compact.whiteSpace !== "nowrap" || compact.ellipsis !== "ellipsis" || !compact.overflow || compact.text !== title || compact.height >= expanded.height) throw new Error(`long-title layout: ${JSON.stringify(compact)}`);
+    }
+  }
+}, "shell");
+
+await flow("shell: text tokens cover hover, opacity, sequence and dark error contrast", async (page) => {
+  for (const accent of ["Pink", "Periwinkle"]) {
+    await page.getByRole("radio", { name: accent, exact: true }).click();
+    await page.evaluate(() => {
+      document.querySelector("[data-color-probes]")?.remove();
+      const probes = document.createElement("div");
+      probes.dataset.colorProbes = "";
+      probes.className = "bg-elevated";
+      for (const cls of ["text-primary", "text-primary/85", "text-foreground hover:text-primary", "text-destructive", "text-muted-foreground", "seq-text-1"]) {
+        const el = document.createElement("p");
+        el.className = cls;
+        el.textContent = cls;
+        probes.append(el);
+      }
+      document.querySelector("main").prepend(probes);
+    });
+    await page.locator("[data-color-probes] p").nth(2).hover();
+    const results = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      const rgb = (ink, ground) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = ground;
+        ctx.fillRect(0, 0, 1, 1);
+        ctx.fillStyle = ink;
+        ctx.fillRect(0, 0, 1, 1);
+        return [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
+      };
+      const lum = (rgb) => rgb.map((c) => c / 255).map((c) => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4).reduce((n, c, i) => n + c * [0.2126, 0.7152, 0.0722][i], 0);
+      const ground = getComputedStyle(document.querySelector("[data-color-probes]")).backgroundColor;
+      const b = lum(rgb(ground, ground));
+      return [...document.querySelectorAll("[data-color-probes] p")].map((el) => {
+        const color = getComputedStyle(el).color;
+        const f = lum(rgb(color, ground));
+        return { cls: el.className, ratio: (Math.max(b, f) + 0.05) / (Math.min(b, f) + 0.05), color };
+      });
+    });
+    // Colorful's sequence colors mark categories on icons; Calm/Dark use accent ink.
+    const bad = results.filter((r) => r.ratio < (previewTheme === "colorful" && r.cls === "seq-text-1" ? 3 : 4.5));
+    if (bad.length) throw new Error(`${accent} text contrast: ${JSON.stringify(bad)}`);
+    if (results[0].color !== results[2].color) throw new Error("hover:text-primary missed the text token");
+    console.log(`  ${accent} text contrast: ${results.map((r) => `${r.cls}=${r.ratio.toFixed(2)}`).join(", ")}`);
   }
 }, "shell");
 
@@ -438,6 +529,17 @@ await flow("saved places: add one to the chosen day", async (page) => {
   const w = (await writes(page)).find((x) => x.table === "itinerary_items" && x.op === "insert");
   if (!w) throw new Error("nothing was added to the itinerary");
   if (w.payload.day_date !== "2026-10-07") throw new Error(`added to ${w.payload.day_date}, not the chosen day`);
+  const added = page.locator("li", { hasText: "Nagata-ya" }).getByRole("button", { name: "Added", exact: true });
+  if (!await added.isDisabled()) throw new Error("Added did not retain its disabled state");
+  const green = await added.evaluate((el) => {
+    const probe = document.createElement("span");
+    probe.className = "text-nexttime";
+    el.parentElement.append(probe);
+    const matches = getComputedStyle(el).color === getComputedStyle(probe).color;
+    probe.remove();
+    return matches;
+  });
+  if (!green) throw new Error("text-primary overrides disabled:text-nexttime on Added");
 });
 
 await flow("trip actions: To do, Add stop to the itinerary, Offline and Customize in Settings", async (page) => {
@@ -869,6 +971,6 @@ await flow("shell header and navigation stay visible while the content scrolls",
 }
 
 await browser.close();
-writeFileSync(join(out, `report-${previewTheme}.json`), JSON.stringify({ clicked, failures }, null, 2));
+writeFileSync(join(process.env.PREVIEW_REPORT_DIR ?? out, `report-${previewTheme}.json`), JSON.stringify({ clicked, failures }, null, 2));
 console.log(`\n${clicked} controls clicked, ${failures.length} problem(s). Screenshots in scripts/preview/out/`);
 process.exit(failures.length ? 1 : 0);
