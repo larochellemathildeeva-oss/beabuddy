@@ -94,8 +94,8 @@ function TripsPage() {
   const search = Route.useSearch();
   const [creating, setCreating] = useState(Boolean(search.new));
   const [joining, setJoining] = useState(false);
-  /** The master's four tabs. */
-  const [view, setView] = useState<"upcoming" | "past" | "drafts" | "all">("upcoming");
+  /** The master's three tabs. Undated trips sit at the end of Upcoming. */
+  const [view, setView] = useState<"upcoming" | "past" | "all">("upcoming");
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -191,12 +191,11 @@ function TripsPage() {
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
 
-            <div role="tablist" aria-label="Which trips" className="grid grid-cols-4 gap-1.5">
+            <div role="tablist" aria-label="Which trips" className="grid grid-cols-3 gap-1.5">
               {(
                 [
                   ["upcoming", "Upcoming"],
                   ["past", "Past"],
-                  ["drafts", "Drafts"],
                   ["all", "All"],
                 ] as const
               ).map(([value, label]) => (
@@ -620,18 +619,36 @@ function TripsPage() {
                       </div>
                     </section>
                   ) : null}
+                  {lists.drafts.length > 0 ? (
+                    <section className="rise">
+                      <ListHead title="Dates to set" />
+                      <div className="space-y-3">
+                        {lists.drafts.map((trip) => (
+                          <TripCard
+                            key={trip.id}
+                            trip={trip}
+                            photos={photos}
+                            glance={glances[trip.id]}
+                            peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
                   {lists.past.length > 0 ? (
                     <section className="rise">
                       <ListHead title="Past trips" onSeeAll={() => setView("past")} />
                       <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
                     </section>
                   ) : null}
-                  {t.trips.length > 0 && lists.upcoming.length === 0 && !t.loading && (
-                    <p className="py-6 text-center text-[14.5px] text-muted-foreground">
-                      Nothing ahead yet.
-                      {lists.drafts.length ? " Undated trips are under Drafts." : ""}
-                    </p>
-                  )}
+                  {t.trips.length > 0 &&
+                    lists.upcoming.length === 0 &&
+                    lists.drafts.length === 0 &&
+                    !t.loading && (
+                      <p className="py-6 text-center text-[14.5px] text-muted-foreground">
+                        Nothing ahead yet.
+                      </p>
+                    )}
                 </>
               )}
 
@@ -650,9 +667,7 @@ function TripsPage() {
                     <p className="py-6 text-center text-[14.5px] text-muted-foreground">
                       {view === "past"
                         ? "No past trips yet. They land here once they end."
-                        : view === "drafts"
-                          ? "No drafts. A trip without dates waits here."
-                          : "No trips yet."}
+                        : "No trips yet."}
                     </p>
                   )}
                 </div>
