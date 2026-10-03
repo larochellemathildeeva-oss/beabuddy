@@ -115,6 +115,21 @@ export function AppShell({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    // Measuring the compact header clones it, so keep the answer until the
+    // header changes size (a new title, Reading size or width).
+    let observed: HTMLElement | null = null;
+    let heights: ReturnType<typeof measureHeaderHeights> | null = null;
+    const resized =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => (heights = null));
+    const headerHeights = (header: HTMLElement) => {
+      if (header !== observed) {
+        resized?.disconnect();
+        resized?.observe(header);
+        observed = header;
+        heights = null;
+      }
+      return (heights ??= measureHeaderHeights(header));
+    };
     const onScroll = () => {
       const scrollTop = el.scrollTop;
       const current = compressedRef.current;
@@ -122,7 +137,7 @@ export function AppShell({
       if (!current && scrollTop >= COMPRESS_AT) {
         dimensions = {
           scrollRange: el.scrollHeight - el.clientHeight,
-          ...(pageHeaderRef.current ? measureHeaderHeights(pageHeaderRef.current) : {}),
+          ...(pageHeaderRef.current ? headerHeights(pageHeaderRef.current) : {}),
         };
       }
       const next = nextCompressed(scrollTop, current, dimensions);
@@ -133,7 +148,10 @@ export function AppShell({
     };
     onScroll();
     el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      resized?.disconnect();
+    };
   }, [pathname, loading, publicPage, user]);
 
   // The app frame is for members, except on pages a visitor has to be able to
