@@ -67,6 +67,9 @@ const tileCache = new TileResponseCache();
 const tileRateLimiter = new TileRateLimiter();
 const TILE_SHARE_KEY = Symbol.for("bea.tileGeoapifyCreditShare");
 const GEOAPIFY_TILE_CREDITS = 0.25;
+// The tile share is counted per process. On Vercel each function instance would get its own,
+// so nothing would hold tiles to 600 credits a day: there they stop at OpenFreeMap.
+const GEOAPIFY_TILES = !process.env["VERCEL"];
 
 function tileShare(): TileDailyCreditShare {
   const store = globalThis as { [TILE_SHARE_KEY]?: TileDailyCreditShare };
@@ -196,7 +199,7 @@ async function serveVectorAsset(request: Request): Promise<Response | null> {
   if (free) openFreeMapUnreadable();
 
   // Empty while Geoapify rests for the day (geo-credits.ts).
-  const key = geoapifyKey();
+  const key = GEOAPIFY_TILES ? geoapifyKey() : "";
   if (!key) return new Response(null, { status: openFreeMapOn() ? 502 : 404 });
 
   const now = Date.now();

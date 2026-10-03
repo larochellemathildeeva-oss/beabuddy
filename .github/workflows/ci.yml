@@ -54,6 +54,12 @@ jobs:
       - name: No server secrets in the client bundle
         run: npm run check:public-secrets
 
+      # The same build and scan as a Vercel deploy (vercel preset, .vercel/output). Blocking.
+      - name: Build and scan for Vercel
+        env:
+          VERCEL: "1"
+        run: npm run build && npm run check:public-secrets
+
   # The frozen import checks: every sample plan through the list reader and
   # every frozen Gemini answer through today's clean-up, then a real 127-stop
   # Japan plan placed from frozen map answers and scored against a reviewed
