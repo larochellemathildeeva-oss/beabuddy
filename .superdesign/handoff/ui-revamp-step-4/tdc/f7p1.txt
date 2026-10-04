@@ -1,0 +1,70 @@
+              </p>
+            )}
+            {dir.error && <p className="mt-2 text-[12.5px] text-destructive">{dir.error}</p>}
+            {dir.saved && (
+              <div className="mt-3 space-y-2">
+                {dir.saved.legs.map((l, i) => (
+                  <details key={i} className="rounded-xl bg-elevated px-3 py-2">
+                    <summary className="cursor-pointer text-[14.5px] font-medium">
+                      {l.from} → {l.to}
+                      <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                        {l.distance > 0
+                          ? `${modeWord(l.mode)} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                          : unroutedLegCopy(l)}
+                      </span>
+                    </summary>
+                    <ol className="mt-2 space-y-1">
+                      {l.steps.map((s, k) => (
+                        <li key={k} className="text-[13px] text-muted-foreground">
+                          {s.instruction}
+                          {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                    <a
+                      href={l.mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-[13px] font-semibold text-primary"
+                    >
+                      Open in maps (needs service)
+                    </a>
+                  </details>
+                ))}
+                {dir.saved.unresolved.length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Couldn't find on the map: {dir.saved.unresolved.join(", ")}
+                  </p>
+                )}
+                {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Later stretches open in maps — Béa stops looking after a long list.
+                  </p>
+                )}
+                {dayMaps.busy && (
+                  <p className="text-[12px] text-muted-foreground">Saving a map of each day…</p>
+                )}
+                {!dayMaps.busy && Object.keys(dayMaps.maps).length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    {Object.keys(dayMaps.maps).length} day{" "}
+                    {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a day
+                    in the Timeline to see it offline.
+                  </p>
+                )}
+                {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
+                {offlineMap.progress && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Saving the trip's map
+                    {offlineMap.progress.total > 0
+                      ? ` (${Math.round((offlineMap.progress.done / offlineMap.progress.total) * 100)}%)`
+                      : ""}
+                    …
+                  </p>
+                )}
+                {!offlineMap.busy && offlineMap.saved && (
+                  <p className="text-[12px] text-muted-foreground">
+                    The map around each day's stops is saved on this phone (
+                    {prettyMegabytes(offlineMap.saved.bytes)}), so it still pans and zooms with no
+                    signal.
+                  </p>
+                )}

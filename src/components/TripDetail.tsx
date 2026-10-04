@@ -1722,13 +1722,11 @@ export function TripDetail({
             </div>
           )}
 
-        {/* One day row for Companion, Map and the Timeline by day: arrows
-            either side of the day cards, the chosen day filled. */}
+        {/* One day row for Companion and the Timeline by day. On the map the
+            same row floats over the map, so it stays with the picture. */}
         {stopItems.length > 0 &&
           offerDays &&
-          (perspective === "companion" ||
-            perspective === "map" ||
-            (perspective === "timeline" && timelineByDay)) && (
+          (perspective === "companion" || (perspective === "timeline" && timelineByDay)) && (
             <div ref={dayCardsRef} className="mb-3">
               <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
@@ -1933,6 +1931,11 @@ export function TripDetail({
                 todayKey={todayKey}
                 ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
+                dayStrip={
+                  offerDays ? (
+                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
+                  ) : null
+                }
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole

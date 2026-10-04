@@ -60,6 +60,8 @@ export type DayMapPin = {
   insideCount: number;
   /** Inside another stop drawn on this map: a smaller ring pin beside it. */
   nested: boolean;
+  /** Arrived and left: drawn in the accent's done colour. */
+  done: boolean;
 };
 
 type DayStop = {
@@ -70,6 +72,8 @@ type DayStop = {
   lon?: number | null | undefined;
   parent_id?: string | null | undefined;
   inside?: readonly unknown[] | null | undefined;
+  arrived_at?: string | null | undefined;
+  left_at?: string | null | undefined;
 };
 
 /** `nesting: false` is the flat view: every stop an ordinary pin. */
@@ -90,6 +94,7 @@ export function dayMapPins(
       tone: pinTone(stop),
       insideCount: nesting ? (stop.inside?.length ?? 0) : 0,
       nested: Boolean(stop.parent_id && shown.has(stop.parent_id)),
+      done: Boolean(stop.arrived_at && stop.left_at),
     });
   });
   return pins;

@@ -1,0 +1,70 @@
+            }}
+            tripId={trip.id}
+            stops={stopItems}
+            days={moveDays}
+            initialDay={dayEditStart?.day ?? addToDay}
+            initialAsk={dayEditStart?.ask}
+            area={(day) => nearOn(day)}
+            center={(day) => centerOn(day)}
+            onApply={applyDayEdit}
+          />
+
+          <MoveStopSheet
+            stop={movingStop}
+            stops={stopItems}
+            days={moveDays}
+            onMove={(move) => moveStops([move])}
+            onClose={() => setMovingId(null)}
+          />
+
+          <ReviewChangesSheet {...scheduleReview.sheet} />
+
+          {/* The list's own ⋯: which stops, in which order, and the tools. */}
+          <Sheet
+            open={timelineMenuOpen}
+            onClose={() => setTimelineMenuOpen(false)}
+            title="Timeline"
+            hint={`${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"} scheduled${
+              doneCount > 0 ? ` · ${doneCount} visited` : ""
+            }`}
+            width="sm"
+          >
+            <div className="space-y-4">
+              {stopItems.length > 0 && (
+                <TimeChangeBox
+                  tripId={trip.id}
+                  stops={stopItems}
+                  days={moveDays}
+                  onChangeTime={async (id, time) => {
+                    await board.updateItem(id, { time_label: time });
+                  }}
+                  onApply={(moves, summary) => moveStops(moves, summary || "Plan changed")}
+                  onDone={() => setTimelineMenuOpen(false)}
+                />
+              )}
+              <MenuChoice
+                label="Show"
+                value={hideDone}
+                onChange={setHideDone}
+                options={[
+                  [false, "All"],
+                  [true, `Not visited (${stopItems.length - doneCount})`],
+                ]}
+              />
+              <MenuChoice
+                label="Cards"
+                value={compactCards}
+                onChange={setCompactCards}
+                options={[
+                  [false, "Full"],
+                  [true, "Compact"],
+                ]}
+              />
+              <MenuChoice
+                label="List"
+                value={timelineByDay}
+                onChange={setTimelineByDay}
+                options={[
+                  [false, "All entries"],
+                  [true, "By day"],
+                ]}

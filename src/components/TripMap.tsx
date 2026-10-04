@@ -83,7 +83,7 @@ function Legs({ legs }: { legs: LegLabel[] }) {
           x={leg.x.toFixed(1)}
           y={leg.y.toFixed(1)}
           textAnchor="middle"
-          fontSize="11.5"
+          fontSize="13"
           fontWeight="600"
           className="fill-muted-foreground stroke-elevated"
           paintOrder="stroke"
@@ -253,9 +253,9 @@ export function TripMap({
     // Only worth saying once there is an itinerary to place.
     if (plan.reason === "no-stops") return null;
     return (
-      <div className="mb-3 rounded-2xl border border-border bg-card p-3 shadow-sm">
-        <p className="label-caps text-foreground">On the map</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+      <div className="mb-3 rounded-[var(--r-card)] border border-border bg-card p-3.5 shadow-sm">
+        <p className="font-display text-[20px] leading-tight text-foreground">On the map</p>
+        <p className="mt-1 text-[16px] leading-snug text-muted-foreground">
           None of {area ? `your ${area} stops` : "these stops"} has a location yet, so there is
           nothing to draw. Add an address to a stop and it appears here.
         </p>
@@ -279,7 +279,7 @@ export function TripMap({
   }
 
   return (
-    <div className="mb-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+    <div className="mb-3 overflow-hidden rounded-[var(--r-card)] border border-border bg-card shadow-sm">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="block h-auto w-full"
@@ -297,7 +297,7 @@ export function TripMap({
         )}
       </svg>
       {plan.kind === "schematic" && (
-        <p className="px-3 pb-2.5 pt-1 text-[12px] text-muted-foreground">
+        <p className="px-3 pb-2.5 pt-1 text-[14px] leading-snug text-muted-foreground">
           These stops are close together, so this shows how they sit relative to each other rather
           than a street map.
         </p>
@@ -305,7 +305,7 @@ export function TripMap({
       {/* The credit ODbL asks for, next to the data it applies to. The pins
           are geocoded from OpenStreetMap however they got here. */}
       {!compact && (
-        <p className="px-3 pb-2 text-[11.5px] text-muted-foreground">
+        <p className="px-3 pb-3 text-[13px] leading-snug text-muted-foreground">
           {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} · {OVERTURE_ATTRIBUTION}
         </p>
       )}

@@ -1,0 +1,70 @@
+            className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
+            aria-hidden
+          />
+        ) : null}
+      </span>
+      <span className="mt-1 block text-[13.5px] text-muted-foreground">{line}</span>
+      {children}
+    </>
+  );
+  return (
+    <div className="mb-2 flex items-start justify-between gap-2 border-b border-border pb-3">
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="min-w-0 flex-1 text-left"
+        >
+          {heading}
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">{heading}</div>
+      )}
+      {onDirections ? (
+        <button
+          type="button"
+          onClick={onDirections}
+          disabled={directionsBusy}
+          aria-label={directionsBusy ? "Working out directions" : "Directions between stops"}
+          title="Get directions"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-xs disabled:opacity-60"
+        >
+          <Signpost className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={addLabel}
+        title={addLabel}
+        className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
+      >
+        <Plus className="size-6" aria-hidden />
+      </button>
+      {onMore ? (
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label="Timeline options"
+          title="Timeline options"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** One row of choices in the Timeline's ⋯ sheet. */
+function MenuChoice({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+  options: readonly (readonly [boolean, string])[];

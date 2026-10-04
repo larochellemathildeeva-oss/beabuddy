@@ -1,0 +1,70 @@
+                todayKey={todayKey}
+                ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
+                legFor={travelInto}
+                dayStrip={
+                  offerDays ? (
+                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
+                  ) : null
+                }
+              />
+            )}
+            {/* The whole trip, city to city — only when looking at the whole
+                trip. Under a single day it was a second, busier map repeating
+                the first. The same stop list the directions are built from,
+                so the map and the route can never describe different journeys. */}
+            {!chosenCity && shownGroups.length > 1 && (
+              <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+            )}
+          </div>
+        )}
+
+        {/* Day and Trip stay mounted and are hidden instead, so an edit in
+            progress survives a tab switch and the action row's buttons can
+            open their forms from any tab. */}
+        <div hidden={perspective !== "timeline"}>
+          {perspective === "timeline" && timelineByDay && offerDays && stopItems.length > 0 && (
+            <StickyDayBar
+              chips={chips}
+              value={chosenDay}
+              onChange={setDayChoice}
+              anchor={dayCardsRef}
+              onCurrency={() => setCurrencyOpen(true)}
+            />
+          )}
+          <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
+            {editingTimeline && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
+                <p className="text-[13px] font-semibold text-primary">Editing every stop at once</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingTimeline(false)}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-primary px-3 text-[13px] font-semibold text-primary-foreground"
+                >
+                  <Check className="size-4" aria-hidden />
+                  Done editing
+                </button>
+              </div>
+            )}
+
+            {stopItems.length === 0 ? (
+              <>
+                <TimelineHead
+                  title="Your itinerary"
+                  line="Activities, meals, transport and notes."
+                  onAdd={() => {
+                    setAddDay(addToDay ?? "");
+                    setAddingTimeline(true);
+                  }}
+                  addLabel="Add to the timeline"
+                />
+                <p className="px-1 py-4 text-[14px] text-muted-foreground">
+                  Nothing planned yet. Add a stop, or let Béa draft the days from a plan you already
+                  have.
+                </p>
+              </>
+            ) : timelineByDay ? (
+              <div className="space-y-6">
+                {shownGroups.map((group) => {
+                  const dayOpen = !collapsedDays[group.key];
+                  const isToday = group.key === todayKey;
+                  const divider = isToday ? nowDivider(group.items, minutesNow) : null;

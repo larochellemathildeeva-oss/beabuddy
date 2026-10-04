@@ -996,16 +996,22 @@
   filter: none;
   opacity: 1;
 }
+.journal-map .leaflet-bottom {
+  margin-bottom: var(--map-sheet, 0px);
+}
+.journal-map .leaflet-top {
+  top: var(--map-chrome-top, 0px);
+}
 .journal-route {
-  stroke: var(--journal-accent);
+  stroke: var(--acc2);
 }
 .journal-pin {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   margin: 4px;
   background: var(--journal-accent);
   color: var(--primary-foreground);
-  font-size: 11.5px;
+  font-size: 13px;
   box-shadow:
     0 0 0 2px var(--journal-pin-paper),
     0 2px 6px rgb(68 61 54 / 0.22);
@@ -1026,31 +1032,43 @@
   background: #987799;
 }
 .journal-pin--on {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   box-shadow:
     0 0 0 3px var(--journal-pin-paper),
+    0 0 0 6px color-mix(in srgb, var(--acc) 28%, transparent),
     0 4px 12px rgb(68 61 54 / 0.3);
+}
+.journal-pin--done {
+  background: var(--acc-done);
+  color: #000;
 }
 /* Inside another stop: a smaller ring beside its parent, numbered like its card. */
 .journal-pin--nested {
-  width: 20px;
-  height: 20px;
-  margin: 7px;
+  width: 26px;
+  height: 26px;
+  margin: 5px;
   background: var(--journal-pin-paper);
   color: var(--acc-ink);
-  font-size: 9.5px;
+  font-size: 13px;
   box-shadow:
     0 0 0 2.5px var(--journal-accent),
     0 2px 5px rgb(68 61 54 / 0.2);
 }
 .journal-pin--nested.journal-pin--on {
-  width: 26px;
-  height: 26px;
-  margin: 4px;
-  font-size: 11px;
+  width: 32px;
+  height: 32px;
+  margin: 2px;
+  font-size: 13px;
+}
+.journal-pin--nested.journal-pin--done {
+  background: var(--journal-pin-paper);
+  color: var(--acc-ink);
+  box-shadow:
+    0 0 0 2.5px var(--acc-done),
+    0 2px 5px rgb(68 61 54 / 0.2);
 }
 /* "+2": what is listed inside the stop, on its card. */
 .journal-pin-badge {
@@ -1062,7 +1080,7 @@
   background: var(--journal-ink);
   color: #fff;
   padding: 1px 5px;
-  font-size: 9.5px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.3;
   white-space: nowrap;
@@ -1118,7 +1136,7 @@
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: #d96b43;
+  background: var(--acc2);
 }
 .journal-legend-dot--food {
   background: #c8902f;
@@ -1150,9 +1168,13 @@
   font-weight: 400;
 }
 .journal-map .leaflet-container .leaflet-control-attribution {
-  background: transparent;
-  color: rgb(68 61 54 / 0.55);
-  font-size: 9.5px;
+  background: rgb(248 245 241 / 0.88);
+  color: rgb(68 61 54 / 0.8);
+  font-size: 13px;
+  line-height: 1.3;
+  max-width: 16rem;
+  border-radius: 8px;
+  padding: 2px 6px;
 }
 .journal-map .leaflet-container .leaflet-control-attribution a {
   color: inherit;
