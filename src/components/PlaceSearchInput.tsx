@@ -310,7 +310,11 @@ export function PlaceSearchInput({
               e.preventDefault();
               void run();
             }
-            if (e.key === "Escape") setHits([]);
+            if (e.key === "Escape" && hits.length > 0) {
+              // Closes the suggestions only: a sheet around this field stays open.
+              e.stopPropagation();
+              setHits([]);
+            }
           }}
           rows={linkPaste ? 3 : 1}
           autoCapitalize="off"

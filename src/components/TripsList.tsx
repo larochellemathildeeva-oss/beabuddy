@@ -42,6 +42,7 @@ import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
 import type { TripPicture } from "@/lib/trip-picture";
 import {
+  groupByPlace,
   placeTags,
   tripCountdown,
   tripMonth,
@@ -265,7 +266,12 @@ export function TripsHero({
   actions: ReactNode;
 }) {
   const places = useHeroPlaces(trips);
-  const points = useMemo(() => places.map(({ lat, lon }) => ({ lat, lon })), [places]);
+  // Trips to one place share a tag, so none sits on top of another.
+  const groups = useMemo(() => groupByPlace(places), [places]);
+  const points = useMemo(
+    () => groups.map(([first]) => ({ lat: first!.lat, lon: first!.lon })),
+    [groups],
+  );
   const hasMap = places.length > 0;
   return (
     <section
@@ -276,29 +282,39 @@ export function TripsHero({
       {hasMap ? (
         <TripsWorldMap points={points} height={HERO_H} top={118} bottom={HERO_H - 34}>
           {(pins, width) => {
-            const widths = places.map((p) =>
-              Math.min(
-                200,
-                48 +
-                  Math.max(
-                    p.city.length * 9.2,
-                    tripMonth(p.trip.start_date, p.trip.end_date).length * 8,
-                  ),
-              ),
-            );
-            const boxes = placeTags(pins, widths, { width, top: 104, bottom: HERO_H - 30 }, TAG_H);
-            return places.map((p, i) => {
-              const box = boxes[i]!;
-              const live = isPastTrip(p.trip, today)
+            const label = (group: (typeof places)[number][]) => {
+              const first = group[0]!;
+              const live = isPastTrip(first.trip, today)
                 ? false
-                : !!(p.trip.start_date && p.trip.start_date <= today);
+                : !!(first.trip.start_date && first.trip.start_date <= today);
+              const second =
+                group.length > 1
+                  ? `${group.length} trips`
+                  : live
+                    ? "Now"
+                    : tripMonth(first.trip.start_date, first.trip.end_date);
+              return { first, live, second };
+            };
+            const widths = groups.map((group) => {
+              const { first, second } = label(group);
+              return Math.min(200, 48 + Math.max(first.city.length * 9.2, second.length * 8));
+            });
+            const boxes = placeTags(pins, widths, { width, top: 104, bottom: HERO_H - 30 }, TAG_H);
+            return groups.map((group, i) => {
+              const box = boxes[i];
+              if (!box) return null;
+              const { first, live, second } = label(group);
               return (
                 <Link
-                  key={p.trip.id}
+                  key={first.trip.id}
                   to="/trips/$tripId"
-                  params={{ tripId: p.trip.id }}
+                  params={{ tripId: first.trip.id }}
                   viewTransition
-                  aria-label={`Open ${p.trip.title}`}
+                  aria-label={
+                    group.length > 1
+                      ? `Open ${first.trip.title}, one of ${group.length} trips to ${first.city}`
+                      : `Open ${first.trip.title}`
+                  }
                   className="trips-tag absolute"
                   style={{
                     left: `${(box.x / width) * 100}%`,
@@ -312,9 +328,9 @@ export function TripsHero({
                     aria-hidden
                   />
                   <span className="min-w-0 leading-tight">
-                    <span className="block truncate text-[14px] font-semibold">{p.city}</span>
+                    <span className="block truncate text-[14px] font-semibold">{first.city}</span>
                     <span className="block truncate text-[13px] text-muted-foreground">
-                      {live ? "Now" : tripMonth(p.trip.start_date, p.trip.end_date)}
+                      {second}
                     </span>
                   </span>
                 </Link>
@@ -732,7 +748,8 @@ function RowMenu({ trip }: { trip: TripRow }) {
       document.removeEventListener("keydown", esc);
     };
   }, [open]);
-  const item = "block rounded-xl px-3 py-2.5 text-[15px] font-medium hover:bg-accent";
+  const item =
+    "flex min-h-11 items-center rounded-xl px-3 py-2.5 text-[15px] font-medium hover:bg-accent";
   return (
     <div ref={ref} className="absolute right-1.5 top-1.5 z-10">
       <button

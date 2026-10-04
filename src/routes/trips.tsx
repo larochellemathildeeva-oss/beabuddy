@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import type { PlannerTab } from "@/components/ItineraryImport";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
@@ -161,11 +161,14 @@ function TripsPage() {
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
+  // The same array until the trips change, so the header map is not redrawn on every render.
+  const hero = useMemo(() => heroTrips(tripTabs(t.trips, today)), [t.trips, today]);
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));
 
   const openNew = () => {
+    setError("");
     setCreating(true);
     setJoining(false);
   };
@@ -266,7 +269,7 @@ function TripsPage() {
     <AppShell>
       <div className="space-y-6">
         <TripsHero
-          trips={heroTrips(lists)}
+          trips={hero}
           today={today}
           actions={
             <>
@@ -344,6 +347,7 @@ function TripsPage() {
                   data-guide="join-trip"
                   aria-expanded={joining}
                   onClick={() => {
+                    setError("");
                     setJoining(true);
                     setCreating(false);
                   }}
@@ -400,10 +404,10 @@ function TripsPage() {
               {view === "drafts" &&
                 (lists.drafts.length > 0 ? (
                   draftsSection(true)
-                ) : !t.loading ? (
+                ) : !t.loading && t.trips.length > 0 ? (
                   <NothingAhead
                     title="No drafts."
-                    body="A trip with no dates yet waits here until it has some."
+                    body="A trip with dates still to set waits here until it has them."
                     onPlan={openNew}
                   />
                 ) : null)}
@@ -493,8 +497,13 @@ function TripsPage() {
       </div>
 
       <Sheet
-        open={creating}
-        onClose={() => setCreating(false)}
+        // Only for someone signed in: a /trips?new link opened signed out
+        // shows the sign-in card, not a form that cannot save.
+        open={creating && t.signedIn}
+        onClose={() => {
+          setError("");
+          setCreating(false);
+        }}
         title="New trip"
         hint="Where, when, and who. All of it can change later."
       >
@@ -815,7 +824,10 @@ function TripsPage() {
 
       <Sheet
         open={joining}
-        onClose={() => setJoining(false)}
+        onClose={() => {
+          setError("");
+          setJoining(false);
+        }}
         title="Join with a code"
         hint="The code a friend shared from their trip."
       >

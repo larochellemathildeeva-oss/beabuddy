@@ -385,6 +385,15 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
   for (const label of ["Trip name", "Where is this trip going?"])
     if ((await sheet.getByLabel(label).count()) < 1) throw new Error(`New trip lost ${label}`);
   if ((await sheet.getByRole("button", { name: "Create trip" }).count()) !== 1) throw new Error("New trip lost Create trip");
+  // Escape closes the open calendar first, and the sheet only on the next press.
+  await sheet.getByRole("button", { name: /^Dates/ }).click();
+  await page.waitForTimeout(250);
+  const calendarOpen = () => page.getByRole("dialog").count();
+  const before = await calendarOpen();
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+  if ((await calendarOpen()) >= before) throw new Error("Escape did not close the calendar");
+  if ((await sheet.getByLabel("Trip name").count()) !== 1) throw new Error("Escape on the calendar closed the New trip sheet");
   await page.keyboard.press("Escape");
   await page.waitForTimeout(250);
   await page.getByRole("button", { name: /Join with a code/ }).click();

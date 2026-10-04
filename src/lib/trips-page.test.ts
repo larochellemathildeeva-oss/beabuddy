@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   asTripsLayout,
+  groupByPlace,
   heroTrips,
   placeTags,
   tripCountdown,
@@ -91,8 +92,10 @@ describe("tripRowTag", () => {
 
 describe("tripMonth", () => {
   it("names the start month, else the end month", () => {
-    assert.equal(tripMonth("2026-10-08"), "Oct 2026");
-    assert.equal(tripMonth(null, "2025-03-02"), "Mar 2025");
+    const month = (y: number, m: number) =>
+      new Date(y, m, 1).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+    assert.equal(tripMonth("2026-10-08"), month(2026, 9));
+    assert.equal(tripMonth(null, "2025-03-02"), month(2025, 2));
     assert.equal(tripMonth(null, null), "");
   });
 });
@@ -111,7 +114,7 @@ describe("placeTags", () => {
       { x: 150, y: 200 },
     ];
     const [a] = placeTags(pins, [140, 120], { width: 390, top: 100, bottom: 300 });
-    assert.ok(!(a!.x < 157 && a!.x + a!.width > 143 && a!.y < 207 && a!.y + a!.height > 193));
+    assert.ok(!a || !(a.x < 157 && a.x + a.width > 143 && a.y < 207 && a.y + a.height > 193));
   });
   const frame = { width: 390, top: 100, bottom: 300 };
   it("puts a tag right of its pin, or left near the edge", () => {
@@ -139,5 +142,33 @@ describe("placeTags", () => {
     );
     assert.ok(Math.abs(a!.y - b!.y) >= 44 + 6);
     for (const box of [a!, b!]) assert.ok(box.y >= 100 && box.y + box.height <= 300);
+  });
+});
+
+describe("groupByPlace", () => {
+  it("puts trips to one place together, keeping order", () => {
+    const lisbon = { id: 1, lat: 38.72, lon: -9.14 };
+    const porto = { id: 2, lat: 41.15, lon: -8.61 };
+    const lisbonAgain = { id: 3, lat: 38.74, lon: -9.15 };
+    assert.deepEqual(groupByPlace([lisbon, porto, lisbonAgain]), [[lisbon, lisbonAgain], [porto]]);
+  });
+});
+
+describe("placeTags with trips to one place", () => {
+  it("never leaves two tags on top of each other", () => {
+    const pins = Array.from({ length: 4 }, () => ({ x: 100, y: 200 }));
+    const boxes = placeTags(pins, [120, 120, 120, 120], { width: 390, top: 100, bottom: 300 });
+    const placed = boxes.filter((b) => b !== null);
+    for (let i = 0; i < placed.length; i++)
+      for (let j = i + 1; j < placed.length; j++) {
+        const a = placed[i]!;
+        const b = placed[j]!;
+        assert.ok(
+          a.x >= b.x + b.width ||
+            b.x >= a.x + a.width ||
+            a.y >= b.y + b.height ||
+            b.y >= a.y + a.height,
+        );
+      }
   });
 });

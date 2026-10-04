@@ -4,6 +4,8 @@
  * sit on the header's map. Plain words and numbers, tested on their own.
  */
 
+import { distanceKm, SAME_PLACE_KM } from "./home-route-map.ts";
+
 /** "big": the next trip as a large banner; "list": every trip as a row. */
 export const TRIPS_LAYOUTS = ["big", "list"] as const;
 export type TripsLayout = (typeof TRIPS_LAYOUTS)[number];
@@ -14,8 +16,6 @@ export const TRIPS_LAYOUT_KEY = "bea-trips-layout";
 export function asTripsLayout(raw: unknown): TripsLayout {
   return raw === "list" ? "list" : "big";
 }
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function localDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
@@ -75,10 +75,28 @@ export function tripRowTag(
   return null;
 }
 
-/** "Oct 2026": the month a trip starts (or ends, with no start). */
+/** "Oct 2026": the month a trip starts (or ends, with no start), in the reader's language. */
 export function tripMonth(start: string | null | undefined, end?: string | null): string {
   const d = localDate(start) ?? localDate(end);
-  return d ? `${MONTHS[d.getMonth()]} ${d.getFullYear()}` : "";
+  return d ? d.toLocaleDateString(undefined, { month: "short", year: "numeric" }) : "";
+}
+
+/**
+ * Trips going to the same place (within `km` of the first of the group)
+ * share one tag on the header's map, in the order given: four trips to Lisbon
+ * are one pin, not four tags on top of each other.
+ */
+export function groupByPlace<T extends { lat: number; lon: number }>(
+  items: readonly T[],
+  km = SAME_PLACE_KM,
+): T[][] {
+  const groups: T[][] = [];
+  for (const item of items) {
+    const home = groups.find((g) => distanceKm(g[0]!, item) < km);
+    if (home) home.push(item);
+    else groups.push([item]);
+  }
+  return groups;
 }
 
 /**
@@ -95,7 +113,8 @@ export type TagBox = { x: number; y: number; width: number; height: number; left
 /**
  * Where each trip's tag sits beside its pin on the header's map: to the
  * right of the pin, or to its left near the right edge, and moved down (then
- * up) past a pin or a tag already placed rather than over it. Kept inside the frame.
+ * up) past a pin or a tag already placed rather than over it, and null when
+ * there is no room. Kept inside the frame.
  */
 export function placeTags(
   pins: readonly { x: number; y: number }[],
@@ -103,7 +122,7 @@ export function placeTags(
   frame: { width: number; top: number; bottom: number },
   height = 44,
   gap = 6,
-): TagBox[] {
+): (TagBox | null)[] {
   // Every pin is a box no tag may cover.
   const placed: TagBox[] = pins.map((p) => ({
     x: p.x - 7,
@@ -136,6 +155,8 @@ export function placeTags(
       const shift = Math.ceil(step / 2) * (height + gap) * (step % 2 ? 1 : -1);
       box = { ...box, y: clampY(pin.y - height / 2 + shift) };
     }
+    // No room without covering another tag or pin: this one is left off.
+    if (overlaps(box)) return null;
     placed.push(box);
     return box;
   });
