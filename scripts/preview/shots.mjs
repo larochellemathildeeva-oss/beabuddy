@@ -19,6 +19,7 @@ const [sample, prefix, ...clicks] = process.argv.slice(2);
 const dest = process.env.SHOTS_DIR ?? out;
 mkdirSync(dest, { recursive: true });
 const types = { js: "text/javascript", css: "text/css", html: "text/html", png: "image/png", webp: "image/webp", jpg: "image/jpeg", svg: "image/svg+xml", json: "application/json" };
+const FONT_HOSTS = new Set(["fonts.googleapis.com", "fonts.gstatic.com"]);
 const tile = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/+/9fwAJ+wP9KobjigAAAABJRU5ErkJggg==", "base64");
 const executablePath = process.env.CHROMIUM_PATH || (existsSync("/opt/pw-browsers/chromium") ? "/opt/pw-browsers/chromium" : undefined);
 const browser = await chromium.launch(executablePath ? { executablePath, args: ["--no-sandbox"] } : { channel: "chrome" });
@@ -31,7 +32,7 @@ for (const theme of ["calm", "colorful", "dark"]) {
   await page.route("**/*", (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.startsWith("/api/tile/")) return route.fulfill({ body: tile, contentType: "image/png" });
-    if (url.host.endsWith("googleapis.com") || url.host.endsWith("gstatic.com")) return route.continue();
+    if (FONT_HOSTS.has(url.host)) return route.continue();
     if (url.host !== "preview.test") return route.abort();
     const file = url.pathname === "/" ? "/index.html" : url.pathname;
     if (file === "/index.html")
