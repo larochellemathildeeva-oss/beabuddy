@@ -28,7 +28,7 @@ import {
   Trash2,
   Undo2,
 } from "@/components/icons";
-import { KindChip, KindIcon, StopChips, StopDisc } from "@/components/day/stop-bits";
+import { KindChip, KindIcon, StopDisc } from "@/components/day/stop-bits";
 import { toast } from "sonner";
 import {
   addInside,
@@ -62,6 +62,7 @@ import { placePatchForSavedRow } from "@/lib/place-label";
 import { parseStayChoice, stayChoices, stayLabel } from "@/lib/planned-stay";
 import { stripEmbeddedMapsUrl, syncDetailDraft, unroutedLegCopy } from "@/lib/timeline-directions";
 import {
+  glyphChipLabel,
   kindChoiceLabel,
   normaliseKind,
   TIMELINE_KINDS,
@@ -70,6 +71,12 @@ import {
   type TimelineKind,
 } from "@/lib/timeline-kind";
 import { legMiniMap, stepTurn, type LatLon, type StepTurn } from "@/lib/leg-mini-map";
+
+/**
+ * The Timeline's left column: the hour beside each card, and the dashed line
+ * of the journey beside each leg. Shared so the two always line up.
+ */
+const TIME_COLUMN = "grid-cols-[3.25rem_minmax(0,1fr)]";
 
 const TIME_MODES: { value: TimeMode; label: string }[] = [
   { value: "fixed", label: "Fixed" },
@@ -110,7 +117,6 @@ export function TimelineEntry({
   onKeep,
   kept: alreadyKept = false,
   onToggleDone,
-  showSwipeHint = false,
   onLocate,
   onSaveBooking,
   stray = false,
@@ -177,8 +183,6 @@ export function TimelineEntry({
   kept?: boolean;
   /** Mark done (arrived and left), or back to not done. */
   onToggleDone: () => void;
-  /** The swipe hint line; shown on the first card of a day, not all of them. */
-  showSwipeHint?: boolean;
   /** Show this stop on the Map tab. Only offered for a placed stop. */
   onLocate?: (() => void) | undefined;
   /** Placed far from the rest of the trip: probably the wrong place with the same name. */
@@ -284,22 +288,13 @@ export function TimelineEntry({
     if (!open) onEdit(null);
   };
 
-  // The front: the name in the serif; how long and the kind on one line; the
-  // note; where, with a pin; and Map and Directions along the bottom.
-  // The time sits on the card, and the numbered disc on the rail (see the <li>).
-  // Tapping the name opens it in a sheet to edit; ⋯ opens the rest (done,
-  // save, booking, order, delete), some of which the swipe also gives.
   const current = Boolean(item.arrived_at) && !item.left_at;
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
-  const roundIcon =
-    "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs transition-colors";
   const pillButton =
     "inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[13px] font-medium transition-colors disabled:opacity-40";
   const softButton = `${pillButton} bg-primary-soft text-primary`;
   const lineButton = `${pillButton} border border-border bg-card text-foreground`;
   const dangerButton = `${pillButton} border border-destructive/20 bg-destructive/10 text-destructive`;
-  const quickButton =
-    "inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[12.5px] font-semibold text-muted-foreground disabled:opacity-40";
 
   const mapButton = (
     <button
@@ -331,88 +326,102 @@ export function TimelineEntry({
   const canLocate = Boolean(onLocate) && placed;
   const canDirect = placed || Boolean(item.address);
 
+  // The quick actions under ⋯, one per line like a menu: where it is first
+  // (the map, directions), then the stop itself, then moving and deleting.
+  const menuRow =
+    "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-left text-[15px] font-medium transition-colors hover:bg-elevated disabled:opacity-40";
+  const menuIcon = "size-[18px] shrink-0 text-muted-foreground";
+
+  // The front, as the master draws it: the kind in a tile with the stop's
+  // number on its corner (the same number as its pin on the Map), the name
+  // in the serif, how long and the kind on one line with Booked, and ⋯ for
+  // everything else. The time sits outside the card, on the left. Tapping
+  // the name opens the stop in a sheet to edit.
   const front = (
     <article
-      className={`rounded-2xl border border-border/70 bg-card p-2.5 transition-colors ${current ? "bg-primary-soft" : ""}`}
+      className={`rounded-[var(--r-card)] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
+        current ? "ring-2 ring-primary/45" : ""
+      }`}
     >
-      <div className="flex items-start gap-2">
-        {dragHandle}
+      <div className="flex items-center gap-2.5">
+        <span
+          className={`kind-chip kind-${timelineGlyph(item)} relative grid size-11 shrink-0 place-items-center rounded-xl`}
+          aria-hidden
+        >
+          <KindIcon item={item} />
+          {number != null ? (
+            <StopDisc
+              number={number}
+              done={done}
+              className="absolute -left-2 -top-2 size-6 text-[13px]"
+            />
+          ) : null}
+        </span>
         <button
           type="button"
           onClick={() => flip(true)}
           aria-expanded={false}
-          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
+          aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
           className="block min-w-0 flex-1 text-left"
         >
           {parentTitle ? (
-            <span className="mb-0.5 block truncate text-[10.5px] font-bold uppercase tracking-wide text-primary">
+            <span className="mb-0.5 block truncate text-[13px] font-semibold text-primary">
               In {parentTitle}
             </span>
           ) : null}
           {showDay && item.day_date ? (
-            <span className="block text-[11px] text-muted-foreground">{item.day_date}</span>
+            <span className="block text-[13px] text-muted-foreground">{item.day_date}</span>
           ) : null}
           <span
-            className={`block break-words font-display text-[18.5px] leading-[1.15] ${
-              done ? "text-muted-foreground" : ""
+            className={`block break-words font-display text-[18px] leading-[1.15] ${
+              done ? "text-muted-foreground line-through decoration-1" : ""
             }`}
           >
-            {done ? (
-              <Check
-                className="mr-1 inline size-[18px] align-[-2px] text-nexttime"
-                strokeWidth={3}
-                aria-hidden
-              />
-            ) : null}
             {item.title}
           </span>
-          <StopChips
-            item={item}
-            before={
-              <>
-                {rail ? (
-                  <span className="text-[13px] font-bold tabular-nums text-primary">{rail}</span>
-                ) : null}
-                {item.planned_stay_minutes ? (
-                  <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                    <Clock className="size-4" aria-hidden />
-                    {stayLabel(item.planned_stay_minutes)}
-                  </span>
-                ) : null}
-              </>
-            }
-            extra={
-              <>
-                {booked && item.booking_ref ? (
-                  <span className="text-[11.5px] text-muted-foreground">{item.booking_ref}</span>
-                ) : null}
-                {current && (
-                  <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground">
-                    Current
-                  </span>
-                )}
-                {done && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-nexttime/10 px-2 py-0.5 text-[11px] font-bold text-nexttime">
-                    <Check className="size-3" strokeWidth={3} aria-hidden />
-                    Completed
-                  </span>
-                )}
-              </>
-            }
-          />
+          <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-muted-foreground">
+            {item.planned_stay_minutes ? (
+              <span className="whitespace-nowrap">{stayLabel(item.planned_stay_minutes)} ·</span>
+            ) : null}
+            <span className="whitespace-nowrap">{glyphChipLabel(timelineGlyph(item))}</span>
+            {booked ? (
+              <span className="tile-fill-3 rounded-full px-2 py-0.5 text-[13px] font-semibold text-nexttime">
+                Booked
+              </span>
+            ) : null}
+            {booked && item.booking_ref ? (
+              <span className="text-[13px]">{item.booking_ref}</span>
+            ) : null}
+            {current ? (
+              <span className="rounded-full bg-primary px-2 py-0.5 text-[13px] font-bold text-primary-foreground">
+                Now
+              </span>
+            ) : null}
+            {done ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-[13px] font-semibold text-muted-foreground">
+                <Check className="size-3.5" strokeWidth={3} aria-hidden />
+                Done
+              </span>
+            ) : null}
+            {!placed && item.kind !== "note" ? (
+              <span className="rounded-full bg-elevated px-2 py-0.5 text-[13px] text-muted-foreground">
+                Not on the map
+              </span>
+            ) : null}
+          </span>
           {detail ? (
-            <span className="mt-1.5 line-clamp-2 break-words text-[13.5px] leading-snug text-muted-foreground">
+            <span className="mt-1.5 line-clamp-2 break-words text-[14px] leading-snug text-muted-foreground">
               {detail}
             </span>
           ) : null}
-          {whereLine ? (
-            <span className="mt-1 flex items-start gap-1.5 text-[12.5px] leading-snug text-muted-foreground">
-              <MapPin className="mt-px size-4 shrink-0" aria-hidden />
+          {whereLine && item.address ? (
+            <span className="mt-1 flex items-start gap-1.5 text-[14px] leading-snug text-muted-foreground">
+              <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span className="line-clamp-1 break-words">{whereLine}</span>
             </span>
           ) : null}
           {stray ? (
-            <span className="mt-1 block text-[12px] font-semibold text-destructive">
+            <span className="mt-1 block text-[13px] font-semibold text-destructive">
               ⚠ Pinned far from the rest of this trip. Tap to check the place.
             </span>
           ) : null}
@@ -423,9 +432,11 @@ export function TimelineEntry({
             onClick={() => setActionsOpen((o) => !o)}
             aria-expanded={actionsOpen}
             aria-label={`Actions for ${item.title}`}
-            className={`${roundIcon} ${actionsOpen ? "border-primary text-primary" : ""}`}
+            className={`tap-44 grid size-9 shrink-0 place-items-center rounded-full bg-elevated text-foreground transition-colors ${
+              actionsOpen ? "bg-primary-soft text-primary" : ""
+            }`}
           >
-            <MoreHorizontal className="size-4" aria-hidden />
+            <MoreHorizontal className="size-4" weight="bold" aria-hidden />
           </button>
           {linkedDocuments > 0 && onOpenDocuments ? (
             <button
@@ -437,10 +448,18 @@ export function TimelineEntry({
               <FileText className="size-4" aria-hidden />
             </button>
           ) : null}
-          {photos && <QuickPhoto photos={photos} />}
         </div>
+        {/* The grip goes last, so every kind tile sits on the leg line. */}
+        {dragHandle}
       </div>
-      {photos && <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />}
+      {/* A stop that already has photos keeps the camera beside them, so
+          adding another is one tap; the first photo comes from ⋯. */}
+      {photos && photos.photos.length > 0 && (
+        <div className="flex items-end gap-2">
+          <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />
+          <QuickPhoto photos={photos} />
+        </div>
+      )}
       {pill && (
         <InsidePill
           label={pill}
@@ -453,28 +472,48 @@ export function TimelineEntry({
             : {})}
         />
       )}
-      {/* Map and Directions only: Save lives under ⋯ and on swipe-left. */}
-      {(canLocate || canDirect) && (
-        <div className="@container mt-2 grid grid-cols-2 gap-1.5">
-          {canLocate ? mapButton : <span />}
-          {canDirect ? (
+      {actionsOpen && (
+        <div className="mt-2 border-t border-border pt-1.5">
+          {canLocate && (
+            <button
+              type="button"
+              onClick={() => {
+                setActionsOpen(false);
+                onLocate?.();
+              }}
+              aria-label={`Locate ${item.title} on the map`}
+              className={menuRow}
+            >
+              <MapIcon className={menuIcon} aria-hidden />
+              Show on the map
+            </button>
+          )}
+          {canDirect && (
             <a
               href={mapsDirToUrl(item, near ?? "")}
               target="_blank"
               rel="noreferrer"
               aria-label={`Directions to ${item.title} in Maps`}
-              className={lineButton}
+              className={menuRow}
             >
-              <Send className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
+              <Send className={menuIcon} aria-hidden />
               Directions
             </a>
-          ) : (
-            <span />
           )}
-        </div>
-      )}
-      {actionsOpen && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+          <button
+            type="button"
+            onClick={onToggleDone}
+            aria-pressed={done}
+            aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
+            className={menuRow}
+          >
+            <Check
+              className={`${menuIcon} ${done ? "text-nexttime" : ""}`}
+              strokeWidth={done ? 3 : 2}
+              aria-hidden
+            />
+            {done ? "Mark not done" : "Mark done"}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -482,20 +521,10 @@ export function TimelineEntry({
               flip(true);
             }}
             aria-label={`Edit ${item.title}`}
-            className={quickButton}
+            className={menuRow}
           >
-            <Pencil className="size-4" aria-hidden />
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={onToggleDone}
-            aria-pressed={done}
-            aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-            className={`${quickButton} ${done ? "text-nexttime" : ""}`}
-          >
-            <Check className="size-4" strokeWidth={done ? 3 : 2} aria-hidden />
-            {done ? "Done" : "Mark done"}
+            <Pencil className={menuIcon} aria-hidden />
+            Edit stop
           </button>
           {canKeep && (
             <button
@@ -503,10 +532,14 @@ export function TimelineEntry({
               onClick={keep}
               disabled={kept}
               aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
-              className={`${quickButton} ${kept ? "text-primary" : ""}`}
+              className={menuRow}
             >
-              <Bookmark className="size-4" weight={kept ? "fill" : "regular"} aria-hidden />
-              {kept ? "Saved" : "Save"}
+              <Bookmark
+                className={`${menuIcon} ${kept ? "text-primary" : ""}`}
+                weight={kept ? "fill" : "regular"}
+                aria-hidden
+              />
+              {kept ? "Saved to your places" : "Save to your places"}
             </button>
           )}
           {onSaveBooking && (
@@ -514,11 +547,16 @@ export function TimelineEntry({
               type="button"
               onClick={() => setBookingOpen(true)}
               aria-label={`Booking for ${item.title}`}
-              className={`${quickButton} ${booked ? "text-nexttime" : ""}`}
+              className={menuRow}
             >
-              <Ticket className="size-4" aria-hidden />
+              <Ticket className={`${menuIcon} ${booked ? "text-nexttime" : ""}`} aria-hidden />
               Booking
             </button>
+          )}
+          {photos && (
+            <div className="px-1 py-1">
+              <QuickPhoto photos={photos} label="Add a photo" />
+            </div>
           )}
           {onMove && (
             <>
@@ -527,20 +565,20 @@ export function TimelineEntry({
                 disabled={!canMoveUp}
                 onClick={() => onMove(-1)}
                 aria-label={`Move ${item.title} up`}
-                className={quickButton}
+                className={menuRow}
               >
-                <ChevronUp className="size-4" aria-hidden />
-                Up
+                <ChevronUp className={menuIcon} aria-hidden />
+                Move earlier
               </button>
               <button
                 type="button"
                 disabled={!canMoveDown}
                 onClick={() => onMove(1)}
                 aria-label={`Move ${item.title} down`}
-                className={quickButton}
+                className={menuRow}
               >
-                <ChevronDown className="size-4" aria-hidden />
-                Down
+                <ChevronDown className={menuIcon} aria-hidden />
+                Move later
               </button>
             </>
           )}
@@ -552,9 +590,9 @@ export function TimelineEntry({
                 onMoveTo();
               }}
               aria-label={`Move ${item.title} to another day or place`}
-              className={quickButton}
+              className={menuRow}
             >
-              <CalendarDays className="size-4" aria-hidden />
+              <CalendarDays className={menuIcon} aria-hidden />
               Move to…
             </button>
           )}
@@ -562,9 +600,9 @@ export function TimelineEntry({
             type="button"
             onClick={onRemove}
             aria-label={`Delete ${item.title}`}
-            className={`${quickButton} text-destructive`}
+            className={`${menuRow} text-destructive`}
           >
-            <Trash2 className="size-4" aria-hidden />
+            <Trash2 className="size-[18px] shrink-0" aria-hidden />
             Delete
           </button>
         </div>
@@ -576,8 +614,8 @@ export function TimelineEntry({
   // whole card; "Less" folds it back.
   const compactRow = (
     <article
-      className={`flex items-center gap-1.5 rounded-xl border border-border/70 bg-card py-1.5 pl-1.5 pr-2 ${
-        current ? "bg-primary-soft" : ""
+      className={`flex items-center gap-1.5 rounded-xl border border-border/60 bg-card py-1.5 pl-2 pr-2 shadow-sm ${
+        current ? "ring-2 ring-primary/45" : ""
       }`}
     >
       {dragHandle}
@@ -585,14 +623,9 @@ export function TimelineEntry({
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
-        aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
+        aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
         className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
       >
-        <span
-          className={`w-11 shrink-0 text-[13px] font-bold tabular-nums ${rail ? "text-primary" : "text-muted-foreground"}`}
-        >
-          {rail || "–"}
-        </span>
         {done ? (
           <Check className="size-4 shrink-0 text-nexttime" strokeWidth={3} aria-hidden />
         ) : null}
@@ -604,10 +637,17 @@ export function TimelineEntry({
           {item.title}
         </span>
         <span
-          className={`kind-chip kind-${timelineGlyph(item)} grid size-7 shrink-0 place-items-center rounded-full`}
+          className={`kind-chip kind-${timelineGlyph(item)} relative grid size-7 shrink-0 place-items-center rounded-full`}
           aria-hidden
         >
           <KindIcon item={item} />
+          {number != null ? (
+            <StopDisc
+              number={number}
+              done={done}
+              className="absolute -right-1.5 -top-1.5 size-4 text-[10px]"
+            />
+          ) : null}
         </span>
       </button>
     </article>
@@ -946,16 +986,16 @@ export function TimelineEntry({
       style={liStyle}
       className="relative min-w-0 scroll-mt-16 list-none"
     >
-      <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
-        {/* The rail: the numbered disc on the day's line; the hour is on the
-            card. An open card takes the whole width instead; its # says it. */}
+      <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
+        {/* The hour, outside the card on the left, as the master draws the
+            day. The stop's number is on its kind tile. An open card takes
+            the whole width instead; its # says it. */}
         {!back && (
-          <span className={`relative z-10 flex justify-center ${folded ? "pt-1.5" : "pt-2.5"}`}>
-            {number != null ? (
-              <StopDisc number={number} done={done} />
-            ) : (
-              <span className="mt-2 size-3 rounded-full bg-primary" aria-hidden />
-            )}
+          <span
+            aria-hidden
+            className={`text-[14px] font-semibold tabular-nums text-foreground ${folded ? "pt-2.5" : "pt-4"}`}
+          >
+            {rail}
           </span>
         )}
         <div
@@ -988,11 +1028,6 @@ export function TimelineEntry({
             >
               Less
             </button>
-          )}
-          {!back && showSwipeHint && !compact && (
-            <p className="mt-1 px-1 text-[10.5px] text-muted-foreground/80">
-              Tap a stop to edit · swipe right for done, left to save or delete
-            </p>
           )}
         </div>
       </div>
@@ -1424,29 +1459,26 @@ export function TravelConnector({
   const how = walking ? "walk" : mode === "transit" ? "transit" : "drive";
   const LegGlyph =
     !isMeasured || !showTime ? PawPrint : walking ? Footprints : mode === "transit" ? Bus : Car;
-  // A journey is a step between two stops, not a stop: a small mark on the
-  // day's dashed line and one quiet line of text, so the cards stay the
-  // places and the line between them stays the travel.
+  // A journey is a step between two stops, not a stop: the dashed line
+  // down from one card's kind tile to the next, with one quiet line of text
+  // on it, so the cards stay the places and the line stays the travel.
   return (
     <li className="list-none">
-      <div className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-x-2">
-        <span className="flex justify-center pt-2" aria-hidden>
-          <span className="grid size-6 place-items-center rounded-full border border-primary/30 bg-card text-primary">
-            <LegGlyph className="size-3.5" />
-          </span>
-        </span>
-        <div className="min-w-0">
-          <div className="flex min-h-10 items-center gap-1">
+      <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
+        <span aria-hidden />
+        <div className="ms-8 min-w-0 border-s-2 border-dashed border-[var(--acc-line)] ps-3">
+          <div className="flex min-h-11 items-center gap-1.5">
+            <LegGlyph className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
               {leg?.farApartKm ? (
                 // One of the two pins is wrong; a drive between them would be
                 // a confident answer to the wrong question.
-                <p className="text-[11.5px] font-semibold text-destructive">
+                <p className="text-[13px] font-semibold text-destructive">
                   ⚠ {leg.farApartKm} km apart on the map on the same day — one of these stops is
                   probably in the wrong place. Tap it to check.
                 </p>
               ) : (
-                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[12.5px] text-muted-foreground">
+                <p className="flex flex-wrap items-baseline gap-x-1.5 text-[14px] text-muted-foreground">
                   {showTime && isMeasured && leg ? (
                     <>
                       <span className="whitespace-nowrap font-semibold text-foreground">

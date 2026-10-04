@@ -776,6 +776,27 @@ await flow("timeline: paws between stops open directions to the next one", async
   if (!text.includes("Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)")) throw new Error(`name cut off: ${text}`);
 });
 
+await flow("timeline: the map and directions sit under each stop's ⋯, Edit stops turns every card over", async (page) => {
+  await goTab(page, "Timeline");
+  // The master moved Map and Directions off the card's front into ⋯.
+  if ((await page.getByRole("button", { name: /^Locate .* on the map$/ }).count()) !== 0) throw new Error("Map is still on the card's front");
+  await page.getByRole("button", { name: "Actions for Peace Memorial Museum", exact: true }).click();
+  if ((await page.getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).count()) !== 1) throw new Error("no Show on the map under ⋯");
+  if ((await page.getByRole("link", { name: "Directions to Peace Memorial Museum in Maps", exact: true }).count()) !== 1) throw new Error("no Directions under ⋯");
+  await page.screenshot({ path: join(out, `${previewTheme}-timeline-menu.png`), fullPage: true });
+  await page.getByRole("button", { name: "Locate Peace Memorial Museum on the map", exact: true }).click();
+  if ((await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("Show on the map did not open Map");
+  await goTab(page, "Timeline");
+  await page.getByRole("button", { name: "Edit stops", exact: true }).first().click();
+  if ((await page.getByRole("button", { name: /^Move .* later$/ }).count()) === 0) throw new Error("Edit stops did not turn the cards over");
+  await page.screenshot({ path: join(out, `${previewTheme}-timeline-edit.png`), fullPage: true });
+  await page.getByRole("button", { name: "Done", exact: true }).first().click();
+  if ((await page.getByRole("button", { name: "Edit stops", exact: true }).count()) === 0) throw new Error("Done did not end editing");
+  // The tip is dismissed once and stays dismissed.
+  await page.getByRole("button", { name: "Dismiss the tip", exact: true }).click();
+  if ((await page.getByText("Tap ⋯ on a stop", { exact: false }).count()) !== 0) throw new Error("the tip stayed");
+});
+
 await flow("import: places, times and stays reach the timeline; doubtful pins are held back", async (page) => {
   await page.getByRole("button", { name: /Plan with Béa/ }).click();
   await page.getByRole("button", { name: /^Import a plan/ }).click();
