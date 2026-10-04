@@ -481,8 +481,12 @@ function WorldPage() {
     if (!selected) return null;
     const want = foldAccents(selected.city).toLowerCase();
     return (
-      photo.rows.find((r) => r.city && foldAccents(r.city).toLowerCase() === want)?.storage_path ??
-      null
+      photo.rows.find(
+        (r) =>
+          r.city &&
+          foldAccents(r.city).toLowerCase() === want &&
+          countryKey(r.country) === countryKey(selected.country),
+      )?.storage_path ?? null
     );
   }, [selected, photo.rows]);
   const cityPhoto = useSignedPhoto(cityPhotoPath);
@@ -744,11 +748,18 @@ function WorldPage() {
               </div>
             )}
 
-            <WorldGlobeStage data-guide="globe" className="-mx-4">
+            <WorldGlobeStage data-guide="globe" className="-mx-4 overflow-x-clip">
               <BeaGlobe
                 autoRotate={spinOn && !selected ? "resume" : "off"}
                 fullWidth
-                spinToggle={{ on: spinOn, onChange: changeSpin }}
+                spinToggle={{
+                  // A selected place holds the globe still, so the button says so.
+                  on: spinOn && !selected,
+                  onChange: (on) => {
+                    if (on) setSelected(null);
+                    changeSpin(on);
+                  },
+                }}
                 pins={show.cities ? globeCities : []}
                 regions={show.provinces ? provinces : []}
                 // Cities and Provinces show only themselves: no whole countries
