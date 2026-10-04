@@ -404,6 +404,31 @@ await flow("trips: tabs, layout and picture switches, New trip and Join sheets",
   if ((await page.getByRole("link", { name: /Plan with Béa/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Plan with Béa lost its route");
 }, "trips");
 
+await flow("home: trip ahead keeps its map, stats, search and ideas", async (page) => {
+  const text = () => page.evaluate(() => document.body.innerText);
+  for (const word of ["Upcoming trip", "to-do", "packed", "Where to next?", "Suggested for your trip"])
+    if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
+  if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
+  if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
+}, "homepage");
+
+await flow("home: on a trip shows the current and next stop under the route", async (page) => {
+  const text = () => page.evaluate(() => document.body.innerText);
+  for (const word of ["On trip", "Paris to Berlin.", "Current stop", "Museum Island", "Next stop", "Clärchens Ballhaus", "Day 3 · Today"])
+    if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`On-trip Home lost "${word}"`);
+  if (await page.getByText("Breakfast at Father Carpenter").count()) throw new Error("a stop already left is shown as current or next");
+  if ((await page.getByRole("link", { name: /^Current stop: Museum Island/ }).count()) !== 1) throw new Error("the current stop is not a link");
+  if ((await page.getByRole("link", { name: "Open Paris to Berlin" }).count()) !== 1) throw new Error("the trip arrow is gone");
+}, "homepage-ontrip");
+
+await flow("home: with no trip, saved cities wait on the map and in tiles", async (page) => {
+  const text = () => page.evaluate(() => document.body.innerText);
+  for (const word of ["Where to next?", "16 saved places", "3 cities", "Waiting for a trip", "8 places"])
+    if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`No-trip Home lost "${word}"`);
+  if ((await page.getByRole("link", { name: "Plan a trip" }).first().getAttribute("href")) !== "/trips/plan") throw new Error("Plan a trip lost its route");
+  if ((await page.getByRole("link", { name: /^Lisbon: 8 saved places/ }).count()) !== 1) throw new Error("the Lisbon heart is not a link");
+}, "homepage-none");
+
 await flow("shell: brand, back, guide, five tabs and offline status remain reachable", async (page) => {
   const labels = ["Home", "World", "Trips", "Recs", "You"];
   const paths = ["/", "/world", "/trips", "/recommendations", "/profile"];

@@ -105,7 +105,16 @@ function shortDay(iso: string | null | undefined): string {
  * The trip in three numbers: to-dos left, the flight, how packed. Each opens
  * its own list.
  */
-export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
+export function HomeTripStats({
+  trip,
+  glance,
+  overlap = true,
+}: {
+  trip: TripRow;
+  glance: TripGlance | undefined;
+  /** Rising over the foot of the map above it; off when cards sit between. */
+  overlap?: boolean;
+}) {
   const open = glance?.todos.open ?? 0;
   const flight = glance?.flight ?? null;
   const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
@@ -120,7 +129,7 @@ export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGla
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`relative z-10 -mt-6 grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
+      className={`relative z-10 ${overlap ? "-mt-6" : ""} grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
     >
       <Link
         to="/trips/$tripId"

@@ -152,7 +152,49 @@ const tripsDb: Record<string, Row[]> = {
   ],
 };
 
-export const db: Record<string, Row[]> = sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
+// "homepage": the Home route itself in the app's frame. `homepage` is a trip
+// ahead (Home's three trips), `homepage-ontrip` a Paris–Prague–Berlin trip
+// under way with stops ticked off today, `homepage-none` no trip at all and
+// places saved in three cities.
+const dayShift = (n: number) => inDays(n);
+const europeTrip = [
+  { id: "eu", title: "Paris to Berlin", city: "Paris, France", country: "France", start_date: dayShift(-2), end_date: dayShift(0), dates_status: "fixed", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(900) },
+];
+const savedPlaces = [
+  ["Lisbon", "Portugal", 38.72, -9.14, 8],
+  ["Kyoto", "Japan", 35.01, 135.77, 5],
+  ["Copenhagen", "Denmark", 55.68, 12.57, 3],
+].flatMap(([city, country, lat, lon, n]) =>
+  Array.from({ length: n as number }, (_, i) => ({ id: `sv-${city}-${i}`, user_id: "me", name: `${city} place ${i + 1}`, city, country, address: null, category: i % 2 ? "Cafe" : "Food", notes: null, recommended_by: null, source: null, url: null, lat: (lat as number) + i * 0.002, lon: (lon as number) + i * 0.002, visited: false, pin_type: "reco", created_at: ago(9000 + i) })),
+);
+const onTripDb: Record<string, Row[]> = {
+  ...homeDb,
+  trips: europeTrip,
+  trip_members: [{ id: "m1", trip_id: "eu", user_id: "me", role: "owner", display_name: "Mattie" }],
+  trip_todos: [
+    { id: "td1", trip_id: "eu", title: "Book the Berlin train", notes: null, due_on: dayShift(0), done: false, done_at: null, done_by: null, assigned_to: null, position: 0 },
+  ],
+  trip_stops: [
+    { id: "e1", trip_id: "eu", kind: "city", city: "Paris", country: "France", place_name: null, address: null, lat: 48.86, lon: 2.35, arrive_on: dayShift(-2), depart_on: dayShift(-2), notes: null, position: 0 },
+    { id: "e2", trip_id: "eu", kind: "city", city: "Prague", country: "Czechia", place_name: null, address: null, lat: 50.08, lon: 14.44, arrive_on: dayShift(-1), depart_on: dayShift(-1), notes: null, position: 1 },
+    { id: "e3", trip_id: "eu", kind: "city", city: "Berlin", country: "Germany", place_name: null, address: null, lat: 52.52, lon: 13.4, arrive_on: dayShift(0), depart_on: dayShift(0), notes: null, position: 2 },
+  ],
+  itinerary_items: [
+    { id: "x1", trip_id: "eu", day_date: dayShift(0), time_label: "08:30", kind: "meal", title: "Breakfast at Father Carpenter", detail: null, address: "Münzstraße 21", lat: 52.52, lon: 13.4, position: 0, arrived_at: ago(300), left_at: ago(250) },
+    { id: "x2", trip_id: "eu", day_date: dayShift(0), time_label: "10:00", kind: "sight", title: "Museum Island", detail: "Bode-Museum, then the Dom terrace before lunch.", address: "Bodestraße 1-3", lat: 52.52, lon: 13.4, position: 1, arrived_at: ago(120), left_at: null },
+    { id: "x3", trip_id: "eu", day_date: dayShift(0), time_label: "12:50", kind: "meal", title: "Clärchens Ballhaus", detail: "Lunch booked for 2 in the garden.", address: "Auguststraße 24", lat: 52.52, lon: 13.4, position: 2, booked: true },
+    { id: "x4", trip_id: "eu", day_date: dayShift(0), time_label: "16:00", kind: "sight", title: "East Side Gallery", detail: null, address: null, lat: 52.5, lon: 13.44, position: 3 },
+  ],
+  packing_lists: [{ id: "pl1", trip_id: "eu", name: "Europe", emoji: null }],
+  packing_items: Array.from({ length: 10 }, (_, i) => ({ id: `pi${i}`, list_id: "pl1", label: `Item ${i + 1}`, packed: i < 7, position: i })),
+};
+const noneDb: Record<string, Row[]> = {
+  profiles: [{ id: "me", display_name: "Alex", app_settings: {} }],
+  trips: [],
+  recommendations: savedPlaces,
+};
+
+export const db: Record<string, Row[]> = sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [
