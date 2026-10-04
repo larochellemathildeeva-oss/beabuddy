@@ -83,7 +83,7 @@ export function QuickPhoto({
       title={label ? undefined : `Take a photo of ${photos.title}`}
       className={`cursor-pointer focus-within:ring-2 focus-within:ring-primary ${
         label
-          ? "inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs"
+          ? "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs"
           : "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs"
       } ${busy ? "pointer-events-none opacity-50" : ""} ${className ?? ""}`}
     >

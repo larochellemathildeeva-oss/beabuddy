@@ -339,7 +339,7 @@ export function TimelineEntry({
   // the name opens the stop in a sheet to edit.
   const front = (
     <article
-      className={`rounded-[var(--r-card)] border border-border/60 bg-card p-2.5 shadow-[0_1px_10px_rgb(80_60_40/0.07)] transition-shadow ${
+      className={`rounded-[var(--r-card)] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
         current ? "ring-2 ring-primary/45" : ""
       }`}
     >
@@ -361,7 +361,7 @@ export function TimelineEntry({
           type="button"
           onClick={() => flip(true)}
           aria-expanded={false}
-          aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
+          aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""}${parentTitle ? `, in ${parentTitle}` : ""}${where ? `, ${where}` : ""} — tap to edit`}
           className="block min-w-0 flex-1 text-left"
         >
           {parentTitle ? (
@@ -452,7 +452,14 @@ export function TimelineEntry({
         {/* The grip goes last, so every kind tile sits on the leg line. */}
         {dragHandle}
       </div>
-      {photos && <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />}
+      {/* A stop that already has photos keeps the camera beside them, so
+          adding another is one tap; the first photo comes from ⋯. */}
+      {photos && photos.photos.length > 0 && (
+        <div className="flex items-end gap-2">
+          <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />
+          <QuickPhoto photos={photos} />
+        </div>
+      )}
       {pill && (
         <InsidePill
           label={pill}
@@ -607,7 +614,7 @@ export function TimelineEntry({
   // whole card; "Less" folds it back.
   const compactRow = (
     <article
-      className={`flex items-center gap-1.5 rounded-xl border border-border/60 bg-card py-1.5 pl-2 pr-2 shadow-[0_1px_10px_rgb(80_60_40/0.07)] ${
+      className={`flex items-center gap-1.5 rounded-xl border border-border/60 bg-card py-1.5 pl-2 pr-2 shadow-sm ${
         current ? "ring-2 ring-primary/45" : ""
       }`}
     >
@@ -616,7 +623,7 @@ export function TimelineEntry({
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
-        aria-label={`${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
+        aria-label={`${number != null ? `Stop ${number}, ` : ""}${rail ? `${rail}, ` : ""}${item.title}${done ? ", done" : ""} — show the whole card`}
         className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
       >
         {done ? (
@@ -630,10 +637,17 @@ export function TimelineEntry({
           {item.title}
         </span>
         <span
-          className={`kind-chip kind-${timelineGlyph(item)} grid size-7 shrink-0 place-items-center rounded-full`}
+          className={`kind-chip kind-${timelineGlyph(item)} relative grid size-7 shrink-0 place-items-center rounded-full`}
           aria-hidden
         >
           <KindIcon item={item} />
+          {number != null ? (
+            <StopDisc
+              number={number}
+              done={done}
+              className="absolute -right-1.5 -top-1.5 size-4 text-[10px]"
+            />
+          ) : null}
         </span>
       </button>
     </article>
@@ -1452,7 +1466,7 @@ export function TravelConnector({
     <li className="list-none">
       <div className={`grid gap-x-2 ${TIME_COLUMN}`}>
         <span aria-hidden />
-        <div className="ml-8 min-w-0 border-l-2 border-dashed border-[var(--acc-line)] pl-3">
+        <div className="ms-8 min-w-0 border-s-2 border-dashed border-[var(--acc-line)] ps-3">
           <div className="flex min-h-11 items-center gap-1.5">
             <LegGlyph className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <div className="min-w-0 flex-1">
