@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Columns2, LocateFixed, MapIcon, ListOrdered } from "@/components/icons";
 import { TRIP_PERSPECTIVES, type TripPerspective } from "@/lib/trip-perspective";
 import { BAR_POSITIONS, type TripBarPosition } from "@/hooks/useTripBarPosition";
+import { TRIP_PICTURES, type TripPicture } from "@/lib/trip-picture";
 
 const icons = { overview: Columns2, companion: LocateFixed, map: MapIcon, timeline: ListOrdered };
 
@@ -121,6 +122,40 @@ export function TripBarOptions({
             className={`min-h-11 flex-1 rounded-full px-3 text-[16px] ${value === p ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground"}`}
           >
             {p.charAt(0).toUpperCase() + p.slice(1)}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+export function TripPictureOptions({
+  value,
+  onChange,
+}: {
+  value: TripPicture;
+  onChange: (value: TripPicture) => void;
+}) {
+  return (
+    <fieldset className="py-3">
+      <legend className="text-[16px] font-semibold">Trip picture</legend>
+      <p className="mb-2 text-[13px] text-muted-foreground">
+        The trip&apos;s stops on a map, or a photo of the place. On this device.
+      </p>
+      <div
+        role="group"
+        aria-label="Trip picture"
+        className="flex gap-1 rounded-full bg-elevated p-1"
+      >
+        {TRIP_PICTURES.map((p) => (
+          <button
+            key={p}
+            type="button"
+            aria-pressed={value === p}
+            onClick={() => onChange(p)}
+            className={`min-h-11 flex-1 rounded-full px-3 text-[16px] ${value === p ? "bg-primary text-primary-foreground font-semibold" : "text-muted-foreground"}`}
+          >
+            {p === "stops" ? "Stops" : "Photo"}
           </button>
         ))}
       </div>

@@ -80,15 +80,39 @@ export function distanceKm(
  * town after the town) counted once.
  */
 export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
+  return routeStopsIndexed(stops).route;
+}
+
+/**
+ * `routeStops`, and for each stop given, which of the map's stops it became
+ * (-1 when it has no position). A city visited twice, apart, is two map stops,
+ * so this, not the name, says which visit a dated stop is.
+ */
+export function routeStopsIndexed(stops: readonly RouteStopInput[]): {
+  route: RouteStop[];
+  indexOf: number[];
+} {
   const out: RouteStop[] = [];
+  const indexOf: number[] = [];
   for (const s of stops) {
     // A position off the globe (a typo, a swapped pair) is left off the map
     // rather than thrown across it.
-    if (s.lat === null || s.lon === null || !Number.isFinite(s.lat) || !Number.isFinite(s.lon))
+    if (
+      s.lat === null ||
+      s.lon === null ||
+      !Number.isFinite(s.lat) ||
+      !Number.isFinite(s.lon) ||
+      Math.abs(s.lat) > 85 ||
+      Math.abs(s.lon) > 180
+    ) {
+      indexOf.push(-1);
       continue;
-    if (Math.abs(s.lat) > 85 || Math.abs(s.lon) > 180) continue;
+    }
     const city = s.city.trim();
-    if (!city) continue;
+    if (!city) {
+      indexOf.push(-1);
+      continue;
+    }
     const days = stayDays(s.arrive_on, s.depart_on);
     const last = out.at(-1);
     // The same place twice in a row is one stop on the map: the same name, or
@@ -99,11 +123,13 @@ export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
         distanceKm(last, { lat: s.lat, lon: s.lon }) < SAME_PLACE_KM)
     ) {
       if (days !== null) last.days = (last.days ?? 0) + days;
+      indexOf.push(out.length - 1);
       continue;
     }
     out.push({ city, country: s.country ?? null, lat: s.lat, lon: s.lon, days });
+    indexOf.push(out.length - 1);
   }
-  return out;
+  return { route: out, indexOf };
 }
 
 /** A longitude in −180…180. */
@@ -437,4 +463,79 @@ export function reliefTiles(view: {
     }
   }
   return tiles;
+}
+
+export type LabelPlacement = {
+  /** Index into the stops. */
+  index: number;
+  /** Where the text is anchored: its baseline-middle beside the dot. */
+  x: number;
+  y: number;
+  anchor: "start" | "end";
+};
+
+/**
+ * The trip page's banner names each city in plain white words beside its dot,
+ * as the mockup draws it, rather than Home's pills. The words run away from
+ * the right edge, so a city near it is named on its left. A name that would
+ * cover a name already placed, or leave the frame, is tried on the other side
+ * and otherwise left off; the first and last stops and the `keep` stop (the
+ * one you are in) are placed first, so they are never the ones dropped.
+ */
+export function placeLabels(
+  dots: readonly Point[],
+  names: readonly string[],
+  frame: {
+    width: number;
+    /** Average width of one letter, in the frame's units. */
+    letter?: number;
+    /** Height of a line of text. */
+    line?: number;
+    /** Gap between the dot and its name. */
+    gap?: number;
+    keep?: number;
+  },
+): LabelPlacement[] {
+  const { width } = frame;
+  const letter = frame.letter ?? 7.6;
+  const line = frame.line ?? 18;
+  const baseGap = frame.gap ?? 12;
+  const margin = 8;
+  const last = dots.length - 1;
+  const order = dots.map((_, i) => i).sort((a, b) => rank(a) - rank(b) || a - b);
+  function rank(i: number) {
+    if (i === frame.keep) return 0;
+    if (i === 0 || i === last) return 1;
+    return 2;
+  }
+  // Every dot is a box no name may cover.
+  const taken: Box[] = dots.map((d) => ({ x0: d.x - 8, y0: d.y - 8, x1: d.x + 8, y1: d.y + 8 }));
+  const out: LabelPlacement[] = [];
+  for (const index of order) {
+    const dot = dots[index]!;
+    const name = names[index] ?? "";
+    if (!name) continue;
+    const w = name.length * letter;
+    // The stop you are in is ringed, so its name stands further off.
+    const gap = index === frame.keep ? baseGap + 8 : baseGap;
+    const right = {
+      x: dot.x + gap,
+      anchor: "start" as const,
+      x0: dot.x + gap,
+      x1: dot.x + gap + w,
+    };
+    const left = { x: dot.x - gap, anchor: "end" as const, x0: dot.x - gap - w, x1: dot.x - gap };
+    const sides = dot.x > width * 0.62 ? [left, right] : [right, left];
+    const y0 = dot.y - line / 2;
+    const y1 = dot.y + line / 2;
+    const fit = sides.find((s) => {
+      if (s.x0 < margin || s.x1 > width - margin) return false;
+      const b = { x0: s.x0, y0, x1: s.x1, y1 };
+      return !taken.some((t, i) => i !== index && overlaps(b, t));
+    });
+    if (!fit) continue;
+    taken.push({ x0: fit.x0, y0, x1: fit.x1, y1 });
+    out.push({ index, x: fit.x, y: dot.y, anchor: fit.anchor });
+  }
+  return out.sort((a, b) => a.index - b.index);
 }
