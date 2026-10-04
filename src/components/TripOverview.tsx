@@ -2,30 +2,40 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Bed,
-  CalendarDays,
-  Car,
   ChevronRight,
   FileText,
+  Heart,
   ListChecks,
   ListOrdered,
   Luggage,
   Map as MapIcon,
-  MapPin,
   Plane,
   Ticket,
+  Car,
 } from "@/components/icons";
 import type { ItineraryRow } from "@/hooks/useTrips";
+import { useRecommendations } from "@/hooks/useRecommendations";
 import { useTripGlances } from "@/hooks/useTripGlances";
+import { PlacePicture } from "@/components/PlacePicture";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { companionState, companionStops, isDone, type CompanionState } from "@/lib/companion";
+import { currentHighlights } from "@/lib/home-trip";
+import { formatTimelineDayLabel } from "@/lib/timeline-groups";
+import { timelineGlyph } from "@/lib/timeline-kind";
+import { tripIsUnderway } from "@/lib/trip-perspective";
 import {
   bookingKind,
   cityStretches,
   countBookings,
+  leavingIn,
+  missingStays,
+  placesForTrip,
   stretchDates,
   tripBookings,
   type BookingKind,
 } from "@/lib/trip-overview";
-import type { TripDocument } from "@/lib/trip-documents";
 import { isDayTrip, shortCity } from "@/lib/trip-cities";
+import type { TripDocument } from "@/lib/trip-documents";
 import type { TimelineDayGroup } from "@/lib/timeline-groups";
 import type { PrepTab } from "@/components/TripPrep";
 
@@ -33,11 +43,12 @@ const KINDS: {
   kind: BookingKind;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  tone: number;
 }[] = [
-  { kind: "flight", label: "Flights", icon: Plane },
-  { kind: "stay", label: "Stays", icon: Bed },
-  { kind: "transport", label: "Transport", icon: Car },
-  { kind: "activity", label: "Activities", icon: Ticket },
+  { kind: "flight", label: "Flights", icon: Plane, tone: 2 },
+  { kind: "stay", label: "Stays", icon: Bed, tone: 3 },
+  { kind: "transport", label: "Transport", icon: Car, tone: 4 },
+  { kind: "activity", label: "Activities", icon: Ticket, tone: 1 },
 ];
 
 /** A city on the trip's route, as the recap reads it. */
@@ -50,26 +61,37 @@ type RouteCity = {
 };
 
 /**
- * The trip at a glance: bookings by kind, prep, documents, and a recap of
- * where the trip is when (a line per city, with its days), not every stop.
- * Every tile opens something that exists — the Timeline for a kind of
- * booking, the to-do and packing sheet, every stop on the Timeline or map.
+ * The trip at a glance, in the order the trip page asks for: what is
+ * happening now (or what is left before you leave), the days, what is
+ * booked, then the places saved for these cities.
+ *
+ * Every tile still opens something that exists — Companion, the Timeline,
+ * the map, bookings, to-dos, packing, Trip documents, Saved places.
  */
 export function TripOverview({
   tripId,
   items,
   cities,
   country,
+  homeCity,
+  today,
+  startDate,
+  endDate,
   onFindCities,
   findingCities = false,
   groups,
   days,
   route,
   bookingDocs,
+  bookingsOpen,
+  onToggleBookings,
   onOpenBookings,
   onOpenTimeline,
   onOpenMap,
+  onOpenCompanion,
+  onOpenSaved,
   onPrep,
+  bookings,
 }: {
   tripId: string;
   items: ItineraryRow[];
@@ -77,6 +99,11 @@ export function TripOverview({
   cities: { city: string; country: string | null }[];
   /** The trip's own country, for a destination saved without one. */
   country?: string | null;
+  /** The trip's starting city, so saved places match before destinations exist. */
+  homeCity?: string | null;
+  today: string;
+  startDate?: string | null;
+  endDate?: string | null;
   /** Offered when the trip has stops with pins but no destinations. */
   onFindCities?: (() => void) | undefined;
   findingCities?: boolean | undefined;
@@ -87,11 +114,17 @@ export function TripOverview({
   route: RouteCity[];
   /** Trip documents filed to this trip: they are bookings too. */
   bookingDocs: TripDocument[];
+  bookingsOpen: boolean;
+  onToggleBookings: () => void;
   /** The trip's bookings list, open on one kind. */
   onOpenBookings: (kind: BookingKind) => void;
   onOpenTimeline: (dayKey?: string) => void;
   onOpenMap: (dayKey: string) => void;
+  onOpenCompanion: () => void;
+  onOpenSaved: () => void;
   onPrep: (tab: PrepTab) => void;
+  /** The bookings list, shown under the booked strip when it is open. */
+  bookings?: ReactNode;
 }) {
   const { glances } = useTripGlances([tripId]);
   const glance = glances[tripId];
@@ -104,9 +137,9 @@ export function TripOverview({
     if (item.booked) row.booked += 1;
     byKind.set(kind, row);
   }
-  const bookings = tripBookings(items, bookingDocs);
-  const bookedByKind = countBookings(bookings);
-  const booked = bookings.length;
+  const bookingsAll = tripBookings(items, bookingDocs);
+  const bookedByKind = countBookings(bookingsAll);
+  const booked = bookingsAll.length;
   const names = [
     ...new Set(cities.map((c) => (c.city.split(",")[0] ?? "").trim()).filter(Boolean)),
   ];
@@ -127,39 +160,47 @@ export function TripOverview({
   const todos = glance?.todos.open ?? 0;
   const packing = glance?.packing;
   const dated = groups.filter((g) => g.key);
-
   const stretches = cityStretches(days, route, items);
-  // Cities with no dates at all have no stretch: listed after, so none is lost.
   const undatedCities = route.filter((c) => !stretches.some((s) => s.city === c));
   const undated = items.filter((item) => !item.day_date).length;
   const placeCountry = (c: RouteCity) =>
     (c.country || c.city.split(",").slice(1).pop() || country || "").trim();
   const manyCountries = countries.size > 1;
   const dates = days.length ? `${days.length} ${days.length === 1 ? "day" : "days"}` : "No dates";
-  const essentials: {
-    key: string;
-    icon: ComponentType<{ className?: string }>;
-    title: string;
-    note: string;
-    onClick: () => void;
-  }[] = [
-    ...KINDS.map(({ kind, label, icon }) => {
-      const row = byKind.get(kind);
-      const bookedCount = bookedByKind[kind];
-      return {
-        key: kind,
-        icon,
-        title: label,
-        note: bookedCount ? `${bookedCount} booked` : row ? `${row.all} planned` : "None yet",
-        onClick: () => onOpenBookings(kind),
-      };
-    }),
+  const facts = [
+    dates,
+    `${items.length} ${items.length === 1 ? "stop" : "stops"}`,
+    where,
+    `${booked} booked`,
+  ].join(" · ");
+
+  const live = tripIsUnderway({ start_date: startDate, end_date: endDate }, today);
+  const end = endDate || startDate || "";
+  const past = Boolean(end && today > end);
+  const ahead = !live && !past;
+  const byDay = new Map(groups.map((group) => [group.key, group.items]));
+  const todayStops = companionStops(byDay.get(today) ?? []);
+  const now = companionState(todayStops);
+  const lodgingItems = items.filter((item) => timelineGlyph(item) === "lodging");
+  const gaps = missingStays(
+    days,
+    stretches,
+    lodgingItems.flatMap((item) => (item.day_date ? [item.day_date] : [])),
+    lodgingItems.length > 0 || bookedByKind.stay > 0,
+  );
+  const flight = currentHighlights(items, today).flight;
+  const savedCities = [homeCity, ...cities.map((c) => c.city)].filter((city): city is string =>
+    Boolean(city?.trim()),
+  );
+
+  const prepTiles = [
     {
       key: "todo",
       icon: ListChecks,
       title: "To-do",
       note: todos ? `${todos} left` : "All done",
       onClick: () => onPrep("todo"),
+      tone: 5,
     },
     {
       key: "packing",
@@ -167,13 +208,18 @@ export function TripOverview({
       title: "Packing",
       note: packing ? `${packing.packed} / ${packing.total}` : "No list yet",
       onClick: () => onPrep("packing"),
+      tone: 4,
     },
+  ];
+  const toolTiles = [
+    ...(ahead ? [] : prepTiles),
     {
       key: "timeline",
       icon: ListOrdered,
       title: "Timeline",
       note: `${items.length} ${items.length === 1 ? "stop" : "stops"}`,
       onClick: () => onOpenTimeline(),
+      tone: 1,
     },
     {
       key: "map",
@@ -181,30 +227,71 @@ export function TripOverview({
       title: "Map",
       note: dated[0] ? "See the pins" : "No days yet",
       onClick: () => onOpenMap(dated[0]?.key ?? ""),
+      tone: 2,
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="plain-card flex divide-x divide-border py-3">
-        <Stat icon={CalendarDays} value={dates} label={names.length ? names[0]! : "Trip"} />
-        <Stat
-          icon={MapPin}
-          value={`${items.length} ${items.length === 1 ? "stop" : "stops"}`}
-          label={where}
-        />
-        <Stat icon={Ticket} value={`${booked} booked`} label="Bookings" />
-      </div>
+      {live ? (
+        <RightNow state={now} onOpenCompanion={onOpenCompanion} />
+      ) : past ? (
+        <SectionHead title="This trip" aside={facts} />
+      ) : (
+        <section>
+          <SectionHead title="Before you go" aside={leavingIn(startDate, today) || undefined} />
+          <div className="grid grid-cols-3 gap-2">
+            <GlanceCard
+              tone={5}
+              icon={ListChecks}
+              label="To-do"
+              value={String(todos)}
+              note={todos ? "before you go" : "All done"}
+              onClick={() => onPrep("todo")}
+            />
+            <GlanceCard
+              tone={2}
+              icon={Plane}
+              label={flight ? flight.title : "Flight"}
+              value={
+                flight?.time_label && /^\d{1,2}:\d{2}/.test(flight.time_label)
+                  ? flight.time_label
+                  : ""
+              }
+              note={
+                flight
+                  ? [flight.detail, flight.day_date ? formatTimelineDayLabel(flight.day_date) : ""]
+                      .filter(Boolean)
+                      .join(" · ") || "On the plan"
+                  : "No flight yet"
+              }
+              onClick={() => onOpenBookings("flight")}
+            />
+            <GlanceCard
+              tone={4}
+              icon={Luggage}
+              label="Packing"
+              value={packing ? `${packing.packed}/${packing.total}` : ""}
+              note={packing ? "ready" : "No list yet"}
+              ratio={packing?.ratio}
+              onClick={() => onPrep("packing")}
+            />
+          </div>
+        </section>
+      )}
+
+      {!past && <p className="text-[14px] leading-snug text-muted-foreground">{facts}</p>}
+
       {onFindCities && names.length === 0 && (
         <div className="plain-card flex items-center justify-between gap-3 p-3.5">
-          <p className="text-[13.5px] text-muted-foreground">
+          <p className="text-[16px] leading-snug text-muted-foreground">
             This trip has no cities yet. Béa can find them from your stops.
           </p>
           <button
             type="button"
             onClick={onFindCities}
             disabled={findingCities}
-            className="shrink-0 rounded-full bg-primary px-3.5 py-1.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-60"
+            className="btn-primary shrink-0 px-4 disabled:opacity-60"
           >
             {findingCities ? "Finding…" : "Find cities"}
           </button>
@@ -212,109 +299,116 @@ export function TripOverview({
       )}
 
       <section>
-        <Head title="Trip essentials" />
-        <div className="grid grid-cols-3 gap-2">
-          {essentials.map((e, i) => (
-            <Tile
-              key={e.key}
-              icon={e.icon}
-              title={e.title}
-              note={e.note}
-              onClick={e.onClick}
-              tone={(i % 5) + 1}
-            />
-          ))}
-          <Link
-            to="/profile/documents"
-            className={`tile-card-${(essentials.length % 5) + 1} ${TILE}`}
-          >
-            <FileText className="size-5 text-primary" aria-hidden />
-            <TileText title="Travel docs" note="View details" />
-          </Link>
-        </div>
-      </section>
-
-      <section>
-        <Head
-          title="Your itinerary"
+        <SectionHead
+          title="Your days"
           aside={
             dated[0] ? (
               <button
                 type="button"
                 onClick={() => onOpenMap(dated[0]!.key)}
-                className="flex items-center gap-1 text-[14px] font-semibold text-primary"
+                className="inline-flex min-h-11 items-center gap-1 text-[16px] font-semibold text-primary"
               >
                 <MapIcon className="size-4" aria-hidden />
                 See on map
-                <ChevronRight className="size-4" aria-hidden />
               </button>
-            ) : null
+            ) : (
+              <span className="text-[14px] text-muted-foreground">
+                {days.length} {days.length === 1 ? "day" : "days"} · {items.length}{" "}
+                {items.length === 1 ? "stop" : "stops"}
+              </span>
+            )
           }
         />
         {stretches.length === 0 && undatedCities.length === 0 ? (
-          <p className="plain-card p-4 text-[14px] text-muted-foreground">
+          <p className="plain-card p-4 text-[16px] leading-snug text-muted-foreground">
             {items.length
               ? `${items.length} ${items.length === 1 ? "stop" : "stops"} with no dates yet. Give the trip its dates to see where you are each day.`
               : "Nothing planned yet. Add stops, or let Béa draft the days from a plan you already have."}
           </p>
         ) : (
-          <div className="plain-card divide-y divide-border overflow-hidden">
-            {stretches.map((s, i) => {
-              const days =
-                s.firstDay === s.lastDay ? `Day ${s.firstDay}` : `Days ${s.firstDay}–${s.lastDay}`;
+          <div className="space-y-2">
+            {days.map((day, index) => {
+              const stretch = stretches.find((s) => day >= s.start && day <= s.end);
+              const place = stretch?.city ?? null;
+              const dayItems = byDay.get(day) ?? [];
+              const stops = companionStops(dayItems);
+              const shown = stops.length ? stops : dayItems;
+              const mark = dayMark(day, today, live, stops);
               const note = [
-                s.city && isDayTrip(s.city) ? "Day trip" : "",
-                s.city && manyCountries ? placeCountry(s.city) : "",
-                s.stops ? `${s.stops} ${s.stops === 1 ? "stop" : "stops"}` : "Nothing planned yet",
+                place && isDayTrip(place) ? "Day trip" : "",
+                place && manyCountries ? placeCountry(place) : "",
               ]
                 .filter(Boolean)
                 .join(" · ");
+              const cityLabel = place ? shortCity(place.city) : "No city set";
               return (
                 <button
-                  key={s.start}
+                  key={day}
                   type="button"
-                  onClick={() => onOpenTimeline(s.start)}
-                  className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                  onClick={() => onOpenTimeline(day)}
+                  className="plain-card relative flex w-full overflow-hidden text-left"
                 >
-                  <span
-                    className={`seq-${(i % 5) + 1} grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold`}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-[20px] leading-tight">
-                      {s.city ? shortCity(s.city.city) : "No city set"}
+                  <img
+                    src={bannerArtUrl(
+                      bannerSceneFor(
+                        [place?.city, place?.country, country, homeCity],
+                        place?.city || day,
+                      ),
+                    )}
+                    alt=""
+                    className="h-auto w-24 shrink-0 object-cover sm:w-28"
+                  />
+                  <span className="min-w-0 flex-1 px-3 py-3 pr-16">
+                    <span className="label-caps block">
+                      Day {index + 1} · {formatTimelineDayLabel(day)}
                     </span>
-                    <span className="block truncate text-[12.5px] text-muted-foreground">
-                      {note}
+                    <span className="mt-1 block font-display text-[18px] leading-tight">
+                      {cityLabel}
                     </span>
-                  </span>
-                  <span className="shrink-0 text-right leading-tight">
-                    <span className="block text-[13.5px] font-semibold">{days}</span>
-                    <span className="block text-[12px] text-muted-foreground">
-                      {stretchDates(s.start, s.end)}
+                    <span className="mt-1 line-clamp-2 text-[16px] leading-snug text-muted-foreground">
+                      {shown.length
+                        ? shown.map((stop) => stop.title).join(" · ")
+                        : "Nothing planned yet"}
                     </span>
+                    {note ? (
+                      <span className="mt-1 block text-[14px] text-muted-foreground">{note}</span>
+                    ) : null}
                   </span>
-                  <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+                  {mark ? (
+                    <span
+                      className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[13px] font-semibold ${
+                        mark === "Today"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {mark}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
-            {undatedCities.map((c, i) => (
+            {undatedCities.map((c) => (
               <button
-                key={`${c.city}-${i}`}
+                key={`${c.city}-${c.arrive_on ?? ""}`}
                 type="button"
                 onClick={() => onOpenTimeline()}
-                className="flex w-full items-center gap-3 px-3 py-3 text-left"
+                className="plain-card flex min-h-11 w-full items-center gap-3 px-3 py-3 text-left"
               >
-                <span
-                  className={`seq-${((stretches.length + i) % 5) + 1} grid size-8 shrink-0 place-items-center rounded-full text-[13px] font-bold`}
-                >
-                  {stretches.length + i + 1}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-[18px] leading-tight">
+                    {shortCity(c.city)}
+                  </span>
+                  <span className="block text-[14px] text-muted-foreground">
+                    {[
+                      isDayTrip(c) ? "Day trip" : "",
+                      manyCountries ? placeCountry(c) : "",
+                      "No dates yet",
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
                 </span>
-                <span className="min-w-0 flex-1 truncate font-display text-[20px] leading-tight">
-                  {shortCity(c.city)}
-                </span>
-                <span className="shrink-0 text-[12px] text-muted-foreground">No dates yet</span>
                 <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
               </button>
             ))}
@@ -322,58 +416,306 @@ export function TripOverview({
               <button
                 type="button"
                 onClick={() => onOpenTimeline("")}
-                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-[13px] text-muted-foreground"
+                className="plain-card flex min-h-11 w-full items-center justify-between gap-3 px-3 py-3 text-left text-[16px] text-muted-foreground"
               >
                 {undated} {undated === 1 ? "stop" : "stops"} without a day
-                <ChevronRight className="size-4 shrink-0" aria-hidden />
+                <ChevronRight className="size-5 shrink-0" aria-hidden />
               </button>
             ) : null}
           </div>
         )}
       </section>
+
+      <section>
+        <SectionHead
+          title="Booked"
+          aside={
+            <button
+              type="button"
+              aria-expanded={bookingsOpen}
+              aria-label={`Booked · ${booked}`}
+              onClick={onToggleBookings}
+              className="inline-flex min-h-11 items-center text-[16px] font-semibold text-primary"
+            >
+              All bookings
+            </button>
+          }
+        />
+        <div className="grid grid-cols-2 gap-2">
+          {KINDS.map(({ kind, label, icon, tone }) => {
+            const row = byKind.get(kind);
+            const bookedCount = bookedByKind[kind];
+            const note = bookedCount
+              ? `${bookedCount} booked`
+              : row
+                ? `${row.all} planned`
+                : "None yet";
+            return (
+              <button
+                key={kind}
+                type="button"
+                onClick={() => onOpenBookings(kind)}
+                className={`tile-card-${tone} flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 py-2 text-center`}
+              >
+                <KindIcon icon={icon} />
+                <span className="font-display text-[22px] leading-none">{bookedCount}</span>
+                <span className="text-[16px] font-semibold leading-tight">{label}</span>
+                <span className="text-[13px] leading-tight text-muted-foreground">{note}</span>
+              </button>
+            );
+          })}
+        </div>
+        {gaps.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {gaps.map((gap) => (
+              <div
+                key={`${gap.city ?? "trip"}-${gap.start ?? ""}`}
+                className="plain-card flex items-start gap-3 p-3"
+              >
+                <Bed className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
+                <p className="min-w-0 flex-1 text-[16px] leading-snug">
+                  <span className="font-semibold">
+                    {gap.city
+                      ? `No stay in ${shortCity(gap.city)} yet.`
+                      : "No place to stay is on the plan yet."}
+                  </span>
+                  {gap.start ? (
+                    <span className="mt-0.5 block text-[14px] text-muted-foreground">
+                      {stretchDates(gap.start, gap.end ?? gap.start)}
+                    </span>
+                  ) : null}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOpenBookings("stay")}
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-border bg-card px-3 text-[16px] font-semibold"
+                >
+                  Add
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {bookings ? <div className="mt-3">{bookings}</div> : null}
+      </section>
+
+      <section>
+        <SectionHead title="Trip essentials" />
+        <div className="grid grid-cols-2 gap-2">
+          {toolTiles.map(({ key, ...tile }) => (
+            <Tile key={key} {...tile} />
+          ))}
+          <Link
+            to="/profile/documents"
+            className={`tile-card-${(toolTiles.length % 5) + 1} flex min-h-16 flex-col justify-between gap-2 p-3 text-left`}
+          >
+            <FileText className="size-5 text-primary" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-[16px] font-semibold leading-tight">Travel docs</span>
+              <span className="block text-[14px] text-muted-foreground">View details</span>
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      <SavedForTrip cities={savedCities} onOpen={onOpenSaved} />
     </div>
   );
 }
 
-function Head({ title, aside }: { title: string; aside?: ReactNode }) {
+function dayMark(
+  day: string,
+  today: string,
+  live: boolean,
+  stops: readonly { arrived_at?: string | null; left_at?: string | null }[],
+): "Today" | "Done" | null {
+  const done = stops.length > 0 && stops.every((stop) => isDone(stop));
+  if (done && day <= today) return "Done";
+  if (day === today && live) return "Today";
+  return null;
+}
+
+function RightNow({
+  state,
+  onOpenCompanion,
+}: {
+  state: CompanionState<ItineraryRow>;
+  onOpenCompanion: () => void;
+}) {
+  const { phase, current, next, reached, total } = state;
+  const focus = phase === "at" ? current : phase === "done" ? null : next;
+  const kicker =
+    phase === "at"
+      ? "You are here"
+      : phase === "between"
+        ? "On the way"
+        : phase === "done"
+          ? "That's the day."
+          : "Up next";
+  const title =
+    phase === "done" ? "Every stop is reached." : focus ? focus.title : "Nothing on today's plan.";
+  const time =
+    phase === "between" && next?.time_label
+      ? `arrive ${next.time_label}`
+      : phase === "at" || phase === "not-started"
+        ? (focus?.time_label ?? "")
+        : "";
+
   return (
-    <div className="mb-3 flex items-baseline justify-between">
-      <h2 className="font-display text-[27px] leading-none">{title}</h2>
+    <section>
+      <SectionHead
+        title="Right now"
+        aside={
+          total > 0 ? (
+            <span className="text-[14px] text-muted-foreground">
+              {reached} of {total} reached
+            </span>
+          ) : null
+        }
+      />
+      <div className="plain-card p-4">
+        <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-primary">
+          <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
+          {kicker}
+          {time ? (
+            <span className="ml-auto text-[14px] font-medium normal-case tracking-normal text-muted-foreground">
+              {time}
+            </span>
+          ) : null}
+        </p>
+        <h3 className="mt-2 font-display text-[22px] leading-tight">{title}</h3>
+        {phase === "at" && next ? (
+          <p className="mt-3 text-[16px] leading-snug">
+            <span className="font-semibold">
+              Next · {next.time_label ? `${next.time_label} ` : ""}
+              {next.title}
+            </span>
+          </p>
+        ) : null}
+        <button type="button" onClick={onOpenCompanion} className="btn-primary mt-3 px-4">
+          Open Companion
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function GlanceCard({
+  tone,
+  icon: Icon,
+  label,
+  value,
+  note,
+  ratio,
+  onClick,
+}: {
+  tone: number;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  note: string;
+  ratio?: number | undefined;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tile-card-${tone} flex min-h-28 flex-col items-start p-3 text-left`}
+    >
+      <span className="flex items-center gap-1.5 text-[16px] font-semibold leading-tight">
+        <Icon className="size-4 shrink-0" aria-hidden />
+        <span className="line-clamp-2">{label}</span>
+      </span>
+      {value ? <span className="mt-1 font-display text-[28px] leading-none">{value}</span> : null}
+      <span className="mt-1 text-[14px] leading-snug text-muted-foreground">{note}</span>
+      {typeof ratio === "number" ? (
+        <span className="mt-2 block h-1.5 w-full overflow-hidden rounded-full bg-[var(--acc-track)]">
+          <span
+            className="block h-full rounded-full bg-primary"
+            style={{ width: `${Math.round(ratio * 100)}%` }}
+          />
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function SavedForTrip({ cities, onOpen }: { cities: string[]; onOpen: () => void }) {
+  const { rows, loading } = useRecommendations();
+  const matched = placesForTrip(rows, cities);
+  const shown = matched.slice(0, 6);
+  return (
+    <section>
+      <SectionHead
+        title="Saved for this trip"
+        aside={
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex min-h-11 items-center gap-1 text-[16px] font-semibold text-primary"
+          >
+            See all
+            <ChevronRight className="size-4" aria-hidden />
+          </button>
+        }
+      />
+      {loading ? (
+        <p className="text-[16px] text-muted-foreground">Loading your places…</p>
+      ) : shown.length === 0 ? (
+        <p className="plain-card p-4 text-[16px] leading-snug text-muted-foreground">
+          No saved places in these cities yet. Save places in{" "}
+          <Link to="/recommendations" className="font-semibold text-primary">
+            Recs
+          </Link>{" "}
+          and they show up here.
+        </p>
+      ) : (
+        <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+          {shown.map((place) => (
+            <button
+              key={place.id}
+              type="button"
+              onClick={onOpen}
+              className="w-28 shrink-0 text-left"
+            >
+              <span className="relative block">
+                <PlacePicture
+                  name={place.name}
+                  category={place.category}
+                  lat={place.lat}
+                  lon={place.lon}
+                  className="h-24 w-28 rounded-2xl"
+                />
+                <span className="absolute right-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-card shadow-xs">
+                  <Heart className="size-3.5 text-primary" aria-hidden />
+                </span>
+              </span>
+              <span className="mt-1 line-clamp-2 block text-[16px] font-semibold leading-snug">
+                {place.name}
+              </span>
+              {place.city ? (
+                <span className="block text-[14px] text-muted-foreground">{place.city}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SectionHead({ title, aside }: { title: string; aside?: ReactNode }) {
+  return (
+    <div className="mb-2 flex items-baseline justify-between gap-3">
+      <h2 className="font-display text-[22px] leading-tight">{title}</h2>
       {aside}
     </div>
   );
 }
 
-function Stat({
-  icon: Icon,
-  value,
-  label,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  value: string;
-  label: string;
-}) {
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-      <Icon className="size-6 shrink-0 text-primary" aria-hidden />
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate text-[14px] font-semibold">{value}</span>
-        <span className="block truncate text-[12px] text-muted-foreground">{label}</span>
-      </span>
-    </div>
-  );
-}
-
-/** A tile in the essentials grid: three across, the same size each. */
-const TILE = "flex min-h-[84px] min-w-0 flex-col justify-between gap-2 p-2.5 text-left";
-
-function TileText({ title, note }: { title: string; note: string }) {
-  return (
-    <span className="min-w-0">
-      <span className="block truncate text-[13.5px] font-semibold leading-tight">{title}</span>
-      <span className="block truncate text-[11.5px] text-muted-foreground">{note}</span>
-    </span>
-  );
+function KindIcon({ icon: Icon }: { icon: ComponentType<{ className?: string }> }) {
+  return <Icon className="size-4 text-foreground" aria-hidden />;
 }
 
 function Tile({
@@ -390,9 +732,16 @@ function Tile({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className={`tile-card-${tone} ${TILE}`}>
-      <Icon className="size-5 text-primary" />
-      <TileText title={title} note={note} />
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tile-card-${tone} flex min-h-16 flex-col justify-between gap-2 p-3 text-left`}
+    >
+      <Icon className="size-5 text-primary" aria-hidden />
+      <span className="min-w-0">
+        <span className="block text-[16px] font-semibold leading-tight">{title}</span>
+        <span className="block text-[14px] text-muted-foreground">{note}</span>
+      </span>
     </button>
   );
 }

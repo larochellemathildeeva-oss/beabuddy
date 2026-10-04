@@ -48,15 +48,16 @@ function TripsPreview() {
   );
 }
 
-const sample = new URLSearchParams(location.search).get("sample") ?? "default";
+const sampleParams = new URLSearchParams(location.search);
+const sample = sampleParams.get("sample") ?? "default";
 const guest = sample === "guest";
 const trip = {
   id: "t1",
   title: "JQAPALA A",
   city: "Hiroshima",
   country: "Japan",
-  start_date: sample === "undated" ? null : "2026-10-07",
-  end_date: sample === "undated" ? null : "2026-10-08",
+  start_date: sample === "undated" ? null : (sampleParams.get("from") ?? "2026-10-07"),
+  end_date: sample === "undated" ? null : (sampleParams.get("to") ?? "2026-10-08"),
   dates_status: "fixed",
   status: "upcoming",
   budget_enabled: true,

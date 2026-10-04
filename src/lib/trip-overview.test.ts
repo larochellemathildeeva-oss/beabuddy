@@ -5,6 +5,9 @@ import {
   cityStretches,
   countBookings,
   documentBookingKind,
+  leavingIn,
+  missingStays,
+  placesForTrip,
   stretchDates,
   tripBookings,
 } from "./trip-overview.ts";
@@ -92,6 +95,91 @@ test("a trip with no cities is one stretch of unplaced days", () => {
   assert.equal(stretches.length, 1);
   assert.equal(stretches[0]!.city, null);
   assert.equal(stretches[0]!.lastDay, 2);
+});
+
+test("an overnight city with no stay is named, a day trip is not", () => {
+  const route = [
+    { city: "Berlin", arrive_on: "2026-10-01", depart_on: "2026-10-03" },
+    { city: "Potsdam", kind: "daytrip", arrive_on: "2026-10-02", depart_on: "2026-10-02" },
+    { city: "Munich", arrive_on: "2026-10-03", depart_on: "2026-10-05" },
+  ];
+  const days = ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"];
+  const stretches = cityStretches(days, route, []);
+  assert.deepEqual(
+    missingStays(days, stretches, [], false).map((gap) => gap.city),
+    ["Munich"],
+  );
+  assert.deepEqual(
+    missingStays(days, stretches, ["2026-10-04"], true).map((gap) => gap.city),
+    [],
+  );
+});
+
+test("a multi-day trip with no overnight city and no stay says so once", () => {
+  const days = ["2026-10-01", "2026-10-02"];
+  const stretches = cityStretches(
+    days,
+    [
+      { city: "Berlin", arrive_on: "2026-10-01", depart_on: "2026-10-01" },
+      { city: "Prague", arrive_on: "2026-10-02", depart_on: "2026-10-02" },
+    ],
+    [],
+  );
+  assert.deepEqual(missingStays(days, stretches, [], false), [
+    { city: null, start: "2026-10-01", end: "2026-10-02" },
+  ]);
+  assert.deepEqual(missingStays(days, stretches, [], true), []);
+  assert.deepEqual(missingStays(["2026-10-01"], stretches, [], false), []);
+});
+
+test("a stay document with no day is a stay, and is not split by city", () => {
+  const days = ["2026-10-01", "2026-10-02", "2026-10-03"];
+  const stretches = cityStretches(
+    days,
+    [{ city: "Berlin", arrive_on: "2026-10-01", depart_on: "2026-10-03" }],
+    [],
+  );
+  assert.deepEqual(missingStays(days, stretches, [], true), []);
+});
+
+test("saved places are the trip's cities, unvisited first", () => {
+  const places = [
+    { name: "Old", city: "Hiroshima", visited: true },
+    { name: "Café", city: "Montréal", visited: false },
+    { name: "New", city: "Kyoto", visited: false },
+  ];
+  assert.deepEqual(
+    placesForTrip(places, ["Hiroshima", "Kyoto, Japan"]).map((place) => place.name),
+    ["New", "Old"],
+  );
+  assert.deepEqual(placesForTrip(places, []), []);
+});
+
+test("a shorter city name inside a longer one is a different city", () => {
+  const places = [
+    { name: "Minster", city: "York", visited: false },
+    { name: "Bagel", city: "New York", visited: false },
+    { name: "Shrine", city: "Kyoto, Japan", visited: false },
+  ];
+  assert.deepEqual(
+    placesForTrip(places, ["New York"]).map((place) => place.name),
+    ["Bagel"],
+  );
+  assert.deepEqual(
+    placesForTrip(places, ["York, England"]).map((place) => place.name),
+    ["Minster"],
+  );
+  assert.deepEqual(
+    placesForTrip(places, ["Kyoto"]).map((place) => place.name),
+    ["Shrine"],
+  );
+});
+
+test("leaving in counts the days until the start", () => {
+  assert.equal(leavingIn("2026-10-07", "2026-10-04"), "Leaving in 3 days");
+  assert.equal(leavingIn("2026-10-05", "2026-10-04"), "Leaving tomorrow");
+  assert.equal(leavingIn("2026-10-04", "2026-10-04"), "");
+  assert.equal(leavingIn(null, "2026-10-04"), "");
 });
 
 test("a stretch's dates are said briefly", () => {

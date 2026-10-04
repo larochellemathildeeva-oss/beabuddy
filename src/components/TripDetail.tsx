@@ -1764,11 +1764,17 @@ export function TripDetail({
             items={stopItems}
             cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
             country={trip.country}
+            homeCity={trip.city}
+            today={todayKey}
+            startDate={trip.start_date}
+            endDate={trip.end_date}
             groups={allDayGroups}
             days={moveDays}
             route={routeCities}
             {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
             bookingDocs={bookingDocs.docs}
+            bookingsOpen={bookingsOpen}
+            onToggleBookings={() => setBookingsOpen((open) => !open)}
             onOpenBookings={openBookings}
             onOpenTimeline={(dayKey) => {
               if (dayKey !== undefined) setDayChoice(dayKey);
@@ -1778,37 +1784,30 @@ export function TripDetail({
               if (dayKey) setDayChoice(dayKey);
               setPerspective("map");
             }}
+            onOpenCompanion={() => {
+              setDayChoice(todayKey);
+              setCityChoice("");
+              setPerspective("companion");
+            }}
+            onOpenSaved={() => setSavedOpen(true)}
             onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+            bookings={
+              <section
+                ref={bookingsRef}
+                aria-label="Bookings"
+                hidden={!bookingsOpen}
+                className="scroll-mt-[var(--trip-sticky-offset)]"
+              >
+                <TripBookings
+                  filter={bookingFilter}
+                  onFilter={setBookingFilter}
+                  stops={stopItems}
+                  docs={bookingDocs.docs}
+                  onSaveBooking={(id, patch) => board.updateItem(id, patch)}
+                />
+              </section>
+            }
           />
-        )}
-
-        {perspective === "overview" && (
-          <section
-            ref={bookingsRef}
-            aria-label="Bookings"
-            className="mt-4 scroll-mt-[var(--trip-sticky-offset)]"
-          >
-            <button
-              type="button"
-              aria-expanded={bookingsOpen}
-              onClick={() => setBookingsOpen((open) => !open)}
-              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-left"
-            >
-              <span className="font-display text-[22px]">
-                Booked · {Object.values(bookingCounts).reduce((n, count) => n + count, 0)}
-              </span>
-              <ChevronDown className={`size-5 ${bookingsOpen ? "rotate-180" : ""}`} aria-hidden />
-            </button>
-            <div hidden={!bookingsOpen} className="mt-3">
-              <TripBookings
-                filter={bookingFilter}
-                onFilter={setBookingFilter}
-                stops={stopItems}
-                docs={bookingDocs.docs}
-                onSaveBooking={(id, patch) => board.updateItem(id, patch)}
-              />
-            </div>
-          </section>
         )}
 
         {perspective === "companion" && (

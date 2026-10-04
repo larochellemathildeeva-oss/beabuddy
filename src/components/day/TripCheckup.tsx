@@ -18,8 +18,8 @@ export function TripCheckup({
       <div className="plain-card flex items-start gap-3 p-3.5">
         <ShieldCheck className="mt-0.5 size-5 shrink-0" aria-hidden />
         <div className="min-w-0">
-          <p className="text-[15px] font-semibold leading-snug">{checkupHeadline(findings)}</p>
-          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
+          <p className="text-[17px] font-semibold leading-snug">{checkupHeadline(findings)}</p>
+          <p className="mt-1 text-[16px] leading-snug text-muted-foreground">
             Worked out from the times, pins and bookings already on the plan, and the expiry dates
             of passports and visas in Protected. Béa only flags what she can measure, so a stop with
             no time or no pin is left alone.
@@ -40,11 +40,9 @@ export function TripCheckup({
                 />
                 <span className="min-w-0 flex-1">
                   {finding.dayLabel ? (
-                    <span className="block text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                      {finding.dayLabel}
-                    </span>
+                    <span className="label-caps block">{finding.dayLabel}</span>
                   ) : null}
-                  <span className="block text-[14.5px] leading-snug">{finding.text}</span>
+                  <span className="block text-[16px] leading-snug">{finding.text}</span>
                 </span>
               </>
             );

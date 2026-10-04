@@ -5,6 +5,7 @@
  */
 import { routeStopOn } from "./import-stop.ts";
 import { parseLocalDate } from "./trip-dates.ts";
+import { isDayTrip, shortCity } from "./trip-cities.ts";
 import { timelineGlyph } from "./timeline-kind.ts";
 
 export type BookingKind = "flight" | "stay" | "transport" | "activity";
@@ -154,6 +155,89 @@ export function cityStretches<
     });
   });
   return out;
+}
+
+export type StayGap = {
+  /** The city with a night and no stay. Null when the whole trip has none. */
+  city: string | null;
+  start: string | null;
+  end: string | null;
+};
+
+/**
+ * Nights the plan does not put a stay on.
+ *
+ * A stretch of more than one day in a city (not a day trip) needs a stay on
+ * one of those days. A trip longer than a day with no stay anywhere — and no
+ * overnight stretch to name — uses the same line as the trip checkup, so the
+ * two screens agree. A stay filed as a document with no day counts as a stay
+ * somewhere, and is not nagged about city by city.
+ */
+export function missingStays<C extends { city: string; kind?: string | null }>(
+  days: readonly string[],
+  stretches: readonly CityStretch<C>[],
+  lodgingDays: readonly string[],
+  hasStay: boolean,
+): StayGap[] {
+  if (days.length < 2) return [];
+  if (hasStay && lodgingDays.length === 0) return [];
+  const nights = new Set(lodgingDays);
+  const gaps: StayGap[] = [];
+  for (const stretch of stretches) {
+    if (!stretch.city || isDayTrip(stretch.city)) continue;
+    if (stretch.lastDay <= stretch.firstDay) continue;
+    const covered = days.some(
+      (day, index) =>
+        index + 1 >= stretch.firstDay && index + 1 <= stretch.lastDay && nights.has(day),
+    );
+    if (!covered) gaps.push({ city: stretch.city.city, start: stretch.start, end: stretch.end });
+  }
+  if (gaps.length === 0 && !hasStay)
+    return [{ city: null, start: days[0] ?? null, end: days.at(-1) ?? null }];
+  return gaps;
+}
+
+/**
+ * Saved places that belong to this trip: a place whose city is one of the
+ * trip's, unvisited first. Nothing is invented when the trip has no cities.
+ */
+export function placesForTrip<T extends { city: string | null; visited?: boolean }>(
+  places: readonly T[],
+  cities: readonly string[],
+): T[] {
+  const needles = [
+    ...new Set(
+      cities.flatMap((city) => {
+        const full = city.trim().toLowerCase();
+        const short = shortCity(city).trim().toLowerCase();
+        return [full, short].filter(Boolean);
+      }),
+    ),
+  ];
+  if (needles.length === 0) return [];
+  const matched = places.filter((place) => {
+    const city = (place.city ?? "").trim().toLowerCase();
+    if (city === "") return false;
+    // "Kyoto" and "Kyoto, Japan" name the same city.
+    const short = shortCity(city);
+    return needles.some((needle) => needle === city || needle === short);
+  });
+  return [
+    ...matched.filter((place) => !place.visited),
+    ...matched.filter((place) => place.visited),
+  ];
+}
+
+/** "Leaving in 4 days" / "Leaving tomorrow", or "" once the trip has started. */
+export function leavingIn(start: string | null | undefined, today: string): string {
+  if (!start || start <= today) return "";
+  const from = parseLocalDate(today);
+  const to = parseLocalDate(start);
+  if (!from || !to) return "";
+  const days = Math.round((to.getTime() - from.getTime()) / 86_400_000);
+  if (days <= 0) return "";
+  if (days === 1) return "Leaving tomorrow";
+  return `Leaving in ${days} days`;
 }
 
 /** "Oct 1", "Oct 1 – 3", "Sep 30 – Oct 2". */
