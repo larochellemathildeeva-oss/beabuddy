@@ -61,9 +61,10 @@ function usePhotoAdd(onAdd: StopPhotosProps["onAdd"], confirmTo?: string) {
 }
 
 /**
- * One tap to the camera for a stop, where the stop is shown: on its card and
- * on Now. Nothing to open first; the photo goes straight onto the stop. Shown
- * only where photos can be added (set up, and signed in).
+ * One tap to the camera, or to the phone's photos, for a stop, where the stop
+ * is shown: on its card and on Now. Nothing to open first; the photo goes
+ * straight onto the stop. Shown only where photos can be added (set up, and
+ * signed in).
  */
 export function QuickPhoto({
   photos,
@@ -71,35 +72,76 @@ export function QuickPhoto({
   className,
 }: {
   photos: StopPhotosProps;
-  /** Words beside the camera; without them, a round icon button. */
+  /** Words beside the camera; without them, round icon buttons. */
   label?: string;
   className?: string;
 }) {
   const { busy, add } = usePhotoAdd(photos.onAdd, photos.title);
   if (!photos.available || !photos.uid) return null;
   return (
+    <>
+      <QuickPick
+        camera
+        icon={<Camera className="size-4" aria-hidden />}
+        ariaLabel={`Take a photo of ${photos.title}`}
+        label={label}
+        busy={busy}
+        className={className}
+        onFiles={add}
+      />
+      <QuickPick
+        icon={<ImageIcon className="size-4" aria-hidden />}
+        ariaLabel={`Add photos of ${photos.title} from your phone`}
+        label={label ? "Upload" : undefined}
+        busy={busy}
+        className={className}
+        onFiles={add}
+      />
+    </>
+  );
+}
+
+/** One round or labelled button around a hidden file input (see PickTile). */
+function QuickPick({
+  icon,
+  ariaLabel,
+  label,
+  busy,
+  camera = false,
+  className,
+  onFiles,
+}: {
+  icon: ReactNode;
+  ariaLabel: string;
+  label?: string | undefined;
+  busy: boolean;
+  camera?: boolean;
+  className?: string | undefined;
+  onFiles: (files: File[]) => Promise<void>;
+}) {
+  return (
     <label
       aria-disabled={busy}
-      title={label ? undefined : `Take a photo of ${photos.title}`}
+      title={label ? undefined : ariaLabel}
       className={`cursor-pointer focus-within:ring-2 focus-within:ring-primary ${
         label
           ? "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[14px] font-semibold shadow-2xs"
           : "tap-44 grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-foreground shadow-2xs"
       } ${busy ? "pointer-events-none opacity-50" : ""} ${className ?? ""}`}
     >
-      <Camera className="size-4" aria-hidden />
+      {icon}
       {label ? <span>{busy ? "Adding…" : label}</span> : null}
       <input
         type="file"
         accept="image/*"
-        capture="environment"
+        {...(camera ? { capture: "environment" as const } : { multiple: true })}
         disabled={busy}
-        aria-label={`Take a photo of ${photos.title}`}
+        aria-label={ariaLabel}
         className="sr-only"
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
           e.target.value = "";
-          void add(files);
+          void onFiles(files);
         }}
       />
     </label>
