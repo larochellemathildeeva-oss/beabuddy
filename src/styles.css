@@ -1524,7 +1524,8 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 0 11px 0 5px;
+  padding-block: 0;
+  padding-inline: 5px 11px;
   border-radius: 999px;
   white-space: nowrap;
   font-size: 15px;
