@@ -56,13 +56,23 @@ function items(): Row[] {
     return Array.from({ length: 45 }, (_, i) =>
       r(`l${i}`, D1, i, `${String(8 + Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`, i % 5 === 0 ? "meal" : "activity", `Stop ${i + 1}`, 34.39 + i * 0.001, 132.45 + i * 0.001, i < 3 ? { arrived_at: ago(200 - i * 30), left_at: ago(190 - i * 30) } : {}),
     );
+  // "map-gap": one placed day and a later day with nothing pinned, so the map
+  // can show "No stop on this day has a location yet."
+  if (sample === "map-gap")
+    return [
+      r("a", D1, 0, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523),
+      r("b", D2, 1, "09:00", "activity", "A stop with no pin", null, null),
+    ];
   // "stray": one stop saved with a namesake's pin far away (Osaka, ~280 km).
   const strayPin: [number, number] = sample === "stray" ? [34.6937, 135.5023] : [34.396, 132.4518];
+  // "nest=1" adds a stop inside another and a booked mark, so the map checklist
+  // can click "In …" and Booked. The default sample stays unchanged.
+  const nest = previewParams.get("nest") === "1";
   return [
     r("a", D1, 0, "08:36", "transport", "Arrive Hiroshima Station", 34.3977, 132.4753, { arrived_at: ago(95), left_at: ago(70) }),
-    r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4" }),
+    r("b", D1, 1, "09:30", "activity", "Peace Memorial Museum", 34.3915, 132.4523, { address: "1-2 Nakajimacho, Naka Ward", arrived_at: ago(40), planned_stay_minutes: 75, detail: "English audio guide #4", ...(nest ? { booked: true, parent_id: "c" } : {}) }),
     // "unpinned": the next stop has no pin yet, as a plan's stops often don't.
-    r("c", D1, 2, "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", sample === "unpinned" ? null : 34.3955, sample === "unpinned" ? null : 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30 }),
+    r("c", D1, 2, nest ? "10:05" : "11:00", "activity", "Peace Park / Atomic Bomb Dome / Cenotaph (原爆ドーム)", sample === "unpinned" ? null : 34.3955, sample === "unpinned" ? null : 132.4536, { address: "1-10 Otemachi, Naka Ward", planned_stay_minutes: 30, ...(nest ? { inside: [{ title: "Cenotaph", done: true }] } : {}) }),
     // "legs": a journey saved as a stop, as plans imported before folding have.
     ...(sample === "legs" ? [r("leg", D1, 3, "11:30", "transport", "Head to Motoyasubashi Pier", null, null)] : []),
     r("d", D1, 3, "11:45", "transport", "Motoyasubashi Pier ferry", strayPin[0], strayPin[1]),
