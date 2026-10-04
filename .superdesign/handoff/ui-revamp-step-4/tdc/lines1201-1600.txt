@@ -1,0 +1,400 @@
+      /* storage unavailable: the choice lasts for this visit */
+    }
+  }, [viewKey, perspective, dayChoice, hideDone, byArea, compactCards]);
+  const view = useTripViewPrefs();
+  /** The stops behind the "!": Béa unsure of their place, until each is reviewed. */
+  const toCheck = useMemo(() => pinsToCheck(stopItems), [stopItems]);
+  const [pinReviewOpen, setPinReviewOpen] = useState(false);
+
+  /** Trip documents linked to each stop, for the document mark on its card. */
+  const docsByStop = new Map<string, string[]>();
+  for (const doc of bookingDocs.docs) {
+    if (!doc.itinerary_item_id) continue;
+    docsByStop.set(doc.itinerary_item_id, [
+      ...(docsByStop.get(doc.itinerary_item_id) ?? []),
+      doc.id,
+    ]);
+  }
+  /** Documents linked to a stop, and its photos — every card gets both. */
+  const docProps = (item: ItineraryRow) => ({
+    ...linkedDocProps(item),
+    photos: {
+      title: item.title,
+      photos: stopPhotos.byStop.get(item.id) ?? [],
+      available: stopPhotos.available,
+      uid: me.id,
+      onAdd: (files: File[]) => stopPhotos.add(item, files),
+      onRemove: stopPhotos.remove,
+    },
+  });
+  const linkedDocProps = (item: ItineraryRow) => {
+    const ids = docsByStop.get(item.id);
+    if (!ids?.length) return {};
+    return {
+      linkedDocuments: ids.length,
+      // One opens straight onto its detail; several open the library on
+      // this stop's documents.
+      onOpenDocuments: () =>
+        void navigate({
+          to: "/profile/documents",
+          search: ids.length === 1 ? { doc: ids[0]! } : { event: item.id },
+        }),
+    };
+  };
+
+  /** The Bookings tab, on one kind — for the Overview's tiles and the trip menu. */
+  const openBookings = (kind: BookingFilter) => {
+    setBookingFilter(kind);
+    setPerspective("overview");
+    setBookingsOpen(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        bookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      ),
+    );
+  };
+
+  // Arriving with a request in the link (Plan with Béa, a booking link):
+  // after the saved tab is restored, so the request wins over it.
+  useEffect(() => {
+    if (openView === "bookings") openBookings("all");
+    if (openPlan) {
+      setPlannerTab(openPlan.tab);
+      setPlannerAsk(openPlan.ask ?? "");
+      setPlannerOpen(true);
+    }
+    // Once per arrival; the link is not a setting.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * "+ Add stop between": where the next added stop goes. The form stays
+   * open after a save, so each further stop lands after the one before it
+   * rather than all of them after the first anchor.
+   */
+  const [savedOpen, setSavedOpen] = useState(false);
+  /** "Add stop" chooser: a stop, a saved place, or another city. */
+  const [addOpen, setAddOpen] = useState(false);
+  /** Bumped by "Another city or location" to open the add-city form. */
+  const [citySignal, setCitySignal] = useState(0);
+  // Where "Add" from Saved places lands: the day in view, if it is one day.
+  const addToDay = chosenDay !== ALL_DAYS && chosenDay !== "" ? chosenDay : null;
+  const addToDayLabel = addToDay
+    ? (timelineGroups.find((group) => group.key === addToDay)?.label ?? null)
+    : null;
+
+  /** A stop tapped on Companion's ribbon or tracker, to look at without moving Now. */
+  const [peekId, setPeekId] = useState<string | null>(null);
+
+  /** "Locate on map" from a Timeline card: the stop the Map tab opens on. */
+  const [mapFocus, setMapFocus] = useState<string | null>(null);
+  const locate = (item: ItineraryRow) => {
+    if (item.day_date) setDayChoice(item.day_date);
+    setMapFocus(item.id);
+    setPerspective("map");
+  };
+
+  const [addBetween, setAddBetween] = useState<{ afterId: string; time: string } | null>(null);
+  const insertAnchor = useRef<string | null>(null);
+
+  /** Done and not done from the Day tab, with an undo that restores exactly. */
+  const toggleDone = (item: ItineraryRow) => {
+    const write = toggleDoneWrite(item, new Date());
+    const wasDone = isDone(item);
+    void board.setProgress([{ id: write.id, patch: write.patch }]).then(
+      () =>
+        toast(
+          wasDone
+            ? `${item.title}: not done`
+            : hideDone
+              ? `${item.title}: done, and off the Not visited list`
+              : `${item.title}: done`,
+          {
+            action: {
+              label: "Undo",
+              onClick: () => void board.setProgress([{ id: write.id, patch: write.undo }]),
+            },
+          },
+        ),
+      (e: unknown) => toast.error(e instanceof Error ? e.message : "That didn't save."),
+    );
+  };
+  // Now follows one day: the one picked, or today when every day is showing.
+  const companionDay =
+    chosenDay === ALL_DAYS
+      ? (timelineGroups.find((group) => group.key !== "" && group.key === todayKey) ??
+        // A one-day trip has no day strip to pick from, so there is only
+        // one day to follow. Without this it asked for a choice it hid.
+        (timelineGroups.length === 1 ? timelineGroups[0]! : null))
+      : (shownGroups[0] ?? null);
+  const nowStops = companionDay ? companionStops(companionDay.items) : [];
+  // Only a stop on the day being followed; another day's pick closes itself.
+  const peekStop = nowStops.find((stop) => stop.id === peekId) ?? null;
+  // Each journey between the trip's stops, in Companion's own order: worked
+  // out now, kept on the phone, or saved on the itinerary. Companion used to
+  // read only the first two, so legs added to the timeline never reached it.
+  const tripStopsForNow = companionStops(board.items);
+  const nowLegs = tripStopsForNow
+    .slice(0, -1)
+    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!, true));
+  const tripWide = {
+    international: cities.countries.length > 1 || Boolean(trip.country),
+    // Asked by glyph, not by raw kind. A flight stores as "flight" and a
+    // hotel as "hotel", so comparing strings here is how both of these
+    // quietly answered no for every imported trip.
+    hasLodging: board.items.some((item) => timelineGlyph(item) === "lodging"),
+    hasFlights: board.items.some((item) => timelineGlyph(item) === "transport"),
+  };
+  // Whose money the currency sheet offers: the trip's country, then its cities'.
+  const tripCountries = [trip.country, ...cities.countries];
+
+  // Numbered over the whole trip: Rio's first day is still Day 4.
+  const cityDayKeys = new Set(timelineGroups.map((group) => group.key));
+  const chips = chosenCity
+    ? dayChips(allDayGroups, todayKey).filter((chip) => cityDayKeys.has(chip.key))
+    : dayChips(allDayGroups, todayKey);
+  const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
+  const datedDayCount = chips.filter((chip) => chip.key).length;
+  const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
+  const companionPlace =
+    (companionDay?.key ? routeCityOn(cities.stops, companionDay.key) : "")?.split(",")[0]?.trim() ||
+    trip.city?.split(",")[0]?.trim() ||
+    trip.title;
+  const companionDateLine = companionDay?.key
+    ? new Date(`${companionDay.key}T00:00:00`).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      })
+    : "";
+  const cityNames = cities.stops.map((stop) => stop.city);
+  const tripArt = bannerArtUrl(
+    bannerSceneFor(
+      [trip.title, ...cityNames, trip.city, trip.country],
+      trip.title || trip.city || "",
+    ),
+  );
+  const companionArt = bannerArtUrl(
+    bannerSceneFor(
+      [companionPlace, trip.title, ...cityNames, trip.city, trip.country],
+      companionPlace || trip.title || "",
+    ),
+  );
+  /** Booked stops by kind, for the trip menu's Flights, Hotels, Transport and Activities. */
+  const bookingCounts: Record<BookingTile, number> = countBookings(
+    tripBookings(stopItems, bookingDocs.docs),
+  );
+  /** "+ Add a stop between" on a connector: the form opens at the time between them. */
+  const openAddBetween = (item: ItineraryRow, next: ItineraryRow) => {
+    insertAnchor.current = null;
+    setAddBetween({ afterId: item.id, time: midpointTime(item.time_label, next.time_label) });
+    setAddDay(item.day_date ?? "");
+    setAddingTimeline(true);
+  };
+
+  const tripNote = beaTripNote(
+    {
+      startDate: trip.start_date,
+      endDate: trip.end_date,
+      stopCount: cities.stops.length,
+      plannedCount: stopItems.length,
+    },
+    toLocalISODate(new Date()),
+  );
+
+  /**
+   * Trip checkup, worked out only while the menu is open: pure arithmetic on
+   * the stops, reusing routes already measured, so it costs no lookups. Null
+   * with nothing planned, which hides its card.
+   */
+  const idDocuments = useIdDocuments(settingsOpen);
+  const checkup =
+    settingsOpen && stopItems.length > 0
+      ? tripCheckup({
+          start_date: trip.start_date,
+          end_date: trip.end_date,
+          items: stopItems,
+          // Judged from real pins only: a failed geocode at 0,0 would skew
+          // the middle of the trip and hide a genuinely distant stop.
+          strayIds: strayStopIds(stopItems.filter((i) => !(i.lat === 0 && i.lon === 0))),
+          idDocuments,
+          travelMinutes: (from, to) => {
+            const a = itemsById.get(from.id);
+            const b = itemsById.get(to.id);
+            const leg = a && b ? travelInto(a, b, true) : undefined;
+            if (!leg || leg.unknownSpot || leg.capped || !(leg.duration > 0)) return null;
+            return Math.round(leg.duration / 60);
+          },
+        })
+      : null;
+
+  return (
+    // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
+    // not hidden: hidden makes this the scroll box and the pinned banner would
+    // never stick.
+    <article
+      data-bar-position={barPosition}
+      className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
+    >
+      <TripBanner
+        variant="page"
+        pageArt={perspective === "overview" ? tripArt : companionArt}
+        title={trip.title}
+        city={trip.city}
+        country={trip.country}
+        cities={cityNames}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+        tentative={trip.dates_status === "tentative"}
+        companions={companionsLine}
+        photo={pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: cityNames })}
+        viewTransitionName={`trip-photo-${trip.id}`}
+        footer={
+          perspective !== "overview" && companionDay ? (
+            <p className="mt-2 text-[14px] font-semibold">
+              {[
+                companionOrdinal && `${companionOrdinal} of ${datedDayCount}`,
+                companionPlace,
+                companionDateLine,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              {nowStops.length > 0 && (
+                <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
+                  {companionState(nowStops).reached}/{nowStops.length} stops reached ·{" "}
+                  {Math.round((companionState(nowStops).reached / nowStops.length) * 100)}% complete
+                </span>
+              )}
+            </p>
+          ) : null
+        }
+        header={
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card/95 px-3 py-2 text-foreground">
+            <BrandMark />
+            <div className="flex items-center gap-2">
+              {view.prefs.pinChecks && toCheck.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPinReviewOpen(true)}
+                  title="Pins to check"
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
+                >
+                  !
+                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                    {toCheck.length}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPrepSignal((n) => n + 1)}
+                aria-label="To do and packing"
+                className="grid size-11 place-items-center rounded-full border border-border bg-card"
+              >
+                <ListChecks className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setSheetSection(null);
+                }}
+                data-guide="trip-menu"
+                title="Trip menu"
+                aria-label="Trip menu"
+                className="grid size-11 place-items-center rounded-full border border-border bg-card shadow-xs"
+              >
+                <MoreHorizontal className="size-5" aria-hidden />
+              </button>
+            </div>
+          </div>
+        }
+      />
+      <div className="px-3 py-2">
+        {perspective === "overview" || !companionDay ? (
+          <section aria-label="Your trip progress" className="plain-card p-3.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="font-display text-[22px]">Your trip</h2>
+              <p className="text-[14px] text-muted-foreground">
+                {moveDays.length} days ·{" "}
+                {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size}{" "}
+                cities · {doneCount}/{stopItems.length} stops reached
+              </p>
+            </div>
+            <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
+              {moveDays.map((day, i) => {
+                const group = allDayGroups.find((g) => g.key === day);
+                const reached = group?.items.filter(isDone).length ?? 0;
+                const total = group?.items.length ?? 0;
+                return (
+                  <li key={day} className="min-w-[100px] flex-1">
+                    <button
+                      type="button"
+                      aria-label={`Day ${i + 1}, ${routeCityOn(cities.stops, day) || trip.city || "Trip"}`}
+                      onClick={() => {
+                        setDayChoice(day);
+                        setCityChoice("");
+                        setPerspective("companion");
+                      }}
+                      className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
+                    >
+                      {i > 0 && (
+                        <span
+                          aria-hidden
+                          className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
+                        />
+                      )}
+                      <span
+                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "text-primary"}`}
+                      >
+                        {total > 0 && reached === total ? (
+                          <Check className="size-4" aria-hidden />
+                        ) : (
+                          i + 1
+                        )}
+                      </span>
+                      <span className="font-semibold">
+                        {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                      </span>
+                      <span className="text-[13px] text-muted-foreground">
+                        {formatTimelineDayLabel(day)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ) : (
+          view.prefs.journey && (
+            <JourneyTracker
+              stops={nowStops}
+              selectedId={peekStop?.id ?? null}
+              onSelect={setPeekId}
+            />
+          )
+        )}
+      </div>
+      {/* Béa's line scrolls away with the page; only the bar above stays. */}
+      {tripNote ? (
+        <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
+      ) : null}
+      {/* The prototype's labelled action pills, on one line: the row scrolls
+          sideways rather than wrapping on a narrow phone. */}
+      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
+        <button
+          data-guide="bea-plan"
+          title="Let Béa plan this trip"
+          onClick={() => {
+            setPlannerTab("start");
+            setPlannerOpen(true);
+          }}
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 min-h-11 text-[16px] font-semibold text-primary shadow-2xs transition-all active:scale-95"
+        >
+          <img src={logo} alt="" className="size-5 object-contain" />
+          Plan with Béa
+        </button>
+        <button
+          data-guide="trip-prep"
+          title="To-dos and packing for this trip"
