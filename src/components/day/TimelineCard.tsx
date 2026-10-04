@@ -379,10 +379,17 @@ export function TimelineEntry({
           ) : null}
           <span
             className={`block break-words font-display text-[18px] leading-[1.15] ${
-              done ? "text-muted-foreground line-through decoration-1" : ""
+              done ? "text-muted-foreground" : ""
             }`}
           >
             {item.title}
+            {done ? (
+              <Check
+                className="ml-1.5 inline-block size-[18px] align-[-2px] text-primary"
+                strokeWidth={3}
+                aria-hidden
+              />
+            ) : null}
           </span>
           <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[14px] text-muted-foreground">
             {item.planned_stay_minutes ? (
@@ -400,12 +407,6 @@ export function TimelineEntry({
             {current ? (
               <span className="rounded-full bg-primary px-2 py-0.5 text-[13px] font-bold text-primary-foreground">
                 Now
-              </span>
-            ) : null}
-            {done ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-elevated px-2 py-0.5 text-[13px] font-semibold text-muted-foreground">
-                <Check className="size-3.5" strokeWidth={3} aria-hidden />
-                Done
               </span>
             ) : null}
             {!placed && item.kind !== "note" ? (
@@ -1297,8 +1298,15 @@ function InsideEditor({
               className="flex items-center justify-between gap-2 rounded-lg bg-card px-2 py-1 text-[12.5px]"
             >
               <span className="min-w-0">
-                <span className={entry.done ? "text-muted-foreground line-through" : ""}>
+                <span className={entry.done ? "text-muted-foreground" : ""}>
                   {entry.title}
+                  {entry.done ? (
+                    <Check
+                      className="ml-1 inline-block size-3.5 align-[-2px] text-primary"
+                      strokeWidth={3}
+                      aria-hidden
+                    />
+                  ) : null}
                 </span>
                 {entry.note || entry.address ? (
                   <span className="block break-words text-[11.5px] text-muted-foreground">
