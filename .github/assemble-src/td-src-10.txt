@@ -1,0 +1,250 @@
+                    type="button"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setDayEditOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <CalendarDays className="size-4 text-primary" aria-hidden />
+                    Change a day
+                  </button>
+                )}
+                {stopItems.length >= 2 && (
+                  <button
+                    type="button"
+                    data-guide="optimize-trip"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setPlannerTab("optimize");
+                      setPlannerOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <Route className="size-4 text-primary" aria-hidden />
+                    Optimize the order
+                  </button>
+                )}
+              </div>
+              <p className="text-[12px] text-muted-foreground">
+                Tap a stop to edit it · the card between stops has the way there.
+              </p>
+            </div>
+          </Sheet>
+        </div>
+
+        {/* A sheet, opened by the "To do" button from any tab. */}
+        <TripPrep
+          tripId={trip.id}
+          uid={me.id}
+          international={tripWide.international}
+          hasLodging={tripWide.hasLodging}
+          hasFlights={tripWide.hasFlights}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          openSignal={prepSignal}
+          openTab={prepAsk}
+        />
+        <PinReviewSheet
+          open={pinReviewOpen}
+          onClose={() => setPinReviewOpen(false)}
+          stops={toCheck}
+          anchorsFor={(day) => withNear(day)}
+          onApprove={(item) => {
+            // Approved as it is: the traveller's vote for that spot, like a pick.
+            void board
+              .updateItem(item.id, { pin_check: null })
+              .catch(() => toast.error("Couldn't save that — try again."));
+            if (item.lat != null && item.lon != null) {
+              rememberPick(item.title, {
+                name: item.title,
+                ...(item.address ? { address: item.address } : {}),
+                lat: item.lat,
+                lon: item.lon,
+                source: "traveller",
+                url: "",
+              });
+            }
+          }}
+          onChangePlace={(item, place) => {
+            void board
+              .updateItem(item.id, { ...placePatchForSavedRow(place), pin_check: null })
+              .catch(() => toast.error("Couldn't save that place — try again."));
+          }}
+        />
+        {currencyOpen && (
+          <CurrencySheet
+            key={trip.id}
+            open
+            onClose={() => setCurrencyOpen(false)}
+            tripId={trip.id}
+            countries={tripCountries}
+          />
+        )}
+      </div>
+
+      <Sheet open={addOpen} onClose={() => setAddOpen(false)} title="Add to this trip" width="sm">
+        <div className="space-y-1">
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setPerspective("timeline");
+              setTimelineOpen(true);
+              setAddDay(addToDay ?? "");
+              setAddingTimeline(true);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <Plus className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">A stop on the itinerary</span>
+              <span className="block text-[12px] text-muted-foreground">
+                A place, meal or activity, in the Timeline.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setSavedOpen(true);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <Bookmark className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">From Saved</span>
+              <span className="block text-[12px] text-muted-foreground">
+                A place you kept, with its address and map pin.
+              </span>
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAddOpen(false);
+              setCitySignal((n) => n + 1);
+            }}
+            className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left hover:bg-elevated"
+          >
+            <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            <span>
+              <span className="block text-[15px] font-semibold">Another city or location</span>
+              <span className="block text-[12px] text-muted-foreground">
+                Add a city to the trip's route.
+              </span>
+            </span>
+          </button>
+        </div>
+      </Sheet>
+
+      <TripStops tripId={trip.id} uid={me.id} openSignal={citySignal} formOnly home={trip} />
+
+      <SavedPlacesSheet
+        open={savedOpen}
+        onClose={() => setSavedOpen(false)}
+        city={trip.city}
+        dayLabel={addToDayLabel}
+        onAdd={async (place) => {
+          await board.addItem({
+            kind: /food|café|cafe|restaurant|bar|bakery|meal/i.test(place.category ?? "")
+              ? "meal"
+              : "activity",
+            title: place.name,
+            ...(addToDay ? { day_date: addToDay } : {}),
+            ...(place.address ? { address: place.address } : {}),
+            ...(place.lat != null ? { lat: place.lat } : {}),
+            ...(place.lon != null ? { lon: place.lon } : {}),
+          });
+          toast.success(`${place.name} added${addToDayLabel ? ` to ${addToDayLabel}` : ""}`);
+        }}
+      />
+
+      <ItineraryImport
+        open={plannerOpen}
+        onClose={() => {
+          setPlannerOpen(false);
+          setPlannerAsk("");
+          setOptimizePreset(null);
+        }}
+        optimizePreset={optimizePreset}
+        tripPreferences={tripPrefs.list}
+        travel={travel}
+        defaultTab={plannerTab}
+        initialAsk={plannerAsk}
+        existingItems={stopItems.map((item) => ({
+          id: item.id,
+          day_date: item.day_date,
+          time_label: item.time_label,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail,
+          address: item.address,
+          lat: item.lat,
+          lon: item.lon,
+          planned_stay_minutes: item.planned_stay_minutes,
+        }))}
+        cities={fullRoute.map((stop) => ({
+          city: stop.city,
+          kind: stop.kind,
+          country: stop.country || null,
+          arrive_on: stop.arrive_on || null,
+          depart_on: stop.depart_on || null,
+          lat: stop.lat,
+          lon: stop.lon,
+        }))}
+        planCities={routeCities}
+        {...(chosenCity ? { defaultPlanCity: chosenCity.id } : {})}
+        {...(trip.city || trip.country
+          ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") }
+          : {})}
+        tripTitle={trip.title}
+        {...(trip.start_date ? { startDate: trip.start_date } : {})}
+        {...(trip.end_date ? { endDate: trip.end_date } : {})}
+        onAddItems={board.addItems}
+        onRemoveItems={board.removeItems}
+        onAddDirections={setDirectionsFor}
+        onAddCosts={async (items) => {
+          if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
+          await budget.addItems(items);
+        }}
+        onApplySchedule={async (updates) => {
+          // What the optimiser is about to move, as it is now, so Undo can
+          // put every stop back on its own day, time and place in the list.
+          const previous = updates.flatMap((u) => {
+            const row = board.items.find((item) => item.id === u.id);
+            return row
+              ? [
+                  {
+                    id: row.id,
+                    day_date: row.day_date,
+                    time_label: row.time_label,
+                    position: row.position,
+                  },
+                ]
+              : [];
+          });
+          await board.applySchedule(updates);
+          toast("New order saved", {
+            description: `${updates.length} ${updates.length === 1 ? "stop" : "stops"} rearranged.`,
+            duration: 8000,
+            action: {
+              label: "Undo",
+              onClick: () =>
+                void board.applySchedule(previous).then(
+                  () => toast.success("Back to the previous order"),
+                  () => toast.error("Couldn't undo that. Check your connection."),
+                ),
+            },
+          });
+        }}
+        onApplyDates={async (dates) => {
+          await onUpdate(dates);
+        }}
+        onAddCities={async (list, plan) => {
+          if (list.length > 0) await cities.addStops(list);
+          // A trip with no starting city takes the plan's first town.
+          const place = tripPlaceFromTowns(trip, plan.towns, plan.country);
+          if (place) await onUpdate(place);
+        }}
+      />
