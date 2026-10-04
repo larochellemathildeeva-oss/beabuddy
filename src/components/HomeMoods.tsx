@@ -60,8 +60,15 @@ export function HomeOnTrip({
   const placed = useMemo(() => withCityPositions(cityStops, positions), [cityStops, positions]);
   const { route, indexOf } = useMemo(() => routeStopsIndexed(placed), [placed]);
   const today = toLocalISODate(new Date());
-  const here = routeStopOn(placed, today);
-  const current = here ? (indexOf[placed.indexOf(here)] ?? -1) : -1;
+  // The city ringed is where the taps say you are (the stop on the card),
+  // never merely the city the calendar puts today in.
+  const taps = useMemo(() => todaysCompanion(glance?.items ?? [], today), [glance, today]);
+  const calendarCity = routeStopOn(placed, today);
+  const tappedCity = taps.current?.day_date ? routeStopOn(placed, taps.current.day_date) : null;
+  const indexOfCity = (city: typeof calendarCity) =>
+    city ? (indexOf[placed.indexOf(city)] ?? -1) : -1;
+  const current = indexOfCity(tappedCity);
+  const behind = Math.max(0, indexOfCity(calendarCity));
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
   const cityNames = stops.map((s) => s.city).filter(Boolean);
   const line = routeLine(cityNames);
@@ -79,7 +86,7 @@ export function HomeOnTrip({
             label={`Map of the trip: ${cities}`}
             height={NOW_HERO_H}
             current={current}
-            done={Math.max(0, current)}
+            done={behind}
             top={170}
             bottom={NOW_HERO_H - 64}
           />
@@ -105,7 +112,7 @@ export function HomeOnTrip({
             params={{ tripId: trip.id }}
             viewTransition
             aria-label={`Open ${trip.title}`}
-            className="mt-2 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform hover:translate-x-0.5"
+            className="mt-2 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform motion-safe:hover:translate-x-0.5"
           >
             <ArrowRight className="size-[22px]" />
           </Link>
@@ -357,7 +364,7 @@ function CityTile({ city }: { city: SavedCity }) {
         decoding="async"
         referrerPolicy={town.photo ? "no-referrer" : undefined}
         onError={town.onError}
-        className="art-dim absolute inset-0 size-full object-cover transition-transform duration-(--t-move) group-hover:scale-[1.03]"
+        className="art-dim absolute inset-0 size-full object-cover transition-transform duration-(--t-move) motion-safe:group-hover:scale-[1.03]"
       />
       {town.photo ? <TownPhotoCredit photo={town.photo} /> : null}
       <span
