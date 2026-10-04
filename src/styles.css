@@ -1322,8 +1322,9 @@
   --home-ink: #1b1918;
   --home-ink-foreground: #ffffff;
   --home-search: var(--card);
-  /* A wash over the terrain tiles, for the mood. */
-  --map-wash: rgb(255 255 255 / 0.2);
+  /* A wash over the terrain tiles, for the mood, and the colour of its water. */
+  --map-wash: rgb(255 255 255 / 0);
+  --map-water: #5d9fbd;
   --route-line: #ffffff;
   --route-dot: #6f6658;
   --route-dot-start: #2b2724;
@@ -1341,7 +1342,8 @@
   --home-ink: var(--acc);
   --home-ink-foreground: var(--primary-foreground);
   --home-search: color-mix(in oklab, var(--color-primary) 8%, var(--background));
-  --map-wash: rgb(255 250 246 / 0.06);
+  --map-wash: rgb(255 250 246 / 0);
+  --map-water: #48b5c9;
   --route-line: var(--acc2);
   --route-dot: var(--acc2);
   --route-dot-start: var(--acc2);
@@ -1360,7 +1362,8 @@
   --home-ink: #f6f3ee;
   --home-ink-foreground: #121212;
   --home-search: var(--card);
-  --map-wash: rgb(12 13 12 / 0.7);
+  --map-wash: rgb(12 13 12 / 0.45);
+  --map-water: #1c3346;
   --route-line: #f6f3ee;
   --route-dot: #f6f3ee;
   --route-dot-start: #f6f3ee;
@@ -1375,10 +1378,9 @@
   --stat-fill: linear-gradient(90deg, #9ad8cf, #f6f3ee);
 }
 
-/* The sea the terrain tiles were painted with (SEA in scripts/relief/build.py),
-   so open sea with no tile matches the sea inside one. */
+/* Open sea with no tile, in the same water the tiles' sea is turned into. */
 .route-map .map-sea {
-  fill: rgb(226 233 235);
+  fill: var(--map-water);
 }
 .route-map .map-wash {
   fill: var(--map-wash);
