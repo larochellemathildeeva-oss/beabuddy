@@ -57,20 +57,22 @@ export function useTripPhotos(uid: string | null) {
 const signedCache = new Map<string, { url: string; until: number }>();
 
 export function useSignedPhoto(storagePath: string | null): string | null {
-  const [url, setUrl] = useState<string | null>(() => {
+  // The URL is kept with the path it was signed for, so a change of path never
+  // shows the previous photo while the new one is signed.
+  const [signed, setSigned] = useState<{ path: string; url: string } | null>(() => {
     if (!storagePath) return null;
     const hit = signedCache.get(storagePath);
-    return hit && hit.until > Date.now() ? hit.url : null;
+    return hit && hit.until > Date.now() ? { path: storagePath, url: hit.url } : null;
   });
 
   useEffect(() => {
     if (!storagePath) {
-      setUrl(null);
+      setSigned(null);
       return;
     }
     const hit = signedCache.get(storagePath);
     if (hit && hit.until > Date.now()) {
-      setUrl(hit.url);
+      setSigned({ path: storagePath, url: hit.url });
       return;
     }
     let cancelled = false;
@@ -81,12 +83,12 @@ export function useSignedPhoto(storagePath: string | null): string | null {
       if (cancelled || !data?.signedUrl) return;
       // Re-sign a little before the hour is up rather than at the edge.
       signedCache.set(storagePath, { url: data.signedUrl, until: Date.now() + 3_300_000 });
-      setUrl(data.signedUrl);
+      setSigned({ path: storagePath, url: data.signedUrl });
     })();
     return () => {
       cancelled = true;
     };
   }, [storagePath]);
 
-  return url;
+  return signed && signed.path === storagePath ? signed.url : null;
 }

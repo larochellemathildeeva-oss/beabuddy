@@ -43,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import { useTrips } from "@/hooks/useTrips";
+import { useSignedPhoto } from "@/hooks/useTripPhotos";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { STAT_OPTIONS, useStatsLayout } from "@/hooks/useStatsLayout";
 import type { Pin, PinType } from "@/data/atlas";
@@ -72,6 +73,8 @@ type WorldView = "all" | "cities" | "provinces" | "countries" | "continents";
 
 /** The four views of the tab, as in the master. */
 type WorldTab = "map" | "bucket" | "been" | "stats";
+
+const SPIN_KEY = "bea-world-spin";
 
 const WORLD_TABS: readonly WorldTab[] = ["map", "bucket", "been", "stats"];
 
@@ -151,6 +154,23 @@ function WorldPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [addStart, setAddStart] = useState<AddPlacesStart | undefined>(undefined);
   const [view, setView] = useState<WorldView>("all");
+  // The globe holds still unless the traveller lets it turn; remembered on this phone.
+  const [spinOn, setSpinOn] = useState(false);
+  useEffect(() => {
+    try {
+      setSpinOn(localStorage.getItem(SPIN_KEY) === "on");
+    } catch {
+      /* private window: stays off */
+    }
+  }, []);
+  const changeSpin = (on: boolean) => {
+    setSpinOn(on);
+    try {
+      localStorage.setItem(SPIN_KEY, on ? "on" : "off");
+    } catch {
+      /* not remembered */
+    }
+  };
   const [statsEdit, setStatsEdit] = useState(false);
   /** The caveat about what the numbers count — asked for, not always on. */
   const [statsNote, setStatsNote] = useState(false);
@@ -456,6 +476,20 @@ function WorldPage() {
     ) : null;
 
   const selectedCity = selected ? cityOf(selected) : undefined;
+  // The traveller's own photo of the city, when they have one; else Béa's illustration.
+  const cityPhotoPath = useMemo(() => {
+    if (!selected) return null;
+    const want = foldAccents(selected.city).toLowerCase();
+    return (
+      photo.rows.find(
+        (r) =>
+          r.city &&
+          foldAccents(r.city).toLowerCase() === want &&
+          countryKey(r.country) === countryKey(selected.country),
+      )?.storage_path ?? null
+    );
+  }, [selected, photo.rows]);
+  const cityPhoto = useSignedPhoto(cityPhotoPath);
   const placeCard =
     selected && selectedCity ? (
       <div className="rise space-y-1.5">
@@ -468,9 +502,10 @@ function WorldPage() {
               .filter(Boolean)
               .join(", "),
             countryCode: countryCode(selectedCity.country) ?? undefined,
-            imageSrc: bannerArtUrl(
-              bannerSceneFor([selected.city, selectedCity.country], selected.city),
-            ),
+            imageSrc:
+              cityPhoto ??
+              bannerArtUrl(bannerSceneFor([selected.city, selectedCity.country], selected.city)),
+            imageAlt: cityPhoto ? `Your photo of ${selected.city}` : undefined,
             visits: selectedCity.places,
             detail: plural(selectedCity.places, "place", "places"),
           }}
@@ -713,9 +748,18 @@ function WorldPage() {
               </div>
             )}
 
-            <WorldGlobeStage data-guide="globe">
+            <WorldGlobeStage data-guide="globe" className="-mx-4 overflow-x-clip">
               <BeaGlobe
-                autoRotate={selected ? "off" : "resume"}
+                autoRotate={spinOn && !selected ? "resume" : "off"}
+                fullWidth
+                spinToggle={{
+                  // A selected place holds the globe still, so the button says so.
+                  on: spinOn && !selected,
+                  onChange: (on) => {
+                    if (on) setSelected(null);
+                    changeSpin(on);
+                  },
+                }}
                 pins={show.cities ? globeCities : []}
                 regions={show.provinces ? provinces : []}
                 // Cities and Provinces show only themselves: no whole countries
