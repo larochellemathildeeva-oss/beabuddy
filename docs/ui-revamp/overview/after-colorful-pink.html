@@ -1,0 +1,12 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>After · Colorful · pink</title>
+<script>
+const parts = ["00.txt","01.txt","02.txt","03.txt","04.txt","05.txt","06.txt","07.txt","08.txt","09.txt","10.txt","11.txt","12.txt","13.txt","14.txt","15.txt","16.txt","17.txt","18.txt"];
+const base = "https://raw.githubusercontent.com/larochellemathildeeva-oss/beabuddy/cursor/overview-revamp-4acd/docs/ui-revamp/overview/shots/after-colorful-pink/";
+Promise.all(parts.map((name) => fetch(base + name).then((response) => response.text()))).then((chunks) => {
+  document.open();
+  document.write(chunks.join(""));
+  document.close();
+});
+</script>
