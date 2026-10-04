@@ -46,3 +46,9 @@ components it imports.
 - [ ] Sample globe, pins selectable
 - [ ] "Create an account", "How Béa works"
 - [ ] Note that the globe is sample data
+
+## Customize home (modules from the mockup)
+- [x] "Customize home" card at the foot of Home opens the modules: Trips, Current / Next stop, Saved for this trip, Right now there, Group plans, Trip tools, Weather there, Worth a detour, Notes from Béa, Weather here, Saved places, Future me note; arrows to reorder; Reset to default; saved with the account (`homeLayout`, older on/off layouts still read)
+- [x] Switches clicked: Saved for this trip, Trip tools, Weather there, Notes from Béa, Group plans, Right now there, Worth a detour, Trips; "Move Notes from Béa up"; Reset to default
+- [x] Trip tools: Currency opens the trip's converter (`menu=currency`); Transport, Translate, Offline shown
+- [ ] Group plans invite, Offline and Transport links (shown, not clicked)

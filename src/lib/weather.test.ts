@@ -9,6 +9,7 @@ import {
   rainNotice,
   rainUrl,
   readRain,
+  localTimeAt,
   readWeather,
   roundCoord,
   usesFahrenheit,
@@ -187,4 +188,16 @@ test("the planner reads the day's waking hours of rain", () => {
   };
   assert.equal(rainHoursLine(forecast, "2026-10-02"), "09:00 10%, 14:00 72%");
   assert.equal(rainHoursLine(forecast, "2026-10-05"), null);
+});
+
+test("readWeather keeps the place's offset from UTC, and localTimeAt reads the clock there", () => {
+  const w = readWeather({
+    current: { temperature_2m: 24, weather_code: 2, is_day: 1 },
+    utc_offset_seconds: 32400,
+  });
+  assert.equal(w?.utcOffset, 32400);
+  // 05:20 UTC is 14:20 in Tokyo.
+  const now = new Date("2026-10-04T05:20:00Z");
+  assert.equal(localTimeAt(32400, now, "en-GB"), "14:20");
+  assert.equal(localTimeAt(-4 * 3600, now, "en-US"), "1:20 AM");
 });

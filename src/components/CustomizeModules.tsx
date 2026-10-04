@@ -1,0 +1,201 @@
+import { useState, type ReactNode } from "react";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  Plus,
+  Settings2,
+} from "@/components/icons";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import type { ModuleInfo } from "@/hooks/moduleStore";
+import type { ModuleLayout } from "@/lib/module-layout";
+import { bannerArtUrl } from "@/lib/banner-art";
+
+export type CustomizeVariant = "icon" | "row" | "add" | "card" | "chip";
+
+/**
+ * A screen's "Customize" sheet, as in the mockups: every module the screen
+ * can show, each with a switch, and the ones on moved up or down to set the
+ * order. "+ Add modules" and the "Customize home" card open the same sheet.
+ */
+export function CustomizeModules<K extends string>({
+  name,
+  what,
+  guide,
+  modules,
+  layout,
+  onToggle,
+  onMove,
+  onReset,
+  variant,
+}: {
+  /** "home" or "world": the sheet is "Customize home". */
+  name: string;
+  /** Where the modules sit, for the sheet's description. */
+  what: string;
+  guide: string;
+  modules: readonly ModuleInfo<K>[];
+  layout: ModuleLayout<K>;
+  onToggle: (key: K) => void;
+  onMove: (key: K, step: -1 | 1) => void;
+  onReset: () => void;
+  variant: CustomizeVariant;
+}) {
+  const [open, setOpen] = useState(false);
+  const title = `Customize ${name}`;
+  const byKey = new Map(modules.map((m) => [m.key, m]));
+  const shown = layout.order.filter((k) => layout.on.has(k));
+  const off = layout.order.filter((k) => !layout.on.has(k));
+
+  const trigger: ReactNode =
+    variant === "add" ? (
+      <button
+        type="button"
+        data-guide={guide}
+        className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full border border-dashed border-border text-[16px] font-semibold text-muted-foreground transition-colors hover:bg-elevated"
+      >
+        <Plus className="size-5" aria-hidden /> {title}
+      </button>
+    ) : variant === "chip" ? (
+      <button
+        type="button"
+        data-guide={guide}
+        className="flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[13.5px] font-semibold shadow-sm transition-colors hover:bg-elevated"
+      >
+        <Plus className="size-4" aria-hidden /> Add modules
+      </button>
+    ) : variant === "card" ? (
+      <button
+        type="button"
+        data-guide={guide}
+        className="relative flex min-h-[104px] w-full items-center gap-4 overflow-hidden rounded-[var(--r-card)] border border-border bg-card p-4 text-left shadow-[0_4px_16px_rgb(0_0_0/0.06)]"
+      >
+        <img
+          src={bannerArtUrl("mountain")}
+          alt=""
+          className="art-dim pointer-events-none absolute inset-y-0 right-0 h-full w-1/2 object-cover opacity-70 [mask-image:linear-gradient(to_right,transparent,black_60%)]"
+        />
+        <span className="tile-fill-2 relative grid size-12 shrink-0 place-items-center rounded-2xl">
+          <LayoutGrid className="seq-text-2 size-6" aria-hidden />
+        </span>
+        <span className="relative min-w-0 flex-1">
+          <span className="block text-[16px] font-semibold">{title}</span>
+          <span className="mt-0.5 block max-w-[22ch] text-[13px] leading-snug text-muted-foreground">
+            Choose and reorder modules to make this your own.
+          </span>
+        </span>
+        <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-sm">
+          <ArrowRight className="size-5" aria-hidden />
+        </span>
+      </button>
+    ) : variant === "row" ? (
+      <button
+        type="button"
+        data-guide={guide}
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-border p-3 text-left transition-colors hover:bg-elevated"
+      >
+        <span>
+          <span className="block text-[14.5px] font-medium">{title}</span>
+          <span className="block text-[12.5px] text-muted-foreground">
+            Choose and reorder what sits {what}.
+          </span>
+        </span>
+        <span className="shrink-0 rounded-xl border border-border px-3 py-2 text-[14.5px] font-semibold">
+          Open
+        </span>
+      </button>
+    ) : (
+      <button
+        type="button"
+        aria-label={title}
+        data-guide={guide}
+        className="flex size-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
+      >
+        <Settings2 className="size-4" />
+      </button>
+    );
+
+  const row = (key: K, index: number) => {
+    const info = byKey.get(key);
+    if (!info) return null;
+    const on = layout.on.has(key);
+    return (
+      <li key={key} className="flex items-center gap-2 py-2.5">
+        {on && (
+          <span className="flex shrink-0 flex-col">
+            <button
+              type="button"
+              aria-label={`Move ${info.label} up`}
+              disabled={index === 0}
+              onClick={() => onMove(key, -1)}
+              className="grid h-6 w-11 place-items-center rounded-t-lg border border-border text-muted-foreground disabled:opacity-30"
+            >
+              <ChevronUp className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              aria-label={`Move ${info.label} down`}
+              disabled={index === shown.length - 1}
+              onClick={() => onMove(key, 1)}
+              className="grid h-6 w-11 place-items-center rounded-b-lg border border-t-0 border-border text-muted-foreground disabled:opacity-30"
+            >
+              <ChevronDown className="size-4" aria-hidden />
+            </button>
+          </span>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-medium">{info.label}</p>
+          <p className="text-[13px] leading-snug text-muted-foreground">{info.hint}</p>
+        </div>
+        <Switch
+          checked={on}
+          onCheckedChange={() => onToggle(key)}
+          aria-label={`Show ${info.label}`}
+        />
+      </li>
+    );
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>{trigger}</SheetTrigger>
+      <SheetContent side="bottom" className="max-h-[88dvh] overflow-y-auto rounded-t-2xl">
+        <SheetHeader className="text-left">
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>
+            Choose the modules {what} and put them in your order. Your choice follows you to every
+            device you sign in on.
+          </SheetDescription>
+        </SheetHeader>
+        <p className="label-caps mt-3">On {name}</p>
+        {shown.length ? (
+          <ul className="divide-y divide-border">{shown.map((k, i) => row(k, i))}</ul>
+        ) : (
+          <p className="py-3 text-[14px] text-muted-foreground">Nothing yet. Add a module below.</p>
+        )}
+        {off.length > 0 && (
+          <>
+            <p className="label-caps mt-4">More modules</p>
+            <ul className="divide-y divide-border">{off.map((k) => row(k, -1))}</ul>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-4 w-full rounded-xl border border-border px-4 py-2.5 text-[14.5px] font-semibold transition-colors hover:bg-elevated"
+        >
+          Reset to default
+        </button>
+      </SheetContent>
+    </Sheet>
+  );
+}

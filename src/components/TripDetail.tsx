@@ -183,6 +183,9 @@ import {
  * existed only to stop the accordion collapsing when you changed tab — a
  * workaround is usually the shape of the model being wrong, and it was.
  */
+/** A part of the trip's settings a link can open: Home's "Trip tools" and "Group plans". */
+export type TripOpenMenu = "invite" | "offline" | "currency";
+
 export function TripDetail({
   trip,
   photos = [],
@@ -198,6 +201,7 @@ export function TripDetail({
   openPrep,
   openView,
   openPlan,
+  openMenu,
 }: {
   trip: TripRow;
   /** The trip's own photographs, shared with its cards. */
@@ -217,6 +221,8 @@ export function TripDetail({
   openView?: "bookings" | undefined;
   /** Open Plan with Béa on arrival, on this panel, with any words already typed. */
   openPlan?: { tab: PlannerTab; ask?: string | undefined } | undefined;
+  /** Open this part of the trip's settings on arrival. */
+  openMenu?: TripOpenMenu | undefined;
 }) {
   const navigate = useNavigate();
   const [barPosition, setBarPosition] = useTripBarPosition();
@@ -807,6 +813,15 @@ export function TripDetail({
   const [packMsg, setPackMsg] = useState("");
   const [prepSignal, setPrepSignal] = useState(0);
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  // A link from Home's modules opens one part of the settings, once.
+  useEffect(() => {
+    if (!openMenu) return;
+    if (openMenu === "currency") setCurrencyOpen(true);
+    else {
+      setSheetSection(openMenu);
+      setSettingsOpen(true);
+    }
+  }, [openMenu]);
   /** Open the to-do or packing sheet on a given tab (arrival link, Overview). */
   const [prepAsk, setPrepAsk] = useState<{ tab: PrepTab; n: number } | null>(() =>
     openPrep ? { tab: openPrep, n: 1 } : null,

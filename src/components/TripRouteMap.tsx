@@ -606,7 +606,7 @@ export function TripsWorldMap({
         preserveAspectRatio="xMidYMid slice"
         className="route-map banner-map absolute inset-0 size-full"
       >
-        <ReliefTiles width={width} height={height} tiles={(drawn?.tiles ?? [])} relief={relief} />
+        <ReliefTiles width={width} height={height} tiles={drawn?.tiles ?? []} relief={relief} />
         <rect width={width} height={height} className="map-wash" />
         {drawn?.pins.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={6} className="banner-dot" />

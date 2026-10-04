@@ -149,6 +149,10 @@ import {
   PiggyBank as PhPiggyBank,
   PersonSimpleWalk as PhPersonSimpleWalk,
   Leaf as PhLeaf,
+  SquaresFour as PhSquaresFour,
+  Translate as PhTranslate,
+  Train as PhTrain,
+  Quotes as PhQuotes,
 } from "@phosphor-icons/react";
 
 export type LucideProps = Omit<ComponentPropsWithoutRef<"svg">, "ref"> & {
@@ -319,3 +323,7 @@ export const CornerUpRight = icon(PhArrowBendUpRight, "CornerUpRight");
 export const Undo2 = icon(PhArrowUUpLeft, "Undo2");
 export const FlagArrive = icon(PhFlagCheckered, "FlagArrive");
 export const GripVertical = icon(PhDotsSixVertical, "GripVertical");
+export const LayoutGrid = icon(PhSquaresFour, "LayoutGrid");
+export const Languages = icon(PhTranslate, "Languages");
+export const Train = icon(PhTrain, "Train");
+export const Quote = icon(PhQuotes, "Quote");

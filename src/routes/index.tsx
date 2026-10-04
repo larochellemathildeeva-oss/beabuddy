@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
@@ -26,7 +26,10 @@ import { greetingFor } from "@/lib/trip-glance";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
-import { useHomeLayout } from "@/hooks/useHomeLayout";
+import { HOME_SMALL, useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
+import { HomeTripModule } from "@/components/HomeModules";
+import { useHomeTripModules } from "@/hooks/useHomeTripModules";
+import { moduleRows } from "@/lib/module-layout";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
@@ -252,7 +255,7 @@ function SignedInHome() {
   const empty = photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
   const sampleCtaDismissed = Boolean(user?.id && hasDismissedSampleCta(safeStorage(), user.id));
   const showSamplePrompt = empty && !sampleCtaDismissed;
-  const { layout } = useHomeLayout();
+  const { layout, shown } = useHomeLayout();
 
   const now = new Date();
   const today = now.toLocaleDateString(undefined, {
@@ -274,6 +277,66 @@ function SignedInHome() {
   const showSave = layout.waiting && Boolean(topReco);
   // The others, next ones first, then the ones you're back from.
   const others = [...later, ...past.filter((t) => t.id !== trip?.id)];
+  const tripModules = useHomeTripModules({
+    trip: trip && !trips.loading ? trip : null,
+    glance: trip ? glances[trip.id] : undefined,
+    members: trips.members,
+    saved: vault.rows,
+    underway,
+  });
+  const TRIP_ONLY = new Set<HomeSectionKey>([
+    "saved",
+    "now",
+    "group",
+    "tools",
+    "weatherThere",
+    "detour",
+    "notes",
+  ]);
+  // The trip modules show while there is a trip under way or ahead.
+  const shownModules = shown.filter(
+    (k) => k !== "stops" && (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)),
+  );
+  const tripWeather =
+    Boolean(trip && !trips.loading) &&
+    (shownModules.includes("now") || shownModules.includes("weatherThere"));
+
+  /** One module, as the traveller arranged them (Customize home). */
+  const homeModule = (key: HomeSectionKey): ReactNode => {
+    switch (key) {
+      case "trip":
+        return trips.loading ? null : <HomeYourTrips trips={others} photos={photos} />;
+      case "weather":
+        return showTrip || noTripMap ? (
+          <div className="flex justify-end">
+            <HomeWeather near={near} />
+          </div>
+        ) : null;
+      case "waiting":
+        return (
+          <div className="pt-2">
+            <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
+          </div>
+        );
+      case "future":
+        return topNote ? (
+          <section data-guide="home-future" className="rise">
+            <SectionHead title={`Future me · ${topNote.city}`} aside="Surfaces on revisit" />
+            <div className="plain-card p-4">
+              <div className="flex items-center gap-2">
+                <span className="size-1.5 rounded-full bg-reco" />
+                <span className="label-caps">
+                  Left {new Date(topNote.created_at).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="mt-2 text-[15px] leading-relaxed">{topNote.note}</p>
+            </div>
+          </section>
+        ) : null;
+      default:
+        return trip ? <HomeTripModule module={key} trip={trip} ctx={tripModules} /> : null;
+    }
+  };
 
   return (
     <AppShell
@@ -292,7 +355,12 @@ function SignedInHome() {
         {showTrip && (
           <div className="space-y-4">
             {underway ? (
-              <HomeOnTrip trip={trip} photos={photos} glance={glances[trip.id]} />
+              <HomeOnTrip
+                trip={trip}
+                photos={photos}
+                glance={glances[trip.id]}
+                showStops={layout.stops}
+              />
             ) : (
               <HomeUpcoming trip={trip} photos={photos} />
             )}
@@ -310,19 +378,17 @@ function SignedInHome() {
           </div>
         )}
 
-        {(showTrip || noTripMap) && layout.weather && (
-          <div className="flex justify-end">
-            <HomeWeather near={near} />
-          </div>
+        {moduleRows(shownModules, (k) => HOME_SMALL.has(k)).map((row) =>
+          "full" in row ? (
+            <div key={row.full}>{homeModule(row.full)}</div>
+          ) : (
+            <div key={row.pair.join("+")} className="grid grid-cols-2 gap-3">
+              {row.pair.map((k) => (
+                <div key={k}>{homeModule(k)}</div>
+              ))}
+            </div>
+          ),
         )}
-
-        {layout.waiting && (
-          <div className="pt-2">
-            <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
-          </div>
-        )}
-
-        {layout.trip && !trips.loading && <HomeYourTrips trips={others} photos={photos} />}
 
         {showSamplePrompt && (
           <section data-guide="home-empty" className="rise plain-card p-5">
@@ -345,24 +411,11 @@ function SignedInHome() {
           </section>
         )}
 
-        {layout.future && topNote && (
-          <section data-guide="home-future" className="rise">
-            <SectionHead title={`Future me · ${topNote.city}`} aside="Surfaces on revisit" />
-            <div className="plain-card p-4">
-              <div className="flex items-center gap-2">
-                <span className="size-1.5 rounded-full bg-reco" />
-                <span className="label-caps">
-                  Left {new Date(topNote.created_at).toLocaleDateString()}
-                </span>
-              </div>
-              <p className="mt-2 text-[15px] leading-relaxed">{topNote.note}</p>
-            </div>
-          </section>
+        <CustomizeHome variant="card" />
+
+        {((layout.weather && near.consent && near.state === "ok") || tripWeather) && (
+          <WeatherCredit />
         )}
-
-        <CustomizeHome variant="add" />
-
-        {layout.weather && near.consent && near.state === "ok" && <WeatherCredit />}
       </div>
     </AppShell>
   );
