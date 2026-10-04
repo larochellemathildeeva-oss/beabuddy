@@ -2,17 +2,12 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  BarChart3,
   Bookmark,
   Check,
   ChevronRight,
-  CircleCheck,
-  Compass,
   FileText,
-  Globe2,
   ListPlus,
   Maximize2,
-  MapIcon,
   MapPin,
   MoreHorizontal,
   Plus,
@@ -22,7 +17,17 @@ import {
   X,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
-import { Globe } from "@/components/Globe";
+import { BeaGlobe } from "@/components/world/BeaGlobe";
+import {
+  WorldAddButton,
+  WorldFilters,
+  WorldGlobeStage,
+  WorldPlaceCard,
+  WorldStatsStrip,
+  WorldTabs,
+  type WorldFilterId,
+  type WorldStat,
+} from "@/components/world/WorldScreen";
 import { WorldFlatMap } from "@/components/WorldFlatMap";
 import { ComparePins } from "@/components/ComparePins";
 import { AddVisitedCity, type AddPlacesStart } from "@/components/AddVisitedCity";
@@ -42,7 +47,7 @@ import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { STAT_OPTIONS, useStatsLayout } from "@/hooks/useStatsLayout";
 import type { Pin, PinType } from "@/data/atlas";
 import { useVisitedProvinces } from "@/hooks/useVisitedProvinces";
-import { countryDisplayName, countryKey } from "@/lib/country-names";
+import { countryCode, countryDisplayName, countryKey } from "@/lib/country-names";
 import {
   cityPins,
   countryMarks,
@@ -67,13 +72,6 @@ type WorldView = "all" | "cities" | "provinces" | "countries" | "continents";
 
 /** The four views of the tab, as in the master. */
 type WorldTab = "map" | "bucket" | "been" | "stats";
-
-const TABS: { id: WorldTab; label: string; icon: typeof Globe2 }[] = [
-  { id: "map", label: "Map", icon: Globe2 },
-  { id: "bucket", label: "Bucket list", icon: Bookmark },
-  { id: "been", label: "Been there", icon: CircleCheck },
-  { id: "stats", label: "Stats", icon: BarChart3 },
-];
 
 const WORLD_TABS: readonly WorldTab[] = ["map", "bucket", "been", "stats"];
 
@@ -330,30 +328,20 @@ function WorldPage() {
   };
 
   // The mockup's strip: countries, cities, places been, places saved.
-  const figures = [
-    { value: byCountry.length, label: plainLabel(byCountry.length, "Country", "Countries") },
-    { value: cities.length, label: plainLabel(cities.length, "City", "Cities") },
-    { value: places.length, label: "Been there" },
-    { value: savedPinCount, label: "Saved" },
+  const figures: WorldStat[] = [
+    {
+      key: "countries",
+      value: byCountry.length,
+      label: plainLabel(byCountry.length, "Country", "Countries"),
+    },
+    { key: "cities", value: cities.length, label: plainLabel(cities.length, "City", "Cities") },
+    { key: "been", value: places.length, label: "Been there" },
+    { key: "saved", value: savedPinCount, label: "Saved" },
   ];
 
   const figureCard = (
-    <div
-      data-guide="world-figures"
-      className="plain-card grid grid-cols-4 py-3.5"
-      aria-label="Your travel stats"
-    >
-      {figures.map((f, i) => (
-        <div
-          key={f.label}
-          className={`flex flex-col items-center gap-1 px-1 text-center ${
-            i > 0 ? `border-s-2 seq-border-${i + 1}` : ""
-          }`}
-        >
-          <span className="font-display text-[28px] leading-none tabular-nums">{f.value}</span>
-          <span className="text-[12px] leading-tight text-muted-foreground">{f.label}</span>
-        </div>
-      ))}
+    <div data-guide="world-figures" aria-label="Your travel stats">
+      <WorldStatsStrip stats={figures} className="mx-0" />
     </div>
   );
 
@@ -440,95 +428,56 @@ function WorldPage() {
     </div>
   );
 
+  // The counts are also filters: tap Cities and the globe and the list
+  // show only cities; tap it again for everything.
   const viewFilters =
     places.length > 0 ? (
-      // The counts are also filters: tap Cities and the globe and the list
-      // show only cities; tap it again for everything.
-      <div role="group" aria-label="Show on the map" className="world-filters">
-        {[
-          { id: "cities" as const, n: cities.length, one: "City", many: "Cities", icon: MapPin },
-          provinces.length > 0
-            ? {
-                id: "provinces" as const,
-                n: provinces.length,
-                one: "Province / state",
-                many: "Provinces & states",
-                icon: MapIcon,
-              }
-            : null,
-          {
-            id: "countries" as const,
-            n: byCountry.length,
-            one: "Country",
-            many: "Countries",
-            icon: Globe2,
-          },
-          continents.length > 0
-            ? {
-                id: "continents" as const,
-                n: continents.length,
-                one: "Continent",
-                many: "Continents",
-                icon: Compass,
-              }
-            : null,
-        ]
-          .filter((s) => s !== null)
-          .map((stat, i) => {
-            const on = view === stat.id;
-            return (
-              <button
-                key={stat.id}
-                type="button"
-                aria-pressed={on}
-                onClick={() => {
-                  const next = on ? "all" : stat.id;
-                  setView(next);
-                  // A city card with no city pin on the globe points at nothing.
-                  if (next !== "all" && next !== "cities") setSelected(null);
-                }}
-                className={`tile-fill-${i + 1} world-filter`}
-              >
-                <stat.icon className={`seq-text-${i + 1} size-5`} aria-hidden />
-                <span className="text-[13px] font-semibold leading-tight">
-                  <span className="tabular-nums">{stat.n}</span>{" "}
-                  {stat.n === 1 ? stat.one : stat.many}
-                </span>
-              </button>
-            );
-          })}
-      </div>
+      <WorldFilters
+        className="mx-0"
+        active={view === "all" ? null : (view as WorldFilterId)}
+        available={[
+          "cities",
+          ...(provinces.length > 0 ? (["provinces"] as const) : []),
+          "countries",
+          ...(continents.length > 0 ? (["continents"] as const) : []),
+        ]}
+        counts={{
+          cities: cities.length,
+          provinces: provinces.length,
+          countries: byCountry.length,
+          continents: continents.length,
+        }}
+        onChange={(next) => {
+          setView(next ?? "all");
+          // A city card with no city pin on the globe points at nothing.
+          if (next && next !== "cities") setSelected(null);
+        }}
+      />
     ) : null;
 
   const selectedCity = selected ? cityOf(selected) : undefined;
   const placeCard =
     selected && selectedCity ? (
-      <section className="rise plain-card flex items-center gap-3 p-2.5">
-        <img
-          src={bannerArtUrl(bannerSceneFor([selected.city, selectedCity.country], selected.city))}
-          alt=""
-          className="art-dim h-[84px] w-[96px] shrink-0 rounded-xl object-cover"
-        />
-        <div className="min-w-0 flex-1">
-          <span className="label-caps">You've been here</span>
-          <h2 className="font-display text-[26px] leading-tight">{selected.city}</h2>
-          <p className="text-[14px] text-muted-foreground">
-            {[provinceOf.get(selectedCity.key)?.name, selectedCity.country]
+      <div className="rise space-y-1.5">
+        <WorldPlaceCard
+          className="mx-0"
+          place={{
+            id: selected.id,
+            name: selected.city,
+            country: [provinceOf.get(selectedCity.key)?.name, selectedCity.country]
               .filter(Boolean)
-              .join(", ")}
-          </p>
-          <p className="text-[14px] text-muted-foreground">
-            {plural(selectedCity.places, "place", "places")} you've saved or photographed here.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setSelected(null)}
-          className="tap-44 self-start rounded-full border border-border px-3 py-1 text-[13px] text-muted-foreground"
-        >
-          Close
-        </button>
-      </section>
+              .join(", "),
+            countryCode: countryCode(selectedCity.country) ?? undefined,
+            imageSrc: bannerArtUrl(
+              bannerSceneFor([selected.city, selectedCity.country], selected.city),
+            ),
+            visits: selectedCity.places,
+            detail: plural(selectedCity.places, "place", "places"),
+          }}
+          caption="You've been here"
+          onClose={() => setSelected(null)}
+        />
+      </div>
     ) : null;
 
   // "Right now there": the first bucket-list place Béa can put on the map.
@@ -676,7 +625,7 @@ function WorldPage() {
         </button>
       }
     >
-      <div className="space-y-5">
+      <div className="bea-world space-y-5">
         {places.length > 0 && (
           <p className="sr-only">
             {[
@@ -740,24 +689,8 @@ function WorldPage() {
           </div>
         )}
 
-        <div
-          role="tablist"
-          aria-label="World views"
-          data-guide="world-tabs"
-          className="world-tabs relative z-[1]"
-        >
-          {TABS.map((x) => (
-            <button
-              key={x.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === x.id}
-              onClick={() => setTab(x.id)}
-            >
-              <x.icon className="size-5 shrink-0" aria-hidden />
-              {x.label}
-            </button>
-          ))}
+        <div data-guide="world-tabs" className="relative z-[1]">
+          <WorldTabs active={tab} onChange={setTab} className="mx-0" />
         </div>
 
         {tab === "map" && (
@@ -780,9 +713,9 @@ function WorldPage() {
               </div>
             )}
 
-            <div data-guide="globe" className="relative">
-              <Globe
-                variant="open"
+            <WorldGlobeStage data-guide="globe">
+              <BeaGlobe
+                autoRotate={selected ? "off" : "resume"}
                 pins={show.cities ? globeCities : []}
                 regions={show.provinces ? provinces : []}
                 // Cities and Provinces show only themselves: no whole countries
@@ -802,19 +735,8 @@ function WorldPage() {
                   if (match) setSelected(match);
                 }}
               />
-              <button
-                type="button"
-                data-guide="add-city"
-                onClick={() => startAdd("one")}
-                aria-label="Add a city or country"
-                className="absolute bottom-1 right-0 flex flex-col items-center gap-1 text-[12px] font-medium"
-              >
-                <span className="grid size-14 place-items-center rounded-full border border-border bg-card text-foreground shadow-md transition-transform active:scale-95">
-                  <Plus className="size-6" aria-hidden />
-                </span>
-                Add places
-              </button>
-            </div>
+              <WorldAddButton data-guide="add-city" onClick={() => startAdd("one")} />
+            </WorldGlobeStage>
 
             {moduleRows(worldModules, (k) => WORLD_SMALL.has(k)).map((row) =>
               "full" in row ? (

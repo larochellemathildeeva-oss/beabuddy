@@ -462,7 +462,7 @@ await flow("home: with no trip, saved cities wait on the map and in tiles", asyn
 await flow("world: four views, filters, search, add sheet, bucket menu, stats options", async (page) => {
   const text = () => page.evaluate(() => document.body.innerText);
   const view = async (name) => { await page.getByRole("tab", { name, exact: true }).click(); await page.waitForTimeout(400); };
-  for (const word of ["Your world.", "5 Cities", "4 Countries", "Add places"])
+  for (const word of ["Your world.", "Cities", "Countries", "Add places"])
     if (!(await text()).includes(word)) throw new Error(`World lost "${word}"`);
   // Filters are toggles: tap once to narrow, again for everything.
   const cities = page.getByRole("button", { name: /^5 Cities$/ });
