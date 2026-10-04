@@ -1,6 +1,6 @@
 import "leaflet/dist/leaflet.css";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import type { DayMapPin, PinTone } from "@/lib/day-map";
 import { curvedLeg } from "@/lib/day-map";
@@ -45,8 +45,8 @@ function prefersReducedMotion(): boolean {
  * Discs in the theme accent, numbered. The chosen one is larger and deeper, and
  * that is all it does — no bounce, no pulse, nothing that says "GPS".
  */
-function pinClass(selected: boolean, tone: PinTone, nested = false): string {
-  return `journal-pin journal-pin--${tone}${nested ? " journal-pin--nested" : ""}${selected ? " journal-pin--on" : ""} grid place-items-center rounded-full font-semibold tabular-nums`;
+function pinClass(selected: boolean, tone: PinTone, nested = false, done = false): string {
+  return `journal-pin journal-pin--${tone}${nested ? " journal-pin--nested" : ""}${done ? " journal-pin--done" : ""}${selected ? " journal-pin--on" : ""} grid place-items-center rounded-full font-semibold tabular-nums`;
 }
 
 /** "+2": things to see inside the stop, listed on its card. */
@@ -86,7 +86,9 @@ export function DayMap({
   heightClass = "h-72",
   follow = false,
   fitSignal = 0,
+  insetTop = 0,
   insetBottom = 0,
+  controlsTop = 0,
   roundedClass = "rounded-3xl",
   children,
 }: {
@@ -105,7 +107,11 @@ export function DayMap({
   follow?: boolean;
   /** Bumped by the parent's "Fit route" button to frame the whole day again. */
   fitSignal?: number;
-  /** Pixels at the bottom covered by something laid over the map. */
+  /** Pixels at the top covered by the day chips and the number strip. */
+  insetTop?: number;
+  /** Where the zoom control starts, so it sits under the day chips. */
+  controlsTop?: number;
+  /** Pixels at the bottom covered by the stop sheet. */
   insetBottom?: number;
   roundedClass?: string;
   /** Laid over the map, above Leaflet's panes (the floating stop card). */
@@ -205,9 +211,18 @@ export function DayMap({
       cancelled = true;
       stopWatching?.();
       observer?.disconnect();
-      map.current?.remove();
+      // A zoom still running when the tab closes asks the pane for a position
+      // it no longer has.
+      const current = map.current;
       map.current = null;
       leaflet.current = null;
+      if (current) {
+        current.stop();
+        // Leaflet's zoom animation fires a fallback 250ms later. stop() does
+        // not cancel it, and by then the pane is gone.
+        (current as unknown as { _animatingZoom: boolean })._animatingZoom = false;
+        current.remove();
+      }
     };
   }, []);
 
@@ -218,7 +233,7 @@ export function DayMap({
   const drawn = pins
     .map(
       (p) =>
-        `${p.id}@${p.lat},${p.lon}#${p.number}:${p.title}:${p.tone}:${p.insideCount}:${p.nested}`,
+        `${p.id}@${p.lat},${p.lon}#${p.number}:${p.title}:${p.tone}:${p.insideCount}:${p.nested}:${p.done}`,
     )
     .join("|");
 
@@ -230,7 +245,7 @@ export function DayMap({
   useEffect(() => {
     const L = leaflet.current;
     const m = map.current;
-    if (!ready || !L || !m || pins.length === 0) return;
+    if (!ready || !L || !m || !m.getPane("mapPane") || pins.length === 0) return;
     // A layout change resizes the box; measure it before fitting to it.
     m.invalidateSize();
     // Focus with a stop chosen frames that stop instead, below — but the
@@ -239,7 +254,9 @@ export function DayMap({
     const followed = follow ? pins.find((p) => p.id === selectedId) : undefined;
     if (followed) {
       if (!Number.isFinite(m.getZoom() as number | undefined)) {
-        const at = m.project([followed.lat, followed.lon], FOLLOW_ZOOM).add([0, insetBottom / 2]);
+        const at = m
+          .project([followed.lat, followed.lon], FOLLOW_ZOOM)
+          .add([0, (insetBottom - insetTop) / 2]);
         m.setView(m.unproject(at, FOLLOW_ZOOM), FOLLOW_ZOOM, { animate: false });
       }
       return;
@@ -249,13 +266,13 @@ export function DayMap({
       m.setView([pins[0]!.lat, pins[0]!.lon], SINGLE_STOP_ZOOM, { animate });
     } else {
       m.fitBounds(L.latLngBounds(pins.map((p) => [p.lat, p.lon] as [number, number])), {
-        paddingTopLeft: FIT_PADDING,
+        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + insetTop],
         paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],
         maxZoom: FIT_MAX_ZOOM,
         animate,
       });
     }
-  }, [ready, shape, heightClass, fitSignal, follow && !selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- `shape` stands for `pins`
+  }, [ready, shape, heightClass, fitSignal, insetTop, insetBottom, follow && !selectedId]); // eslint-disable-line react-hooks/exhaustive-deps -- `shape` stands for `pins`
 
   // Pins, route and distances.
   useEffect(() => {
@@ -272,7 +289,7 @@ export function DayMap({
     for (let i = 0; i < pins.length - 1; i++) {
       L.polyline(curvedLeg(pins[i]!, pins[i + 1]!, i), {
         className: "journal-route",
-        color: "#d96b43",
+        color: "var(--acc2)",
         weight: 2.5,
         opacity: 0.9,
         dashArray: "0.5 7",
@@ -287,11 +304,11 @@ export function DayMap({
       const marker = L.marker([pin.lat, pin.lon], {
         icon: L.divIcon({
           className: "",
-          iconSize: [34, 34],
-          iconAnchor: [17, 17],
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
           // The number is an integer this file made, but escape it anyway:
           // this string becomes markup.
-          html: `<span class="${pinClass(false, pin.tone, pin.nested)}">${escapeHtml(String(pin.number))}</span>${insideBadge(pin.insideCount)}`,
+          html: `<span class="${pinClass(false, pin.tone, pin.nested, pin.done)}">${escapeHtml(String(pin.number))}</span>${insideBadge(pin.insideCount)}`,
         }),
         // Leaflet sets these as properties, not markup, so a title with
         // angle brackets stays text.
@@ -330,7 +347,8 @@ export function DayMap({
       const on = id === selectedId;
       const face = marker.getElement()?.firstElementChild;
       const drawnPin = pins.find((p) => p.id === id);
-      if (face) face.className = pinClass(on, drawnPin?.tone ?? "sight", drawnPin?.nested);
+      if (face)
+        face.className = pinClass(on, drawnPin?.tone ?? "sight", drawnPin?.nested, drawnPin?.done);
       marker.setZIndexOffset(on ? 1000 : 0);
     }
     // Only the chosen place is named on the map; the rest are numbers that
@@ -340,7 +358,7 @@ export function DayMap({
       // On the side with room, so a pin near the right edge is not named
       // off the map.
       const at = m.latLngToContainerPoint([pin.lat, pin.lon]);
-      const toLeft = at.x > m.getSize().x * 0.55;
+      const toLeft = at.x > m.getSize().x * 0.42;
       tag.current = L.marker([pin.lat, pin.lon], {
         interactive: false,
         keyboard: false,
@@ -357,7 +375,7 @@ export function DayMap({
   // Bring the chosen stop into view without losing the zoom the reader chose.
   useEffect(() => {
     const m = map.current;
-    if (!ready || !m || !selectedId) return;
+    if (!ready || !m || !m.getPane("mapPane") || !selectedId) return;
     const pin = pins.find((p) => p.id === selectedId);
     if (!pin) return;
     const target: [number, number] = [pin.lat, pin.lon];
@@ -368,7 +386,10 @@ export function DayMap({
       const current = m.getZoom() as number | undefined;
       const hasView = typeof current === "number" && Number.isFinite(current);
       const zoom = hasView ? Math.max(current, FOLLOW_ZOOM) : FOLLOW_ZOOM;
-      const centre = m.unproject(m.project(target, zoom).add([0, insetBottom / 2]), zoom);
+      const centre = m.unproject(
+        m.project(target, zoom).add([0, (insetBottom - insetTop) / 2]),
+        zoom,
+      );
       if (!hasView || prefersReducedMotion()) m.setView(centre, zoom, { animate: false });
       else m.flyTo(centre, zoom, { duration: 0.6 });
       return;
@@ -377,13 +398,13 @@ export function DayMap({
     // its outermost pins FIT_PADDING in from the border, and an earlier
     // "inner 70%" test counted those as out of view — so choosing the first
     // or last stop recentred the map and pushed the rest of the day off it.
-    const at = m.latLngToContainerPoint(target);
-    const size = m.getSize();
-    const margin = PIN_EDGE_MARGIN;
-    if (at.x < margin || at.y < margin || at.x > size.x - margin || at.y > size.y - margin) {
-      m.panTo(target, { animate: !prefersReducedMotion() });
-    }
-  }, [ready, selectedId, follow]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
+    // Keep the pin in the band the chips and the sheet leave open.
+    m.panInside(target, {
+      paddingTopLeft: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + insetTop],
+      paddingBottomRight: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + insetBottom],
+      animate: !prefersReducedMotion(),
+    });
+  }, [ready, selectedId, follow, insetTop, insetBottom]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
 
   // You, when asked for: a dot where the phone is, with its accuracy around
   // it. The first position frames you with the day when you are near it;
@@ -432,7 +453,7 @@ export function DayMap({
       framedHere.current = true;
       const points = [...lonsBeside(pins, fix), fix].map((p) => [p.lat, p.lon] as [number, number]);
       m.fitBounds(L.latLngBounds(points), {
-        paddingTopLeft: FIT_PADDING,
+        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + insetTop],
         paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],
         maxZoom: FIT_MAX_ZOOM,
         animate: !prefersReducedMotion(),
@@ -458,17 +479,28 @@ export function DayMap({
       role="region"
       aria-label={label}
       className={`journal-map${vector ? " journal-map--vector" : ""} relative isolate overflow-hidden ${roundedClass} ${heightClass}`}
+      style={
+        {
+          "--map-sheet": `${insetBottom}px`,
+          "--map-chrome-top": `${controlsTop}px`,
+        } as CSSProperties
+      }
     >
       <div ref={container} className="absolute inset-0" />
       {children}
-      {/* Under the zoom buttons, centred on them. */}
+      {/* Left of the zoom stack. Under it, the credit sits on the same corner
+          and takes the click. */}
       <button
         type="button"
         onClick={() => (live.on ? stopLiveLocation() : startLiveLocation())}
         aria-pressed={live.on}
         aria-label={live.on ? "Stop showing where I am" : "Show where I am"}
         title={live.on ? "Stop showing where I am" : "Show where I am"}
-        className={`absolute right-(--journal-control-gap) top-(--journal-below-zoom) z-[500] grid size-(--journal-zoom) place-items-center rounded-full shadow-(--journal-control-shadow) backdrop-blur-sm ${
+        style={{
+          top: "calc(var(--map-chrome-top, 0px) + 52px)",
+          left: "var(--journal-control-gap)",
+        }}
+        className={`absolute z-[500] grid size-(--journal-zoom) place-items-center rounded-full shadow-(--journal-control-shadow) backdrop-blur-sm ${
           live.on ? "bg-(--journal-live) text-white" : "bg-(--journal-control) text-(--journal-ink)"
         }`}
       >
@@ -480,7 +512,11 @@ export function DayMap({
       {hereNote ? (
         <p
           role="status"
-          className="absolute right-[calc(var(--journal-control-gap)+var(--journal-zoom)+8px)] top-(--journal-below-zoom) z-[500] max-w-[15rem] rounded-2xl bg-(--journal-control) px-3 py-2 text-[12px] leading-snug text-(--journal-ink) shadow-(--journal-control-shadow)"
+          style={{
+            top: "calc(var(--map-chrome-top, 0px) + 52px)",
+            left: "calc(var(--journal-control-gap) + var(--journal-zoom) + 8px)",
+          }}
+          className="absolute z-[500] max-w-[15rem] rounded-2xl bg-(--journal-control) px-3 py-2 text-[13px] leading-snug text-(--journal-ink) shadow-(--journal-control-shadow)"
         >
           {hereNote}
         </p>
