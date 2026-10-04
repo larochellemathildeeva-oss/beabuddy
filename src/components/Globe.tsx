@@ -6,7 +6,7 @@ import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "ge
 import worldTopo from "world-atlas/countries-110m.json";
 import type { Pin } from "@/data/atlas";
 import { countryKey } from "@/lib/country-names";
-import { labelBudget, placeCityLabels } from "@/lib/globe-labels";
+import { labelBudget, pillBox, placeCityLabels } from "@/lib/globe-labels";
 import { RELIEF_SEA, paintGlobe, viewAxes, type ReliefMap } from "@/lib/relief-globe";
 import { loadReliefMap } from "@/lib/relief-globe-load";
 
@@ -294,23 +294,24 @@ export function Globe({
   const cityLabels = useMemo(() => {
     const placed = placeCityLabels(
       projected.map(({ pin, x, y }) => ({ id: pin.id, city: pin.city, x, y })),
-      { max: labelBudget(zoom) },
+      { max: labelBudget(zoom), pill: open },
     );
     const byId = new Map(projected.map((point) => [point.pin.id, point]));
     return placed.map((label) => byId.get(label.id)!).filter(Boolean);
-  }, [projected, zoom]);
+  }, [projected, zoom, open]);
 
   // Country names go right of their ring, or left when a city's name is
   // already there, or not at all — the ring still marks the country.
   const countryLabels = useMemo(() => {
     type Box = { x0: number; x1: number; y0: number; y1: number };
     const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
-    const taken: Box[] = cityLabels.map(({ pin, x, y }) => ({
-      x0: x + 7,
-      x1: x + 7 + pin.city.length * 6,
-      y0: y - 15,
-      y1: y - 2,
-    }));
+    const taken: Box[] = cityLabels.map(({ pin, x, y }) => {
+      if (open) {
+        const b = pillBox(pin.city ?? "", x, y);
+        return { x0: b.left, x1: b.right, y0: b.top, y1: b.bottom };
+      }
+      return { x0: x + 7, x1: x + 7 + pin.city.length * 6, y0: y - 15, y1: y - 2 };
+    });
     return (countryMarks ?? [])
       .map((mark) => {
         const p = projection([mark.lon, mark.lat]);
@@ -333,7 +334,7 @@ export function Globe({
       y: number;
       side: "right" | "left" | null;
     }[];
-  }, [countryMarks, projection, clipTest, cityLabels]);
+  }, [countryMarks, projection, clipTest, cityLabels, open]);
 
   const flushRotation = () => {
     rafDrag.current = null;
@@ -746,7 +747,7 @@ export function Globe({
           {relief && (
             <path
               d={spherePath}
-              fill="#0b0c0d"
+              style={{ fill: "var(--background)" }}
               className="pointer-events-none opacity-0 dark:opacity-45"
             />
           )}
@@ -848,7 +849,8 @@ export function Globe({
               );
             }
             // A pill beside the dot, as in the mockup: the pin's colour, then the name.
-            const width = name.length * 5.7 + 20;
+            const pill = pillBox(name, 0, 0);
+            const width = pill.right - pill.left;
             return (
               <g
                 key={`city-${pin.city}-${pin.id}`}

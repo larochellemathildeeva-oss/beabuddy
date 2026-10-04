@@ -32,13 +32,18 @@ export function loadReliefMap(): Promise<ReliefMap | null> {
       if (!ctx) return null;
       ctx.fillStyle = `rgb(${RELIEF_SEA.join(",")})`;
       ctx.fillRect(0, 0, size, size);
-      await Promise.all(
+      // A tile that is listed but fails would leave land blank for the whole
+      // session, so any miss is a failure: plain globe now, retried next draw.
+      const drawn = await Promise.all(
         [...names].map(async (name) => {
           const [x, y] = name.split("/").map(Number) as [number, number];
           const img = await tileImage(`/relief/${RELIEF_ZOOM}/${name}.webp`);
-          if (img) ctx.drawImage(img, x * RELIEF_TILE, y * RELIEF_TILE);
+          if (!img) return false;
+          ctx.drawImage(img, x * RELIEF_TILE, y * RELIEF_TILE);
+          return true;
         }),
       );
+      if (drawn.includes(false)) return null;
       return { data: ctx.getImageData(0, 0, size, size).data, size };
     } catch {
       return null;
