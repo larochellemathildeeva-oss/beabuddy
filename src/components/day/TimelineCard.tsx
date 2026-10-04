@@ -1520,6 +1520,7 @@ export function TravelConnector({
   from,
   to,
   leg,
+  fallbackMode,
   area,
   showTime = true,
   onAddBetween,
@@ -1531,6 +1532,8 @@ export function TravelConnector({
   fromNumber?: number | undefined;
   /** The measured leg from `from` to `to`, when there is one. */
   leg?: RouteLeg | undefined;
+  /** How the Maps link travels while no leg is measured: the traveller's choice, not always a walk. */
+  fallbackMode?: RouteLeg["mode"] | undefined;
   area: string;
   /** The walk-times preference: off shows the destination and Maps only. */
   showTime?: boolean;
@@ -1538,7 +1541,7 @@ export function TravelConnector({
   onAddBetween?: (() => void) | undefined;
 }) {
   const [open, setOpen] = useState(false);
-  const mode = leg?.mode ?? "walking";
+  const mode = leg?.mode ?? fallbackMode ?? "walking";
   const href = leg?.mapUrl || mapsDirUrl(from, to, area, mode);
   const isMeasured = Boolean(leg && leg.distance > 0);
   const leave = showTime && leg ? leaveBy(to.time_label, leg) : null;

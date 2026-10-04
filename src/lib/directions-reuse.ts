@@ -17,6 +17,26 @@ const MOVED_M = 50;
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
+ * Whether a leg found by its place in the list is really the journey from
+ * `from` to `to`. Legs are matched by position, so after a stop is added or
+ * moved the leg at a position can belong to the old neighbours — "previous
+ * stop → hotel" shown, timed and opened in Maps for "hotel → next stop".
+ * A row saved before it kept where it leaves from names only where it goes.
+ */
+export function legDescribes(
+  leg: Pick<RouteLeg, "from" | "to" | "fromLat" | "fromLon" | "toLat" | "toLon">,
+  from: DirectionStop,
+  to: DirectionStop,
+): boolean {
+  if (!sameName(leg.to, to.title)) return false;
+  if (leg.from.trim() && !sameName(leg.from, from.title)) return false;
+  // Two stops can share a name; the pins the leg was routed between tell them apart.
+  const atEnd = (lat: number | undefined, lon: number | undefined, stop: DirectionStop) =>
+    lat == null || lon == null || !hasCoords(stop) || haversine({ lat, lon }, stop) <= MOVED_M;
+  return atEnd(leg.fromLat, leg.fromLon, from) && atEnd(leg.toLat, leg.toLon, to);
+}
+
+/**
  * Whether a journey worked out before still describes the way from `from` to
  * `to`, travelling as chosen now. Adding one stop used to send the whole trip
  * to be looked up and routed again; journeys that still hold are kept, so only

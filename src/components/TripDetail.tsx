@@ -45,7 +45,7 @@ import {
 } from "@/components/ItineraryImport";
 import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
-import type { KnownLeg } from "@/lib/directions-reuse";
+import { legDescribes, type KnownLeg } from "@/lib/directions-reuse";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { DayEditSheet, type DayEditSave } from "@/components/day/DayEditSheet";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
@@ -57,7 +57,9 @@ import { useTripStops } from "@/hooks/useTripStops";
 import { destinationCities, groupsInCity } from "@/lib/trip-cities";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
+import { haversine } from "@/lib/geo";
 import {
+  hasCoords,
   isSavedDirectionItem,
   stopsForDirections,
   timelineStopsForDirections,
@@ -129,7 +131,7 @@ import {
   splitDirectionRows,
   unroutedLegCopy,
 } from "@/lib/timeline-directions";
-import { modeWord, type TravelChoice } from "@/lib/travel-mode";
+import { legModeFor, modeWord, type TravelChoice } from "@/lib/travel-mode";
 import { readTravelChoice, writeTravelChoice } from "@/lib/travel-choice-store";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -786,26 +788,32 @@ export function TripDetail({
   const legFor = (fromId: string, toId: string) => {
     const index = directionIndexById.get(fromId);
     if (index == null || directionStops[index + 1]?.id !== toId) return undefined;
-    return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+    const from = directionStops[index]!;
+    const to = directionStops[index + 1]!;
+    const fits = (leg: RouteLeg | undefined) =>
+      leg && legDescribes(leg, from, to) ? leg : undefined;
+    return (
+      fits(liveLegs?.[index]) ?? (savedFitsTimeline ? fits(dir.saved?.legs[index]) : undefined)
+    );
   };
-  /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
   /**
-   * `strict` leaves out rows saved before they kept the stop they leave from:
-   * after a reorder such a row may describe another journey, and Companion
-   * times "Leave by" from it, so it works that journey out itself instead.
+   * The measured leg into `to`: worked out now, kept on the phone, or saved on
+   * the timeline. A row saved before it kept the stop it leaves from (keyed by
+   * its destination alone) is never used: after a stop is added or moved it may
+   * describe another journey, so the connector says "not measured yet" until
+   * directions are refreshed rather than show that journey's time and Maps link.
    */
-  const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
+  const travelInto = (from: ItineraryRow, to: ItineraryRow) =>
     savedLegStillFits(legFor(from.id, to.id), from, to) ??
     savedLegStillFits(
       savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
-        savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
-        (strict
-          ? undefined
-          : (savedTravel.get(directionKey(to.day_date, to.title)) ??
-            savedTravel.get(directionKey(from.day_date, to.title)))),
+        savedTravel.get(directionKey(from.day_date, to.title, from.title)),
       from,
       to,
     );
+  /** How the Maps link for an unmeasured journey travels: as chosen for trips, by the distance between the pins. */
+  const mapsModeFor = (from: ItineraryRow, to: ItineraryRow) =>
+    hasCoords(from) && hasCoords(to) ? legModeFor(travel, haversine(from, to)) : undefined;
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
@@ -1372,7 +1380,7 @@ export function TripDetail({
   const tripStopsForNow = companionStops(board.items);
   const nowLegs = tripStopsForNow
     .slice(0, -1)
-    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!, true));
+    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!));
   const tripWide = {
     international: cities.countries.length > 1 || Boolean(trip.country),
     // Asked by glyph, not by raw kind. A flight stores as "flight" and a
@@ -1473,7 +1481,7 @@ export function TripDetail({
           travelMinutes: (from, to) => {
             const a = itemsById.get(from.id);
             const b = itemsById.get(to.id);
-            const leg = a && b ? travelInto(a, b, true) : undefined;
+            const leg = a && b ? travelInto(a, b) : undefined;
             if (!leg || leg.unknownSpot || leg.capped || !(leg.duration > 0)) return null;
             return Math.round(leg.duration / 60);
           },
@@ -2234,6 +2242,7 @@ export function TripDetail({
                                           from={item}
                                           to={next}
                                           leg={travelInto(item, next)}
+                                          fallbackMode={mapsModeFor(item, next)}
                                           area={directionArea ?? ""}
                                           showTime={view.prefs.walkTimes}
                                           onAddBetween={() => openAddBetween(item, next)}
@@ -2336,6 +2345,7 @@ export function TripDetail({
                               from={item}
                               to={next}
                               leg={travelInto(item, next)}
+                              fallbackMode={mapsModeFor(item, next)}
                               area={directionArea ?? ""}
                               showTime={view.prefs.walkTimes}
                               onAddBetween={() => openAddBetween(item, next)}
