@@ -11,11 +11,9 @@ import {
   Bookmark,
   ChevronDown,
   Hand,
-  Heart,
   Inbox,
   ListPlus,
   LocateFixed,
-  MapPin,
   MapPinned,
   Plus,
   Search,
@@ -64,7 +62,6 @@ import {
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines, formatTripLocation } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
-import { placeArtUrl, type PlaceArt as PlaceArtKind } from "@/lib/place-art";
 import { useUndo } from "@/hooks/useUndo";
 import {
   capturedFromParsedPlace,
@@ -685,18 +682,6 @@ function RecommendationsPage() {
         .slice(0, 4)
     : [];
   const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)));
-  const recent = recentlySaved(
-    vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)),
-    3,
-  );
-  const latestIn = (t: PinType) =>
-    recentlySaved(
-      vault.rows.filter(
-        (r) => (r.pin_type ?? "reco") === t && !hiddenFromRecs(r, r.pin_type, r.visited),
-      ),
-      1,
-    )[0];
-
   const savedRow = justSaved ? vault.rows.find((r) => r.id === justSaved.id) : undefined;
   const placeRow =
     screen.kind === "place" && screen.place.savedId
@@ -714,7 +699,7 @@ function RecommendationsPage() {
       <button
         type="button"
         onClick={() => openPlace(placeFromRow(r))}
-        className="flex items-center gap-2 text-left"
+        className="flex min-h-11 w-full items-center gap-2 text-left"
       >
         <span
           className={`size-2.5 shrink-0 rounded-full ${pinColorClass[(r.pin_type ?? "reco") as PinType]}`}
@@ -1424,7 +1409,7 @@ function RecommendationsPage() {
                     }`}
                   >
                     {label}
-                    <span className="ml-1.5 font-sans text-[13px] text-muted-foreground">{n}</span>
+                    <span className="ms-1.5 font-sans text-[13px] text-muted-foreground">{n}</span>
                   </button>
                 ))}
               </div>
@@ -1639,12 +1624,6 @@ function RecommendationsPage() {
     </AppShell>
   );
 }
-
-const COLLECTION_ART: Record<"reco" | "wishlist" | "nexttime", PlaceArtKind> = {
-  reco: "street",
-  wishlist: "viewpoint",
-  nexttime: "harbour",
-};
 
 function EmptyVault() {
   const settings = useBeaSettings();

@@ -387,7 +387,7 @@ function ProfilePage() {
               guide="offline-options"
             />
           </div>
-          <ThemePicker />
+          {panel === null && <ThemePicker />}
         </div>
 
         <div className="space-y-3">
@@ -696,6 +696,15 @@ function Figure({
   );
 }
 
+// Whole class names, so Tailwind finds every tone.
+const BUBBLE: Record<Tone, string> = {
+  1: "bg-tile-1",
+  2: "bg-tile-2",
+  3: "bg-tile-3",
+  4: "bg-tile-4",
+  5: "bg-tile-5",
+};
+
 /** A row in a grouped list: a pastel bubble, a serif title, one line, a chevron. */
 function ListRow({
   icon: Glyph,
@@ -718,7 +727,7 @@ function ListRow({
 }) {
   const body = (
     <>
-      <span className={`grid size-11 shrink-0 place-items-center rounded-full bg-tile-${tone}`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-full ${BUBBLE[tone]}`}>
         <Glyph className={`seq-text-${tone} size-5`} aria-hidden />
       </span>
       <span className="min-w-0 flex-1">

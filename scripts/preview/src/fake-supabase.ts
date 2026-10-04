@@ -220,14 +220,14 @@ const noneDb: Record<string, Row[]> = {
 };
 
 // "recs" and "you": the next trip's city has saved places, in each list.
-const tripCity = (homeDb.trips ?? [])[0]?.city ?? "Hiroshima";
+const tripCity = ((homeDb.trips ?? [])[0]?.city as string | undefined)?.split(",")[0] ?? "Los Angeles";
 const recsDb: Record<string, Row[]> = {
   ...homeDb,
   profiles: [{ id: "me", display_name: "Mattie", home_city: "Montréal", app_settings: {} }],
   recommendations: [
     ...savedPlaces,
-    ...[["Okonomiyaki Nagata-ya", "Food", "reco", "Go at golden hour."], ["Shukkei-en tea house", "Cafe", "wishlist", null], ["Peace Memorial Park", "Park", "nexttime", null]].map(([name, category, pin_type, notes], i) => ({
-      id: `tc-${i}`, user_id: "me", name, city: tripCity, country: "Japan", address: null, category, notes, recommended_by: i === 1 ? "Sam" : null, source: null, url: null, lat: 34.39 + i * 0.01, lon: 132.45, visited: false, pin_type, created_at: ago(100 + i),
+    ...[["Grand Central Market", "Food", "reco", "Go at golden hour."], ["Griffith Observatory", "Viewpoint", "wishlist", null], ["Venice Canals", "Park", "nexttime", null]].map(([name, category, pin_type, notes], i) => ({
+      id: `tc-${i}`, user_id: "me", name, city: tripCity, country: "United States", address: null, category, notes, recommended_by: i === 1 ? "Sam" : null, source: null, url: null, lat: 34.05 + i * 0.01, lon: -118.24, visited: false, pin_type, created_at: ago(100 + i),
     })),
   ],
 };
