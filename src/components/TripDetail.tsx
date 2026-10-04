@@ -45,7 +45,7 @@ import {
 } from "@/components/ItineraryImport";
 import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
-import type { KnownLeg } from "@/lib/directions-reuse";
+import { legDescribes, type KnownLeg } from "@/lib/directions-reuse";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
 import { DayEditSheet, type DayEditSave } from "@/components/day/DayEditSheet";
 import { itineraryPrintHtml } from "@/lib/itinerary-print";
@@ -786,7 +786,13 @@ export function TripDetail({
   const legFor = (fromId: string, toId: string) => {
     const index = directionIndexById.get(fromId);
     if (index == null || directionStops[index + 1]?.id !== toId) return undefined;
-    return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+    const from = directionStops[index]!;
+    const to = directionStops[index + 1]!;
+    const fits = (leg: RouteLeg | undefined) =>
+      leg && legDescribes(leg, from, to) ? leg : undefined;
+    return (
+      fits(liveLegs?.[index]) ?? (savedFitsTimeline ? fits(dir.saved?.legs[index]) : undefined)
+    );
   };
   /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
   /**

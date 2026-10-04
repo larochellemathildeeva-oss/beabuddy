@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import type { RouteLeg } from "./directions.functions.ts";
 import type { DirectionStop } from "./direction-stops.ts";
-import { directionsToAsk, legStillHolds, mergeLegs } from "./directions-reuse.ts";
+import { directionsToAsk, legDescribes, legStillHolds, mergeLegs } from "./directions-reuse.ts";
 
 const hotel: DirectionStop = { id: "h", title: "Hotel", lat: 35.0, lon: 135.76 };
 const market: DirectionStop = { id: "m", title: "Market", lat: 35.005, lon: 135.765 };
@@ -130,4 +130,14 @@ test("a timed train is kept only when transit is Béa's or the traveller's choic
   assert.equal(legStillHolds(ride, kyoto, osaka, "auto"), true);
   assert.equal(legStillHolds(ride, kyoto, osaka, "drive"), false);
   assert.equal(legStillHolds(ride, kyoto, osaka, "walk"), false);
+});
+
+test("a leg found by position must name the stops it is between", () => {
+  const leg = { from: "Cafe", to: "Citadines" } as RouteLeg;
+  assert.equal(legDescribes(leg, { title: "Cafe" }, { title: "Citadines" }), true);
+  // Hotel → Amano must not borrow the journey that led into the hotel.
+  assert.equal(legDescribes(leg, { title: "Citadines" }, { title: "Amano" }), false);
+  // A row saved before it kept where it leaves from names only where it goes.
+  const legacy = { from: "", to: "Amano" } as RouteLeg;
+  assert.equal(legDescribes(legacy, { title: "Citadines" }, { title: "amano" }), true);
 });
