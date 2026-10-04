@@ -220,7 +220,7 @@ await flow("booking: mark booked with a reference", async (page) => {
   await page.waitForTimeout(400);
   const w = (await writes(page)).find((x) => x.op === "update" && x.payload?.booking_ref === "MBAM-4471");
   if (!w || w.payload.booked !== true) throw new Error("no booked update with the reference was written");
-  if ((await page.getByText(/\u2713 Booked \u00b7 MBAM-4471/).count()) === 0) throw new Error("card back shows no booking");
+  if ((await page.getByText(/✓ Booked · MBAM-4471/).count()) === 0) throw new Error("card back shows no booking");
   await page.getByRole("button", { name: /^Close / }).first().click();
   const bookedCard = page.getByRole("button", { name: /tap to edit$/ }).first().locator("xpath=ancestor::li[1]");
   if ((await bookedCard.getByText("Booked", { exact: true }).count()) === 0) throw new Error("card front shows no Booked mark");
