@@ -74,9 +74,9 @@ const FACT_ICONS: Record<PrepFactId, ComponentType<LucideProps>> = {
 };
 
 const PHASES: { id: TodoPhase; title: string; icon: ComponentType<LucideProps> }[] = [
-  { id: "before", title: "Before trip", icon: PlaneTakeoff },
-  { id: "during", title: "During trip", icon: MapPin },
-  { id: "after", title: "After trip", icon: House },
+  { id: "before", title: "Before you go", icon: PlaneTakeoff },
+  { id: "during", title: "During the trip", icon: MapPin },
+  { id: "after", title: "After the trip", icon: House },
   { id: "anytime", title: "Anytime", icon: CircleDashed },
 ];
 
@@ -304,7 +304,7 @@ export function TripTodosBody({
         const Icon = group.icon;
         const open = !folded.has(group.id);
         return (
-          <section key={group.id} className="plain-card px-3.5 py-2.5">
+          <section key={group.id}>
             <button
               type="button"
               aria-expanded={open}
@@ -315,18 +315,18 @@ export function TripTodosBody({
                   return next;
                 })
               }
-              className="flex w-full items-center gap-3 py-1 text-left"
+              className="mb-2 flex min-h-11 w-full items-center gap-2.5 px-0.5 text-left"
             >
               <span
-                className={`grid size-11 shrink-0 place-items-center rounded-full ${prepTint(g)}`}
+                className={`grid size-9 shrink-0 place-items-center rounded-full ${prepTint(g)}`}
               >
-                <Icon className="size-5 text-foreground" aria-hidden />
+                <Icon className="size-[18px] text-foreground" aria-hidden />
               </span>
-              <span className="min-w-0 flex-1 truncate font-display text-[23px] leading-none">
+              <span className="min-w-0 flex-1 truncate font-display text-[22px] leading-none">
                 {group.title}
               </span>
-              <span className="shrink-0 text-[13px] text-muted-foreground">
-                {count(group.todos.length)}
+              <span className="shrink-0 text-[14px] text-muted-foreground">
+                {group.todos.filter((todo) => !todo.done).length} open
               </span>
               <ChevronDown
                 className={`size-[18px] shrink-0 text-foreground transition-transform ${open ? "rotate-180" : ""}`}
@@ -335,7 +335,7 @@ export function TripTodosBody({
             </button>
 
             {open && (
-              <ul className="mt-2 divide-y divide-border border-t border-border">
+              <ul className="plain-card divide-y divide-border px-3.5">
                 {group.todos.map((todo, i) => (
                   <TodoItem
                     key={todo.id}
@@ -414,7 +414,7 @@ export function TripTodosBody({
       {error && <p className="px-1 text-[12px] text-destructive">{error}</p>}
 
       {/* The ways in, on one bar at the foot, as in the master. */}
-      <div className="sticky -bottom-4 -mx-4 flex items-center gap-4 border-t border-border bg-card px-4 pb-4 pt-3">
+      <div className="sticky -bottom-6 -mx-4 flex items-center gap-4 border-t border-border bg-background px-4 pb-6 pt-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-card pl-4 pr-1.5">
           <Plus className="size-[18px] shrink-0 text-foreground" aria-hidden />
           <input

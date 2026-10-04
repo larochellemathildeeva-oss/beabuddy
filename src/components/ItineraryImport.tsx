@@ -112,7 +112,6 @@ import { planScope, scopedRoute, type TripCity } from "@/lib/trip-cities";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { beaCheer } from "@/hooks/useBeaSettings";
-import logo from "@/assets/bea-logo.png";
 import { routeStopLine } from "@/lib/trip-cities";
 import { newTowns, planTowns, withCountry, type PlanCity } from "@/lib/plan-cities";
 import { countryNamedIn } from "@/lib/world-countries";
@@ -349,15 +348,14 @@ export function ItineraryImport({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Plan with Béa"
-      hint={tab === "start" ? "Built around your travel preferences and tagged recs" : undefined}
-      icon={
-        <img
-          src={logo}
-          alt=""
-          className={`object-contain ${tab === "start" ? "size-10" : "size-8"}`}
-        />
+      title="Ask Béa"
+      hint={
+        tab === "start"
+          ? [tripTitle, "make the trip better"].filter(Boolean).join(" · ")
+          : (tripTitle ?? undefined)
       }
+      page
+      tone={5}
       onBack={tab === "start" || panelBusy ? undefined : () => setTab("start")}
       width="lg"
       tall

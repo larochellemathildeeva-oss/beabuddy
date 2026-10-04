@@ -1636,3 +1636,9 @@
 .trip-shell[data-bar-position="bottom"] { padding-bottom: calc(90px * var(--text-scale, 1)); }
 .trip-shell { --trip-sticky-offset: 0px; }
 .trip-shell[data-bar-position="top"] { --trip-sticky-offset: calc(84px * var(--text-scale, 1)); }
+
+/* A trip subpage's header: a pastel wash fading into the page in Colorful
+   (the wash is the tone's tile colour); Calm and Dark stay plain. */
+[data-theme="colorful"] .sub-page-head {
+  background: linear-gradient(180deg, var(--page-tone), var(--background));
+}

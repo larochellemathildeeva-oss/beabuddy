@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, X } from "@/components/icons";
 import { joinSheetStack } from "@/components/sheet-stack";
+import { BrandMark } from "@/components/PageHeader";
 
 /** How far the sheet must be pulled down before letting go closes it. */
 const PULL_CLOSE_PX = 90;
@@ -37,6 +45,9 @@ export function Sheet({
   above = false,
   tall = false,
   dismissible = true,
+  page = false,
+  backLabel,
+  tone = 5,
   children,
 }: {
   open: boolean;
@@ -68,6 +79,17 @@ export function Sheet({
    * stays, so there is always a deliberate way out.
    */
   dismissible?: boolean;
+  /**
+   * A full page over the trip instead of a panel: the logo row with a back
+   * arrow, the hint as a spaced kicker, and the title large with a full
+   * stop, as the revamp draws every trip subpage. Same open, Escape and
+   * focus rules as the panel.
+   */
+  page?: boolean;
+  /** What a page's back arrow is called, when it goes back rather than closes. */
+  backLabel?: string;
+  /** The pastel (1–5) behind a page's header in Colorful; the others stay plain. */
+  tone?: 1 | 2 | 3 | 4 | 5;
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement | null>(null);
@@ -145,6 +167,64 @@ export function Sheet({
   };
 
   if (!open) return null;
+
+  if (page) {
+    const heading = /[.!?…]$/.test(title) ? title : `${title}.`;
+    return createPortal(
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        className={`sub-page rise fixed inset-0 flex flex-col bg-background outline-none ${
+          above ? "z-[60]" : "z-50"
+        }`}
+        style={{ "--page-tone": `var(--tile-${tone})` } as CSSProperties}
+      >
+        <header className="sub-page-head shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onBack ?? onClose}
+              // Where the arrow is the only way out, a busy page keeps it from closing.
+              disabled={!showClose && !onBack}
+              aria-label={backLabel ?? (onBack ? "Back" : `Close ${title.toLowerCase()}`)}
+              className="tap-target grid shrink-0 place-items-center rounded-full"
+            >
+              <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-xs">
+                <ArrowLeft className="size-5" aria-hidden />
+              </span>
+            </button>
+            <BrandMark />
+            <div className="ms-auto flex shrink-0 items-center gap-1.5">
+              {actions}
+              {onBack && showClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label={`Close ${title.toLowerCase()}`}
+                  className="tap-target grid shrink-0 place-items-center rounded-full"
+                >
+                  <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-xs">
+                    <X className="size-5" aria-hidden />
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+          {hint ? <p className="label-caps mt-3 max-w-[34ch]">{hint}</p> : null}
+          <h1 className="mt-1 break-words font-display text-[38px] leading-[1.05] tracking-[-0.02em]">
+            {heading}
+          </h1>
+        </header>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-2">
+          <div className="mx-auto w-full max-w-xl">{children}</div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div

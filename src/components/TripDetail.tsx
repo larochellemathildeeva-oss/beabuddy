@@ -2812,7 +2812,6 @@ export function TripDetail({
         ]
           .filter(Boolean)
           .join(" · ")}
-        art={tripArt}
         section={sheetSection}
         onSection={setSheetSection}
         people={members.map((m) => m.display_name || "Traveller")}
@@ -2820,6 +2819,23 @@ export function TripDetail({
         onBookings={(kind) => {
           setSettingsOpen(false);
           openBookings(kind);
+        }}
+        onAsk={() => {
+          setSettingsOpen(false);
+          setPlannerTab("start");
+          setPlannerOpen(true);
+        }}
+        onPrep={() => {
+          setSettingsOpen(false);
+          setPrepSignal((n) => n + 1);
+        }}
+        onAdd={() => {
+          setSettingsOpen(false);
+          setAddOpen(true);
+        }}
+        onCurrency={() => {
+          setSettingsOpen(false);
+          setCurrencyOpen(true);
         }}
         citiesCount={cities.stops.length}
         offlineNote={
