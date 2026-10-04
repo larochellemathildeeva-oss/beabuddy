@@ -11,13 +11,10 @@ import { bannerPill } from "@/lib/trip-glance";
 import type { TripPicture } from "@/lib/trip-picture";
 import { creditedOnPhoto, photoCredit } from "@/lib/wikimedia";
 
-/** Banner heights: the Map view keeps more of the screen for its map. */
-const TALL = 420;
-const SHORT = 300;
-/** Room kept for the route between the words and the switch at the foot. */
-const ROUTE_ROOM = { tall: 130, short: 90 };
-/** From the foot of the banner: the switch and the panel rising over it. */
-const FOOT = 104;
+/** Room kept for the route between the words and the foot (Stops picture). */
+const ROUTE_ROOM = { tall: 90, short: 70 };
+/** Under the foot's content: the banner's own bottom padding. */
+const FOOT_PAD = 14;
 
 /**
  * The top of the trip page, as the UI revamp's mockup draws it (`tripHero`):
@@ -105,11 +102,13 @@ export function TripPageBanner({
   // rather than letting a city sit under them.
   const [words, setWords] = useState<HTMLDivElement | null>(null);
   const wordsEnd = useBottom(words);
-  const routeTop = wordsEnd + 24;
-  const height = Math.max(
-    short ? SHORT : TALL,
-    Math.round(routeTop + (short ? ROUTE_ROOM.short : ROUTE_ROOM.tall) + FOOT),
-  );
+  // The foot (credit, picture switch, tracker) is measured too, so the banner
+  // is only as tall as its content; Stops adds room for the route between.
+  const [foot, setFoot] = useState<HTMLDivElement | null>(null);
+  const footHeight = useHeight(foot);
+  const routeTop = wordsEnd + 16;
+  const routeRoom = showStops ? (short ? ROUTE_ROOM.short : ROUTE_ROOM.tall) : 0;
+  const height = Math.round(routeTop + routeRoom + footHeight + FOOT_PAD);
 
   // formatTripLocation, not a plain join: the city field often already ends
   // in the country ("Kyoto, Kyoto Prefecture, Japan").
@@ -137,7 +136,7 @@ export function TripPageBanner({
           current={current}
           done={done}
           top={routeTop}
-          bottom={height - FOOT}
+          bottom={height - footHeight - FOOT_PAD}
         />
       ) : imageUrl ? (
         <img
@@ -154,7 +153,15 @@ export function TripPageBanner({
         style={wordsEnd ? ({ "--haze-end": `${wordsEnd}px` } as CSSProperties) : undefined}
       />
 
-      <div className="relative flex h-full flex-col px-4 pb-12 pt-3">
+      {tracker && (
+        <span
+          aria-hidden
+          className="trip-hero-shade"
+          style={{ height: footHeight + FOOT_PAD + 36 }}
+        />
+      )}
+
+      <div className="relative flex h-full flex-col px-4 pb-3.5 pt-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">{tools}</div>
           <div className="flex items-center gap-1.5">{actions}</div>
@@ -177,19 +184,20 @@ export function TripPageBanner({
           </p>
           {companions && !short && <p className="text-[14px] text-foreground/75">{companions}</p>}
           {footer}
-          {tracker && <div className="mt-3">{tracker}</div>}
         </div>
 
-        <div className="mt-auto">
-          {credited ? (
-            <p
-              title={photoCredit(credited)}
-              className="mb-2 w-fit max-w-full truncate rounded-full bg-black/80 px-2.5 py-1 text-[13px] text-white"
-            >
-              {photoCredit(credited)}
-            </p>
-          ) : null}
-          <div className="flex items-end justify-end gap-2">
+        <div ref={setFoot} className="mt-auto">
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              {credited ? (
+                <p
+                  title={photoCredit(credited)}
+                  className="w-fit max-w-full truncate rounded-full bg-black/80 px-2.5 py-1 text-[13px] text-white"
+                >
+                  {photoCredit(credited)}
+                </p>
+              ) : null}
+            </div>
             <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
               <button
                 type="button"
@@ -211,6 +219,7 @@ export function TripPageBanner({
               </button>
             </div>
           </div>
+          {tracker && <div className="mt-2">{tracker}</div>}
         </div>
       </div>
     </section>
@@ -230,4 +239,19 @@ function useBottom(el: HTMLElement | null): number {
     return () => watch.disconnect();
   }, [el]);
   return bottom;
+}
+
+/** How tall an element is; 0 before it is drawn. */
+function useHeight(el: HTMLElement | null): number {
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (!el) return;
+    const read = () => setHeight(el.offsetHeight);
+    read();
+    if (typeof ResizeObserver === "undefined") return;
+    const watch = new ResizeObserver(read);
+    watch.observe(el);
+    return () => watch.disconnect();
+  }, [el]);
+  return height;
 }

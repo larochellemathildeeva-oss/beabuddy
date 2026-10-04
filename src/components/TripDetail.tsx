@@ -71,7 +71,6 @@ import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { TripPageBanner } from "@/components/TripPageBanner";
-import { BrandMark } from "@/components/PageHeader";
 import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import { useTripPicture } from "@/hooks/useTripPicture";
@@ -1490,19 +1489,15 @@ export function TripDetail({
 
   const showDayTracker = perspective === "overview" || !companionDay;
   const dayTracker = (
-    <section
-      aria-label="Your trip progress"
-      className="rounded-2xl border border-border/60 bg-card/85 p-3 backdrop-blur-md"
-    >
+    <section aria-label="Your trip progress" className="text-white">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-[18px]">Your trip</h2>
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-[14px] text-white/85">
           {moveDays.length} days ·{" "}
           {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size} cities
           · {doneCount}/{stopItems.length} stops reached
         </p>
       </div>
-      <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
+      <ol className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
         {moveDays.map((day, i) => {
           const group = allDayGroups.find((g) => g.key === day);
           const reached = group?.items.filter(isDone).length ?? 0;
@@ -1517,16 +1512,16 @@ export function TripDetail({
                   setCityChoice("");
                   setPerspective("companion");
                 }}
-                className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
+                className="relative flex min-h-11 w-full flex-col items-center gap-0.5 px-2 py-1.5 text-[14px]"
               >
                 {i > 0 && (
                   <span
                     aria-hidden
-                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
+                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-white/50"
                   />
                 )}
                 <span
-                  className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
+                  className={`relative grid size-8 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
                 >
                   {total > 0 && reached === total ? (
                     <Check className="size-4" aria-hidden />
@@ -1537,9 +1532,7 @@ export function TripDetail({
                 <span className="font-semibold">
                   {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
                 </span>
-                <span className="text-[13px] text-muted-foreground">
-                  {formatTimelineDayLabel(day)}
-                </span>
+                <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
               </button>
             </li>
           );
@@ -1547,6 +1540,19 @@ export function TripDetail({
       </ol>
     </section>
   );
+
+  // In every view the tracker sits at the foot of the banner: the trip's days
+  // on Overview, the day's stops in the others.
+  const bannerTracker = showDayTracker ? (
+    dayTracker
+  ) : view.prefs.journey ? (
+    <JourneyTracker
+      onPhoto
+      stops={nowStops}
+      selectedId={peekStop?.id ?? null}
+      onSelect={setPeekId}
+    />
+  ) : null;
 
   return (
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
@@ -1574,7 +1580,7 @@ export function TripDetail({
         picture={tripPicture}
         onPicture={setTripPicture}
         short={perspective === "map"}
-        tracker={showDayTracker && perspective !== "map" ? dayTracker : null}
+        tracker={bannerTracker}
         tools={
           <>
             <button
@@ -1673,14 +1679,6 @@ export function TripDetail({
           </>
         }
       />
-      {/* The Map view keeps its short banner, so its tracker stays under it. */}
-      {perspective === "map" && showDayTracker ? (
-        <div className="trip-panel px-3 pb-2 pt-3">{dayTracker}</div>
-      ) : perspective !== "overview" && companionDay && view.prefs.journey ? (
-        <div className="trip-panel px-3 pb-2 pt-3">
-          <JourneyTracker stops={nowStops} selectedId={peekStop?.id ?? null} onSelect={setPeekId} />
-        </div>
-      ) : null}
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
       <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">

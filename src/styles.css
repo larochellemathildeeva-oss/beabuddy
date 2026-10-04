@@ -1482,6 +1482,13 @@
     color-mix(in oklab, var(--background) 0%, transparent) calc(var(--haze-end, 180px) + 70px)
   );
 }
+.trip-hero-shade {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+  /* Under the tracker, so its white words read on any picture. */
+  background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.62));
+}
 .trip-hero-btn {
   display: grid;
   place-items: center;
