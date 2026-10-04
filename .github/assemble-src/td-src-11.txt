@@ -1,0 +1,250 @@
+
+      <TripMenuSheet
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={trip.title}
+        subtitle={[
+          formatTripLocation(trip.city?.split(",")[0], trip.country),
+          tripDateLine(trip.start_date, trip.end_date),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        art={tripArt}
+        section={sheetSection}
+        onSection={setSheetSection}
+        people={members.map((m) => m.display_name || "Traveller")}
+        bookings={bookingCounts}
+        onBookings={(kind) => {
+          setSettingsOpen(false);
+          openBookings(kind);
+        }}
+        citiesCount={cities.stops.length}
+        offlineNote={
+          dir.saved
+            ? `${savedAgoLabel(dir.saved.savedAt)}${
+                savedIsStale(dir.saved.signature, routeStops) ? " · out of date" : ""
+              }`
+            : ""
+        }
+        budgetOn={Boolean(trip.budget_enabled)}
+        checkupNote={checkup ? checkupPill(checkup) : ""}
+        preferencesCount={tripPrefs.list.length}
+        photosCount={stopPhotos.photos.length}
+        onCalendar={() => {
+          setSettingsOpen(false);
+          const blob = new Blob([tripCalendar(trip, stopItems)], {
+            type: "text/calendar;charset=utf-8",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = calendarFileName(trip.title);
+          a.click();
+          URL.revokeObjectURL(url);
+          toast("Calendar file saved", {
+            description: "Open it to add the trip to your calendar. Times are the place's own.",
+          });
+        }}
+        onPrint={() => {
+          setSettingsOpen(false);
+          printHtml(
+            itineraryPrintHtml(
+              {
+                title: trip.title,
+                subtitle: [
+                  formatTripLocation(trip.city?.split(",")[0], trip.country),
+                  tripDateLine(trip.start_date, trip.end_date),
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                start_date: trip.start_date,
+                end_date: trip.end_date,
+                // The owner's membership carries no display name; this device knows its own.
+                travellers: members.map(
+                  (m) => m.display_name || (m.user_id === me.id ? me.name : "") || "Traveller",
+                ),
+                link: `${window.location.origin}/trips/${trip.id}`,
+                printedAt: new Date(),
+              },
+              // Pins to check go on paper too, when the traveller shows them.
+              view.prefs.pinChecks
+                ? stopItems.map((item) => ({
+                    ...item,
+                    pin_check: pinCheckFor(item, strayIds.has(item.id)),
+                  }))
+                : stopItems.map((item) => ({ ...item, pin_check: null })),
+            ),
+          );
+        }}
+        footer={
+          // Only the owner can delete (the "Owner deletes trips" policy). For
+          // anyone else the delete matched no rows, said nothing, and sent
+          // them to the trip list as if it had worked; they leave instead,
+          // from Invite and people.
+          me.id === trip.owner_id ? (
+            <TripDeleteButton onDelete={onDelete} onConfirmed={() => setSettingsOpen(false)} />
+          ) : null
+        }
+      >
+        {sheetSection === "invite" && (
+          <div className="mb-3">
+            <ShareLinkCard tripId={trip.id} />
+          </div>
+        )}
+        {sheetSection === "invite" && (
+          <TripPeople
+            trip={trip}
+            meId={me.id}
+            members={members}
+            invites={board.invites}
+            onInvite={onInvite}
+            onRevokeInvite={onRevokeInvite}
+            onRemoveMember={onRemoveMember}
+            onLeave={onLeave}
+            onChanged={board.reload}
+            onLeft={() => setSettingsOpen(false)}
+          />
+        )}
+
+        {sheetSection === "packing" && (
+          <div className="plain-card p-3.5">
+            {templates.packs.length === 0 ? (
+              <p className="text-[13.5px] text-muted-foreground">
+                No saved lists yet — create one under Profile → Create packing lists.
+              </p>
+            ) : (
+              <>
+                <p className="text-[13px] text-muted-foreground">
+                  You get a copy — ticking things off only affects this trip.
+                </p>
+                <select
+                  value={packTemplateId}
+                  onChange={(e) => {
+                    setPackTemplateId(e.target.value);
+                    setPackMsg("");
+                  }}
+                  className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px]"
+                >
+                  <option value="">Choose a list…</option>
+                  {templates.packs.map((pk) => (
+                    <option key={pk.id} value={pk.id}>
+                      {pk.emoji} {pk.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={!packTemplateId}
+                  onClick={async () => {
+                    if (!packTemplateId) return;
+                    await templates.attachToTrip(packTemplateId, trip.id);
+                    setPackTemplateId("");
+                    setPackMsg("List attached — open the trip to tick items off.");
+                  }}
+                  className="btn-primary mt-3 w-full disabled:opacity-50"
+                >
+                  Attach a copy to this trip
+                </button>
+                {packMsg && <p className="mt-2 text-[13px] text-muted-foreground">{packMsg}</p>}
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsOpen(false);
+                setPrepAsk((cur) => ({ tab: "packing", n: (cur?.n ?? 0) + 1 }));
+              }}
+              className="mt-3 inline-flex min-h-9 items-center gap-1 text-[13px] font-semibold text-primary"
+            >
+              Open this trip's packing
+              <ChevronRight className="size-4" aria-hidden />
+            </button>
+          </div>
+        )}
+
+        {sheetSection === "offline" && (
+          <div className="plain-card p-3.5">
+            <p className="text-[13px] text-muted-foreground">
+              Download the journeys between stops and Béa keeps the steps on this phone, so you
+              never work them out twice. The trip's plan is kept on this phone too, so once Béa has
+              been opened here with a connection, this trip opens with no signal. Adding directions
+              to the timeline saves the summary only.
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              {cities.stops.length >= 2
+                ? `Covers your ${cities.stops.length} cities, in order.`
+                : "Covers the timeline stops that have a place on the map."}{" "}
+              You can also keep the legs from “Directions between stops” on the trip itself.
+            </p>
+            <button
+              disabled={dir.busy || routeStops.length < 2}
+              onClick={() => void dir.download(routeStops, directionArea, travel)}
+              className="btn-primary mt-3 w-full disabled:opacity-50"
+            >
+              {dir.busy ? "Saving…" : dir.saved ? "Refresh directions" : "Download directions"}
+            </button>
+            {routeStops.length < 2 && (
+              <p className="mt-2 text-[12.5px] text-muted-foreground">
+                Add at least two cities to this trip first (or two timeline entries with places).
+              </p>
+            )}
+            {dir.saved && savedIsStale(dir.saved.signature, routeStops) && (
+              <p className="mt-2 text-[12.5px] text-muted-foreground">
+                Your stops have changed since this was saved — refresh to bring it up to date.
+              </p>
+            )}
+            {dir.error && <p className="mt-2 text-[12.5px] text-destructive">{dir.error}</p>}
+            {dir.saved && (
+              <div className="mt-3 space-y-2">
+                {dir.saved.legs.map((l, i) => (
+                  <details key={i} className="rounded-xl bg-elevated px-3 py-2">
+                    <summary className="cursor-pointer text-[14.5px] font-medium">
+                      {l.from} → {l.to}
+                      <span className="ml-2 text-[12px] font-normal text-muted-foreground">
+                        {l.distance > 0
+                          ? `${modeWord(l.mode)} · ${prettyDistance(l.distance)} · ${prettyDuration(l.duration)}`
+                          : unroutedLegCopy(l)}
+                      </span>
+                    </summary>
+                    <ol className="mt-2 space-y-1">
+                      {l.steps.map((s, k) => (
+                        <li key={k} className="text-[13px] text-muted-foreground">
+                          {s.instruction}
+                          {s.distance > 0 ? ` — ${prettyDistance(s.distance)}` : ""}
+                        </li>
+                      ))}
+                    </ol>
+                    <a
+                      href={l.mapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-[13px] font-semibold text-primary"
+                    >
+                      Open in maps (needs service)
+                    </a>
+                  </details>
+                ))}
+                {dir.saved.unresolved.length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Couldn't find on the map: {dir.saved.unresolved.join(", ")}
+                  </p>
+                )}
+                {(dir.saved.deferred?.length || dir.saved.legs.some((l) => l.capped)) && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Later stretches open in maps — Béa stops looking after a long list.
+                  </p>
+                )}
+                {dayMaps.busy && (
+                  <p className="text-[12px] text-muted-foreground">Saving a map of each day…</p>
+                )}
+                {!dayMaps.busy && Object.keys(dayMaps.maps).length > 0 && (
+                  <p className="text-[12px] text-muted-foreground">
+                    {Object.keys(dayMaps.maps).length} day{" "}
+                    {Object.keys(dayMaps.maps).length === 1 ? "map" : "maps"} saved too — open a day
+                    in the Timeline to see it offline.
+                  </p>
+                )}
+                {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
+                {offlineMap.progress && (
+                  <p className="text-[12px] text-muted-foreground">
+                    Saving the trip's map
+                    {offlineMap.progress.total > 0
