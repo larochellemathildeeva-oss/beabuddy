@@ -1,0 +1,252 @@
+                      ? ` (${Math.round((offlineMap.progress.done / offlineMap.progress.total) * 100)}%)`
+                      : ""}
+                    …
+                  </p>
+                )}
+                {!offlineMap.busy && offlineMap.saved && (
+                  <p className="text-[12px] text-muted-foreground">
+                    The map around each day's stops is saved on this phone (
+                    {prettyMegabytes(offlineMap.saved.bytes)}), so it still pans and zooms with no
+                    signal.
+                  </p>
+                )}
+                {offlineMap.error && (
+                  <p className="text-[12px] text-destructive">{offlineMap.error}</p>
+                )}
+                <button
+                  onClick={() => {
+                    dir.clear();
+                    forgetOfflineTrip(localStorage, trip.id);
+                    dayMaps.clear();
+                    offlineMap.clear();
+                  }}
+                  className="text-[12.5px] text-muted-foreground underline"
+                >
+                  Delete saved directions
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {sheetSection === "photos" && (
+          <StopPhotos
+            scope="trip"
+            title={trip.title}
+            photos={stopPhotos.photos}
+            available={stopPhotos.available}
+            uid={me.id}
+            onAdd={(files) => stopPhotos.add(null, files)}
+            onRemove={stopPhotos.remove}
+          />
+        )}
+
+        {sheetSection === "budget" && (
+          <div className="space-y-2">
+            <TripBudgetSwitch trip={trip} onUpdate={onUpdate} />
+            {trip.budget_enabled && <TripBudget tripId={trip.id} />}
+          </div>
+        )}
+
+        {/* The trip's cities, in order — the route the trip map draws. */}
+        {sheetSection === "cities" && (
+          <TripStops
+            tripId={trip.id}
+            uid={me.id}
+            home={trip}
+            {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
+          />
+        )}
+
+        {sheetSection === "checkup" && checkup && (
+          <TripCheckup
+            findings={checkup}
+            onOpenStop={(id) => {
+              setSettingsOpen(false);
+              setSheetSection(null);
+              jumpToStop(id);
+            }}
+          />
+        )}
+
+        {sheetSection === "preferences" && (
+          <TripPreferencesPanel
+            list={tripPrefs.list}
+            onPhone={tripPrefs.onPhone}
+            onSave={tripPrefs.save}
+          />
+        )}
+
+        {sheetSection === "again" && (
+          <TripAgain
+            trip={trip}
+            items={board.items}
+            stops={cities.stops}
+            onOpenTrip={(id) => {
+              setSettingsOpen(false);
+              void navigate({ to: "/trips/$tripId", params: { tripId: id } });
+            }}
+            onCopiedHere={() => void board.reload()}
+          />
+        )}
+
+        {sheetSection === "customize" && (
+          <div className="plain-card px-3.5 py-1">
+            <TripBarOptions value={barPosition} onChange={setBarPosition} />
+            <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
+          </div>
+        )}
+
+        {sheetSection === "edit" && (
+          <TripDetailsForm trip={trip} onUpdate={onUpdate} onSaved={() => setSettingsOpen(false)} />
+        )}
+      </TripMenuSheet>
+    </article>
+  );
+}
+
+/** The dashed line the day's numbered discs sit on. */
+function RailLine() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-6 left-[calc(0.875rem-1px)] top-6 border-l-2 border-dashed border-primary/35"
+    />
+  );
+}
+
+/**
+ * The Timeline's heading: "Day 1 · Thu, Oct 1" in the serif with the day's
+ * size under it, a round + to add to that day, and ⋯ for the list's options.
+ * Tapping the title folds the day away.
+ */
+function TimelineHead({
+  title,
+  line,
+  open = true,
+  onToggle,
+  onAdd,
+  addLabel,
+  onMore,
+  onDirections,
+  directionsBusy = false,
+  children,
+}: {
+  title: string;
+  line: string;
+  open?: boolean;
+  onToggle?: () => void;
+  onAdd: () => void;
+  addLabel: string;
+  onMore?: () => void;
+  /** Work out the walks and drives between the stops, from the top of the list. */
+  onDirections?: () => void;
+  directionsBusy?: boolean;
+  children?: ReactNode;
+}) {
+  const heading = (
+    <>
+      <span className="flex items-center gap-1.5">
+        <span className="block font-display text-[27px] leading-none">{title}</span>
+        {onToggle ? (
+          <ChevronDown
+            className={`size-4 shrink-0 text-muted-foreground transition-transform ${
+              open ? "" : "-rotate-90"
+            }`}
+            aria-hidden
+          />
+        ) : null}
+      </span>
+      <span className="mt-1 block text-[13.5px] text-muted-foreground">{line}</span>
+      {children}
+    </>
+  );
+  return (
+    <div className="mb-2 flex items-start justify-between gap-2 border-b border-border pb-3">
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className="min-w-0 flex-1 text-left"
+        >
+          {heading}
+        </button>
+      ) : (
+        <div className="min-w-0 flex-1">{heading}</div>
+      )}
+      {onDirections ? (
+        <button
+          type="button"
+          onClick={onDirections}
+          disabled={directionsBusy}
+          aria-label={directionsBusy ? "Working out directions" : "Directions between stops"}
+          title="Get directions"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card text-primary shadow-xs disabled:opacity-60"
+        >
+          <Signpost className={`size-5 ${directionsBusy ? "animate-pulse" : ""}`} aria-hidden />
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={addLabel}
+        title={addLabel}
+        className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
+      >
+        <Plus className="size-6" aria-hidden />
+      </button>
+      {onMore ? (
+        <button
+          type="button"
+          onClick={onMore}
+          aria-label="Timeline options"
+          title="Timeline options"
+          className="grid size-12 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+        >
+          <MoreHorizontal className="size-5" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** One row of choices in the Timeline's ⋯ sheet. */
+function MenuChoice({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+  options: readonly (readonly [boolean, string])[];
+}) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[12px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        {label}
+      </p>
+      <div role="group" aria-label={label} className="flex gap-1 rounded-full bg-elevated p-1">
+        {options.map(([v, text]) => (
+          <button
+            key={text}
+            type="button"
+            aria-pressed={value === v}
+            onClick={() => onChange(v)}
+            className={`min-h-9 flex-1 rounded-full px-3 text-[13px] transition-colors ${
+              value === v
+                ? "bg-primary font-semibold text-primary-foreground"
+                : "text-muted-foreground"
+            }`}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
