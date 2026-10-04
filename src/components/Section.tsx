@@ -54,8 +54,8 @@ export function Section({
 
   const heading = (
     <div className="min-w-0">
-      <p className="font-display text-[16.5px] leading-tight text-foreground">{title}</p>
-      {hint ? <p className="mt-0.5 text-[12.5px] text-muted-foreground">{hint}</p> : null}
+      <p className="font-display text-[16px] leading-tight text-foreground">{title}</p>
+      {hint ? <p className="mt-0.5 text-[13px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 

@@ -175,8 +175,8 @@ function BeaPage() {
 
         <section className="space-y-4">
           <div>
-            <h1 className="font-display text-[30px] leading-none">Personality & assistance</h1>
-            <p className="mt-2 text-[14.5px] text-muted-foreground">
+            <h1 className="font-display text-[34px] leading-[1.1]">Personality & assistance.</h1>
+            <p className="mt-2 text-[16px] text-muted-foreground">
               Choose how Béa sounds, from helpful and practical to funny and playful.
             </p>
           </div>
@@ -200,7 +200,7 @@ function BeaPage() {
             <span className="min-w-0 flex-1">
               <span className="label-caps block">Current mode</span>
               <span className="block font-display text-[22px] leading-tight">{mode}</span>
-              <span className="block text-[12.5px] leading-snug text-muted-foreground">
+              <span className="block text-[13px] leading-snug text-muted-foreground">
                 {preset
                   ? PRESET_INFO[preset].description
                   : "Your own mix. Béa sounds like the traits you turned up."}
@@ -220,7 +220,7 @@ function BeaPage() {
         <section ref={mixRef} className="scroll-mt-4 space-y-3">
           <div>
             <h2 className="font-display text-[27px] leading-none">Set the mix</h2>
-            <p className="mt-1.5 text-[13.5px] text-muted-foreground">
+            <p className="mt-1.5 text-[14px] text-muted-foreground">
               Turn traits up or down. They don't need to add up — Béa works out the shares.
             </p>
           </div>
@@ -248,13 +248,13 @@ function BeaPage() {
                       {percents[trait]}%
                     </span>
                   </span>
-                  <span className="mt-0.5 block pl-[1.875rem] text-[11.5px] leading-snug text-muted-foreground">
+                  <span className="mt-0.5 block pl-[1.875rem] text-[13px] leading-snug text-muted-foreground">
                     {TRAIT_INFO[trait].description}
                   </span>
                 </label>
               );
             })}
-            <p className="rounded-full bg-elevated py-2 text-center text-[13.5px] font-semibold tabular-nums">
+            <p className="rounded-full bg-elevated py-2 text-center text-[14px] font-semibold tabular-nums">
               Total: {total}%
             </p>
             <div className="flex items-center justify-between gap-2">
@@ -269,7 +269,7 @@ function BeaPage() {
                 <RotateCcw className="size-4" aria-hidden />
                 Reset to Balanced
               </button>
-              <span className="text-[12px] text-muted-foreground">Saved as you go</span>
+              <span className="text-[13px] text-muted-foreground">Saved as you go</span>
             </div>
           </div>
         </section>
@@ -277,7 +277,7 @@ function BeaPage() {
         <section className="space-y-3" aria-live="polite">
           <div>
             <h2 className="font-display text-[27px] leading-none">Preview your Béa</h2>
-            <p className="mt-1.5 text-[13.5px] text-muted-foreground">
+            <p className="mt-1.5 text-[14px] text-muted-foreground">
               How the mix sounds. Examples only.
             </p>
           </div>
@@ -295,7 +295,7 @@ function BeaPage() {
                     {line}
                   </p>
                   <span
-                    className={`tile-fill-${(i % 5) + 1} mt-1.5 inline-block rounded-full border border-border/60 px-2.5 py-0.5 text-[11.5px] font-semibold text-muted-foreground`}
+                    className={`tile-fill-${(i % 5) + 1} mt-1.5 inline-block rounded-full border border-border/60 px-2.5 py-0.5 text-[13px] font-semibold text-muted-foreground`}
                   >
                     {TRAIT_INFO[trait].name}
                   </span>
@@ -316,7 +316,7 @@ function BeaPage() {
         <section ref={presetsRef} className="scroll-mt-4 space-y-3">
           <div>
             <h2 className="font-display text-[27px] leading-none">Choose a preset</h2>
-            <p className="mt-1.5 text-[13.5px] text-muted-foreground">
+            <p className="mt-1.5 text-[14px] text-muted-foreground">
               Start with a preset, then customize further if you'd like.
             </p>
           </div>
@@ -339,15 +339,15 @@ function BeaPage() {
                 >
                   <Glyph className={`seq-text-${(i % 5) + 1} size-6 shrink-0`} aria-hidden />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold">
+                    <span className="block text-[16px] font-semibold">
                       {PRESET_INFO[p].name}
                       {preset === p && (
-                        <span className="ml-2 text-[11.5px] font-semibold text-muted-foreground">
+                        <span className="ml-2 text-[13px] font-semibold text-muted-foreground">
                           Current
                         </span>
                       )}
                     </span>
-                    <span className="block text-[12.5px] leading-snug text-muted-foreground">
+                    <span className="block text-[13px] leading-snug text-muted-foreground">
                       {PRESET_INFO[p].description}
                     </span>
                   </span>
@@ -380,7 +380,7 @@ function BeaPage() {
         <section className="space-y-3">
           <div>
             <h2 className="font-display text-[27px] leading-none">Béa's quirks</h2>
-            <p className="mt-1.5 text-[13.5px] text-muted-foreground">Optional and occasional.</p>
+            <p className="mt-1.5 text-[14px] text-muted-foreground">Optional and occasional.</p>
           </div>
           <div className={`${PLAIN} divide-y divide-border/60 px-4`}>
             {(
@@ -400,8 +400,8 @@ function BeaPage() {
             ).map(([key, label, hint]) => (
               <label key={key} className="flex cursor-pointer items-center gap-3 py-3">
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14.5px] font-semibold">{label}</span>
-                  <span className="block text-[12.5px] text-muted-foreground">{hint}</span>
+                  <span className="block text-[16px] font-semibold">{label}</span>
+                  <span className="block text-[13px] text-muted-foreground">{hint}</span>
                 </span>
                 <input
                   type="checkbox"
@@ -417,7 +417,7 @@ function BeaPage() {
               </label>
             ))}
           </div>
-          <p className="px-1 text-[12.5px] leading-relaxed text-muted-foreground">
+          <p className="px-1 text-[13px] leading-relaxed text-muted-foreground">
             Personality changes how Béa says things, never what is true: plans, recommendations,
             prices and directions are the same in every mix. Béa never uses emoji and never tailors
             jokes to a place or culture, and serious moments — payments, security, deleting and
@@ -428,7 +428,7 @@ function BeaPage() {
         <section className="tile-card-4 flex items-start gap-3 p-4">
           <GraduationCap className="seq-text-5 mt-0.5 size-5 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
-            <h2 className="font-sans text-[14.5px] font-semibold">Béa's credentials</h2>
+            <h2 className="font-sans text-[16px] font-semibold">Béa's credentials</h2>
             <p className="text-[13px] text-muted-foreground">{credential}</p>
           </div>
           <button

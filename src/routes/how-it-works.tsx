@@ -84,7 +84,7 @@ function ScenePanel({ scene, index }: { scene: Scene; index: number }) {
         <div className="min-w-0 flex-1">
           <p className="label-caps">{scene.eyebrow}</p>
           <h2 className="mt-1.5 font-display text-[25px] leading-tight">{scene.heading}</h2>
-          <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">{scene.body}</p>
+          <p className="mt-2 text-[16px] leading-relaxed text-muted-foreground">{scene.body}</p>
           <p className="mt-3 font-display text-[17px] leading-snug text-primary">
             {scene.signature}
           </p>
@@ -107,7 +107,7 @@ function HowItWorksPage() {
     <AppShell publicPage eyebrow="How it works" title={HOW_CLOSING.helps}>
       <div className="space-y-12 pb-4">
         <div className="space-y-3">
-          <p className="text-[15px] leading-relaxed text-muted-foreground">
+          <p className="text-[16px] leading-relaxed text-muted-foreground">
             Béa starts from what you saved and who told you about it, not a list invented for you —
             and remembers where you have been for next time. Here is the whole of it, in order.
           </p>
@@ -115,7 +115,7 @@ function HowItWorksPage() {
             <button
               type="button"
               onClick={() => setWatching(true)}
-              className="btn-primary flex items-center gap-2 px-4 py-2.5 text-[14.5px]"
+              className="btn-primary flex items-center gap-2 px-4 py-2.5 text-[16px]"
             >
               <PlayCircle className="size-4" aria-hidden />
               {WATCH_LABEL}
@@ -129,20 +129,20 @@ function HowItWorksPage() {
 
         <section className="surface border border-border/50 p-5 text-center">
           <p className="font-display text-[24px] leading-tight">{HOW_CLOSING.tagline}</p>
-          <p className="mx-auto mt-2 max-w-md text-[14.5px] text-muted-foreground">
+          <p className="mx-auto mt-2 max-w-md text-[16px] text-muted-foreground">
             {HOW_CLOSING.helps}
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <Link
               to="/auth"
               search={{ mode: "signup" }}
-              className="btn-primary px-4 py-3 text-center text-[14.5px]"
+              className="btn-primary px-4 py-3 text-center text-[16px]"
             >
               Start free
             </Link>
             <Link
               to="/help"
-              className="rounded-xl border border-border px-4 py-3 text-center text-[14.5px] font-semibold"
+              className="rounded-xl border border-border px-4 py-3 text-center text-[16px] font-semibold"
             >
               Questions and answers
             </Link>

@@ -126,7 +126,7 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
   const overview = (
     <>
       <h2 className="mt-1.5 font-display text-[20px] leading-tight">{guide.name}</h2>
-      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{guide.about}</p>
+      <p className="mt-1.5 text-[16px] leading-relaxed text-muted-foreground">{guide.about}</p>
       <p className="label-caps mt-3 text-foreground">What you can do here</p>
       <ul className="mt-1.5 max-h-[40dvh] space-y-1.5 overflow-y-auto text-[14px] leading-snug">
         {guide.features.map((feature) => (
@@ -149,14 +149,14 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
         {steps.length > 0 && (
           <button
             onClick={() => setI(0)}
-            className="flex-1 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+            className="flex-1 whitespace-nowrap rounded-xl bg-primary px-4 py-2 text-[16px] font-semibold text-primary-foreground"
           >
             Show me around
           </button>
         )}
         <button
           onClick={() => setOpen(false)}
-          className={`flex-1 rounded-xl px-4 py-2 text-[14.5px] font-semibold ${
+          className={`flex-1 rounded-xl px-4 py-2 text-[16px] font-semibold ${
             steps.length > 0 ? "border border-border" : "bg-primary text-primary-foreground"
           }`}
         >
@@ -169,9 +169,9 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
   const walk = step ? (
     <>
       <h2 className="mt-1.5 font-display text-[20px] leading-tight">{step.title}</h2>
-      <p className="mt-1.5 text-[14.5px] leading-relaxed text-muted-foreground">{step.body}</p>
+      <p className="mt-1.5 text-[16px] leading-relaxed text-muted-foreground">{step.body}</p>
       {!box && (
-        <p className="mt-1.5 text-[12px] italic text-muted-foreground">
+        <p className="mt-1.5 text-[13px] italic text-muted-foreground">
           This part isn't on screen right now.
         </p>
       )}
@@ -188,13 +188,13 @@ export function PageGuide({ round = false }: { round?: boolean } = {}) {
       <div className="mt-3 flex gap-2">
         <button
           onClick={() => setI(i - 1)}
-          className="flex-1 rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
+          className="flex-1 rounded-xl border border-border px-4 py-2 text-[16px] font-semibold"
         >
           Back
         </button>
         <button
           onClick={() => (last ? setOpen(false) : setI(i + 1))}
-          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+          className="flex-1 rounded-xl bg-primary px-4 py-2 text-[16px] font-semibold text-primary-foreground"
         >
           {last ? "Got it" : "Next"}
         </button>

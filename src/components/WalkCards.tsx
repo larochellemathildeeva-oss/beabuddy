@@ -29,10 +29,8 @@ export function WalkCards({ onPick }: { onPick?: () => void }) {
                 <Icon className="size-5" aria-hidden />
               </span>
               <span className="min-w-0">
-                <span className="block text-[15.5px] font-semibold leading-snug">{walk.title}</span>
-                <span className="mt-0.5 block text-[13.5px] text-muted-foreground">
-                  {walk.hint}
-                </span>
+                <span className="block text-[16px] font-semibold leading-snug">{walk.title}</span>
+                <span className="mt-0.5 block text-[14px] text-muted-foreground">{walk.hint}</span>
               </span>
             </div>
             <div className="mt-auto flex gap-2">

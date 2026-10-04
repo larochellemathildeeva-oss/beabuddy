@@ -40,5 +40,17 @@ export const createFileRoute = () => (options: any) => ({
     history.replaceState(null, "", url);
     searchListeners.forEach((cb) => cb());
   },
-  useParams: () => ({}),
+  useParams: () => ({ token: "preview" }),
+  // The shared page's loader, with a small plan to show.
+  useLoaderData: () => ({
+    title: "Hiroshima",
+    place: "Hiroshima, Japan",
+    startDate: "2026-10-07",
+    endDate: "2026-10-08",
+    following: false,
+    days: [
+      { day: "2026-10-07", zone: "Asia/Tokyo", stops: [{ time: "09:30", title: "Peace Memorial Park", kind: "activity", address: "1-2 Nakajimacho" }, { time: "12:30", title: "Okonomiyaki at Nagata-ya", kind: "food", address: "1-7-19 Otemachi" }] },
+      { day: "2026-10-08", zone: "Asia/Tokyo", stops: [{ time: "10:00", title: "Miyajima ferry", kind: "transit", address: "Miyajimaguchi" }] },
+    ],
+  }),
 });

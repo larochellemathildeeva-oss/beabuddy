@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { BrandMark } from "@/components/PageHeader";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { AUTH_SUBMIT, AuthField } from "@/components/AuthField";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,14 +52,14 @@ function ForgotPasswordPage() {
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
         <div className="flex flex-1 flex-col justify-center">
-          <p className="label-caps">Béa</p>
-          <h1 className="mt-2 text-[30px] leading-[1.05]">Forgot your password?</h1>
-          <p className="mt-2 text-[14.5px] text-muted-foreground">
+          <BrandMark large />
+          <h1 className="mt-6 font-display text-[40px] leading-[1.1]">Forgot your password?</h1>
+          <p className="mt-2 text-[16px] text-muted-foreground">
             Enter the email on your account and we'll send you a link to choose a new password.
           </p>
 
           {sent ? (
-            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[14.5px]">
+            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[16px]">
               If that email has a Béa account, a reset link is on its way. Check your inbox (and
               your spam folder) and tap the link within the hour.
             </p>
@@ -87,7 +88,7 @@ function ForgotPasswordPage() {
 
           <Link
             to="/auth"
-            className="mt-4 inline-flex min-h-11 items-center self-start text-[14.5px] text-muted-foreground underline underline-offset-4"
+            className="mt-4 inline-flex min-h-11 items-center self-start text-[16px] text-muted-foreground underline underline-offset-4"
           >
             Back to sign in
           </Link>

@@ -157,7 +157,7 @@ function MemoriesPage() {
           data-guide="city-memories"
           className="card-soft flex items-center justify-between gap-3 p-4"
         >
-          <p className="text-[14.5px] text-muted-foreground">
+          <p className="text-[16px] text-muted-foreground">
             {loading
               ? "Opening your memories…"
               : `${rows.length} photo${rows.length === 1 ? "" : "s"} across ${groups.length} place${
@@ -186,7 +186,7 @@ function MemoriesPage() {
         {loading && groups.length === 0 && <ContentCardSkeleton media />}
 
         {!loading && groups.length === 0 && (
-          <p className="card-soft p-5 text-[15px] text-muted-foreground">
+          <p className="card-soft p-5 text-[16px] text-muted-foreground">
             Nothing here yet. Import a few photos and Béa will sort them into city pages using the
             location saved inside each picture.
           </p>
@@ -245,7 +245,7 @@ function MemoriesPage() {
                       <p className="label-caps">Visits</p>
                       <ul className="mt-2 space-y-1.5">
                         {g.visits.map((v) => (
-                          <li key={v.start} className="text-[14.5px]">
+                          <li key={v.start} className="text-[16px]">
                             <span className="font-semibold">{prettyDate(v.start)}</span>
                             {v.start.slice(0, 10) !== v.end.slice(0, 10) && (
                               <span> – {prettyDate(v.end)}</span>
@@ -263,7 +263,7 @@ function MemoriesPage() {
                   <div data-guide="future-me">
                     <p className="label-caps">Future Me notes</p>
                     {cityNotes.length === 0 && (
-                      <p className="mt-1 text-[14.5px] text-muted-foreground">
+                      <p className="mt-1 text-[16px] text-muted-foreground">
                         Nothing yet. Leave a note for the next time you land here.
                       </p>
                     )}
@@ -273,14 +273,14 @@ function MemoriesPage() {
                           key={n.id}
                           className="rounded-xl border border-border bg-card px-3 py-2"
                         >
-                          <p className="font-display text-[15px] leading-snug">“{n.note}”</p>
+                          <p className="font-display text-[16px] leading-snug">“{n.note}”</p>
                           <div className="mt-1 flex items-center justify-between">
-                            <span className="text-[12px] text-muted-foreground">
+                            <span className="text-[13px] text-muted-foreground">
                               {prettyDate(n.created_at)}
                             </span>
                             <button
                               onClick={() => void notes.remove(n.id)}
-                              className="text-[12px] font-semibold text-muted-foreground"
+                              className="text-[13px] font-semibold text-muted-foreground"
                             >
                               Delete
                             </button>
@@ -293,7 +293,7 @@ function MemoriesPage() {
                         value={isOpen ? draft : ""}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder="Next time, stay near the old town…"
-                        className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-[14.5px]"
+                        className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-[16px]"
                       />
                       <button
                         disabled={saving || !draft.trim()}
@@ -308,7 +308,7 @@ function MemoriesPage() {
                   <div>
                     <p className="label-caps">Waiting for you here</p>
                     {cityRecos.length === 0 ? (
-                      <p className="mt-1 text-[14.5px] text-muted-foreground">
+                      <p className="mt-1 text-[16px] text-muted-foreground">
                         No saved recommendations in {g.city} yet.
                       </p>
                     ) : (
@@ -318,7 +318,7 @@ function MemoriesPage() {
                             key={r.id}
                             className="rounded-xl border border-border bg-card px-3 py-2"
                           >
-                            <p className="text-[15px] font-semibold">{r.name}</p>
+                            <p className="text-[16px] font-semibold">{r.name}</p>
                             <p className="text-[13px] text-muted-foreground">
                               {r.category ? `${r.category} · ` : ""}
                               {r.recommended_by

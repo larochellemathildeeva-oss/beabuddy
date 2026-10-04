@@ -58,6 +58,7 @@ await build({
     "@tanstack/react-start/server": join(src, "fake-start.ts"),
     "@tanstack/react-router": join(src, "fake-router.tsx"),
     "@/lib/directions.functions": join(src, "fake-directions.ts"),
+    "@/lib/rates.functions": join(src, "fake-rates.ts"),
     "@/lib/itinerary.functions": join(src, "fake-itinerary.ts"),
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "@/lib/place-details.functions": join(src, "fake-place-details.ts"),

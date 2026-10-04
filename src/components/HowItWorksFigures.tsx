@@ -26,7 +26,7 @@ const Card = ({
   style?: React.CSSProperties;
 }) => (
   <div
-    className={`rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-[11.5px] shadow-sm ${className}`}
+    className={`rounded-xl border border-border/70 bg-card px-2.5 py-1.5 text-[13px] shadow-sm ${className}`}
     style={style}
   >
     {children}
@@ -59,7 +59,7 @@ function Scatter() {
 function Capture() {
   return (
     <div className="flex h-[168px] w-full flex-col justify-center gap-2">
-      <div className="truncate rounded-xl border border-border bg-elevated px-3 py-2 text-[11.5px] text-muted-foreground">
+      <div className="truncate rounded-xl border border-border bg-elevated px-3 py-2 text-[13px] text-muted-foreground">
         example.com/10-hidden-gems-lisbon
       </div>
       {[
@@ -70,7 +70,7 @@ function Capture() {
         <Card key={place.name} className="flex items-center gap-2">
           <MapPin className="size-3 shrink-0 text-primary" aria-hidden />
           <span className="min-w-0 flex-1 truncate font-medium">{place.name}</span>
-          <span className="shrink-0 text-[10.5px] text-muted-foreground">{place.where}</span>
+          <span className="shrink-0 text-[13px] text-muted-foreground">{place.where}</span>
           <span
             aria-hidden
             className={`size-3 shrink-0 rounded-[4px] border ${
@@ -96,7 +96,7 @@ function Vault() {
         {kinds.map((kind) => (
           <span
             key={kind.label}
-            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11.5px]"
+            className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[13px]"
           >
             <span className={`size-1.5 rounded-full ${kind.tone}`} aria-hidden />
             {kind.label}
@@ -110,7 +110,7 @@ function Vault() {
         ].map((row) => (
           <Card key={row.name} className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
-            <span className="shrink-0 text-[10.5px] text-muted-foreground">{row.by}</span>
+            <span className="shrink-0 text-[13px] text-muted-foreground">{row.by}</span>
           </Card>
         ))}
       </div>
@@ -126,10 +126,10 @@ function Assemble() {
   ];
   return (
     <div className="flex h-[168px] w-full flex-col justify-center gap-2">
-      <p className="text-[10.5px] uppercase tracking-wider text-muted-foreground">Thu · Sep 17</p>
+      <p className="text-[13px] uppercase tracking-wider text-muted-foreground">Thu · Sep 17</p>
       {rows.map((row) => (
         <div key={row.name} className="flex items-center gap-2.5">
-          <span className="w-[38px] shrink-0 text-[11.5px] font-semibold tabular-nums">
+          <span className="w-[38px] shrink-0 text-[13px] font-semibold tabular-nums">
             {row.time}
           </span>
           <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary-soft text-primary/85">
@@ -151,8 +151,8 @@ function Nearby() {
             <MapPin className="size-3.5" aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[12.5px] font-semibold">You saved a place two streets away</p>
-            <p className="text-[11.5px] text-muted-foreground">
+            <p className="text-[13px] font-semibold">You saved a place two streets away</p>
+            <p className="text-[13px] text-muted-foreground">
               Bar Raval · saved 11 months ago · by Sarah
             </p>
           </div>
@@ -171,14 +171,14 @@ function Compare() {
           { label: "Plan B", note: "90 min on the bridge" },
         ].map((plan, i) => (
           <Card key={plan.label} className={i === 0 ? "border-primary/50" : ""}>
-            <p className="text-[11.5px] font-semibold">{plan.label}</p>
-            <p className="mt-0.5 text-[10.5px] text-muted-foreground">{plan.note}</p>
+            <p className="text-[13px] font-semibold">{plan.label}</p>
+            <p className="mt-0.5 text-[13px] text-muted-foreground">{plan.note}</p>
           </Card>
         ))}
       </div>
       <div className="rounded-xl bg-primary-soft px-3 py-2">
-        <p className="text-[11.5px] font-semibold text-primary">Béa would take A.</p>
-        <p className="text-[10.5px] text-muted-foreground">
+        <p className="text-[13px] font-semibold text-primary">Béa would take A.</p>
+        <p className="text-[13px] text-muted-foreground">
           Slower mornings, and the food you said you wanted.
         </p>
       </div>
@@ -274,7 +274,7 @@ function MapFills() {
           />
         ))}
       </svg>
-      <p className="absolute inset-x-0 bottom-2 text-center text-[10.5px] text-muted-foreground">
+      <p className="absolute inset-x-0 bottom-2 text-center text-[13px] text-muted-foreground">
         Six years, one map
       </p>
     </div>
