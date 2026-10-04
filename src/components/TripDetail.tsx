@@ -1860,7 +1860,7 @@ export function TripDetail({
                 <p className="font-display text-[24px] leading-tight">
                   {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
                 </p>
-                <p className="text-[14px] text-muted-foreground">
+                <p className="text-[16px] leading-snug text-muted-foreground">
                   {stopItems.length === 0
                     ? "Add stops in the Timeline, or let Béa draft the days from a plan you already have."
                     : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
@@ -1874,7 +1874,7 @@ export function TripDetail({
                         setPlannerTab("build");
                         setPlannerOpen(true);
                       }}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13.5px] font-semibold text-primary-foreground"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
                     >
                       <img src={logo} alt="" className="size-5 object-contain" />
                       Plan with Béa
@@ -1882,7 +1882,7 @@ export function TripDetail({
                     <button
                       type="button"
                       onClick={() => setAddOpen(true)}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[13.5px] font-semibold"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold"
                     >
                       <Plus className="size-4 text-primary" aria-hidden />
                       Add a stop
@@ -1903,13 +1903,13 @@ export function TripDetail({
                           key={chip.key || "undated"}
                           type="button"
                           onClick={() => setDayChoice(chip.key)}
-                          className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[13px] font-semibold"
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[16px] font-semibold"
                         >
                           {chip.ordinal ? (
                             <span className="text-primary">{chip.ordinal}</span>
                           ) : null}
                           {chip.label}
-                          <span className="text-[11.5px] font-normal text-muted-foreground">
+                          <span className="text-[13px] font-normal text-muted-foreground">
                             {chip.count}
                           </span>
                         </button>
