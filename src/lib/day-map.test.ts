@@ -182,4 +182,8 @@ test("the chips and the sheet leave the day room on a short phone", () => {
   // A stage smaller than its padding keeps nothing back, never less than 0.
   assert.deepEqual(mapInsets(60, 50, 50, 44), { top: 0, bottom: 0 });
   assert.deepEqual(mapInsets(500, -5, 10, 44), { top: 0, bottom: 10 });
+  // A chosen stop is placed against what really covers the map: where the
+  // whole day would have the sheet shrunk, a stop keeps all of it back.
+  assert.ok(mapInsets(600, 120, 290, 44).bottom < 290);
+  assert.deepEqual(mapInsets(600, 120, 290, 16, 0.15), { top: 120, bottom: 290 });
 });

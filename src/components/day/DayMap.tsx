@@ -128,14 +128,17 @@ export function DayMap({
   const select = useRef(onSelect);
   select.current = onSelect;
 
-  // The space the chips and the sheet keep clear, shrunk to leave the day
-  // room on a short stage (`mapInsets`).
-  const clearOf = (m: Leaflet.Map) => {
-    const { top, bottom } = mapInsets(m.getSize().y, insetTop, insetBottom, FIT_PADDING[1]);
-    return { top, bottom };
-  };
-  // Set once the reader drags, pinches or scrolls the map, so a sheet that
-  // grows afterwards does not frame the whole day again over their view.
+  // The space the chips and the sheet keep clear, shrunk to leave the whole
+  // day room on a short stage (`mapInsets`). A chosen stop is placed against
+  // what the chips and the sheet really cover, shrunk only when they cover
+  // nearly all of it, so it is never left under the sheet.
+  const clearOf = (m: Leaflet.Map) =>
+    mapInsets(m.getSize().y, insetTop, insetBottom, FIT_PADDING[1]);
+  const clearForStop = (m: Leaflet.Map) =>
+    mapInsets(m.getSize().y, insetTop, insetBottom, PIN_EDGE_MARGIN, 0.15);
+  // Set once the reader drags, pinches, taps or uses the keys on the map, so
+  // a sheet that grows afterwards does not frame the whole day again over
+  // their view.
   const touched = useRef(false);
   const lastFit = useRef("");
 
@@ -217,11 +220,13 @@ export function DayMap({
         touched.current = true;
       };
       const box = container.current;
+      // No wheel: wheel zoom is off, so a wheel over the map scrolls the page.
+      // Keys pan and zoom it (Leaflet's keyboard, and its zoom buttons).
       box.addEventListener("pointerdown", moved, { passive: true });
-      box.addEventListener("wheel", moved, { passive: true });
+      box.addEventListener("keydown", moved);
       unlisten = () => {
         box.removeEventListener("pointerdown", moved);
-        box.removeEventListener("wheel", moved);
+        box.removeEventListener("keydown", moved);
       };
 
       leaflet.current = L;
@@ -280,6 +285,7 @@ export function DayMap({
     // A layout change resizes the box; measure it before fitting to it.
     m.invalidateSize();
     const clear = clearOf(m);
+    const clearStop = clearForStop(m);
     // Focus with a stop chosen frames that stop instead, below — but the
     // map needs some view before the name tag can be placed, so a map
     // opening on a stop starts on it.
@@ -288,7 +294,7 @@ export function DayMap({
       if (!Number.isFinite(m.getZoom() as number | undefined)) {
         const at = m
           .project([followed.lat, followed.lon], FOLLOW_ZOOM)
-          .add([0, (clear.bottom - clear.top) / 2]);
+          .add([0, (clearStop.bottom - clearStop.top) / 2]);
         m.setView(m.unproject(at, FOLLOW_ZOOM), FOLLOW_ZOOM, { animate: false });
       }
       return;
@@ -299,7 +305,7 @@ export function DayMap({
       const zoom = SINGLE_STOP_ZOOM;
       const pin = pins[0]!;
       const centre = m.unproject(
-        m.project([pin.lat, pin.lon], zoom).add([0, (clear.bottom - clear.top) / 2]),
+        m.project([pin.lat, pin.lon], zoom).add([0, (clearStop.bottom - clearStop.top) / 2]),
         zoom,
       );
       m.setView(centre, zoom, { animate });
@@ -419,7 +425,7 @@ export function DayMap({
     const pin = pins.find((p) => p.id === selectedId);
     if (!pin) return;
     const target: [number, number] = [pin.lat, pin.lon];
-    const clear = clearOf(m);
+    const clear = clearForStop(m);
     if (follow) {
       // Centre the stop in the part of the map the card leaves uncovered.
       // A map opened on a stop has no view yet: Leaflet's zoom is unset
