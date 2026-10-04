@@ -385,7 +385,7 @@ function TripsPage() {
                       <span className="min-w-0 flex-1">
                         <span className="block text-[16px] font-semibold">
                           {lists.drafts.length} {lists.drafts.length === 1 ? "draft" : "drafts"}{" "}
-                          with no dates yet
+                          with dates to set
                         </span>
                         <span className="block text-[14px] text-muted-foreground">
                           {lists.drafts

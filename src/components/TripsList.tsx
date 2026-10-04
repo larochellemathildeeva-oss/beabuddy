@@ -324,7 +324,7 @@ export function TripsHero({
                   }}
                 >
                   <MapPin
-                    className={`size-4 shrink-0 ${live ? "text-primary" : "text-[#d98b0b]"}`}
+                    className={`size-4 shrink-0 ${live ? "text-primary" : "text-warning"}`}
                     aria-hidden
                   />
                   <span className="min-w-0 leading-tight">

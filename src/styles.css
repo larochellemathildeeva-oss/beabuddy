@@ -1793,7 +1793,7 @@
   color: var(--primary-foreground);
 }
 .trips-row-tag[data-tone="draft"] {
-  background: color-mix(in oklab, #f2c94c 30%, var(--card));
+  background: color-mix(in oklab, var(--warning) 22%, var(--card));
 }
 .trips-action {
   display: flex;
