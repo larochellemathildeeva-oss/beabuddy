@@ -215,7 +215,7 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
  * The frame's width: the column's width in pixels, never under the phone frame
  * (a narrower phone scales the phone frame down, as before).
  */
-function useFrameWidth(el: SVGSVGElement | null): number {
+function useFrameWidth(el: SVGSVGElement | null, min = ROUTE_MAP_W): number {
   const [width, setWidth] = useState(ROUTE_MAP_W);
   // Measured before paint, so a wide column never shows the phone frame first;
   // resizes are taken once a frame, since each one re-projects the coastline.
@@ -223,7 +223,7 @@ function useFrameWidth(el: SVGSVGElement | null): number {
     if (!el) return;
     const read = () => {
       const w = el.getBoundingClientRect().width;
-      if (w > 0) setWidth(Math.max(ROUTE_MAP_W, Math.round(w)));
+      if (w > 0) setWidth(Math.max(min, Math.round(w)));
     };
     read();
     if (typeof ResizeObserver === "undefined") return;
@@ -237,7 +237,7 @@ function useFrameWidth(el: SVGSVGElement | null): number {
       cancelAnimationFrame(frame);
       watch.disconnect();
     };
-  }, [el]);
+  }, [el, min]);
   return width;
 }
 
@@ -352,7 +352,9 @@ export function TripBannerMap({
 }) {
   const id = useId().replace(/:/g, "");
   const [svg, setSvg] = useState<SVGSVGElement | null>(null);
-  const width = useFrameWidth(svg);
+  // Its real width, never the phone frame: the banner's height is fixed, so a
+  // wider frame would be cropped at the sides and cut a name off.
+  const width = useFrameWidth(svg, 0);
   const [relief, setRelief] = useState<ReliefIndex | null>(null);
   useEffect(() => {
     let live = true;
@@ -407,7 +409,10 @@ export function TripBannerMap({
 
   if (!drawn) return null;
   const { dots, labels, tiles } = drawn;
-  const behind = Math.max(0, Math.min(done, dots.length - 1));
+  // Dots behind you: every one once the trip is over. The line in the accent
+  // stops at the last dot.
+  const behind = Math.max(0, Math.min(done, dots.length));
+  const lineTo = Math.min(behind, dots.length - 1);
 
   return (
     <svg
@@ -443,8 +448,8 @@ export function TripBannerMap({
         <>
           <path d={smoothPath(dots)} className="banner-route-glow" filter={`url(#${id}-glow)`} />
           <path d={smoothPath(dots)} className="banner-route" />
-          {behind > 0 ? (
-            <path d={smoothPath(dots.slice(0, behind + 1))} className="banner-route-done" />
+          {lineTo > 0 ? (
+            <path d={smoothPath(dots.slice(0, lineTo + 1))} className="banner-route-done" />
           ) : null}
         </>
       ) : null}

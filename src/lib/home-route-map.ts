@@ -80,15 +80,39 @@ export function distanceKm(
  * town after the town) counted once.
  */
 export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
+  return routeStopsIndexed(stops).route;
+}
+
+/**
+ * `routeStops`, and for each stop given, which of the map's stops it became
+ * (-1 when it has no position). A city visited twice, apart, is two map stops,
+ * so this, not the name, says which visit a dated stop is.
+ */
+export function routeStopsIndexed(stops: readonly RouteStopInput[]): {
+  route: RouteStop[];
+  indexOf: number[];
+} {
   const out: RouteStop[] = [];
+  const indexOf: number[] = [];
   for (const s of stops) {
     // A position off the globe (a typo, a swapped pair) is left off the map
     // rather than thrown across it.
-    if (s.lat === null || s.lon === null || !Number.isFinite(s.lat) || !Number.isFinite(s.lon))
+    if (
+      s.lat === null ||
+      s.lon === null ||
+      !Number.isFinite(s.lat) ||
+      !Number.isFinite(s.lon) ||
+      Math.abs(s.lat) > 85 ||
+      Math.abs(s.lon) > 180
+    ) {
+      indexOf.push(-1);
       continue;
-    if (Math.abs(s.lat) > 85 || Math.abs(s.lon) > 180) continue;
+    }
     const city = s.city.trim();
-    if (!city) continue;
+    if (!city) {
+      indexOf.push(-1);
+      continue;
+    }
     const days = stayDays(s.arrive_on, s.depart_on);
     const last = out.at(-1);
     // The same place twice in a row is one stop on the map: the same name, or
@@ -99,11 +123,13 @@ export function routeStops(stops: readonly RouteStopInput[]): RouteStop[] {
         distanceKm(last, { lat: s.lat, lon: s.lon }) < SAME_PLACE_KM)
     ) {
       if (days !== null) last.days = (last.days ?? 0) + days;
+      indexOf.push(out.length - 1);
       continue;
     }
     out.push({ city, country: s.country ?? null, lat: s.lat, lon: s.lon, days });
+    indexOf.push(out.length - 1);
   }
-  return out;
+  return { route: out, indexOf };
 }
 
 /** A longitude in −180…180. */
@@ -512,11 +538,4 @@ export function placeLabels(
     out.push({ index, x: fit.x, y: dot.y, anchor: fit.anchor });
   }
   return out.sort((a, b) => a.index - b.index);
-}
-
-/** Which of the map's stops is this city: the first with its name, else -1. */
-export function routeIndexOf(stops: readonly RouteStop[], city: string | null | undefined): number {
-  const name = (city ?? "").split(",")[0]?.trim().toLowerCase() ?? "";
-  if (!name) return -1;
-  return stops.findIndex((s) => (s.city.split(",")[0] ?? "").trim().toLowerCase() === name);
 }

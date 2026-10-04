@@ -1585,11 +1585,16 @@
   fill: var(--acc2, var(--primary));
 }
 .route-map .banner-label {
-  fill: #ffffff;
+  /* Dark words in a thick white halo: legible over any terrain, the pale
+     sea of Calm included, at well over 4.5:1 against their own halo. */
+  fill: #1b1918;
+  stroke: rgb(255 255 255 / 0.94);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  paint-order: stroke;
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 650;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.7)) drop-shadow(0 0 6px rgb(0 0 0 / 0.3));
 }
 .route-map .banner-label-here {
   font-size: 16px;

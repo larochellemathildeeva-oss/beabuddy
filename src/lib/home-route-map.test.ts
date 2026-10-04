@@ -11,8 +11,8 @@ import {
   placeLabels,
   placePills,
   reliefTiles,
-  routeIndexOf,
   routeStops,
+  routeStopsIndexed,
   smoothPath,
   stayDays,
   stayLabel,
@@ -348,13 +348,17 @@ test("placeLabels drops a middle name that would cover another, never the ends",
   assert.ok(kept.some((l) => l.index === 1));
 });
 
-test("routeIndexOf matches a city by its own name", () => {
-  const stops = [
-    { city: "Paris", country: "France", lat: 48.8, lon: 2.3, days: 2 },
-    { city: "Prague", country: "Czechia", lat: 50, lon: 14.4, days: 1 },
-  ];
-  assert.equal(routeIndexOf(stops, "Prague, Czechia"), 1);
-  assert.equal(routeIndexOf(stops, "prague"), 1);
-  assert.equal(routeIndexOf(stops, "Rome"), -1);
-  assert.equal(routeIndexOf(stops, null), -1);
+test("routeStopsIndexed tells a return visit from the first", () => {
+  const { route, indexOf } = routeStopsIndexed([
+    { city: "Paris", lat: 48.86, lon: 2.35 },
+    { city: "Lyon", lat: 45.76, lon: 4.84 },
+    { city: "Paris", lat: 48.86, lon: 2.35 },
+    { city: "Nowhere", lat: null, lon: null },
+    { city: "Paris 2e", lat: 48.87, lon: 2.34 },
+  ]);
+  assert.deepEqual(
+    route.map((s) => s.city),
+    ["Paris", "Lyon", "Paris"],
+  );
+  assert.deepEqual(indexOf, [0, 1, 2, -1, 2]);
 });

@@ -72,8 +72,8 @@ import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import { useTripPicture } from "@/hooks/useTripPicture";
 import { useCityPositions } from "@/hooks/useCityPositions";
-import { tripCityStop, withCityPositions } from "@/lib/city-position";
-import { routeIndexOf, routeStops as mapRouteStops } from "@/lib/home-route-map";
+import { tripCityStop, withCityPositions, type CityStop } from "@/lib/city-position";
+import { routeStopsIndexed as mapRouteStopsIndexed } from "@/lib/home-route-map";
 import {
   TripMenuSheet,
   type BookingTile,
@@ -297,18 +297,6 @@ export function TripDetail({
   };
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id, trip);
-  // The banner's Stops picture: the trip's cities on Home's terrain. A
-  // one-city trip keeps its city on the trip; a city typed rather than picked
-  // is found by its name, as on Home.
-  const bannerCityStops = useMemo(
-    () => (cities.stops.length || cities.loading ? cities.stops : tripCityStop(trip)),
-    [cities.stops, cities.loading, trip],
-  );
-  const bannerPositions = useCityPositions(bannerCityStops);
-  const bannerRoute = useMemo(
-    () => mapRouteStops(withCityPositions(bannerCityStops, bannerPositions)),
-    [bannerCityStops, bannerPositions],
-  );
   /**
    * The cities you can move between. A trip whose second city was added
    * before its first was kept still lists its first, from the trip itself.
@@ -320,6 +308,20 @@ export function TripDetail({
       : cities.stops;
   }, [cities.stops, cities.missingHome]);
   const routeCities = useMemo(() => destinationCities(fullRoute), [fullRoute]);
+  // The banner's Stops picture: the trip's cities (its first included, as
+  // above) on Home's terrain. A one-city trip keeps its city on the trip; a
+  // city typed rather than picked is found by its name, as on Home.
+  const bannerCityStops = useMemo(
+    (): readonly CityStop[] =>
+      fullRoute.length || cities.loading ? fullRoute : tripCityStop(trip),
+    [fullRoute, cities.loading, trip],
+  );
+  const bannerPositions = useCityPositions(bannerCityStops);
+  const banner = useMemo(
+    () => mapRouteStopsIndexed(withCityPositions(bannerCityStops, bannerPositions)),
+    [bannerCityStops, bannerPositions],
+  );
+  const bannerRoute = banner.route;
   /** The city picked in the switcher, by stop id; "" for every city. */
   const [cityChoice, setCityChoice] = useState("");
   const chosenCity =
@@ -1385,20 +1387,22 @@ export function TripDetail({
       })
     : "";
   const cityNames = cities.stops.map((stop) => stop.city);
-  // On the banner's map: the city you are in today is ringed and the ones
-  // before it are behind you; a day view rings the city of the day it shows.
+  // On the banner's map, the hollow dots are the cities really behind you
+  // (all of them once the trip is over) and the ring is the city of the day
+  // the page shows: today on Overview. Matched by the dated stop itself, not
+  // its name, so a return visit rings the second dot.
   const onTripToday = Boolean(
     trip.start_date && trip.start_date <= todayKey && (!trip.end_date || todayKey <= trip.end_date),
   );
-  const todayCity = onTripToday
-    ? routeIndexOf(bannerRoute, routeCityOn(cities.stops, todayKey))
-    : -1;
+  const bannerIndexOn = (day: string | null | undefined) => {
+    const stop = routeStopOn(bannerCityStops, day);
+    return stop ? (banner.indexOf[bannerCityStops.indexOf(stop)] ?? -1) : -1;
+  };
+  const todayCity = onTripToday ? bannerIndexOn(todayKey) : -1;
   const bannerDone =
     trip.end_date && trip.end_date < todayKey ? bannerRoute.length : Math.max(0, todayCity);
   const bannerCurrent =
-    perspective !== "overview" && companionDay?.key
-      ? routeIndexOf(bannerRoute, routeCityOn(cities.stops, companionDay.key))
-      : todayCity;
+    perspective !== "overview" && companionDay?.key ? bannerIndexOn(companionDay.key) : todayCity;
   const tripArt = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],

@@ -88,6 +88,9 @@ export function TripPageBanner({
   // "No pictures" (You → Appearance) still leaves the map: it is the route,
   // not a picture of the place.
   const [pictures] = useStopPictures();
+  // Photo is the traveller's own choice for this banner (owner decision for
+  // the revamp), so it shows a real photo whatever "Real photos" says for
+  // stop and place pictures; only "No pictures" turns it off.
   const showStops = picture === "stops" && route.length > 0;
   const wantPhoto = !showStops && pictures !== "none";
   const town = useTownPhoto(city || cities[0], country, wantPhoto && !photo);
@@ -178,7 +181,7 @@ export function TripPageBanner({
           {credited ? (
             <p
               title={photoCredit(credited)}
-              className="mb-2 w-fit max-w-full truncate rounded-full bg-black/45 px-2.5 py-1 text-[13px] text-white"
+              className="mb-2 w-fit max-w-full truncate rounded-full bg-black/80 px-2.5 py-1 text-[13px] text-white"
             >
               {photoCredit(credited)}
             </p>
