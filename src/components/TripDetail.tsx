@@ -275,7 +275,7 @@ export function TripDetail({
       Object.keys(schedule).length > 0
         ? changeSetForSchedulePatch(board.items, id, schedule)
         : null;
-    // Nothing whose consequences need checking ("9:00 AM" \u2192 "09:00" is
+    // Nothing whose consequences need checking ("9:00 AM" → "09:00" is
     // only a label): the ordinary save.
     if (!proposal) {
       void board.updateItem(id, patch).catch(fail);
