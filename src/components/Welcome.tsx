@@ -315,7 +315,7 @@ export function Welcome() {
                       role="radio"
                       aria-checked={on}
                       onClick={() => setGoal(g)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 py-3 text-left shadow-[0_1px_10px_rgb(80_60_40/0.07)] transition-colors ${
+                      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 py-3 text-left shadow-sm transition-colors ${
                         on ? "border-primary bg-primary-soft" : "border-transparent bg-card"
                       }`}
                     >

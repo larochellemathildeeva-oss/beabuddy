@@ -182,7 +182,7 @@ function AuthPage() {
           <Link
             to="/"
             aria-label="Back to the welcome page"
-            className="-ml-2 grid size-11 place-items-center rounded-full"
+            className="-ms-2 grid size-11 place-items-center rounded-full"
           >
             <ArrowLeft className="size-5" aria-hidden />
           </Link>
@@ -210,7 +210,7 @@ function AuthPage() {
             type="button"
             onClick={() => social("google")}
             disabled={busy}
-            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-2xl bg-card px-4 text-[17px] font-semibold shadow-[0_1px_10px_rgb(80_60_40/0.07)] disabled:opacity-60"
+            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-2xl bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
           >
             <GoogleG />
             Continue with Google
@@ -403,7 +403,7 @@ function PillField({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-transparent bg-card pl-5 pr-2 shadow-[0_1px_10px_rgb(80_60_40/0.07)] focus-within:border-primary">
+    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-transparent bg-card ps-5 pe-2 shadow-sm focus-within:border-primary">
       <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       {children}
     </div>

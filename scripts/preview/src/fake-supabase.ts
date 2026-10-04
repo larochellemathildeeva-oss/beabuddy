@@ -339,6 +339,9 @@ export const supabase = {
           : { user: { id: "me", created_at: new Date().toISOString() } },
       },
     }),
+    signInWithOAuth: async () => ({ data: null, error: null }),
+    signInWithPassword: async () => ({ data: null, error: { message: "Preview only" } }),
+    signUp: async () => ({ data: { user: null, session: null }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
   storage: {

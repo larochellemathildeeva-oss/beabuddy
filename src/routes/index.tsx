@@ -161,7 +161,7 @@ function StartFree() {
       <Link
         to="/auth"
         search={{ mode: "signup" }}
-        className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-foreground py-1.5 pl-6 pr-1.5 text-[17px] font-semibold text-background"
+        className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-foreground py-1.5 ps-6 pe-1.5 text-[17px] font-semibold text-background"
       >
         Create your free account
         <span className="grid size-11 place-items-center rounded-full bg-[var(--acc-soft)] text-foreground">
@@ -170,7 +170,7 @@ function StartFree() {
       </Link>
       <Link
         to="/how-it-works"
-        className="flex min-h-14 items-center gap-3 rounded-full bg-card py-1.5 pl-1.5 pr-6 text-[17px] font-semibold shadow-[0_1px_10px_rgb(80_60_40/0.07)]"
+        className="flex min-h-14 items-center gap-3 rounded-full bg-card py-1.5 ps-1.5 pe-6 text-[17px] font-semibold shadow-sm"
       >
         <span className="grid size-11 place-items-center rounded-full bg-foreground text-background">
           <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
