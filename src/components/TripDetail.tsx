@@ -1,1 +1,1 @@
-$file:/tmp/TripDetail.full.tsx
+$file:/workspace/src/components/TripDetail.restore.tsx
