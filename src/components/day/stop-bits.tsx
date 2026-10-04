@@ -167,8 +167,8 @@ export function BeaSays({ line, className = "" }: { line: string; className?: st
         className="size-11 shrink-0 rounded-full border border-border bg-card object-cover"
       />
       <div className="relative min-w-0 flex-1 rounded-2xl rounded-tl-md bg-primary-soft px-3 py-2">
-        <p className="text-[12.5px] font-bold text-primary">Béa says:</p>
-        <p className="text-[13.5px] leading-snug">{line}</p>
+        <p className="text-[13px] font-bold text-primary">Béa says:</p>
+        <p className="text-[16px] leading-snug">{line}</p>
       </div>
     </div>
   );
