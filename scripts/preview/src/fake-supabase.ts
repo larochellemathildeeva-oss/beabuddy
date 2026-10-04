@@ -219,7 +219,20 @@ const noneDb: Record<string, Row[]> = {
   recommendations: savedPlaces,
 };
 
-export const db: Record<string, Row[]> = sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
+// "recs" and "you": the next trip's city has saved places, in each list.
+const tripCity = (homeDb.trips ?? [])[0]?.city ?? "Hiroshima";
+const recsDb: Record<string, Row[]> = {
+  ...homeDb,
+  profiles: [{ id: "me", display_name: "Mattie", home_city: "Montréal", app_settings: {} }],
+  recommendations: [
+    ...savedPlaces,
+    ...[["Okonomiyaki Nagata-ya", "Food", "reco", "Go at golden hour."], ["Shukkei-en tea house", "Cafe", "wishlist", null], ["Peace Memorial Park", "Park", "nexttime", null]].map(([name, category, pin_type, notes], i) => ({
+      id: `tc-${i}`, user_id: "me", name, city: tripCity, country: "Japan", address: null, category, notes, recommended_by: i === 1 ? "Sam" : null, source: null, url: null, lat: 34.39 + i * 0.01, lon: 132.45, visited: false, pin_type, created_at: ago(100 + i),
+    })),
+  ],
+};
+
+export const db: Record<string, Row[]> = sample === "recs" || sample === "you" ? recsDb : sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [

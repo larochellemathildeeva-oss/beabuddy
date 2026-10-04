@@ -48,16 +48,19 @@ export function PlaceArt({
 /** A section heading in the master's size, with an optional "See all". */
 export function RecsSectionHead({
   title,
+  hint,
   onSeeAll,
   seeAllLabel = "See all",
 }: {
   title: string;
+  hint?: string;
   onSeeAll?: (() => void) | undefined;
   seeAllLabel?: string;
 }) {
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
       <h2 className="font-display text-[27px] leading-none">{title}</h2>
+      {hint && <span className="text-[14px] text-muted-foreground">{hint}</span>}
       {onSeeAll && (
         <button type="button" onClick={onSeeAll} className="text-[14px] font-semibold text-primary">
           {seeAllLabel}

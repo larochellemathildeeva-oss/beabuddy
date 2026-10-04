@@ -218,7 +218,8 @@ function ProfilePage() {
 
   return (
     <AppShell
-      title={<span className="text-[44px] leading-none">You</span>}
+      eyebrow="You"
+      title="Travel, your way."
       headerAction={
         user ? (
           <button
@@ -234,10 +235,6 @@ function ProfilePage() {
       }
     >
       <div className="space-y-6">
-        <p className="-mt-4 text-[15px] text-muted-foreground">
-          Your travel profile, preferences and settings.
-        </p>
-
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
             <p className="font-display text-[21px] leading-snug">
@@ -306,97 +303,91 @@ function ProfilePage() {
           </section>
         )}
 
-        <div className="space-y-3">
-          <SectionTitle>Your travel</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            <Tile
-              icon={Plane}
-              card={5}
-              tone={1}
-              title="Travel preferences"
-              hint="Style, pace, budget, interests and diet"
-              to="/preferences"
-              guide="travel-preferences"
-            />
-            <Tile
-              icon={Luggage}
-              card={2}
-              tone={2}
-              title="Packing lists"
-              hint="Create and manage your reusable lists"
-              onClick={() => setPanel("packing")}
-              guide="packing-lists"
-            />
-            <Tile
-              icon={Briefcase}
-              card={3}
-              tone={3}
-              title="Work travel"
-              hint="Receipts, expenses and reports"
-              to="/expenses"
-              guide="work-travel"
-            />
-            <Tile
-              icon={FileText}
-              card={1}
-              tone={4}
-              title="Trip documents"
-              hint="Bookings, confirmations and trip files"
-              href="/profile/documents"
-              guide="trip-documents"
-            />
-          </div>
+        <Link
+          to="/profile/bea"
+          data-guide="your-bea"
+          className="flex items-center gap-3 rounded-[var(--r-card)] border border-border/55 bg-gradient-to-br from-[var(--acc-soft)] to-tile-3 p-3.5 shadow-sm"
+        >
+          <img
+            src="/bea/bea-think-static.png"
+            alt=""
+            aria-hidden
+            className="art-dim -my-1 size-20 shrink-0 object-contain"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[24px] leading-tight">Your Béa</span>
+            <span className="block text-[14px] leading-snug text-foreground/70">
+              {modeName(bea.mix)} · personality, suggestions and assistance
+            </span>
+          </span>
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        </Link>
+
+        <div className={`${PLAIN} divide-y divide-border/60 overflow-hidden`}>
+          <ListRow
+            icon={Plane}
+            tone={1}
+            title="Travel preferences"
+            hint="Style, pace, budget, interests and diet"
+            to="/preferences"
+            guide="travel-preferences"
+          />
+          <CustomizeHome variant="list" />
+          <ListRow
+            icon={Luggage}
+            tone={2}
+            title="Packing lists"
+            hint="Create and manage your reusable lists"
+            onClick={() => setPanel("packing")}
+            guide="packing-lists"
+          />
+          <ListRow
+            icon={Camera}
+            tone={3}
+            title="Photos & memories"
+            hint="Import photos and revisit trips"
+            to="/photos"
+          />
+          <ListRow
+            icon={Briefcase}
+            tone={3}
+            title="Work travel"
+            hint="Receipts, expenses and reports"
+            to="/expenses"
+            guide="work-travel"
+          />
+          <ListRow
+            icon={FileText}
+            tone={4}
+            title="Trip documents"
+            hint="Bookings, confirmations and trip files"
+            href="/profile/documents"
+            guide="trip-documents"
+          />
         </div>
 
         <div className="space-y-3">
-          <SectionTitle>Your Béa</SectionTitle>
-          <Link
-            to="/profile/bea"
-            data-guide="your-bea"
-            className={`${PLAIN} flex items-center gap-3 p-3.5`}
-          >
-            <img
-              src="/bea/bea-think-static.png"
-              alt=""
-              aria-hidden
-              className="art-dim -my-1 size-20 shrink-0 object-contain"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block font-display text-[24px] leading-tight">Béa</span>
-              <span className="block text-[13px] leading-snug text-muted-foreground">
-                Personality, suggestions and assistance
-              </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-1 self-start rounded-full bg-primary-soft [[data-theme=colorful]_&]:bg-tile-5 px-3.5 py-2 text-[13.5px] font-semibold text-primary">
-              {modeName(bea.mix)}
-              <ChevronRight className="size-3.5" aria-hidden />
-            </span>
-          </Link>
-        </div>
-
-        <div className="space-y-3">
-          <SectionTitle>App & account</SectionTitle>
-          <div className="grid grid-cols-2 gap-3">
-            <Tile
+          <SectionTitle>Settings & storage</SectionTitle>
+          <div className={`${PLAIN} divide-y divide-border/60 overflow-hidden`}>
+            <ListRow
               icon={Palette}
-              card={1}
               tone={4}
               title="Appearance"
               hint="Theme, text size and what Home shows"
               onClick={() => setPanel("appearance")}
             />
             {/* Links & formats and Notifications are in the master but not
-                built yet, so their tiles stay hidden. */}
-            <Tile
+                built yet, so their rows stay hidden. */}
+            <ListRow
               icon={CloudUpload}
-              card={3}
               tone={3}
               title="Data & imports"
-              hint="Photos, calendar, offline"
+              hint="Photos, calendar, offline trips on this phone"
               onClick={() => setPanel("data")}
               guide="offline-options"
             />
           </div>
+          <ThemePicker />
         </div>
 
         <div className="space-y-3">
@@ -700,6 +691,58 @@ function Figure({
     </Link>
   ) : (
     <button type="button" onClick={onClick} className={cls}>
+      {body}
+    </button>
+  );
+}
+
+/** A row in a grouped list: a pastel bubble, a serif title, one line, a chevron. */
+function ListRow({
+  icon: Glyph,
+  tone,
+  title,
+  hint,
+  to,
+  href,
+  onClick,
+  guide,
+}: {
+  icon: Icon;
+  tone: Tone;
+  title: string;
+  hint: string;
+  to?: "/preferences" | "/expenses" | "/photos";
+  href?: string;
+  onClick?: () => void;
+  guide?: string;
+}) {
+  const body = (
+    <>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-full bg-tile-${tone}`}>
+        <Glyph className={`seq-text-${tone} size-5`} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[19px] leading-tight">{title}</span>
+        <span className="block text-[14px] leading-snug text-muted-foreground">{hint}</span>
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+    </>
+  );
+  const cls = "flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left";
+  if (to)
+    return (
+      <Link to={to} data-guide={guide} className={cls}>
+        {body}
+      </Link>
+    );
+  if (href)
+    return (
+      <a href={href} data-guide={guide} className={cls}>
+        {body}
+      </a>
+    );
+  return (
+    <button type="button" onClick={onClick} data-guide={guide} className={cls}>
       {body}
     </button>
   );
