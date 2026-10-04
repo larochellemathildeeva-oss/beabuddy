@@ -25,7 +25,7 @@ export const WORLD_SECTIONS: ModuleInfo<WorldSectionKey>[] = [
   {
     key: "now",
     label: "Right now there",
-    hint: "The time and weather now where your next trip goes.",
+    hint: "The time and weather now at a place on your bucket list.",
   },
   { key: "notes", label: "Notes from Béa", hint: "A line from Béa about your world." },
   {

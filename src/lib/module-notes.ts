@@ -30,8 +30,8 @@ export function worldNote(stats: {
 }
 
 export function tripNote(trip: {
-  /** Days until the trip starts; 0 or less once it has. */
-  daysUntil: number;
+  /** Days until the trip starts; 0 or less once it has; null with no date. */
+  daysUntil: number | null;
   /** Day of the trip, from 1, while it is under way. */
   day: number | null;
   days: number | null;
@@ -48,11 +48,15 @@ export function tripNote(trip: {
       : `${day} Nothing else is planned today, so the rest of it is yours.`;
   }
   const lead =
-    trip.daysUntil <= 1
-      ? "The trip starts tomorrow."
-      : `${count(trip.daysUntil, "day", "days")} to go.`;
+    trip.daysUntil === null || trip.daysUntil < 0
+      ? "The trip is ahead."
+      : trip.daysUntil === 0
+        ? "The trip starts today."
+        : trip.daysUntil === 1
+          ? "The trip starts tomorrow."
+          : `${count(trip.daysUntil, "day", "days")} to go.`;
   if (trip.todosOpen > 0)
-    return `${lead} ${count(trip.todosOpen, "to-do is", "to-dos are")} still open, and Béa is keeping them in view.`;
+    return `${lead} ${count(trip.todosOpen, "to-do is", "to-dos are")} still open, and Béa is keeping track.`;
   if (trip.packedPct !== null && trip.packedPct < 100)
     return `${lead} Packing is ${trip.packedPct}% done.`;
   return `${lead} Everything Béa knows about is ready.`;

@@ -82,7 +82,7 @@ export function useHomeTripModules({
     const next = companion.next;
     const until = next ? untilLabel(next.time_label, new Date()) : "";
     return tripNote({
-      daysUntil: start ? dayGap(today, start) : 0,
+      daysUntil: start ? dayGap(today, start) : null,
       day: underway && start ? dayGap(start, today) + 1 : null,
       days: start && end ? dayGap(start, end) + 1 : null,
       todosOpen: glance?.todos.open ?? 0,

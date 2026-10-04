@@ -37,6 +37,7 @@ export function CustomizeModules<K extends string>({
   onMove,
   onReset,
   variant,
+  fixed,
 }: {
   /** "home" or "world": the sheet is "Customize home". */
   name: string;
@@ -49,12 +50,15 @@ export function CustomizeModules<K extends string>({
   onMove: (key: K, step: -1 | 1) => void;
   onReset: () => void;
   variant: CustomizeVariant;
+  /** Modules that keep their place: no arrows, and the others move past them. */
+  fixed?: ReadonlySet<K>;
 }) {
   const [open, setOpen] = useState(false);
   const title = `Customize ${name}`;
   const byKey = new Map(modules.map((m) => [m.key, m]));
   const shown = layout.order.filter((k) => layout.on.has(k));
   const off = layout.order.filter((k) => !layout.on.has(k));
+  const movable = shown.filter((k) => !fixed?.has(k));
 
   const trigger: ReactNode =
     variant === "add" ? (
@@ -124,29 +128,30 @@ export function CustomizeModules<K extends string>({
       </button>
     );
 
-  const row = (key: K, index: number) => {
+  const row = (key: K) => {
     const info = byKey.get(key);
     if (!info) return null;
     const on = layout.on.has(key);
+    const index = movable.indexOf(key);
     return (
-      <li key={key} className="flex items-center gap-2 py-2.5">
-        {on && (
-          <span className="flex shrink-0 flex-col">
+      <li key={key} className="flex items-center gap-2 py-2">
+        {on && index >= 0 && (
+          <span className="flex shrink-0">
             <button
               type="button"
               aria-label={`Move ${info.label} up`}
               disabled={index === 0}
               onClick={() => onMove(key, -1)}
-              className="grid h-6 w-11 place-items-center rounded-t-lg border border-border text-muted-foreground disabled:opacity-30"
+              className="grid size-11 place-items-center rounded-s-xl border border-border text-muted-foreground disabled:opacity-30"
             >
               <ChevronUp className="size-4" aria-hidden />
             </button>
             <button
               type="button"
               aria-label={`Move ${info.label} down`}
-              disabled={index === shown.length - 1}
+              disabled={index === movable.length - 1}
               onClick={() => onMove(key, 1)}
-              className="grid h-6 w-11 place-items-center rounded-b-lg border border-t-0 border-border text-muted-foreground disabled:opacity-30"
+              className="grid size-11 place-items-center rounded-e-xl border border-s-0 border-border text-muted-foreground disabled:opacity-30"
             >
               <ChevronDown className="size-4" aria-hidden />
             </button>
@@ -157,6 +162,8 @@ export function CustomizeModules<K extends string>({
           <p className="text-[13px] leading-snug text-muted-foreground">{info.hint}</p>
         </div>
         <Switch
+          // The switch is drawn small; its tap area reaches 44 px around it.
+          className="relative after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']"
           checked={on}
           onCheckedChange={() => onToggle(key)}
           aria-label={`Show ${info.label}`}
@@ -178,14 +185,14 @@ export function CustomizeModules<K extends string>({
         </SheetHeader>
         <p className="label-caps mt-3">On {name}</p>
         {shown.length ? (
-          <ul className="divide-y divide-border">{shown.map((k, i) => row(k, i))}</ul>
+          <ul className="divide-y divide-border">{shown.map((k) => row(k))}</ul>
         ) : (
           <p className="py-3 text-[14px] text-muted-foreground">Nothing yet. Add a module below.</p>
         )}
         {off.length > 0 && (
           <>
             <p className="label-caps mt-4">More modules</p>
-            <ul className="divide-y divide-border">{off.map((k) => row(k, -1))}</ul>
+            <ul className="divide-y divide-border">{off.map((k) => row(k))}</ul>
           </>
         )}
         <button

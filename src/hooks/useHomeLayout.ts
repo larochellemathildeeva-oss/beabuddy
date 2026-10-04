@@ -74,4 +74,6 @@ export const useHomeLayout = createModuleStore({
   prefix: "bea-home-layout-",
   modules: HOME_SECTIONS,
   defaults: DEFAULT_HOME_MODULES,
+  // The current and next stop sit under the trip's map, wherever it is.
+  fixed: ["stops"],
 });

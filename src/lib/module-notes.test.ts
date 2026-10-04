@@ -22,7 +22,7 @@ describe("notes from Béa", () => {
   it("describes a trip ahead and a trip under way", () => {
     assert.equal(
       tripNote({ daysUntil: 2, day: null, days: 7, todosOpen: 2, packedPct: 60, next: null }),
-      "2 days to go. 2 to-dos are still open, and Béa is keeping them in view.",
+      "2 days to go. 2 to-dos are still open, and Béa is keeping track.",
     );
     assert.equal(
       tripNote({ daysUntil: 1, day: null, days: 7, todosOpen: 0, packedPct: 60, next: null }),
@@ -38,6 +38,25 @@ describe("notes from Béa", () => {
         next: { title: "Hakone", when: "in 2h 15m" },
       }),
       "Day 3 of 7. Next up: Hakone, in 2h 15m.",
+    );
+    assert.equal(
+      tripNote({ daysUntil: 0, day: null, days: 3, todosOpen: 0, packedPct: null, next: null }),
+      "The trip starts today. Everything Béa knows about is ready.",
+    );
+    assert.equal(
+      tripNote({
+        daysUntil: null,
+        day: null,
+        days: null,
+        todosOpen: 0,
+        packedPct: null,
+        next: null,
+      }),
+      "The trip is ahead. Everything Béa knows about is ready.",
+    );
+    assert.equal(
+      tripNote({ daysUntil: -2, day: null, days: null, todosOpen: 1, packedPct: null, next: null }),
+      "The trip is ahead. 1 to-do is still open, and Béa is keeping track.",
     );
     for (const line of [
       tripNote({ daysUntil: 5, day: null, days: null, todosOpen: 0, packedPct: null, next: null }),

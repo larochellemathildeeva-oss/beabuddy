@@ -265,7 +265,11 @@ function SignedInHome() {
   });
   const greeting = greetingFor(now.getHours());
   const showTrip = layout.trip && trip && !trips.loading;
-  const underway = Boolean(showTrip && isUnderway(trip.start_date, trip.end_date, now));
+  // Under way whether or not the Trips module shows: the trip modules read it too.
+  const tripUnderway = Boolean(
+    trip && !trips.loading && isUnderway(trip.start_date, trip.end_date, now),
+  );
+  const underway = Boolean(showTrip && tripUnderway);
   // No trip: the header is the map of the saved cities, once any can be placed.
   const noTripMap =
     layout.waiting &&
@@ -282,7 +286,7 @@ function SignedInHome() {
     glance: trip ? glances[trip.id] : undefined,
     members: trips.members,
     saved: vault.rows,
-    underway,
+    underway: tripUnderway,
   });
   const TRIP_ONLY = new Set<HomeSectionKey>([
     "saved",
@@ -334,7 +338,14 @@ function SignedInHome() {
           </section>
         ) : null;
       default:
-        return trip ? <HomeTripModule module={key} trip={trip} ctx={tripModules} /> : null;
+        return trip ? (
+          <HomeTripModule
+            module={key}
+            trip={trip}
+            ctx={tripModules}
+            me={{ id: user?.id ?? null, name: firstName }}
+          />
+        ) : null;
     }
   };
 

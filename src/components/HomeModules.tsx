@@ -14,10 +14,13 @@ export function HomeTripModule({
   module: key,
   trip,
   ctx,
+  me,
 }: {
   module: HomeSectionKey;
   trip: TripRow;
   ctx: Context;
+  /** The traveller, whose own member row may carry no name. */
+  me: { id: string | null; name: string };
 }): ReactNode {
   const tripLink = (search?: Record<string, string>) => ({
     to: "/trips/$tripId",
@@ -71,7 +74,10 @@ export function HomeTripModule({
                 className="grid size-10 place-items-center rounded-full border-2 border-card bg-[var(--home-ink)] text-[14px] font-semibold text-[var(--home-ink-foreground)]"
                 aria-hidden
               >
-                {(m.display_name || "T").trim().charAt(0).toUpperCase()}
+                {(m.display_name?.trim() || (m.user_id === me.id ? me.name : "") || "T")
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase()}
               </span>
             ))}
           </span>

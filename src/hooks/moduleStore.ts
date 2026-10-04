@@ -26,7 +26,10 @@ export function createModuleStore<K extends string>(config: {
   prefix: string;
   modules: readonly ModuleInfo<K>[];
   defaults: readonly K[];
+  /** Modules drawn in a fixed place: a switch, but no arrows. */
+  fixed?: readonly K[];
 }) {
+  const fixed: ReadonlySet<K> = new Set(config.fixed ?? []);
   const keys = config.modules.map((m) => m.key);
   const fallback = defaultModules(keys, config.defaults);
   const listeners = new Set<() => void>();
@@ -76,7 +79,7 @@ export function createModuleStore<K extends string>(config: {
       [userId],
     );
     const move = useCallback(
-      (key: K, step: -1 | 1) => write(userId, moveModule(current(userId), key, step)),
+      (key: K, step: -1 | 1) => write(userId, moveModule(current(userId), key, step, fixed)),
       [userId],
     );
     const reset = useCallback(() => write(userId, null), [userId]);
@@ -84,6 +87,6 @@ export function createModuleStore<K extends string>(config: {
       K,
       boolean
     >;
-    return { layout, modules, shown: shownModules(modules), toggle, move, reset };
+    return { layout, modules, shown: shownModules(modules), fixed, toggle, move, reset };
   };
 }

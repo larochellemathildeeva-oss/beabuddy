@@ -80,8 +80,10 @@ export function moveModule<K extends string>(
   layout: ModuleLayout<K>,
   key: K,
   step: -1 | 1,
+  /** Modules that keep their place on the screen: the others move past them. */
+  fixed: ReadonlySet<K> = new Set(),
 ): ModuleLayout<K> {
-  const shown = shownModules(layout);
+  const shown = shownModules(layout).filter((k) => !fixed.has(k));
   const at = shown.indexOf(key);
   const other = shown[at + step];
   if (at < 0 || other === undefined) return layout;

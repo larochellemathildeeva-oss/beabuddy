@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "@/components/icons";
 import { usePlaceNow } from "@/hooks/usePlaceNow";
@@ -111,6 +111,33 @@ function temperature(celsius: number): string {
   return f ? `${Math.round((celsius * 9) / 5 + 32)}°F` : `${celsius}°C`;
 }
 
+/** The time now, moved on at each new minute while the card is open. */
+function useMinute(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer = 0;
+    const next = () => {
+      timer = window.setTimeout(
+        () => {
+          setNow(new Date());
+          next();
+        },
+        60_000 - (Date.now() % 60_000) + 50,
+      );
+    };
+    next();
+    return () => window.clearTimeout(timer);
+  }, []);
+  return now;
+}
+
+/** What a weather card says while it has no answer to show. */
+function waitingLine(now: ReturnType<typeof usePlaceNow>): string {
+  if (now.status === "unplaced") return "Béa needs the town's position first.";
+  if (now.status === "unavailable") return "The weather there can't be read right now.";
+  return "Asking the sky…";
+}
+
 /** "Right now there": the clock and the sky now in a place. */
 export function NowThereCard({
   place,
@@ -127,8 +154,10 @@ export function NowThereCard({
   action?: ModuleAction;
   guide?: string;
 }) {
-  const weather = usePlaceNow(lat, lon);
-  const time = weather?.utcOffset !== undefined ? localTimeAt(weather.utcOffset, new Date()) : null;
+  const now = usePlaceNow(lat, lon);
+  const minute = useMinute();
+  const weather = now.status === "ready" ? now.weather : null;
+  const time = weather?.utcOffset !== undefined ? localTimeAt(weather.utcOffset, minute) : null;
   return (
     <ModuleCard
       title="Right now there"
@@ -146,6 +175,8 @@ export function NowThereCard({
             {temperature(weather.temp)} · {describeWeather(weather.code).label}
           </span>
         </span>
+      ) : now.status === "unavailable" ? (
+        <span className="block text-[13px] text-muted-foreground">{waitingLine(now)}</span>
       ) : null}
     </ModuleCard>
   );
@@ -165,7 +196,8 @@ export function WeatherThereCard({
   art: string | null;
   guide?: string;
 }) {
-  const weather = usePlaceNow(lat, lon);
+  const now = usePlaceNow(lat, lon);
+  const weather = now.status === "ready" ? now.weather : null;
   return (
     <ModuleCard title="Weather there" sub={place} art={art} {...(guide ? { guide } : {})}>
       {weather ? (
@@ -187,9 +219,7 @@ export function WeatherThereCard({
           </span>
         </span>
       ) : (
-        <span className="block text-[13px] text-muted-foreground">
-          {lat === null ? "Béa needs the town's position first." : "Asking the sky…"}
-        </span>
+        <span className="block text-[13px] text-muted-foreground">{waitingLine(now)}</span>
       )}
     </ModuleCard>
   );

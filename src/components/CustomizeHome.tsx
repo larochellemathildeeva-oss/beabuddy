@@ -2,7 +2,7 @@ import { CustomizeModules, type CustomizeVariant } from "@/components/CustomizeM
 import { HOME_SECTIONS, useHomeLayout } from "@/hooks/useHomeLayout";
 
 export function CustomizeHome({ variant = "icon" }: { variant?: CustomizeVariant }) {
-  const { modules, toggle, move, reset } = useHomeLayout();
+  const { modules, fixed, toggle, move, reset } = useHomeLayout();
   return (
     <CustomizeModules
       name="home"
@@ -10,6 +10,7 @@ export function CustomizeHome({ variant = "icon" }: { variant?: CustomizeVariant
       guide="home-customize"
       modules={HOME_SECTIONS}
       layout={modules}
+      fixed={fixed}
       onToggle={toggle}
       onMove={move}
       onReset={reset}

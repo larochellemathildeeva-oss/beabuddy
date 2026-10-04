@@ -73,4 +73,12 @@ describe("module rows", () => {
     ]);
     assert.deepEqual(moduleRows([], small), []);
   });
+
+  it("moves past a module that keeps its place, and never moves that one", () => {
+    const layout = toggleModule(defaultModules(KEYS, DEFAULTS), "d");
+    // Shown: c, a, d, with a drawn in a fixed place.
+    const fixed = new Set(["a"] as const);
+    assert.deepEqual(shownModules(moveModule(layout, "d", -1, fixed)), ["d", "a", "c"]);
+    assert.equal(moveModule(layout, "a", 1, fixed), layout);
+  });
 });

@@ -347,7 +347,7 @@ function WorldPage() {
         <div
           key={f.label}
           className={`flex flex-col items-center gap-1 px-1 text-center ${
-            i > 0 ? `border-l-2 seq-border-${i + 1}` : ""
+            i > 0 ? `border-s-2 seq-border-${i + 1}` : ""
           }`}
         >
           <span className="font-display text-[28px] leading-none tabular-nums">{f.value}</span>
