@@ -461,9 +461,11 @@ export function TimelineEntry({
       {/* A stop that already has photos keeps the camera beside them, so
           adding another is one tap; the first photo comes from ⋯. */}
       {photos && photos.photos.length > 0 && (
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />
-          <QuickPhoto photos={photos} />
+          <span className="flex shrink-0 gap-1.5">
+            <QuickPhoto photos={photos} />
+          </span>
         </div>
       )}
       {pill && (
@@ -561,7 +563,9 @@ export function TimelineEntry({
           )}
           {photos && (
             <div className="px-1 py-1">
-              <QuickPhoto photos={photos} label="Add a photo" />
+              <span className="flex flex-wrap gap-2">
+                <QuickPhoto photos={photos} label="Add a photo" />
+              </span>
             </div>
           )}
           {onMove && (

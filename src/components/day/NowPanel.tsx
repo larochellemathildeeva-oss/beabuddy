@@ -387,7 +387,11 @@ export function NowPanel({
             >
               Not here yet
             </button>
-            {photosFor && <QuickPhoto photos={photosFor(current)} />}
+            {photosFor && (
+              <span className="flex gap-1.5">
+                <QuickPhoto photos={photosFor(current)} />
+              </span>
+            )}
           </div>
           {rowNext && (
             <NextRow
