@@ -385,7 +385,7 @@ export function TimelineEntry({
             {item.title}
             {done ? (
               <Check
-                className="ml-1.5 inline-block size-[18px] align-[-2px] text-primary"
+                className="ms-1.5 inline-block size-[18px] align-[-2px] text-primary"
                 strokeWidth={3}
                 aria-hidden
               />
@@ -1302,7 +1302,7 @@ function InsideEditor({
                   {entry.title}
                   {entry.done ? (
                     <Check
-                      className="ml-1 inline-block size-3.5 align-[-2px] text-primary"
+                      className="ms-1 inline-block size-3.5 align-[-2px] text-primary"
                       strokeWidth={3}
                       aria-hidden
                     />
