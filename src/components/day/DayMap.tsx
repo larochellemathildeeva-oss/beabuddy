@@ -263,7 +263,14 @@ export function DayMap({
     }
     const animate = !prefersReducedMotion();
     if (pins.length === 1) {
-      m.setView([pins[0]!.lat, pins[0]!.lon], SINGLE_STOP_ZOOM, { animate });
+      // Centre the pin in the band the chips and the sheet leave open.
+      const zoom = SINGLE_STOP_ZOOM;
+      const pin = pins[0]!;
+      const centre = m.unproject(
+        m.project([pin.lat, pin.lon], zoom).add([0, (insetBottom - insetTop) / 2]),
+        zoom,
+      );
+      m.setView(centre, zoom, { animate });
     } else {
       m.fitBounds(L.latLngBounds(pins.map((p) => [p.lat, p.lon] as [number, number])), {
         paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + insetTop],
