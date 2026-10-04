@@ -1,6 +1,5 @@
 import { useLayoutEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { ImageIcon, MapIcon } from "@/components/icons";
-import { BrandMark } from "@/components/PageHeader";
 import { TripBannerMap } from "@/components/TripRouteMap";
 import { useSignedPhoto, type TripPhotoRow } from "@/hooks/useTripPhotos";
 import { useStopPictures } from "@/hooks/useStopPictures";
@@ -51,6 +50,7 @@ export function TripPageBanner({
   short = false,
   actions,
   tools,
+  tracker,
   footer,
   viewTransitionName,
 }: {
@@ -78,8 +78,10 @@ export function TripPageBanner({
   short?: boolean;
   /** The round buttons at the top right (pins to check, to do, trip menu). */
   actions: ReactNode;
-  /** At the foot of the picture, beside the switch: Plan with Béa, Add stop. */
+  /** Top left, beside the round buttons: Plan with Béa, Add stop. */
   tools?: ReactNode;
+  /** Under the dates, inside the banner: the trip's day-by-day progress. */
+  tracker?: ReactNode;
   /** Under the dates: the day the page is showing. */
   footer?: ReactNode;
   viewTransitionName?: string;
@@ -153,9 +155,9 @@ export function TripPageBanner({
       />
 
       <div className="relative flex h-full flex-col px-4 pb-12 pt-3">
-        <div className="flex items-center justify-between gap-2">
-          <BrandMark />
-          <div className="flex items-center gap-2">{actions}</div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">{tools}</div>
+          <div className="flex items-center gap-1.5">{actions}</div>
         </div>
         <div ref={setWords} className="mt-2 min-w-0">
           {kicker && (
@@ -175,6 +177,7 @@ export function TripPageBanner({
           </p>
           {companions && !short && <p className="text-[14px] text-foreground/75">{companions}</p>}
           {footer}
+          {tracker && <div className="mt-3">{tracker}</div>}
         </div>
 
         <div className="mt-auto">
@@ -186,8 +189,7 @@ export function TripPageBanner({
               {photoCredit(credited)}
             </p>
           ) : null}
-          <div className="flex items-end justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">{tools}</div>
+          <div className="flex items-end justify-end gap-2">
             <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
               <button
                 type="button"
