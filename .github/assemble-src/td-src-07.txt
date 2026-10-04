@@ -1,0 +1,250 @@
+            route={routeCities}
+            {...(canFindCities ? { onFindCities: findCities, findingCities } : {})}
+            bookingDocs={bookingDocs.docs}
+            startDate={trip.start_date}
+            endDate={trip.end_date}
+            today={todayKey}
+            onOpenCompanion={() => {
+              setCityChoice("");
+              setDayChoice(todayKey);
+              setPerspective("companion");
+            }}
+            onOpenBookings={openBookings}
+            onOpenTimeline={(dayKey) => {
+              if (dayKey !== undefined) setDayChoice(dayKey);
+              setPerspective("timeline");
+            }}
+            onOpenMap={(dayKey) => {
+              if (dayKey) setDayChoice(dayKey);
+              setPerspective("map");
+            }}
+            onPrep={(tab) => setPrepAsk((cur) => ({ tab, n: (cur?.n ?? 0) + 1 }))}
+          />
+        )}
+
+        {perspective === "overview" && (
+          <section
+            ref={bookingsRef}
+            aria-label="Bookings"
+            className="mt-4 scroll-mt-[var(--trip-sticky-offset)]"
+          >
+            <button
+              type="button"
+              aria-expanded={bookingsOpen}
+              onClick={() => setBookingsOpen((open) => !open)}
+              className="plain-card flex min-h-11 w-full items-center justify-between gap-2 px-4 py-3 text-left"
+            >
+              <span className="font-display text-[22px] leading-tight">All bookings</span>
+              <span className="ml-auto text-[14px] text-muted-foreground">
+                {Object.values(bookingCounts).reduce((n, count) => n + count, 0)}
+              </span>
+              <ChevronDown className={`size-5 ${bookingsOpen ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+            <div hidden={!bookingsOpen} className="mt-3">
+              <TripBookings
+                filter={bookingFilter}
+                onFilter={setBookingFilter}
+                stops={stopItems}
+                docs={bookingDocs.docs}
+                onSaveBooking={(id, patch) => board.updateItem(id, patch)}
+              />
+            </div>
+          </section>
+        )}
+
+        {/* Past You, for a trip still ahead or under way: not one already over. */}
+        {perspective === "overview" &&
+          todayKey <= (trip.end_date ?? trip.start_date ?? "9999-12-31") && (
+            <div className="mt-4">
+              <PastYouCard
+                trip={trip}
+                places={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
+              />
+            </div>
+          )}
+
+        {perspective === "companion" && (
+          <div className="space-y-3">
+            {nowStops.length > 0 && companionDay ? (
+              <>
+                {view.prefs.ribbon && (
+                  <DayRibbon
+                    stops={nowStops}
+                    dayLabel={companionOrdinal || undefined}
+                    selectedId={peekStop?.id ?? null}
+                    onSelect={setPeekId}
+                  />
+                )}
+                <NowPanel
+                  key={companionDay.key}
+                  dayStops={nowStops}
+                  tripStops={tripStopsForNow}
+                  legs={nowLegs}
+                  {...(directionArea ? { area: directionArea } : {})}
+                  travel={travel}
+                  bookingDocs={bookingDocs.docs}
+                  reminderItems={board.items}
+                  nextDay={
+                    timelineGroups.find(
+                      (group) => group.key !== "" && companionDay && group.key > companionDay.key,
+                    )?.key ?? null
+                  }
+                  onEase={easeDay}
+                  onRework={(day, ask) => {
+                    setDayEditStart({ day, ask });
+                    setDayEditOpen(true);
+                  }}
+                  onProgress={board.setProgress}
+                  photosFor={(stop) => docProps(stop).photos}
+                  onLook={(id) => {
+                    setPeekId(id);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                />
+              </>
+            ) : (
+              <div className="plain-card space-y-2 p-4">
+                <img
+                  src="/bea/bea-think-static.png"
+                  alt=""
+                  className="size-16 rounded-full border border-border object-cover"
+                />
+                <p className="font-display text-[24px] leading-tight">
+                  {stopItems.length === 0 ? "Nothing on this trip yet." : "Pick a day to follow."}
+                </p>
+                <p className="text-[16px] leading-snug text-muted-foreground">
+                  {stopItems.length === 0
+                    ? "Add stops in the Timeline, or let Béa draft the days from a plan you already have."
+                    : "Companion walks through one day with you: where you are, what is next, and when to set off. On a travel day it opens on today by itself."}
+                </p>
+                {/* An empty trip gets its way in right here, never "go elsewhere first". */}
+                {stopItems.length === 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPlannerTab("build");
+                        setPlannerOpen(true);
+                      }}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
+                    >
+                      <img src={logo} alt="" className="size-5 object-contain" />
+                      Plan with Béa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddOpen(true)}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold"
+                    >
+                      <Plus className="size-4 text-primary" aria-hidden />
+                      Add a stop
+                    </button>
+                  </div>
+                )}
+                {/* The days right here, so the prompt is never a dead end. */}
+                {stopItems.length > 0 && (
+                  <div
+                    role="group"
+                    aria-label="Day to follow"
+                    className="flex flex-wrap gap-1.5 pt-1"
+                  >
+                    {chips
+                      .filter((chip) => chip.count > 0)
+                      .map((chip) => (
+                        <button
+                          key={chip.key || "undated"}
+                          type="button"
+                          onClick={() => setDayChoice(chip.key)}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-3.5 text-[16px] font-semibold"
+                        >
+                          {chip.ordinal ? (
+                            <span className="text-primary">{chip.ordinal}</span>
+                          ) : null}
+                          {chip.label}
+                          <span className="text-[13px] font-normal text-muted-foreground">
+                            {chip.count}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mounted only while showing: Leaflet cannot lay out in a hidden box. */}
+        {perspective === "map" && (
+          <div className="space-y-3">
+            {stopItems.length > 0 && (
+              <DayMapView
+                key={`${chosenDay}:${mapFocus ?? ""}`}
+                focusId={mapFocus}
+                groups={shownGroups}
+                nesting={view.prefs.nesting}
+                area={formatTripLocation(trip.city, trip.country)}
+                todayKey={todayKey}
+                ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
+                legFor={travelInto}
+              />
+            )}
+            {/* The whole trip, city to city — only when looking at the whole
+                trip. Under a single day it was a second, busier map repeating
+                the first. The same stop list the directions are built from,
+                so the map and the route can never describe different journeys. */}
+            {!chosenCity && shownGroups.length > 1 && (
+              <TripMap stops={routeStops} {...(directionArea ? { area: directionArea } : {})} />
+            )}
+          </div>
+        )}
+
+        {/* Day and Trip stay mounted and are hidden instead, so an edit in
+            progress survives a tab switch and the action row's buttons can
+            open their forms from any tab. */}
+        <div hidden={perspective !== "timeline"}>
+          {perspective === "timeline" && timelineByDay && offerDays && stopItems.length > 0 && (
+            <StickyDayBar
+              chips={chips}
+              value={chosenDay}
+              onChange={setDayChoice}
+              anchor={dayCardsRef}
+              onCurrency={() => setCurrencyOpen(true)}
+            />
+          )}
+          <div data-guide="trip-timeline" className="plain-card px-3 pb-3 pt-4">
+            {editingTimeline && (
+              <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-primary-soft px-3 py-2">
+                <p className="text-[13px] font-semibold text-primary">Editing every stop at once</p>
+                <button
+                  type="button"
+                  onClick={() => setEditingTimeline(false)}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-full bg-primary px-3 text-[13px] font-semibold text-primary-foreground"
+                >
+                  <Check className="size-4" aria-hidden />
+                  Done editing
+                </button>
+              </div>
+            )}
+
+            {stopItems.length === 0 ? (
+              <>
+                <TimelineHead
+                  title="Your itinerary"
+                  line="Activities, meals, transport and notes."
+                  onAdd={() => {
+                    setAddDay(addToDay ?? "");
+                    setAddingTimeline(true);
+                  }}
+                  addLabel="Add to the timeline"
+                />
+                <p className="px-1 py-4 text-[14px] text-muted-foreground">
+                  Nothing planned yet. Add a stop, or let Béa draft the days from a plan you already
+                  have.
+                </p>
+              </>
+            ) : timelineByDay ? (
+              <div className="space-y-6">
+                {shownGroups.map((group) => {
+                  const dayOpen = !collapsedDays[group.key];
+                  const isToday = group.key === todayKey;
+                  const divider = isToday ? nowDivider(group.items, minutesNow) : null;
