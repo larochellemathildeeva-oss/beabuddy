@@ -81,15 +81,18 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
 
   return (
     <section data-guide="compare-pins" className="plain-card p-3.5">
-      <div className="flex items-baseline justify-between">
-        <p className="label-caps text-foreground">Help me choose</p>
-        <button onClick={() => setOpen((v) => !v)} className="text-[12px] text-primary">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-[22px] leading-none">Help me choose</h2>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="tap-44 inline-flex h-10 items-center rounded-full bg-primary-soft px-4 text-[14px] font-semibold text-primary"
+        >
           {open ? "Hide" : "Compare places"}
         </button>
       </div>
 
       {!open ? (
-        <p className="mt-2 text-[13px] text-muted-foreground">
+        <p className="mt-2 text-[14px] text-muted-foreground">
           {BEA_SIGNATURE.choose} Pick two to five saved places and Béa will weigh them up for you.
         </p>
       ) : (

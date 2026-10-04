@@ -2,18 +2,21 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  BarChart3,
   Bookmark,
   ChevronRight,
+  CircleCheck,
+  Compass,
   FileText,
   Globe2,
   ListPlus,
   Maximize2,
+  MapIcon,
   MapPin,
   MoreHorizontal,
   Plane,
   Plus,
   Search,
-  Share,
   X,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
@@ -58,27 +61,11 @@ type WorldView = "all" | "cities" | "provinces" | "countries" | "continents";
 /** The four views of the tab, as in the master. */
 type WorldTab = "map" | "bucket" | "been" | "stats";
 
-const TABS: { id: WorldTab; label: string; subtitle: string }[] = [
-  {
-    id: "map",
-    label: "Map",
-    subtitle: "Explore, save and keep track of everywhere you want to go.",
-  },
-  {
-    id: "bucket",
-    label: "Bucket list",
-    subtitle: "Plan your next adventure, keep track of where you've been and what's next.",
-  },
-  {
-    id: "been",
-    label: "Been there",
-    subtitle: "Every country, province and city you've been to, in one place.",
-  },
-  {
-    id: "stats",
-    label: "Stats",
-    subtitle: "A snapshot of everywhere you've been and everywhere you want to go.",
-  },
+const TABS: { id: WorldTab; label: string; icon: typeof Globe2 }[] = [
+  { id: "map", label: "Map", icon: Globe2 },
+  { id: "bucket", label: "Bucket list", icon: Bookmark },
+  { id: "been", label: "Been there", icon: CircleCheck },
+  { id: "stats", label: "Stats", icon: BarChart3 },
 ];
 
 const WORLD_TABS: readonly WorldTab[] = ["map", "bucket", "been", "stats"];
@@ -164,7 +151,6 @@ function WorldPage() {
   const [statsNote, setStatsNote] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [openCountry, setOpenCountry] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -394,29 +380,37 @@ function WorldPage() {
     places.length > 0 ? (
       // The counts are also filters: tap Cities and the globe and the list
       // show only cities; tap it again for everything.
-      <div role="group" aria-label="Show on the map" className="flex flex-wrap gap-1.5">
+      <div role="group" aria-label="Show on the map" className="world-filters">
         {[
-          { id: "cities" as const, n: cities.length, one: "City", many: "Cities" },
+          { id: "cities" as const, n: cities.length, one: "City", many: "Cities", icon: MapPin },
           provinces.length > 0
             ? {
                 id: "provinces" as const,
                 n: provinces.length,
                 one: "Province / state",
                 many: "Provinces & states",
+                icon: MapIcon,
               }
             : null,
-          { id: "countries" as const, n: byCountry.length, one: "Country", many: "Countries" },
+          {
+            id: "countries" as const,
+            n: byCountry.length,
+            one: "Country",
+            many: "Countries",
+            icon: Globe2,
+          },
           continents.length > 0
             ? {
                 id: "continents" as const,
                 n: continents.length,
                 one: "Continent",
                 many: "Continents",
+                icon: Compass,
               }
             : null,
         ]
           .filter((s) => s !== null)
-          .map((stat) => {
+          .map((stat, i) => {
             const on = view === stat.id;
             return (
               <button
@@ -429,14 +423,11 @@ function WorldPage() {
                   // A city card with no city pin on the globe points at nothing.
                   if (next !== "all" && next !== "cities") setSelected(null);
                 }}
-                className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold transition-colors ${
-                  on
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:border-primary/40"
-                }`}
+                className={`tile-fill-${i + 1} world-filter`}
               >
-                <span className="tabular-nums">{stat.n}</span>
-                <span className={on ? "text-primary-foreground/85" : "text-muted-foreground"}>
+                <stat.icon className={`seq-text-${i + 1} size-5`} aria-hidden />
+                <span className="text-[13px] font-semibold leading-tight">
+                  <span className="tabular-nums">{stat.n}</span>{" "}
                   {stat.n === 1 ? stat.one : stat.many}
                 </span>
               </button>
@@ -445,11 +436,10 @@ function WorldPage() {
       </div>
     ) : null;
 
-  const current = TABS.find((x) => x.id === tab)!;
-
   return (
     <AppShell
-      title={<span className="text-[44px] leading-none">Your world</span>}
+      eyebrow="Places you've been, and all that's still ahead."
+      title="Your world."
       headerAction={
         <button
           type="button"
@@ -470,22 +460,18 @@ function WorldPage() {
       }
     >
       <div className="space-y-5">
-        <p className="-mt-3 text-[15px] text-muted-foreground">
-          {current.subtitle}
-          {places.length > 0 && (
-            <span className="sr-only">
-              {" "}
-              {[
-                cities.length > 0 ? plural(cities.length, "city", "cities") : "",
-                plural(byCountry.length, "country", "countries"),
-                continents.length > 0 ? plural(continents.length, "continent", "continents") : "",
-              ]
-                .filter(Boolean)
-                .join(", ")}
-              .
-            </span>
-          )}
-        </p>
+        {places.length > 0 && (
+          <p className="sr-only">
+            {[
+              cities.length > 0 ? plural(cities.length, "city", "cities") : "",
+              plural(byCountry.length, "country", "countries"),
+              continents.length > 0 ? plural(continents.length, "continent", "continents") : "",
+            ]
+              .filter(Boolean)
+              .join(", ")}
+            .
+          </p>
+        )}
 
         {searchOpen && (
           <div className="rise plain-card space-y-2 p-3">
@@ -541,7 +527,7 @@ function WorldPage() {
           role="tablist"
           aria-label="World views"
           data-guide="world-tabs"
-          className="grid grid-cols-4 gap-1.5"
+          className="world-tabs relative z-[1]"
         >
           {TABS.map((x) => (
             <button
@@ -550,12 +536,8 @@ function WorldPage() {
               role="tab"
               aria-selected={tab === x.id}
               onClick={() => setTab(x.id)}
-              className={`h-10 whitespace-nowrap rounded-full px-1 text-[13.5px] font-semibold transition-colors duration-(--t-tap) ${
-                tab === x.id
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-elevated text-foreground hover:bg-accent"
-              }`}
             >
+              <x.icon className="size-5 shrink-0" aria-hidden />
               {x.label}
             </button>
           ))}
@@ -611,7 +593,7 @@ function WorldPage() {
                 className="absolute bottom-1 right-0 flex flex-col items-center gap-1 text-[12px] font-medium"
               >
                 <span className="grid size-14 place-items-center rounded-full border border-border bg-card text-foreground shadow-md transition-transform active:scale-95">
-                  <Share className="size-6" aria-hidden />
+                  <Plus className="size-6" aria-hidden />
                 </span>
                 Add places
               </button>
@@ -620,29 +602,34 @@ function WorldPage() {
             {viewFilters}
 
             {selected && cityOf(selected) && (
-              <section className="rise plain-card p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="label-caps">You've been here</span>
-                    <h2 className="mt-1 text-[23px] leading-tight">{selected.city}</h2>
-                    <p className="text-[13px] text-muted-foreground">
-                      {[provinceOf.get(cityOf(selected)!.key)?.name, cityOf(selected)!.country]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-                    <p className="mt-2 text-[13px] text-muted-foreground">
-                      {plural(cityOf(selected)!.places, "place", "places")} you've saved or
-                      photographed here.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(null)}
-                    className="rounded-full border border-border px-3 py-1 text-[12px] text-muted-foreground"
-                  >
-                    Close
-                  </button>
+              <section className="rise plain-card flex items-center gap-3 p-2.5">
+                <img
+                  src={bannerArtUrl(
+                    bannerSceneFor([selected.city, cityOf(selected)!.country], selected.city),
+                  )}
+                  alt=""
+                  className="art-dim h-[84px] w-[96px] shrink-0 rounded-xl object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <span className="label-caps">You've been here</span>
+                  <h2 className="font-display text-[26px] leading-tight">{selected.city}</h2>
+                  <p className="text-[14px] text-muted-foreground">
+                    {[provinceOf.get(cityOf(selected)!.key)?.name, cityOf(selected)!.country]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                  <p className="text-[14px] text-muted-foreground">
+                    {plural(cityOf(selected)!.places, "place", "places")} you've saved or
+                    photographed here.
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setSelected(null)}
+                  className="tap-44 self-start rounded-full border border-border px-3 py-1 text-[13px] text-muted-foreground"
+                >
+                  Close
+                </button>
               </section>
             )}
 
@@ -808,7 +795,6 @@ function WorldPage() {
                     {group.heading && <h3 className="label-caps px-1">{group.heading}</h3>}
                     <ul className="plain-card divide-y divide-border">
                       {group.visits.map((visit, i) => {
-                        const expanded = openCountry === visit.key;
                         const sub =
                           view !== "cities" && view !== "countries" && visit.provinces.length > 0
                             ? visit.provinces.map((p) => p.name).join(" · ")
@@ -833,12 +819,6 @@ function WorldPage() {
                                 ? `${plural(visit.cities.length, "city", "cities")} · ${plural(placeCount, "place", "places")}`
                                 : "The whole country"
                             }
-                            onOpen={
-                              show.cities && visit.cities.length > 0
-                                ? () => setOpenCountry(expanded ? null : visit.key)
-                                : undefined
-                            }
-                            expanded={expanded}
                             pin={
                               <button
                                 type="button"
@@ -854,14 +834,14 @@ function WorldPage() {
                               </button>
                             }
                             extra={
-                              expanded ? (
+                              show.cities && visit.cities.length > 0 ? (
                                 <div className="flex flex-wrap gap-1.5 px-3 pb-3">
                                   {visit.cities.map((city) => (
                                     <button
                                       key={city.key}
                                       type="button"
                                       onClick={() => showCity(city.key)}
-                                      className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px]"
+                                      className="tile-fill-1 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border/60 px-3 text-[14px] font-medium"
                                     >
                                       <span
                                         className="size-2 rounded-full bg-visited"
@@ -926,7 +906,7 @@ function WorldPage() {
                   See all <ChevronRight className="size-4" aria-hidden />
                 </Link>
               </div>
-              <div className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   {
                     label: "Bucket list",
@@ -952,18 +932,24 @@ function WorldPage() {
                       <img
                         src={bannerArtUrl(list.scene)}
                         alt=""
-                        className="art-dim h-[92px] w-full rounded-xl object-cover"
+                        className="art-dim absolute inset-0 size-full object-cover"
                       />
-                      <span className="mt-2 block px-1 text-[14.5px] font-semibold">
-                        {list.label}
-                      </span>
-                      <span className="block px-1 text-[12.5px] text-muted-foreground">
-                        {plural(list.n, "place", "places")}
+                      <span
+                        className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent"
+                        aria-hidden
+                      />
+                      <span className="absolute inset-x-2.5 bottom-2 text-white">
+                        <span className="block font-display text-[19px] leading-tight">
+                          {list.label}
+                        </span>
+                        <span className="block text-[13px] leading-tight text-white/90">
+                          {plural(list.n, "place", "places")}
+                        </span>
                       </span>
                     </>
                   );
                   const cls =
-                    "plain-card w-[132px] shrink-0 snap-start p-1.5 pb-2.5 text-left transition-transform active:scale-[0.98]";
+                    "relative block h-[132px] overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.98]";
                   return "to" in list && list.to ? (
                     <Link key={list.label} to={list.to} className={cls}>
                       {body}
@@ -1181,9 +1167,9 @@ function PlaceRow({
 }) {
   const text = (
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-[16px] font-semibold">{title}</span>
-      {sub && <span className="block truncate text-[13px] text-muted-foreground">{sub}</span>}
-      <span className="block text-[12.5px] text-muted-foreground">{count}</span>
+      <span className="block truncate font-display text-[21px] leading-tight">{title}</span>
+      {sub && <span className="block truncate text-[14px] text-muted-foreground">{sub}</span>}
+      <span className="block text-[14px] text-muted-foreground">{count}</span>
     </span>
   );
   return (

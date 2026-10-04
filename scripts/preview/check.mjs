@@ -429,6 +429,60 @@ await flow("home: with no trip, saved cities wait on the map and in tiles", asyn
   if ((await page.getByRole("link", { name: /^Lisbon: 8 saved places/ }).count()) !== 1) throw new Error("the Lisbon heart is not a link");
 }, "homepage-none");
 
+await flow("world: four views, filters, search, add sheet, bucket menu, stats options", async (page) => {
+  const text = () => page.evaluate(() => document.body.innerText);
+  const view = async (name) => { await page.getByRole("tab", { name, exact: true }).click(); await page.waitForTimeout(400); };
+  for (const word of ["Your world.", "5 Cities", "4 Countries", "Add places"])
+    if (!(await text()).includes(word)) throw new Error(`World lost "${word}"`);
+  // Filters are toggles: tap once to narrow, again for everything.
+  const cities = page.getByRole("button", { name: /^5 Cities$/ });
+  await cities.click();
+  if ((await cities.getAttribute("aria-pressed")) !== "true") throw new Error("the Cities filter did not turn on");
+  await cities.click();
+  if ((await cities.getAttribute("aria-pressed")) !== "false") throw new Error("the Cities filter did not turn off");
+  // Search finds a city and spins to it.
+  await page.getByRole("button", { name: "Search your world" }).click();
+  await page.getByRole("textbox", { name: "Search your world" }).fill("lis");
+  await page.getByRole("button", { name: /^Lisbon/ }).click();
+  await page.waitForTimeout(400);
+  // The add sheet opens from the globe button and closes with Escape.
+  await page.getByRole("button", { name: "Add a city or country" }).click();
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("dialog").count()) < 1) throw new Error("Add places did not open");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(300);
+  // Bucket list: every row keeps its menu.
+  await view("Bucket list");
+  for (const word of ["Dream now, pin later.", "New Zealand", "Morocco", "Help me choose"])
+    if (!(await text()).includes(word)) throw new Error(`Bucket list lost "${word}"`);
+  await page.getByRole("button", { name: "More for New Zealand" }).click();
+  for (const word of ["Open in Recs", "Been there"])
+    if (!(await text()).includes(word)) throw new Error(`the bucket row menu lost "${word}"`);
+  await page.getByRole("button", { name: "Compare places" }).click();
+  if (!(await text()).toLowerCase().includes("what matters to you")) throw new Error("Help me choose did not open");
+  // Been there: city chips are on the page and spin the globe.
+  await view("Been there");
+  if (!(await text()).includes("Where you've been")) throw new Error("Been there lost its list");
+  await page.getByRole("button", { name: "Paris", exact: true }).click();
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("tab", { name: "Map", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("a city chip did not return to the Map");
+  if (!(await text()).toLowerCase().includes("you've been here")) throw new Error("a city chip did not select the city");
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  if ((await text()).toLowerCase().includes("you've been here")) throw new Error("Close did not clear the city card");
+  // Stats: the options sheet and the note.
+  await view("Stats");
+  await page.getByRole("button", { name: "What these numbers count" }).click();
+  if (!(await text()).includes("These stats only include data")) throw new Error("the stats note did not open");
+  await page.getByRole("button", { name: "Choose stats" }).click();
+  for (const word of ["Countries as a world share", "Reset to default"])
+    if (!(await text()).includes(word)) throw new Error(`Choose stats lost "${word}"`);
+  await page.getByRole("button", { name: "Reset to default" }).click();
+  await page.getByRole("button", { name: "Travel statistics" }).click();
+  if ((await text()).includes("Choose stats")) throw new Error("Travel statistics did not collapse");
+  await page.getByRole("button", { name: "Travel statistics" }).click();
+  if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
+}, "world");
+
 await flow("shell: brand, back, guide, five tabs and offline status remain reachable", async (page) => {
   const labels = ["Home", "World", "Trips", "Recs", "You"];
   const paths = ["/", "/world", "/trips", "/recommendations", "/profile"];
