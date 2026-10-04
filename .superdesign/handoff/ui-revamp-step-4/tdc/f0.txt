@@ -401,7 +401,7 @@ export function TripDetail({
     const days = new Set(saved.map((item) => item.day_date ?? ""));
     const stops = directionStops.filter((stop) => days.has(stop.day_date ?? ""));
     if (stops.length < 2) return;
-    const pending = toast.loading("Adding directions between your stops\u2026");
+    const pending = toast.loading("Adding directions between your stops…");
     void (async () => {
       try {
         const result = (await routeRun({
