@@ -8,9 +8,11 @@ import {
   mapBounds,
   pillLabel,
   pillStops,
+  placeLabels,
   placePills,
   reliefTiles,
   routeStops,
+  routeStopsIndexed,
   smoothPath,
   stayDays,
   stayLabel,
@@ -314,4 +316,49 @@ test("reliefTiles wraps columns across the 180° line", () => {
   });
   assert.ok(tiles.every((t) => t.x >= 0 && t.x < 2 ** t.z));
   assert.ok(new Set(tiles.map((t) => t.x)).has(0));
+});
+
+test("placeLabels names a city on its right, near the right edge on its left", () => {
+  const dots = [
+    { x: 60, y: 200 },
+    { x: 340, y: 150 },
+  ];
+  const labels = placeLabels(dots, ["Paris", "Berlin"], { width: 390 });
+  assert.deepEqual(
+    labels.map((l) => [l.index, l.anchor]),
+    [
+      [0, "start"],
+      [1, "end"],
+    ],
+  );
+  assert.ok(labels[0]!.x > 60 && labels[1]!.x < 340);
+});
+
+test("placeLabels drops a middle name that would cover another, never the ends", () => {
+  const dots = [
+    { x: 20, y: 200 },
+    { x: 20, y: 214 },
+    { x: 20, y: 228 },
+  ];
+  const labels = placeLabels(dots, ["Kyoto", "Nara", "Osaka"], { width: 390 });
+  const placed = labels.map((l) => l.index);
+  assert.deepEqual(placed, [0, 2]);
+  // The stop you are in is placed first, so it is the one kept.
+  const kept = placeLabels(dots, ["Kyoto", "Nara", "Osaka"], { width: 390, keep: 1 });
+  assert.ok(kept.some((l) => l.index === 1));
+});
+
+test("routeStopsIndexed tells a return visit from the first", () => {
+  const { route, indexOf } = routeStopsIndexed([
+    { city: "Paris", lat: 48.86, lon: 2.35 },
+    { city: "Lyon", lat: 45.76, lon: 4.84 },
+    { city: "Paris", lat: 48.86, lon: 2.35 },
+    { city: "Nowhere", lat: null, lon: null },
+    { city: "Paris 2e", lat: 48.87, lon: 2.34 },
+  ]);
+  assert.deepEqual(
+    route.map((s) => s.city),
+    ["Paris", "Lyon", "Paris"],
+  );
+  assert.deepEqual(indexOf, [0, 1, 2, -1, 2]);
 });

@@ -138,6 +138,16 @@ export const db: Record<string, Row[]> = sample === "home" || sample === "home-t
     { id: "rec2", user_id: "me", name: "Shukkei-en tea house", city: "Hiroshima", country: "Japan", address: null, category: "Cafe", notes: null, recommended_by: null, source: null, url: null, lat: 34.4003, lon: 132.4675, visited: false, pin_type: "reco", created_at: ago(8000) },
     { id: "rec3", user_id: "me", name: "Café Olimpico", city: "Montréal", country: "Canada", address: null, category: "Cafe", notes: null, recommended_by: null, source: null, url: null, lat: 45.5229, lon: -73.6005, visited: true, pin_type: "reco", created_at: ago(7000) },
   ],
+  // `?route`: a three-city trip, for the banner's Stops map.
+  ...(new URLSearchParams(location.search).has("route")
+    ? {
+        trip_stops: [
+          { id: "r1", trip_id: "t1", kind: "city", city: "Tokyo", country: "Japan", place_name: null, address: null, lat: 35.68, lon: 139.77, arrive_on: "2026-10-07", depart_on: "2026-10-07", notes: null, position: 0 },
+          { id: "r2", trip_id: "t1", kind: "city", city: "Kyoto", country: "Japan", place_name: null, address: null, lat: 35.01, lon: 135.77, arrive_on: "2026-10-07", depart_on: "2026-10-08", notes: null, position: 1 },
+          { id: "r3", trip_id: "t1", kind: "city", city: "Hiroshima", country: "Japan", place_name: null, address: null, lat: 34.39, lon: 132.45, arrive_on: "2026-10-08", depart_on: "2026-10-08", notes: null, position: 2 },
+        ],
+      }
+    : {}),
 };
 
 function q(table: string) {
