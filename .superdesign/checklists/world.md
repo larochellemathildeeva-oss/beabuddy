@@ -22,7 +22,7 @@ Ticked only for controls clicked in `npm run preview:check` (`world:` flow, thre
 ## Globe
 - [ ] Globe of visited places only (photos + visited recs)
 - [ ] City dots; province/state shading (admin-1, per country); country shading; country ring labels for country-only visits
-- [ ] Drag / fling to rotate, pinch / wheel / +/− to zoom, arrow keys, Home key resets, reset-view button
+- [ ] Drag / fling to rotate, pinch / wheel / +/− to zoom, arrow keys, Home key resets, reset-view button (the +/−/reset buttons were clicked; drag, pinch and keys were not)
 - [x] Tap a city pin → "You've been here" card (city, province, country, N places) with Close
 - [ ] Tap a country → opens one of your cities there (any language), while cities show
 - [x] "+" button → Add cities or countries sheet
@@ -53,7 +53,7 @@ Ticked only for controls clicked in `npm run preview:check` (`world:` flow, thre
 - [ ] data-guide: globe, add-city, places-list, travel-stats, compare-pins
 
 ## Where each lives after the master rebuild
-- Map tab: globe (open variant, round locate/+/− controls), "Add places" button (data-guide add-city), filter pills, "You've been here" card, figures card, Add places card
+- Map tab: globe (open variant: relief terrain, pill city labels, +/−/locate stack on the left), "Add places" button (data-guide add-city), filter pills, "You've been here" card, figures card, Add places card
 - Bucket list tab: wishlist by country, "Open in Recs" / "Been there — put it on my globe" in ⋯, Add to bucket list / Add a destination (sheet opens on Wishlist), Help me choose
 - Been there tab: filter pills, Where you've been rows (data-guide places-list); tap a row for its city chips, chip or pin → Map tab spun to it
 - Stats tab: figures, flat map (expand → Map tab), travel lists, Add places card, Travel statistics (data-guide travel-stats) with every option

@@ -4,6 +4,22 @@ import { labelBudget, placeCityLabels } from "./globe-labels.ts";
 
 const at = (city: string, x: number, y: number) => ({ id: `${city}-${x}-${y}`, city, x, y });
 
+describe("placeCityLabels (pill)", () => {
+  it("uses the pill width, so wide neighbours clash where text boxes would not", () => {
+    const pair = [at("Montreal", 100, 100), at("Ottawa", 150, 100)];
+    assert.equal(placeCityLabels(pair).length, 2);
+    assert.equal(placeCityLabels(pair, { pill: true }).length, 1);
+  });
+
+  it("drops a pill that would cover another pin's dot", () => {
+    const kept = placeCityLabels([at("Lisbon", 100, 100), at("Porto", 112, 92)], { pill: true });
+    assert.deepEqual(
+      kept.map((k) => k.city),
+      ["Porto"],
+    );
+  });
+});
+
 describe("placeCityLabels", () => {
   it("keeps labels that are nowhere near each other", () => {
     const kept = placeCityLabels([at("Lisbon", 0, 0), at("Tokyo", 400, 300)]);

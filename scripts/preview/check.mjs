@@ -462,6 +462,11 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
   if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 1) throw new Error("Reset did not bring Globe filters back");
+  // The globe wears terrain and its controls still work.
+  await page.locator("[data-guide=globe] canvas").waitFor({ state: "attached" });
+  for (const name of ["Zoom in", "Zoom out", "Reset the view"]) await page.getByRole("button", { name }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.locator("[data-guide=globe] canvas").count()) !== 1) throw new Error("the globe lost its terrain");
   // The add sheet opens from the globe button and closes with Escape.
   await page.getByRole("button", { name: "Add a city or country" }).click();
   await page.waitForTimeout(400);

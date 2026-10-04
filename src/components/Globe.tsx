@@ -1,12 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { LocateFixed, Minus, Plus, RotateCcw } from "@/components/icons";
-import { geoOrthographic, geoPath, geoGraticule10 } from "d3-geo";
+import { geoOrthographic, geoPath, geoGraticule10, geoRotation } from "d3-geo";
 import { feature } from "topojson-client";
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
 import type { Pin } from "@/data/atlas";
 import { countryKey } from "@/lib/country-names";
-import { labelBudget, placeCityLabels } from "@/lib/globe-labels";
+import { labelBudget, pillBox, placeCityLabels } from "@/lib/globe-labels";
+import { RELIEF_SEA, paintGlobe, viewAxes, type ReliefMap } from "@/lib/relief-globe";
+import { loadReliefMap } from "@/lib/relief-globe-load";
 
 const PIN_FILL: Record<Pin["type"], string> = {
   visited: "var(--visited)",
@@ -160,6 +162,17 @@ export function Globe({
   const shineId = `globe-shine-${uid}`;
   const [rotation, setRotation] = useState<[number, number]>([-10, -18]);
   const [zoom, setZoom] = useState(1);
+  /** The World globe wears real terrain; the others keep their plain land. */
+  const [relief, setRelief] = useState<ReliefMap | null>(null);
+  const reliefCanvas = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let live = true;
+    void loadReliefMap().then((map) => live && setRelief(map));
+    return () => {
+      live = false;
+    };
+  }, [open]);
   const pointers = useRef<Map<number, ActivePointer>>(new Map());
   const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   const velocity = useRef<[number, number]>([0, 0]);
@@ -241,6 +254,31 @@ export function Globe({
     };
   }, [rotation]);
 
+  // The terrain is drawn small while the globe moves, sharp once it rests.
+  useEffect(() => {
+    const canvas = reliefCanvas.current;
+    if (!canvas || !relief) return;
+    const rotationInverse = geoRotation([rotation[0], rotation[1]]);
+    const axes = viewAxes((p) => rotationInverse.invert(p) as [number, number]);
+    const draw = (px: number) => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      if (canvas.width !== px) {
+        canvas.width = px;
+        canvas.height = px;
+      }
+      const image = ctx.createImageData(px, px);
+      paintGlobe(image.data, px, (150 * zoom * px) / SIZE, axes, relief);
+      ctx.putImageData(image, 0, 0);
+    };
+    draw(SIZE);
+    const sharp = window.setTimeout(
+      () => draw(Math.min(2, window.devicePixelRatio || 1) * SIZE),
+      140,
+    );
+    return () => window.clearTimeout(sharp);
+  }, [relief, rotation, zoom]);
+
   const projected = useMemo(() => {
     return pins
       .map((pin) => {
@@ -256,23 +294,24 @@ export function Globe({
   const cityLabels = useMemo(() => {
     const placed = placeCityLabels(
       projected.map(({ pin, x, y }) => ({ id: pin.id, city: pin.city, x, y })),
-      { max: labelBudget(zoom) },
+      { max: labelBudget(zoom), pill: open },
     );
     const byId = new Map(projected.map((point) => [point.pin.id, point]));
     return placed.map((label) => byId.get(label.id)!).filter(Boolean);
-  }, [projected, zoom]);
+  }, [projected, zoom, open]);
 
   // Country names go right of their ring, or left when a city's name is
   // already there, or not at all — the ring still marks the country.
   const countryLabels = useMemo(() => {
     type Box = { x0: number; x1: number; y0: number; y1: number };
     const overlaps = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
-    const taken: Box[] = cityLabels.map(({ pin, x, y }) => ({
-      x0: x + 7,
-      x1: x + 7 + pin.city.length * 6,
-      y0: y - 15,
-      y1: y - 2,
-    }));
+    const taken: Box[] = cityLabels.map(({ pin, x, y }) => {
+      if (open) {
+        const b = pillBox(pin.city ?? "", x, y);
+        return { x0: b.left, x1: b.right, y0: b.top, y1: b.bottom };
+      }
+      return { x0: x + 7, x1: x + 7 + pin.city.length * 6, y0: y - 15, y1: y - 2 };
+    });
     return (countryMarks ?? [])
       .map((mark) => {
         const p = projection([mark.lon, mark.lat]);
@@ -295,7 +334,7 @@ export function Globe({
       y: number;
       side: "right" | "left" | null;
     }[];
-  }, [countryMarks, projection, clipTest, cityLabels]);
+  }, [countryMarks, projection, clipTest, cityLabels, open]);
 
   const flushRotation = () => {
     rafDrag.current = null;
@@ -651,10 +690,21 @@ export function Globe({
           />
           <path
             d={spherePath}
-            fill={`url(#${oceanId})`}
+            fill={relief ? `rgb(${RELIEF_SEA.join(" ")})` : `url(#${oceanId})`}
             style={{ stroke: "color-mix(in oklab, var(--visited) 25%, var(--border))" }}
             strokeWidth={0.8}
           />
+          {relief && (
+            <foreignObject x={0} y={0} width={SIZE} height={SIZE} className="pointer-events-none">
+              <canvas
+                ref={reliefCanvas}
+                width={SIZE}
+                height={SIZE}
+                aria-hidden
+                style={{ width: "100%", height: "100%", display: "block" }}
+              />
+            </foreignObject>
+          )}
           <path
             d={graticulePath}
             fill="none"
@@ -669,12 +719,18 @@ export function Globe({
                 key={c.id}
                 d={c.d}
                 style={{
-                  fill: c.visited
-                    ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
-                    : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
+                  fill: relief
+                    ? c.visited
+                      ? "color-mix(in oklab, var(--visited) 52%, transparent)"
+                      : "transparent"
+                    : c.visited
+                      ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
+                      : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
                 }}
-                stroke="var(--card)"
-                strokeWidth={0.45}
+                stroke={
+                  relief ? "color-mix(in oklab, var(--foreground) 28%, transparent)" : "var(--card)"
+                }
+                strokeWidth={relief ? 0.35 : 0.45}
                 strokeLinejoin="round"
                 className={onCountrySelect && c.name ? "cursor-pointer" : undefined}
                 onClick={(e) => {
@@ -686,6 +742,14 @@ export function Globe({
                 }}
               />
             ) : null,
+          )}
+          {/* Terrain is a daylight picture: in Dark it is dimmed to sit in the page. */}
+          {relief && (
+            <path
+              d={spherePath}
+              style={{ fill: "var(--background)" }}
+              className="pointer-events-none opacity-0 dark:opacity-45"
+            />
           )}
           <path d={spherePath} fill={`url(#${shadeId})`} className="pointer-events-none" />
           <path
@@ -767,47 +831,77 @@ export function Globe({
               )}
             </g>
           ))}
-          {cityLabels.map(({ pin, x, y }) => (
-            <text
-              key={`city-${pin.city}-${pin.id}`}
-              x={x + 7}
-              y={y - 6}
-              className="pointer-events-none fill-foreground text-[10.5px] font-semibold"
-              stroke="var(--card)"
-              strokeWidth={2.5}
-              paintOrder="stroke"
-            >
-              {pin.city}
-            </text>
-          ))}
+          {cityLabels.map(({ pin, x, y }) => {
+            const name = pin.city ?? "";
+            if (!open) {
+              return (
+                <text
+                  key={`city-${pin.city}-${pin.id}`}
+                  x={x + 7}
+                  y={y - 6}
+                  className="pointer-events-none fill-foreground text-[10.5px] font-semibold"
+                  stroke="var(--card)"
+                  strokeWidth={2.5}
+                  paintOrder="stroke"
+                >
+                  {name}
+                </text>
+              );
+            }
+            // A pill beside the dot, as in the mockup: the pin's colour, then the name.
+            const pill = pillBox(name, 0, 0);
+            const width = pill.right - pill.left;
+            return (
+              <g
+                key={`city-${pin.city}-${pin.id}`}
+                transform={`translate(${x + 5} ${y - 16})`}
+                className="pointer-events-none"
+              >
+                <rect
+                  width={width}
+                  height={17}
+                  rx={8.5}
+                  style={{ fill: "color-mix(in oklab, var(--card) 94%, transparent)" }}
+                  stroke="color-mix(in oklab, var(--foreground) 14%, transparent)"
+                  strokeWidth={0.5}
+                />
+                <circle cx={8.5} cy={8.5} r={3} fill={PIN_FILL[pin.type] ?? "var(--reco)"} />
+                <text x={15} y={11.6} className="fill-foreground text-[9.5px] font-semibold">
+                  {name}
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
         {open ? (
-          <div className="absolute right-1 top-2 flex flex-col gap-2.5">
-            <button
-              type="button"
-              aria-label="Reset the view"
-              title="Reset the view"
-              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
-              onClick={resetView}
-            >
-              <LocateFixed className="size-5" aria-hidden />
-            </button>
+          <div className="absolute bottom-10 left-1 flex flex-col overflow-hidden rounded-full border border-border bg-card/85 shadow-sm backdrop-blur">
             <button
               type="button"
               aria-label="Zoom in"
-              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+              className="grid size-11 place-items-center text-foreground"
               onClick={() => applyZoom(liveZoom.current + 0.2)}
             >
               <Plus className="size-5" aria-hidden />
             </button>
+            <span className="h-px bg-border" />
             <button
               type="button"
               aria-label="Zoom out"
-              className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground shadow-sm"
+              className="grid size-11 place-items-center text-foreground"
               onClick={() => applyZoom(liveZoom.current - 0.2)}
             >
               <Minus className="size-5" aria-hidden />
+            </button>
+            <span className="h-px bg-border" />
+            <button
+              type="button"
+              aria-label="Reset the view"
+              title="Reset the view"
+              className="grid size-11 place-items-center text-foreground"
+              onClick={resetView}
+            >
+              <LocateFixed className="size-5" aria-hidden />
             </button>
           </div>
         ) : (
