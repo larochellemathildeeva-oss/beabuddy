@@ -2,17 +2,12 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  BarChart3,
   Bookmark,
   Check,
   ChevronRight,
-  CircleCheck,
-  Compass,
   FileText,
-  Globe2,
   ListPlus,
   Maximize2,
-  MapIcon,
   MapPin,
   MoreHorizontal,
   Plus,
@@ -479,7 +474,8 @@ function WorldPage() {
             visits: selectedCity.places,
             detail: plural(selectedCity.places, "place", "places"),
           }}
-          onOpen={() => setSelected(null)}
+          caption="You've been here"
+          onClose={() => setSelected(null)}
         />
       </div>
     ) : null;
@@ -719,6 +715,7 @@ function WorldPage() {
 
             <WorldGlobeStage data-guide="globe">
               <BeaGlobe
+                autoRotate={selected ? "off" : "resume"}
                 pins={show.cities ? globeCities : []}
                 regions={show.provinces ? provinces : []}
                 // Cities and Provinces show only themselves: no whole countries

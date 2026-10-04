@@ -72,7 +72,15 @@ export async function createEarthEngine(
     return p;
   };
 
-  const relief = await load(urls.relief);
+  let lookTicket = 0;
+  let relief: THREE.Texture;
+  try {
+    relief = await load(urls.relief);
+  } catch (err) {
+    renderer.dispose();
+    renderer.forceContextLoss();
+    throw err;
+  }
   const img = relief.image as { width?: number; height?: number } | undefined;
   const texel = new THREE.Vector2(1 / (img?.width ?? 2048), 1 / (img?.height ?? 1024));
   const v3 = (c: readonly [number, number, number]) => new THREE.Vector3(c[0], c[1], c[2]);
@@ -176,7 +184,10 @@ export async function createEarthEngine(
     },
     async setLook(mood) {
       const next = GLOBE_LOOKS[mood];
+      const ticket = ++lookTicket;
       const surface = await load(next.surface === "night" ? urls.night : urls.day);
+      // A newer mood was asked for while this one's texture loaded: it wins.
+      if (ticket !== lookTicket) return;
       g.uSurface.value = surface;
       g.uNight.value = next.surface === "night" ? 1 : 0;
       g.uAmbient.value = next.ambient;

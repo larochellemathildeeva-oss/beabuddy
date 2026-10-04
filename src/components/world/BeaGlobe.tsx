@@ -428,6 +428,7 @@ export function BeaGlobe({
     const canvas = canvasRef.current;
     if (!canvas) return;
     void (async () => {
+      let building: { dispose: () => void } | null = null;
       try {
         const { createEarthEngine } = await import("./bea-earth-gl");
         if (!live) return;
@@ -436,13 +437,16 @@ export function BeaGlobe({
           Math.min(window.devicePixelRatio || 1, 2),
           textures,
         );
+        building = e;
         if (!live) return e.dispose();
         e.setSize(Math.round((sizeRef.current || frameRef.current?.clientWidth || 320) * OVERHANG));
         await e.setLook(mood);
         if (!live) return e.dispose();
+        building = null;
         engine.current = e;
         setEarthReady(true);
       } catch (err) {
+        building?.dispose();
         console.warn("BeaGlobe: WebGL Earth unavailable, using the vector globe.", err);
       }
     })();
@@ -543,6 +547,25 @@ export function BeaGlobe({
     }
     schedule();
   };
+
+  // A pointer released outside the globe (or lost to a blur) before it became a drag
+  // would stay in the map and turn the next press into a pinch.
+  const endPointerRef = useRef(endPointer);
+  endPointerRef.current = endPointer;
+  useEffect(() => {
+    const done = (e: PointerEvent) => endPointerRef.current(e.pointerId);
+    const blur = () => {
+      for (const id of [...pointers.current.keys()]) endPointerRef.current(id);
+    };
+    window.addEventListener("pointerup", done);
+    window.addEventListener("pointercancel", done);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("pointerup", done);
+      window.removeEventListener("pointercancel", done);
+      window.removeEventListener("blur", blur);
+    };
+  }, []);
 
   const tryCountryTap = (clientX: number, clientY: number) => {
     const onCountry = latest.current.onCountrySelect;
@@ -650,6 +673,7 @@ export function BeaGlobe({
           dy *= k;
           turnBy(dx, -dy);
         }}
+        onLostPointerCapture={(e) => endPointer(e.pointerId)}
         onPointerUp={(e) => endPointer(e.pointerId)}
         onPointerCancel={(e) => endPointer(e.pointerId)}
         onClick={(e) => {
@@ -746,7 +770,7 @@ export function BeaGlobe({
                 if (!el) return void markEls.current.delete(m.key);
                 markEls.current.set(m.key, { root: el, label: el.lastElementChild as HTMLElement });
               }}
-              className="absolute left-0 top-0 will-change-transform"
+              className="absolute left-0 top-0 "
               style={{ visibility: "hidden" }}
             >
               <span className="absolute -left-[5px] -top-[5px] size-[10px] rounded-full border-2 border-white bg-(--visited)/70 shadow-[0_0_0_1px_rgb(0_0_0/0.15)]" />
@@ -781,11 +805,11 @@ export function BeaGlobe({
                   if (consumed.current || moved.current > DRAG_SLOP) return;
                   latest.current.onSelect?.(pin);
                 }}
-                className="group pointer-events-auto absolute left-0 top-0 size-0 rounded-full outline-none will-change-transform"
+                className="group pointer-events-auto absolute left-0 top-0 size-0 rounded-full outline-none"
                 style={{ visibility: "hidden" } as CSSProperties}
               >
-                {/* A 28px target on the dot; a named place's whole tag is tappable too. */}
-                <span className="absolute -left-[14px] -top-[14px] size-[28px] rounded-full group-focus-visible:ring-2 group-focus-visible:ring-(--acc)" />
+                {/* A 44px target on the dot; a named place's whole tag is tappable too. */}
+                <span className="absolute -left-[22px] -top-[22px] size-[44px] rounded-full group-focus-visible:ring-2 group-focus-visible:ring-(--acc)" />
                 <span className="absolute -left-[4px] -top-[4px] size-[8px] rounded-full bg-white shadow-[0_0_8px_3px_rgb(255_255_255/0.7)]" />
                 <span data-tag className="contents">
                   <PinTag name={name} color={colorOf(pin, i)} selected={selected} />

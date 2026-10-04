@@ -80,7 +80,6 @@ export function WorldTabs({
             role="tab"
             id={`world-tab-${t.id}`}
             aria-selected={on}
-            aria-controls={`world-panel-${t.id}`}
             tabIndex={on ? 0 : -1}
             onClick={() => onChange(t.id)}
             onKeyDown={(e) => {
@@ -161,8 +160,14 @@ export function WorldAddButton({
 /* ---------------------------------------------------------------- filters */
 
 export type WorldFilterId = "cities" | "provinces" | "countries" | "continents";
-const WORLD_FILTERS: { id: WorldFilterId; label: ReactNode; text: string; icon: IconType }[] = [
-  { id: "cities", label: "Cities", text: "Cities", icon: MapPin },
+const WORLD_FILTERS: {
+  id: WorldFilterId;
+  label: ReactNode;
+  text: string;
+  one: string;
+  icon: IconType;
+}[] = [
+  { id: "cities", label: "Cities", text: "Cities", one: "City", icon: MapPin },
   {
     id: "provinces",
     label: (
@@ -173,10 +178,11 @@ const WORLD_FILTERS: { id: WorldFilterId; label: ReactNode; text: string; icon: 
       </>
     ),
     text: "Provinces & states",
+    one: "Province or state",
     icon: MapIcon,
   },
-  { id: "countries", label: "Countries", text: "Countries", icon: Flag },
-  { id: "continents", label: "Continents", text: "Continents", icon: Compass },
+  { id: "countries", label: "Countries", text: "Countries", one: "Country", icon: Flag },
+  { id: "continents", label: "Continents", text: "Continents", one: "Continent", icon: Compass },
 ];
 
 /**
@@ -202,7 +208,7 @@ export function WorldFilters({
   return (
     <div
       role="group"
-      aria-label="Show on the globe"
+      aria-label="Show on the map"
       className={cn("mx-4 grid gap-1 rounded-[20px] p-1", float, className)}
       style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }}
     >
@@ -215,7 +221,7 @@ export function WorldFilters({
             key={f.id}
             type="button"
             aria-pressed={on}
-            aria-label={count === undefined ? f.text : `${count} ${f.text}`}
+            aria-label={count === undefined ? f.text : `${count} ${count === 1 ? f.one : f.text}`}
             onClick={() => onChange(on ? null : f.id)}
             className={cn(
               sans,
@@ -272,20 +278,25 @@ function flagEmoji(code: string | undefined): string {
 export function WorldPlaceCard({
   place,
   onOpen,
+  onClose,
+  caption,
   className,
 }: {
   place: WorldPlace;
-  onOpen: (place: WorldPlace) => void;
+  /** Opens the place; shows the round chevron. */
+  onOpen?: ((place: WorldPlace) => void) | undefined;
+  /** Dismisses the card; shows a "Close" button. */
+  onClose?: (() => void) | undefined;
+  /** A small line above the name ("You've been here"). */
+  caption?: string | undefined;
   className?: string | undefined;
 }) {
   const flag = flagEmoji(place.countryCode);
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(place)}
-      aria-label={`${place.name}, ${place.country}. ${place.detail ?? `${place.visits} visit${place.visits === 1 ? "" : "s"}`}${place.lastVisit ? `, last ${place.lastVisit}` : ""}. Open`}
+    <section
+      aria-label={`${place.name}, ${place.country}`}
       className={cn(
-        "relative mx-4 flex items-center gap-3 rounded-[20px] p-2 pr-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-(--ring)",
+        "relative mx-4 flex items-center gap-3 rounded-[20px] p-2 pr-3",
         float,
         className,
       )}
@@ -305,6 +316,16 @@ export function WorldPlaceCard({
         </span>
       )}
       <span className="min-w-0 flex-1">
+        {caption && (
+          <span
+            className={cn(
+              sans,
+              "block text-[13px] font-semibold uppercase tracking-[0.12em] text-(--muted-foreground)",
+            )}
+          >
+            {caption}
+          </span>
+        )}
         <span className={cn(serif, "block truncate text-[22px] leading-[1.1] text-(--foreground)")}>
           {place.name}
         </span>
@@ -332,13 +353,29 @@ export function WorldPlaceCard({
           {place.lastVisit && <> · Last: {place.lastVisit}</>}
         </span>
       </span>
-      <span
-        aria-hidden
-        className="grid size-10 shrink-0 place-items-center rounded-full bg-(--world-place-fallback) text-(--foreground)"
-      >
-        <ChevronRight className="size-[18px]" weight="bold" aria-hidden />
-      </span>
-    </button>
+      {onOpen && (
+        <button
+          type="button"
+          onClick={() => onOpen(place)}
+          aria-label={`Open ${place.name}`}
+          className="grid size-11 shrink-0 place-items-center rounded-full bg-(--world-place-fallback) text-(--foreground) outline-none focus-visible:ring-2 focus-visible:ring-(--ring)"
+        >
+          <ChevronRight className="size-[18px]" weight="bold" aria-hidden />
+        </button>
+      )}
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            sans,
+            "min-h-11 shrink-0 self-start rounded-full border border-(--border) px-3 text-[13px] text-(--muted-foreground) outline-none focus-visible:ring-2 focus-visible:ring-(--ring)",
+          )}
+        >
+          Close
+        </button>
+      )}
+    </section>
   );
 }
 
@@ -387,7 +424,7 @@ export function WorldStatsStrip({
           {i > 0 && (
             <span
               aria-hidden
-              className="absolute bottom-3 left-0 top-3 w-[1.5px] rounded-full"
+              className="absolute bottom-3 start-0 top-3 w-[1.5px] rounded-full"
               style={{ background: `var(--world-stat-${Math.min(i, 3)})` }}
             />
           )}

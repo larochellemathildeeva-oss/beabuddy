@@ -1816,66 +1816,6 @@
   color: var(--foreground);
 }
 
-/* World: the four views, and the four ways to filter the map. */
-.world-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  padding: 4px;
-  border-radius: 24px;
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
-}
-.world-tabs button {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  min-height: 56px;
-  border-radius: 20px;
-  padding: 4px 2px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 1.15;
-  min-width: 0;
-  text-align: center;
-  color: var(--muted-foreground);
-}
-.world-tabs button[aria-selected="true"] {
-  background: var(--primary-soft);
-  color: var(--foreground);
-  font-weight: 700;
-}
-/* The globe filters, as the mockup draws them: one bar of four, each an icon
-   over its name, pastel in Colorful. */
-.world-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border-radius: 22px;
-  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
-  background: var(--card);
-  box-shadow: var(--shadow-sm);
-}
-.world-filter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 68px;
-  padding: 8px 4px;
-  border-radius: 18px;
-  text-align: center;
-}
-.world-filter[aria-pressed="true"] {
-  outline: 2px solid var(--foreground);
-  outline-offset: -2px;
-}
-
 /*
  * Béa — World (step 9) tokens. MERGE, don't overwrite: append to the end of
  * src/styles.css. Everything here is new and namespaced `--world-*`, scoped
