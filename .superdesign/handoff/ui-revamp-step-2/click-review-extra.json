@@ -1,0 +1,23 @@
+[
+  "entries: true",
+  "presence: true",
+  "stay line: Here 40 min",
+  "planned stay: true",
+  "leave by once count: 1",
+  "tracker region: 1",
+  "ribbon current: 2",
+  "rain: 0",
+  "day done: true",
+  "every or skipped: Every stop reached.",
+  "ease after done: Make Thu, Oct 8 easier",
+  "pick a day prompt: 1",
+  "pick a day buttons: 2",
+  "prompt after pick: 0",
+  "unpinned hours: true",
+  "unpinned closed: true",
+  "unpinned be there: true",
+  "unpinned leave by: false",
+  "unpinned website: true",
+  "unpinned working out: false",
+  "unpinned off map: false"
+]
