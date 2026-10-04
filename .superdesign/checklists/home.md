@@ -13,7 +13,8 @@ components it imports.
 ## Signed in
 - [ ] Eyebrow: today's date ("Saturday 27 September")
 - [ ] Title: greeting by time of day + first name ("Good morning, Mathilde.")
-- [ ] Subtitle, one of: "Where to next?" / "Home in {city}. Where to next?" / "Your next chapter is taking shape." / "You're in the middle of it."
+- [ ] With no trip and saved places the map can place: greeting kicker over "Where to next?", today's date under it, a heart tag per saved city (→ Recs), "N saved places in M cities are waiting for a trip." with Plan a trip, "Waiting for a trip" city tiles (→ Recs)
+- [ ] On a trip: "On trip · Day N of M" over the route (current city ringed), Current stop and Next stop cards (→ trip)
 - [ ] **Trip hero** (current or next trip) → trip page
   - [ ] Your own photo of that city/country, else Béa's painted landscape
   - [ ] Countdown / status pill (white), tentative-dates marker
