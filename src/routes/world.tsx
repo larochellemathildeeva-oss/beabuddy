@@ -841,7 +841,7 @@ function WorldPage() {
                                       key={city.key}
                                       type="button"
                                       onClick={() => showCity(city.key)}
-                                      className="tile-fill-1 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-border/60 px-3 text-[14px] font-medium"
+                                      className="tile-fill-1 inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border/60 px-3 text-[14px] font-medium"
                                     >
                                       <span
                                         className="size-2 rounded-full bg-visited"
@@ -1151,8 +1151,6 @@ function PlaceRow({
   count,
   pin,
   menu,
-  onOpen,
-  expanded,
   extra,
 }: {
   picture: string;
@@ -1161,8 +1159,6 @@ function PlaceRow({
   count: string;
   pin: ReactNode;
   menu?: ReactNode;
-  onOpen?: (() => void) | undefined;
-  expanded?: boolean;
   extra?: ReactNode;
 }) {
   const text = (
@@ -1180,18 +1176,7 @@ function PlaceRow({
           alt=""
           className="art-dim h-[60px] w-[84px] shrink-0 rounded-xl object-cover"
         />
-        {onOpen ? (
-          <button
-            type="button"
-            onClick={onOpen}
-            aria-expanded={expanded}
-            className="flex min-w-0 flex-1 text-left"
-          >
-            {text}
-          </button>
-        ) : (
-          text
-        )}
+        {text}
         {pin}
         {menu}
       </div>
