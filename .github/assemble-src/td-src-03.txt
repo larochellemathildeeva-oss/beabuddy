@@ -1,0 +1,250 @@
+  const legFor = (fromId: string, toId: string) => {
+    const index = directionIndexById.get(fromId);
+    if (index == null || directionStops[index + 1]?.id !== toId) return undefined;
+    return liveLegs?.[index] ?? (savedFitsTimeline ? dir.saved?.legs[index] : undefined);
+  };
+  /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
+  /**
+   * `strict` leaves out rows saved before they kept the stop they leave from:
+   * after a reorder such a row may describe another journey, and Companion
+   * times "Leave by" from it, so it works that journey out itself instead.
+   */
+  const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
+    savedLegStillFits(legFor(from.id, to.id), from, to) ??
+    savedLegStillFits(
+      savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
+        savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
+        (strict
+          ? undefined
+          : (savedTravel.get(directionKey(to.day_date, to.title)) ??
+            savedTravel.get(directionKey(from.day_date, to.title)))),
+      from,
+      to,
+    );
+  const templates = usePacking(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
+  const [packTemplateId, setPackTemplateId] = useState("");
+  const [packMsg, setPackMsg] = useState("");
+  const [prepSignal, setPrepSignal] = useState(0);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  /** Open the to-do or packing sheet on a given tab (arrival link, Overview). */
+  const [prepAsk, setPrepAsk] = useState<{ tab: PrepTab; n: number } | null>(() =>
+    openPrep ? { tab: openPrep, n: 1 } : null,
+  );
+  /** The member about to lose access, or null. Named, so the sheet can say who. */
+  const [addingTimeline, setAddingTimeline] = useState(false);
+  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [timelineByDay, setTimelineByDay] = useState(true);
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
+  /**
+   * One switch for the whole itinerary, not a link on every row.
+   *
+   * Each entry used to carry its own "Day & order" toggle, which put three
+   * underlined links under every line of the trip — the list read as a page of
+   * controls with the plan somewhere behind it. The controls are the same; they
+   * now all appear at once, from one pencil in the section header.
+   */
+  const [editingTimeline, setEditingTimeline] = useState(false);
+  /** The signpost on every day's header opens the directions sheet. */
+  const [directionsOpen, setDirectionsOpen] = useState(false);
+  const [directionsBusy, setDirectionsBusy] = useState(false);
+  const directionsButton =
+    directionStops.length >= 2 && !editingTimeline
+      ? { onDirections: () => setDirectionsOpen(true), directionsBusy }
+      : {};
+  const savedDirectionRows = useMemo(() => board.items.filter(isSavedDirectionItem), [board.items]);
+  /** Every saved walk and drive off the timeline at once, with an undo. */
+  const removeDirectionRows = async () => {
+    const rows = savedDirectionRows;
+    if (rows.length === 0) return;
+    await board.removeItems(rows.map((row) => row.id));
+    setLiveLegs(null);
+    toast.success(`Removed ${rows.length} ${rows.length === 1 ? "journey" : "journeys"}`, {
+      action: {
+        label: "Undo",
+        onClick: () =>
+          void board.upsertItems(
+            rows.map((row) => ({
+              kind: row.kind,
+              title: row.title,
+              ...(row.day_date ? { day_date: row.day_date } : {}),
+              ...(row.time_label ? { time_label: row.time_label } : {}),
+              ...(row.detail ? { detail: row.detail } : {}),
+              ...(row.address ? { address: row.address } : {}),
+              ...(row.lat != null ? { lat: row.lat } : {}),
+              ...(row.lon != null ? { lon: row.lon } : {}),
+            })),
+          ),
+      },
+    });
+  };
+  /** The Timeline's ⋯ sheet: which stops, which order, edit and optimise. */
+  const [timelineMenuOpen, setTimelineMenuOpen] = useState(false);
+  /** "Change a day": pick a day and its stops, say what to change, compare. */
+  const [dayEditOpen, setDayEditOpen] = useState(false);
+  /** A day and words to open it on, from a nudge such as rain ahead. */
+  const [dayEditStart, setDayEditStart] = useState<{ day: string; ask: string } | null>(null);
+  /**
+   * The clock, for the line that says where you are in today.
+   *
+   * Ticks every minute rather than every render: a plan you are standing in
+   * the middle of is a different document from one you are reading at home,
+   * and the only thing that turns one into the other is the time.
+   */
+  const [minutesNow, setMinutesNow] = useState(() => {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  });
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const now = new Date();
+      setMinutesNow(now.getHours() * 60 + now.getMinutes());
+    }, 60_000);
+    return () => clearInterval(tick);
+  }, []);
+  const todayKey = toLocalISODate(new Date());
+  /** Day the add form should land on, set by the per-day "Add here" buttons. */
+  const [addDay, setAddDay] = useState("");
+  /** Which kind the Bookings tab shows. */
+  const [bookingFilter, setBookingFilter] = useState<BookingFilter>("all");
+  const bookingDocs = useTripBookingDocuments(trip.id);
+  const stopPhotos = useStopPhotos(trip.id, me.id, trip);
+  const tripPrefs = useTripPreferences(trip.id);
+  // A trip kept offline keeps its plan on the phone too, so it opens with no
+  // signal: written each time the plan loads, and only for that trip.
+  const keptOffline = Boolean(dir.saved);
+  useEffect(() => {
+    if (!keptOffline || !me.id || board.items.length === 0) return;
+    saveOfflineTrip(localStorage, {
+      uid: me.id,
+      savedAt: new Date().toISOString(),
+      trip,
+      members,
+      items: board.items,
+    });
+  }, [keptOffline, me.id, trip, members, board.items]);
+  const others = board.present.filter((p) => p.userId !== me.id);
+  const allDayGroups = groupTimelineByDay(stopItems);
+  // With a city picked, the days, the map and Now all follow that city.
+  const timelineGroups = chosenCity
+    ? groupsInCity(allDayGroups, routeCities, chosenCity)
+    : allDayGroups;
+  /** Every day of the trip, for moving stops between them — empty days too. */
+  const moveDays = tripDays(trip.start_date, trip.end_date, stopItems);
+  /** The stop "Move to…" is open on. */
+  const [movingId, setMovingId] = useState<string | null>(null);
+  /**
+   * Journeys Béa already has, by leg, for the directions sheet to keep: the
+   * one worked out or kept on the phone, and whether it is on the timeline.
+   */
+  const knownDirections: (KnownLeg | undefined)[] = directionStops.slice(1).map((to, i) => {
+    const from = directionStops[i]!;
+    // The phone's copy by name too: a stop added since shifts its legs.
+    const live =
+      (from.id && to.id ? legFor(from.id, to.id) : undefined) ??
+      dir.saved?.legs.find((leg) => leg.from === from.title && leg.to === to.title);
+    const row =
+      savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
+      savedTravel.get(directionKey(from.day_date, to.title, from.title));
+    const leg = live ?? row;
+    // On the timeline only when the row says what this journey says.
+    const onTimeline = Boolean(row && (!live || directionDetail(live) === directionDetail(row)));
+    return leg ? { leg, onTimeline } : undefined;
+  });
+  /** Journeys already worked out between neighbours, for checking a change. */
+  const knownLegs: TravelLeg[] = directionStops.flatMap((stop, i) => {
+    const next = directionStops[i + 1];
+    if (!stop.id || !next?.id) return [];
+    const leg = legFor(stop.id, next.id);
+    if (!leg || leg.capped || leg.unknownSpot || leg.farApartKm != null) return [];
+    return [
+      {
+        fromId: stop.id,
+        toId: next.id,
+        seconds: leg.sameSpot ? 0 : leg.duration,
+        ...(leg.estimated ? { estimated: true } : {}),
+      },
+    ];
+  });
+  const scheduleReview = useScheduleReview({
+    stops: stopItems,
+    all: board.items,
+    travelChoice: travel,
+    travelLegs: knownLegs,
+    applySchedule: board.applySchedule,
+    onSaved: () => setLiveLegs(null),
+    errorText: scheduleErrorText,
+  });
+  const movingStop = movingId ? (stopItems.find((item) => item.id === movingId) ?? null) : null;
+
+  /**
+   * Save moves (Up/Down, "Move to…", or Béa's), then say what happened with
+   * Undo. A single stop whose time no longer fits where it landed gets the
+   * offer of one that does. A plain step inside a day stays quiet.
+   */
+  const moveStops = async (moves: StopMove[], summary?: string) => {
+    // The traveller's own moves are checked first; Béa's (with a summary)
+    // were planned as a whole and saved as they are.
+    let updates: ScheduleUpdate[];
+    if (summary) {
+      updates = rearrange(stopItems, moves);
+    } else {
+      const proposal = changeSetForMoves(stopItems, moves);
+      if (!proposal) return;
+      const now = scheduleReview.review("stops", proposal);
+      if (!now) return;
+      updates = now.updates;
+    }
+    if (updates.length === 0) return;
+    const previous = updates.flatMap((u) => {
+      const row = board.items.find((item) => item.id === u.id);
+      return row
+        ? [
+            {
+              id: row.id,
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+            },
+          ]
+        : [];
+    });
+    const single = moves.length === 1 ? moves[0]! : null;
+    const fit = single ? timeFit(stopItems, single, clockMinutes) : null;
+    const stop = single ? stopItems.find((item) => item.id === single.id) : undefined;
+    const crossedDay = single && stop && (stop.day_date ?? "") !== (single.day_date ?? "");
+    const undo = () =>
+      void board.applySchedule(previous).then(
+        () => toast.success("Back where it was"),
+        () => toast.error("Couldn't undo that. Check your connection."),
+      );
+    try {
+      await board.applySchedule(updates);
+    } catch (e) {
+      // Rows are written one by one, so some may have saved before the
+      // failure. The list has reloaded to show them; offer to put it back.
+      setLiveLegs(null);
+      toast.error("Couldn't save all of that move.", {
+        description: isNetworkFailure(e)
+          ? "Check your connection. Some stops may already have moved."
+          : "Some stops may already have moved.",
+        duration: 10000,
+        action: { label: "Put back", onClick: undo },
+      });
+      throw e;
+    }
+    // Journeys worked out just now were for the old neighbours.
+    setLiveLegs(null);
+    if (fit && single) {
+      const landed = updates.find((u) => u.id === single.id);
+      toast(`${stop?.title ?? "That stop"}'s ${fit.time} is now out of order`, {
+        description: fit.suggestion
+          ? `${fit.suggestion} would fit between its neighbours.`
+          : "Clear its time, or set one by hand.",
+        duration: 10000,
+        action: {
+          label: fit.suggestion ? `Set ${fit.suggestion}` : "Clear time",
+          onClick: () =>
+            landed &&
+            void board
