@@ -150,9 +150,7 @@ function TimelineHead({
         <span className="block font-display text-[27px] leading-none">{title}</span>
         {onToggle ? (
           <ChevronDown
-            className={`size-4 shrink-0 text-muted-foreground transition-transform ${
-              open ? "" : "-rotate-90"
-            }`}
+            className={`size-4 shrink-0 text-muted-foreground transition-transform ${open ? "" : "-rotate-90"}`}
             aria-hidden
           />
         ) : null}

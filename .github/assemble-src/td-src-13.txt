@@ -1,0 +1,22 @@
+ * The line that says you are here.
+ *
+ * Borrowed from the shape everyone already reads without being taught: the
+ * package-tracking rule, the boarding-pass rule. Above it is behind you,
+ * below it is what is left. It needs no column on the table and no ticking
+ * things off — only the clock and the times already written down — so it is
+ * right on a day nobody has touched since it was imported.
+ *
+ * Drawn only on today, and only on a day that names at least one time. A rule
+ * through an untimed list would be claiming an order the plan never had.
+ */
+function NowLine({ done = false }: { done?: boolean }) {
+  return (
+    <li aria-hidden className="relative -my-0.5 flex items-center gap-2 py-1">
+      <span className="h-px flex-1 bg-primary/40" />
+      <span className="text-[11.5px] font-semibold uppercase tracking-wider text-primary">
+        {done ? "That was today" : "Now"}
+      </span>
+      <span className="h-px flex-1 bg-primary/40" />
+    </li>
+  );
+}
