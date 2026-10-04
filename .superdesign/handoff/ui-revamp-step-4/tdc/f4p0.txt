@@ -1,0 +1,70 @@
+                title={o.name}
+                className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
+              >
+                {o.name.slice(0, 1).toUpperCase()}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Several cities: pick one and the days, the map and Now all follow
+            it, instead of scrolling past one city to reach the next. */}
+        {stopItems.length > 0 &&
+          routeCities.length > 1 &&
+          (perspective === "companion" ||
+            perspective === "map" ||
+            (perspective === "timeline" && timelineByDay)) && (
+            <div className="mb-3">
+              <div
+                role="tablist"
+                aria-label="Which city to show"
+                className="no-scrollbar -mx-1 flex w-full gap-1.5 overflow-x-auto px-1 py-0.5"
+              >
+                {[
+                  { id: "", city: "All cities", arrive_on: null, depart_on: null },
+                  ...routeCities,
+                ].map((c) => {
+                  const on = (chosenCity?.id ?? "") === c.id;
+                  const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
+                    .filter((d): d is string => Boolean(d))
+                    .map((d) =>
+                      new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      }),
+                    )
+                    .join(" – ");
+                  return (
+                    <button
+                      key={c.id || "all"}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => {
+                        setCityChoice(c.id ?? "");
+                        // The city's days, not a day from the city before.
+                        setDayChoice(ALL_DAYS);
+                      }}
+                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-2.5 text-left transition-all ${
+                        on
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-elevated text-foreground"
+                      }`}
+                    >
+                      <span className="whitespace-nowrap text-[13px] font-semibold">{c.city}</span>
+                      {dates && (
+                        <span
+                          className={`whitespace-nowrap text-[13px] ${on ? "opacity-80" : "text-muted-foreground"}`}
+                        >
+                          {dates}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {chosenCity && timelineGroups.length === 0 && (
+                <p className="mt-1.5 px-1 text-[13px] text-muted-foreground">
+                  Nothing planned in {chosenCity.city} yet
+                  {chosenCity.arrive_on ? "" : " — give it dates under Cities on this trip"}.
+                </p>
