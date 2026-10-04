@@ -1,0 +1,250 @@
+                          tripEnd={trip.end_date}
+                          onKeep={keepItemAsReco}
+                          kept={isKept(item)}
+                          stray={strayIds.has(item.id)}
+                          {...foldProps(item)}
+                        />
+                        {(() => {
+                          const next = stopItems
+                            .slice(i + 1)
+                            .find((n) => !(hidingDone && isDone(n)));
+                          if (!next || editingTimeline) return null;
+                          return (
+                            <TravelConnector
+                              from={item}
+                              to={next}
+                              leg={travelInto(item, next)}
+                              area={directionArea ?? ""}
+                              showTime={view.prefs.walkTimes}
+                              onAddBetween={() => openAddBetween(item, next)}
+                              fromNumber={i + 1}
+                            />
+                          );
+                        })()}
+                      </Fragment>
+                    ),
+                  )}
+                </ol>
+              </>
+            )}
+
+            {/* "Now", on a trip day: back to the stop you're at or the next
+                one. Sticky at the bottom of the list while it is on screen. */}
+            {nowStop && !editingTimeline && (
+              <div className="pointer-events-none sticky bottom-3 z-30 mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={jumpToNow}
+                  aria-label={`Jump to ${nowStop.title}`}
+                  className="pointer-events-auto inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground shadow-lg"
+                >
+                  <LocateFixed className="size-4" aria-hidden />
+                  Now
+                </button>
+              </div>
+            )}
+
+            {/* Opened from the signpost on a day's header; each leg draws
+                under the entry it leaves from. */}
+            <ItineraryDirections
+              open={directionsOpen}
+              onClose={() => setDirectionsOpen(false)}
+              timelineCount={savedDirectionRows.length}
+              onRemoveFromTimeline={removeDirectionRows}
+              onForgetOffline={() => {
+                dir.clear();
+                forgetOfflineTrip(localStorage, trip.id);
+                dayMaps.clear();
+                offlineMap.clear();
+                setLiveLegs(null);
+                toast.success("Directions deleted from this phone");
+              }}
+              stops={directionStops}
+              known={knownDirections}
+              travel={travel}
+              onTravel={chooseTravel}
+              existingTitles={board.items.map((i) => i.title)}
+              onAddToTimeline={board.upsertItems}
+              onKeepOffline={(result, stops) => {
+                const kept = dir.keep(result, stops);
+                // A picture of each day's map goes with the directions, so
+                // the day can be followed with no signal at all; and, where
+                // the day map is drawn from vector tiles, the map itself
+                // around each day's stops, so it still pans and zooms.
+                if (kept) {
+                  void dayMaps.save(daysForMaps(stopItems));
+                  // Every day, not only the pictures' first three weeks:
+                  // the tile plan has its own cap.
+                  void offlineMap.save(daysForMaps(stopItems, Infinity));
+                }
+                return kept;
+              }}
+              onLegs={setLiveLegs}
+              onPlaced={(placed) => {
+                // The router already found these. Keep them, so the map can
+                // draw the trip and the next Refresh does not pay again.
+                for (const stop of placed) {
+                  void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+                }
+              }}
+              onBusy={setDirectionsBusy}
+              {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+              {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+              {...(directionArea ? { area: directionArea } : {})}
+            />
+          </div>
+
+          {/**
+           * Adding opens over the page, not under the list, so the form
+           * arrives where you are looking, with the fields in reach.
+           */}
+          <Sheet
+            open={addingTimeline}
+            onClose={() => {
+              setAddingTimeline(false);
+              setAddDay("");
+              setAddBetween(null);
+            }}
+            title={addBetween ? "Add a stop between" : "Add to the timeline"}
+          >
+            <TimelineEntryForm
+              tripStart={trip.start_date}
+              tripEnd={trip.end_date}
+              {...(addDay ? { openDay: addDay } : {})}
+              {...(addBetween?.time ? { openTime: addBetween.time } : {})}
+              {...withNear(addDay || null)}
+              existing={board.items.map((item) => ({
+                title: item.title,
+                address: item.address,
+                lat: item.lat,
+                lon: item.lon,
+              }))}
+              onAdd={
+                addBetween
+                  ? async (entry) => {
+                      const id = await board.insertItemAfter(
+                        insertAnchor.current ?? addBetween.afterId,
+                        entry,
+                      );
+                      if (id) insertAnchor.current = id;
+                      return id;
+                    }
+                  : board.addItem
+              }
+              onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
+              onDone={() => {
+                setAddingTimeline(false);
+                setAddDay("");
+                setAddBetween(null);
+              }}
+            />
+          </Sheet>
+
+          <DayEditSheet
+            open={dayEditOpen}
+            onClose={() => {
+              setDayEditOpen(false);
+              setDayEditStart(null);
+            }}
+            tripId={trip.id}
+            stops={stopItems}
+            days={moveDays}
+            initialDay={dayEditStart?.day ?? addToDay}
+            initialAsk={dayEditStart?.ask}
+            area={(day) => nearOn(day)}
+            center={(day) => centerOn(day)}
+            onApply={applyDayEdit}
+          />
+
+          <MoveStopSheet
+            stop={movingStop}
+            stops={stopItems}
+            days={moveDays}
+            onMove={(move) => moveStops([move])}
+            onClose={() => setMovingId(null)}
+          />
+
+          <ReviewChangesSheet {...scheduleReview.sheet} />
+
+          {/* The list's own ⋯: which stops, in which order, and the tools. */}
+          <Sheet
+            open={timelineMenuOpen}
+            onClose={() => setTimelineMenuOpen(false)}
+            title="Timeline"
+            hint={`${stopItems.length} ${stopItems.length === 1 ? "stop" : "stops"} scheduled${
+              doneCount > 0 ? ` · ${doneCount} visited` : ""
+            }`}
+            width="sm"
+          >
+            <div className="space-y-4">
+              {stopItems.length > 0 && (
+                <TimeChangeBox
+                  tripId={trip.id}
+                  stops={stopItems}
+                  days={moveDays}
+                  onChangeTime={async (id, time) => {
+                    await board.updateItem(id, { time_label: time });
+                  }}
+                  onApply={(moves, summary) => moveStops(moves, summary || "Plan changed")}
+                  onDone={() => setTimelineMenuOpen(false)}
+                />
+              )}
+              <MenuChoice
+                label="Show"
+                value={hideDone}
+                onChange={setHideDone}
+                options={[
+                  [false, "All"],
+                  [true, `Not visited (${stopItems.length - doneCount})`],
+                ]}
+              />
+              <MenuChoice
+                label="Cards"
+                value={compactCards}
+                onChange={setCompactCards}
+                options={[
+                  [false, "Full"],
+                  [true, "Compact"],
+                ]}
+              />
+              <MenuChoice
+                label="List"
+                value={timelineByDay}
+                onChange={setTimelineByDay}
+                options={[
+                  [false, "All entries"],
+                  [true, "By day"],
+                ]}
+              />
+              {timelineByDay && (
+                <MenuChoice
+                  label="Order"
+                  value={byArea}
+                  onChange={setByArea}
+                  options={[
+                    [false, "Timeline"],
+                    [true, "Neighbourhood"],
+                  ]}
+                />
+              )}
+              <div className="grid gap-2">
+                {stopItems.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={editingTimeline}
+                    onClick={() => {
+                      setEditingTimeline((v) => !v);
+                      setTimelineMenuOpen(false);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    {editingTimeline ? (
+                      <Check className="size-4 text-primary" aria-hidden />
+                    ) : (
+                      <Pencil className="size-4 text-primary" aria-hidden />
+                    )}
+                    {editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                  </button>
+                )}
+                {stopItems.length > 0 && (
+                  <button
