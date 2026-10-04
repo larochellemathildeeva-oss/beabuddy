@@ -411,7 +411,7 @@ export function WorldStatsStrip({
               "order-1 text-[24px] leading-none tabular-nums text-(--foreground)",
             )}
           >
-            {s.value}
+            {typeof s.value === "number" ? s.value.toLocaleString() : s.value}
           </dd>
           <dt
             className={cn(
