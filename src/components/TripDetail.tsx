@@ -1548,7 +1548,7 @@ export function TripDetail({
                         />
                       )}
                       <span
-                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "text-primary"}`}
+                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
                       >
                         {total > 0 && reached === total ? (
                           <Check className="size-4" aria-hidden />
@@ -1635,29 +1635,31 @@ export function TripDetail({
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       <div className="trip-content section-stagger px-3 pb-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-            <p className="text-[13px] text-muted-foreground">
-              {others.length === 0
-                ? "You're the only one here right now"
-                : others.some((o) => o.editing)
+        {/* Who else is on the trip, only when someone is: alone, it said
+            nothing worth a row. */}
+        {others.length > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
+              <p className="text-[13px] text-muted-foreground">
+                {others.some((o) => o.editing)
                   ? `${others.find((o) => o.editing)?.name} is editing ${others.find((o) => o.editing)?.editing}`
                   : `${others.map((o) => o.name).join(", ")} ${others.length === 1 ? "is" : "are"} here`}
-            </p>
+              </p>
+            </div>
+            <div className="flex -space-x-1.5">
+              {others.slice(0, 3).map((o) => (
+                <span
+                  key={o.userId}
+                  title={o.name}
+                  className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
+                >
+                  {o.name.slice(0, 1).toUpperCase()}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex -space-x-1.5">
-            {others.slice(0, 3).map((o) => (
-              <span
-                key={o.userId}
-                title={o.name}
-                className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
-              >
-                {o.name.slice(0, 1).toUpperCase()}
-              </span>
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* Several cities: pick one and the days, the map and Now all follow
             it, instead of scrolling past one city to reach the next. */}
