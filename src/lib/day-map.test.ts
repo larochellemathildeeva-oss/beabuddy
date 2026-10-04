@@ -146,6 +146,20 @@ test("a stop with a list inside carries its count; one inside another is nested"
   );
 });
 
+test("a stop already left is done on its pin", () => {
+  const pins = dayMapPins([
+    { ...cafe, arrived_at: "2026-10-07T00:00:00Z", left_at: "2026-10-07T01:00:00Z" },
+    { ...museum, arrived_at: "2026-10-07T02:00:00Z" },
+  ]);
+  assert.deepEqual(
+    pins.map((p) => [p.id, p.done]),
+    [
+      ["a", true],
+      ["c", false],
+    ],
+  );
+});
+
 test("the flat view draws every stop as an ordinary pin", () => {
   const park = { ...cafe, id: "park", inside: [{ title: "Peace Bell", done: false }] };
   const cenotaph = { ...museum, id: "cenotaph", parent_id: "park" };
