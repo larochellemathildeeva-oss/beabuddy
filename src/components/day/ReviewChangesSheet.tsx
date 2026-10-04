@@ -53,6 +53,8 @@ export function ReviewChangesSheet({
       dismissible={!busy}
       showClose={!busy}
       above
+      page
+      tone={2}
     >
       <div className="space-y-4">
         {direct.length > 0 && (

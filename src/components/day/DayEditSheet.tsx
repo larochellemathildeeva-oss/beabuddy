@@ -456,6 +456,8 @@ export function DayEditSheet({
       {...(proposal ? { onBack: () => setProposal(null) } : {})}
       width="lg"
       tall
+      page
+      tone={1}
     >
       {!proposal ? (
         <div className="space-y-4">

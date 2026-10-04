@@ -1,27 +1,25 @@
-import { useEffect, useRef, type ComponentType, type CSSProperties, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { joinSheetStack } from "@/components/sheet-stack";
+import type { ComponentType, CSSProperties, ReactNode } from "react";
+import { Sheet } from "@/components/Sheet";
 import {
-  ArrowLeft,
   Backpack,
-  Bed,
   CalendarDays,
   Camera,
-  Car,
   ChevronRight,
   Copy,
   FileText,
   MapIcon,
   MapPin,
+  Coins,
+  ListChecks,
   Pencil,
-  Plane,
+  Plus,
   Settings2,
+  Ticket,
+  X,
   ShieldCheck,
   Sparkles,
-  Ticket,
   Users,
   Wallet,
-  X,
 } from "@/components/icons";
 
 export type TripMenuSection =
@@ -56,24 +54,27 @@ const SECTION_TITLES: Record<TripMenuSection, string> = {
 };
 
 /**
- * The trip menu (⋯), as the master draws it: the trip's name large with its
- * country and dates, an "Edit trip" card with the trip's picture, then Trip
- * planning and Tools & preferences as two columns of cards, and Delete at the
- * foot. Each card opens its section of this same sheet — the same forms the
- * menu always had — with a back arrow; the four booking cards switch the page
- * to the Timeline, where bookings live on their stops.
+ * Trip settings, as the revamp draws it: a full page under the trip's name,
+ * in three groups: Plan (Ask Béa, To do and packing, Bookings, Add a stop),
+ * The trip (details, destinations, people, budget, currency, photos …) and
+ * On this phone (offline maps, customize). Each row opens its section on this
+ * same page, with a back arrow: the same forms the menu always had. Delete
+ * sits at the foot, behind its own confirmation.
  */
 export function TripMenuSheet({
   open,
   onClose,
   title,
   subtitle,
-  art,
   section,
   onSection,
   people,
   bookings,
   onBookings,
+  onAsk,
+  onPrep,
+  onAdd,
+  onCurrency,
   citiesCount,
   offlineNote,
   budgetOn,
@@ -90,18 +91,24 @@ export function TripMenuSheet({
   title: string;
   /** "Brazil · Oct 1 – 3". */
   subtitle: string;
-  art: string;
   section: TripMenuSection | null;
   onSection: (next: TripMenuSection | null) => void;
-  /** Names of the trip's members, for the little avatars. */
+  /** Names of the trip's members, for the people row's note. */
   people: string[];
   bookings: Record<BookingTile, number>;
-  onBookings: (kind: BookingTile) => void;
+  onBookings: (kind: BookingTile | "all") => void;
+  /** Ask Béa about this trip: the planner. */
+  onAsk: () => void;
+  /** To do and packing. */
+  onPrep: () => void;
+  /** Add a stop, a saved place or a city. */
+  onAdd: () => void;
+  onCurrency: () => void;
   citiesCount: number;
   /** "Saved 2 days ago", or empty. */
   offlineNote: string;
   budgetOn: boolean;
-  /** "3 to check" or "All clear"; the card is hidden when empty (nothing planned). */
+  /** "3 to check" or "All clear"; the row is hidden when empty (nothing planned). */
   checkupNote: string;
   /** Print the plan, or save it as a PDF from the print dialog. */
   onPrint?: (() => void) | undefined;
@@ -116,154 +123,131 @@ export function TripMenuSheet({
   /** The open section's body. */
   children: ReactNode;
 }) {
-  // The latest values, read by the listener without leaving the stack on
-  // every render (a sheet opened over the menu must stay above it).
-  const latest = useRef({ section, onSection, onClose });
-  latest.current = { section, onSection, onClose };
-  useEffect(() => {
-    if (!open) return;
-    // On the same stack as `Sheet`: a photo or confirmation opened over the
-    // menu takes Escape first, and closing it keeps the page held.
-    const { isTop, leave } = joinSheetStack();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape" || !isTop()) return;
-      if (latest.current.section) latest.current.onSection(null);
-      else latest.current.onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      leave();
-    };
-  }, [open]);
-
-  if (!open) return null;
-
   const count = (n: number, one: string, many: string) =>
     n > 0 ? `${n} ${n === 1 ? one : many}` : "";
-  const planning: {
-    key: string;
-    icon: Icon;
-    title: string;
-    note: string;
-    pill?: string;
-    extra?: ReactNode;
-    onClick: () => void;
-  }[] = [
+  const booked = bookings.flight + bookings.stay + bookings.transport + bookings.activity;
+  const travellers = count(people.length, "traveller", "travellers");
+
+  const plan: Row[] = [
     {
-      key: "invite",
-      icon: Users,
-      title: "Invite and people",
-      note: "Share the trip, manage travellers",
-      extra: people.length ? <Avatars names={people} /> : null,
-      onClick: () => onSection("invite"),
-    },
-    {
-      key: "flight",
-      icon: Plane,
-      title: "Flights",
-      note: "View and manage your flights",
-      pill: count(bookings.flight, "booking", "bookings"),
-      onClick: () => onBookings("flight"),
-    },
-    {
-      key: "stay",
-      icon: Bed,
-      title: "Hotels",
-      note: "View and manage your stays",
-      pill: count(bookings.stay, "booking", "bookings"),
-      onClick: () => onBookings("stay"),
-    },
-    {
-      key: "transport",
-      icon: Car,
-      title: "Transport",
-      note: "Cars, transfers and other transport",
-      pill: count(bookings.transport, "booking", "bookings"),
-      onClick: () => onBookings("transport"),
-    },
-    {
-      key: "activity",
-      icon: Ticket,
-      title: "Activities",
-      note: "Tours, tickets and reservations",
-      pill: count(bookings.activity, "booking", "bookings"),
-      onClick: () => onBookings("activity"),
-    },
-    {
-      key: "preferences",
+      key: "ask",
       icon: Sparkles,
-      title: "Just for this trip",
-      note: "Late mornings, less walking…",
-      pill: preferencesCount ? `${preferencesCount} set` : "",
-      onClick: () => onSection("preferences"),
+      title: "Ask Béa",
+      note: "Plan, import, optimize or compare",
+      tone: 5,
+      onClick: onAsk,
     },
     {
-      key: "photos",
-      icon: Camera,
-      title: "Photos",
-      note: "Add pictures to the trip",
-      pill: count(photosCount ?? 0, "photo", "photos"),
-      onClick: () => onSection("photos"),
+      key: "prep",
+      icon: ListChecks,
+      title: "To do and packing",
+      note: "Errands and the packing list",
+      tone: 4,
+      onClick: onPrep,
     },
     {
-      key: "budget",
-      icon: Wallet,
-      title: "Budget",
-      note: "Set a budget and track spending",
-      pill: budgetOn ? "On" : "",
-      onClick: () => onSection("budget"),
+      key: "bookings",
+      icon: Ticket,
+      title: "Bookings",
+      note:
+        booked > 0
+          ? `${count(booked, "booking", "bookings")} · flights, stays, tickets`
+          : "Flights, stays, transport, tickets",
+      tone: 2,
+      onClick: () => onBookings("all"),
     },
     {
-      key: "cities",
-      icon: MapPin,
-      title: "Destinations",
-      note: "Cities and day order",
-      pill: count(citiesCount, "city", "cities"),
-      onClick: () => onSection("cities"),
+      key: "add",
+      icon: Plus,
+      title: "Add a stop",
+      note: "A place, a saved rec or a city",
+      tone: 3,
+      onClick: onAdd,
     },
-    {
-      key: "packing",
-      icon: Backpack,
-      title: "Packing",
-      note: "Attach a packing list",
-      onClick: () => onSection("packing"),
-    },
-  ];
-  const tools = [
     ...(checkupNote
       ? [
           {
             key: "checkup",
             icon: ShieldCheck,
             title: "Trip checkup",
-            note: "Clashes, tight gaps, missing bookings",
-            pill: checkupNote,
+            note: `Clashes, tight gaps, missing bookings · ${checkupNote}`,
+            tone: 1,
             onClick: () => onSection("checkup"),
           },
         ]
       : []),
+  ];
+  const trip: Row[] = [
     {
-      key: "offline",
-      icon: MapIcon,
-      title: "Offline maps",
-      note: "Maps kept on this phone",
-      pill: offlineNote,
-      onClick: () => onSection("offline"),
+      key: "edit",
+      icon: Pencil,
+      title: "Edit trip",
+      note: "Name, dates, starting city, status",
+      tone: 4,
+      onClick: () => onSection("edit"),
     },
     {
-      key: "customize",
-      icon: Settings2,
-      title: "Customize view",
-      note: "What the trip page shows",
-      onClick: () => onSection("customize"),
+      key: "cities",
+      icon: MapPin,
+      title: "Destinations",
+      note: count(citiesCount, "city", "cities") || "Cities and day order",
+      tone: 2,
+      onClick: () => onSection("cities"),
+    },
+    {
+      key: "invite",
+      icon: Users,
+      title: "Invite and people",
+      note: travellers ? `${travellers} · share the trip` : "Share the trip, manage travellers",
+      tone: 3,
+      onClick: () => onSection("invite"),
+    },
+    {
+      key: "budget",
+      icon: Wallet,
+      title: "Budget",
+      note: budgetOn ? "On · set a budget and track spending" : "Set a budget and track spending",
+      tone: 4,
+      onClick: () => onSection("budget"),
+    },
+    {
+      key: "currency",
+      icon: Coins,
+      title: "Currency",
+      note: "Convert prices into your money",
+      tone: 1,
+      onClick: onCurrency,
+    },
+    {
+      key: "preferences",
+      icon: Sparkles,
+      title: "Just for this trip",
+      note: preferencesCount ? `${preferencesCount} set` : "Late mornings, less walking…",
+      tone: 1,
+      onClick: () => onSection("preferences"),
+    },
+    {
+      key: "photos",
+      icon: Camera,
+      title: "Photos",
+      note: count(photosCount ?? 0, "photo", "photos") || "Add pictures to the trip",
+      tone: 2,
+      onClick: () => onSection("photos"),
+    },
+    {
+      key: "packing",
+      icon: Backpack,
+      title: "Packing list",
+      note: "Attach a saved packing list",
+      tone: 5,
+      onClick: () => onSection("packing"),
     },
     {
       key: "again",
       icon: Copy,
       title: "Do it again",
       note: "Copy the trip, or one day, to new dates",
-      pill: "",
+      tone: 3,
       onClick: () => onSection("again"),
     },
     ...(onCalendar
@@ -273,7 +257,7 @@ export function TripMenuSheet({
             icon: CalendarDays,
             title: "Add to calendar",
             note: "Every stop, as a calendar file",
-            pill: "",
+            tone: 2,
             onClick: onCalendar,
           },
         ]
@@ -285,201 +269,112 @@ export function TripMenuSheet({
             icon: FileText,
             title: "Print or PDF",
             note: "A paper copy of the plan",
-            pill: "",
+            tone: 4,
             onClick: onPrint,
           },
         ]
       : []),
   ];
+  const phone: Row[] = [
+    {
+      key: "offline",
+      icon: MapIcon,
+      title: "Offline maps",
+      note: offlineNote
+        ? `Kept on this phone · ${offlineNote}`
+        : "Directions and maps without signal",
+      tone: 2,
+      onClick: () => onSection("offline"),
+    },
+    {
+      key: "customize",
+      icon: Settings2,
+      title: "Customize view",
+      note: "Ribbon, tracker, views bar",
+      tone: 5,
+      onClick: () => onSection("customize"),
+    },
+  ];
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={section ? SECTION_TITLES[section] : `${title}: trip menu`}
-        onClick={(e) => e.stopPropagation()}
-        className="rise card-raised flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] sm:rounded-[28px]"
-      >
-        <span aria-hidden className="mx-auto mt-2 block h-1 w-10 shrink-0 rounded-full bg-border" />
-        {section ? (
-          <>
-            <div className="flex items-center gap-2 px-4 pb-2 pt-2">
-              <button
-                type="button"
-                onClick={() => onSection(null)}
-                aria-label="Back to the trip menu"
-                className="grid size-10 shrink-0 place-items-center rounded-full border border-border bg-card"
-              >
-                <ArrowLeft className="size-5" aria-hidden />
-              </button>
-              <p className="min-w-0 flex-1 truncate font-display text-[27px] leading-none">
-                {SECTION_TITLES[section]}
-              </p>
-              <CloseButton onClose={onClose} />
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 pb-6 pt-2">{children}</div>
-          </>
-        ) : (
-          <div className="flex-1 overflow-y-auto px-4 pb-6">
-            <div className="flex items-start justify-between gap-3 pt-2">
-              <div className="min-w-0">
-                <h2 className="break-words font-display text-[40px] leading-[1.02]">{title}</h2>
-                <button
-                  type="button"
-                  onClick={() => onSection("edit")}
-                  className="mt-1 inline-flex items-center gap-2 text-[15px] text-muted-foreground"
-                >
-                  {subtitle || "Add dates"}
-                  <Pencil className="size-4 text-foreground" aria-hidden />
-                  <span className="sr-only">Edit trip</span>
-                </button>
-              </div>
-              <CloseButton onClose={onClose} />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => onSection("edit")}
-              className="plain-card mt-4 flex w-full items-center gap-3 p-2.5 text-left"
-            >
-              <img
-                src={art}
-                alt=""
-                className="art-dim h-[72px] w-[104px] shrink-0 rounded-xl object-cover"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block font-display text-[23px] leading-tight">Edit trip</span>
-                <span className="block text-[13px] text-muted-foreground">
-                  Name, starting city, dates and status
-                </span>
-              </span>
-              <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-            </button>
-
-            <SectionHead>Trip planning</SectionHead>
-            <div className="grid grid-cols-2 gap-2.5">
-              {planning.map((tile, i) => (
-                <Tile {...tile} key={tile.key} tone={(i % 5) + 1} />
-              ))}
-            </div>
-
-            <SectionHead>Tools &amp; preferences</SectionHead>
-            <div className="grid grid-cols-2 gap-2.5">
-              {tools.map((tile, i) => (
-                <Tile {...tile} key={tile.key} tone={((i + 3) % 5) + 1} />
-              ))}
-            </div>
-
-            {footer ? (
-              <div className="mt-4 [&>button]:w-full [&>button]:rounded-full [&>button]:border [&>button]:border-destructive/50 [&>button]:bg-destructive/5 [&>button]:py-3 [&>button]:text-center">
-                {footer}
-              </div>
-            ) : null}
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-function CloseButton({ onClose }: { onClose: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClose}
-      aria-label="Close the trip menu"
-      className="grid size-11 shrink-0 place-items-center rounded-full border border-border bg-card shadow-xs"
+    <Sheet
+      open={open}
+      // Escape and the arrow go back to the menu first, then close it.
+      onClose={() => (section ? onSection(null) : onClose())}
+      page
+      tone={section ? 4 : 1}
+      title={section ? SECTION_TITLES[section] : "Trip settings"}
+      hint={section ? title : [title, subtitle].filter(Boolean).join(" · ")}
+      actions={
+        section ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close the trip menu"
+            className="tap-target grid shrink-0 place-items-center rounded-full"
+          >
+            <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-xs">
+              <X className="size-5" aria-hidden />
+            </span>
+          </button>
+        ) : undefined
+      }
     >
-      <X className="size-5" aria-hidden />
-    </button>
+      {section ? (
+        children
+      ) : (
+        <div className="pb-4">
+          <Group name="Plan" rows={plan} />
+          <Group name="The trip" rows={trip} />
+          <Group name="On this phone" rows={phone} />
+          {footer ? (
+            <div className="plain-card mt-4 overflow-hidden px-1 [&>button]:min-h-14 [&>button]:w-full">
+              {footer}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </Sheet>
   );
 }
 
-function SectionHead({ children }: { children: ReactNode }) {
-  return (
-    <p className="mb-2.5 mt-5 px-0.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-      {children}
-    </p>
-  );
-}
-
-function Tile({
-  icon: IconMark,
-  title,
-  note,
-  pill,
-  extra,
-  tone,
-  onClick,
-}: {
-  tone: number;
+type Row = {
+  key: string;
   icon: Icon;
   title: string;
   note: string;
-  pill?: string | undefined;
-  extra?: ReactNode;
+  tone: number;
   onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="plain-card flex min-h-[104px] flex-col p-2.5 text-left"
-    >
-      <span className="flex w-full items-start gap-2">
-        <span
-          className="grid size-9 shrink-0 place-items-center rounded-full bg-elevated [[data-theme=colorful]_&]:bg-[var(--tile)]"
-          style={{ "--tile": `var(--tile-${tone})` } as CSSProperties}
-        >
-          <IconMark className="size-[18px]" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-display text-[18px] leading-[1.1]">{title}</span>
-          <span className="mt-0.5 block text-[12px] leading-snug text-muted-foreground">
-            {note}
-          </span>
-        </span>
-        <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" aria-hidden />
-      </span>
-      {extra || pill ? (
-        <span className="mt-auto flex w-full items-center justify-end gap-1.5 pt-2">
-          {extra}
-          {pill ? (
-            <span
-              className="rounded-full bg-elevated px-2.5 py-0.5 text-[12px] font-medium [[data-theme=colorful]_&]:bg-[var(--tile)]"
-              style={{ "--tile": `var(--tile-${tone})` } as CSSProperties}
-            >
-              {pill}
-            </span>
-          ) : null}
-        </span>
-      ) : null}
-    </button>
-  );
-}
+};
 
-function Avatars({ names }: { names: string[] }) {
+function Group({ name, rows }: { name: string; rows: Row[] }) {
   return (
-    <span className="mr-auto flex items-center -space-x-1.5">
-      {names.slice(0, 3).map((name, i) => (
-        <span
-          key={`${name}-${i}`}
-          title={name}
-          className={`seq-${(i % 5) + 1} grid size-7 place-items-center rounded-full border-2 border-card text-[11.5px] font-bold`}
-        >
-          {name.slice(0, 1).toUpperCase()}
-        </span>
-      ))}
-      {names.length > 3 ? (
-        <span className="grid size-7 place-items-center rounded-full border-2 border-card bg-elevated text-[11px] font-semibold">
-          +{names.length - 3}
-        </span>
-      ) : null}
-    </span>
+    <section aria-label={name}>
+      <h2 className="mb-2 mt-5 px-0.5 font-display text-[22px] leading-none">{name}</h2>
+      <div className="plain-card divide-y divide-border overflow-hidden">
+        {rows.map((row) => (
+          <button
+            key={row.key}
+            type="button"
+            onClick={row.onClick}
+            className="flex min-h-[60px] w-full items-center gap-3 px-3.5 py-2.5 text-left"
+          >
+            <span
+              className="grid size-10 shrink-0 place-items-center rounded-xl bg-elevated [[data-theme=colorful]_&]:bg-[var(--tile)]"
+              style={{ "--tile": `var(--tile-${row.tone})` } as CSSProperties}
+            >
+              <row.icon className="size-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-[19px] leading-tight">{row.title}</span>
+              <span className="mt-0.5 block text-[14px] leading-snug text-muted-foreground">
+                {row.note}
+              </span>
+            </span>
+            <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

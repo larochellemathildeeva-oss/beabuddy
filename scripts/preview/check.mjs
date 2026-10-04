@@ -590,9 +590,9 @@ await flow("trip shell: Bookings stays inside Overview with filters and booking 
   for (const name of ["Flights", "Stays", "Transport", "Activities", "All"]) await bookings.getByRole("button", { name, exact: true }).click();
   if (await page.getByRole("tab", { name: "Bookings", exact: true }).count()) throw new Error("Bookings is still a fifth view");
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: /^Flights/ }).click();
+  await page.getByRole("dialog").getByRole("button", { name: /^Bookings/ }).click();
   if (await page.getByRole("tab", { name: "Overview", exact: true }).getAttribute("aria-selected") !== "true") throw new Error("menu booking did not open Overview");
-  if (await bookings.getByRole("button", { name: "Flights", exact: true }).getAttribute("aria-pressed") !== "true") throw new Error("lost booking kind");
+  if (await bookings.getByRole("button", { name: "All", exact: true }).getAttribute("aria-pressed") !== "true") throw new Error("Bookings from the menu did not open on All");
   await page.evaluate(() => localStorage.setItem("bea-trip-page-t1", JSON.stringify({ perspective: "bookings" })));
   await page.reload();
   await page.waitForTimeout(500);

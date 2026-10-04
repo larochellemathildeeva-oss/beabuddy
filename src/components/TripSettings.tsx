@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ChevronRight } from "@/components/icons";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -38,11 +39,14 @@ export function TripDetailsForm({
   trip,
   onUpdate,
   onSaved,
+  onOpenCities,
 }: {
   trip: TripRow;
   onUpdate: OnUpdate;
   /** After a save goes through — to close the sheet the form sits in. */
   onSaved?: (() => void) | undefined;
+  /** Route and dates of each city live under Destinations; a row leads there. */
+  onOpenCities?: (() => void) | undefined;
 }) {
   const [form, setForm] = useState({
     title: trip.title,
@@ -60,55 +64,75 @@ export function TripDetailsForm({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const field = "w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]";
+  const label = "mb-1 block text-[14px] font-medium text-muted-foreground";
   return (
-    <div className="space-y-2">
-      <input
-        value={form.title}
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-        placeholder="Trip name"
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
-      />
-      <PlaceSearchInput
-        value={form.city}
-        onChange={(v) => setForm({ ...form, city: v })}
-        onPick={(p) => {
-          const loc = locationFromParsedPlace(p);
-          setForm({ ...form, city: loc.city, country: loc.country || form.country });
-        }}
-        placeholder="Starting city — search it"
-        areas
-      />
-      <DateRangeField
-        start={form.start_date}
-        end={form.end_date}
-        onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
-        datesStatus={form.dates_status}
-        onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
-        className="w-full rounded-xl border border-border bg-card px-3 py-2 text-left text-[14.5px]"
-      />
-      {backwards && (
-        <p className="px-1 text-[13px] font-medium text-destructive">
-          End date can't be earlier than the start date.
-        </p>
-      )}
-      <div className="flex flex-wrap gap-1.5">
-        {[
-          ["upcoming", "Upcoming"],
-          ["active", "In progress"],
-          ["past", "Past"],
-        ].map(([v, label]) => (
-          <button
-            key={v}
-            onClick={() => setForm({ ...form, status: v as string })}
-            className={`rounded-full border px-3 py-1.5 text-[13px] ${
-              form.status === v
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+    <div className="space-y-3">
+      <p className="px-0.5 text-[14px] text-muted-foreground">
+        The name, the dates and where you leave from. Stops and times live in Timeline, reservations
+        in Bookings.
+      </p>
+      <div className="plain-card space-y-3 p-3.5">
+        <label className="block">
+          <span className={label}>Trip name</span>
+          <input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Trip name"
+            className={field}
+          />
+        </label>
+        <div>
+          <span className={label}>Starting city</span>
+          <PlaceSearchInput
+            value={form.city}
+            onChange={(v) => setForm({ ...form, city: v })}
+            onPick={(p) => {
+              const loc = locationFromParsedPlace(p);
+              setForm({ ...form, city: loc.city, country: loc.country || form.country });
+            }}
+            placeholder="Starting city — search it"
+            areas
+          />
+        </div>
+        <div>
+          <span className={label}>Dates</span>
+          <DateRangeField
+            start={form.start_date}
+            end={form.end_date}
+            onChange={(start_date, end_date) => setForm({ ...form, start_date, end_date })}
+            datesStatus={form.dates_status}
+            onDatesStatusChange={(dates_status) => setForm({ ...form, dates_status })}
+            className={`${field} text-left`}
+          />
+        </div>
+        {backwards && (
+          <p className="px-1 text-[13px] font-medium text-destructive">
+            End date can't be earlier than the start date.
+          </p>
+        )}
+        <div>
+          <span className={label}>Status</span>
+          <div className="flex gap-1 rounded-2xl bg-elevated p-1">
+            {[
+              ["upcoming", "Upcoming"],
+              ["active", "In progress"],
+              ["past", "Past"],
+            ].map(([v, text]) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={form.status === v}
+                onClick={() => setForm({ ...form, status: v as string })}
+                className={`min-h-11 flex-1 rounded-xl px-2 text-[15px] ${
+                  form.status === v ? "bg-card font-semibold shadow-xs" : "text-muted-foreground"
+                }`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <button
         disabled={busy || !form.title.trim() || backwards}
@@ -139,10 +163,25 @@ export function TripDetailsForm({
             setBusy(false);
           }
         }}
-        className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+        className="btn-primary w-full disabled:opacity-50"
       >
         {busy ? "Saving…" : "Save changes"}
       </button>
+      {onOpenCities && (
+        <button
+          type="button"
+          onClick={onOpenCities}
+          className="plain-card flex min-h-14 w-full items-center gap-3 px-3.5 py-3 text-left"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[19px] leading-tight">Route and dates</span>
+            <span className="block text-[14px] text-muted-foreground">
+              Each city, in order, with its days, under Destinations
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      )}
       {message && (
         <p
           role={message.ok ? "status" : "alert"}
@@ -171,7 +210,7 @@ export function TripDeleteButton({
     <>
       <button
         onClick={() => setConfirming(true)}
-        className="w-full rounded-xl px-3 py-3 text-left text-[15px] font-semibold text-destructive hover:bg-elevated"
+        className="w-full px-3 py-3 text-left text-[16px] font-semibold text-destructive"
       >
         Delete trip
       </button>

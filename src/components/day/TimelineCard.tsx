@@ -6,6 +6,7 @@ import {
   Car,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   CalendarDays,
   Clock,
@@ -42,6 +43,7 @@ import {
 import { PlaceFacts } from "@/components/PlaceFacts";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { SwipeRow } from "@/components/day/SwipeRow";
+import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { Sheet } from "@/components/Sheet";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import {
@@ -331,6 +333,9 @@ export function TimelineEntry({
   const menuRow =
     "flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2 text-left text-[15px] font-medium transition-colors hover:bg-elevated disabled:opacity-40";
   const menuIcon = "size-[18px] shrink-0 text-muted-foreground";
+  const actionRow =
+    "flex min-h-14 w-full items-center gap-3 px-3.5 py-2 text-left text-[16px] font-medium disabled:opacity-40";
+  const actionBubble = "grid size-10 shrink-0 place-items-center rounded-xl";
 
   // The front, as the master draws it: the kind in a tile with the stop's
   // number on its corner (the same number as its pin on the Map), the name
@@ -698,146 +703,150 @@ export function TimelineEntry({
   // the day for one stop, or on the card itself when editing every stop.
   const backBody = (
     <>
-      <div className="mt-2.5 space-y-2">
-        <div className="rounded-xl border border-border bg-elevated px-3 py-1">{titleInput}</div>
-        <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
-      </div>
+      <div className={editing ? "" : "plain-card p-3.5"}>
+        <div className="mt-2.5 space-y-2">
+          <div className="rounded-xl border border-border bg-elevated px-3 py-1">{titleInput}</div>
+          <KindPicker item={item} onPick={(kind) => onUpdate({ kind })} />
+        </div>
 
-      {/* Three across when the card has room; on a narrow phone (touch fields
+        {/* Three across when the card has room; on a narrow phone (touch fields
           are held at 16px) the date takes its own line, time and duration under it. */}
-      <div className="@container mt-2.5">
-        <div className="grid grid-cols-2 gap-1.5 @[24rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
-          <label className="col-span-2 min-w-0 @[24rem]:col-span-1">
-            <span className={caption}>
-              <CalendarDays className="size-3.5" aria-hidden />
-              Date
-            </span>
-            <input
-              type="date"
-              value={item.day_date ?? ""}
-              aria-label={`Day for ${item.title}`}
-              {...(tripStart ? { min: tripStart } : {})}
-              {...(tripEnd ? { max: tripEnd } : {})}
-              onChange={(e) => onUpdate({ day_date: e.target.value || null })}
-              className={field}
-            />
-          </label>
-          <label className="min-w-0">
-            <span className={caption}>
-              <Clock className="size-3.5" aria-hidden />
-              Time
-            </span>
-            <input
-              type="time"
-              value={rail}
-              aria-label={`Time for ${item.title}`}
-              onChange={(e) => onUpdate({ time_label: e.target.value || null })}
-              className={field}
-            />
-          </label>
-          {/* How long the plan allows here. Companion counts it down once you
+        <div className="@container mt-2.5">
+          <div className="grid grid-cols-2 gap-1.5 @[24rem]:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <label className="col-span-2 min-w-0 @[24rem]:col-span-1">
+              <span className={caption}>
+                <CalendarDays className="size-3.5" aria-hidden />
+                Date
+              </span>
+              <input
+                type="date"
+                value={item.day_date ?? ""}
+                aria-label={`Day for ${item.title}`}
+                {...(tripStart ? { min: tripStart } : {})}
+                {...(tripEnd ? { max: tripEnd } : {})}
+                onChange={(e) => onUpdate({ day_date: e.target.value || null })}
+                className={field}
+              />
+            </label>
+            <label className="min-w-0">
+              <span className={caption}>
+                <Clock className="size-3.5" aria-hidden />
+                Time
+              </span>
+              <input
+                type="time"
+                value={rail}
+                aria-label={`Time for ${item.title}`}
+                onChange={(e) => onUpdate({ time_label: e.target.value || null })}
+                className={field}
+              />
+            </label>
+            {/* How long the plan allows here. Companion counts it down once you
             tap "I'm here"; left empty, it only says how long it has been. */}
-          <label className="min-w-0">
-            <span className={caption}>
-              <Hourglass className="size-3.5" aria-hidden />
-              Duration
-            </span>
-            <select
-              value={item.planned_stay_minutes ?? ""}
-              aria-label={`How long to stay at ${item.title}`}
-              onChange={(e) => onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })}
-              className={field}
-            >
-              <option value="">—</option>
-              {stayChoices(item.planned_stay_minutes).map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {stayLabel(minutes)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-
-      <fieldset className="mt-2.5 min-w-0">
-        <legend className={caption}>
-          <Clock className="size-3.5" aria-hidden />
-          Time behavior
-        </legend>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-elevated p-1">
-          {TIME_MODES.map((mode) => {
-            const active = timeMode === mode.value;
-            const disabled = mode.value !== "sequence" && !hasClock;
-            return (
-              <button
-                key={mode.value}
-                type="button"
-                aria-pressed={active}
-                disabled={disabled}
-                onClick={() => chooseTimeMode(mode.value)}
-                className={`min-h-10 rounded-lg px-2 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
-                  active
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "bg-card text-muted-foreground"
-                }`}
+            <label className="min-w-0">
+              <span className={caption}>
+                <Hourglass className="size-3.5" aria-hidden />
+                Duration
+              </span>
+              <select
+                value={item.planned_stay_minutes ?? ""}
+                aria-label={`How long to stay at ${item.title}`}
+                onChange={(e) =>
+                  onUpdate({ planned_stay_minutes: parseStayChoice(e.target.value) })
+                }
+                className={field}
               >
-                {mode.label}
-              </button>
-            );
-          })}
+                <option value="">—</option>
+                {stayChoices(item.planned_stay_minutes).map((minutes) => (
+                  <option key={minutes} value={minutes}>
+                    {stayLabel(minutes)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
-        <p className="mt-1.5 px-0.5 text-[12px] leading-snug text-muted-foreground">
-          {timeModeNote}
-          {!hasClock ? " Add a clock time to choose Fixed or Flexible." : ""}
-        </p>
-      </fieldset>
 
-      <div className="mt-2.5">
-        <span className={caption}>
-          <MapPin className="size-3.5" aria-hidden />
-          Place
-        </span>
-        <p
-          className={`break-words rounded-xl border border-border bg-card px-2.5 py-1.5 text-[14px] leading-snug ${
-            item.address ? "text-foreground" : "text-muted-foreground"
-          }`}
-        >
-          {item.address || "No place yet"}
-        </p>
-        {stray && (
-          <p className="mt-1 text-[12.5px] font-semibold text-destructive">
-            ⚠ This pin is far from the rest of the trip, so it may be a different place with the
-            same name. Use “Change place” to pick the right one.
+        <fieldset className="mt-2.5 min-w-0">
+          <legend className={caption}>
+            <Clock className="size-3.5" aria-hidden />
+            Time behavior
+          </legend>
+          <div className="grid grid-cols-3 gap-1 rounded-xl bg-elevated p-1">
+            {TIME_MODES.map((mode) => {
+              const active = timeMode === mode.value;
+              const disabled = mode.value !== "sequence" && !hasClock;
+              return (
+                <button
+                  key={mode.value}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={disabled}
+                  onClick={() => chooseTimeMode(mode.value)}
+                  className={`min-h-10 rounded-lg px-2 text-[12px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+                    active
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "bg-card text-muted-foreground"
+                  }`}
+                >
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1.5 px-0.5 text-[12px] leading-snug text-muted-foreground">
+            {timeModeNote}
+            {!hasClock ? " Add a clock time to choose Fixed or Flexible." : ""}
           </p>
-        )}
-        <div className="@container mt-1.5 grid grid-cols-2 gap-1.5">
-          <TimelinePlaceEditor
-            item={item}
-            {...(near ? { near } : {})}
-            {...(center ? { center } : {})}
-            buttonClassName={softButton}
-            onPick={(place) => onUpdate(placePatchForSavedRow(place))}
-          />
-          {placed && (
-            <a
-              href={mapsPlaceUrl(item.title, item, item.address)}
-              target="_blank"
-              rel="noreferrer"
-              className={lineButton}
-            >
-              <Send className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-              Open in Maps
-            </a>
-          )}
-        </div>
-      </div>
+        </fieldset>
 
-      <label className="mt-2.5 block">
-        <span className={caption}>Notes</span>
-        <span className="block rounded-xl border border-border bg-card px-2.5 py-1.5">
-          {detailInput}
-        </span>
-      </label>
+        <div className="mt-2.5">
+          <span className={caption}>
+            <MapPin className="size-3.5" aria-hidden />
+            Place
+          </span>
+          <p
+            className={`break-words rounded-xl border border-border bg-card px-2.5 py-1.5 text-[14px] leading-snug ${
+              item.address ? "text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            {item.address || "No place yet"}
+          </p>
+          {stray && (
+            <p className="mt-1 text-[12.5px] font-semibold text-destructive">
+              ⚠ This pin is far from the rest of the trip, so it may be a different place with the
+              same name. Use “Change place” to pick the right one.
+            </p>
+          )}
+          <div className="@container mt-1.5 grid grid-cols-2 gap-1.5">
+            <TimelinePlaceEditor
+              item={item}
+              {...(near ? { near } : {})}
+              {...(center ? { center } : {})}
+              buttonClassName={softButton}
+              onPick={(place) => onUpdate(placePatchForSavedRow(place))}
+            />
+            {placed && (
+              <a
+                href={mapsPlaceUrl(item.title, item, item.address)}
+                target="_blank"
+                rel="noreferrer"
+                className={lineButton}
+              >
+                <Send className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
+                Open in Maps
+              </a>
+            )}
+          </div>
+        </div>
+
+        <label className="mt-2.5 block">
+          <span className={caption}>Notes</span>
+          <span className="block rounded-xl border border-border bg-card px-2.5 py-1.5">
+            {detailInput}
+          </span>
+        </label>
+      </div>
 
       {/* Hours, website and phone for a stop on the map, and a warning when
           its time falls outside the hours. Looked up when the card turns. */}
@@ -893,44 +902,83 @@ export function TimelineEntry({
         </button>
       )}
 
-      {/* The same actions the swipe gives, and the rest, with their names. */}
-      <div className="@container mt-2.5 grid grid-cols-6 gap-1.5 border-t border-border pt-2.5">
-        {canLocate && <span className="col-span-2 grid">{mapButton}</span>}
-        {canKeep && <span className="col-span-2 grid">{saveButton}</span>}
-        {onSaveBooking && (
-          <button
-            type="button"
-            onClick={() => setBookingOpen(true)}
-            aria-label={`Booking for ${item.title}`}
-            className={`${lineButton} col-span-2 ${booked ? "text-nexttime" : ""}`}
-          >
-            <Ticket className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-            Booking
-          </button>
-        )}
+      {/* The same actions the swipe gives, and the rest, as rows. */}
+      <div className="plain-card mt-3 divide-y divide-border overflow-hidden">
         <button
           type="button"
           onClick={onToggleDone}
           aria-pressed={done}
           aria-label={done ? `Mark ${item.title} not done` : `Mark ${item.title} done`}
-          className={`${lineButton} col-span-3 ${done ? "border-nexttime/40 text-nexttime" : ""}`}
+          className={actionRow}
         >
-          <Check
-            className="hidden size-4 shrink-0 @[17rem]:inline text-nexttime"
-            strokeWidth={done ? 3 : 2}
-            aria-hidden
-          />
-          {done ? "Done" : "Mark done"}
+          <span
+            className={`${actionBubble} bg-[color-mix(in_oklab,var(--nexttime)_15%,transparent)]`}
+          >
+            <Check className="size-5 text-nexttime" strokeWidth={done ? 3 : 2} aria-hidden />
+          </span>
+          <span className="flex-1">{done ? "Done · mark not done" : "Mark done"}</span>
         </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Delete ${item.title}`}
-          className={`${dangerButton} col-span-3`}
-        >
-          <Trash2 className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-          Delete
-        </button>
+        {canKeep && (
+          <button
+            type="button"
+            onClick={keep}
+            disabled={kept}
+            aria-label={kept ? "Saved to your places" : `Save ${item.title} to your places`}
+            className={actionRow}
+          >
+            <span className={`${actionBubble} bg-primary-soft`}>
+              <Bookmark
+                className="size-5 text-primary"
+                weight={kept ? "fill" : "regular"}
+                aria-hidden
+              />
+            </span>
+            <span className="flex-1">{kept ? "Saved to your places" : "Save to your places"}</span>
+          </button>
+        )}
+        {canLocate && (
+          <button
+            type="button"
+            onClick={onLocate}
+            aria-label={`Locate ${item.title} on the map`}
+            className={actionRow}
+          >
+            <span className={`${actionBubble} bg-elevated`}>
+              <MapIcon className="size-5" aria-hidden />
+            </span>
+            <span className="flex-1">Show on the map</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+          </button>
+        )}
+        {canDirect && (
+          <a
+            href={mapsDirToUrl(item, near ?? "")}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Directions to ${item.title} in Maps`}
+            className={actionRow}
+          >
+            <span className={`${actionBubble} bg-elevated`}>
+              <Send className="size-5" aria-hidden />
+            </span>
+            <span className="flex-1">Directions</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+          </a>
+        )}
+        {onSaveBooking && (
+          <button
+            type="button"
+            onClick={() => setBookingOpen(true)}
+            aria-label={`Booking for ${item.title}`}
+            className={actionRow}
+          >
+            <span className={`${actionBubble} bg-elevated`}>
+              <Ticket className={`size-5 ${booked ? "text-nexttime" : ""}`} aria-hidden />
+            </span>
+            <span className="flex-1">{booked ? "Booking" : "Add a booking"}</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
+          </button>
+        )}
         {/* Dragging the grip reorders a day; editing every stop at once has
             no grip, so it keeps these. */}
         {onMove && editing && (
@@ -940,20 +988,24 @@ export function TimelineEntry({
               disabled={!canMoveUp}
               onClick={() => onMove(-1)}
               aria-label={`Move ${item.title} earlier`}
-              className={`${lineButton} col-span-3`}
+              className={actionRow}
             >
-              <ChevronUp className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-              Earlier
+              <span className={`${actionBubble} bg-elevated`}>
+                <ChevronUp className="size-5" aria-hidden />
+              </span>
+              <span className="flex-1">Move earlier</span>
             </button>
             <button
               type="button"
               disabled={!canMoveDown}
               onClick={() => onMove(1)}
               aria-label={`Move ${item.title} later`}
-              className={`${lineButton} col-span-3`}
+              className={actionRow}
             >
-              <ChevronDown className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-              Later
+              <span className={`${actionBubble} bg-elevated`}>
+                <ChevronDown className="size-5" aria-hidden />
+              </span>
+              <span className="flex-1">Move later</span>
             </button>
           </>
         )}
@@ -962,12 +1014,26 @@ export function TimelineEntry({
             type="button"
             onClick={onMoveTo}
             aria-label={`Move ${item.title} to another day or place`}
-            className={`${lineButton} col-span-6`}
+            className={actionRow}
           >
-            <CalendarDays className="hidden size-4 shrink-0 @[17rem]:inline" aria-hidden />
-            Move to…
+            <span className={`${actionBubble} bg-elevated`}>
+              <CalendarDays className="size-5" aria-hidden />
+            </span>
+            <span className="flex-1">Move to another day…</span>
+            <ChevronRight className="size-5 text-muted-foreground" aria-hidden />
           </button>
         )}
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Delete ${item.title}`}
+          className={`${actionRow} text-destructive`}
+        >
+          <span className={`${actionBubble} bg-destructive/10`}>
+            <Trash2 className="size-5 text-destructive" aria-hidden />
+          </span>
+          <span className="flex-1">Delete stop</span>
+        </button>
       </div>
     </>
   );
@@ -1036,13 +1102,23 @@ export function TimelineEntry({
           open={flipped}
           onClose={() => flip(false)}
           title={item.title}
-          {...(number != null ? { hint: `Stop ${number}` } : {})}
+          page
+          tone={3}
+          hint={[
+            number != null ? `Stop ${number}` : "",
+            item.day_date ? formatTimelineDayLabel(item.day_date) : "",
+            rail,
+            glyphChipLabel(timelineGlyph(item)),
+            booked ? "Booked" : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         >
           {backBody}
           <button
             type="button"
             onClick={() => flip(false)}
-            className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-primary text-[14.5px] font-bold text-primary-foreground"
+            className="btn-primary mt-4 flex w-full items-center justify-center"
           >
             Done
           </button>

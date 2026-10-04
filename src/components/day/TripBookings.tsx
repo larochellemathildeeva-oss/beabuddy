@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronRight, FileText, Plus } from "@/components/icons";
+import { Check, ChevronRight, FileText, Plus } from "@/components/icons";
 import { BookingSheet, type BookingPatch } from "@/components/day/BookingSheet";
 import { DocumentIcon, KindTile } from "@/components/documents/DocumentParts";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -86,9 +86,16 @@ export function TripBookings({
           {eventWhenLabel(stop.day_date, stop.time_label) || (booked ? "Booked" : "No date yet")}
         </span>
       </span>
-      {booked ? null : (
-        <span className="rounded-full bg-elevated px-2 py-0.5 text-[13px] font-semibold text-muted-foreground">
-          Not booked
+      {booked ? (
+        <span
+          aria-hidden
+          className="grid size-6 shrink-0 place-items-center rounded-full bg-nexttime text-white"
+        >
+          <Check className="size-3.5" strokeWidth={3} />
+        </span>
+      ) : (
+        <span className="shrink-0 rounded-full bg-elevated px-3 py-1.5 text-[14px] font-semibold">
+          Mark booked
         </span>
       )}
       <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
@@ -140,6 +147,10 @@ export function TripBookings({
         ))}
       </div>
 
+      <div className="flex items-baseline justify-between px-0.5">
+        <h3 className="font-display text-[22px] leading-none">Booked</h3>
+        <span className="text-[14px] text-muted-foreground">{shown.length}</span>
+      </div>
       {shown.length === 0 ? (
         <p className="plain-card p-4 text-[16px] leading-snug text-muted-foreground">
           {EMPTY[filter]}
@@ -159,7 +170,10 @@ export function TripBookings({
 
       {planned.length > 0 && (
         <section>
-          <p className="label-caps mb-2 px-0.5">On the itinerary, not booked yet</p>
+          <div className="mb-2 flex items-baseline justify-between px-0.5">
+            <h3 className="font-display text-[22px] leading-none">Not booked yet</h3>
+            <span className="text-[14px] text-muted-foreground">From your days</span>
+          </div>
           <div className="plain-card divide-y divide-border overflow-hidden">
             {planned.map((stop) => stopRow(stop, false))}
           </div>

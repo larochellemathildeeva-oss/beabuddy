@@ -72,11 +72,7 @@ export function TripPrep({
     setMenuOpen(false);
   }, [tab, open]);
 
-  const other: PrepMenuItem =
-    tab === "todo"
-      ? { id: "tab", label: "Packing", icon: Backpack, onSelect: () => setTab("packing") }
-      : { id: "tab", label: "To do", icon: ListChecks, onSelect: () => setTab("todo") };
-  const menu = [other, ...(viewMenu?.tab === tab ? viewMenu.items : [])];
+  const menu = viewMenu?.tab === tab ? viewMenu.items : [];
   const onTodoMenu = useCallback(
     (items: PrepMenuItem[]) => setViewMenu({ tab: "todo", items }),
     [],
@@ -124,10 +120,10 @@ export function TripPrep({
                   }}
                   className={`flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left ${
                     item.danger ? "text-destructive" : ""
-                  } ${i === 1 ? "border-t border-border" : ""}`}
+                  } ${i > 0 ? "border-t border-border" : ""}`}
                 >
                   {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
-                  {i === 0 ? `Go to ${item.label}` : item.label}
+                  {item.label}
                 </button>
               );
             })}
@@ -141,10 +137,38 @@ export function TripPrep({
     <Sheet
       open={open}
       onClose={() => setOpen(false)}
-      title={tab === "todo" ? "To do" : "Packing"}
-      hint={facts.line || undefined}
+      title="Before you go"
+      hint={facts.line || "To-dos and the packing list"}
       actions={actions}
+      page
+      tone={4}
     >
+      <div
+        role="tablist"
+        aria-label="To do or packing"
+        className="plain-card sticky top-0 z-10 mb-3 grid grid-cols-2 gap-1 p-1"
+      >
+        {(
+          [
+            ["todo", "To do", ListChecks],
+            ["packing", "Packing", Backpack],
+          ] as const
+        ).map(([id, label, Icon]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            onClick={() => setTab(id)}
+            className={`flex min-h-11 items-center justify-center gap-1.5 rounded-xl text-[16px] font-semibold ${
+              tab === id ? "bg-primary-soft text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <Icon className="size-4" aria-hidden />
+            {label}
+          </button>
+        ))}
+      </div>
       {tab === "todo" ? (
         <TripTodosBody
           tripId={tripId}
