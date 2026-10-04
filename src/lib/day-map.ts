@@ -273,3 +273,27 @@ export type MapLayout = (typeof MAP_LAYOUTS)[number]["id"];
 export function isMapLayout(value: unknown): value is MapLayout {
   return MAP_LAYOUTS.some((layout) => layout.id === value);
 }
+
+/**
+ * The space the chips and the sheet keep clear on the map, shrunk so the day
+ * still has room. They can add up to the whole height on a short phone, and
+ * Leaflet then frames nothing, or jumps to its deepest zoom. Both sides
+ * shrink in proportion until at least `keep` of the height is left between
+ * them, after the fit's own padding on each side.
+ */
+export function mapInsets(
+  height: number,
+  top: number,
+  bottom: number,
+  padding: number,
+  keep = 0.4,
+): { top: number; bottom: number } {
+  const room = Math.max(0, height * (1 - keep) - 2 * padding);
+  const asked = Math.max(0, top) + Math.max(0, bottom);
+  if (asked <= room) return { top: Math.max(0, top), bottom: Math.max(0, bottom) };
+  const scale = asked > 0 ? room / asked : 0;
+  return {
+    top: Math.floor(Math.max(0, top) * scale),
+    bottom: Math.floor(Math.max(0, bottom) * scale),
+  };
+}
