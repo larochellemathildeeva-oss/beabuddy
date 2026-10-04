@@ -23,10 +23,11 @@ Right now, Colorful · Pink, clock on the trip’s first day: ![Right now](https
 - `audit:ci` was not run. Import, place lookup, and plan reading were not changed.
 - Full preview gate passes in Calm, Colorful, and Dark: 133 controls clicked per theme, zero problems.
 - Browser checks at 390px in the preview app. The preview selector for the bookings disclosure now looks for All bookings, which is the label on screen.
+- The nine phone screenshots were taken locally at 390×844. They could not be stored through the GitHub text API, which writes file bodies as UTF-8, so the image links above will not load until the PNG files are added under `.superdesign/handoff/ui-revamp-step-3/`.
 
 ## What was clicked, and what was not
 
-Clicked on Overview: trip name, Hiroshima, the dates, Flying solo, Béa’s leaving line, Plan with Béa, To do, Add stop, the trip menu, Before you go (To-do, Flight, Packing), Find cities, See on map (Map becomes selected), a day card (Timeline becomes selected), the Timeline and Map essentials, the Booked tiles (each sets that filter), Add on the missing-stay note, Travel docs, See all and a saved place, All your memories, All bookings and the Flights / Stays / Transport / Activities / All filters, and a not-booked row (the booking sheet opens on Arrive Hiroshima Station). With the clock on the first trip day, Overview shows Right now (You are here, Peace Memorial Museum, the next stop) and Open Companion selects Companion.
+Clicked on Overview: trip name, Hiroshima, the dates, Flying solo, Béa’s leaving line, Plan with Béa, To do, the trip menu, Before you go (To-do, Flight, Packing), Find cities, See on map (Map becomes selected), a day card (Timeline becomes selected), the Timeline and Map essentials, the Booked tiles (each sets that filter), Add on the missing-stay note, Travel docs, See all and a saved place, All your memories, All bookings and the Flights / Stays / Transport / Activities / All filters, and a not-booked row (the booking sheet opens on Arrive Hiroshima Station). With the clock on the first trip day, Overview shows Right now (You are here, Peace Memorial Museum, the next stop) and Open Companion selects Companion.
 
 Clicked in the trip menu: Edit trip (name JQAPALA A, dates, Tentative / Confirmed, Upcoming / In progress / Past, Save changes), Create an invite code, Revoke this code, the only-person line, Track a budget and Set a budget, Destinations (Hiroshima, and find cities from the stops), Packing (no saved lists on this fixture), Offline maps (the download copy), Customize view (the itinerary-ribbon switch flips), Delete trip (the confirm says “Delete this trip?”; Escape leaves the trip in place). On the guest sample, Leave trip opens “Leave this trip?”.
 
@@ -110,3 +111,4 @@ Plan with Béa, To do, and Add stop are still the pills on the trip page. Invite
 5. Trip checkup stays in the trip menu. Step 6 is the full Bookings and settings pass. Should a short checkup also sit on Overview?
 6. The disclosure that opens the bookings list used to say “Booked · N”. It now says “All bookings”, with the count beside it, because the strip above is already titled Booked. Is that the right label?
 7. The heading under the list stays “On the itinerary, not booked yet”. The mockup shortens that to “Not booked yet”. I kept the app’s sentence. Should it change?
+8. The trip page is the same screen, split into modules under `src/components/trip-detail/` so the source could be committed in pieces that stay typechecked. Nothing was removed. Should it be folded back into one `TripDetail.tsx`?
