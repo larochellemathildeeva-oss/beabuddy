@@ -10,6 +10,9 @@ redesign keeps all of them. Sources: `src/routes/world.tsx`, `Globe.tsx`
 
 Ticked only for controls clicked in `npm run preview:check` (`world:` flow, three themes). Unticked = kept in the code, not clicked this time.
 
+## Customize world (added in step 9)
+- [x] "Customize world" button under the Map view opens a sheet: a switch each for Globe filters, Place card, Travel figures, Add places, Your travel lists; Reset to default; saved with the account (`worldLayout`)
+
 ## Header
 - [ ] Kicker "Places you've been, and all that's still ahead.", title "Your world."; summary line "N cities, N countries." (screen readers; or Béa's world signature when empty)
 

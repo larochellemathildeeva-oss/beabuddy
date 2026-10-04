@@ -17,6 +17,7 @@ describe("settingStorageKey", () => {
     assert.equal(settingStorageKey("homeLayout", "u1"), "bea-home-layout-u1");
     assert.equal(settingStorageKey("tripView", "u1"), "bea-trip-view-u1");
     assert.equal(settingStorageKey("statsLayout", "u1"), "bea-stats-layout-u1");
+    assert.equal(settingStorageKey("worldLayout", "u1"), "bea-world-layout-u1");
     assert.equal(settingStorageKey("homeCurrency", "u1"), "bea-home-currency");
   });
 

@@ -25,6 +25,8 @@ import { WorldFlatMap } from "@/components/WorldFlatMap";
 import { ComparePins } from "@/components/ComparePins";
 import { AddVisitedCity, type AddPlacesStart } from "@/components/AddVisitedCity";
 import { Switch } from "@/components/ui/switch";
+import { CustomizeWorld } from "@/components/CustomizeWorld";
+import { useWorldLayout } from "@/hooks/useWorldLayout";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -155,6 +157,7 @@ function WorldPage() {
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const statsLayout = useStatsLayout();
+  const worldLayout = useWorldLayout().layout;
   const settings = useBeaSettings();
 
   const photo = usePhotoMemories();
@@ -374,6 +377,62 @@ function WorldPage() {
         ))}
       </div>
     </section>
+  );
+
+  const listTiles = (
+    <div className="grid grid-cols-3 gap-2">
+      {[
+        {
+          label: "Bucket list",
+          n: wishlistRows.length,
+          scene: "coastal" as const,
+          go: () => setTab("bucket"),
+        },
+        {
+          label: "Been there",
+          n: cities.length,
+          scene: "oldtown" as const,
+          go: () => setTab("been"),
+        },
+        {
+          label: "Next time",
+          n: nextTimeRows.length,
+          scene: "temple" as const,
+          to: "/recommendations" as const,
+        },
+      ].map((list) => {
+        const body = (
+          <>
+            <img
+              src={bannerArtUrl(list.scene)}
+              alt=""
+              className="art-dim absolute inset-0 size-full object-cover"
+            />
+            <span
+              className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent"
+              aria-hidden
+            />
+            <span className="absolute inset-x-2.5 bottom-2 text-white">
+              <span className="block font-display text-[19px] leading-tight">{list.label}</span>
+              <span className="block text-[13px] leading-tight text-white/90">
+                {plural(list.n, "place", "places")}
+              </span>
+            </span>
+          </>
+        );
+        const cls =
+          "relative block h-[132px] overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.98]";
+        return "to" in list && list.to ? (
+          <Link key={list.label} to={list.to} className={cls}>
+            {body}
+          </Link>
+        ) : (
+          <button key={list.label} type="button" onClick={list.go} className={cls}>
+            {body}
+          </button>
+        );
+      })}
+    </div>
   );
 
   const viewFilters =
@@ -599,9 +658,9 @@ function WorldPage() {
               </button>
             </div>
 
-            {viewFilters}
+            {worldLayout.filters && viewFilters}
 
-            {selected && cityOf(selected) && (
+            {worldLayout.card && selected && cityOf(selected) && (
               <section className="rise plain-card flex items-center gap-3 p-2.5">
                 <img
                   src={bannerArtUrl(
@@ -633,8 +692,10 @@ function WorldPage() {
               </section>
             )}
 
-            {figureCard}
-            {addCard}
+            {worldLayout.figures && figureCard}
+            {worldLayout.lists && listTiles}
+            {worldLayout.add && addCard}
+            <CustomizeWorld variant="add" />
           </>
         )}
 
@@ -906,61 +967,7 @@ function WorldPage() {
                   See all <ChevronRight className="size-4" aria-hidden />
                 </Link>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  {
-                    label: "Bucket list",
-                    n: wishlistRows.length,
-                    scene: "coastal" as const,
-                    go: () => setTab("bucket"),
-                  },
-                  {
-                    label: "Been there",
-                    n: cities.length,
-                    scene: "oldtown" as const,
-                    go: () => setTab("been"),
-                  },
-                  {
-                    label: "Next time",
-                    n: nextTimeRows.length,
-                    scene: "temple" as const,
-                    to: "/recommendations" as const,
-                  },
-                ].map((list) => {
-                  const body = (
-                    <>
-                      <img
-                        src={bannerArtUrl(list.scene)}
-                        alt=""
-                        className="art-dim absolute inset-0 size-full object-cover"
-                      />
-                      <span
-                        className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent"
-                        aria-hidden
-                      />
-                      <span className="absolute inset-x-2.5 bottom-2 text-white">
-                        <span className="block font-display text-[19px] leading-tight">
-                          {list.label}
-                        </span>
-                        <span className="block text-[13px] leading-tight text-white/90">
-                          {plural(list.n, "place", "places")}
-                        </span>
-                      </span>
-                    </>
-                  );
-                  const cls =
-                    "relative block h-[132px] overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.98]";
-                  return "to" in list && list.to ? (
-                    <Link key={list.label} to={list.to} className={cls}>
-                      {body}
-                    </Link>
-                  ) : (
-                    <button key={list.label} type="button" onClick={list.go} className={cls}>
-                      {body}
-                    </button>
-                  );
-                })}
-              </div>
+              {listTiles}
             </section>
 
             {addCard}

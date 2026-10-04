@@ -445,6 +445,23 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await page.getByRole("textbox", { name: "Search your world" }).fill("lis");
   await page.getByRole("button", { name: /^Lisbon/ }).click();
   await page.waitForTimeout(400);
+  // Customize world: each switch shows or hides its section; Reset restores them.
+  await page.getByRole("button", { name: "Customize world" }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole("switch", { name: "Show Globe filters" }).click();
+  await page.getByRole("switch", { name: "Show Your travel lists" }).click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Globe filters did not hide");
+  if ((await text()).toLowerCase().includes("next time") === false) throw new Error("Your travel lists did not show on the Map");
+  await page.getByRole("button", { name: "Customize world" }).click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Reset to default" }).click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 1) throw new Error("Reset did not bring Globe filters back");
   // The add sheet opens from the globe button and closes with Escape.
   await page.getByRole("button", { name: "Add a city or country" }).click();
   await page.waitForTimeout(400);

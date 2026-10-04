@@ -30,6 +30,7 @@ export const SYNCED_SETTINGS = [
   "homeLayout",
   "tripView",
   "statsLayout",
+  "worldLayout",
   "homeCurrency",
   "accessibility",
 ] as const;
@@ -42,6 +43,7 @@ export const PERSONALITY_KEY = "bea-personality";
 export const HOME_CURRENCY_KEY = "bea-home-currency";
 export const homeLayoutKey = (uid: string | undefined) => `bea-home-layout-${uid ?? "anon"}`;
 export const tripViewKey = (uid: string | undefined) => `bea-trip-view-${uid ?? "anon"}`;
+export const worldLayoutKey = (uid: string | undefined) => `bea-world-layout-${uid ?? "anon"}`;
 export const statsLayoutKey = (uid: string | undefined) => `bea-stats-layout-${uid ?? "anon"}`;
 
 /** Where this device keeps a synced setting for this traveller. */
@@ -61,6 +63,8 @@ export function settingStorageKey(name: SyncedSetting, uid: string): string {
       return tripViewKey(uid);
     case "statsLayout":
       return statsLayoutKey(uid);
+    case "worldLayout":
+      return worldLayoutKey(uid);
     case "homeCurrency":
       return HOME_CURRENCY_KEY;
     case "accessibility":
