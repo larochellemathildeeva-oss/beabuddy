@@ -1875,3 +1875,67 @@
   outline: 2px solid var(--foreground);
   outline-offset: -2px;
 }
+
+/*
+ * Béa — World (step 9) tokens. MERGE, don't overwrite: append to the end of
+ * src/styles.css. Everything here is new and namespaced `--world-*`, scoped
+ * to `.bea-world`, so no other screen changes.
+ *
+ * The World sections read the app's own tokens for everything they can
+ * (--background, --card, --foreground, --muted-foreground, --border, --ring,
+ * --acc / --acc-soft / --acc-ink from data-accent, --font-display/--font-sans).
+ * Only what the app has no token for is defined here, per theme, using the
+ * app's own theme selectors (:root/[data-theme="calm"], [data-theme="colorful"], .dark).
+ * Pastels are VISUAL_NORTH_STAR's supporting family: Blush, Powder blue, Mint, Butter.
+ */
+.bea-world {
+  /* Calm (the :root default): white ground, quiet tiles. */
+  --world-wash: none;
+  /* Selected tab: the accent's soft tint (follows data-accent). */
+  --world-active: #f1ede7;
+  --world-chip-1-bg: transparent;
+  --world-chip-1-fg: var(--acc-ink, #a51c3f);
+  --world-chip-2-bg: transparent;
+  --world-chip-2-fg: #2f6fb0;
+  --world-chip-3-bg: transparent;
+  --world-chip-3-fg: #2a7f52;
+  --world-chip-4-bg: transparent;
+  --world-chip-4-fg: #8a6a0c;
+  --world-chip-ring: rgb(17 17 17 / 0.7);
+  --world-stat-1: #f3b6c5;
+  --world-stat-2: #a9c1f5;
+  --world-stat-3: #f3d58a;
+  --world-float-shadow: 0 2px 14px rgb(80 60 40 / 0.08);
+  --world-place-fallback: #f2ede6;
+}
+
+[data-theme="colorful"] .bea-world {
+  --world-active: var(--acc-soft, #fde3ea);
+  --world-chip-1-bg: #fbdce7;
+  --world-chip-2-bg: #dbecfa;
+  --world-chip-3-bg: #ddf1e8;
+  --world-chip-4-bg: #fcf2cc;
+  /* The approved board's warm wash behind the header and globe. */
+  --world-wash:
+    radial-gradient(120% 60% at 85% 0%, rgb(253 222 230 / 0.75) 0%, rgb(252 249 244 / 0) 60%),
+    radial-gradient(90% 50% at 0% 35%, rgb(255 233 214 / 0.6) 0%, rgb(252 249 244 / 0) 70%);
+}
+
+.dark .bea-world {
+  --world-active: color-mix(in oklab, var(--acc, #f6466e) 26%, var(--card, #211e1b));
+  --world-wash: radial-gradient(90% 50% at 50% 30%, rgb(40 52 84 / 0.55) 0%, rgb(23 21 19 / 0) 70%);
+  --world-chip-1-bg: #2b2723;
+  --world-chip-1-fg: var(--acc-done, #f59ab0);
+  --world-chip-2-bg: #2b2723;
+  --world-chip-2-fg: #8ec0ec;
+  --world-chip-3-bg: #2b2723;
+  --world-chip-3-fg: #7fd1a8;
+  --world-chip-4-bg: #2b2723;
+  --world-chip-4-fg: #e9c86a;
+  --world-chip-ring: rgb(246 240 232 / 0.75);
+  --world-stat-1: #b5687d;
+  --world-stat-2: #5f7fc0;
+  --world-stat-3: #b39445;
+  --world-float-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
+  --world-place-fallback: #2b2723;
+}
