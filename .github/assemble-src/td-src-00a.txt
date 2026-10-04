@@ -1,0 +1,69 @@
+import { useNavigate } from "@tanstack/react-router";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Bookmark,
+  Check,
+  Coins,
+  LocateFixed,
+  Download,
+  MapPin,
+  ChevronDown,
+  ChevronRight,
+  Route,
+  CalendarDays,
+  Signpost,
+  ListChecks,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+} from "@/components/icons";
+import { TripBudget } from "@/components/TripBudget";
+import { CurrencySheet } from "@/components/CurrencySheet";
+import { TripStops } from "@/components/TripStops";
+import { TripPeople } from "@/components/TripPeople";
+import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
+import type { TripPhotoRow } from "@/hooks/useTripPhotos";
+import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
+import { TripOverview } from "@/components/TripOverview";
+import { timelineGlyph } from "@/lib/timeline-kind";
+import { TimelineEntryForm } from "@/components/TimelineEntryForm";
+import { Sheet } from "@/components/Sheet";
+import { TripMap } from "@/components/TripMap";
+import { TripPrep, type PrepTab } from "@/components/TripPrep";
+import { savedAgoLabel, savedIsStale, savedMatchesStops } from "@/lib/offline-directions";
+import { useUndo } from "@/hooks/useUndo";
+import { addRecommendationOnce } from "@/hooks/useRecommendations";
+import type { PlaceLike } from "@/lib/captured-place";
+import { isAlreadyKept, keeperToReco } from "@/lib/trip-keepers";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  ItineraryImport,
+  type OptimizePreset,
+  type PlannerTab,
+} from "@/components/ItineraryImport";
+import type { EasePreset } from "@/lib/day-ease";
+import { ItineraryDirections } from "@/components/ItineraryDirections";
+import type { KnownLeg } from "@/lib/directions-reuse";
+import { TimeChangeBox } from "@/components/day/TimeChangeBox";
+import { DayEditSheet, type DayEditSave } from "@/components/day/DayEditSheet";
+import { itineraryPrintHtml } from "@/lib/itinerary-print";
+import { printHtml } from "@/lib/print-page";
+import { prettyDistance, prettyDuration, useOfflineDirections } from "@/hooks/useOfflineDirections";
+import { buildRoutes, type RouteLeg } from "@/lib/directions.functions";
+import { useTripBoard, type ItineraryRow, type MemberRow, type TripRow } from "@/hooks/useTrips";
+import { useTripStops } from "@/hooks/useTripStops";
+import { destinationCities, groupsInCity } from "@/lib/trip-cities";
+import { useTripBudget } from "@/hooks/useTripBudget";
+import { usePacking } from "@/hooks/usePacking";
+import {
+  isSavedDirectionItem,
+  stopsForDirections,
+  timelineStopsForDirections,
+} from "@/lib/direction-stops";
+import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
+import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
+import { DayCards } from "@/components/day/DayCards";
+import { StickyDayBar } from "@/components/day/StickyDayBar";
+import { nowTarget } from "@/lib/now-jump";
+import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
+import { TripBanner } from "@/components/TripBanner";
