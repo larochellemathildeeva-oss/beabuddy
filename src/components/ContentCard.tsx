@@ -60,7 +60,7 @@ export function ContentCard({
           ))}
         </div>
         {badge && (
-          <span className="shrink-0 rounded-full bg-elevated px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
+          <span className="shrink-0 rounded-full bg-elevated px-2.5 py-1 text-[13px] font-semibold text-muted-foreground">
             {badge}
           </span>
         )}

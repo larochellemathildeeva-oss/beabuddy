@@ -216,7 +216,7 @@ function DocumentsPage() {
 
   // ── Signed out / loading / locked ────────────────────────────────────────
   const intro = (
-    <p className="-mt-3 text-[15px] text-muted-foreground">
+    <p className="-mt-3 text-[16px] text-muted-foreground">
       Manage all your bookings, confirmations and trip files in one place.
     </p>
   );
@@ -224,7 +224,7 @@ function DocumentsPage() {
   // Signed out never reaches here: AppShell sends the traveller to sign in.
   if (authLoading || !uid || v.loading || !lock.ready) {
     return (
-      <AppShell title="Trip documents">
+      <AppShell eyebrow="Your files" title="Trip documents.">
         {/* The shape of the library, so nothing jumps when it arrives. */}
         <div className="space-y-4" aria-busy="true" aria-label="Opening Trip documents">
           {intro}
@@ -247,7 +247,7 @@ function DocumentsPage() {
 
   if (!lock.open) {
     return (
-      <AppShell title="Trip documents">
+      <AppShell eyebrow="Your files" title="Trip documents.">
         <div className="space-y-4">
           {intro}
           <VaultUnlock
@@ -273,7 +273,7 @@ function DocumentsPage() {
     : null;
 
   return (
-    <AppShell title="Trip documents">
+    <AppShell eyebrow="Your files" title="Trip documents.">
       <div className="space-y-4 pb-2">
         {intro}
 
@@ -329,7 +329,7 @@ function DocumentsPage() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search documents"
               aria-label="Search documents"
-              className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
             />
             {query && (
               <button type="button" aria-label="Clear search" onClick={() => setQuery("")}>
@@ -347,7 +347,7 @@ function DocumentsPage() {
                 type="button"
                 aria-pressed={group === g}
                 onClick={() => setGroup(g)}
-                className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold ${
+                className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[14px] font-semibold ${
                   group === g
                     ? "border-primary bg-primary text-primary-foreground"
                     : `tile-fill-${(i % 5) + 1} border-border`
@@ -380,7 +380,7 @@ function DocumentsPage() {
         {d.unavailable ? (
           <div className="plain-card space-y-1.5 p-4">
             <p className="font-semibold">Trip documents is not set up yet</p>
-            <p className="text-[13.5px] text-muted-foreground">
+            <p className="text-[14px] text-muted-foreground">
               Béa needs one database update before it can keep bookings and files here. Nothing is
               lost in the meantime, and Protected below already works.
             </p>
@@ -463,7 +463,7 @@ function DocumentsPage() {
               <ShieldCheck className="size-6" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold">
+              <span className="block text-[16px] font-semibold">
                 Passports, cards and private files
               </span>
               <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
@@ -482,7 +482,7 @@ function DocumentsPage() {
             <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
           </button>
           <LockSetting lockOn={lock.lockOn} onChange={lock.setLockOn} />
-          <p className="px-1 text-[12.5px] text-muted-foreground">
+          <p className="px-1 text-[13px] text-muted-foreground">
             Trip documents is for bookings, confirmations and tickets, and is shared with the people
             on the trip it belongs to. It is not for passports, payment cards or passwords — those
             belong in Protected.
@@ -690,7 +690,7 @@ function DocumentsPage() {
                 setSort(value);
                 close();
               }}
-              className="flex w-full items-center justify-between px-4 py-3 text-left text-[15px]"
+              className="flex w-full items-center justify-between px-4 py-3 text-left text-[16px]"
             >
               {label}
               {sort === value && (

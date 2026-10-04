@@ -103,7 +103,7 @@ function dayHeading(day: string | null): string {
 /** The plan's shape while it loads on a client-side visit. */
 function SharedTripPending() {
   return (
-    <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you">
+    <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you.">
       <div className="space-y-4" aria-busy="true" aria-label="Opening the trip">
         <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
         {[0, 1].map((d) => (
@@ -127,9 +127,9 @@ function SharedTripPending() {
 function SharedTripError({ error }: { error: Error }) {
   const router = useRouter();
   return (
-    <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you">
+    <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you.">
       <div className="plain-card space-y-3 p-4">
-        <p className="text-[14.5px] text-muted-foreground">
+        <p className="text-[16px] text-muted-foreground">
           {error.message || "This trip didn't load. Try again."}
         </p>
         <button
@@ -194,8 +194,8 @@ function SharedTripPage() {
 
   if (!trip) {
     return (
-      <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you">
-        <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
+      <AppShell publicPage eyebrow="Shared trip" title="A trip, shared with you.">
+        <p className="plain-card p-4 text-[16px] text-muted-foreground">
           This link doesn't open a trip any more. It may have expired, or been turned off by the
           traveller who shared it.
         </p>
@@ -256,21 +256,21 @@ function SharedTripPage() {
                 </div>
               </details>
             )}
-            <p className="text-[12.5px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               Following along, read-only: it shows the stop they tapped “I'm here” at — never their
               location — and updates by itself.
             </p>
           </>
         ) : (
           <>
-            <p className="text-[13.5px] text-muted-foreground">
+            <p className="text-[14px] text-muted-foreground">
               A read-only copy of the plan, shared from Béa. It shows the latest version each time
               you open it. Tap an address to open it in Maps.
             </p>
             {clocks && <ClockLine clocks={clocks} />}
             <FollowButton token={token} />
             {trip.days.length === 0 && (
-              <p className="plain-card p-4 text-[14.5px] text-muted-foreground">
+              <p className="plain-card p-4 text-[16px] text-muted-foreground">
                 Nothing is planned yet.
               </p>
             )}
@@ -279,7 +279,7 @@ function SharedTripPage() {
             ))}
           </>
         )}
-        <p className="text-center text-[12.5px] text-muted-foreground">
+        <p className="text-center text-[13px] text-muted-foreground">
           Planned with{" "}
           <Link to="/" className="font-semibold text-primary underline underline-offset-2">
             Béa
@@ -359,7 +359,7 @@ function FollowButton({ token }: { token: string }) {
       disabled={busy}
       onClick={() => void toggle()}
       aria-pressed={following}
-      className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-[14.5px] font-semibold disabled:opacity-60 ${
+      className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-4 text-[16px] font-semibold disabled:opacity-60 ${
         following ? "border border-border bg-elevated text-foreground" : "btn-primary"
       }`}
     >
@@ -389,13 +389,13 @@ function LiveStop({
   const maps = sharedStopMapsUrl(place.stop);
   return (
     <span className="block min-w-0">
-      <span className="block text-[12.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
       <span className="block break-words font-display text-[21px] leading-tight">
         {place.stop.title}
       </span>
-      <span className="block text-[12.5px] text-muted-foreground">
+      <span className="block text-[13px] text-muted-foreground">
         {dayHeading(place.day)}
         {place.stop.time ? ` · planned for ${place.stop.time}` : ""}
         {yours ? ` (${yours} your time)` : ""}
@@ -405,7 +405,7 @@ function LiveStop({
           href={maps}
           target="_blank"
           rel="noopener noreferrer"
-          className="-my-1 flex min-h-11 items-center gap-1 text-[12.5px] text-muted-foreground underline decoration-border underline-offset-2"
+          className="-my-1 flex min-h-11 items-center gap-1 text-[13px] text-muted-foreground underline decoration-border underline-offset-2"
         >
           <MapPin className="size-3.5 shrink-0" aria-hidden />
           <span className="min-w-0">{place.stop.address}</span>
@@ -489,7 +489,7 @@ function ClockLine({ clocks }: { clocks: Clocks }) {
         <span className="tabular-nums">{clockIn(clocks.reader, clocks.now)}</span>{" "}
         {weekdayIn(clocks.reader, clocks.now)}
       </span>
-      <span className="basis-full text-[12px] text-muted-foreground">
+      <span className="basis-full text-[13px] text-muted-foreground">
         {city ? `Plan times are ${city} time` : "Plan times are the trip's local time"}
         {gap ? `, ${gap} of you` : ""}.
       </span>
@@ -523,11 +523,11 @@ function DayPlan({ day }: { day: SharedTrip["days"][number] }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span
-                  className={`block break-words text-[15px] leading-snug ${done ? "text-muted-foreground" : ""}`}
+                  className={`block break-words text-[16px] leading-snug ${done ? "text-muted-foreground" : ""}`}
                 >
                   {stop.title}
                   {here && (
-                    <span className="ms-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[11.5px] font-bold text-primary-foreground">
+                    <span className="ms-2 inline-block rounded-full bg-primary px-2 py-0.5 align-middle text-[13px] font-bold text-primary-foreground">
                       Here now
                     </span>
                   )}
@@ -538,13 +538,13 @@ function DayPlan({ day }: { day: SharedTrip["days"][number] }) {
                       href={maps}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="-my-1 flex min-h-11 items-center gap-1 text-[12.5px] text-muted-foreground underline decoration-border underline-offset-2"
+                      className="-my-1 flex min-h-11 items-center gap-1 text-[13px] text-muted-foreground underline decoration-border underline-offset-2"
                     >
                       <MapPin className="size-3.5 shrink-0" aria-hidden />
                       <span className="min-w-0">{stop.address}</span>
                     </a>
                   ) : (
-                    <span className="mt-0.5 flex items-start gap-1 text-[12.5px] text-muted-foreground">
+                    <span className="mt-0.5 flex items-start gap-1 text-[13px] text-muted-foreground">
                       <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                       <span className="min-w-0">{stop.address}</span>
                     </span>

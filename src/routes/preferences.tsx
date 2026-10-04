@@ -99,10 +99,10 @@ function Chip({
         active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
       }`}
     >
-      <span className="block text-[14.5px] font-medium">{label}</span>
+      <span className="block text-[16px] font-medium">{label}</span>
       {hint && (
         <span
-          className={`block text-[12px] ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+          className={`block text-[13px] ${active ? "text-primary-foreground/80" : "text-muted-foreground"}`}
         >
           {hint}
         </span>
@@ -288,9 +288,9 @@ function PreferencesPage() {
   };
 
   return (
-    <AppShell eyebrow="Béa's brain" title="Travel preferences">
+    <AppShell eyebrow="Béa's brain" title="Travel preferences.">
       <div className="space-y-4">
-        <p className="text-[14.5px] text-muted-foreground">
+        <p className="text-[16px] text-muted-foreground">
           Everything here goes straight into Béa's planning. The more you set, the closer her
           itineraries, restaurant picks and trip comparisons land to what you actually want.
         </p>
@@ -300,7 +300,7 @@ function PreferencesPage() {
 
         {load === "error" ? (
           <div className="card-soft space-y-3 p-4">
-            <p className="text-[14.5px]">
+            <p className="text-[16px]">
               Your preferences didn't load, so nothing can be changed yet. Check your connection.
             </p>
             <button
@@ -444,11 +444,11 @@ function PreferencesPage() {
                     }
                   }}
                   placeholder="Add a country"
-                  className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                  className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
                 />
                 <button
                   onClick={addCountry}
-                  className="rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground"
+                  className="rounded-xl bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
                 >
                   Add
                 </button>
@@ -478,8 +478,8 @@ function PreferencesPage() {
               <div className="mt-3 space-y-4">
                 {preferenceGroups.map((group) => (
                   <div key={group.title}>
-                    <p className="text-[14.5px] font-medium">{group.title}</p>
-                    <p className="text-[12.5px] text-muted-foreground">{group.hint}</p>
+                    <p className="text-[16px] font-medium">{group.title}</p>
+                    <p className="text-[13px] text-muted-foreground">{group.hint}</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {group.tags.map((tag) => (
                         <button
@@ -499,8 +499,8 @@ function PreferencesPage() {
                   </div>
                 ))}
                 <div>
-                  <p className="text-[14.5px] font-medium">Your own</p>
-                  <p className="text-[12.5px] text-muted-foreground">
+                  <p className="text-[16px] font-medium">Your own</p>
+                  <p className="text-[13px] text-muted-foreground">
                     Anything not listed — add it in your own words.
                   </p>
                   {customTags.length > 0 && (
@@ -529,17 +529,17 @@ function PreferencesPage() {
                       }}
                       maxLength={CUSTOM_TAG_MAX}
                       placeholder="e.g. Jazz bars, ceramics, rooftop views"
-                      className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                      className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
                     />
                     <button
                       onClick={addTag}
-                      className="rounded-xl bg-primary px-4 text-[14.5px] font-semibold text-primary-foreground"
+                      className="rounded-xl bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
                     >
                       Add
                     </button>
                   </div>
                   {tagNotice && (
-                    <p role="status" className="mt-2 text-[12.5px] text-muted-foreground">
+                    <p role="status" className="mt-2 text-[13px] text-muted-foreground">
                       {tagNotice}
                     </p>
                   )}
@@ -559,7 +559,7 @@ function PreferencesPage() {
                 onBlur={() => flushNotes.current()}
                 rows={2}
                 placeholder="Food: e.g. no shellfish, vegetarian dinners"
-                className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                className="mt-3 w-full rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
               />
               <textarea
                 value={prefs.avoid_notes ?? ""}
@@ -567,7 +567,7 @@ function PreferencesPage() {
                 onBlur={() => flushNotes.current()}
                 rows={2}
                 placeholder="Avoid: e.g. long hikes, crowded nightlife, early flights"
-                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
               />
             </section>
           </>

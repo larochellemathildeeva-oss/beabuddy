@@ -37,7 +37,7 @@ function Answer({ text, padded = true }: { text: string; padded?: boolean }) {
       {parts.map((para, i) => (
         <p
           key={i}
-          className="whitespace-pre-line text-[14.5px] leading-relaxed text-muted-foreground"
+          className="whitespace-pre-line text-[16px] leading-relaxed text-muted-foreground"
         >
           {para}
         </p>
@@ -57,7 +57,7 @@ function Item({ q, a, walk, open: startOpen }: Faq & { open?: boolean }) {
         aria-expanded={shown}
         className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
       >
-        <span className="text-[15px] font-medium">{q}</span>
+        <span className="text-[16px] font-medium">{q}</span>
         <ChevronDown
           className={`size-4 shrink-0 text-muted-foreground transition-transform ${shown ? "rotate-180" : ""}`}
         />
@@ -70,7 +70,7 @@ function Item({ q, a, walk, open: startOpen }: Faq & { open?: boolean }) {
               <button
                 type="button"
                 onClick={() => startWalk(walk)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[13.5px] font-semibold text-primary"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[14px] font-semibold text-primary"
               >
                 <PlayCircle className="size-4" aria-hidden />
                 Show me on the screen
@@ -113,10 +113,10 @@ function HelpPage() {
     <AppShell publicPage eyebrow="Help" title={HELP_WELCOME.title}>
       <div className="space-y-6 pb-4">
         <section data-guide="help-faq" className="space-y-3">
-          <p className="text-[15.5px] font-medium leading-snug text-foreground">
+          <p className="text-[16px] font-medium leading-snug text-foreground">
             {HELP_WELCOME.lead}
           </p>
-          <p className="text-[14.5px] leading-relaxed text-muted-foreground">{HELP_WELCOME.body}</p>
+          <p className="text-[16px] leading-relaxed text-muted-foreground">{HELP_WELCOME.body}</p>
           <label htmlFor="help-search" className="label-caps block text-foreground">
             Search help
           </label>
@@ -128,7 +128,7 @@ function HelpPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="directions, import, offline…"
-              className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted-foreground"
             />
           </div>
         </section>
@@ -173,8 +173,8 @@ function HelpPage() {
         )}
 
         <section className="card-soft p-4">
-          <p className="text-[15px] font-medium">Still stuck?</p>
-          <p className="mt-1 text-[14.5px] text-muted-foreground">
+          <p className="text-[16px] font-medium">Still stuck?</p>
+          <p className="mt-1 text-[16px] text-muted-foreground">
             Tap the ? at the top of any page to see what that page does, with a walk of its own.
             Tell Béa what went wrong through{" "}
             <Link to="/profile" className="text-primary underline">

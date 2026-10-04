@@ -20,6 +20,28 @@ import { Route as RecsRoute } from "@/routes/recommendations";
 import { Route as AuthRoute } from "@/routes/auth";
 import { Welcome } from "@/components/Welcome";
 import { Route as ProfileRoute } from "@/routes/profile";
+import { Route as HelpRoute } from "@/routes/help";
+import { Route as HowRoute } from "@/routes/how-it-works";
+import { Route as PrivacyRoute } from "@/routes/privacy";
+import { Route as TermsRoute } from "@/routes/terms";
+import { Route as PrefsRoute } from "@/routes/preferences";
+import { Route as BeaRoute } from "@/routes/profile_.bea";
+import { Route as DocsRoute } from "@/routes/profile_.documents";
+import { Route as ForgotRoute } from "@/routes/forgot-password";
+import { Route as ResetRoute } from "@/routes/reset-password";
+import { Route as SharedRoute } from "@/routes/shared.$token";
+import { Route as CalendarRoute } from "@/routes/_authenticated/calendar";
+import { Route as ExpensesRoute } from "@/routes/_authenticated/expenses";
+import { Route as MemoriesRoute } from "@/routes/_authenticated/memories";
+import { Route as PhotosRoute } from "@/routes/_authenticated/photos";
+import { Route as StoryRoute } from "@/routes/_authenticated/story";
+
+/** The pages the mockup does not show, each rendered as its own route. */
+const PAGES: Record<string, unknown> = {
+  help: HelpRoute, how: HowRoute, privacy: PrivacyRoute, terms: TermsRoute, prefs: PrefsRoute,
+  bea: BeaRoute, docs: DocsRoute, forgot: ForgotRoute, reset: ResetRoute, shared: SharedRoute,
+  calendar: CalendarRoute, expenses: ExpensesRoute, memories: MemoriesRoute, photos: PhotosRoute, story: StoryRoute,
+};
 
 /** Home below the header, as SignedInHome lays it out. */
 function HomePreview() {
@@ -71,7 +93,10 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample === "auth") {
+if (sample.startsWith("page-") && PAGES[sample.slice(5)]) {
+  const Page = (PAGES[sample.slice(5)] as { options: { component: () => JSX.Element } }).options.component;
+  createRoot(document.getElementById("root")!).render(<Page />);
+} else if (sample === "auth") {
   const AuthPage = (AuthRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<AuthPage />);
 } else if (sample === "welcome") {

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { BrandMark } from "@/components/PageHeader";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { AUTH_SUBMIT, AuthField } from "@/components/AuthField";
@@ -78,15 +79,15 @@ function ResetPasswordPage() {
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 py-10">
         <div className="flex flex-1 flex-col justify-center">
-          <p className="label-caps">Béa</p>
-          <h1 className="mt-2 text-[30px] leading-[1.05]">Choose a new password</h1>
+          <BrandMark large />
+          <h1 className="mt-6 font-display text-[40px] leading-[1.1]">Choose a new password</h1>
 
           {done ? (
-            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[14.5px]">
+            <p className="mt-6 rounded-xl border border-border bg-card p-4 text-[16px]">
               Password updated — taking you back into Béa.
             </p>
           ) : !ready ? (
-            <p className="mt-6 text-[14.5px] text-muted-foreground">
+            <p className="mt-6 text-[16px] text-muted-foreground">
               Open this page from the link in your reset email. If you got here another way, ask for
               a new link on the{" "}
               <Link to="/forgot-password" className="underline underline-offset-4">

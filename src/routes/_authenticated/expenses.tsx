@@ -173,7 +173,7 @@ function ExpensesPage() {
   };
 
   return (
-    <AppShell eyebrow="Business expenses" title="Receipts, kept tidy">
+    <AppShell eyebrow="Business expenses" title="Receipts, kept tidy.">
       <Sheet
         open={showDisclaimer}
         onClose={acceptDisclaimer}
@@ -181,7 +181,7 @@ function ExpensesPage() {
         width="sm"
         showClose={false}
       >
-        <p className="text-[14.5px] leading-relaxed text-muted-foreground">
+        <p className="text-[16px] leading-relaxed text-muted-foreground">
           Béa is here to help you stay organised — nothing more. This is not tax advice and the
           export is not an official document. Béa is not responsible for any tax issue, missing
           receipt or filing problem. Always check the figures with your accountant or tax authority
@@ -189,18 +189,18 @@ function ExpensesPage() {
         </p>
         <button
           onClick={acceptDisclaimer}
-          className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
+          className="mt-4 w-full rounded-xl bg-primary px-4 py-3 text-[16px] font-semibold text-primary-foreground"
         >
           I understand
         </button>
       </Sheet>
       <div className="space-y-5">
-        <p className="text-[14.5px] text-muted-foreground">
+        <p className="text-[16px] text-muted-foreground">
           Photograph a receipt the moment you pay. Béa keeps the picture privately in your account
           and builds a spending record you can send to accounting.
         </p>
 
-        <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-[12.5px] leading-relaxed text-muted-foreground">
+        <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-[13px] leading-relaxed text-muted-foreground">
           Organising help only — not tax advice, and not an official document. Béa isn’t responsible
           for any tax issue; check the numbers with your accountant.
         </p>
@@ -250,13 +250,13 @@ function ExpensesPage() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => camera.current?.click()}
-                className="rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground"
+                className="rounded-xl bg-primary px-4 py-3 text-[16px] font-semibold text-primary-foreground"
               >
                 Take a photo
               </button>
               <button
                 onClick={() => library.current?.click()}
-                className="rounded-xl border border-border px-4 py-3 text-[15px] font-semibold"
+                className="rounded-xl border border-border px-4 py-3 text-[16px] font-semibold"
               >
                 Choose a picture
               </button>
@@ -268,19 +268,19 @@ function ExpensesPage() {
               value={merchant}
               onChange={(e) => setMerchant(e.target.value)}
               placeholder="Where you paid"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             />
             <input
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               inputMode="decimal"
               placeholder="Amount"
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             />
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             >
               {currencies.map((c) => (
                 <option key={c} value={c}>
@@ -291,7 +291,7 @@ function ExpensesPage() {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             >
               {expenseCategories.map((c) => (
                 <option key={c} value={c}>
@@ -303,12 +303,12 @@ function ExpensesPage() {
               type="date"
               value={spentOn}
               onChange={(e) => setSpentOn(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             />
             <select
               value={tripId}
               onChange={(e) => setTripId(e.target.value)}
-              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+              className="rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
             >
               <option value="">No trip</option>
               {t.trips.map((trip) => (
@@ -324,10 +324,10 @@ function ExpensesPage() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="What was it for?"
             rows={2}
-            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[16px]"
           />
 
-          <label className="flex items-center gap-2.5 text-[14.5px] text-muted-foreground">
+          <label className="flex items-center gap-2.5 text-[16px] text-muted-foreground">
             <input
               type="checkbox"
               checked={billable}
@@ -340,7 +340,7 @@ function ExpensesPage() {
           <button
             onClick={() => void save()}
             disabled={busy || (!file && !amount)}
-            className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
+            className="w-full rounded-xl bg-primary px-4 py-3 text-[16px] font-semibold text-primary-foreground disabled:opacity-50"
           >
             {busy ? "Saving…" : "Save receipt"}
           </button>
@@ -373,7 +373,7 @@ function ExpensesPage() {
               </p>
             </div>
 
-            <p className="text-[14.5px]">
+            <p className="text-[16px]">
               <span className="font-semibold">{rates.format(totals.billableHome)}</span>{" "}
               <span className="text-muted-foreground">marked claimable</span>
             </p>
@@ -400,7 +400,7 @@ function ExpensesPage() {
             <button
               data-guide="expense-export"
               onClick={exportCsv}
-              className="w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold"
+              className="w-full rounded-xl border border-border px-4 py-2 text-[16px] font-semibold"
             >
               Download a spreadsheet
             </button>
@@ -408,11 +408,11 @@ function ExpensesPage() {
         )}
 
         <div className="space-y-3">
-          {loading && <p className="text-[14.5px] text-muted-foreground">Loading…</p>}
+          {loading && <p className="text-[16px] text-muted-foreground">Loading…</p>}
           {!loading && rows.length === 0 && (
             <div className="card-soft p-5 text-center">
-              <p className="text-[15px] font-semibold">No receipts yet</p>
-              <p className="mt-1 text-[14.5px] text-muted-foreground">
+              <p className="text-[16px] font-semibold">No receipts yet</p>
+              <p className="mt-1 text-[16px] text-muted-foreground">
                 Take a photo of your next one and it will land here.
               </p>
             </div>
@@ -426,12 +426,12 @@ function ExpensesPage() {
                   className="size-16 shrink-0 rounded-lg object-cover"
                 />
               ) : (
-                <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-border text-[11.5px] text-muted-foreground">
+                <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-border text-[13px] text-muted-foreground">
                   No photo
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-semibold">{r.merchant || r.category}</p>
+                <p className="truncate text-[16px] font-semibold">{r.merchant || r.category}</p>
                 <p className="text-[13px] text-muted-foreground">
                   {r.spent_on} · {r.category}
                   {r.billable ? " · claimable" : ""}
@@ -440,11 +440,11 @@ function ExpensesPage() {
               </div>
               <div className="flex flex-col items-end justify-between">
                 <div className="text-right">
-                  <p className="text-[15px] font-semibold">
+                  <p className="text-[16px] font-semibold">
                     {r.amount.toFixed(2)} {r.currency}
                   </p>
                   {r.currency !== rates.home && rates.convert(r.amount, r.currency) !== null && (
-                    <p className="text-[12px] text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       ≈ {rates.format(rates.convert(r.amount, r.currency) as number)}
                     </p>
                   )}
@@ -452,7 +452,7 @@ function ExpensesPage() {
 
                 <button
                   onClick={() => void removeExpense(r)}
-                  className="text-[12px] text-muted-foreground underline"
+                  className="text-[13px] text-muted-foreground underline"
                 >
                   Delete
                 </button>
@@ -463,7 +463,7 @@ function ExpensesPage() {
 
         <Link
           to="/profile"
-          className="block text-center text-[14.5px] text-muted-foreground underline"
+          className="block text-center text-[16px] text-muted-foreground underline"
         >
           Back to your profile
         </Link>

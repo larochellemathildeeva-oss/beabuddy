@@ -40,5 +40,6 @@ export const createFileRoute = () => (options: any) => ({
     history.replaceState(null, "", url);
     searchListeners.forEach((cb) => cb());
   },
-  useParams: () => ({}),
+  useParams: () => ({ token: "preview" }),
+  useLoaderData: () => undefined,
 });
