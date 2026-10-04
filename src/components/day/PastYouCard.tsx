@@ -76,7 +76,7 @@ export function PastYouCard({
         <div>
           <p className="text-[16px] font-semibold">Saved and not yet visited</p>
           <p className="mt-0.5 text-[14px] leading-snug text-muted-foreground">
-            {found.recs.map((r) => r.name).join(" \u00b7 ")}
+            {found.recs.map((r) => r.name).join(" · ")}
           </p>
         </div>
       )}
@@ -90,4 +90,75 @@ export function PastYouCard({
       </Link>
     </section>
   );
+}
+
+type PastData = {
+  notes: PastNote[];
+  photos: PastPhoto[];
+  trips: PastTrip[];
+  recs: PastRec[];
+};
+
+/** Everything Past You left, read once when the trip opens. */
+function usePastData(): PastData | null {
+  const [data, setData] = useState<PastData | null>(null);
+  useEffect(() => {
+    let active = true;
+    // Own photos only: other travellers' photos on a shared trip's stops are
+    // readable too, and are not Past You's.
+    const load = (uid: string) =>
+      Promise.all([
+        supabase.from("future_notes").select("id, city, country, note, created_at"),
+        supabase
+          .from("photo_memories")
+          .select("id, storage_path, city, country, taken_at")
+          .eq("user_id", uid),
+        supabase.from("trips").select("id, title, city, country, start_date, end_date"),
+        supabase.from("recommendations").select("id, name, city, country, visited"),
+      ]).then(([notes, photos, trips, recs]) => {
+        if (!active) return;
+        setData({
+          notes: (notes.data ?? []) as PastNote[],
+          photos: (photos.data ?? []) as PastPhoto[],
+          trips: (trips.data ?? []) as PastTrip[],
+          recs: (recs.data ?? []) as PastRec[],
+        });
+      });
+    void supabase.auth.getSession().then(({ data: auth }) => {
+      const uid = auth.session?.user.id;
+      if (active && uid) void load(uid);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  return data;
+}
+
+function usePhotoUrls(photos: readonly PastPhoto[]): Record<string, string> {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const key = photos.map((p) => p.id).join(",");
+  useEffect(() => {
+    if (!photos.length) return;
+    let active = true;
+    void supabase.storage
+      .from("photo-memories")
+      .createSignedUrls(
+        photos.map((p) => p.storage_path),
+        3600,
+      )
+      .then(({ data }) => {
+        if (!active || !data) return;
+        const next: Record<string, string> = {};
+        data.forEach((entry, i) => {
+          if (entry.signedUrl) next[photos[i]!.id] = entry.signedUrl;
+        });
+        setUrls(next);
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `key` stands for the list
+  }, [key]);
+  return urls;
 }
