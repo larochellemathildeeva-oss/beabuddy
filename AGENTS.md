@@ -563,6 +563,14 @@ are static files, fetched only for the countries a user has been to; which
 province a city is in is worked out in the browser from its position.
 Country names are matched in any language through `src/lib/country-names.ts`.
 
+The World tab's globe (`variant="open"` in `Globe.tsx`) is wrapped in the same
+Natural Earth II relief as Home's route map: the zoom-3 tiles in
+`public/relief` are joined into one Mercator picture (`relief-globe-load.ts`)
+and each globe pixel is turned back into a longitude and latitude
+(`relief-globe.ts`, pure and tested), drawn small while the globe moves and
+sharp once it rests. If the tiles cannot be read the globe keeps its plain
+land. Other globes (signed-out Home, Story) are unchanged.
+
 ## Gemini spend from coding sessions
 
 A coding session's Gemini key bills the same Google project as the app.
