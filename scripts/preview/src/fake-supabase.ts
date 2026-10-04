@@ -232,7 +232,7 @@ const recsDb: Record<string, Row[]> = {
   ],
 };
 
-export const db: Record<string, Row[]> = sample === "recs" || sample === "you" ? recsDb : sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
+export const db: Record<string, Row[]> = sample === "recs" || sample === "you" ? recsDb : sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" || sample === "page-calendar" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [
@@ -341,10 +341,12 @@ export const supabase = {
     }),
     signInWithOAuth: async () => ({ data: null, error: null }),
     signInWithPassword: async () => ({ data: null, error: { message: "Preview only" } }),
+    resetPasswordForEmail: async () => ({ data: {}, error: null }),
+    updateUser: async () => ({ data: { user: { id: "me" } }, error: null }),
     signUp: async () => ({ data: { user: null, session: null }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
   storage: {
-    from: () => ({ createSignedUrl: async () => ({ data: null }), list: async () => ({ data: [] }), upload: async () => ({ data: null, error: null }) }),
+    from: () => ({ createSignedUrl: async () => ({ data: null }), list: async () => ({ data: [] }), upload: async () => ({ data: null, error: null }), remove: async () => ({ data: [], error: null }) }),
   },
 };
