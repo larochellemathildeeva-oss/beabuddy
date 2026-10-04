@@ -1,0 +1,214 @@
+/* PREVIEW ONLY: verbatim copy of src/styles.css lines 90–301 (accent + theme tokens) from the app, so the standalone pages use the real tokens. Not part of the package. */
+:root { --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif; --font-display: "Instrument Serif", ui-serif, Georgia, serif; }
+/* The owner's six accent tokens. Blush and danger remain independent. */
+:root,
+[data-accent="pink"] {
+  --acc: #F6466E;
+  --acc2: #F24A70;
+  --acc-soft: #FDE3EA;
+  --acc-done: #F59AB0;
+  --acc-line: #F3B6C5;
+  --acc-track: #F3E4E8;
+  --acc-ink: #A51C3F;
+}
+[data-accent="periwinkle"] {
+  --acc: #6675FF;
+  --acc2: #5C6CF5;
+  --acc-soft: #ECEEFF;
+  --acc-done: #B3BAFF;
+  --acc-line: #C5CBFF;
+  --acc-track: #E3E6FF;
+  --acc-ink: #3B46AE;
+}
+
+:root,
+[data-theme="calm"] {
+  --radius: 1.02rem;
+
+  /* The master design's sizes (bea-design-tokens.json), the same in every theme. */
+  --r-card: 16px;
+  --r-button: 16px;
+  --r-sheet: 28px;
+  --r-image: 16px;
+  --r-input: 13px;
+  --h-button: 52px;
+  --h-input: 52px;
+  --h-row: 56px;
+  --h-chip: 34px;
+  --pad-card: 16px;
+  --pad-screen: 20px;
+  --success: #58745c;
+  --warning: #b47a35;
+
+  /* Calm keeps a white ground. All themes share the chosen accent. */
+  --background: #FFFFFF;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --elevated: #F7F5F1;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
+  /* Near-black meets body-text contrast on either exact accent fill. */
+  --primary-foreground: #000000;
+  --primary-soft: var(--acc-soft);
+  --secondary: #F7F5F1;
+  --secondary-foreground: #111111;
+  --muted: #F7F5F1;
+  --muted-foreground: #6B6763;
+  --accent: var(--acc-soft);
+  --accent-foreground: #111111;
+  --destructive: #C22A52;
+  --destructive-ink: var(--destructive);
+  --destructive-foreground: #FFFFFF;
+  --border: #F2EDE6;
+  --input: #D9D3CC;
+  --ring: var(--acc-ink);
+
+  --visited: oklch(0.55 0.135 249);
+  --nexttime: oklch(0.56 0.12 158);
+  --wishlist: oklch(0.66 0.135 84);
+  --reco: oklch(0.545 0.155 305);
+
+  --blush: #FBDCE7;
+  --powder: #DBECFA;
+  --mint: #DDF1E8;
+  --butter: #FCF2CC;
+  --lavender: #EAE3FA;
+  --tile-1: var(--card);
+  --tile-2: var(--card);
+  --tile-3: var(--primary-soft);
+  --tile-4: var(--elevated);
+  --tile-5: var(--card);
+  --inverse-accent: var(--acc-done);
+
+  --shadow-xs: 0 1px 2px rgb(80 60 40 / 0.04);
+  --shadow-sm: 0 1px 10px rgb(80 60 40 / 0.07);
+  --shadow-md: 0 1px 10px rgb(80 60 40 / 0.07);
+  --shadow-lg: 0 6px 24px rgb(80 60 40 / 0.12);
+  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 45%, transparent);
+  --shadow-soft: var(--shadow-md);
+  --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
+  --page-wash: none;
+
+  /**
+   * Motion is configured where colour is configured — one place, not forty
+   * component files.
+   *
+   * The four durations are named for what the movement *is* rather than how
+   * long it takes, so a reviewer can tell a wrong one from a right one:
+   *   tap    — the element you touched acknowledges you
+   *   shift  — something changes in place (colour, weight, rotation)
+   *   move   — something travels across the screen
+   *   arrive — a new surface lands
+   *
+   * Tailwind v4's variable shorthand reads them straight out of here:
+   * `duration-(--t-move)`, `ease-(--ease-standard)`. Component code then says
+   * what the motion means instead of guessing a number.
+   *
+   * These live on :root rather than in @theme so they are emitted whether or
+   * not a utility happens to reference them — plain CSS below uses them too.
+   */
+  --t-tap: 120ms;
+  --t-shift: 200ms;
+  --t-move: 320ms;
+  --t-arrive: 420ms;
+
+  /* Standard: decelerating, for anything entering or moving in place.
+     Exit: accelerating, for anything leaving — it should not linger.
+     Confirm: slight overshoot, reserved for "that worked" moments. */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-confirm: cubic-bezier(0.34, 1.4, 0.5, 1);
+
+  /* The original names, kept as aliases so older call sites stay correct. */
+  --ease-out: var(--ease-standard);
+  --ease-spring: var(--ease-confirm);
+}
+
+/* Colorful: warm ground with the north star's five supporting pastels. */
+[data-theme="colorful"] {
+  --background: #FCF9F4;
+  --foreground: #111111;
+  --card: #FFFFFF;
+  --card-foreground: #111111;
+  --popover: #FFFFFF;
+  --popover-foreground: #111111;
+  --primary: var(--acc);
+  --primary-ink: var(--acc-ink);
+  --primary-foreground: #000000;
+  --primary-soft: var(--acc-soft);
+  --secondary-foreground: #111111;
+  --muted-foreground: #6B6763;
+  --destructive-ink: var(--destructive);
+  --accent: var(--acc-soft);
+  --accent-foreground: #111111;
+  --border: #E3DCD3;
+  --input: #D9D3CC;
+  --ring: var(--acc-ink);
+  --elevated: #F2EDE6;
+  --secondary: #F2EDE6;
+  --muted: #F2EDE6;
+  --tile-1: var(--lavender);
+  --tile-2: var(--powder);
+  --tile-3: var(--mint);
+  --tile-4: var(--butter);
+  --tile-5: var(--blush);
+}
+
+/* Dark keeps its existing near-black surfaces and the chosen accent. */
+.dark {
+  --background: #171513;
+  --foreground: #f6f0e8;
+  --card: #211e1b;
+  --card-foreground: #f6f0e8;
+  --elevated: #2b2723;
+  --popover: #2b2723;
+  --popover-foreground: #f6f0e8;
+  --primary: var(--acc);
+  --primary-ink: var(--acc-done);
+  --primary-foreground: #000000;
+  --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
+  --secondary: #2b2723;
+  --secondary-foreground: #f6f0e8;
+  --muted: #2b2723;
+  --muted-foreground: #b8aea4;
+  --accent: #2b2723;
+  --accent-foreground: #f6f0e8;
+  --destructive: #C22A52;
+  --destructive-ink: #F08AA3;
+  --destructive-foreground: oklch(0.99 0.008 86);
+  --border: #3a342f;
+  --input: #3a342f;
+  --ring: var(--acc-done);
+
+  --visited: oklch(0.7 0.135 249);
+  --nexttime: oklch(0.72 0.13 158);
+  --wishlist: oklch(0.82 0.13 86);
+  --reco: oklch(0.72 0.135 305);
+
+  --tile-1: var(--card);
+  --tile-2: var(--card);
+  --tile-3: var(--primary-soft);
+  --tile-4: var(--elevated);
+  --tile-5: var(--card);
+
+  /* Dark inverts to an off-white card, so its accent text goes darker. */
+  --inverse-accent: var(--acc-ink);
+
+
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.35), 0 3px 8px -4px oklch(0 0 0 / 0.5);
+  --shadow-md: 0 1px 2px oklch(0 0 0 / 0.35), 0 12px 28px -16px oklch(0 0 0 / 0.75);
+  --shadow-lg: 0 2px 4px oklch(0 0 0 / 0.4), 0 28px 56px -28px oklch(0 0 0 / 0.85);
+  --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 35%, transparent);
+  --shadow-soft: var(--shadow-md);
+
+  --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
+
+  --success: #86a78b;
+  --warning: #d5a25d;
+  color-scheme: dark;
+}

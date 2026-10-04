@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Béa — Home & Trips preview</title>
+    <script>
+      // Preview: theme and accent from the URL (?theme=calm|colorful|dark&accent=…)
+      (function () {
+        var q = new URLSearchParams(location.search);
+        var t = q.get("theme") || "calm";
+        var d = document.documentElement;
+        d.setAttribute("data-theme", t);
+        if (t === "dark") d.classList.add("dark");
+        d.setAttribute("data-accent", q.get("accent") || "pink");
+        try {
+          localStorage.setItem("bea-tour-seen", "yes");
+          localStorage.setItem("bea-theme", t);
+          // ?modules=all: the on-trip list with every module on (the references' module board).
+          var all = [
+            "stops",
+            "now",
+            "saved",
+            "group",
+            "tools",
+            "weatherThere",
+            "detour",
+            "notes",
+            "trip",
+            "weather",
+            "waiting",
+            "future",
+          ];
+          var key = "bea-home-next-layout-ontrip-u-preview";
+          // ?layout=big|list&picture=stops|photo: the Trips tab's own two switches.
+          localStorage.setItem("bea-trips-layout", q.get("layout") || "big");
+          localStorage.setItem("bea-trip-picture", q.get("picture") || "stops");
+          if (q.get("modules") === "all")
+            localStorage.setItem(key, JSON.stringify({ order: all, on: all }));
+          else localStorage.removeItem(key);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    />
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
