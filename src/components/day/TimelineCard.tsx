@@ -461,9 +461,9 @@ export function TimelineEntry({
       {/* A stop that already has photos keeps the camera beside them, so
           adding another is one tap; the first photo comes from ⋯. */}
       {photos && photos.photos.length > 0 && (
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <PhotoStrip photos={photos.photos} title={item.title} onOpen={() => flip(true)} />
-          <span className="flex gap-1.5">
+          <span className="flex shrink-0 gap-1.5">
             <QuickPhoto photos={photos} />
           </span>
         </div>
