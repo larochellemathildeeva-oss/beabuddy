@@ -794,21 +794,18 @@ export function TripDetail({
       fits(liveLegs?.[index]) ?? (savedFitsTimeline ? fits(dir.saved?.legs[index]) : undefined)
     );
   };
-  /** The measured leg into `to`: worked out now, kept on the phone, or saved on the timeline. */
   /**
-   * `strict` leaves out rows saved before they kept the stop they leave from:
-   * after a reorder such a row may describe another journey, and Companion
-   * times "Leave by" from it, so it works that journey out itself instead.
+   * The measured leg into `to`: worked out now, kept on the phone, or saved on
+   * the timeline. A row saved before it kept the stop it leaves from (keyed by
+   * its destination alone) is never used: after a stop is added or moved it may
+   * describe another journey, so the connector says "not measured yet" until
+   * directions are refreshed rather than show that journey's time and Maps link.
    */
-  const travelInto = (from: ItineraryRow, to: ItineraryRow, strict = false) =>
+  const travelInto = (from: ItineraryRow, to: ItineraryRow) =>
     savedLegStillFits(legFor(from.id, to.id), from, to) ??
     savedLegStillFits(
       savedTravel.get(directionKey(to.day_date, to.title, from.title)) ??
-        savedTravel.get(directionKey(from.day_date, to.title, from.title)) ??
-        (strict
-          ? undefined
-          : (savedTravel.get(directionKey(to.day_date, to.title)) ??
-            savedTravel.get(directionKey(from.day_date, to.title)))),
+        savedTravel.get(directionKey(from.day_date, to.title, from.title)),
       from,
       to,
     );
@@ -1378,7 +1375,7 @@ export function TripDetail({
   const tripStopsForNow = companionStops(board.items);
   const nowLegs = tripStopsForNow
     .slice(0, -1)
-    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!, true));
+    .map((stop, i) => travelInto(stop, tripStopsForNow[i + 1]!));
   const tripWide = {
     international: cities.countries.length > 1 || Boolean(trip.country),
     // Asked by glyph, not by raw kind. A flight stores as "flight" and a
@@ -1479,7 +1476,7 @@ export function TripDetail({
           travelMinutes: (from, to) => {
             const a = itemsById.get(from.id);
             const b = itemsById.get(to.id);
-            const leg = a && b ? travelInto(a, b, true) : undefined;
+            const leg = a && b ? travelInto(a, b) : undefined;
             if (!leg || leg.unknownSpot || leg.capped || !(leg.duration > 0)) return null;
             return Math.round(leg.duration / 60);
           },
