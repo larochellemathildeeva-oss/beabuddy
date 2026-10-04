@@ -15,6 +15,7 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
 import { Route as TripsRoute } from "@/routes/trips";
 import { Route as HomeRoute } from "@/routes/index";
+import { Route as WorldRoute } from "@/routes/world";
 
 /** Home below the header, as SignedInHome lays it out. */
 function HomePreview() {
@@ -70,6 +71,10 @@ if (sample.startsWith("homepage")) {
   // The Home route itself, in the app's frame.
   const HomePage = (HomeRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<HomePage />);
+} else if (sample === "world") {
+  // The World tab itself, in the app's frame.
+  const WorldPage = (WorldRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
+  createRoot(document.getElementById("root")!).render(<WorldPage />);
 } else if (sample === "trips") {
   // The Trips tab itself, in the app's frame.
   const TripsPage = (TripsRoute as unknown as { options: { component: () => JSX.Element } }).options.component;

@@ -22,6 +22,7 @@ export function clearLocalUserData(uid: string) {
   const exact = [
     `bea-home-layout-${uid}`,
     `bea-stats-layout-${uid}`,
+    `bea-world-layout-${uid}`,
     sampleCtaDismissKey(uid),
     // The Face ID / fingerprint copy of the Protected key.
     passkeyStorageKey(uid),

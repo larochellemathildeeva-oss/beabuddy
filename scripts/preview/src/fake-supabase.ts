@@ -188,13 +188,35 @@ const onTripDb: Record<string, Row[]> = {
   packing_lists: [{ id: "pl1", trip_id: "eu", name: "Europe", emoji: null }],
   packing_items: Array.from({ length: 10 }, (_, i) => ({ id: `pi${i}`, list_id: "pl1", label: `Item ${i + 1}`, packed: i < 7, position: i })),
 };
+// "world": the World route, with places been to in five cities, a bucket list
+// and a next-time place.
+const beenPlaces = [
+  ["Montréal", "Canada", 45.5, -73.57, 3],
+  ["Paris", "France", 48.86, 2.35, 4],
+  ["Lisbon", "Portugal", 38.72, -9.14, 2],
+  ["Tokyo", "Japan", 35.68, 139.77, 3],
+  ["Kyoto", "Japan", 35.01, 135.77, 2],
+].flatMap(([city, country, lat, lon, n]) =>
+  Array.from({ length: n as number }, (_, i) => ({ id: `bn-${city}-${i}`, user_id: "me", name: `${city} place ${i + 1}`, city, country, address: null, category: i % 2 ? "Cafe" : "Food", notes: null, recommended_by: null, source: null, url: null, lat: (lat as number) + i * 0.002, lon: (lon as number) + i * 0.002, visited: true, pin_type: "visited", created_at: ago(5000 + i) })),
+);
+const wishPlaces = [
+  ["Queenstown", "New Zealand", -45.03, 168.66, "wishlist"],
+  ["Amalfi", "Italy", 40.63, 14.6, "wishlist"],
+  ["Marrakech", "Morocco", 31.63, -8.0, "wishlist"],
+  ["Rabat", "Morocco", 34.02, -6.83, "wishlist"],
+  ["Copenhagen", "Denmark", 55.68, 12.57, "nexttime"],
+].map(([city, country, lat, lon, type], i) => ({ id: `ws-${i}`, user_id: "me", name: city, city, country, address: null, category: "City", notes: null, recommended_by: null, source: null, url: null, lat, lon, visited: false, pin_type: type, created_at: ago(3000 + i) }));
+const worldDb: Record<string, Row[]> = {
+  ...homeDb,
+  recommendations: [...beenPlaces, ...wishPlaces],
+};
 const noneDb: Record<string, Row[]> = {
   profiles: [{ id: "me", display_name: "Alex", app_settings: {} }],
   trips: [],
   recommendations: savedPlaces,
 };
 
-export const db: Record<string, Row[]> = sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
+export const db: Record<string, Row[]> = sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [
