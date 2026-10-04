@@ -1,0 +1,250 @@
+              .applySchedule([{ ...landed, time_label: fit.suggestion }])
+              .catch(() => toast.error("Couldn't change the time. Check your connection.")),
+        },
+        cancel: { label: "Undo", onClick: undo },
+      });
+      return;
+    }
+    if (!summary && !crossedDay) return;
+    toast(
+      summary ||
+        `${stop?.title ?? "Stop"} moved to ${
+          single?.day_date ? formatTimelineDayLabel(single.day_date) : "No date"
+        }`,
+      {
+        ...(summary
+          ? {
+              description: `${updates.length} ${updates.length === 1 ? "change" : "changes"} saved.`,
+            }
+          : {}),
+        duration: 8000,
+        action: { label: "Undo", onClick: undo },
+      },
+    );
+  };
+  /**
+   * Save Béa's version of a day: the stops that change, then her new
+   * places, each exactly where she put it. One Undo puts the stops back and
+   * takes the new places out again.
+   */
+  const applyDayEdit = async ({ updates, added, summary }: DayEditSave) => {
+    const previous = updates.flatMap((u) => {
+      const row = board.items.find((item) => item.id === u.id);
+      return row
+        ? [
+            {
+              id: row.id,
+              day_date: row.day_date,
+              time_label: row.time_label,
+              position: row.position,
+            },
+          ]
+        : [];
+    });
+    let addedIds: string[] = [];
+    try {
+      await board.applySchedule(updates);
+      addedIds = (await board.addItems(added)) ?? [];
+    } finally {
+      // Journeys worked out just now were for the old neighbours.
+      setLiveLegs(null);
+    }
+    const undo = async () => {
+      await board.removeItems(addedIds);
+      await board.applySchedule(previous);
+    };
+    const parts = [
+      updates.length ? `${updates.length} ${updates.length === 1 ? "change" : "changes"}` : "",
+      added.length ? `${added.length} new ${added.length === 1 ? "place" : "places"}` : "",
+    ].filter(Boolean);
+    toast(summary.length > 90 ? "Day updated" : summary, {
+      description: `${parts.join(" · ")} saved.`,
+      duration: 10000,
+      action: {
+        label: "Undo",
+        onClick: () =>
+          void undo().then(
+            () => toast.success("Back to the day as it was"),
+            () => toast.error("Couldn't undo all of that. Check your connection."),
+          ),
+      },
+    });
+  };
+  const moveProps = (item: ItineraryRow) => {
+    const up = stepMove(stopItems, item.id, -1, moveDays);
+    const down = stepMove(stopItems, item.id, 1, moveDays);
+    return {
+      onMove: (direction: -1 | 1) => {
+        const move = direction < 0 ? up : down;
+        if (move)
+          // moveStops says what went wrong itself.
+          void moveStops([move]).catch(() => undefined);
+      },
+      canMoveUp: up !== null,
+      canMoveDown: down !== null,
+      onMoveTo: () => setMovingId(item.id),
+    };
+  };
+  /**
+   * The day on screen. Null until the traveller picks one, so the default
+   * keeps tracking the data while it loads — the first render has no items,
+   * and "today" only becomes answerable once they arrive. Once a choice is
+   * made it sticks, and stops being recomputed underneath them.
+   */
+  const [dayChoice, setDayChoice] = useState<DayChoice | null>(null);
+  const chosenDay = dayChoice ?? defaultDayChoice(timelineGroups, todayKey);
+  const shownGroups = visibleGroups(timelineGroups, chosenDay);
+  /** Where "Now" goes on a trip day: the stop you're at, or the next one. */
+  const todayGroup = timelineGroups.find((group) => group.key === todayKey);
+  const nowStop = todayGroup ? nowTarget(todayGroup.items, minutesNow) : null;
+  const jumpToNow = () => {
+    if (!nowStop) return;
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== todayKey) setDayChoice(todayKey);
+    setCollapsedDays((prev) => ({ ...prev, [todayKey]: false }));
+    // After the day has rendered: two frames, one for the state, one for layout.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${nowStop.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
+  /** Open a stop on the timeline from somewhere else (the trip checkup). */
+  const jumpToStop = (stopId: string) => {
+    const stop = stopItems.find((item) => item.id === stopId);
+    if (!stop) return;
+    setPerspective("timeline");
+    // Filters that could leave the stop off the page: another city picked,
+    // or visited stops hidden.
+    if (cityChoice) setCityChoice("");
+    setHideDone(false);
+    const day = stop.day_date ?? "";
+    if (timelineByDay && chosenDay !== ALL_DAYS && chosenDay !== day) setDayChoice(day);
+    setCollapsedDays((prev) => ({ ...prev, [day]: false }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`stop-${stopId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      ),
+    );
+  };
+  /** The day cards, for the sticky day bar to know when they scroll away. */
+  const dayCardsRef = useRef<HTMLDivElement>(null);
+  const offerDays = shouldOfferDays(timelineGroups);
+
+  /**
+   * Which way you are looking at the trip: Now, Map, Day or Trip.
+   *
+   * On the trip, Now opens first; before and after it, the day list does.
+   * Every function the page had is still here, sorted under a tab.
+   */
+  const [perspective, setPerspective] = useState<TripPerspective>(() =>
+    defaultPerspective(tripIsUnderway(trip, todayKey)),
+  );
+  const activePerspective = TRIP_PERSPECTIVES.find((p) => p.id === perspective)!;
+
+  // The last tab and day for this trip, kept on this device so a refresh or
+  // a return visit opens where you left off. Read after mount, so the server
+  // render and the first client render agree.
+  const viewKey = `bea-trip-page-${trip.id}`;
+  /** Timeline shows only the stops not yet visited. Undo on the toast brings one back. */
+  const [hideDone, setHideDone] = useState(false);
+  /** Timeline grouped by area (Neighbourhood) rather than by time. */
+  const [byArea, setByArea] = useState(false);
+  /** One line a stop, tap to open: for reading a long day at a glance. */
+  const [compactCards, setCompactCards] = useState(false);
+  /** The day a stop is being dragged in, if any. */
+  const [draggingDay, setDraggingDay] = useState<string | null>(null);
+  const doneCount = stopItems.filter(isDone).length;
+  // Nothing hidden while editing: edit mode is for the whole list.
+  const hidingDone = hideDone && !editingTimeline;
+  const restored = useRef(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(viewKey) ?? "null") as {
+        perspective?: unknown;
+        day?: unknown;
+        hideDone?: unknown;
+        byArea?: unknown;
+        compact?: unknown;
+      } | null;
+      const p = asPerspective(saved?.perspective);
+      if (p) setPerspective(p);
+      if (saved?.perspective === "bookings") setBookingsOpen(true);
+      if (typeof saved?.day === "string") setDayChoice(saved.day);
+      if (saved?.hideDone === true) setHideDone(true);
+      if (saved?.byArea === true) setByArea(true);
+      if (saved?.compact === true) setCompactCards(true);
+    } catch {
+      /* storage unavailable: start from the defaults */
+    }
+    restored.current = true;
+  }, [viewKey]);
+  useEffect(() => {
+    if (!restored.current) return;
+    try {
+      window.localStorage.setItem(
+        viewKey,
+        JSON.stringify({ perspective, day: dayChoice, hideDone, byArea, compact: compactCards }),
+      );
+    } catch {
+      /* storage unavailable: the choice lasts for this visit */
+    }
+  }, [viewKey, perspective, dayChoice, hideDone, byArea, compactCards]);
+  const view = useTripViewPrefs();
+  /** The stops behind the "!": Béa unsure of their place, until each is reviewed. */
+  const toCheck = useMemo(() => pinsToCheck(stopItems), [stopItems]);
+  const [pinReviewOpen, setPinReviewOpen] = useState(false);
+
+  /** Trip documents linked to each stop, for the document mark on its card. */
+  const docsByStop = new Map<string, string[]>();
+  for (const doc of bookingDocs.docs) {
+    if (!doc.itinerary_item_id) continue;
+    docsByStop.set(doc.itinerary_item_id, [
+      ...(docsByStop.get(doc.itinerary_item_id) ?? []),
+      doc.id,
+    ]);
+  }
+  /** Documents linked to a stop, and its photos — every card gets both. */
+  const docProps = (item: ItineraryRow) => ({
+    ...linkedDocProps(item),
+    photos: {
+      title: item.title,
+      photos: stopPhotos.byStop.get(item.id) ?? [],
+      available: stopPhotos.available,
+      uid: me.id,
+      onAdd: (files: File[]) => stopPhotos.add(item, files),
+      onRemove: stopPhotos.remove,
+    },
+  });
+  const linkedDocProps = (item: ItineraryRow) => {
+    const ids = docsByStop.get(item.id);
+    if (!ids?.length) return {};
+    return {
+      linkedDocuments: ids.length,
+      // One opens straight onto its detail; several open the library on
+      // this stop's documents.
+      onOpenDocuments: () =>
+        void navigate({
+          to: "/profile/documents",
+          search: ids.length === 1 ? { doc: ids[0]! } : { event: item.id },
+        }),
+    };
+  };
+
+  /** The Bookings tab, on one kind — for the Overview's tiles and the trip menu. */
+  const openBookings = (kind: BookingFilter) => {
+    setBookingFilter(kind);
+    setPerspective("overview");
+    setBookingsOpen(true);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        bookingsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      ),
+    );
+  };
+
+  // Arriving with a request in the link (Plan with Béa, a booking link):
+  // after the saved tab is restored, so the request wins over it.
