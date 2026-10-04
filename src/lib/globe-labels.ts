@@ -26,22 +26,21 @@ const OFFSET_Y = -6;
 /** Breathing room so two labels are not merely touching. */
 const PAD = 2;
 
-/** The open globe's pill: where it sits beside its dot and how big it is. */
+/** The open globe's pill: beside its pin's head, as in the mockup. */
+export const PIN_HEAD_Y = -11;
 export function pillBox(city: string, x: number, y: number): Rect {
-  const left = x + 5;
-  const top = y - 16;
-  return { left, right: left + Math.max(city.length, 1) * 5.7 + 20, top, bottom: top + 17 };
+  const left = x + 8;
+  const top = y + PIN_HEAD_Y - 8.5;
+  return { left, right: left + Math.max(city.length, 1) * 5.7 + 14, top, bottom: top + 17 };
 }
 
-/** A pin's dot, as far as a neighbour's label is concerned. */
-const DOT_RADIUS = 5;
-
+/** A pin's marker (a teardrop whose tip is the place), as far as a neighbour's label is concerned. */
 function dotBox(candidate: LabelCandidate): Rect {
   return {
-    left: candidate.x - DOT_RADIUS,
-    right: candidate.x + DOT_RADIUS,
-    top: candidate.y - DOT_RADIUS,
-    bottom: candidate.y + DOT_RADIUS,
+    left: candidate.x - 6,
+    right: candidate.x + 6,
+    top: candidate.y + PIN_HEAD_Y - 6,
+    bottom: candidate.y,
   };
 }
 

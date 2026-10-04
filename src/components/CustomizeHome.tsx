@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings2 } from "@/components/icons";
+import { Plus, Settings2 } from "@/components/icons";
 import {
   Sheet,
   SheetContent,
@@ -11,14 +11,22 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { HOME_SECTIONS, useHomeLayout } from "@/hooks/useHomeLayout";
 
-export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" }) {
+export function CustomizeHome({ variant = "icon" }: { variant?: "icon" | "row" | "add" }) {
   const { layout, toggle, reset } = useHomeLayout();
   const [open, setOpen] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        {variant === "row" ? (
+        {variant === "add" ? (
+          <button
+            type="button"
+            data-guide="home-customize"
+            className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full border border-dashed border-border text-[16px] font-semibold text-muted-foreground transition-colors hover:bg-elevated"
+          >
+            <Plus className="size-5" aria-hidden /> Customize home
+          </button>
+        ) : variant === "row" ? (
           <button
             type="button"
             data-guide="home-customize"

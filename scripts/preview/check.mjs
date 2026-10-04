@@ -410,6 +410,18 @@ await flow("home: trip ahead keeps its map, stats, search and ideas", async (pag
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
   if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
+  // Customize home sits at the foot of Home; a switch hides its section, Reset restores it.
+  await page.getByRole("button", { name: "Customize home" }).last().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("switch", { name: "Show Trips" }).click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  if ((await text()).includes("Upcoming trip")) throw new Error("Trips switch did not hide the trip");
+  await page.getByRole("button", { name: "Customize home" }).last().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Reset to default" }).click();
+  await page.keyboard.press("Escape");
 }, "homepage");
 
 await flow("home: on a trip shows the current and next stop under the route", async (page) => {

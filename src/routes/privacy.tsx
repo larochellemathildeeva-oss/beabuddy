@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import {
+  NASA_EARTH_ATTRIBUTION,
   NATURAL_EARTH_ATTRIBUTION,
   OPENFREEMAP_ATTRIBUTION,
   OSM_ATTRIBUTION,
@@ -263,6 +264,7 @@ function PrivacyPage() {
             Permissive 2.0.
           </p>
           <p>{NATURAL_EARTH_ATTRIBUTION}, which is in the public domain.</p>
+          <p>{NASA_EARTH_ATTRIBUTION}, which are in the public domain.</p>
         </Section>
 
         <Section title="Your control">

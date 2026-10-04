@@ -6,9 +6,10 @@ import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "ge
 import worldTopo from "world-atlas/countries-110m.json";
 import type { Pin } from "@/data/atlas";
 import { countryKey } from "@/lib/country-names";
-import { labelBudget, pillBox, placeCityLabels } from "@/lib/globe-labels";
-import { RELIEF_SEA, paintGlobe, viewAxes, type ReliefMap } from "@/lib/relief-globe";
-import { loadReliefMap } from "@/lib/relief-globe-load";
+import { PIN_HEAD_Y, labelBudget, pillBox, placeCityLabels } from "@/lib/globe-labels";
+import { paintGlobe, viewAxes, type EarthMap } from "@/lib/earth-globe";
+import { loadEarthMap } from "@/lib/earth-globe-load";
+import { useThemeName } from "@/hooks/useThemeName";
 
 const PIN_FILL: Record<Pin["type"], string> = {
   visited: "var(--visited)",
@@ -160,19 +161,28 @@ export function Globe({
   const shadeId = `globe-shade-${uid}`;
   const glowId = `globe-glow-${uid}`;
   const shineId = `globe-shine-${uid}`;
+  const airId = `globe-air-${uid}`;
   const [rotation, setRotation] = useState<[number, number]>([-10, -18]);
   const [zoom, setZoom] = useState(1);
-  /** The World globe wears real terrain; the others keep their plain land. */
-  const [relief, setRelief] = useState<ReliefMap | null>(null);
-  const reliefCanvas = useRef<HTMLCanvasElement | null>(null);
+  /**
+   * The World globe is the real Earth (by night in Dark); the others keep
+   * their plain land. It is a canvas behind the SVG, never inside it: Safari
+   * lays a canvas in <foreignObject> out at the wrong size and place.
+   */
+  const look = useThemeName() === "dark" ? "night" : "day";
+  const [earth, setEarth] = useState<{ look: "day" | "night"; map: EarthMap } | null>(null);
+  const earthCanvas = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     if (!open) return;
     let live = true;
-    void loadReliefMap().then((map) => live && setRelief(map));
+    void loadEarthMap(look).then((map) => {
+      if (live) setEarth(map ? { look, map } : null);
+    });
     return () => {
       live = false;
     };
-  }, [open]);
+  }, [open, look]);
+  const relief = earth !== null;
   const pointers = useRef<Map<number, ActivePointer>>(new Map());
   const pinchStart = useRef<{ distance: number; zoom: number } | null>(null);
   const velocity = useRef<[number, number]>([0, 0]);
@@ -256,8 +266,8 @@ export function Globe({
 
   // The terrain is drawn small while the globe moves, sharp once it rests.
   useEffect(() => {
-    const canvas = reliefCanvas.current;
-    if (!canvas || !relief) return;
+    const canvas = earthCanvas.current;
+    if (!canvas || !earth) return;
     const rotationInverse = geoRotation([rotation[0], rotation[1]]);
     const axes = viewAxes((p) => rotationInverse.invert(p) as [number, number]);
     const draw = (px: number) => {
@@ -268,16 +278,17 @@ export function Globe({
         canvas.height = px;
       }
       const image = ctx.createImageData(px, px);
-      paintGlobe(image.data, px, (150 * zoom * px) / SIZE, axes, relief);
+      paintGlobe(image.data, px, (150 * zoom * px) / SIZE, axes, earth.map, earth.look);
       ctx.putImageData(image, 0, 0);
     };
     draw(SIZE);
     const sharp = window.setTimeout(
-      () => draw(Math.min(2, window.devicePixelRatio || 1) * SIZE),
+      // The globe shows up to 1.4× its SVG size, so the sharp copy is that big.
+      () => draw(Math.round(Math.min(2, window.devicePixelRatio || 1) * 1.4 * SIZE)),
       140,
     );
     return () => window.clearTimeout(sharp);
-  }, [relief, rotation, zoom]);
+  }, [earth, rotation, zoom]);
 
   const projected = useMemo(() => {
     return pins
@@ -635,6 +646,15 @@ export function Globe({
         onPointerUp={(e) => endPointer(e.pointerId)}
         onPointerCancel={(e) => endPointer(e.pointerId)}
       >
+        {relief && (
+          <canvas
+            ref={earthCanvas}
+            width={SIZE}
+            height={SIZE}
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-0 h-[min(92vw,440px)] w-full object-contain md:h-[500px]"
+          />
+        )}
         <svg
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           role="img"
@@ -645,7 +665,7 @@ export function Globe({
                   new Set(pins.map((p) => p.country).filter(Boolean)).size
                 } countries. Every pin is also listed below the globe.`
           }
-          className={`w-full cursor-grab active:cursor-grabbing ${
+          className={`relative w-full cursor-grab active:cursor-grabbing ${
             open ? "h-[min(92vw,440px)] md:h-[500px]" : "h-[min(82vw,420px)] md:h-[480px]"
           }`}
         >
@@ -675,6 +695,12 @@ export function Globe({
               <stop offset="0%" stopColor="#fff" stopOpacity={0.4} />
               <stop offset="100%" stopColor="#fff" stopOpacity={0} />
             </radialGradient>
+            {/* The Earth's own thin blue air. */}
+            <radialGradient id={airId}>
+              <stop offset={(radius / (radius + 9)) * 0.97} stopColor="#8cc8ff" stopOpacity={0} />
+              <stop offset={radius / (radius + 9)} stopColor="#8cc8ff" stopOpacity={0.5} />
+              <stop offset={1} stopColor="#8cc8ff" stopOpacity={0} />
+            </radialGradient>
             <radialGradient id={glowId}>
               <stop offset="88%" style={{ stopColor: "var(--visited)" }} stopOpacity={0.16} />
               <stop offset="100%" style={{ stopColor: "var(--visited)" }} stopOpacity={0} />
@@ -685,34 +711,28 @@ export function Globe({
             cx={SIZE / 2}
             cy={SIZE / 2}
             r={radius + 9}
-            fill={`url(#${glowId})`}
-            className="pointer-events-none"
+            fill={`url(#${relief ? airId : glowId})`}
+            className={`pointer-events-none ${relief ? "dark:opacity-35" : ""}`}
           />
-          <path
-            d={spherePath}
-            fill={relief ? `rgb(${RELIEF_SEA.join(" ")})` : `url(#${oceanId})`}
-            style={{ stroke: "color-mix(in oklab, var(--visited) 25%, var(--border))" }}
-            strokeWidth={0.8}
-          />
-          {relief && (
-            <foreignObject x={0} y={0} width={SIZE} height={SIZE} className="pointer-events-none">
-              <canvas
-                ref={reliefCanvas}
-                width={SIZE}
-                height={SIZE}
-                aria-hidden
-                style={{ width: "100%", height: "100%", display: "block" }}
+          {/* With the Earth drawn underneath, the sea and the grid are its own. */}
+          {!relief && (
+            <>
+              <path
+                d={spherePath}
+                fill={`url(#${oceanId})`}
+                style={{ stroke: "color-mix(in oklab, var(--visited) 25%, var(--border))" }}
+                strokeWidth={0.8}
               />
-            </foreignObject>
+              <path
+                d={graticulePath}
+                fill="none"
+                stroke="var(--visited)"
+                strokeWidth={0.35}
+                opacity={0.14}
+                className="pointer-events-none"
+              />
+            </>
           )}
-          <path
-            d={graticulePath}
-            fill="none"
-            stroke="var(--visited)"
-            strokeWidth={0.35}
-            opacity={0.14}
-            className="pointer-events-none"
-          />
           {countryPaths.map((c) =>
             c.d ? (
               <path
@@ -721,16 +741,15 @@ export function Globe({
                 style={{
                   fill: relief
                     ? c.visited
-                      ? "color-mix(in oklab, var(--visited) 52%, transparent)"
+                      ? "color-mix(in oklab, var(--visited) 34%, transparent)"
                       : "transparent"
                     : c.visited
                       ? "color-mix(in oklab, var(--visited) 72%, var(--card))"
                       : "color-mix(in oklab, var(--foreground) 16%, var(--card))",
                 }}
-                stroke={
-                  relief ? "color-mix(in oklab, var(--foreground) 28%, transparent)" : "var(--card)"
-                }
-                strokeWidth={relief ? 0.35 : 0.45}
+                stroke={relief ? "rgb(255 255 255 / 0.32)" : "var(--card)"}
+                strokeWidth={relief ? 0.3 : 0.45}
+                strokeOpacity={relief && look === "night" ? 0.55 : undefined}
                 strokeLinejoin="round"
                 className={onCountrySelect && c.name ? "cursor-pointer" : undefined}
                 onClick={(e) => {
@@ -743,19 +762,14 @@ export function Globe({
               />
             ) : null,
           )}
-          {/* Terrain is a daylight picture: in Dark it is dimmed to sit in the page. */}
-          {relief && (
-            <path
-              d={spherePath}
-              style={{ fill: "var(--background)" }}
-              className="pointer-events-none opacity-0 dark:opacity-45"
-            />
+          {/* The Earth is lit as it is painted; the plain globe is shaded here. */}
+          {!relief && (
+            <path d={spherePath} fill={`url(#${shadeId})`} className="pointer-events-none" />
           )}
-          <path d={spherePath} fill={`url(#${shadeId})`} className="pointer-events-none" />
           <path
             d={spherePath}
             fill={`url(#${shineId})`}
-            className="pointer-events-none dark:opacity-30"
+            className={`pointer-events-none ${relief ? "opacity-25 dark:opacity-0" : "dark:opacity-20"}`}
           />
           {regionPaths.map((r) =>
             r.d ? (
@@ -765,7 +779,7 @@ export function Globe({
                 fill="var(--visited)"
                 stroke="var(--card)"
                 strokeWidth={0.3}
-                opacity={0.9}
+                opacity={relief ? 0.55 : 0.9}
                 className="pointer-events-none"
               >
                 <title>{r.name}</title>
@@ -774,6 +788,39 @@ export function Globe({
           )}
           {projected.map(({ pin, x, y }) => {
             const shape = pinShape(pin.type);
+            if (open) {
+              // A map pin, as in the mockup: its tip is the place, its head the
+              // pin's colour with the type's shape in white.
+              const big = selectedId === pin.id ? 1.25 : 1;
+              return (
+                <g key={pin.id} transform={`translate(${x} ${y}) scale(${big})`}>
+                  <g
+                    className="pin-pop cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      trySelectPin(pin);
+                    }}
+                  >
+                    <title>
+                      {`${pin.name}${pin.city ? `, ${pin.city}` : ""} — ${pinTypeWord(pin.type)} (${shape.label})`}
+                    </title>
+                    <circle cy={PIN_HEAD_Y} r={16} fill="transparent" />
+                    <ellipse rx={3.2} ry={1.2} fill="#000" opacity={0.28} />
+                    <path
+                      d={`M0,0 C-1.6,-3.6 -6,-6.6 -6,${PIN_HEAD_Y} A6,6 0 1,1 6,${PIN_HEAD_Y} C6,-6.6 1.6,-3.6 0,0 Z`}
+                      fill={PIN_FILL[pin.type] ?? "var(--reco)"}
+                      stroke="#fff"
+                      strokeWidth={1.1}
+                    />
+                    <path
+                      d={shape.d}
+                      transform={`translate(0 ${PIN_HEAD_Y}) scale(0.8)`}
+                      fill="#fff"
+                    />
+                  </g>
+                </g>
+              );
+            }
             return (
               <g key={pin.id} transform={`translate(${x} ${y})`}>
                 <g
@@ -821,9 +868,12 @@ export function Globe({
                   x={side === "right" ? x + 6 : x - 6}
                   y={y + 3.5}
                   textAnchor={side === "right" ? "start" : "end"}
-                  className="fill-foreground text-[8.5px] font-semibold uppercase tracking-[0.08em]"
-                  stroke="var(--card)"
-                  strokeWidth={2.5}
+                  className={`text-[8.5px] font-semibold uppercase tracking-[0.08em] ${
+                    relief ? "" : "fill-foreground"
+                  }`}
+                  style={relief ? { fill: "#fff" } : undefined}
+                  stroke={relief ? "rgb(0 0 0 / 0.5)" : "var(--card)"}
+                  strokeWidth={relief ? 1.2 : 2.5}
                   paintOrder="stroke"
                 >
                   {mark.name}
@@ -848,25 +898,23 @@ export function Globe({
                 </text>
               );
             }
-            // A pill beside the dot, as in the mockup: the pin's colour, then the name.
-            const pill = pillBox(name, 0, 0);
-            const width = pill.right - pill.left;
+            // A pill beside the pin's head, as in the mockup.
+            const pill = pillBox(name, x, y);
             return (
               <g
                 key={`city-${pin.city}-${pin.id}`}
-                transform={`translate(${x + 5} ${y - 16})`}
+                transform={`translate(${pill.left} ${pill.top})`}
                 className="pointer-events-none"
               >
                 <rect
-                  width={width}
-                  height={17}
+                  width={pill.right - pill.left}
+                  height={pill.bottom - pill.top}
                   rx={8.5}
-                  style={{ fill: "color-mix(in oklab, var(--card) 94%, transparent)" }}
-                  stroke="color-mix(in oklab, var(--foreground) 14%, transparent)"
+                  style={{ fill: "color-mix(in oklab, var(--card) 92%, transparent)" }}
+                  stroke="color-mix(in oklab, var(--foreground) 12%, transparent)"
                   strokeWidth={0.5}
                 />
-                <circle cx={8.5} cy={8.5} r={3} fill={PIN_FILL[pin.type] ?? "var(--reco)"} />
-                <text x={15} y={11.6} className="fill-foreground text-[9.5px] font-semibold">
+                <text x={7} y={11.8} className="fill-foreground text-[9.5px] font-semibold">
                   {name}
                 </text>
               </g>
@@ -875,7 +923,7 @@ export function Globe({
         </svg>
 
         {open ? (
-          <div className="absolute bottom-10 left-1 flex flex-col overflow-hidden rounded-full border border-border bg-card/85 shadow-sm backdrop-blur">
+          <div className="absolute bottom-1 left-1 flex overflow-hidden rounded-full border border-border bg-card/85 shadow-sm backdrop-blur">
             <button
               type="button"
               aria-label="Zoom in"
@@ -884,7 +932,7 @@ export function Globe({
             >
               <Plus className="size-5" aria-hidden />
             </button>
-            <span className="h-px bg-border" />
+            <span className="w-px bg-border" />
             <button
               type="button"
               aria-label="Zoom out"
@@ -893,7 +941,7 @@ export function Globe({
             >
               <Minus className="size-5" aria-hidden />
             </button>
-            <span className="h-px bg-border" />
+            <span className="w-px bg-border" />
             <button
               type="button"
               aria-label="Reset the view"
@@ -935,10 +983,13 @@ export function Globe({
           </div>
         )}
 
+        {/* The open globe keeps its edge clear, as in the mockup: the hint is for screen readers. */}
         <p
-          className={`pointer-events-none absolute bottom-2.5 left-4 truncate text-[11px] text-muted-foreground ${
-            open ? "right-28" : "right-16"
-          }`}
+          className={
+            open
+              ? "sr-only"
+              : "pointer-events-none absolute bottom-2.5 left-4 right-16 truncate text-[11px] text-muted-foreground"
+          }
         >
           Drag to spin · pinch or +/− to zoom
         </p>

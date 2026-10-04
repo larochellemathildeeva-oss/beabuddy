@@ -563,12 +563,17 @@ are static files, fetched only for the countries a user has been to; which
 province a city is in is worked out in the browser from its position.
 Country names are matched in any language through `src/lib/country-names.ts`.
 
-The World tab's globe (`variant="open"` in `Globe.tsx`) is wrapped in the same
-Natural Earth II relief as Home's route map: the zoom-3 tiles in
-`public/relief` are joined into one Mercator picture (`relief-globe-load.ts`)
-and each globe pixel is turned back into a longitude and latitude
-(`relief-globe.ts`, pure and tested), drawn small while the globe moves and
-sharp once it rests. If the tiles cannot be read the globe keeps its plain
+The World tab's globe (`variant="open"` in `Globe.tsx`) is the real Earth:
+NASA's Blue Marble by day and Earth at Night in Dark (public domain,
+`NASA_EARTH_ATTRIBUTION` on the privacy page), one equirectangular picture
+each in `public/earth` (about 0.5 MB and 0.3 MB, loaded only by that globe),
+built by `scripts/earth/build.py`, steps at its top. Each globe pixel is
+turned back into a longitude and latitude and lit from the upper left
+(`earth-globe.ts`, pure and tested), drawn small while the globe moves and
+sharp once it rests, on a canvas **behind** the SVG: Safari lays a canvas
+inside `<foreignObject>` out at the wrong size and place, which showed two
+globes. Pins are map-pin markers with a name pill (`pillBox` in
+`globe-labels.ts`). If the picture cannot be read the globe keeps its plain
 land. Other globes (signed-out Home, Story) are unchanged.
 
 ## Gemini spend from coding sessions

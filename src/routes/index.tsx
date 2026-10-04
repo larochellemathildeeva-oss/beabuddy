@@ -27,6 +27,7 @@ import { greetingFor } from "@/lib/trip-glance";
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
 import { useHomeLayout } from "@/hooks/useHomeLayout";
+import { CustomizeHome } from "@/components/CustomizeHome";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { supabase } from "@/integrations/supabase/client";
@@ -358,6 +359,8 @@ function SignedInHome() {
             </div>
           </section>
         )}
+
+        <CustomizeHome variant="add" />
 
         {layout.weather && near.consent && near.state === "ok" && <WeatherCredit />}
       </div>
