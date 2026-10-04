@@ -1506,6 +1506,66 @@ export function TripDetail({
         picture={tripPicture}
         onPicture={setTripPicture}
         short={perspective === "map"}
+        tracker={
+          perspective === "overview" || !companionDay ? (
+            <section
+              aria-label="Your trip progress"
+              className="rounded-2xl border border-border/60 bg-card/85 p-3 backdrop-blur-md"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-display text-[18px]">Your trip</h2>
+                <p className="text-[14px] text-muted-foreground">
+                  {moveDays.length} days ·{" "}
+                  {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size}{" "}
+                  cities · {doneCount}/{stopItems.length} stops reached
+                </p>
+              </div>
+              <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
+                {moveDays.map((day, i) => {
+                  const group = allDayGroups.find((g) => g.key === day);
+                  const reached = group?.items.filter(isDone).length ?? 0;
+                  const total = group?.items.length ?? 0;
+                  return (
+                    <li key={day} className="min-w-[100px] flex-1">
+                      <button
+                        type="button"
+                        aria-label={`Day ${i + 1}, ${routeCityOn(cities.stops, day) || trip.city || "Trip"}`}
+                        onClick={() => {
+                          setDayChoice(day);
+                          setCityChoice("");
+                          setPerspective("companion");
+                        }}
+                        className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
+                      >
+                        {i > 0 && (
+                          <span
+                            aria-hidden
+                            className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
+                          />
+                        )}
+                        <span
+                          className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
+                        >
+                          {total > 0 && reached === total ? (
+                            <Check className="size-4" aria-hidden />
+                          ) : (
+                            i + 1
+                          )}
+                        </span>
+                        <span className="font-semibold">
+                          {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                        </span>
+                        <span className="text-[13px] text-muted-foreground">
+                          {formatTimelineDayLabel(day)}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ) : null
+        }
         tools={
           <>
             <button
@@ -1604,71 +1664,11 @@ export function TripDetail({
           </>
         }
       />
-      <div className="trip-panel px-3 pb-2 pt-3">
-        {perspective === "overview" || !companionDay ? (
-          <section aria-label="Your trip progress" className="plain-card p-3.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-display text-[22px]">Your trip</h2>
-              <p className="text-[14px] text-muted-foreground">
-                {moveDays.length} days ·{" "}
-                {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size}{" "}
-                cities · {doneCount}/{stopItems.length} stops reached
-              </p>
-            </div>
-            <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
-              {moveDays.map((day, i) => {
-                const group = allDayGroups.find((g) => g.key === day);
-                const reached = group?.items.filter(isDone).length ?? 0;
-                const total = group?.items.length ?? 0;
-                return (
-                  <li key={day} className="min-w-[100px] flex-1">
-                    <button
-                      type="button"
-                      aria-label={`Day ${i + 1}, ${routeCityOn(cities.stops, day) || trip.city || "Trip"}`}
-                      onClick={() => {
-                        setDayChoice(day);
-                        setCityChoice("");
-                        setPerspective("companion");
-                      }}
-                      className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
-                    >
-                      {i > 0 && (
-                        <span
-                          aria-hidden
-                          className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
-                        />
-                      )}
-                      <span
-                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
-                      >
-                        {total > 0 && reached === total ? (
-                          <Check className="size-4" aria-hidden />
-                        ) : (
-                          i + 1
-                        )}
-                      </span>
-                      <span className="font-semibold">
-                        {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
-                      </span>
-                      <span className="text-[13px] text-muted-foreground">
-                        {formatTimelineDayLabel(day)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        ) : (
-          view.prefs.journey && (
-            <JourneyTracker
-              stops={nowStops}
-              selectedId={peekStop?.id ?? null}
-              onSelect={setPeekId}
-            />
-          )
-        )}
-      </div>
+      {perspective !== "overview" && companionDay && view.prefs.journey && (
+        <div className="trip-panel px-3 pb-2 pt-3">
+          <JourneyTracker stops={nowStops} selectedId={peekStop?.id ?? null} onSelect={setPeekId} />
+        </div>
+      )}
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
       <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">

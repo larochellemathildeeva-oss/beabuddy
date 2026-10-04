@@ -1524,10 +1524,10 @@
   align-items: center;
   gap: 6px;
   min-height: 44px;
-  padding: 0 14px 0 6px;
+  padding: 0 11px 0 5px;
   border-radius: 999px;
   white-space: nowrap;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   background: color-mix(in oklab, var(--card) 92%, transparent);
   color: var(--foreground);
