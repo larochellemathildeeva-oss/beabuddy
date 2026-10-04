@@ -158,10 +158,26 @@ export function cityStretches<
   return out;
 }
 
+/** Local midnight, so a date-only start compares as a calendar day. */
+function calendarDay(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+/**
+ * The start is still ahead of today. A countdown that stays quiet a year
+ * out is not the same thing: that trip has not begun.
+ */
+function startStillAhead(start: string, now: Date): boolean {
+  const from = parseLocalDate(start);
+  if (!from) return false;
+  return from.getTime() >= calendarDay(now).getTime();
+}
+
 /**
  * Which lead the Overview shows. On the trip: Right now. Still ahead, or
  * dates not chosen: Before you go. Already over: neither — the days and
- * the bookings are the recap.
+ * the bookings are the recap. Pass the traveller's today as `now` so this
+ * agrees with the day badges.
  */
 export function overviewMoment(
   start: string | null | undefined,
@@ -169,7 +185,7 @@ export function overviewMoment(
   now = new Date(),
 ): "now" | "before" | "after" {
   if (isUnderway(start, end, now)) return "now";
-  if (!start || countdownLabel(start, now)) return "before";
+  if (!start || startStillAhead(start, now)) return "before";
   return "after";
 }
 
@@ -179,6 +195,10 @@ export function beforeYouGoLine(start: string | null | undefined, now = new Date
   if (soon === "today") return "Leaving today";
   if (soon === "tomorrow") return "Leaving tomorrow";
   if (soon) return `Leaving ${soon}`;
+  const from = start ? parseLocalDate(start) : undefined;
+  if (from && from.getTime() > calendarDay(now).getTime()) {
+    return `Leaving ${from.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  }
   return "Dates still open";
 }
 
@@ -202,8 +222,11 @@ export function overviewDayStatus(
   return null;
 }
 
-/** A city the trip sleeps in with no stay on those days. */
-export type StayGap = { city: string; nights: number };
+/**
+ * A city the trip sleeps in with no stay on those days. `start` is that
+ * stretch's first day, so a return to the same city is a second gap.
+ */
+export type StayGap = { city: string; nights: number; start: string };
 
 /**
  * Where a night has no place to sleep. Nights inside a stretch are its
@@ -232,7 +255,7 @@ export function missingStays<C extends { city: string; kind?: string | null }>(
         item.day_date <= stretch.end &&
         bookingKind(item) === "stay",
     );
-    if (!stayed) out.push({ city: name, nights });
+    if (!stayed) out.push({ city: name, nights, start: stretch.start });
   });
   return out;
 }

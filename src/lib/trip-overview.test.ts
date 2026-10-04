@@ -105,8 +105,12 @@ test("overview leads with now, before you go, or a recap", () => {
   assert.equal(overviewMoment("2026-10-04", "2026-10-08", now), "now");
   assert.equal(overviewMoment("2026-09-01", "2026-09-04", now), "after");
   assert.equal(overviewMoment(null, null, now), "before");
+  // A countdown stays quiet a year out. That trip is still ahead.
+  assert.equal(overviewMoment("2027-10-04", "2027-10-08", now), "before");
+  assert.equal(overviewMoment("2028-01-01", "2028-01-08", now), "before");
   assert.equal(beforeYouGoLine("2026-10-08", now), "Leaving in 4 days");
   assert.equal(beforeYouGoLine("2026-10-05", now), "Leaving tomorrow");
+  assert.equal(beforeYouGoLine("2028-01-01", now), "Leaving Jan 1, 2028");
   assert.equal(beforeYouGoLine(null, now), "Dates still open");
 });
 
@@ -129,12 +133,12 @@ test("a night with no stay is named, a day trip is not", () => {
   const days = ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04", "2026-10-05"];
   const stretches = cityStretches(days, route, []);
   assert.deepEqual(missingStays(stretches, []), [
-    { city: "Berlin", nights: 1 },
-    { city: "Munich", nights: 2 },
+    { city: "Berlin", nights: 1, start: "2026-10-01" },
+    { city: "Munich", nights: 2, start: "2026-10-03" },
   ]);
   assert.deepEqual(
     missingStays(stretches, [{ day_date: "2026-10-04", kind: "hotel", title: "A room" }]),
-    [{ city: "Berlin", nights: 1 }],
+    [{ city: "Berlin", nights: 1, start: "2026-10-01" }],
   );
   assert.deepEqual(missingStays(cityStretches(["2026-10-01"], route.slice(0, 1), []), []), []);
   assert.equal(unnamedStayNights(["2026-10-01", "2026-10-02"], [], []), 1);
@@ -143,9 +147,27 @@ test("a night with no stay is named, a day trip is not", () => {
     0,
   );
   assert.equal(
-    unnamedStayNights(["2026-10-01", "2026-10-02"], [{ city: "Berlin", nights: 1 }], []),
+    unnamedStayNights(
+      ["2026-10-01", "2026-10-02"],
+      [{ city: "Berlin", nights: 1, start: "2026-10-01" }],
+      [],
+    ),
     0,
   );
+});
+
+test("a return to the same city with no stay is a second gap", () => {
+  const route = [
+    { city: "Berlin", arrive_on: "2026-10-01", depart_on: "2026-10-01" },
+    { city: "Munich", arrive_on: "2026-10-02", depart_on: "2026-10-02" },
+    { city: "Berlin", arrive_on: "2026-10-03", depart_on: "2026-10-04" },
+  ];
+  const days = ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"];
+  assert.deepEqual(missingStays(cityStretches(days, route, []), []), [
+    { city: "Berlin", nights: 1, start: "2026-10-01" },
+    { city: "Munich", nights: 1, start: "2026-10-02" },
+    { city: "Berlin", nights: 1, start: "2026-10-03" },
+  ]);
 });
 
 test("a stretch's dates are said briefly", () => {

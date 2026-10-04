@@ -21,6 +21,7 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { companionState, companionStops } from "@/lib/companion";
 import { routeStopOn } from "@/lib/import-stop";
 import { isDayTrip, shortCity } from "@/lib/trip-cities";
+import { parseLocalDate } from "@/lib/trip-dates";
 import {
   beforeYouGoLine,
   bookingKind,
@@ -146,7 +147,8 @@ export function TripOverview({
   const todos = glance?.todos.open ?? 0;
   const packing = glance?.packing;
   const dated = groups.filter((g) => g.key);
-  const moment = overviewMoment(startDate, endDate);
+  const clock = parseLocalDate(today) ?? new Date();
+  const moment = overviewMoment(startDate, endDate, clock);
   const stretches = cityStretches(days, route, items);
   const undatedCities = route.filter((c) => !stretches.some((s) => s.city === c));
   const undated = items.filter((item) => !item.day_date).length;
@@ -216,7 +218,7 @@ export function TripOverview({
             title="Before you go"
             aside={
               <span className="text-[14px] text-muted-foreground">
-                {beforeYouGoLine(startDate)}
+                {beforeYouGoLine(startDate, clock)}
               </span>
             }
           />
@@ -404,7 +406,7 @@ export function TripOverview({
 
       {gaps.map((gap) => (
         <StayGapNote
-          key={gap.city}
+          key={gap.start}
           title={`No stay in ${gap.city} yet.`}
           detail={gap.nights === 1 ? "One night there." : `${gap.nights} nights there.`}
           onAdd={() => onOpenBookings("stay")}
