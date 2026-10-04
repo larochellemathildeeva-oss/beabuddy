@@ -11,11 +11,9 @@ import {
   Bookmark,
   ChevronDown,
   Hand,
-  Heart,
   Inbox,
   ListPlus,
   LocateFixed,
-  MapPin,
   MapPinned,
   Plus,
   Search,
@@ -64,7 +62,6 @@ import {
 import { extractPastedPlaceLink, looksLikePastedPlaceLink } from "@/lib/place-paste";
 import { placeSuggestionLines, formatTripLocation } from "@/lib/place-label";
 import { prettyPlaceCategory } from "@/lib/place-kind";
-import { placeArtUrl, type PlaceArt as PlaceArtKind } from "@/lib/place-art";
 import { useUndo } from "@/hooks/useUndo";
 import {
   capturedFromParsedPlace,
@@ -82,6 +79,7 @@ import { beaLine } from "@/lib/bea-voice";
 import { emptyLine } from "@/lib/bea-personality";
 import { BROWSE_KINDS, listCounts, recentlySaved, type BrowseKind } from "@/lib/recs-browse";
 import { toLocalISODate } from "@/lib/trip-dates";
+import { pickActiveTrip } from "@/lib/home-trip";
 
 export const Route = createFileRoute("/recommendations")({
   staticData: { plane: "tab" },
@@ -673,19 +671,17 @@ function RecommendationsPage() {
         .join(" – ")
     : undefined;
 
+  const [homeList, setHomeList] = useState<"all" | PinType>("all");
+  const nextTrip = pickActiveTrip(trips.trips, today);
+  const visibleRows = vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited));
+  const savedForTrip = nextTrip?.city
+    ? visibleRows
+        .filter(
+          (r) => !isAreaPlace(r) && recMatchesPlace(r, (nextTrip.city ?? "").split(",")[0]!.trim()),
+        )
+        .slice(0, 4)
+    : [];
   const counts = listCounts(vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)));
-  const recent = recentlySaved(
-    vault.rows.filter((r) => !hiddenFromRecs(r, r.pin_type, r.visited)),
-    3,
-  );
-  const latestIn = (t: PinType) =>
-    recentlySaved(
-      vault.rows.filter(
-        (r) => (r.pin_type ?? "reco") === t && !hiddenFromRecs(r, r.pin_type, r.visited),
-      ),
-      1,
-    )[0];
-
   const savedRow = justSaved ? vault.rows.find((r) => r.id === justSaved.id) : undefined;
   const placeRow =
     screen.kind === "place" && screen.place.savedId
@@ -696,30 +692,67 @@ function RecommendationsPage() {
   const listFilter = screen.kind === "saved" ? screen.list : "all";
   const shownGroups = listFilter === "all" ? groups : groups.filter((g) => g.type === listFilter);
 
+  // A saved place as a card: its name, its picture, a line, and the two things
+  // to do with it next.
+  const recCard = (r: RecoRowDB) => (
+    <article className="plain-card p-3">
+      <button
+        type="button"
+        onClick={() => openPlace(placeFromRow(r))}
+        className="flex min-h-11 w-full items-center gap-2 text-left"
+      >
+        <span
+          className={`size-2.5 shrink-0 rounded-full ${pinColorClass[(r.pin_type ?? "reco") as PinType]}`}
+          aria-hidden
+        />
+        <span className="text-[17px] font-semibold leading-tight">{r.name}</span>
+      </button>
+      <div className="mt-2.5 flex gap-3">
+        <PlaceArt
+          place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
+          className="size-[84px] shrink-0 rounded-xl"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold leading-snug">
+            {[r.city, r.category].filter(Boolean).join(" · ") || "Saved place"}
+          </p>
+          <p className="text-[14px] leading-snug text-muted-foreground">
+            {r.notes
+              ? `“${r.notes}”`
+              : [
+                  r.recommended_by ? `From ${r.recommended_by}` : null,
+                  pinLabel[(r.pin_type ?? "reco") as PinType],
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <a
+          href={recMapsUrl(r)}
+          target="_blank"
+          rel="noreferrer"
+          className="grid min-h-11 place-items-center rounded-full text-center bg-muted px-3 text-[14px] font-semibold"
+        >
+          Open in Maps ↗
+        </a>
+        <button
+          type="button"
+          onClick={() => setTripSheet(placeFromRow(r))}
+          className="min-h-11 rounded-full bg-muted px-3 text-[14px] font-semibold"
+        >
+          Add to a day
+        </button>
+      </div>
+    </article>
+  );
+
   return (
     <AppShell
-      title={
-        screen.kind === "home" ? (
-          <span className="text-[38px] leading-none">Recommendations</span>
-        ) : undefined
-      }
-      headerAction={
-        screen.kind === "home" ? (
-          <button
-            type="button"
-            onClick={() => setMoreWays((v) => !v)}
-            aria-expanded={moreWays}
-            aria-label="Add a place, or share"
-            title="Add a place, or share"
-            className="grid size-13 place-items-center rounded-full bg-primary text-primary-foreground shadow-md"
-          >
-            <Plus
-              className={`size-6 transition-transform ${moreWays ? "rotate-45" : ""}`}
-              aria-hidden
-            />
-          </button>
-        ) : undefined
-      }
+      {...(screen.kind === "home"
+        ? { eyebrow: `${visibleRows.length} saved`, title: "Places worth remembering." }
+        : {})}
     >
       {nearbyOpen && (
         <div className={screen.kind === "nearby" ? "" : "hidden"}>
@@ -980,10 +1013,6 @@ function RecommendationsPage() {
 
       {screen.kind === "home" && (
         <div className="space-y-5">
-          <p className="-mt-3 text-[15px] text-muted-foreground">
-            Find, save and organize places for your next adventure.
-          </p>
-
           {/* One field, whatever you have: a name is looked up as you type, a
               pasted link gets read. The filter button beside it opens the
               saved places with their search, city and type filters. */}
@@ -1049,29 +1078,38 @@ function RecommendationsPage() {
               />
             )}
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => startMode("trips")}
-                aria-pressed={mode === "trips"}
-                className={`tile-fill-5 flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-[14.5px] font-semibold ${
-                  mode === "trips" ? "border-primary" : "border-border"
-                }`}
-              >
-                <MapPin className="size-5 text-primary" aria-hidden />
-                From my trips
-              </button>
-              <button
-                type="button"
-                onClick={() => startMode("here")}
-                aria-pressed={mode === "here"}
-                className={`tile-fill-2 flex h-12 items-center justify-center gap-2 rounded-full border px-3 text-[14.5px] font-semibold ${
-                  mode === "here" ? "border-primary" : "border-border"
-                }`}
-              >
-                <LocateFixed className="size-5 text-primary" aria-hidden />
-                I'm here now
-              </button>
+            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Add or explore">
+              {(
+                [
+                  ["add", "Add place", "link or name", Plus, "tile-fill-5", "text-primary"],
+                  ["near", "Nearby map", "what's close", MapPinned, "tile-fill-2", "text-primary"],
+                  ["more", "More ways", "import, share", Plus, "tile-fill-4", "text-primary"],
+                ] as const
+              ).map(([k, label, hint, Glyph, bg, ink]) => (
+                <button
+                  key={k}
+                  type="button"
+                  aria-expanded={k === "more" ? moreWays : undefined}
+                  onClick={() => {
+                    if (k === "near") setScreen({ kind: "nearby", browse: "All" });
+                    else if (k === "more") setMoreWays((v) => !v);
+                    else {
+                      const field = document.querySelector<HTMLElement>(
+                        "[data-guide=reco-add] textarea",
+                      );
+                      field?.scrollIntoView({ block: "center", behavior: "smooth" });
+                      field?.focus();
+                    }
+                  }}
+                  className={`${bg} flex min-h-[84px] flex-col items-start justify-center gap-0.5 rounded-2xl border border-border px-3 py-2 text-left`}
+                >
+                  <Glyph className={`size-5 shrink-0 ${ink}`} aria-hidden />
+                  <span className="whitespace-nowrap text-[15px] font-semibold leading-tight">
+                    {label}
+                  </span>
+                  <span className="text-[13px] leading-tight text-foreground/65">{hint}</span>
+                </button>
+              ))}
             </div>
 
             <div className="empty:hidden">
@@ -1339,6 +1377,122 @@ function RecommendationsPage() {
             )}
           </section>
 
+          {views.length === 0 && !vault.loading ? (
+            <section data-guide="reco-list">
+              <EmptyVault />
+            </section>
+          ) : (
+            <div data-guide="reco-list" className="space-y-6">
+              <div
+                className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]"
+                role="group"
+                aria-label="Lists"
+              >
+                {(
+                  [
+                    ["all", "All", visibleRows.length],
+                    ["reco", "Recs", counts.reco],
+                    ["wishlist", "Wishlist", counts.wishlist],
+                    ["nexttime", "Next time", counts.nexttime],
+                    ["visited", "Visited", counts.visited],
+                  ] as const
+                ).map(([k, label, n]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={homeList === k}
+                    onClick={() => setHomeList(k)}
+                    className={`h-11 shrink-0 whitespace-nowrap rounded-full border px-4 font-display text-[18px] ${
+                      homeList === k
+                        ? "border-primary bg-primary-soft text-foreground"
+                        : "border-transparent bg-card text-foreground"
+                    }`}
+                  >
+                    {label}
+                    <span className="ms-1.5 font-sans text-[13px] text-muted-foreground">{n}</span>
+                  </button>
+                ))}
+              </div>
+
+              {homeList === "all" && savedForTrip.length > 0 && nextTrip && (
+                <section>
+                  <RecsSectionHead
+                    title={`Saved for ${(nextTrip.city ?? "").split(",")[0]}`}
+                    hint="your next trip"
+                  />
+                  <ul className="space-y-3">
+                    {savedForTrip.map((r) => (
+                      <li key={r.id}>{recCard(r)}</li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {homeList === "all" ? (
+                <section>
+                  <RecsSectionHead
+                    title="Recently saved"
+                    onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
+                  />
+                  {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
+                  <ul className="plain-card divide-y divide-border/60 overflow-hidden">
+                    {recentlySaved(visibleRows, 5).map((r) => (
+                      <li key={r.id} className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => openPlace(placeFromRow(r))}
+                          className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left"
+                        >
+                          <PlaceArt
+                            place={{ name: r.name, category: r.category }}
+                            className="size-12 shrink-0 rounded-full"
+                          />
+                          <span className="min-w-0">
+                            <span className="block truncate text-[17px] font-semibold">
+                              {r.name}
+                            </span>
+                            <span className="block truncate text-[14px] text-muted-foreground">
+                              {[r.city, r.category].filter(Boolean).join(" · ")}
+                            </span>
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setJustSaved({ id: r.id, name: r.name })}
+                          aria-label={`${r.name}: note, list, who told you`}
+                          className="grid size-12 shrink-0 place-items-center"
+                        >
+                          <Bookmark className="size-5 text-primary" weight="fill" aria-hidden />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : (
+                <section>
+                  <RecsSectionHead
+                    title={homeList === "reco" ? "Recommendations" : pinLabel[homeList]}
+                    onSeeAll={() => setScreen({ kind: "saved", list: homeList })}
+                  />
+                  {counts[homeList] === 0 ? (
+                    <p className="py-6 text-center text-[15px] text-muted-foreground">
+                      Nothing in this list yet.
+                    </p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {recentlySaved(
+                        visibleRows.filter((r) => (r.pin_type ?? "reco") === homeList),
+                        8,
+                      ).map((r) => (
+                        <li key={r.id}>{recCard(r)}</li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
+            </div>
+          )}
+
           <nav aria-label="Explore by kind" className="grid grid-cols-5 gap-1">
             {BROWSE_KINDS.map((k, i) => {
               const Icon = KIND_ICON[k];
@@ -1379,100 +1533,6 @@ function RecommendationsPage() {
             </span>
             <MapSketch />
           </button>
-
-          {views.length === 0 && !vault.loading ? (
-            <section data-guide="reco-list">
-              <EmptyVault />
-            </section>
-          ) : (
-            <div data-guide="reco-list" className="space-y-6">
-              <section>
-                <RecsSectionHead
-                  title="My collections"
-                  onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
-                />
-                <div className="grid grid-cols-3 gap-2.5">
-                  {(["reco", "wishlist", "nexttime"] as const).map((t) => {
-                    const latest = latestIn(t);
-                    const Badge = t === "wishlist" ? Heart : Bookmark;
-                    return (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setScreen({ kind: "saved", list: t })}
-                        className="min-w-0 text-left"
-                      >
-                        <span className="relative block overflow-hidden rounded-2xl">
-                          {latest ? (
-                            <PlaceArt
-                              place={{ name: latest.name, category: latest.category }}
-                              className="aspect-[5/4] w-full"
-                            />
-                          ) : (
-                            <img
-                              src={placeArtUrl(COLLECTION_ART[t])}
-                              alt=""
-                              className="art-dim aspect-[5/4] w-full object-cover"
-                            />
-                          )}
-                          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-card/90 px-2 py-0.5 text-[12.5px] font-semibold">
-                            <Badge className="size-3.5" aria-hidden />
-                            {counts[t]}
-                          </span>
-                        </span>
-                        <span className="mt-1.5 block truncate text-[13.5px] font-medium tracking-tight">
-                          {t === "reco" ? "Recommendations" : pinLabel[t]}
-                        </span>
-                        <span className="block text-[13px] text-muted-foreground">
-                          {counts[t]} saved
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-
-              <section>
-                <RecsSectionHead
-                  title="Recently saved"
-                  onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
-                />
-                {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-                <ul className="space-y-2.5">
-                  {recent.map((r) => (
-                    <li key={r.id} className="plain-card flex items-center overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => openPlace(placeFromRow(r))}
-                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                      >
-                        <PlaceArt
-                          place={{ name: r.name, category: r.category }}
-                          className="h-[76px] w-[96px] shrink-0"
-                        />
-                        <span className="min-w-0 py-2">
-                          <span className="block truncate text-[16.5px] font-semibold">
-                            {r.name}
-                          </span>
-                          <span className="block truncate text-[13.5px] text-muted-foreground">
-                            {[r.city, r.category].filter(Boolean).join(" · ")}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setJustSaved({ id: r.id, name: r.name })}
-                        aria-label={`${r.name}: note, list, who told you`}
-                        className="grid size-12 shrink-0 place-items-center"
-                      >
-                        <Bookmark className="size-5 text-primary" weight="fill" aria-hidden />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </div>
-          )}
         </div>
       )}
 
@@ -1564,12 +1624,6 @@ function RecommendationsPage() {
     </AppShell>
   );
 }
-
-const COLLECTION_ART: Record<"reco" | "wishlist" | "nexttime", PlaceArtKind> = {
-  reco: "street",
-  wishlist: "viewpoint",
-  nexttime: "harbour",
-};
 
 function EmptyVault() {
   const settings = useBeaSettings();

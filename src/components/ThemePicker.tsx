@@ -26,6 +26,11 @@ const LABELS: Record<ThemeName, { name: string; hint: string }> = {
   dark: { name: "Dark", hint: "Black with white and beige" },
 };
 
+/** A storage write does not reach its own page, so a second picker on the page is told. */
+function tellOtherPickers(key: string, newValue: string) {
+  window.dispatchEvent(new StorageEvent("storage", { key, newValue }));
+}
+
 /**
  * Béa's three looks, each shown as a tiny page drawn in its own colors.
  *
@@ -74,6 +79,7 @@ export function ThemePicker() {
                 applyTheme(name);
                 saveAccountSetting("theme", name);
                 setTheme(name);
+                tellOtherPickers(THEME_KEY, name);
               }}
               className={`min-h-11 rounded-2xl border-2 p-1.5 text-center transition-colors duration-(--t-tap) ease-(--ease-standard) ${
                 on ? "border-primary" : "border-transparent"
@@ -111,6 +117,7 @@ export function ThemePicker() {
               applyAccent(name);
               saveAccountSetting("accent", name);
               setAccent(name);
+              tellOtherPickers(ACCENT_KEY, name);
             }}
             className={`flex min-h-11 items-center gap-2 rounded-full border-2 px-3 py-2 text-[16px] font-semibold ${accent === name ? "border-primary bg-card" : "border-transparent"}`}
           >

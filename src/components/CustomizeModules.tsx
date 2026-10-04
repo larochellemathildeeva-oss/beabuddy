@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import {
   ArrowRight,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   LayoutGrid,
   Plus,
@@ -20,7 +21,7 @@ import type { ModuleInfo } from "@/hooks/moduleStore";
 import type { ModuleLayout } from "@/lib/module-layout";
 import { bannerArtUrl } from "@/lib/banner-art";
 
-export type CustomizeVariant = "icon" | "row" | "add" | "card" | "chip";
+export type CustomizeVariant = "icon" | "row" | "list" | "add" | "card" | "chip";
 
 /**
  * A screen's "Customize" sheet, as in the mockups: every module the screen
@@ -100,6 +101,24 @@ export function CustomizeModules<K extends string>({
         <span className="relative grid size-11 shrink-0 place-items-center rounded-full bg-card shadow-sm">
           <ArrowRight className="size-5" aria-hidden />
         </span>
+      </button>
+    ) : variant === "list" ? (
+      // A row in You's grouped lists: pastel bubble, title, one line, chevron.
+      <button
+        type="button"
+        data-guide={guide}
+        className="flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-tile-5">
+          <LayoutGrid className="size-5 text-primary" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[19px] leading-tight">{title}</span>
+          <span className="block text-[14px] leading-snug text-muted-foreground">
+            Choose and reorder modules
+          </span>
+        </span>
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
     ) : variant === "row" ? (
       <button

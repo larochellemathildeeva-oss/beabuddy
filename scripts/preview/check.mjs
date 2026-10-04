@@ -546,6 +546,34 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   if ((await page.getByRole("button", { name: /^Bucket list/ }).count()) !== 1) throw new Error("the Bucket list tile is gone");
 }, "world");
 
+await flow("recs: header, pills, list chips, saved-for-trip cards, More ways and Add to a day", async (page) => {
+  const text = async () => page.locator("body").innerText();
+  for (const word of ["Places worth remembering.", "Add place", "Nearby map", "More ways", "Recently saved", "Explore nearby"])
+    if (!(await text()).includes(word)) throw new Error(`Recs lost "${word}"`);
+  await page.getByRole("button", { name: /^Wishlist/ }).click();
+  if (await page.getByRole("button", { name: /^Wishlist/ }).getAttribute("aria-pressed") !== "true") throw new Error("the Wishlist chip did not apply");
+  await page.getByRole("button", { name: /^All/ }).click();
+  if (!(await text()).includes("Saved for ")) throw new Error("no Saved for the next trip's city");
+  await page.getByRole("button", { name: "Add to a day" }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Add to a day opened nothing");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: /More ways/ }).click();
+  for (const word of ["From my trips", "I'm here now", "By hand", "Paste a list", "Send places", "Open a share", "Pin somewhere nearby"])
+    if (!(await text()).includes(word)) throw new Error(`More ways lost "${word}"`);
+}, "recs");
+
+await flow("you: header, Béa card, grouped rows, Customize Home, theme and More", async (page) => {
+  const text = async () => page.locator("body").innerText();
+  for (const word of ["Travel, your way.", "Your Béa", "Travel preferences", "Customize home", "Packing lists", "Photos & memories", "Work travel", "Trip documents", "Settings & storage", "Appearance", "Data & imports", "Theme", "Privacy & legal", "Help & FAQ", "Feedback", "About Béa", "Sign out"])
+    if (!(await text()).includes(word)) throw new Error(`You lost "${word}"`);
+  if ((await page.getByRole("link", { name: /Your Béa/ }).getAttribute("href")) !== "/profile/bea") throw new Error("Your Béa lost its route");
+  await page.getByRole("button", { name: /Customize home/ }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog").count()) === 0) throw new Error("Customize home opened nothing");
+  await page.keyboard.press("Escape");
+}, "you");
+
 await flow("shell: brand, back, guide, five tabs and offline status remain reachable", async (page) => {
   const labels = ["Home", "World", "Trips", "Recs", "You"];
   const paths = ["/", "/world", "/trips", "/recommendations", "/profile"];
