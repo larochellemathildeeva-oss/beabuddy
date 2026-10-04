@@ -11,7 +11,10 @@ import {
   HomeUpcoming,
   HomeWhereNext,
 } from "@/components/HomeLivingMap";
+import { HomeNoTripHero, HomeOnTrip, HomeSavedCard, HomeWaiting } from "@/components/HomeMoods";
 import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
+import { savedCities } from "@/lib/home-now";
+import { isUnderway } from "@/lib/trip-card";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { NearHome } from "@/components/NearHome";
 import { HomeWeather, WeatherCredit } from "@/components/HomeWeather";
@@ -240,6 +243,11 @@ function SignedInHome() {
     return venues.find((row) => `reco-${row.id}` === winner.id) ?? venues[0];
   }, [vault.comparePins, vault.rows, scorePrefs]);
   const topNote = notes.rows[0];
+  // Places saved and not yet been to, by city: what is waiting for a trip.
+  const waiting = useMemo(
+    () => savedCities(vault.rows.filter((row) => !isAreaPlace(row))),
+    [vault.rows],
+  );
   const empty = photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
   const sampleCtaDismissed = Boolean(user?.id && hasDismissedSampleCta(safeStorage(), user.id));
   const showSamplePrompt = empty && !sampleCtaDismissed;
@@ -253,6 +261,15 @@ function SignedInHome() {
   });
   const greeting = greetingFor(now.getHours());
   const showTrip = layout.trip && trip && !trips.loading;
+  const underway = Boolean(showTrip && isUnderway(trip.start_date, trip.end_date, now));
+  // No trip: the header is the map of the saved cities, once any can be placed.
+  const noTripMap =
+    layout.waiting &&
+    !trips.loading &&
+    !trip &&
+    !vault.loading &&
+    waiting.some((c) => c.lat !== null && c.lon !== null);
+  const greetingLine = firstName ? `${greeting}, ${firstName}` : greeting;
   const showSave = layout.waiting && Boolean(topReco);
   // The others, next ones first, then the ones you're back from.
   const others = [...later, ...past.filter((t) => t.id !== trip?.id)];
@@ -261,11 +278,11 @@ function SignedInHome() {
     <AppShell
       homeHeader
       // With a trip ahead, the trip is the headline; without one, the greeting.
-      {...(showTrip
+      {...(showTrip || noTripMap
         ? {}
         : {
             eyebrow: today,
-            title: firstName ? `${greeting}, ${firstName}` : greeting,
+            title: greetingLine,
             ...(layout.weather ? { headerAction: <HomeWeather near={near} /> } : {}),
           })}
       actionBesideEyebrow
@@ -273,14 +290,26 @@ function SignedInHome() {
       <div className="space-y-5">
         {showTrip && (
           <div className="space-y-4">
-            <HomeUpcoming trip={trip} photos={photos} />
-            <HomeTripStats trip={trip} glance={glances[trip.id]} />
+            {underway ? (
+              <HomeOnTrip trip={trip} photos={photos} glance={glances[trip.id]} />
+            ) : (
+              <HomeUpcoming trip={trip} photos={photos} />
+            )}
+            <HomeTripStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
             <HomeWhereNext />
             <HomeSuggested trip={trip} />
           </div>
         )}
 
-        {showTrip && layout.weather && (
+        {noTripMap && (
+          <div className="space-y-4">
+            <HomeNoTripHero greeting={greetingLine} date={today} cities={waiting} />
+            <HomeSavedCard cities={waiting} />
+            <HomeWaiting cities={waiting} />
+          </div>
+        )}
+
+        {(showTrip || noTripMap) && layout.weather && (
           <div className="flex justify-end">
             <HomeWeather near={near} />
           </div>
