@@ -66,10 +66,14 @@ import { DayCards } from "@/components/day/DayCards";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
-import { TripBanner } from "@/components/TripBanner";
+import { TripPageBanner } from "@/components/TripPageBanner";
 import { BrandMark } from "@/components/PageHeader";
-import { TripViews, TripBarOptions } from "@/components/day/TripViews";
+import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
+import { useTripPicture } from "@/hooks/useTripPicture";
+import { useCityPositions } from "@/hooks/useCityPositions";
+import { tripCityStop, withCityPositions } from "@/lib/city-position";
+import { routeIndexOf, routeStops as mapRouteStops } from "@/lib/home-route-map";
 import {
   TripMenuSheet,
   type BookingTile,
@@ -214,6 +218,7 @@ export function TripDetail({
 }) {
   const navigate = useNavigate();
   const [barPosition, setBarPosition] = useTripBarPosition();
+  const [tripPicture, setTripPicture] = useTripPicture();
   const [bookingsOpen, setBookingsOpen] = useState(false);
   const bookingsRef = useRef<HTMLElement>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
@@ -292,6 +297,18 @@ export function TripDetail({
   };
   const budget = useTripBudget(activeId);
   const cities = useTripStops(activeId, me.id, trip);
+  // The banner's Stops picture: the trip's cities on Home's terrain. A
+  // one-city trip keeps its city on the trip; a city typed rather than picked
+  // is found by its name, as on Home.
+  const bannerCityStops = useMemo(
+    () => (cities.stops.length || cities.loading ? cities.stops : tripCityStop(trip)),
+    [cities.stops, cities.loading, trip],
+  );
+  const bannerPositions = useCityPositions(bannerCityStops);
+  const bannerRoute = useMemo(
+    () => mapRouteStops(withCityPositions(bannerCityStops, bannerPositions)),
+    [bannerCityStops, bannerPositions],
+  );
   /**
    * The cities you can move between. A trip whose second city was added
    * before its first was kept still lists its first, from the trip itself.
@@ -1368,6 +1385,20 @@ export function TripDetail({
       })
     : "";
   const cityNames = cities.stops.map((stop) => stop.city);
+  // On the banner's map: the city you are in today is ringed and the ones
+  // before it are behind you; a day view rings the city of the day it shows.
+  const onTripToday = Boolean(
+    trip.start_date && trip.start_date <= todayKey && (!trip.end_date || todayKey <= trip.end_date),
+  );
+  const todayCity = onTripToday
+    ? routeIndexOf(bannerRoute, routeCityOn(cities.stops, todayKey))
+    : -1;
+  const bannerDone =
+    trip.end_date && trip.end_date < todayKey ? bannerRoute.length : Math.max(0, todayCity);
+  const bannerCurrent =
+    perspective !== "overview" && companionDay?.key
+      ? routeIndexOf(bannerRoute, routeCityOn(cities.stops, companionDay.key))
+      : todayCity;
   const tripArt = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],
@@ -1436,9 +1467,8 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
-      <TripBanner
-        variant="page"
-        pageArt={perspective === "overview" ? tripArt : companionArt}
+      <TripPageBanner
+        art={perspective === "overview" ? tripArt : companionArt}
         title={trip.title}
         city={trip.city}
         country={trip.country}
@@ -1449,6 +1479,12 @@ export function TripDetail({
         companions={companionsLine}
         photo={pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: cityNames })}
         viewTransitionName={`trip-photo-${trip.id}`}
+        route={bannerRoute}
+        current={bannerCurrent}
+        done={bannerDone}
+        picture={tripPicture}
+        onPicture={setTripPicture}
+        short={perspective === "map"}
         footer={
           perspective !== "overview" && companionDay ? (
             <p className="mt-2 text-[14px] font-semibold">
@@ -1459,7 +1495,8 @@ export function TripDetail({
               ]
                 .filter(Boolean)
                 .join(" · ")}
-              {nowStops.length > 0 && (
+              {/* Said again in the tracker under the banner when it shows. */}
+              {nowStops.length > 0 && !view.prefs.journey && (
                 <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
                   {companionState(nowStops).reached}/{nowStops.length} stops reached ·{" "}
                   {Math.round((companionState(nowStops).reached / nowStops.length) * 100)}% complete
@@ -1468,50 +1505,47 @@ export function TripDetail({
             </p>
           ) : null
         }
-        header={
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-card/95 px-3 py-2 text-foreground">
-            <BrandMark />
-            <div className="flex items-center gap-2">
-              {view.prefs.pinChecks && toCheck.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPinReviewOpen(true)}
-                  title="Pins to check"
-                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
-                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
-                >
-                  !
-                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
-                    {toCheck.length}
-                  </span>
-                </button>
-              )}
+        actions={
+          <>
+            {view.prefs.pinChecks && toCheck.length > 0 && (
               <button
                 type="button"
-                onClick={() => setPrepSignal((n) => n + 1)}
-                aria-label="To do and packing"
-                className="grid size-11 place-items-center rounded-full border border-border bg-card"
+                onClick={() => setPinReviewOpen(true)}
+                title="Pins to check"
+                aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
               >
-                <ListChecks className="size-5" aria-hidden />
+                !
+                <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                  {toCheck.length}
+                </span>
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSettingsOpen(true);
-                  setSheetSection(null);
-                }}
-                data-guide="trip-menu"
-                title="Trip menu"
-                aria-label="Trip menu"
-                className="grid size-11 place-items-center rounded-full border border-border bg-card shadow-xs"
-              >
-                <MoreHorizontal className="size-5" aria-hidden />
-              </button>
-            </div>
-          </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setPrepSignal((n) => n + 1)}
+              aria-label="To do and packing"
+              className="trip-hero-btn"
+            >
+              <ListChecks className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSettingsOpen(true);
+                setSheetSection(null);
+              }}
+              data-guide="trip-menu"
+              title="Trip menu"
+              aria-label="Trip menu"
+              className="trip-hero-btn"
+            >
+              <MoreHorizontal className="size-5" aria-hidden />
+            </button>
+          </>
         }
       />
-      <div className="px-3 py-2">
+      <div className="trip-panel px-3 pb-2 pt-3">
         {perspective === "overview" || !companionDay ? (
           <section aria-label="Your trip progress" className="plain-card p-3.5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -3093,6 +3127,7 @@ export function TripDetail({
         {sheetSection === "customize" && (
           <div className="plain-card px-3.5 py-1">
             <TripBarOptions value={barPosition} onChange={setBarPosition} />
+            <TripPictureOptions value={tripPicture} onChange={setTripPicture} />
             <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
           </div>
         )}

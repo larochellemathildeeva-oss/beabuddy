@@ -7,6 +7,7 @@ import {
   mapBounds,
   pillLabel,
   pillStops,
+  placeLabels,
   placePills,
   reliefTiles,
   smoothPath,
@@ -319,4 +320,163 @@ function flightTrail(first: Point, width: number) {
     path: `M${start.x} ${start.y} Q${c.x} ${c.y} ${end.x} ${end.y}`,
     plane: { x: p.x, y: p.y, angle },
   };
+}
+
+/**
+ * The trip page's banner in Stops mode (UI revamp, `tripHero` in the mockup):
+ * the same terrain as Home's map filling the banner, a white glowing line
+ * through the cities, each named in white beside its dot. The stop you are in
+ * is ringed in the accent; stops already behind you are hollow, with the line
+ * to them in the accent. A haze of the page's own colour sits over the top,
+ * under the trip's name.
+ */
+export function TripBannerMap({
+  stops,
+  label,
+  height,
+  current = -1,
+  done = 0,
+  top,
+  bottom,
+}: {
+  stops: RouteStop[];
+  label: string;
+  height: number;
+  /** The band the cities are drawn in: below the words, above the foot. */
+  top: number;
+  bottom: number;
+  /** Index of the stop you are in, ringed; -1 for none. */
+  current?: number;
+  /** How many stops are behind you. */
+  done?: number;
+}) {
+  const id = useId().replace(/:/g, "");
+  const [svg, setSvg] = useState<SVGSVGElement | null>(null);
+  const width = useFrameWidth(svg);
+  const [relief, setRelief] = useState<ReliefIndex | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadReliefIndex().then((index) => live && setRelief(index));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const drawn = useMemo(() => {
+    if (stops.length === 0) return null;
+    const {
+      center,
+      corners: [[w, s], [e, n]],
+    } = mapBounds(stops, 2.6, 1.4, 0.12);
+    const corners = {
+      type: "MultiPoint" as const,
+      coordinates: [
+        [w + center, s],
+        [e + center, n],
+      ],
+    };
+    // The cities sit between the trip's name and the panel rising over the
+    // bottom of the banner.
+    const projection = geoMercator()
+      .rotate([-center, 0])
+      .fitExtent(
+        [
+          [width * 0.16, top],
+          [width * 0.84, Math.max(top + 40, bottom)],
+        ],
+        corners,
+      );
+    const dots: Point[] = stops.map((stop) => {
+      const [x, y] = projection([stop.lon, stop.lat]) ?? [0, 0];
+      return { x, y };
+    });
+    const labels = placeLabels(
+      dots,
+      stops.map((s) => pillLabel(s.city)),
+      { width, keep: current },
+    );
+    const tiles = reliefTiles({
+      scale: projection.scale(),
+      translate: projection.translate(),
+      center,
+      width,
+      height,
+      dpr: typeof window === "undefined" ? 2 : Math.max(1, window.devicePixelRatio || 1),
+    });
+    return { dots, labels, tiles };
+  }, [stops, width, height, current, top, bottom]);
+
+  if (!drawn) return null;
+  const { dots, labels, tiles } = drawn;
+  const behind = Math.max(0, Math.min(done, dots.length - 1));
+
+  return (
+    <svg
+      ref={setSvg}
+      role="img"
+      aria-label={label}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid slice"
+      className="route-map banner-map absolute inset-0 size-full"
+    >
+      <defs>
+        <filter id={`${id}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" />
+        </filter>
+      </defs>
+      <rect width={width} height={height} className="map-sea" />
+      {tiles
+        .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
+        .map((t) => (
+          <image
+            key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+            href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
+            x={t.left}
+            y={t.top}
+            width={t.size + 0.6}
+            height={t.size + 0.6}
+            preserveAspectRatio="none"
+          />
+        ))}
+      <rect width={width} height={height} className="map-wash" />
+
+      {dots.length > 1 ? (
+        <>
+          <path d={smoothPath(dots)} className="banner-route-glow" filter={`url(#${id}-glow)`} />
+          <path d={smoothPath(dots)} className="banner-route" />
+          {behind > 0 ? (
+            <path d={smoothPath(dots.slice(0, behind + 1))} className="banner-route-done" />
+          ) : null}
+        </>
+      ) : null}
+      {dots.map((d, i) =>
+        i === current ? (
+          <g key={i}>
+            <circle cx={d.x} cy={d.y} r={18} className="banner-dot-halo" />
+            <circle cx={d.x} cy={d.y} r={11} className="banner-dot-ring" />
+            <circle cx={d.x} cy={d.y} r={7} className="banner-dot-here" />
+          </g>
+        ) : (
+          <circle
+            key={i}
+            cx={d.x}
+            cy={d.y}
+            r={i < behind ? 6 : 7}
+            className={i < behind ? "banner-dot-done" : "banner-dot"}
+          />
+        ),
+      )}
+      {labels.map((l) => (
+        <text
+          key={l.index}
+          x={l.x}
+          y={l.y}
+          dy="0.35em"
+          textAnchor={l.anchor}
+          className={l.index === current ? "banner-label banner-label-here" : "banner-label"}
+        >
+          {pillLabel(stops[l.index]!.city)}
+        </text>
+      ))}
+    </svg>
+  );
 }

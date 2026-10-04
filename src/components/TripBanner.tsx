@@ -59,7 +59,7 @@ function Scene({ seed }: { seed: string }) {
   );
 }
 
-type Variant = "card" | "hero" | "compact" | "feature" | "page";
+type Variant = "card" | "hero" | "compact" | "feature";
 
 /**
  * The top of a trip card: your own photo of the place (or a painted dusk),
@@ -86,8 +86,6 @@ export function TripBanner({
   viewTransitionName,
   variant,
   compact = false,
-  header,
-  pageArt,
 }: {
   title: string;
   city?: string | null;
@@ -115,10 +113,6 @@ export function TripBanner({
   variant?: Variant;
   /** Kept for the trip page: the same as `variant="compact"`. */
   compact?: boolean;
-  /** Trip page only: the existing actions, over the app's own picture. */
-  header?: ReactNode;
-  /** The trip or selected day's existing illustration; page variant only. */
-  pageArt?: string;
 }) {
   const kind: Variant = variant ?? (compact ? "compact" : "card");
   const own = useSignedPhoto(photo?.storage_path ?? null);
@@ -131,7 +125,7 @@ export function TripBanner({
   const url = own ?? commons?.url ?? null;
   const theme = useThemeName();
   const art =
-    kind === "feature" || kind === "page"
+    kind === "feature"
       ? bannerArtUrl(bannerSceneFor([title, ...cities, city, country], title || city || ""))
       : null;
 
@@ -160,45 +154,6 @@ export function TripBanner({
     .filter(Boolean)
     .join(" · ");
   const people = peopleCount && peopleCount > 1 ? peopleCount : 0;
-
-  if (kind === "page") {
-    const picture = pictures === "photos" ? url : null;
-    return (
-      <section
-        className="relative isolate min-h-[320px] overflow-hidden"
-        style={viewTransitionName ? { viewTransitionName } : undefined}
-      >
-        {pictures !== "none" && (
-          <img
-            src={picture ?? pageArt ?? art ?? ""}
-            alt=""
-            className="art-dim absolute inset-0 -z-10 size-full object-cover"
-            referrerPolicy={commons ? "no-referrer" : undefined}
-            onError={commons && picture ? () => setBrokenTown(commons.url) : undefined}
-          />
-        )}
-        <div className="relative p-3">{header}</div>
-        <div className="relative mx-4 mb-4 mt-20 w-fit max-w-[calc(100%-2rem)] rounded-2xl bg-card/95 p-4 text-foreground shadow-sm">
-          {pill && (
-            <p className="mb-1 text-[13px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {pill}
-            </p>
-          )}
-          <h1 className="break-words font-display text-[40px] leading-[1.05]">{title}</h1>
-          <p className="mt-2 text-[14px] text-muted-foreground">
-            {[where, dates, tentative ? "tentative" : ""].filter(Boolean).join(" · ")}
-          </p>
-          {companions && <p className="mt-1 text-[13px] text-muted-foreground">{companions}</p>}
-          {footer}
-        </div>
-        {commons && picture && creditedOnPhoto(commons) && (
-          <p className="relative bg-card px-4 py-1 text-[13px] text-muted-foreground">
-            {photoCredit(commons)}
-          </p>
-        )}
-      </section>
-    );
-  }
 
   const height =
     kind === "hero"

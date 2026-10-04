@@ -1451,6 +1451,124 @@
   font-weight: 500;
 }
 
+/* The trip page's banner (UI revamp, `tripHero` in the mockup): the trip's
+   name in a haze of the page's colour over the picture, then the panel below
+   rising over its foot with rounded corners. */
+.trip-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--muted);
+}
+.trip-hero-haze {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Strong under the words (they end at --haze-end), gone soon after. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--background) 94%, transparent) 0,
+    color-mix(in oklab, var(--background) 82%, transparent) calc(var(--haze-end, 180px) - 40px),
+    color-mix(in oklab, var(--background) 0%, transparent) calc(var(--haze-end, 180px) + 70px)
+  );
+}
+.trip-hero-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  color: var(--foreground);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.12);
+}
+.trip-hero-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.14);
+}
+.trip-hero-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+.trip-hero-switch button[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.trip-panel {
+  position: relative;
+  z-index: 1;
+  margin-top: -36px;
+  border-radius: 24px 24px 0 0;
+  background: var(--background);
+}
+@media (min-width: 640px) {
+  .trip-panel {
+    background: var(--card);
+  }
+}
+.route-map .banner-route-glow {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.75);
+  stroke-width: 7;
+}
+.route-map .banner-route {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.route-map .banner-route-done {
+  fill: none;
+  stroke: var(--acc, var(--primary));
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.route-map .banner-dot {
+  fill: #ffffff;
+  stroke: #3b3835;
+  stroke-width: 2.5;
+}
+.route-map .banner-dot-done {
+  fill: #ffffff;
+  stroke: var(--acc2, var(--primary));
+  stroke-width: 2.5;
+}
+.route-map .banner-dot-halo {
+  fill: color-mix(in oklab, var(--acc, var(--primary)) 28%, transparent);
+}
+.route-map .banner-dot-ring {
+  fill: #ffffff;
+}
+.route-map .banner-dot-here {
+  fill: var(--acc2, var(--primary));
+}
+.route-map .banner-label {
+  fill: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 650;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.7)) drop-shadow(0 0 6px rgb(0 0 0 / 0.3));
+}
+.route-map .banner-label-here {
+  font-size: 16px;
+}
+
 /* Step 1: the trip's four views share one device-positioned bar. */
 .trip-views {
   display: flex;
