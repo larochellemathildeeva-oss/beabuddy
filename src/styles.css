@@ -1008,7 +1008,7 @@
 .journal-pin {
   width: 28px;
   height: 28px;
-  margin: 4px;
+  margin: 8px;
   background: var(--journal-accent);
   color: var(--primary-foreground);
   font-size: 13px;
@@ -1034,7 +1034,7 @@
 .journal-pin--on {
   width: 36px;
   height: 36px;
-  margin: 0;
+  margin: 4px;
   font-size: 14px;
   box-shadow:
     0 0 0 3px var(--journal-pin-paper),
@@ -1043,13 +1043,13 @@
 }
 .journal-pin--done {
   background: var(--acc-done);
-  color: #000;
+  color: var(--journal-ink);
 }
 /* Inside another stop: a smaller ring beside its parent, numbered like its card. */
 .journal-pin--nested {
   width: 26px;
   height: 26px;
-  margin: 5px;
+  margin: 9px;
   background: var(--journal-pin-paper);
   color: var(--acc-ink);
   font-size: 13px;
@@ -1060,7 +1060,7 @@
 .journal-pin--nested.journal-pin--on {
   width: 32px;
   height: 32px;
-  margin: 2px;
+  margin: 6px;
   font-size: 13px;
 }
 .journal-pin--nested.journal-pin--done {
@@ -1073,8 +1073,8 @@
 /* "+2": what is listed inside the stop, on its card. */
 .journal-pin-badge {
   position: absolute;
-  left: 24px;
-  top: -3px;
+  left: 28px;
+  top: 1px;
   pointer-events: none;
   border-radius: 999px;
   background: var(--journal-ink);

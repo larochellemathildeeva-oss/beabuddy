@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { dayMapCaption, dayMapModel, dayMapPins, toggleSelection } from "./day-map.ts";
+import { dayMapCaption, dayMapModel, dayMapPins, mapInsets, toggleSelection } from "./day-map.ts";
 
 const cafe = { id: "a", title: "Café", lat: 45.5231, lon: -73.5817 };
 const noAddress = { id: "b", title: "Somewhere", lat: null, lon: null };
@@ -170,4 +170,20 @@ test("the flat view draws every stop as an ordinary pin", () => {
       ["cenotaph", 0, false],
     ],
   );
+});
+
+test("the chips and the sheet leave the day room on a short phone", () => {
+  // Room to spare: asked for as is.
+  assert.deepEqual(mapInsets(800, 100, 200, 44), { top: 100, bottom: 200 });
+  // Split's first day on a short stage: the sheet nearly covers it.
+  const tight = mapInsets(480, 120, 290, 44);
+  assert.ok(tight.top + tight.bottom + 2 * 44 <= 480 * 0.6);
+  assert.ok(tight.bottom > tight.top, "both shrink in proportion");
+  // A stage smaller than its padding keeps nothing back, never less than 0.
+  assert.deepEqual(mapInsets(60, 50, 50, 44), { top: 0, bottom: 0 });
+  assert.deepEqual(mapInsets(500, -5, 10, 44), { top: 0, bottom: 10 });
+  // A chosen stop is placed against what really covers the map: where the
+  // whole day would have the sheet shrunk, a stop keeps all of it back.
+  assert.ok(mapInsets(600, 120, 290, 44).bottom < 290);
+  assert.deepEqual(mapInsets(600, 120, 290, 16, 0.15), { top: 120, bottom: 290 });
 });

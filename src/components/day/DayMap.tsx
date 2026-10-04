@@ -3,7 +3,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type * as Leaflet from "leaflet";
 import type { DayMapPin, PinTone } from "@/lib/day-map";
-import { curvedLeg } from "@/lib/day-map";
+import { curvedLeg, mapInsets } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
 import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
 import { journalStyle, labelLanguage } from "@/lib/journal-style";
@@ -128,10 +128,25 @@ export function DayMap({
   const select = useRef(onSelect);
   select.current = onSelect;
 
+  // The space the chips and the sheet keep clear, shrunk to leave the whole
+  // day room on a short stage (`mapInsets`). A chosen stop is placed against
+  // what the chips and the sheet really cover, shrunk only when they cover
+  // nearly all of it, so it is never left under the sheet.
+  const clearOf = (m: Leaflet.Map) =>
+    mapInsets(m.getSize().y, insetTop, insetBottom, FIT_PADDING[1]);
+  const clearForStop = (m: Leaflet.Map) =>
+    mapInsets(m.getSize().y, insetTop, insetBottom, PIN_EDGE_MARGIN, 0.15);
+  // Set once the reader drags, pinches, taps or uses the keys on the map, so
+  // a sheet that grows afterwards does not frame the whole day again over
+  // their view.
+  const touched = useRef(false);
+  const lastFit = useRef("");
+
   useEffect(() => {
     let cancelled = false;
     let observer: ResizeObserver | null = null;
     let stopWatching: (() => void) | null = null;
+    let unlisten: (() => void) | null = null;
 
     void import("leaflet").then((mod) => {
       const L = (mod as { default?: typeof Leaflet }).default ?? (mod as typeof Leaflet);
@@ -201,6 +216,18 @@ export function DayMap({
       // switch, the chips wrapping — and Leaflet only notices the window.
       observer = new ResizeObserver(() => m.invalidateSize());
       observer.observe(container.current);
+      const moved = () => {
+        touched.current = true;
+      };
+      const box = container.current;
+      // No wheel: wheel zoom is off, so a wheel over the map scrolls the page.
+      // Keys pan and zoom it (Leaflet's keyboard, and its zoom buttons).
+      box.addEventListener("pointerdown", moved, { passive: true });
+      box.addEventListener("keydown", moved);
+      unlisten = () => {
+        box.removeEventListener("pointerdown", moved);
+        box.removeEventListener("keydown", moved);
+      };
 
       leaflet.current = L;
       map.current = m;
@@ -210,6 +237,7 @@ export function DayMap({
     return () => {
       cancelled = true;
       stopWatching?.();
+      unlisten?.();
       observer?.disconnect();
       // A zoom still running when the tab closes asks the pane for a position
       // it no longer has.
@@ -246,8 +274,18 @@ export function DayMap({
     const L = leaflet.current;
     const m = map.current;
     if (!ready || !L || !m || !m.getPane("mapPane") || pins.length === 0) return;
+    // The chips or the sheet changing height alone refits only a day the
+    // reader has not moved and no stop is chosen on: choosing a stop in Split
+    // opens its address, and that must not throw away their zoom.
+    const key = `${shape}|${heightClass}|${fitSignal}|${follow && !selectedId}`;
+    const insetsOnly = key === lastFit.current;
+    lastFit.current = key;
+    if (!insetsOnly) touched.current = false;
+    else if (touched.current || selectedId) return;
     // A layout change resizes the box; measure it before fitting to it.
     m.invalidateSize();
+    const clear = clearOf(m);
+    const clearStop = clearForStop(m);
     // Focus with a stop chosen frames that stop instead, below — but the
     // map needs some view before the name tag can be placed, so a map
     // opening on a stop starts on it.
@@ -256,7 +294,7 @@ export function DayMap({
       if (!Number.isFinite(m.getZoom() as number | undefined)) {
         const at = m
           .project([followed.lat, followed.lon], FOLLOW_ZOOM)
-          .add([0, (insetBottom - insetTop) / 2]);
+          .add([0, (clearStop.bottom - clearStop.top) / 2]);
         m.setView(m.unproject(at, FOLLOW_ZOOM), FOLLOW_ZOOM, { animate: false });
       }
       return;
@@ -267,14 +305,14 @@ export function DayMap({
       const zoom = SINGLE_STOP_ZOOM;
       const pin = pins[0]!;
       const centre = m.unproject(
-        m.project([pin.lat, pin.lon], zoom).add([0, (insetBottom - insetTop) / 2]),
+        m.project([pin.lat, pin.lon], zoom).add([0, (clearStop.bottom - clearStop.top) / 2]),
         zoom,
       );
       m.setView(centre, zoom, { animate });
     } else {
       m.fitBounds(L.latLngBounds(pins.map((p) => [p.lat, p.lon] as [number, number])), {
-        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + insetTop],
-        paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],
+        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + clear.top],
+        paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + clear.bottom],
         maxZoom: FIT_MAX_ZOOM,
         animate,
       });
@@ -311,8 +349,9 @@ export function DayMap({
       const marker = L.marker([pin.lat, pin.lon], {
         icon: L.divIcon({
           className: "",
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
+          // 44 px to tap, whatever size the pin is drawn at inside it.
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
           // The number is an integer this file made, but escape it anyway:
           // this string becomes markup.
           html: `<span class="${pinClass(false, pin.tone, pin.nested, pin.done)}">${escapeHtml(String(pin.number))}</span>${insideBadge(pin.insideCount)}`,
@@ -386,6 +425,7 @@ export function DayMap({
     const pin = pins.find((p) => p.id === selectedId);
     if (!pin) return;
     const target: [number, number] = [pin.lat, pin.lon];
+    const clear = clearForStop(m);
     if (follow) {
       // Centre the stop in the part of the map the card leaves uncovered.
       // A map opened on a stop has no view yet: Leaflet's zoom is unset
@@ -394,7 +434,7 @@ export function DayMap({
       const hasView = typeof current === "number" && Number.isFinite(current);
       const zoom = hasView ? Math.max(current, FOLLOW_ZOOM) : FOLLOW_ZOOM;
       const centre = m.unproject(
-        m.project(target, zoom).add([0, (insetBottom - insetTop) / 2]),
+        m.project(target, zoom).add([0, (clear.bottom - clear.top) / 2]),
         zoom,
       );
       if (!hasView || prefersReducedMotion()) m.setView(centre, zoom, { animate: false });
@@ -407,8 +447,8 @@ export function DayMap({
     // or last stop recentred the map and pushed the rest of the day off it.
     // Keep the pin in the band the chips and the sheet leave open.
     m.panInside(target, {
-      paddingTopLeft: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + insetTop],
-      paddingBottomRight: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + insetBottom],
+      paddingTopLeft: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + clear.top],
+      paddingBottomRight: [PIN_EDGE_MARGIN, PIN_EDGE_MARGIN + clear.bottom],
       animate: !prefersReducedMotion(),
     });
   }, [ready, selectedId, follow, insetTop, insetBottom]); // eslint-disable-line react-hooks/exhaustive-deps -- follows selection only
@@ -459,9 +499,10 @@ export function DayMap({
     if (!framedHere.current) {
       framedHere.current = true;
       const points = [...lonsBeside(pins, fix), fix].map((p) => [p.lat, p.lon] as [number, number]);
+      const clear = clearOf(m);
       m.fitBounds(L.latLngBounds(points), {
-        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + insetTop],
-        paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + insetBottom],
+        paddingTopLeft: [FIT_PADDING[0], FIT_PADDING[1] + clear.top],
+        paddingBottomRight: [FIT_PADDING[0], FIT_PADDING[1] + clear.bottom],
         maxZoom: FIT_MAX_ZOOM,
         animate: !prefersReducedMotion(),
       });
