@@ -50,6 +50,7 @@ export function TripPageBanner({
   onPicture,
   short = false,
   actions,
+  tools,
   footer,
   viewTransitionName,
 }: {
@@ -77,6 +78,8 @@ export function TripPageBanner({
   short?: boolean;
   /** The round buttons at the top right (pins to check, to do, trip menu). */
   actions: ReactNode;
+  /** At the foot of the picture, beside the switch: Plan with Béa, Add stop. */
+  tools?: ReactNode;
   /** Under the dates: the day the page is showing. */
   footer?: ReactNode;
   viewTransitionName?: string;
@@ -171,36 +174,37 @@ export function TripPageBanner({
           {footer}
         </div>
 
-        <div className="mt-auto flex items-end justify-between gap-2">
+        <div className="mt-auto">
           {credited ? (
             <p
               title={photoCredit(credited)}
-              className="min-w-0 truncate rounded-full bg-black/45 px-2.5 py-1 text-[13px] text-white"
+              className="mb-2 w-fit max-w-full truncate rounded-full bg-black/45 px-2.5 py-1 text-[13px] text-white"
             >
               {photoCredit(credited)}
             </p>
-          ) : (
-            <span />
-          )}
-          <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
-            <button
-              type="button"
-              aria-pressed={picture === "stops"}
-              onClick={() => onPicture("stops")}
-              title="Show the trip's stops on a map"
-            >
-              <MapIcon className="size-4" aria-hidden />
-              Stops
-            </button>
-            <button
-              type="button"
-              aria-pressed={picture === "photo"}
-              onClick={() => onPicture("photo")}
-              title="Show a photo of the place"
-            >
-              <ImageIcon className="size-4" aria-hidden />
-              Photo
-            </button>
+          ) : null}
+          <div className="flex items-end justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">{tools}</div>
+            <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
+              <button
+                type="button"
+                aria-pressed={picture === "stops"}
+                aria-label="Stops"
+                onClick={() => onPicture("stops")}
+                title="Show the trip's stops on a map"
+              >
+                <MapIcon className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-pressed={picture === "photo"}
+                aria-label="Photo"
+                onClick={() => onPicture("photo")}
+                title="Show a photo of the place"
+              >
+                <ImageIcon className="size-5" aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       </div>

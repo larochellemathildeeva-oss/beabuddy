@@ -1485,6 +1485,33 @@ export function TripDetail({
         picture={tripPicture}
         onPicture={setTripPicture}
         short={perspective === "map"}
+        tools={
+          <>
+            <button
+              type="button"
+              data-guide="bea-plan"
+              title="Let Béa plan this trip"
+              onClick={() => {
+                setPlannerTab("start");
+                setPlannerOpen(true);
+              }}
+              className="trip-hero-plan"
+            >
+              <img src={logo} alt="" className="size-6 object-contain" />
+              Plan with Béa
+            </button>
+            <button
+              type="button"
+              data-guide="add-stop"
+              title="Add a stop, a saved place or a city"
+              aria-label="Add stop"
+              onClick={() => setAddOpen(true)}
+              className="trip-hero-add"
+            >
+              <Plus className="size-5" aria-hidden />
+            </button>
+          </>
+        }
         footer={
           perspective !== "overview" && companionDay ? (
             <p className="mt-2 text-[14px] font-semibold">
@@ -1524,10 +1551,21 @@ export function TripDetail({
             <button
               type="button"
               onClick={() => setPrepSignal((n) => n + 1)}
-              aria-label="To do and packing"
+              data-guide="trip-prep"
+              title="To-dos and packing for this trip"
+              aria-label="To do"
               className="trip-hero-btn"
             >
               <ListChecks className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrencyOpen(true)}
+              title="Convert prices into your money"
+              aria-label="Currency"
+              className="trip-hero-btn"
+            >
+              <Coins className="size-5" aria-hidden />
             </button>
             <button
               type="button"
@@ -1580,7 +1618,7 @@ export function TripDetail({
                         />
                       )}
                       <span
-                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "text-primary"}`}
+                        className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
                       >
                         {total > 0 && reached === total ? (
                           <Check className="size-4" aria-hidden />
@@ -1610,52 +1648,11 @@ export function TripDetail({
           )
         )}
       </div>
-      {/* Béa's line scrolls away with the page; only the bar above stays. */}
-      {tripNote ? (
-        <p className="px-3 pt-2.5 text-[13px] text-muted-foreground">{tripNote}</p>
-      ) : null}
-      {/* The prototype's labelled action pills, on one line: the row scrolls
-          sideways rather than wrapping on a narrow phone. */}
-      <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none]">
-        <button
-          data-guide="bea-plan"
-          title="Let Béa plan this trip"
-          onClick={() => {
-            setPlannerTab("start");
-            setPlannerOpen(true);
-          }}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 py-1 pl-1 pr-2.5 min-h-11 text-[16px] font-semibold text-primary shadow-2xs transition-all active:scale-95"
-        >
-          <img src={logo} alt="" className="size-5 object-contain" />
-          Plan with Béa
-        </button>
-        <button
-          data-guide="trip-prep"
-          title="To-dos and packing for this trip"
-          onClick={() => setPrepSignal((n) => n + 1)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-2.5 min-h-11 text-[16px] font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
-        >
-          <ListChecks className="size-3.5 text-primary" aria-hidden />
-          To do
-        </button>
-        <button
-          title="Convert prices into your money"
-          onClick={() => setCurrencyOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-border bg-elevated px-2.5 py-2.5 min-h-11 text-[16px] font-semibold text-muted-foreground shadow-2xs transition-all active:scale-95"
-        >
-          <Coins className="size-3.5 text-primary" aria-hidden />
-          Currency
-        </button>
-        <button
-          data-guide="add-stop"
-          title="Add a stop, a saved place or a city"
-          onClick={() => setAddOpen(true)}
-          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-xl bg-primary px-3 py-2.5 min-h-11 text-[16px] font-bold text-primary-foreground shadow-2xs transition-all active:scale-95"
-        >
-          <Plus className="size-3.5" aria-hidden />
-          Add stop
-        </button>
-        <span className="ml-auto shrink-0 pl-1 text-[13px] text-muted-foreground sm:inline">
+      {/* Béa's line scrolls away with the page; only the bar above stays.
+          The trip's actions moved up into the banner. */}
+      <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
+        <p>{tripNote}</p>
+        <span className="shrink-0">
           {[
             stopItems.length ? `${stopItems.length} entries` : "",
             cities.stops.length ? `${cities.stops.length} stops` : "",
@@ -1667,29 +1664,31 @@ export function TripDetail({
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       <div className="trip-content section-stagger px-3 pb-4 pt-3">
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
-            <p className="text-[13px] text-muted-foreground">
-              {others.length === 0
-                ? "You're the only one here right now"
-                : others.some((o) => o.editing)
+        {/* Only when someone else is on the trip right now (owner,
+            2026-10-04: no "You're the only one here" line). */}
+        {others.length > 0 && (
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-border bg-card px-2.5 py-2.5">
+            <div className="flex items-center gap-2">
+              <span className="size-1.5 animate-pulse rounded-full bg-nexttime" />
+              <p className="text-[13px] text-muted-foreground">
+                {others.some((o) => o.editing)
                   ? `${others.find((o) => o.editing)?.name} is editing ${others.find((o) => o.editing)?.editing}`
                   : `${others.map((o) => o.name).join(", ")} ${others.length === 1 ? "is" : "are"} here`}
-            </p>
+              </p>
+            </div>
+            <div className="flex -space-x-1.5">
+              {others.slice(0, 3).map((o) => (
+                <span
+                  key={o.userId}
+                  title={o.name}
+                  className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
+                >
+                  {o.name.slice(0, 1).toUpperCase()}
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex -space-x-1.5">
-            {others.slice(0, 3).map((o) => (
-              <span
-                key={o.userId}
-                title={o.name}
-                className="grid size-6 place-items-center rounded-full border border-card bg-primary text-[13px] font-semibold text-primary-foreground"
-              >
-                {o.name.slice(0, 1).toUpperCase()}
-              </span>
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* Several cities: pick one and the days, the map and Now all follow
             it, instead of scrolling past one city to reach the next. */}
