@@ -36,7 +36,7 @@ export function CompanionBanner({
       <div className="flex min-h-[132px] items-end justify-between gap-3 p-4 text-white">
         <div className="min-w-0">
           {kicker ? (
-            <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/90">
+            <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-white/90">
               {kicker}
             </p>
           ) : null}
@@ -62,7 +62,7 @@ export function CompanionBanner({
                 style={{ width: `${percent}%` }}
               />
             </span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">{percent}%</span>
+            <span className="text-[13px] tabular-nums text-muted-foreground">{percent}%</span>
           </div>
         </div>
       </div>

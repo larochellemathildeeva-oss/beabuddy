@@ -24,7 +24,7 @@ function CommonsPhoto({ photo }: { photo: PlacePhoto }) {
         className="h-28 w-full rounded-lg object-cover"
       />
       {creditedOnPhoto(photo) ? (
-        <figcaption className="truncate text-[10.5px]">
+        <figcaption className="truncate text-[13px]">
           <a
             href={photo.page}
             target="_blank"
@@ -77,18 +77,16 @@ export function PlaceFacts({
       <button
         type="button"
         onClick={() => setAsked(true)}
-        className={`inline-flex items-center gap-1 text-[12px] font-semibold underline underline-offset-2 ${muted}`}
+        className={`inline-flex min-h-11 items-center gap-1 text-[14px] font-semibold underline underline-offset-2 ${muted}`}
       >
         <Clock className="size-3" aria-hidden />
         Hours & details
       </button>
     );
   }
-  if (loading) return <p className={`text-[11.5px] ${muted}`}>Looking up hours…</p>;
+  if (loading) return <p className={`text-[14px] ${muted}`}>Looking up hours…</p>;
   if (!facts || (!facts.openingHours && !facts.website && !facts.phone && !facts.photo)) {
-    return auto ? null : (
-      <p className={`text-[11.5px] ${muted}`}>No hours listed for this place.</p>
-    );
+    return auto ? null : <p className={`text-[14px] ${muted}`}>No hours listed for this place.</p>;
   }
 
   const warning = closedWarning(facts.openingHours, day, time);
@@ -102,7 +100,7 @@ export function PlaceFacts({
   })();
 
   return (
-    <div className={`space-y-1 text-[12px] ${muted}`}>
+    <div className={`space-y-1 text-[14px] leading-snug ${muted}`}>
       {facts.photo && <CommonsPhoto key={facts.photo.url} photo={facts.photo} />}
       {facts.openingHours && (
         <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">

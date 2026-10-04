@@ -73,19 +73,19 @@ export function FollowAlong({
           <LocateFixed className="size-4 text-primary" aria-hidden />
           Follow along
         </p>
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="text-[16px] leading-snug text-muted-foreground">
           While this screen is open, Béa can use your location to spot when you reach a stop and say
           if you're running late. It stays on this phone and isn't saved.
         </p>
         <button
           type="button"
           onClick={start}
-          className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold"
+          className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[16px] font-semibold"
         >
           Use my location
         </button>
         {live.error && (
-          <p role="alert" className="text-[12.5px] font-semibold text-destructive">
+          <p role="alert" className="text-[14px] font-semibold text-destructive">
             {live.error}
           </p>
         )}
@@ -96,7 +96,7 @@ export function FollowAlong({
   return (
     <>
       <div className="plain-card flex items-center justify-between gap-2 px-3.5 py-2">
-        <p className="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
+        <p className="flex min-w-0 items-center gap-2 text-[14px] text-muted-foreground">
           <LocateFixed className="size-4 shrink-0 text-primary" aria-hidden />
           {live.locating
             ? "Finding you…"
@@ -110,14 +110,14 @@ export function FollowAlong({
             startedHere.current = false;
             stopLiveLocation();
           }}
-          className="min-h-11 min-w-11 shrink-0 px-2 text-[13px] font-semibold text-primary underline underline-offset-2"
+          className="min-h-11 min-w-11 shrink-0 px-2 text-[16px] font-semibold text-primary underline underline-offset-2"
         >
           Stop
         </button>
       </div>
       {suggest && (
         <section role="status" className="plain-card space-y-2 border-primary/40 p-3.5">
-          <p className="text-[14.5px] leading-snug">
+          <p className="text-[16px] leading-snug">
             {suggest.kind === "arrive" ? "Looks like you're at " : "Looks like you've left "}
             <span className="font-semibold">{suggest.stop.title}</span>.
           </p>
@@ -130,14 +130,14 @@ export function FollowAlong({
                 if (suggest.kind === "arrive") onArrive(suggest.stop);
                 else onLeave(suggest.stop);
               }}
-              className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-[14px] font-semibold text-primary-foreground disabled:opacity-60"
+              className="inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground disabled:opacity-60"
             >
               {suggest.kind === "arrive" ? "I'm here" : "Leaving"}
             </button>
             <button
               type="button"
               onClick={() => wave(suggest.kind, suggest.stop)}
-              className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[14px] font-semibold text-muted-foreground"
+              className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-4 text-[16px] font-semibold text-muted-foreground"
             >
               {suggest.kind === "arrive" ? "Not yet" : "Still here"}
             </button>
@@ -171,7 +171,7 @@ export function FromHereLine({
   const late = r.lateBy != null && r.lateBy > ON_TIME_MINUTES;
   return (
     <p
-      className={`flex items-start gap-1.5 py-1 text-[13px] ${late ? "font-semibold text-destructive" : "text-muted-foreground"}`}
+      className={`flex items-start gap-1.5 py-1 text-[14px] ${late ? "font-semibold text-destructive" : "text-muted-foreground"}`}
     >
       <LocateFixed className="mt-0.5 size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0">

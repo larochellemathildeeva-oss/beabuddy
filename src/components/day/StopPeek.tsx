@@ -37,10 +37,10 @@ export function StopPeek({
   return (
     <section
       aria-label={`Stop ${number}: ${stop.title}`}
-      className="rounded-2xl border border-primary/30 bg-card p-3.5 shadow-sm"
+      className="rounded-2xl border border-primary/30 bg-primary-soft p-4 text-foreground shadow-sm"
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11.5px] font-bold uppercase tracking-wider text-muted-foreground">
+        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Stop {number}
           {time ? ` · ${time}` : ""}
           {current ? " · you are here" : isDone(stop) ? " · done" : ""}
@@ -49,34 +49,34 @@ export function StopPeek({
           type="button"
           onClick={onClose}
           aria-label="Back to now"
-          className="-mr-1 -mt-1 inline-flex min-h-8 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold text-muted-foreground"
+          className="inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-[16px] font-semibold text-foreground"
         >
-          <X className="size-3.5" aria-hidden />
+          <X className="size-4" aria-hidden />
           Back to now
         </button>
       </div>
-      <h3 className="mt-0.5 break-words font-display text-[21px] leading-tight">{stop.title}</h3>
-      {detail ? <p className="mt-1 text-[13.5px] text-muted-foreground">{detail}</p> : null}
+      <h3 className="mt-1 break-words font-display text-[22px] leading-tight">{stop.title}</h3>
+      {detail ? <p className="mt-1 text-[16px] leading-snug text-foreground">{detail}</p> : null}
       {stop.inside && stop.inside.length > 0 ? (
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p className="mt-1 text-[14px] leading-snug text-muted-foreground">
           Inside:{" "}
           {stop.inside.map((entry) => `${entry.done ? "✓ " : ""}${entry.title}`).join(" · ")}
         </p>
       ) : null}
       {where.length > 0 && (
-        <p className="mt-1 text-[12.5px] text-muted-foreground">{where.join(" · ")}</p>
+        <p className="mt-1 text-[14px] text-muted-foreground">{where.join(" · ")}</p>
       )}
       {isBooked(stop) && (
-        <p className="mt-1 text-[12.5px] font-semibold text-nexttime">
-          ✓ Booked{stop.booking_ref ? ` · ${stop.booking_ref}` : ""}
+        <p className="mt-1 text-[14px] font-semibold text-nexttime">
+          Booked{stop.booking_ref ? ` · ${stop.booking_ref}` : ""}
           {stop.booking_details ? (
-            <span className="block whitespace-pre-line font-normal text-foreground/80">
+            <span className="mt-0.5 block whitespace-pre-line font-normal text-foreground">
               {stop.booking_details}
             </span>
           ) : null}
         </p>
       )}
-      <div className="mt-2.5 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <a
           href={recMapsUrl({
             name: stop.title,
@@ -86,15 +86,15 @@ export function StopPeek({
           })}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-[12.5px] font-semibold text-nexttime"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-card px-4 text-[16px] font-semibold text-foreground"
         >
-          <ExternalLink className="size-3.5" aria-hidden />
+          <ExternalLink className="size-4" aria-hidden />
           Open in Maps
         </a>
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex min-h-9 items-center rounded-xl border border-border px-3 text-[12.5px] font-semibold text-muted-foreground"
+          className="inline-flex min-h-11 items-center rounded-full bg-card px-4 text-[16px] font-semibold text-foreground"
         >
           Edit in Timeline
         </button>

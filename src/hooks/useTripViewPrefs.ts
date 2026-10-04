@@ -41,8 +41,8 @@ export const TRIP_VIEW_OPTIONS: { key: TripViewKey; label: string; hint: string 
 ];
 
 export const DEFAULT_TRIP_VIEW: TripViewPrefs = {
-  // Off by default: Now already has the day as a numbered line and a list.
-  ribbon: false,
+  // On unless the traveller turns it off: Companion opens on the ribbon.
+  ribbon: true,
   journey: true,
   walkTimes: true,
   nesting: true,
