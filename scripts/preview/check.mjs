@@ -61,6 +61,7 @@ await build({
     "@/lib/itinerary.functions": join(src, "fake-itinerary.ts"),
     "@/lib/geocode-plan.functions": join(src, "fake-geocode-plan.ts"),
     "@/lib/place-details.functions": join(src, "fake-place-details.ts"),
+    "@/lib/weather.functions": join(src, "fake-weather.ts"),
     "node:net": join(src, "fake-node.ts"),
     "node:dns/promises": join(src, "fake-node.ts"),
   },
@@ -410,6 +411,34 @@ await flow("home: trip ahead keeps its map, stats, search and ideas", async (pag
     if (!(await text()).toLowerCase().includes(word.toLowerCase())) throw new Error(`Home lost "${word}"`);
   if ((await page.getByRole("link", { name: /Where to next/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Where to next? lost its route");
   if ((await page.getByRole("link", { name: /Iconic Landmarks/ }).count()) !== 1) throw new Error("Suggested ideas are gone");
+  // Customize home sits at the foot of Home: the trip modules from the
+  // mockup switch on, reorder, and Reset brings back the first layout.
+  await page.getByRole("button", { name: /^Customize home/ }).last().click();
+  await page.waitForTimeout(400);
+  for (const name of ["Saved for this trip", "Trip tools", "Weather there", "Notes from Béa", "Group plans", "Right now there", "Worth a detour"])
+    await page.getByRole("switch", { name: `Show ${name}` }).click();
+  await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(600);
+  const homeOrder = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=home-module-]")].map((e) => e.getAttribute("data-guide")));
+  const want = ["home-module-saved", "home-module-now", "home-module-group", "home-module-tools", "home-module-weather", "home-module-notes", "home-module-detour"];
+  if (homeOrder.join() !== want.join()) throw new Error(`Home modules out of order: ${homeOrder.join()}`);
+  for (const word of ["Currency", "Transport", "Translate", "Offline", "to go", "Griffith Observatory", "Live from Los Angeles"])
+    if (!(await text()).includes(word)) throw new Error(`Home modules lost "${word}"`);
+  if (!/\d+°[CF]/.test(await text())) throw new Error("the weather modules show no temperature");
+  if ((await page.getByRole("link", { name: "Currency" }).getAttribute("href"))?.includes("menu=currency") !== true) throw new Error("Currency does not open the trip's converter");
+  await page.getByRole("button", { name: /^Customize home/ }).last().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("switch", { name: "Show Trips" }).click();
+  await page.waitForTimeout(300);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+  if ((await text()).includes("Upcoming trip")) throw new Error("Trips switch did not hide the trip");
+  await page.getByRole("button", { name: /^Customize home/ }).last().click();
+  await page.waitForTimeout(400);
+  await page.getByRole("button", { name: "Reset to default" }).click();
+  await page.keyboard.press("Escape");
 }, "homepage");
 
 await flow("home: on a trip shows the current and next stop under the route", async (page) => {
@@ -445,17 +474,29 @@ await flow("world: four views, filters, search, add sheet, bucket menu, stats op
   await page.getByRole("textbox", { name: "Search your world" }).fill("lis");
   await page.getByRole("button", { name: /^Lisbon/ }).click();
   await page.waitForTimeout(400);
-  // Customize world: each switch shows or hides its section; Reset restores them.
-  await page.getByRole("button", { name: "Customize world" }).click();
+  // Customize world: "Add modules" opens the modules; a switch shows or hides
+  // one, the arrows reorder them, and Reset restores the mockup's three.
+  await page.getByRole("button", { name: "Add modules" }).click();
   await page.waitForTimeout(400);
   await page.getByRole("switch", { name: "Show Globe filters" }).click();
+  await page.getByRole("switch", { name: "Show Bucket list" }).click();
+  await page.getByRole("switch", { name: "Show Notes from Béa" }).click();
   await page.getByRole("switch", { name: "Show Your travel lists" }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole("button", { name: "Move Notes from Béa up" }).click();
   await page.waitForTimeout(300);
   await page.keyboard.press("Escape");
   await page.waitForTimeout(400);
   if ((await page.getByRole("group", { name: "Show on the map" }).count()) !== 0) throw new Error("Globe filters did not hide");
   if ((await text()).toLowerCase().includes("next time") === false) throw new Error("Your travel lists did not show on the Map");
-  await page.getByRole("button", { name: "Customize world" }).click();
+  const order = await page.evaluate(() => [...document.querySelectorAll("[data-guide^=world-module-]")].map((e) => e.getAttribute("data-guide")));
+  if (order.join() !== "world-module-notes,world-module-bucket") throw new Error(`modules out of order: ${order.join()}`);
+  if (!(await text()).includes("so far.")) throw new Error("Notes from Béa says nothing");
+  await page.getByRole("button", { name: "Bucket list: Open the bucket list" }).click();
+  await page.waitForTimeout(400);
+  if ((await page.getByRole("tab", { name: "Bucket list", exact: true }).getAttribute("aria-selected")) !== "true") throw new Error("the Bucket list module did not open its view");
+  await view("Map");
+  await page.getByRole("button", { name: "Add modules" }).click();
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: "Reset to default" }).click();
   await page.waitForTimeout(300);

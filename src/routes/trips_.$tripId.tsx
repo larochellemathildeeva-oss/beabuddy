@@ -9,6 +9,7 @@ import { TripDetailSkeleton } from "@/components/Skeletons";
 import { clearOfflineMap } from "@/lib/offline-map";
 import type { PrepTab } from "@/components/TripPrep";
 import type { PlannerTab } from "@/components/ItineraryImport";
+import type { TripOpenMenu } from "@/components/TripDetail";
 
 type TripSearch = {
   prep?: PrepTab;
@@ -18,7 +19,11 @@ type TripSearch = {
   plan?: PlannerTab;
   /** Words to start Build with. */
   ask?: string;
+  /** Open a part of the trip's settings: Home's "Trip tools" and "Group plans". */
+  menu?: TripOpenMenu;
 };
+
+const MENU_ENTRIES: readonly TripOpenMenu[] = ["invite", "offline", "currency"];
 
 const PLAN_ENTRIES: readonly PlannerTab[] = ["start", "build", "import", "optimize", "compare"];
 
@@ -31,6 +36,9 @@ export const Route = createFileRoute("/trips_/$tripId")({
     ...(search["view"] === "bookings" ? { view: "bookings" as const } : {}),
     ...(PLAN_ENTRIES.includes(search["plan"] as PlannerTab)
       ? { plan: search["plan"] as PlannerTab }
+      : {}),
+    ...(MENU_ENTRIES.includes(search["menu"] as TripOpenMenu)
+      ? { menu: search["menu"] as TripOpenMenu }
       : {}),
     ...(typeof search["ask"] === "string" && search["ask"].trim()
       ? { ask: search["ask"].slice(0, 2000) }
@@ -53,7 +61,7 @@ export const Route = createFileRoute("/trips_/$tripId")({
 
 function TripPage() {
   const { tripId } = Route.useParams();
-  const { prep, view, plan, ask } = Route.useSearch();
+  const { prep, view, plan, ask, menu } = Route.useSearch();
   const { user } = useAuth();
   const navigate = useNavigate();
   const t = useTrips();
@@ -105,6 +113,7 @@ function TripPage() {
         openPrep={prep}
         openView={view}
         openPlan={plan ? { tab: plan, ask } : undefined}
+        openMenu={menu}
         photos={photos}
         members={members}
         companionsLine={tripCompanionsLine(members, t.uid)}

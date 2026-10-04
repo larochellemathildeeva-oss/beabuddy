@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   BarChart3,
   Bookmark,
+  Check,
   ChevronRight,
   CircleCheck,
   Compass,
@@ -14,9 +15,10 @@ import {
   MapIcon,
   MapPin,
   MoreHorizontal,
-  Plane,
   Plus,
+  Quote,
   Search,
+  Upload,
   X,
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
@@ -26,7 +28,10 @@ import { ComparePins } from "@/components/ComparePins";
 import { AddVisitedCity, type AddPlacesStart } from "@/components/AddVisitedCity";
 import { Switch } from "@/components/ui/switch";
 import { CustomizeWorld } from "@/components/CustomizeWorld";
-import { useWorldLayout } from "@/hooks/useWorldLayout";
+import { ModuleCard, NowThereCard } from "@/components/ModuleCards";
+import { WORLD_SMALL, useWorldLayout, type WorldSectionKey } from "@/hooks/useWorldLayout";
+import { moduleRows } from "@/lib/module-layout";
+import { worldNote } from "@/lib/module-notes";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -157,7 +162,7 @@ function WorldPage() {
   const [rowBusy, setRowBusy] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const statsLayout = useStatsLayout();
-  const worldLayout = useWorldLayout().layout;
+  const { layout: worldLayout, shown: worldModules } = useWorldLayout();
   const settings = useBeaSettings();
 
   const photo = usePhotoMemories();
@@ -324,27 +329,27 @@ function WorldPage() {
     }
   };
 
+  // The mockup's strip: countries, cities, places been, places saved.
   const figures = [
-    { icon: MapPin, value: cities.length, label: plainLabel(cities.length, "Place", "Places") },
-    {
-      icon: Globe2,
-      value: byCountry.length,
-      label: plainLabel(byCountry.length, "Country", "Countries"),
-    },
-    { icon: Plane, value: t.trips.length, label: plainLabel(t.trips.length, "Trip", "Trips") },
-    { icon: Bookmark, value: savedPinCount, label: "Saved places" },
+    { value: byCountry.length, label: plainLabel(byCountry.length, "Country", "Countries") },
+    { value: cities.length, label: plainLabel(cities.length, "City", "Cities") },
+    { value: places.length, label: "Been there" },
+    { value: savedPinCount, label: "Saved" },
   ];
 
   const figureCard = (
-    <div className="plain-card grid grid-cols-4 divide-x divide-border py-4">
+    <div
+      data-guide="world-figures"
+      className="plain-card grid grid-cols-4 py-3.5"
+      aria-label="Your travel stats"
+    >
       {figures.map((f, i) => (
-        <div key={f.label} className="flex flex-col items-center gap-1 px-1 text-center">
-          <span
-            className={`tile-fill-${i + 1} grid size-9 place-items-center rounded-full`}
-            aria-hidden
-          >
-            <f.icon className={`seq-text-${i + 1} size-5`} />
-          </span>
+        <div
+          key={f.label}
+          className={`flex flex-col items-center gap-1 px-1 text-center ${
+            i > 0 ? `border-s-2 seq-border-${i + 1}` : ""
+          }`}
+        >
           <span className="font-display text-[28px] leading-none tabular-nums">{f.value}</span>
           <span className="text-[12px] leading-tight text-muted-foreground">{f.label}</span>
         </div>
@@ -494,6 +499,159 @@ function WorldPage() {
           })}
       </div>
     ) : null;
+
+  const selectedCity = selected ? cityOf(selected) : undefined;
+  const placeCard =
+    selected && selectedCity ? (
+      <section className="rise plain-card flex items-center gap-3 p-2.5">
+        <img
+          src={bannerArtUrl(bannerSceneFor([selected.city, selectedCity.country], selected.city))}
+          alt=""
+          className="art-dim h-[84px] w-[96px] shrink-0 rounded-xl object-cover"
+        />
+        <div className="min-w-0 flex-1">
+          <span className="label-caps">You've been here</span>
+          <h2 className="font-display text-[26px] leading-tight">{selected.city}</h2>
+          <p className="text-[14px] text-muted-foreground">
+            {[provinceOf.get(selectedCity.key)?.name, selectedCity.country]
+              .filter(Boolean)
+              .join(", ")}
+          </p>
+          <p className="text-[14px] text-muted-foreground">
+            {plural(selectedCity.places, "place", "places")} you've saved or photographed here.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setSelected(null)}
+          className="tap-44 self-start rounded-full border border-border px-3 py-1 text-[13px] text-muted-foreground"
+        >
+          Close
+        </button>
+      </section>
+    ) : null;
+
+  // "Right now there": the first bucket-list place Béa can put on the map.
+  const nowPlace = useMemo(() => {
+    for (const row of wishlistRows) {
+      if (typeof row.lat === "number" && typeof row.lon === "number")
+        return {
+          name: row.city?.trim() || row.name,
+          country: row.country,
+          lat: row.lat,
+          lon: row.lon,
+        };
+    }
+    return null;
+  }, [wishlistRows]);
+
+  /** One module under the globe, as the traveller arranged them (Customize world). */
+  const worldModule = (key: WorldSectionKey): ReactNode => {
+    switch (key) {
+      case "filters":
+        return viewFilters;
+      case "card":
+        return placeCard;
+      case "figures":
+        return figureCard;
+      case "lists":
+        return listTiles;
+      case "add":
+        return (
+          <ModuleCard
+            guide="world-module-add"
+            title="Add places"
+            sub="Save from a map, import past trips, or add by hand."
+            art={bannerArtUrl("oldtown")}
+            action={{ label: "Add a place", icon: Plus, onClick: () => startAdd("one") }}
+          />
+        );
+      case "bucket":
+        return (
+          <ModuleCard
+            guide="world-module-bucket"
+            title="Bucket list"
+            sub={plural(wishlistRows.length, "place", "places")}
+            art={bannerArtUrl("coastal")}
+            action={{
+              label: "Open the bucket list",
+              icon: Bookmark,
+              onClick: () => setTab("bucket"),
+            }}
+          />
+        );
+      case "been":
+        return (
+          <ModuleCard
+            guide="world-module-been"
+            title="Been there"
+            sub={plural(cities.length, "city", "cities")}
+            art={bannerArtUrl("mountain")}
+            action={{ label: "Open Been there", icon: Check, onClick: () => setTab("been") }}
+          />
+        );
+      case "now":
+        return nowPlace ? (
+          <NowThereCard
+            guide="world-module-now"
+            place={nowPlace.name}
+            lat={nowPlace.lat}
+            lon={nowPlace.lon}
+            art={bannerArtUrl(
+              bannerSceneFor([nowPlace.name, nowPlace.country ?? ""], nowPlace.name),
+            )}
+          />
+        ) : (
+          <ModuleCard
+            guide="world-module-now"
+            title="Right now there"
+            sub="Save a place to your bucket list and Béa shows its time and weather here."
+            tone={4}
+            action={{ label: "Open the bucket list", onClick: () => setTab("bucket") }}
+          />
+        );
+      case "notes":
+        return (
+          <ModuleCard guide="world-module-notes" title="Notes from Béa" tone={5}>
+            <Quote className="seq-text-5 size-5" aria-hidden />
+            <span className="mt-1.5 block text-[13.5px] leading-snug">
+              {worldNote({
+                cities: cities.length,
+                countries: byCountry.length,
+                continents: continents.length,
+                bucket: wishlistRows.length,
+              })}
+            </span>
+          </ModuleCard>
+        );
+      case "import":
+        return (
+          <ModuleCard
+            guide="world-module-import"
+            title="Import your travels"
+            sub="Turn a file of past trips or a saved list into your world."
+            tone={3}
+            action={{
+              label: "Choose a file",
+              icon: Upload,
+              onClick: () => fileRef.current?.click(),
+            }}
+          >
+            <span className="flex gap-1.5 pr-12">
+              {[MapPin, FileText, ListPlus].map((Glyph, i) => (
+                <span
+                  key={i}
+                  className="grid size-9 place-items-center rounded-full bg-card shadow-sm"
+                  aria-hidden
+                >
+                  <Glyph className={`seq-text-${i + 1} size-5`} />
+                </span>
+              ))}
+            </span>
+          </ModuleCard>
+        );
+    }
+  };
 
   return (
     <AppShell
@@ -658,44 +816,20 @@ function WorldPage() {
               </button>
             </div>
 
-            {worldLayout.filters && viewFilters}
-
-            {worldLayout.card && selected && cityOf(selected) && (
-              <section className="rise plain-card flex items-center gap-3 p-2.5">
-                <img
-                  src={bannerArtUrl(
-                    bannerSceneFor([selected.city, cityOf(selected)!.country], selected.city),
-                  )}
-                  alt=""
-                  className="art-dim h-[84px] w-[96px] shrink-0 rounded-xl object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <span className="label-caps">You've been here</span>
-                  <h2 className="font-display text-[26px] leading-tight">{selected.city}</h2>
-                  <p className="text-[14px] text-muted-foreground">
-                    {[provinceOf.get(cityOf(selected)!.key)?.name, cityOf(selected)!.country]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </p>
-                  <p className="text-[14px] text-muted-foreground">
-                    {plural(cityOf(selected)!.places, "place", "places")} you've saved or
-                    photographed here.
-                  </p>
+            {moduleRows(worldModules, (k) => WORLD_SMALL.has(k)).map((row) =>
+              "full" in row ? (
+                <div key={row.full}>{worldModule(row.full)}</div>
+              ) : (
+                <div key={row.pair.join("+")} className="grid grid-cols-2 gap-3">
+                  {row.pair.map((k) => (
+                    <div key={k}>{worldModule(k)}</div>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="tap-44 self-start rounded-full border border-border px-3 py-1 text-[13px] text-muted-foreground"
-                >
-                  Close
-                </button>
-              </section>
+              ),
             )}
-
-            {worldLayout.figures && figureCard}
-            {worldLayout.lists && listTiles}
-            {worldLayout.add && addCard}
-            <CustomizeWorld variant="add" />
+            <div className="flex justify-center pt-1">
+              <CustomizeWorld variant="chip" />
+            </div>
           </>
         )}
 

@@ -1,8 +1,11 @@
 import { useSyncExternalStore } from "react";
 // A real href from `to` and `params`, so the checker can see where a link goes.
 export function Link({ children, className, to, params, ...rest }: any) {
-  const href = typeof to === "string" ? to.replace(/\$(\w+)/g, (_: string, k: string) => params?.[k] ?? k) : undefined;
-  const { search: _s, hash: _h, replace: _r, preload: _p, ...attrs } = rest;
+  const path = typeof to === "string" ? to.replace(/\$(\w+)/g, (_: string, k: string) => params?.[k] ?? k) : undefined;
+  const { search, hash: _h, replace: _r, preload: _p, ...attrs } = rest;
+  // A search object rides on the href, as the real router writes it.
+  const query = search && typeof search === "object" ? new URLSearchParams(search).toString() : "";
+  const href = path && query ? `${path}?${query}` : path;
   return <a className={className} href={href} {...attrs} onClick={(event) => {
     attrs.onClick?.(event);
     if (new URLSearchParams(location.search).get("sample") === "shell" && href?.startsWith("/")) {

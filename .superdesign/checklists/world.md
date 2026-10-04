@@ -10,8 +10,11 @@ redesign keeps all of them. Sources: `src/routes/world.tsx`, `Globe.tsx`
 
 Ticked only for controls clicked in `npm run preview:check` (`world:` flow, three themes). Unticked = kept in the code, not clicked this time.
 
-## Customize world (added in step 9)
-- [x] "Customize world" button under the Map view opens a sheet: a switch each for Globe filters, Place card, Travel figures, Add places, Your travel lists; Reset to default; saved with the account (`worldLayout`)
+## Customize world (added in step 9, modules from the mockup added after)
+- [x] "Add modules" under the globe opens Customize world: a switch for each module (Globe filters, Place card, Your travel stats, Add places, Bucket list, Been there, Right now there, Notes from Béa, Import your travels, Your travel lists), arrows to reorder, Reset to default; saved with the account (`worldLayout`, older on/off layouts still read)
+- [x] Switches clicked: Globe filters, Bucket list, Notes from Béa, Your travel lists; "Move Notes from Béa up"; Reset to default
+- [x] Bucket list module opens the Bucket list view
+- [ ] Been there, Right now there, Import your travels, Add places modules (shown in screenshots, not clicked)
 
 ## Header
 - [ ] Kicker "Places you've been, and all that's still ahead.", title "Your world."; summary line "N cities, N countries." (screen readers; or Béa's world signature when empty)

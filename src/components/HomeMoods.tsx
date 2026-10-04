@@ -46,10 +46,13 @@ export function HomeOnTrip({
   trip,
   photos,
   glance,
+  showStops = true,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
+  /** The "Current / Next stop" module (Customize home). */
+  showStops?: boolean;
 }) {
   const { stops, loading } = useTripStops(trip.id, null);
   const cityStops = useMemo(
@@ -119,7 +122,7 @@ export function HomeOnTrip({
         </div>
       </div>
       <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
-        <NowCards trip={trip} glance={glance} day={tags.when} />
+        {showStops && <NowCards trip={trip} glance={glance} day={tags.when} />}
       </div>
     </section>
   );

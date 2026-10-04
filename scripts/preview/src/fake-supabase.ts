@@ -105,6 +105,8 @@ const homeDb: Record<string, Row[]> = {
   ],
   recommendations: [
     { id: "rec1", user_id: "me", name: "Old Wharf Bar", city: "Montréal", country: "Canada", address: null, category: "Cocktails", notes: null, recommended_by: "Kenji", source: null, url: null, lat: 45.5, lon: -73.56, visited: false, pin_type: "reco", created_at: ago(9000) },
+    // Saved in the LA trip's town: "Saved for this trip" and "Worth a detour".
+    { id: "rec2", user_id: "me", name: "Griffith Observatory", city: "Los Angeles", country: "United States", address: null, category: "Viewpoint", notes: null, recommended_by: null, source: null, url: null, lat: 34.1184, lon: -118.3004, visited: false, pin_type: "reco", created_at: ago(8000) },
   ],
   itinerary_items: [
     { id: "la1", trip_id: "la", day_date: inDays(2), time_label: "08:15", kind: "flight", title: "AC 781", detail: "YUL → LAX (Non-stop)", address: null, lat: null, lon: null, position: 0, booked: true },
@@ -117,6 +119,7 @@ const homeDb: Record<string, Row[]> = {
     { id: "h3", trip_id: "t1", day_date: inDays(11), time_label: "10:00", kind: "sight", title: "Hiroshima Peace Memorial Park", detail: null, address: null, lat: null, lon: null, position: 2 },
   ],
   trip_stops: [
+    { id: "sla", trip_id: "la", kind: "city", city: "Los Angeles", country: "United States", place_name: null, address: null, lat: 34.05, lon: -118.24, arrive_on: inDays(2), depart_on: inDays(3), notes: null, position: 0 },
     { id: "s1", trip_id: "t1", kind: "city", city: "Hiroshima", country: "Japan", place_name: null, address: null, lat: 34.39, lon: 132.45, arrive_on: inDays(11), depart_on: inDays(12), notes: null, position: 0 },
     { id: "s2", trip_id: "t1", kind: "city", city: "Miyajima", country: "Japan", place_name: null, address: null, lat: 34.29, lon: 132.32, arrive_on: inDays(12), depart_on: inDays(12), notes: null, position: 1 },
   ],

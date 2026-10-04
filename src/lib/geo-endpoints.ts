@@ -289,6 +289,9 @@ export const OVERTURE_ATTRIBUTION = "Places © Overture Maps Foundation";
 /** Home's terrain (public/relief): public domain, credited because it asks nicely. */
 export const NATURAL_EARTH_ATTRIBUTION = "Terrain made with Natural Earth";
 
+/** The World globe's Earth (public/earth): NASA imagery, public domain. */
+export const NASA_EARTH_ATTRIBUTION = "Globe imagery: NASA Blue Marble and Earth at Night";
+
 /**
  * OSRM's profile names are not the same on both services.
  *

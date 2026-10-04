@@ -20,6 +20,8 @@ export type Weather = {
   /** WMO weather interpretation code. */
   code: number;
   isDay: boolean;
+  /** Seconds the place's clock is ahead of UTC, when Open-Meteo says. */
+  utcOffset?: number;
 };
 
 /** About a kilometre: enough for the weather, no more. */
@@ -48,6 +50,7 @@ export function readWeather(body: unknown): Weather | null {
   const b = body as {
     current?: Record<string, unknown>;
     daily?: Record<string, unknown>;
+    utc_offset_seconds?: unknown;
   };
   const temp = num(b.current?.["temperature_2m"]);
   const code = num(b.current?.["weather_code"]);
@@ -63,6 +66,9 @@ export function readWeather(body: unknown): Weather | null {
     low: first("temperature_2m_min"),
     code,
     isDay: b.current?.["is_day"] !== 0,
+    ...(typeof b.utc_offset_seconds === "number" && Number.isFinite(b.utc_offset_seconds)
+      ? { utcOffset: b.utc_offset_seconds }
+      : {}),
   };
 }
 
@@ -221,4 +227,17 @@ export function rainHoursLine(forecast: RainForecast, day: string): string | nul
 export function rainLine(notice: RainNotice): string {
   const when = notice.until ? `from ${notice.from} to ${notice.until}` : `from ${notice.from}`;
   return `Rain likely ${when} (${notice.chance}%). Worth packing a layer.`;
+}
+
+/**
+ * The time now at a place whose clock is `utcOffset` seconds ahead of UTC,
+ * in the reader's own style ("14:20" or "2:20 PM").
+ */
+export function localTimeAt(utcOffset: number, now: Date, locale?: string): string {
+  const there = new Date(now.getTime() + utcOffset * 1000);
+  return there.toLocaleTimeString(locale, {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
 }

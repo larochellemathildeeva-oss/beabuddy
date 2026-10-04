@@ -46,6 +46,78 @@ function loadReliefIndex(): Promise<ReliefIndex> {
   return reliefIndex;
 }
 
+/**
+ * The sea, then the land: Natural Earth II's shaded relief and land cover
+ * (public domain). The tiles' sea was painted one pale colour; here it is
+ * turned back into the mood's water (--map-water) and the land given more
+ * colour, so the map reads as a landscape, as in the mockup. A tile of open
+ * sea was never built, so the water shows through where none answers.
+ */
+function ReliefTiles({
+  width,
+  height,
+  tiles,
+  relief,
+}: {
+  width: number;
+  height: number;
+  tiles: { z: number; x: number; y: number; left: number; top: number; size: number }[];
+  relief: ReliefIndex | null;
+}) {
+  const id = useId().replace(/:/g, "");
+  return (
+    <>
+      <defs>
+        <filter
+          id={`${id}-water`}
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          colorInterpolationFilters="sRGB"
+        >
+          {/* Sea pixels are a little bluer than red; land never is. */}
+          <feColorMatrix
+            in="SourceGraphic"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -40 0 40 0 -0.5"
+            result="sea"
+          />
+          <feFlood style={{ floodColor: "var(--map-water)" }} result="water" />
+          <feComposite in="water" in2="sea" operator="in" result="wet" />
+          <feColorMatrix in="SourceGraphic" type="saturate" values="1.6" result="rich" />
+          <feComponentTransfer in="rich" result="land">
+            <feFuncR type="linear" slope="1.18" intercept="-0.1" />
+            <feFuncG type="linear" slope="1.18" intercept="-0.1" />
+            <feFuncB type="linear" slope="1.18" intercept="-0.1" />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="land" />
+            <feMergeNode in="wet" />
+          </feMerge>
+        </filter>
+      </defs>
+      <rect width={width} height={height} className="map-sea" />
+      <g filter={`url(#${id}-water)`}>
+        {tiles
+          .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
+          .map((t) => (
+            <image
+              key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+              href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
+              x={t.left}
+              y={t.top}
+              // A hair over, so no seam shows between tiles.
+              width={t.size + 0.6}
+              height={t.size + 0.6}
+              preserveAspectRatio="none"
+            />
+          ))}
+      </g>
+    </>
+  );
+}
+
 function pillWidth(stop: RouteStop): number {
   const longest = Math.max(pillLabel(stop.city).length, stayLabel(stop.days).length);
   // Wide enough for the longest name a pill shows (PILL_LABEL_MAX letters).
@@ -151,24 +223,7 @@ export function TripRouteMap({ stops, label }: { stops: RouteStop[]; label: stri
         ))}
       </defs>
 
-      {/* The sea, then the land: Natural Earth II's shaded relief and land
-          cover (public domain), with its sea painted out. A tile of open sea
-          was never built, so the sea shows through where none answers. */}
-      <rect width={width} height={ROUTE_MAP_H} className="map-sea" />
-      {tiles
-        .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
-        .map((t) => (
-          <image
-            key={`${t.z}/${t.x}/${t.y}/${t.left}`}
-            href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
-            x={t.left}
-            y={t.top}
-            // A hair over, so no seam shows between tiles.
-            width={t.size + 0.6}
-            height={t.size + 0.6}
-            preserveAspectRatio="none"
-          />
-        ))}
+      <ReliefTiles width={width} height={ROUTE_MAP_H} tiles={tiles} relief={relief} />
       {/* The mood's wash over the terrain: lighter for Calm, darker for Dark. */}
       <rect width={width} height={ROUTE_MAP_H} className="map-wash" />
       <rect width={width} height={ROUTE_MAP_H} fill={`url(#${id}-fade)`} />
@@ -431,20 +486,7 @@ export function TripBannerMap({
           <feGaussianBlur stdDeviation="3" />
         </filter>
       </defs>
-      <rect width={width} height={height} className="map-sea" />
-      {tiles
-        .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
-        .map((t) => (
-          <image
-            key={`${t.z}/${t.x}/${t.y}/${t.left}`}
-            href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
-            x={t.left}
-            y={t.top}
-            width={t.size + 0.6}
-            height={t.size + 0.6}
-            preserveAspectRatio="none"
-          />
-        ))}
+      <ReliefTiles width={width} height={height} tiles={tiles} relief={relief} />
       <rect width={width} height={height} className="map-wash" />
 
       {dots.length > 1 ? (
@@ -564,20 +606,7 @@ export function TripsWorldMap({
         preserveAspectRatio="xMidYMid slice"
         className="route-map banner-map absolute inset-0 size-full"
       >
-        <rect width={width} height={height} className="map-sea" />
-        {drawn?.tiles
-          .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
-          .map((t) => (
-            <image
-              key={`${t.z}/${t.x}/${t.y}/${t.left}`}
-              href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
-              x={t.left}
-              y={t.top}
-              width={t.size + 0.6}
-              height={t.size + 0.6}
-              preserveAspectRatio="none"
-            />
-          ))}
+        <ReliefTiles width={width} height={height} tiles={drawn?.tiles ?? []} relief={relief} />
         <rect width={width} height={height} className="map-wash" />
         {drawn?.pins.map((p, i) => (
           <circle key={i} cx={p.x} cy={p.y} r={6} className="banner-dot" />
