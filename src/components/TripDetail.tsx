@@ -3132,12 +3132,7 @@ export function TripDetail({
         )}
 
         {sheetSection === "edit" && (
-          <TripDetailsForm
-            trip={trip}
-            onUpdate={onUpdate}
-            onSaved={() => setSettingsOpen(false)}
-            onOpenCities={() => setSheetSection("cities")}
-          />
+          <TripDetailsForm trip={trip} onUpdate={onUpdate} onSaved={() => setSettingsOpen(false)} />
         )}
       </TripMenuSheet>
     </article>

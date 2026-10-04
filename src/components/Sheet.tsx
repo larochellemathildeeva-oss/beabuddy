@@ -46,6 +46,7 @@ export function Sheet({
   tall = false,
   dismissible = true,
   page = false,
+  backLabel,
   tone = 5,
   children,
 }: {
@@ -85,6 +86,8 @@ export function Sheet({
    * focus rules as the panel.
    */
   page?: boolean;
+  /** What a page's back arrow is called, when it goes back rather than closes. */
+  backLabel?: string;
   /** The pastel (1–5) behind a page's header in Colorful; the others stay plain. */
   tone?: 1 | 2 | 3 | 4 | 5;
   children: ReactNode;
@@ -184,7 +187,9 @@ export function Sheet({
             <button
               type="button"
               onClick={onBack ?? onClose}
-              aria-label={onBack ? "Back" : `Close ${title.toLowerCase()}`}
+              // Where the arrow is the only way out, a busy page keeps it from closing.
+              disabled={!showClose && !onBack}
+              aria-label={backLabel ?? (onBack ? "Back" : `Close ${title.toLowerCase()}`)}
               className="tap-target grid shrink-0 place-items-center rounded-full"
             >
               <span className="grid size-10 place-items-center rounded-full border border-border bg-card shadow-xs">
@@ -192,7 +197,7 @@ export function Sheet({
               </span>
             </button>
             <BrandMark />
-            <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <div className="ms-auto flex shrink-0 items-center gap-1.5">
               {actions}
               {onBack && showClose && (
                 <button

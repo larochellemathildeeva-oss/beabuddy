@@ -42,6 +42,7 @@ export function PlaceSearchInput({
   typeAhead = true,
   quickAdd,
   stop,
+  ariaLabelledBy,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -72,6 +73,8 @@ export function PlaceSearchInput({
    * up by the stop's full name, and places beside its pin come first.
    */
   stop?: { title: string; lat?: number | null; lon?: number | null } | undefined;
+  /** The id of a visible label for the text box. */
+  ariaLabelledBy?: string | undefined;
 }) {
   const search = useServerFn(searchPlaces);
   const parseLink = useServerFn(parsePlaceLink);
@@ -314,6 +317,7 @@ export function PlaceSearchInput({
           autoCorrect="off"
           spellCheck={false}
           placeholder={placeholder}
+          {...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {})}
           className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
         />
         <button

@@ -302,6 +302,7 @@ export function TripMenuSheet({
       // Escape and the arrow go back to the menu first, then close it.
       onClose={() => (section ? onSection(null) : onClose())}
       page
+      {...(section ? { backLabel: "Back to the trip menu" } : {})}
       tone={section ? 4 : 1}
       title={section ? SECTION_TITLES[section] : "Trip settings"}
       hint={section ? title : [title, subtitle].filter(Boolean).join(" · ")}

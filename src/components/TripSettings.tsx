@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ChevronRight } from "@/components/icons";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { DateRangeField } from "@/components/DateRangeField";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
@@ -39,14 +38,11 @@ export function TripDetailsForm({
   trip,
   onUpdate,
   onSaved,
-  onOpenCities,
 }: {
   trip: TripRow;
   onUpdate: OnUpdate;
   /** After a save goes through — to close the sheet the form sits in. */
   onSaved?: (() => void) | undefined;
-  /** Route and dates of each city live under Destinations; a row leads there. */
-  onOpenCities?: (() => void) | undefined;
 }) {
   const [form, setForm] = useState({
     title: trip.title,
@@ -83,7 +79,9 @@ export function TripDetailsForm({
           />
         </label>
         <div>
-          <span className={label}>Starting city</span>
+          <span id="trip-start-city" className={label}>
+            Starting city
+          </span>
           <PlaceSearchInput
             value={form.city}
             onChange={(v) => setForm({ ...form, city: v })}
@@ -167,21 +165,6 @@ export function TripDetailsForm({
       >
         {busy ? "Saving…" : "Save changes"}
       </button>
-      {onOpenCities && (
-        <button
-          type="button"
-          onClick={onOpenCities}
-          className="plain-card flex min-h-14 w-full items-center gap-3 px-3.5 py-3 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-[19px] leading-tight">Route and dates</span>
-            <span className="block text-[14px] text-muted-foreground">
-              Each city, in order, with its days, under Destinations
-            </span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-        </button>
-      )}
       {message && (
         <p
           role={message.ok ? "status" : "alert"}
