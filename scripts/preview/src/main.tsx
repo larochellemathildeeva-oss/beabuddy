@@ -6,13 +6,14 @@ import { TripDetail } from "@/components/TripDetail";
 import { HomeYourTrips } from "@/components/HomeTripCard";
 import { HomeUpcoming, HomeTripStats, HomeWhereNext, HomeSuggested } from "@/components/HomeLivingMap";
 import { HomeWeather } from "@/components/HomeWeather";
-import { TripCard } from "@/components/TripCard";
+import { TripListRow } from "@/components/TripsList";
 import { useTrips } from "@/hooks/useTrips";
 import { useTripGlances } from "@/hooks/useTripGlances";
 import { useNearMe } from "@/hooks/useNearMe";
 import { laterTrips, peopleOnTrip, pickActiveTrip } from "@/lib/home-trip";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { startAccountSettingsSync } from "@/lib/account-settings-sync";
+import { Route as TripsRoute } from "@/routes/trips";
 
 /** Home below the header, as SignedInHome lays it out. */
 function HomePreview() {
@@ -42,7 +43,7 @@ function TripsPreview() {
   return (
     <div className="space-y-4">
       {t.trips.map((trip) => (
-        <TripCard key={trip.id} trip={trip} photos={[]} glance={glances[trip.id]} peopleCount={peopleOnTrip(t.members, trip.id, t.uid)} />
+        <TripListRow key={trip.id} trip={trip} photos={[]} glance={glances[trip.id]} peopleCount={peopleOnTrip(t.members, trip.id, t.uid)} picture="stops" />
       ))}
     </div>
   );
@@ -64,7 +65,11 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample === "shell") {
+if (sample === "trips") {
+  // The Trips tab itself, in the app's frame.
+  const TripsPage = (TripsRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
+  createRoot(document.getElementById("root")!).render(<TripsPage />);
+} else if (sample === "shell") {
   const shellParams = new URLSearchParams(location.search);
   startAccountSettingsSync();
   createRoot(document.getElementById("root")!).render(

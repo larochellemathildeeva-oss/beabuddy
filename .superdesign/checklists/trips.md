@@ -57,3 +57,25 @@ of them, with the app's lucide icons. Sources: `src/routes/trips.tsx`,
 - Facts in columns (Calm/Dark) or pastel boxes (Colorful); packing bar under them.
 - My trips / Past trips toggle (`splitTrips`); past trips as the compact banners from Home.
 - Colorful: each card, fact box, button and the vault a different pastel.
+
+## Built (Trips v4, UI revamp step 7)
+- Header: "Trip folders" / "Your trips." over Home's relief terrain, framed
+  around the trips' places, a tag at each (city and month, "Now" while on
+  it) opening the trip (`TripsHero`, `TripsWorldMap`). Calendar and New trip
+  are the round buttons at its top right. No placed trip: the title alone.
+- Tabs Upcoming / Past / Drafts / (Following) / All. Drafts left Upcoming for
+  their own tab; Upcoming links to them ("N drafts with no dates yet").
+- Plan with Béa and Join with a code as two pastel cards. New trip and Join
+  open as sheets with the same forms.
+- Layout switch, on this device (`bea-trips-layout`): Big banner (the next
+  trip as `TripFeature`, the rest under "Later") or List (every trip as a
+  row). Picture switch: Stops or Photo, the same setting as the trip page.
+- Next up: picture with travellers or the live stop, glass panel with name,
+  places, dates and a countdown circle, the cities in order with their
+  dates, chips for flight (or the stay once under way), to-dos and packing
+  that open those parts, the stay, Béa's line and View itinerary.
+- Rows (`TripListRow`): little map or photo, name, dates, places, current
+  leg, travellers, a tag (live / in N days / draft / tentative), ⋯ with Open
+  trip, To-dos, Packing, Bookings.
+- Past trips: three tiles (map or photo) and See all; the Past tab as rows.
+- Trip documents: its own section, linking to /profile/documents.

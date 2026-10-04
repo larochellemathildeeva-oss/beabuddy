@@ -130,7 +130,29 @@ const homeDb: Record<string, Row[]> = {
   ],
 };
 
-export const db: Record<string, Row[]> = sample === "home" || sample === "home-trips" ? homeDb : {
+// "trips": the Trips tab — Home's three trips, a draft with no dates and a
+// past trip, each multi-city trip with its cities placed.
+const tripsDb: Record<string, Row[]> = {
+  ...homeDb,
+  trips: [
+    ...homeDb.trips!,
+    { id: "d1", title: "Coastal Italy", city: "Naples", country: "Italy", start_date: null, end_date: null, dates_status: "tentative", status: "upcoming", owner_id: "me", budget_enabled: false, created_at: ago(600) },
+    { id: "p1", title: "Lisbon & Porto", city: "Lisbon", country: "Portugal", start_date: "2025-09-12", end_date: "2025-09-20", dates_status: "fixed", status: "past", owner_id: "me", budget_enabled: false, created_at: ago(500) },
+    { id: "p2", title: "Montréal Holidays", city: "Montréal", country: "Canada", start_date: "2024-12-20", end_date: "2024-12-28", dates_status: "fixed", status: "past", owner_id: "me", budget_enabled: false, created_at: ago(400) },
+  ],
+  trip_stops: [
+    ...homeDb.trip_stops!,
+    { id: "la-s1", trip_id: "la", kind: "city", city: "Los Angeles", country: "United States", place_name: null, address: null, lat: 34.05, lon: -118.24, arrive_on: inDays(2), depart_on: inDays(3), notes: null, position: 0 },
+    { id: "la-s2", trip_id: "la", kind: "city", city: "Santa Barbara", country: "United States", place_name: null, address: null, lat: 34.42, lon: -119.7, arrive_on: inDays(3), depart_on: inDays(3), notes: null, position: 1 },
+    { id: "d1-s1", trip_id: "d1", kind: "city", city: "Naples", country: "Italy", place_name: null, address: null, lat: 40.85, lon: 14.27, arrive_on: null, depart_on: null, notes: null, position: 0 },
+    { id: "d1-s2", trip_id: "d1", kind: "city", city: "Amalfi", country: "Italy", place_name: null, address: null, lat: 40.63, lon: 14.6, arrive_on: null, depart_on: null, notes: null, position: 1 },
+    { id: "p1-s1", trip_id: "p1", kind: "city", city: "Porto", country: "Portugal", place_name: null, address: null, lat: 41.15, lon: -8.61, arrive_on: "2025-09-12", depart_on: "2025-09-15", notes: null, position: 0 },
+    { id: "p1-s2", trip_id: "p1", kind: "city", city: "Lisbon", country: "Portugal", place_name: null, address: null, lat: 38.72, lon: -9.14, arrive_on: "2025-09-15", depart_on: "2025-09-20", notes: null, position: 1 },
+    { id: "p2-s1", trip_id: "p2", kind: "city", city: "Montréal", country: "Canada", place_name: null, address: null, lat: 45.5, lon: -73.57, arrive_on: "2024-12-20", depart_on: "2024-12-28", notes: null, position: 0 },
+  ],
+};
+
+export const db: Record<string, Row[]> = sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [
@@ -175,7 +197,7 @@ function q(table: string) {
   b.eq = (k: string, v: unknown) => {
     filters.push([k, v]);
     // The home samples hold several trips, so they filter by trip too.
-    if (op === "select" && (k !== "trip_id" || sample.startsWith("home")) && k !== "user_id")
+    if (op === "select" && (k !== "trip_id" || sample.startsWith("home") || sample === "trips") && k !== "user_id")
       rows = rows.filter((x) => x[k] === v);
     return b;
   };

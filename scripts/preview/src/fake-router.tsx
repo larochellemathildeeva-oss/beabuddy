@@ -18,3 +18,5 @@ export const useRouterState = ({ select }: any) => select({
   location: { pathname: new URLSearchParams(location.search).get("path") ?? "/profile", href: location.href },
   matches: [{ staticData: { plane: "tab" } }],
 });
+// A route file's own component, rendered without a router (the Trips sample).
+export const createFileRoute = () => (options: any) => ({ options, useSearch: () => ({}), useParams: () => ({}) });
