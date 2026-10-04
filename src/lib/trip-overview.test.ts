@@ -155,6 +155,26 @@ test("saved places are the trip's cities, unvisited first", () => {
   assert.deepEqual(placesForTrip(places, []), []);
 });
 
+test("a shorter city name inside a longer one is a different city", () => {
+  const places = [
+    { name: "Minster", city: "York", visited: false },
+    { name: "Bagel", city: "New York", visited: false },
+    { name: "Shrine", city: "Kyoto, Japan", visited: false },
+  ];
+  assert.deepEqual(
+    placesForTrip(places, ["New York"]).map((place) => place.name),
+    ["Bagel"],
+  );
+  assert.deepEqual(
+    placesForTrip(places, ["York, England"]).map((place) => place.name),
+    ["Minster"],
+  );
+  assert.deepEqual(
+    placesForTrip(places, ["Kyoto"]).map((place) => place.name),
+    ["Shrine"],
+  );
+});
+
 test("leaving in counts the days until the start", () => {
   assert.equal(leavingIn("2026-10-07", "2026-10-04"), "Leaving in 3 days");
   assert.equal(leavingIn("2026-10-05", "2026-10-04"), "Leaving tomorrow");

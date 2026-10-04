@@ -217,7 +217,10 @@ export function placesForTrip<T extends { city: string | null; visited?: boolean
   if (needles.length === 0) return [];
   const matched = places.filter((place) => {
     const city = (place.city ?? "").trim().toLowerCase();
-    return city !== "" && needles.some((needle) => city.includes(needle) || needle.includes(city));
+    if (city === "") return false;
+    // "Kyoto" and "Kyoto, Japan" name the same city.
+    const short = shortCity(city);
+    return needles.some((needle) => needle === city || needle === short);
   });
   return [
     ...matched.filter((place) => !place.visited),
