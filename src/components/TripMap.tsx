@@ -134,7 +134,7 @@ function Geographic({ stops, showLabels = true }: { stops: MapStop[]; showLabels
           <rect width={W} height={H} rx="18" />
         </clipPath>
       </defs>
-      <g clipPath={`url(#${clip})}>
+      <g clipPath={`url(#${clip})`}>
         {land.map((f) => (
           <path key={f.id} d={f.d} className="fill-card stroke-border" strokeWidth="0.8" />
         ))}
