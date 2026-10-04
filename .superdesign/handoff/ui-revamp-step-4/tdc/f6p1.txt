@@ -1,0 +1,70 @@
+              />
+              {timelineByDay && (
+                <MenuChoice
+                  label="Order"
+                  value={byArea}
+                  onChange={setByArea}
+                  options={[
+                    [false, "Timeline"],
+                    [true, "Neighbourhood"],
+                  ]}
+                />
+              )}
+              <div className="grid gap-2">
+                {stopItems.length > 0 && (
+                  <button
+                    type="button"
+                    aria-pressed={editingTimeline}
+                    onClick={() => {
+                      setEditingTimeline((v) => !v);
+                      setTimelineMenuOpen(false);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    {editingTimeline ? (
+                      <Check className="size-4 text-primary" aria-hidden />
+                    ) : (
+                      <Pencil className="size-4 text-primary" aria-hidden />
+                    )}
+                    {editingTimeline ? "Done editing the itinerary" : "Edit the itinerary"}
+                  </button>
+                )}
+                {stopItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setDayEditOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <CalendarDays className="size-4 text-primary" aria-hidden />
+                    Change a day
+                  </button>
+                )}
+                {stopItems.length >= 2 && (
+                  <button
+                    type="button"
+                    data-guide="optimize-trip"
+                    onClick={() => {
+                      setTimelineMenuOpen(false);
+                      setPlannerTab("optimize");
+                      setPlannerOpen(true);
+                    }}
+                    className="flex min-h-12 items-center gap-2 rounded-2xl border border-border bg-card px-3 text-left text-[14.5px] font-semibold"
+                  >
+                    <Route className="size-4 text-primary" aria-hidden />
+                    Optimize the order
+                  </button>
+                )}
+              </div>
+              <p className="text-[12px] text-muted-foreground">
+                Tap a stop to edit it · the card between stops has the way there.
+              </p>
+            </div>
+          </Sheet>
+        </div>
+
+        {/* A sheet, opened by the "To do" button from any tab. */}
+        <TripPrep
+          tripId={trip.id}

@@ -1,0 +1,55 @@
+              },
+              // Pins to check go on paper too, when the traveller shows them.
+              view.prefs.pinChecks
+                ? stopItems.map((item) => ({
+                    ...item,
+                    pin_check: pinCheckFor(item, strayIds.has(item.id)),
+                  }))
+                : stopItems.map((item) => ({ ...item, pin_check: null })),
+            ),
+          );
+        }}
+        footer={
+          // Only the owner can delete (the "Owner deletes trips" policy). For
+          // anyone else the delete matched no rows, said nothing, and sent
+          // them to the trip list as if it had worked; they leave instead,
+          // from Invite and people.
+          me.id === trip.owner_id ? (
+            <TripDeleteButton onDelete={onDelete} onConfirmed={() => setSettingsOpen(false)} />
+          ) : null
+        }
+      >
+        {sheetSection === "invite" && (
+          <div className="mb-3">
+            <ShareLinkCard tripId={trip.id} />
+          </div>
+        )}
+        {sheetSection === "invite" && (
+          <TripPeople
+            trip={trip}
+            meId={me.id}
+            members={members}
+            invites={board.invites}
+            onInvite={onInvite}
+            onRevokeInvite={onRevokeInvite}
+            onRemoveMember={onRemoveMember}
+            onLeave={onLeave}
+            onChanged={board.reload}
+            onLeft={() => setSettingsOpen(false)}
+          />
+        )}
+
+        {sheetSection === "packing" && (
+          <div className="plain-card p-3.5">
+            {templates.packs.length === 0 ? (
+              <p className="text-[13.5px] text-muted-foreground">
+                No saved lists yet — create one under Profile → Create packing lists.
+              </p>
+            ) : (
+              <>
+                <p className="text-[13px] text-muted-foreground">
+                  You get a copy — ticking things off only affects this trip.
+                </p>
+                <select
+                  value={packTemplateId}
+                  onChange={(e) => {

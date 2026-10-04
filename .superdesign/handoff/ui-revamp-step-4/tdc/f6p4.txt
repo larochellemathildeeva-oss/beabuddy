@@ -1,0 +1,70 @@
+          time_label: item.time_label,
+          kind: item.kind,
+          title: item.title,
+          detail: item.detail,
+          address: item.address,
+          lat: item.lat,
+          lon: item.lon,
+          planned_stay_minutes: item.planned_stay_minutes,
+        }))}
+        cities={fullRoute.map((stop) => ({
+          city: stop.city,
+          kind: stop.kind,
+          country: stop.country || null,
+          arrive_on: stop.arrive_on || null,
+          depart_on: stop.depart_on || null,
+          lat: stop.lat,
+          lon: stop.lon,
+        }))}
+        planCities={routeCities}
+        {...(chosenCity ? { defaultPlanCity: chosenCity.id } : {})}
+        {...(trip.city || trip.country
+          ? { tripCity: [trip.city, trip.country].filter(Boolean).join(", ") }
+          : {})}
+        tripTitle={trip.title}
+        {...(trip.start_date ? { startDate: trip.start_date } : {})}
+        {...(trip.end_date ? { endDate: trip.end_date } : {})}
+        onAddItems={board.addItems}
+        onRemoveItems={board.removeItems}
+        onAddDirections={setDirectionsFor}
+        onAddCosts={async (items) => {
+          if (!trip.budget_enabled) await onUpdate({ budget_enabled: true });
+          await budget.addItems(items);
+        }}
+        onApplySchedule={async (updates) => {
+          // What the optimiser is about to move, as it is now, so Undo can
+          // put every stop back on its own day, time and place in the list.
+          const previous = updates.flatMap((u) => {
+            const row = board.items.find((item) => item.id === u.id);
+            return row
+              ? [
+                  {
+                    id: row.id,
+                    day_date: row.day_date,
+                    time_label: row.time_label,
+                    position: row.position,
+                  },
+                ]
+              : [];
+          });
+          await board.applySchedule(updates);
+          toast("New order saved", {
+            description: `${updates.length} ${updates.length === 1 ? "stop" : "stops"} rearranged.`,
+            duration: 8000,
+            action: {
+              label: "Undo",
+              onClick: () =>
+                void board.applySchedule(previous).then(
+                  () => toast.success("Back to the previous order"),
+                  () => toast.error("Couldn't undo that. Check your connection."),
+                ),
+            },
+          });
+        }}
+        onApplyDates={async (dates) => {
+          await onUpdate(dates);
+        }}
+        onAddCities={async (list, plan) => {
+          if (list.length > 0) await cities.addStops(list);
+          // A trip with no starting city takes the plan's first town.
+          const place = tripPlaceFromTowns(trip, plan.towns, plan.country);
