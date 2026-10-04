@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Eye,
@@ -12,6 +13,7 @@ import {
 } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { BrandMark } from "@/components/PageHeader";
 import { CopyrightNotice } from "@/components/CopyrightNotice";
 import { PasswordCreationRules } from "@/components/PasswordCreationRules";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
@@ -176,32 +178,31 @@ function AuthPage() {
   return (
     <div className="min-h-[100dvh] bg-background">
       <div className="mx-auto flex min-h-[100dvh] w-full max-w-[520px] flex-col border-x border-border/70 px-6 pb-8 pt-10">
-        <div className="rise">
-          <p className="font-display text-[64px] leading-[0.9] text-primary">BÉA</p>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+        <div className="rise flex items-center justify-between">
+          <Link
+            to="/"
+            aria-label="Back to the welcome page"
+            className="-ms-2 grid size-11 place-items-center rounded-full"
+          >
+            <ArrowLeft className="size-5" aria-hidden />
+          </Link>
+        </div>
+        <div className="rise mt-2">
+          <BrandMark large />
+          <p className="mt-3 text-[13px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Trips · Places · Memories
           </p>
         </div>
 
-        <div className="rise mt-6 flex items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <h1 className="font-display text-[52px] leading-[0.95]">
-              {signup ? "Start your vault" : "Welcome back"}
-            </h1>
-            <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
-              {signup
-                ? "Free, no card. Your places, trips and photo memories follow you across devices."
-                : "Your places, trips and photo memories are saved to your account and follow you across devices."}
-            </p>
-          </div>
-          <img
-            src="/bea/bea-think-static.png"
-            alt=""
-            aria-hidden
-            width={256}
-            height={256}
-            className="art-dim -mr-3 w-[48%] max-w-[230px] shrink-0 scale-125 object-contain"
-          />
+        <div className="rise mt-6">
+          <h1 className="font-display text-[40px] leading-[1.1]">
+            {signup ? "Start your vault" : "Welcome back"}
+          </h1>
+          <p className="mt-3 text-[16px] leading-snug text-muted-foreground">
+            {signup
+              ? "Free, no card. Your places, trips and photo memories follow you across devices."
+              : "Your places, trips and photo memories are saved to your account and follow you across devices."}
+          </p>
         </div>
 
         <div className="mt-6 space-y-3">
@@ -209,7 +210,7 @@ function AuthPage() {
             type="button"
             onClick={() => social("google")}
             disabled={busy}
-            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-full border border-border bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
+            className="flex h-[56px] w-full items-center justify-center gap-3 rounded-2xl bg-card px-4 text-[17px] font-semibold shadow-sm disabled:opacity-60"
           >
             <GoogleG />
             Continue with Google
@@ -219,7 +220,7 @@ function AuthPage() {
             <div
               role="radiogroup"
               aria-label="Google sign-in"
-              className="flex items-center justify-between gap-3 px-1"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1"
             >
               <RoundChoice
                 name="google-signin-mode"
@@ -385,7 +386,7 @@ function Divider({ children }: { children: ReactNode }) {
   return (
     <div className="my-6 flex items-center gap-3">
       <span className="h-px flex-1 bg-border" />
-      <span className="text-[11.5px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+      <span className="text-[13px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
         {children}
       </span>
       <span className="h-px flex-1 bg-border" />
@@ -402,7 +403,7 @@ function PillField({
   children: ReactNode;
 }) {
   return (
-    <div className="flex h-[56px] items-center gap-3 rounded-full border border-border bg-card pl-5 pr-2 focus-within:border-primary">
+    <div className="flex h-[56px] items-center gap-3 rounded-2xl border border-transparent bg-card ps-5 pe-2 shadow-sm focus-within:border-primary">
       <Glyph className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       {children}
     </div>

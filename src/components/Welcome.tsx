@@ -1,7 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { Check, Globe, Navigation, Route, X } from "@/components/icons";
+import {
+  Check,
+  FileText,
+  Globe,
+  Heart,
+  Map,
+  Navigation,
+  Plane,
+  Route,
+  X,
+} from "@/components/icons";
 import { ThemePicker } from "@/components/ThemePicker";
 import { startWalk } from "@/lib/tour-start";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +26,14 @@ import {
   WELCOME_GOALS,
   type WelcomeGoal,
 } from "@/lib/welcome";
+
+/** Each first step's icon and pastel, as the first-use screen draws them. */
+const GOAL_LOOK: Record<string, { Icon: typeof Plane; tile: string }> = {
+  plan: { Icon: Plane, tile: "var(--powder)" },
+  import: { Icon: FileText, tile: "var(--blush)" },
+  save: { Icon: Heart, tile: "var(--butter)" },
+  map: { Icon: Map, tile: "var(--mint)" },
+};
 
 const STEPS = ["intro", "goal", "style", "look", "ready"] as const;
 
@@ -276,13 +294,20 @@ export function Welcome() {
 
           {step === "goal" && (
             <div className="space-y-3">
-              <h2 className="font-display text-[24px] leading-tight">What brings you here?</h2>
-              <p className="text-[14.5px] text-muted-foreground">
-                Pick one to start with. Everything else is a tap away later.
+              <h2 className="font-display text-[34px] leading-[1.1]">
+                What should Béa help with first?
+              </h2>
+              <p className="text-[16px] leading-snug text-muted-foreground">
+                Choose one to get started. You can always do more later.
               </p>
-              <div role="radiogroup" aria-label="What brings you here" className="space-y-2">
+              <div
+                role="radiogroup"
+                aria-label="What should Béa help with first"
+                className="space-y-2"
+              >
                 {WELCOME_GOALS.map((g) => {
                   const on = g.id === goal.id;
+                  const look = GOAL_LOOK[g.id];
                   return (
                     <button
                       key={g.id}
@@ -290,13 +315,23 @@ export function Welcome() {
                       role="radio"
                       aria-checked={on}
                       onClick={() => setGoal(g)}
-                      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3 text-left transition-colors ${
-                        on ? "border-primary bg-primary-soft" : "border-border bg-card"
+                      className={`flex w-full items-center gap-3 rounded-2xl border-2 px-3 py-3 text-left shadow-sm transition-colors ${
+                        on ? "border-primary bg-primary-soft" : "border-transparent bg-card"
                       }`}
                     >
+                      {look && (
+                        <span
+                          className="grid size-11 shrink-0 place-items-center rounded-full text-foreground"
+                          style={{ background: look.tile }}
+                        >
+                          <look.Icon className="size-5" aria-hidden />
+                        </span>
+                      )}
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-semibold">{g.title}</span>
-                        <span className="block text-[13px] text-muted-foreground">{g.hint}</span>
+                        <span className="block font-display text-[18px] leading-snug">
+                          {g.title}
+                        </span>
+                        <span className="block text-[14px] text-muted-foreground">{g.hint}</span>
                       </span>
                       {on && <Check className="size-5 shrink-0 text-primary" aria-hidden />}
                     </button>

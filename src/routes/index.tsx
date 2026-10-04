@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } fr
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
+import { ArrowRight } from "@/components/icons";
 import { Globe } from "@/components/Globe";
 import { HomeYourTrips } from "@/components/HomeTripCard";
 import {
@@ -91,21 +92,28 @@ function LandingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
-    <AppShell publicPage eyebrow={BEA_TAGLINES.strongest} title={BEA_POSITION}>
+    <AppShell publicPage eyebrow="Save · Plan · Travel · Remember" title={BEA_POSITION}>
       <div className="space-y-6">
+        <p className="text-[17px] leading-snug text-muted-foreground">
+          Save the places you care about.
+          <br />
+          Turn them into real trips.
+          <br />
+          Follow the day while you travel.
+          <br />
+          Remember it all.
+        </p>
+        {/* The way in first, where a thumb reaches it without scrolling. */}
+        <StartFree />
         <p className="text-[15px] leading-relaxed text-muted-foreground">
           {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
           puts them in a sensible order, gives directions and keeps your bookings together.
         </p>
-        {/* The way in first, where a thumb reaches it without scrolling. */}
-        <StartFree />
         <ul className="grid gap-2 sm:grid-cols-3">
           {LANDING_POINTS.map((point) => (
             <li key={point.title} className="surface border border-border/50 p-3.5">
-              <p className="font-display text-[17px] leading-snug">{point.title}</p>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-                {point.body}
-              </p>
+              <p className="font-display text-[18px] leading-snug">{point.title}</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-muted-foreground">{point.body}</p>
             </li>
           ))}
         </ul>
@@ -149,23 +157,29 @@ const LANDING_POINTS = [
 /** The sign-up button, with what it costs (nothing) right under it. */
 function StartFree() {
   return (
-    <div className="space-y-2">
-      <div className="grid gap-2 sm:grid-cols-2">
-        <Link
-          to="/auth"
-          search={{ mode: "signup" }}
-          className="btn-primary flex items-center justify-center px-4 text-center text-[14.5px]"
-        >
-          Start free
-        </Link>
-        <Link
-          to="/how-it-works"
-          className="flex min-h-[var(--h-button)] items-center justify-center rounded-[var(--r-button)] border border-border px-4 text-center text-[14.5px] font-semibold"
-        >
-          See how it works
-        </Link>
-      </div>
-      <p className="text-center text-[13px] text-muted-foreground">
+    <div className="space-y-3">
+      <Link
+        to="/auth"
+        search={{ mode: "signup" }}
+        className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-foreground py-1.5 ps-6 pe-1.5 text-[17px] font-semibold text-background"
+      >
+        Create your free account
+        <span className="grid size-11 place-items-center rounded-full bg-[var(--acc-soft)] text-foreground">
+          <ArrowRight className="size-5" aria-hidden />
+        </span>
+      </Link>
+      <Link
+        to="/how-it-works"
+        className="flex min-h-14 items-center gap-3 rounded-full bg-card py-1.5 ps-1.5 pe-6 text-[17px] font-semibold shadow-sm"
+      >
+        <span className="grid size-11 place-items-center rounded-full bg-foreground text-background">
+          <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden>
+            <path d="M8 5v14l11-7Z" />
+          </svg>
+        </span>
+        How Béa works
+      </Link>
+      <p className="text-center text-[14px] text-muted-foreground">
         Free · No card · One tap with Google ·{" "}
         <Link to="/auth" className="underline underline-offset-4">
           Sign in

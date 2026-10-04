@@ -332,7 +332,16 @@ export const supabase = {
   },
   auth: {
     getUser: async () => ({ data: { user: { id: "me" } }, error: null }),
-    getSession: async () => ({ data: { session: { user: { id: "me" } } } }),
+    getSession: async () => ({
+      data: {
+        session: ["landing", "auth"].includes(new URLSearchParams(location.search).get("sample") ?? "")
+          ? null
+          : { user: { id: "me", created_at: new Date().toISOString() } },
+      },
+    }),
+    signInWithOAuth: async () => ({ data: null, error: null }),
+    signInWithPassword: async () => ({ data: null, error: { message: "Preview only" } }),
+    signUp: async () => ({ data: { user: null, session: null }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
   storage: {
