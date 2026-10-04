@@ -32,21 +32,18 @@ export function PastYouCard({
   return (
     <section aria-labelledby="past-you" className="plain-card space-y-3 p-3.5">
       <div>
-        <p
-          id="past-you"
-          className="text-[12px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-        >
+        <p id="past-you" className="label-caps">
           Past You in {found.place}
         </p>
-        {line && <p className="mt-0.5 font-display text-[20px] leading-tight">{line}</p>}
+        {line && <p className="mt-1 font-display text-[22px] leading-tight">{line}</p>}
       </div>
 
       {found.notes.length > 0 && (
         <ul className="space-y-2">
           {found.notes.map((note) => (
             <li key={note.id} className="rounded-xl bg-primary-soft px-3 py-2">
-              <p className="font-display text-[16px] leading-snug">“{note.note}”</p>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
+              <p className="font-display text-[18px] leading-snug">“{note.note}”</p>
+              <p className="mt-0.5 text-[14px] text-muted-foreground">
                 Past You, {new Date(note.created_at).getFullYear()}
               </p>
             </li>
@@ -74,8 +71,8 @@ export function PastYouCard({
 
       {found.recs.length > 0 && (
         <div>
-          <p className="text-[13px] font-semibold">Saved and not yet visited</p>
-          <p className="mt-0.5 text-[13px] text-muted-foreground">
+          <p className="text-[16px] font-semibold">Saved and not yet visited</p>
+          <p className="mt-0.5 text-[16px] leading-snug text-muted-foreground">
             {found.recs.map((r) => r.name).join(" · ")}
           </p>
         </div>
@@ -83,7 +80,7 @@ export function PastYouCard({
 
       <Link
         to="/memories"
-        className="inline-flex min-h-9 items-center gap-1 text-[13px] font-semibold text-primary"
+        className="inline-flex min-h-11 items-center gap-1 text-[16px] font-semibold text-primary"
       >
         All your memories
         <ChevronRight className="size-4" aria-hidden />

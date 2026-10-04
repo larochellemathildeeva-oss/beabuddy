@@ -11,8 +11,9 @@ w.__writes = [];
 const sample = new URLSearchParams(location.search).get("sample") ?? "default";
 w.__sample = sample;
 
-const D1 = "2026-10-07";
-const D2 = "2026-10-08";
+const previewParams = new URLSearchParams(location.search);
+const D1 = previewParams.get("d1") ?? "2026-10-07";
+const D2 = previewParams.get("d2") ?? "2026-10-08";
 const ago = (m: number) => new Date(Date.now() - m * 60000).toISOString();
 const r = (
   id: string,
