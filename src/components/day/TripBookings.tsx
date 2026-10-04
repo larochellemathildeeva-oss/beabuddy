@@ -76,18 +76,18 @@ export function TripBookings({
     >
       <KindTile kind={eventKind(stop.kind)} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15.5px] font-semibold">{stop.title}</span>
+        <span className="block truncate text-[17px] font-semibold leading-tight">{stop.title}</span>
         {booked && stop.booking_ref ? (
-          <span className="block truncate text-[13px] text-muted-foreground">
+          <span className="block truncate text-[14px] text-muted-foreground">
             {stop.booking_ref}
           </span>
         ) : null}
-        <span className="block truncate text-[13px] text-muted-foreground">
+        <span className="block truncate text-[14px] text-muted-foreground">
           {eventWhenLabel(stop.day_date, stop.time_label) || (booked ? "Booked" : "No date yet")}
         </span>
       </span>
       {booked ? null : (
-        <span className="rounded-full bg-elevated px-2 py-0.5 text-[11.5px] font-semibold text-muted-foreground">
+        <span className="rounded-full bg-elevated px-2 py-0.5 text-[13px] font-semibold text-muted-foreground">
           Not booked
         </span>
       )}
@@ -104,14 +104,14 @@ export function TripBookings({
     >
       <DocumentIcon doc={doc} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15.5px] font-semibold">{doc.title}</span>
+        <span className="block truncate text-[17px] font-semibold leading-tight">{doc.title}</span>
         {doc.lines.map((line) => (
-          <span key={line} className="block truncate text-[13px] text-muted-foreground">
+          <span key={line} className="block truncate text-[14px] text-muted-foreground">
             {line}
           </span>
         ))}
         {event ? (
-          <span className="block truncate text-[13px] text-muted-foreground">
+          <span className="block truncate text-[14px] text-muted-foreground">
             {eventWhenLabel(event.day_date, event.time_label) || event.title}
           </span>
         ) : null}
@@ -129,7 +129,7 @@ export function TripBookings({
             type="button"
             aria-pressed={filter === f.key}
             onClick={() => onFilter(f.key)}
-            className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[13.5px] font-semibold ${
+            className={`inline-flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[14px] font-semibold ${
               filter === f.key
                 ? "border-primary bg-primary text-primary-foreground"
                 : "border-border bg-card text-muted-foreground"
@@ -141,7 +141,9 @@ export function TripBookings({
       </div>
 
       {shown.length === 0 ? (
-        <p className="plain-card p-4 text-[14px] text-muted-foreground">{EMPTY[filter]}</p>
+        <p className="plain-card p-4 text-[16px] leading-snug text-muted-foreground">
+          {EMPTY[filter]}
+        </p>
       ) : (
         <div className="plain-card divide-y divide-border overflow-hidden">
           {shown.map((b) => {
@@ -157,9 +159,9 @@ export function TripBookings({
 
       {planned.length > 0 && (
         <section>
-          <p className="mb-2 px-0.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <h3 className="mb-2 px-0.5 font-display text-[20px] leading-tight">
             On the itinerary, not booked yet
-          </p>
+          </h3>
           <div className="plain-card divide-y divide-border overflow-hidden">
             {planned.map((stop) => stopRow(stop, false))}
           </div>
@@ -173,7 +175,7 @@ export function TripBookings({
         <Plus className="size-5" aria-hidden />
         Add a booking document
       </Link>
-      <p className="flex items-center gap-1.5 px-1 text-[12.5px] text-muted-foreground">
+      <p className="flex items-center gap-1.5 px-1 text-[14px] leading-snug text-muted-foreground">
         <FileText className="size-3.5 shrink-0" aria-hidden />
         Confirmations you add in Trip documents and assign to this trip show up here.
       </p>
