@@ -91,6 +91,7 @@ export function TripDetailsForm({
             }}
             placeholder="Starting city — search it"
             areas
+            ariaLabelledBy="trip-start-city"
           />
         </div>
         <div>
