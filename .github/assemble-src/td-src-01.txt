@@ -1,0 +1,260 @@
+        ? "Only part of that change saved. The stop shows what was kept."
+        : code === "TIME_LOCK_UNAVAILABLE"
+          ? "Fixed and Flexible aren't set up yet."
+          : isNetworkFailure(e)
+            ? "Couldn't save that change. Check your connection."
+            : "Couldn't save that change. Try again in a moment.";
+  };
+  /**
+   * A card's edit: the board puts it back if the save fails, and says so.
+   * A day, time, duration or Fixed/Flexible change is checked first: what
+   * it moves along with it is saved in the same write, and a change with
+   * bigger consequences opens Review instead.
+   */
+  const saveCard = (id: string, patch: Parameters<typeof board.updateItem>[1]) => {
+    const fail = (e: unknown) => void toast.error(scheduleErrorText(e));
+    const { day_date, time_label, planned_stay_minutes, time_locked, ...rest } = patch;
+    const owns = (key: keyof SchedulePatch) => Object.prototype.hasOwnProperty.call(patch, key);
+    const schedule: SchedulePatch = {
+      ...(owns("day_date") ? { day_date: day_date ?? null } : {}),
+      ...(owns("time_label") ? { time_label: time_label ?? null } : {}),
+      ...(owns("planned_stay_minutes")
+        ? { planned_stay_minutes: planned_stay_minutes ?? null }
+        : {}),
+      ...(owns("time_locked") ? { time_locked: time_locked ?? null } : {}),
+    };
+    const proposal =
+      Object.keys(schedule).length > 0
+        ? changeSetForSchedulePatch(board.items, id, schedule)
+        : null;
+    // Nothing whose consequences need checking ("9:00 AM" → "09:00" is
+    // only a label): the ordinary save.
+    if (!proposal) {
+      void board.updateItem(id, patch).catch(fail);
+      return;
+    }
+    const others = Object.keys(rest).length > 0 ? () => board.updateItem(id, rest) : undefined;
+    const now = scheduleReview.review("all", proposal, others);
+    if (!now) return;
+    void (async () => {
+      await board.applySchedule(now.updates);
+      setLiveLegs(null);
+      await others?.();
+    })().catch(fail);
+  };
+  const budget = useTripBudget(activeId);
+  const cities = useTripStops(activeId, me.id, trip);
+  /**
+   * The cities you can move between. A trip whose second city was added
+   * before its first was kept still lists its first, from the trip itself.
+   */
+  const fullRoute = useMemo(() => {
+    const home = cities.missingHome;
+    return home
+      ? [{ id: "trip-home", kind: "destination", lat: null, lon: null, ...home }, ...cities.stops]
+      : cities.stops;
+  }, [cities.stops, cities.missingHome]);
+  const routeCities = useMemo(() => destinationCities(fullRoute), [fullRoute]);
+  /** The city picked in the switcher, by stop id; "" for every city. */
+  const [cityChoice, setCityChoice] = useState("");
+  const chosenCity =
+    routeCities.length > 1 ? (routeCities.find((c) => c.id === cityChoice) ?? null) : null;
+  const dir = useOfflineDirections(activeId);
+  // How this traveller gets around on this trip, asked in the directions
+  // sheet and used by every journey Béa routes for it.
+  const [travel, setTravel] = useState<TravelChoice>("auto");
+  useEffect(() => {
+    setTravel(readTravelChoice(activeId));
+  }, [activeId]);
+  const chooseTravel = (choice: TravelChoice) => {
+    setTravel(choice);
+    writeTravelChoice(activeId, choice);
+    // Journeys just worked out were for the old choice: drop them rather
+    // than show a drive the traveller now walks. A kept copy stays until
+    // directions are asked again.
+    if (choice !== travel) setLiveLegs(null);
+  };
+  const dayMaps = useOfflineDayMaps(activeId);
+  const offlineMap = useOfflineMap(activeId);
+  const directionStops = timelineStopsForDirections(board.items);
+  const routeStops = stopsForDirections(cities.stops, board.items);
+  /**
+   * The stops, and the walks and drives saved between them. Those are the
+   * travel between two stops, drawn in the connector with their steps
+   * folded away — never a stop of their own on the list, the map or a count.
+   */
+  const { stops: stopItems, travel: savedTravel } = useMemo(
+    () => splitDirectionRows(board.items),
+    [board.items],
+  );
+  /**
+   * A trip with a timeline but no destinations — a plan saved before Béa
+   * added its towns — finds them from its pins, one lookup a day.
+   */
+  const lookupTown = useServerFn(lookupCoords);
+  const [findingCities, setFindingCities] = useState(false);
+  const canFindCities =
+    !cities.loading &&
+    cities.stops.length === 0 &&
+    stopItems.some((item) => item.day_date && item.lat != null && item.lon != null);
+  const findCities = async () => {
+    setFindingCities(true);
+    try {
+      const found = await planTowns(
+        stopItems.map((item) => ({
+          day_date: item.day_date,
+          kind: item.kind,
+          lat: item.lat,
+          lon: item.lon,
+        })),
+        cities.stops,
+        (at) => lookupTown({ data: at }),
+      );
+      if (found.length === 0) {
+        toast.error("Béa couldn't tell the cities from these stops. Add them with the pin button.");
+        return;
+      }
+      await cities.addStops(found);
+      // A trip imported before the plan set its starting city gets it here.
+      const place = tripPlaceFromTowns(trip, found);
+      if (place) await onUpdate(place);
+      toast.success(`Added ${found.map((c) => c.city).join(", ")} to the trip's destinations`);
+    } catch {
+      toast.error("Couldn't add the cities. Check your connection and try again.");
+    } finally {
+      setFindingCities(false);
+    }
+  };
+  /**
+   * One area, used by everything that looks a place up.
+   *
+   * Falls back to the trip's own stops when the city field is empty, because a
+   * trip called "Hiroshima day trip" with a stop in Hiroshima knows perfectly
+   * well where it is. What it never falls back to is the trip's title.
+   */
+  const lookupArea = tripLookupArea({
+    city: trip.city,
+    country: trip.country,
+    stops: cities.stops,
+  });
+  const directionArea = lookupArea || undefined;
+  const routeRun = useServerFn(buildRoutes);
+  /**
+   * Stops an import saved with "Add directions between stops" ticked. They
+   * are routed once they are on the board, for their own days only, and the
+   * journeys are added as the directions sheet adds them.
+   */
+  const [directionsFor, setDirectionsFor] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!directionsFor) return;
+    const saved = board.items.filter((item) => directionsFor.includes(item.id));
+    if (saved.length < directionsFor.length) return;
+    setDirectionsFor(null);
+    const days = new Set(saved.map((item) => item.day_date ?? ""));
+    const stops = directionStops.filter((stop) => days.has(stop.day_date ?? ""));
+    if (stops.length < 2) return;
+    const pending = toast.loading("Adding directions between your stops…");
+    void (async () => {
+      try {
+        const result = (await routeRun({
+          data: { stops, ...(directionArea ? { area: directionArea } : {}), travel },
+        })) as { legs: RouteLeg[] };
+        const items = legsToTimelineItems(
+          result.legs,
+          stops,
+          board.items.map((item) => item.title),
+        );
+        if (items.length > 0) await board.upsertItems(items);
+        toast.success(
+          items.length > 0
+            ? `${items.length} ${items.length === 1 ? "journey" : "journeys"} added between your stops`
+            : "Béa couldn't route between these stops yet — add addresses and try Directions",
+          { id: pending },
+        );
+      } catch {
+        toast.error("Couldn't add the directions — try Directions on the day", { id: pending });
+      }
+    })();
+    // Runs when the board catches up with the saved stops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.items, directionsFor]);
+  /**
+   * Where to look a stop up: the city the route has you in that day, then
+   * the trip's area. A multi-city trip used to search every stop around its
+   * first city, so a Miyajima stop on Oct 7 was looked for near Tokyo.
+   */
+  const nearOn = (day: string | null | undefined): string | undefined =>
+    routeCityOn(cities.stops, day) || directionArea;
+
+  /**
+   * Put the trip's stops on the map, once, in the background.
+   *
+   * A stop picked from search arrives with a point; one typed by hand or built
+   * by the planner does not — so the map had nothing to draw and the trip card
+   * fell back to a large letter. Filling the gap in the data rather than in the
+   * view means every surface improves at once: the map, the card, Near, and
+   * anything that measures a distance.
+   *
+   * Area-anchored, never a bare name. Capped per visit, and each stop is tried
+   * at most once here, because the list reloads after every placement and an
+   * unfindable stop would otherwise be asked for on every reload.
+   */
+  const triedPlacing = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const area = formatTripLocation(trip.city, trip.country);
+    if (!area) return;
+    const pending = stopsToPlace(cities.stops, triedPlacing.current);
+    if (pending.length === 0) return;
+    for (const stop of pending) triedPlacing.current.add(stop.id);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const found = await geocodePlanStops({
+          data: {
+            stops: pending.map((stop) => ({
+              title: stopLookupTitle(stop),
+              detail: stop.address ?? null,
+              address: stop.address ?? null,
+            })),
+            area,
+          },
+        });
+        if (cancelled) return;
+        for (const hit of found.placed) {
+          const stop = pending[hit.index];
+          if (stop) await cities.updateStop(stop.id, { lat: hit.lat, lon: hit.lon });
+        }
+        if (found.throttled) {
+          // The provider pushed back rather than answering. These stops were
+          // never really tried, so forget that they were: marking them keeps
+          // real places blank for the rest of the session.
+          const placedIds = new Set(found.placed.map((hit) => pending[hit.index]?.id));
+          for (const stop of pending) {
+            if (!placedIds.has(stop.id)) triedPlacing.current.delete(stop.id);
+          }
+        }
+      } catch {
+        // A stop without a point is the state this started in, not a failure
+        // worth telling anyone about.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // cities.stops is the trigger; updateStop is stable enough and including
+    // it would re-run this on every reload it causes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cities.stops, trip.city, trip.country]);
+
+  /**
+   * Put the trip's timeline on the map, once, in the background.
+   *
+   * The effect above places the trip's cities. That was never the thing being
+   * asked for: what belongs on a map is the museum, the restaurant and the
+   * ferry — the rows of the day — and nothing ever went back for those. An
+   * entry only got a point if it happened to be picked from search, so a whole
+   * imported day landed blank and stayed blank, and the only repair was adding
+   * every place by hand.
+   *
+   * Same rules as the stops: area-anchored, capped per visit, each row tried
