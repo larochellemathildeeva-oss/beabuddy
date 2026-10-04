@@ -360,6 +360,41 @@ await flow("shell: every theme and accent saves, restores and responds to accoun
   if (await page.getByRole("radio", { name: "Pink", exact: true }).getAttribute("aria-checked") !== "true") throw new Error("the picker missed a synced accent change");
 }, "shell");
 
+await flow("trips: tabs, layout and picture switches, New trip and Join sheets", async (page) => {
+  const text = () => page.evaluate(() => document.body.innerText);
+  if (!(await text()).includes("Your trips.")) throw new Error("the Trips header is missing");
+  if (!(await text()).includes("Next up")) throw new Error("Big banner shows no Next up");
+  await page.getByRole("button", { name: "List", exact: true }).click();
+  await page.waitForTimeout(300);
+  if (!(await text()).includes("Upcoming trips") || (await page.evaluate(() => localStorage.getItem("bea-trips-layout"))) !== "list") throw new Error("List did not apply and save");
+  await page.getByRole("button", { name: "Photo", exact: true }).first().click();
+  await page.waitForTimeout(300);
+  if ((await page.evaluate(() => localStorage.getItem("bea-trip-picture"))) !== "photo") throw new Error("Photo did not save");
+  for (const [tab, expect] of [["Past", "Lisbon & Porto"], ["Drafts", "Coastal Italy"], ["All", "Montréal Holidays"], ["Upcoming", "Trip documents"]]) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await page.waitForTimeout(250);
+    if (!(await text()).includes(expect)) throw new Error(`${tab} does not show ${expect}`);
+  }
+  await page.getByRole("button", { name: "More for JQAPALA A", exact: true }).click();
+  for (const item of ["Open trip", "To-dos", "Packing", "Bookings"])
+    if ((await page.getByRole("menuitem", { name: item, exact: true }).count()) !== 1) throw new Error(`the row menu lost ${item}`);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "New trip", exact: true }).click();
+  await page.waitForTimeout(300);
+  const sheet = page.getByRole("dialog");
+  for (const label of ["Trip name", "Where is this trip going?"])
+    if ((await sheet.getByLabel(label).count()) < 1) throw new Error(`New trip lost ${label}`);
+  if ((await sheet.getByRole("button", { name: "Create trip" }).count()) !== 1) throw new Error("New trip lost Create trip");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(250);
+  await page.getByRole("button", { name: /Join with a code/ }).click();
+  await page.waitForTimeout(300);
+  if ((await page.getByRole("dialog").getByPlaceholder("Invite code").count()) !== 1) throw new Error("Join lost its code field");
+  await page.keyboard.press("Escape");
+  if ((await page.getByRole("link", { name: "Calendar view" }).getAttribute("href")) !== "/calendar") throw new Error("Calendar lost its route");
+  if ((await page.getByRole("link", { name: /Plan with Béa/ }).getAttribute("href")) !== "/trips/plan") throw new Error("Plan with Béa lost its route");
+}, "trips");
+
 await flow("shell: brand, back, guide, five tabs and offline status remain reachable", async (page) => {
   const labels = ["Home", "World", "Trips", "Recs", "You"];
   const paths = ["/", "/world", "/trips", "/recommendations", "/profile"];

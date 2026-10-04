@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { geoMercator } from "d3-geo";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { useTownPicture } from "@/hooks/useTownPicture";
@@ -338,10 +338,13 @@ export function TripBannerMap({
   done = 0,
   top,
   bottom,
+  compact = false,
 }: {
   stops: RouteStop[];
   label: string;
   height: number;
+  /** A small picture (a trip's row on Trips): smaller dots and names. */
+  compact?: boolean;
   /** The band the cities are drawn in: below the words, above the foot. */
   top: number;
   bottom: number;
@@ -382,8 +385,8 @@ export function TripBannerMap({
       .rotate([-center, 0])
       .fitExtent(
         [
-          [width * 0.16, top],
-          [width * 0.84, Math.max(top + 40, bottom)],
+          [width * (compact ? 0.22 : 0.16), top],
+          [width * (compact ? 0.78 : 0.84), Math.max(top + (compact ? 10 : 40), bottom)],
         ],
         corners,
       );
@@ -394,7 +397,7 @@ export function TripBannerMap({
     const labels = placeLabels(
       dots,
       stops.map((s) => pillLabel(s.city)),
-      { width, keep: current },
+      { width, keep: current, ...(compact ? { letter: 7, gap: 8, line: 16 } : {}) },
     );
     const tiles = reliefTiles({
       scale: projection.scale(),
@@ -405,7 +408,7 @@ export function TripBannerMap({
       dpr: typeof window === "undefined" ? 2 : Math.max(1, window.devicePixelRatio || 1),
     });
     return { dots, labels, tiles };
-  }, [stops, width, height, current, top, bottom]);
+  }, [stops, width, height, current, top, bottom, compact]);
 
   if (!drawn) return null;
   const { dots, labels, tiles } = drawn;
@@ -421,7 +424,7 @@ export function TripBannerMap({
       aria-label={label}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid slice"
-      className="route-map banner-map absolute inset-0 size-full"
+      className={`route-map banner-map absolute inset-0 size-full${compact ? " banner-map-compact" : ""}`}
     >
       <defs>
         <filter id={`${id}-glow`} x="-20%" y="-20%" width="140%" height="140%">
@@ -465,7 +468,7 @@ export function TripBannerMap({
             key={i}
             cx={d.x}
             cy={d.y}
-            r={i < behind ? 6 : 7}
+            r={(i < behind ? 6 : 7) * (compact ? 0.65 : 1)}
             className={i < behind ? "banner-dot-done" : "banner-dot"}
           />
         ),
@@ -483,5 +486,104 @@ export function TripBannerMap({
         </text>
       ))}
     </svg>
+  );
+}
+
+/**
+ * The Trips tab's header (UI revamp step 7): the same terrain as Home's map,
+ * framed around the places of the traveller's trips, with a pin at each. The
+ * tags naming them are the caller's (`children`), drawn over the map at the
+ * pins' positions, so they can be links.
+ */
+export function TripsWorldMap({
+  points,
+  height,
+  top,
+  bottom,
+  children,
+}: {
+  points: { lat: number; lon: number }[];
+  height: number;
+  /** The band the pins are drawn in: below the title, above the foot. */
+  top: number;
+  bottom: number;
+  children: (pins: Point[], width: number) => ReactNode;
+}) {
+  const [svg, setSvg] = useState<SVGSVGElement | null>(null);
+  const width = useFrameWidth(svg, 0);
+  const [relief, setRelief] = useState<ReliefIndex | null>(null);
+  useEffect(() => {
+    let live = true;
+    void loadReliefIndex().then((index) => live && setRelief(index));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const drawn = useMemo(() => {
+    if (points.length === 0) return null;
+    const {
+      center,
+      corners: [[w, s], [e, n]],
+    } = mapBounds(points, 14, 8, 0.2);
+    const projection = geoMercator()
+      .rotate([-center, 0])
+      .fitExtent(
+        [
+          [width * 0.12, top],
+          [width * 0.6, Math.max(top + 40, bottom)],
+        ],
+        {
+          type: "MultiPoint" as const,
+          coordinates: [
+            [w + center, s],
+            [e + center, n],
+          ],
+        },
+      );
+    const pins: Point[] = points.map((p) => {
+      const [x, y] = projection([p.lon, p.lat]) ?? [0, 0];
+      return { x, y };
+    });
+    const tiles = reliefTiles({
+      scale: projection.scale(),
+      translate: projection.translate(),
+      center,
+      width,
+      height,
+      dpr: typeof window === "undefined" ? 2 : Math.max(1, window.devicePixelRatio || 1),
+    });
+    return { pins, tiles };
+  }, [points, width, height, top, bottom]);
+
+  return (
+    <div className="absolute inset-0">
+      <svg
+        ref={setSvg}
+        aria-hidden
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="xMidYMid slice"
+        className="route-map banner-map absolute inset-0 size-full"
+      >
+        <rect width={width} height={height} className="map-sea" />
+        {drawn?.tiles
+          .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
+          .map((t) => (
+            <image
+              key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+              href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
+              x={t.left}
+              y={t.top}
+              width={t.size + 0.6}
+              height={t.size + 0.6}
+              preserveAspectRatio="none"
+            />
+          ))}
+        <rect width={width} height={height} className="map-wash" />
+        {drawn?.pins.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={6} className="banner-dot" />
+        ))}
+      </svg>
+      {drawn ? children(drawn.pins, width) : null}
+    </div>
   );
 }
