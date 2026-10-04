@@ -848,7 +848,8 @@ await flow("background lookup: a doubtful match is not pinned onto a stop", asyn
 await flow("companion: tapping the ribbon or the tracker shows that stop, current stop stays", async (page) => {
   await page.getByRole("button", { name: "Trip menu", exact: true }).click();
   await page.getByRole("button", { name: /Customize view/ }).click();
-  await page.getByRole("switch", { name: /Itinerary ribbon/ }).click();
+  const ribbonSwitch = page.getByRole("switch", { name: /Itinerary ribbon/ });
+  if ((await ribbonSwitch.getAttribute("aria-checked")) !== "true") await ribbonSwitch.click();
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   await goTab(page, "Companion");
