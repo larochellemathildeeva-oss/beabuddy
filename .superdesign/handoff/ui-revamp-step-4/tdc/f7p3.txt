@@ -1,0 +1,70 @@
+            items={board.items}
+            stops={cities.stops}
+            onOpenTrip={(id) => {
+              setSettingsOpen(false);
+              void navigate({ to: "/trips/$tripId", params: { tripId: id } });
+            }}
+            onCopiedHere={() => void board.reload()}
+          />
+        )}
+
+        {sheetSection === "customize" && (
+          <div className="plain-card px-3.5 py-1">
+            <TripBarOptions value={barPosition} onChange={setBarPosition} />
+            <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
+          </div>
+        )}
+
+        {sheetSection === "edit" && (
+          <TripDetailsForm trip={trip} onUpdate={onUpdate} onSaved={() => setSettingsOpen(false)} />
+        )}
+      </TripMenuSheet>
+    </article>
+  );
+}
+
+/** The dashed line the day's numbered discs sit on. */
+function RailLine() {
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute bottom-6 left-[calc(0.875rem-1px)] top-6 border-l-2 border-dashed border-primary/35"
+    />
+  );
+}
+
+/**
+ * The Timeline's heading: "Day 1 · Thu, Oct 1" in the serif with the day's
+ * size under it, a round + to add to that day, and ⋯ for the list's options.
+ * Tapping the title folds the day away.
+ */
+function TimelineHead({
+  title,
+  line,
+  open = true,
+  onToggle,
+  onAdd,
+  addLabel,
+  onMore,
+  onDirections,
+  directionsBusy = false,
+  children,
+}: {
+  title: string;
+  line: string;
+  open?: boolean;
+  onToggle?: () => void;
+  onAdd: () => void;
+  addLabel: string;
+  onMore?: () => void;
+  /** Work out the walks and drives between the stops, from the top of the list. */
+  onDirections?: () => void;
+  directionsBusy?: boolean;
+  children?: ReactNode;
+}) {
+  const heading = (
+    <>
+      <span className="flex items-center gap-1.5">
+        <span className="block font-display text-[27px] leading-none">{title}</span>
+        {onToggle ? (
+          <ChevronDown
