@@ -17,6 +17,8 @@ import { Route as TripsRoute } from "@/routes/trips";
 import { Route as HomeRoute } from "@/routes/index";
 import { Route as WorldRoute } from "@/routes/world";
 import { Route as RecsRoute } from "@/routes/recommendations";
+import { Route as AuthRoute } from "@/routes/auth";
+import { Welcome } from "@/components/Welcome";
 import { Route as ProfileRoute } from "@/routes/profile";
 
 /** Home below the header, as SignedInHome lays it out. */
@@ -69,7 +71,13 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample.startsWith("homepage")) {
+if (sample === "auth") {
+  const AuthPage = (AuthRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
+  createRoot(document.getElementById("root")!).render(<AuthPage />);
+} else if (sample === "welcome") {
+  // The first-use welcome, over an empty page.
+  createRoot(document.getElementById("root")!).render(<Welcome />);
+} else if (sample.startsWith("homepage") || sample === "landing") {
   // The Home route itself, in the app's frame.
   const HomePage = (HomeRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<HomePage />);

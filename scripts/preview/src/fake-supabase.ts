@@ -332,7 +332,13 @@ export const supabase = {
   },
   auth: {
     getUser: async () => ({ data: { user: { id: "me" } }, error: null }),
-    getSession: async () => ({ data: { session: { user: { id: "me" } } } }),
+    getSession: async () => ({
+      data: {
+        session: ["landing", "auth"].includes(new URLSearchParams(location.search).get("sample") ?? "")
+          ? null
+          : { user: { id: "me", created_at: new Date().toISOString() } },
+      },
+    }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
   },
   storage: {
