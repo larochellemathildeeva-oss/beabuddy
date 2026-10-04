@@ -57,7 +57,9 @@ import { useTripStops } from "@/hooks/useTripStops";
 import { destinationCities, groupsInCity } from "@/lib/trip-cities";
 import { useTripBudget } from "@/hooks/useTripBudget";
 import { usePacking } from "@/hooks/usePacking";
+import { haversine } from "@/lib/geo";
 import {
+  hasCoords,
   isSavedDirectionItem,
   stopsForDirections,
   timelineStopsForDirections,
@@ -129,7 +131,7 @@ import {
   splitDirectionRows,
   unroutedLegCopy,
 } from "@/lib/timeline-directions";
-import { modeWord, type TravelChoice } from "@/lib/travel-mode";
+import { legModeFor, modeWord, type TravelChoice } from "@/lib/travel-mode";
 import { readTravelChoice, writeTravelChoice } from "@/lib/travel-choice-store";
 import { tripStillEditableNote } from "@/lib/trip-copy";
 import { beaLine } from "@/lib/bea-voice";
@@ -809,6 +811,9 @@ export function TripDetail({
       from,
       to,
     );
+  /** How the Maps link for an unmeasured journey travels: as chosen for trips, by the distance between the pins. */
+  const mapsModeFor = (from: ItineraryRow, to: ItineraryRow) =>
+    hasCoords(from) && hasCoords(to) ? legModeFor(travel, haversine(from, to)) : undefined;
   const templates = usePacking(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sheetSection, setSheetSection] = useState<TripMenuSection | null>(null);
@@ -2233,6 +2238,7 @@ export function TripDetail({
                                           from={item}
                                           to={next}
                                           leg={travelInto(item, next)}
+                                          fallbackMode={mapsModeFor(item, next)}
                                           area={directionArea ?? ""}
                                           showTime={view.prefs.walkTimes}
                                           onAddBetween={() => openAddBetween(item, next)}
@@ -2335,6 +2341,7 @@ export function TripDetail({
                               from={item}
                               to={next}
                               leg={travelInto(item, next)}
+                              fallbackMode={mapsModeFor(item, next)}
                               area={directionArea ?? ""}
                               showTime={view.prefs.walkTimes}
                               onAddBetween={() => openAddBetween(item, next)}

@@ -24,12 +24,16 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
  * A row saved before it kept where it leaves from names only where it goes.
  */
 export function legDescribes(
-  leg: Pick<RouteLeg, "from" | "to">,
-  from: { title: string },
-  to: { title: string },
+  leg: Pick<RouteLeg, "from" | "to" | "fromLat" | "fromLon" | "toLat" | "toLon">,
+  from: DirectionStop,
+  to: DirectionStop,
 ): boolean {
   if (!sameName(leg.to, to.title)) return false;
-  return !leg.from.trim() || sameName(leg.from, from.title);
+  if (leg.from.trim() && !sameName(leg.from, from.title)) return false;
+  // Two stops can share a name; the pins the leg was routed between tell them apart.
+  const atEnd = (lat: number | undefined, lon: number | undefined, stop: DirectionStop) =>
+    lat == null || lon == null || !hasCoords(stop) || haversine({ lat, lon }, stop) <= MOVED_M;
+  return atEnd(leg.fromLat, leg.fromLon, from) && atEnd(leg.toLat, leg.toLon, to);
 }
 
 /**

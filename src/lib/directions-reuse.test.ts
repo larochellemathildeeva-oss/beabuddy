@@ -135,6 +135,11 @@ test("a timed train is kept only when transit is Béa's or the traveller's choic
 test("a leg found by position must name the stops it is between", () => {
   const leg = { from: "Cafe", to: "Citadines" } as RouteLeg;
   assert.equal(legDescribes(leg, { title: "Cafe" }, { title: "Citadines" }), true);
+  // Same names, other pins: a reordered pair of namesakes is another journey.
+  const pinned = { ...leg, fromLat: 34.69, fromLon: 135.5, toLat: 34.7, toLon: 135.5 } as RouteLeg;
+  const at = (title: string, lat: number, lon: number) => ({ title, lat, lon });
+  assert.equal(legDescribes(pinned, at("Cafe", 34.69, 135.5), at("Citadines", 34.7, 135.5)), true);
+  assert.equal(legDescribes(pinned, at("Cafe", 34.8, 135.5), at("Citadines", 34.7, 135.5)), false);
   // Hotel → Amano must not borrow the journey that led into the hotel.
   assert.equal(legDescribes(leg, { title: "Citadines" }, { title: "Amano" }), false);
   // A row saved before it kept where it leaves from names only where it goes.
