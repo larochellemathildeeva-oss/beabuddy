@@ -1,0 +1,70 @@
+                        <details className="mb-2 rounded-2xl bg-elevated p-2">
+                          <summary className="cursor-pointer px-1 text-[13px] font-semibold">
+                            Map of the day · saved on this phone
+                          </summary>
+                          <img
+                            src={dayMaps.maps[group.key]}
+                            alt={`Map of ${group.label}, stops numbered in order`}
+                            className="mt-2 w-full rounded-xl"
+                          />
+                          <p className="mt-1 px-1 text-[10.5px] text-muted-foreground">
+                            Stops numbered in order; the line joins them, it isn't the walking
+                            route. {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION} ·{" "}
+                            {OVERTURE_ATTRIBUTION}
+                          </p>
+                        </details>
+                      )}
+                      {dayOpen && (
+                        <ol className="relative min-w-0 space-y-1 overflow-x-hidden py-1">
+                          <RailLine />
+                          {hidingDone && group.items.every(isDone) && (
+                            <li className="list-none py-2 pl-[5.25rem] text-[13px] text-muted-foreground">
+                              ✓ Every stop on this day is visited.
+                            </li>
+                          )}
+                          {byArea && !editingTimeline
+                            ? groupByArea(
+                                group.items.filter((item) => !(hidingDone && isDone(item))),
+                              ).map((area) => (
+                                <Fragment key={area.area}>
+                                  <li className="relative z-10 flex list-none items-center gap-1.5 pl-[5.25rem] pt-2 text-[12.5px] font-semibold text-muted-foreground">
+                                    <MapPin className="size-3.5 text-primary" aria-hidden />
+                                    <span>
+                                      {area.area}
+                                      <span className="font-normal">
+                                        {` · ${area.items.length} ${area.items.length === 1 ? "stop" : "stops"}`}
+                                      </span>
+                                    </span>
+                                  </li>
+                                  {area.items.map((item) => (
+                                    <TimelineEntry
+                                      compact={compactCards && !editingTimeline}
+                                      key={item.id}
+                                      item={item}
+                                      showDay={false}
+                                      number={group.items.indexOf(item) + 1}
+                                      onLocate={() => locate(item)}
+                                      onSaveBooking={(patch) => board.updateItem(item.id, patch)}
+                                      {...docProps(item)}
+                                      onToggleDone={() => toggleDone(item)}
+                                      {...withNear(item.day_date)}
+                                      {...nestProps(item)}
+                                      onEdit={(field) => board.setEditing(field)}
+                                      onUpdate={(patch) => saveCard(item.id, patch)}
+                                      onRemove={() => void removeTimelineItem(item)}
+                                      tripStart={trip.start_date}
+                                      tripEnd={trip.end_date}
+                                      onKeep={keepItemAsReco}
+                                      kept={isKept(item)}
+                                      stray={strayIds.has(item.id)}
+                                      {...foldProps(item)}
+                                    />
+                                  ))}
+                                </Fragment>
+                              ))
+                            : (() => {
+                                // Drag to reorder: a grip on each card, inside
+                                // the day, not while editing every card at once.
+                                const sortable = !editingTimeline && group.items.length > 1;
+                                const dragging = draggingDay === group.key;
+                                const rows = group.items.map((item, dayIndex) => {

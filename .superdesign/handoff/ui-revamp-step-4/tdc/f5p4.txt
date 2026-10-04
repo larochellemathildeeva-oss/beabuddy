@@ -1,0 +1,66 @@
+              onLegs={setLiveLegs}
+              onPlaced={(placed) => {
+                // The router already found these. Keep them, so the map can
+                // draw the trip and the next Refresh does not pay again.
+                for (const stop of placed) {
+                  void board.updateItem(stop.id, { lat: stop.lat, lon: stop.lon });
+                }
+              }}
+              onBusy={setDirectionsBusy}
+              {...(dir.saved?.signature ? { savedSignature: dir.saved.signature } : {})}
+              {...(dir.saved?.savedAt ? { savedAt: dir.saved.savedAt } : {})}
+              {...(directionArea ? { area: directionArea } : {})}
+            />
+          </div>
+
+          {/**
+           * Adding opens over the page, not under the list, so the form
+           * arrives where you are looking, with the fields in reach.
+           */}
+          <Sheet
+            open={addingTimeline}
+            onClose={() => {
+              setAddingTimeline(false);
+              setAddDay("");
+              setAddBetween(null);
+            }}
+            title={addBetween ? "Add a stop between" : "Add to the timeline"}
+          >
+            <TimelineEntryForm
+              tripStart={trip.start_date}
+              tripEnd={trip.end_date}
+              {...(addDay ? { openDay: addDay } : {})}
+              {...(addBetween?.time ? { openTime: addBetween.time } : {})}
+              {...withNear(addDay || null)}
+              existing={board.items.map((item) => ({
+                title: item.title,
+                address: item.address,
+                lat: item.lat,
+                lon: item.lon,
+              }))}
+              onAdd={
+                addBetween
+                  ? async (entry) => {
+                      const id = await board.insertItemAfter(
+                        insertAnchor.current ?? addBetween.afterId,
+                        entry,
+                      );
+                      if (id) insertAnchor.current = id;
+                      return id;
+                    }
+                  : board.addItem
+              }
+              onUpdateEntry={(id, patch) => board.updateItem(id, patch)}
+              onDone={() => {
+                setAddingTimeline(false);
+                setAddDay("");
+                setAddBetween(null);
+              }}
+            />
+          </Sheet>
+
+          <DayEditSheet
+            open={dayEditOpen}
+            onClose={() => {
+              setDayEditOpen(false);
+              setDayEditStart(null);
