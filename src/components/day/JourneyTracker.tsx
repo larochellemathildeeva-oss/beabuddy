@@ -12,6 +12,15 @@ const DOT: Record<StopStatus, string> = {
   upcoming: "border border-border bg-card text-foreground",
 };
 
+/** The same dots on the trip banner's picture: white on the dark shade. */
+const DOT_PHOTO: Record<StopStatus, string> = {
+  done: "bg-white text-black",
+  here: "bg-primary text-primary-foreground shadow-sm ring-4 ring-white/40",
+  next: "border-2 border-white bg-black/30 text-white",
+  skipped: "border border-dashed border-white/60 bg-black/30 text-white/70",
+  upcoming: "border border-white/60 bg-black/30 text-white",
+};
+
 const STATUS_WORD: Record<StopStatus, string> = {
   done: "done",
   here: "you are here",
@@ -31,12 +40,15 @@ export function JourneyTracker({
   stops,
   selectedId = null,
   onSelect,
+  onPhoto = false,
 }: {
   stops: ItineraryRow[];
   /** The stop being looked at, from a tap here or on the ribbon. */
   selectedId?: string | null;
   /** Tap a stop to look at it; tap it again to stop looking. */
   onSelect?: ((id: string | null) => void) | undefined;
+  /** Drawn over the trip banner's picture, with no card of its own. */
+  onPhoto?: boolean;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const pickedIndex = selectedId ? stops.findIndex((s) => s.id === selectedId) : -1;
@@ -56,26 +68,33 @@ export function JourneyTracker({
   const filled = stops.length > 1 ? Math.min(1, (position - 1) / (stops.length - 1)) : 1;
 
   return (
-    <section aria-label="Today's progress" className="plain-card p-3.5">
+    <section aria-label="Today's progress" className={onPhoto ? "text-white" : "plain-card p-3.5"}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <p
+          className={`text-[13px] font-semibold uppercase tracking-[0.08em] ${onPhoto ? "text-white/85" : "text-muted-foreground"}`}
+        >
           Today's progress
         </p>
-        <p className="text-[14px] tabular-nums text-muted-foreground">
+        <p
+          className={`text-[14px] tabular-nums ${onPhoto ? "text-white/85" : "text-muted-foreground"}`}
+        >
           {state.reached} of {stops.length} stops reached ·{" "}
           {Math.round((state.reached / stops.length) * 100)}% complete
         </p>
       </div>
 
       {/* Scrolls sideways on a long day; each stop keeps a thumb-sized dot. */}
-      <div ref={track} className="no-scrollbar -mx-1 mt-3 overflow-x-auto px-1 pb-1">
+      <div
+        ref={track}
+        className={`no-scrollbar -mx-1 overflow-x-auto px-1 pb-1 ${onPhoto ? "mt-2" : "mt-3"}`}
+      >
         <ol
           className="relative flex items-start justify-between gap-1"
           style={{ minWidth: `${stops.length * 108}px` }}
         >
           <span
             aria-hidden
-            className="absolute inset-x-8 top-[15px] h-0.5 rounded-full bg-[var(--acc-track)]"
+            className={`absolute inset-x-8 top-[15px] h-0.5 rounded-full ${onPhoto ? "bg-white/40" : "bg-[var(--acc-track)]"}`}
           />
           <span
             aria-hidden
@@ -96,8 +115,10 @@ export function JourneyTracker({
                   aria-pressed={i === pickedIndex}
                   onClick={() => onSelect?.(i === pickedIndex ? null : stop.id)}
                   title={`${stop.title}, ${STATUS_WORD[status]}`}
-                  className={`tap-44 grid size-8 place-items-center rounded-full text-[14px] font-bold tabular-nums transition-all ${DOT[status]} ${
-                    i === pickedIndex ? "ring-2 ring-foreground ring-offset-2 ring-offset-card" : ""
+                  className={`tap-44 grid size-8 place-items-center rounded-full text-[14px] font-bold tabular-nums transition-all ${(onPhoto ? DOT_PHOTO : DOT)[status]} ${
+                    i === pickedIndex
+                      ? `ring-2 ring-offset-2 ${onPhoto ? "ring-white ring-offset-black/40" : "ring-foreground ring-offset-card"}`
+                      : ""
                   }`}
                 >
                   {status === "done" ? <Check className="size-4" aria-hidden /> : i + 1}
@@ -108,7 +129,13 @@ export function JourneyTracker({
                 </button>
                 <span
                   className={`mt-1.5 text-[14px] tabular-nums ${
-                    status === "here" ? "font-bold text-primary" : "text-muted-foreground"
+                    status === "here"
+                      ? onPhoto
+                        ? "font-bold text-white"
+                        : "font-bold text-primary"
+                      : onPhoto
+                        ? "text-white/80"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {time || "–"}
@@ -116,10 +143,16 @@ export function JourneyTracker({
                 <span
                   className={`break-words text-[13px] leading-tight ${
                     status === "here"
-                      ? "font-semibold text-primary"
+                      ? onPhoto
+                        ? "font-semibold text-white"
+                        : "font-semibold text-primary"
                       : status === "skipped"
-                        ? "text-muted-foreground line-through"
-                        : "text-foreground"
+                        ? onPhoto
+                          ? "text-white/60 line-through"
+                          : "text-muted-foreground line-through"
+                        : onPhoto
+                          ? "text-white"
+                          : "text-foreground"
                   }`}
                 >
                   {stop.title}

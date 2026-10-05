@@ -244,7 +244,7 @@ export function AppShell({
             </div>
           </header>
         ) : (
-          <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
+          <header className="tab-rule z-20 flex shrink-0 flex-wrap items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
             <div className="flex items-center gap-2">
               {showBack &&
                 (canGoBack ? (
@@ -294,6 +294,8 @@ export function AppShell({
                 />
               </span>
             </div>
+            {/* A page can put its own actions here (a trip: Plan with Béa, Add stop, To do). */}
+            <div id="app-header-slot" className="mt-2 basis-full empty:hidden" />
           </header>
         )}
 

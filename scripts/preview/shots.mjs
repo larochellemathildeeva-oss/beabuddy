@@ -43,7 +43,7 @@ for (const theme of ["calm", "colorful", "dark"]) {
     const path = existsSync(join(out, file)) ? join(out, file) : join(here, "..", "..", "public", file);
     return existsSync(path) ? route.fulfill({ body: readFileSync(path), contentType: types[file.split(".").pop()] ?? "application/octet-stream" }) : route.fulfill({ status: 404 });
   });
-  await page.goto(`https://preview.test/?sample=${sample}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await page.goto(`https://preview.test/?sample=${sample}${process.env.SHOTS_QUERY ?? ""}`, { waitUntil: "domcontentloaded", timeout: 30000 });
   await page.waitForTimeout(1500);
   for (const sel of clicks) {
     await page.locator(sel).first().click();
