@@ -3352,3 +3352,9 @@ html:not(.dark)
 .now-leave {
   border-radius: 999px !important;
 }
+
+.companion-hero--top {
+  margin-inline: 0;
+  min-height: 260px;
+  padding-top: 56px;
+}
