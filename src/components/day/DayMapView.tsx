@@ -420,7 +420,9 @@ function MapStage({
   const chromeTop = dayStrip ? chipH + 16 : 8;
 
   return (
-    <div className={`relative overflow-hidden rounded-[var(--r-card)] shadow-sm ${heightClass}`}>
+    <div
+      className={`trip-map-stage relative overflow-hidden rounded-[var(--r-card)] shadow-sm ${heightClass}`}
+    >
       <DayMap
         pins={pins}
         selectedId={selectedId}
@@ -449,7 +451,7 @@ function MapStage({
           ref={sheetRef}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
-          className="pointer-events-auto absolute inset-x-2 bottom-2 max-h-[min(58%,440px)] touch-pan-y overflow-y-auto rounded-[var(--r-card)] border border-border bg-card shadow-lg"
+          className="trip-map-sheet pointer-events-auto absolute inset-x-2 bottom-2 max-h-[min(58%,440px)] touch-pan-y overflow-y-auto rounded-[var(--r-card)] border border-border bg-card shadow-lg"
         >
           <button
             type="button"

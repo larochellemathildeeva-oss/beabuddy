@@ -336,7 +336,7 @@ export function NowPanel({
       )}
 
       {phase === "at" && current && (
-        <section className="plain-card space-y-3 p-4" aria-labelledby="now-here">
+        <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-here">
           <StopKicker
             live
             label="You are here"
@@ -349,7 +349,7 @@ export function NowPanel({
           />
           {leavePanel}
           <div className="flex items-start gap-3">
-            <StopArt item={current} className="size-16 rounded-2xl" />
+            <StopArt item={current} className="h-[104px] w-[78px] rounded-2xl" />
             <div className="min-w-0 flex-1">
               <h2 id="now-here" className="break-words font-display text-[28px] leading-[1.1]">
                 {current.title}
@@ -449,14 +449,14 @@ export function NowPanel({
       )}
 
       {focus && phase !== "at" && phase !== "done" && (
-        <section className="plain-card space-y-3 p-4" aria-labelledby="now-next">
+        <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-next">
           <StopKicker
             live={phase === "between"}
             label={phase === "between" ? "On the way to" : "First up"}
             aside={timeForRail(focus.time_label)}
           />
           <div className="flex items-start gap-3">
-            <StopArt item={focus} className="size-16 rounded-2xl" />
+            <StopArt item={focus} className="h-[104px] w-[78px] rounded-2xl" />
             <div className="min-w-0 flex-1">
               <h2 id="now-next" className="break-words font-display text-[28px] leading-[1.1]">
                 {focus.title}

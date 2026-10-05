@@ -2582,3 +2582,114 @@
   font-size: 14px;
   font-weight: 600;
 }
+/* ===== trip-view restyle ===== */
+/* The trip's four views (Overview, Companion, Map, Timeline) after the
+   owner's boards: a white page in Calm and Colorful (no wash), the photo
+   fading into it under dark ink, flat tabs, hairlines instead of shadowed
+   cards, and one lifted card for the stop that matters. Dark keeps its own
+   surfaces. Scoped to `.trip-shell` so no other page is touched. */
+html:not(.dark):has(.trip-shell) {
+  --wash-top: #ffffff;
+  --page-wash: none;
+}
+html:not(.dark) body:has(.trip-shell),
+html:not(.dark) .page-lit:has(.trip-shell) {
+  background-image: none;
+  background-color: #ffffff;
+}
+.trip-shell .trip-hero {
+  background: var(--background);
+}
+.trip-shell .trip-hero h1 {
+  font-size: 44px;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+}
+.trip-shell .trip-hero h1.text-\[34px\] {
+  font-size: 38px;
+}
+html:not(.dark) .trip-shell .trip-hero-haze {
+  background: linear-gradient(
+    to bottom,
+    #fff 0,
+    rgb(255 255 255 / 0.92) calc(var(--haze-end, 180px) - 30px),
+    rgb(255 255 255 / 0) calc(var(--haze-end, 180px) + 90px)
+  );
+}
+.trip-shell .trip-hero-switch {
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+  box-shadow: none;
+  border: 1px solid var(--border);
+}
+
+/* Tabs: a flat strip under a hairline, the chosen view a soft pill. */
+.trip-views--top {
+  gap: 2px;
+  padding: 4px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.trip-views--top button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 56px;
+  border-radius: 999px;
+}
+.trip-views--top button[aria-selected="true"] {
+  background: var(--acc-soft, var(--primary-soft));
+  color: var(--foreground);
+}
+.dark .trip-views--top button[aria-selected="true"] {
+  background: var(--primary-soft);
+}
+.trip-shell > .sticky {
+  background: color-mix(in oklab, var(--background) 96%, transparent);
+}
+
+/* Cards are supporting actors: hairlines and room, not shadows. */
+.trip-shell .plain-card {
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.trip-shell .trip-focus-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: 0 10px 30px -14px rgb(17 17 17 / 0.18);
+}
+.dark .trip-shell .trip-focus-card {
+  box-shadow: 0 14px 34px -16px rgb(0 0 0 / 0.8);
+}
+html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-card-4, .tile-card-5) {
+  box-shadow: none;
+}
+[data-theme="calm"] .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-card-4, .tile-card-5) {
+  border: 1px solid var(--border);
+}
+
+/* The map owns the viewport: edge to edge, the sheet docked to the foot. */
+.trip-shell .trip-map-stage {
+  margin-inline: -12px;
+  border-radius: 0;
+  box-shadow: none;
+}
+.trip-shell .trip-map-sheet {
+  inset-inline: 0;
+  bottom: 0;
+  border-width: 1px 0 0;
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -10px 30px -16px rgb(17 17 17 / 0.25);
+}
+/* The day's name over the map stays legible on any tile. */
+.trip-shell .trip-map-stage [role="tablist"] > p {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+}
+/* ===== end trip-view restyle ===== */
