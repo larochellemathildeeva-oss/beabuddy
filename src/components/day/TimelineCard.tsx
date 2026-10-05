@@ -1,3 +1,4 @@
+import { PlacePicture } from "@/components/PlacePicture";
 import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUp,
@@ -350,16 +351,19 @@ export function TimelineEntry({
   // the name opens the stop in a sheet to edit.
   const front = (
     <article
-      className={`rounded-[var(--r-card)] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
+      className={`rounded-[24px] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
         current ? "ring-2 ring-primary/45" : hereNow ? "ring-2 ring-primary/25" : ""
       }`}
     >
       <div className="flex items-center gap-2.5">
-        <span
-          className={`kind-chip kind-${timelineGlyph(item)} relative grid size-11 shrink-0 place-items-center rounded-xl`}
-          aria-hidden
-        >
-          <KindIcon item={item} />
+        <span className="relative block shrink-0" aria-hidden>
+          <PlacePicture
+            name={item.title}
+            kind={item.kind}
+            lat={item.lat}
+            lon={item.lon}
+            className="size-[64px] rounded-2xl"
+          />
           {number != null ? (
             <StopDisc
               number={number}

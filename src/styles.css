@@ -3093,3 +3093,38 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
   background: color-mix(in oklab, var(--card) 94%, transparent);
   backdrop-filter: blur(14px);
 }
+
+/* ===== day pills (Timeline, Map, Companion) ===== */
+.day-pills {
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  padding: 6px;
+  box-shadow: 0 8px 24px -18px rgb(17 17 17 / 0.2);
+}
+.day-pill {
+  position: relative;
+  display: flex;
+  min-width: 56px;
+  min-height: 56px;
+  flex: 1 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 18px;
+  color: var(--muted-foreground);
+}
+.day-pill[aria-selected="true"] {
+  background: var(--elevated);
+  color: var(--foreground);
+  font-weight: 600;
+}
+.day-pill-dot {
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--primary);
+}
