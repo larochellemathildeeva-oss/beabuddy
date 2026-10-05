@@ -66,12 +66,10 @@ export function stateLayout(
 ): ModuleLayout<HomeSectionKey> {
   const keys = STATE_MODULES[state];
   if (raw) return readModules(raw, keys, STATE_DEFAULTS[state]);
-  if (account && account.on.size > 0) {
+  if (account) {
     const order = account.order.filter((k) => keys.includes(k));
     for (const k of keys) if (!order.includes(k)) order.push(k);
     const on = new Set(order.filter((k) => account.on.has(k)));
-    // The pair of stop cards always shows on a trip unless switched off here.
-    if (state === "ontrip" && !raw) on.add("stops");
     return { order, on };
   }
   return defaultModules(keys, STATE_DEFAULTS[state]);

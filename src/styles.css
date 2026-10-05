@@ -2242,7 +2242,8 @@
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
 }
 .hn-bubble {
-  padding: 4px 14px 4px 4px;
+  padding: 4px;
+  padding-inline-end: 14px;
 }
 .hn-thread {
   stroke: var(--aerial-route);
@@ -2255,13 +2256,15 @@
   box-shadow: 0 0 0 2px var(--card);
 }
 .hn-tag {
-  padding: 0 12px 0 10px;
+  padding: 0;
+  padding-inline: 10px 12px;
   font-size: 15px;
   font-weight: 650;
 }
 .tn-tag {
   border-radius: 16px;
-  padding: 0 12px 0 9px;
+  padding: 0;
+  padding-inline: 9px 12px;
 }
 .tn-pin {
   color: var(--tn-pin);

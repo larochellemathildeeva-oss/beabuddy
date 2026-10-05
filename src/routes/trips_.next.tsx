@@ -158,6 +158,7 @@ function TripsNextPage() {
   const saving = useRef(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [code, setCode] = useState("");
+  const [joinBusy, setJoinBusy] = useState(false);
   const [error, setError] = useState("");
 
   const myName =
@@ -667,7 +668,7 @@ function TripsNextPage() {
                               return list.filter((_, i) => i < index || i >= end);
                             })
                           }
-                          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+                          className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
                         >
                           <X className="size-4" aria-hidden />
                         </button>
@@ -843,11 +844,14 @@ function TripsNextPage() {
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
             placeholder="Invite code"
+            aria-label="Invite code"
             className="w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px] tracking-widest"
           />
           <button
-            disabled={code.length < 4}
+            disabled={code.length < 4 || joinBusy}
             onClick={async () => {
+              if (joinBusy) return;
+              setJoinBusy(true);
               setError("");
               try {
                 const id = await t.joinTrip(code, myName);
@@ -860,6 +864,8 @@ function TripsNextPage() {
                 setJoining(false);
               } catch (e) {
                 setError(e instanceof Error ? e.message : "That code didn't work");
+              } finally {
+                setJoinBusy(false);
               }
             }}
             className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
@@ -945,7 +951,7 @@ function DayTripRow({
           type="button"
           aria-label="Remove this day trip"
           onClick={onRemove}
-          className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground"
+          className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground"
         >
           <X className="size-4" aria-hidden />
         </button>

@@ -135,12 +135,6 @@ export function AerialBanner({
   const [box, setBox] = useState<HTMLDivElement | null>(null);
   const width = useFrameWidth(box);
   const relief = useReliefIndex(!terrain);
-  const source: Source = terrain
-    ? "terrain"
-    : relief && relief.size === 0 && scene
-      ? "scene"
-      : "relief";
-
   const drawn = useMemo(() => {
     if (places.length === 0) return null;
     const frame = { width, height };
@@ -188,6 +182,10 @@ export function AerialBanner({
     });
     return { points, tiles, art: null };
   }, [places, width, height, top, bottom, terrain, mode, compact, spread]);
+
+  // Relief only where it has a tile under this trip; else the destination's scene.
+  const hasRelief = (drawn?.tiles ?? []).some((t) => relief?.has(`${t.z}/${t.x}/${t.y}`));
+  const source: Source = terrain ? "terrain" : relief && !hasRelief && scene ? "scene" : "relief";
 
   const labels = useMemo(() => {
     if (!drawn || !showLabels || mode !== "route") return [];

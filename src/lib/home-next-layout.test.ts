@@ -37,8 +37,12 @@ describe("stateLayout", () => {
     ]);
     // No trip: the trip modules are not offered.
     assert.deepEqual(shownModules(stateLayout("none", null, acc)), ["trip", "weather"]);
-    // On a trip, the stop cards stay on.
-    assert.ok(stateLayout("ontrip", null, acc).on.has("stops"));
+    // What the traveller switched off there stays off, the stop cards included.
+    assert.ok(!stateLayout("ontrip", null, acc).on.has("stops"));
+  });
+  it("keeps an account layout with everything switched off", () => {
+    const acc = { order: ["trip", "stops", "weather"], on: new Set() } as never;
+    assert.deepEqual(shownModules(stateLayout("ontrip", null, acc)), []);
   });
   it("keeps each state's own list once saved, dropping what the state can't show", () => {
     const raw = writeModules({

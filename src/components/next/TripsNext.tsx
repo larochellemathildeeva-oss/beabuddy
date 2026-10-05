@@ -163,7 +163,7 @@ function TripFill({
 /* ------------------------------------------------------------------ */
 
 const HERO_H = 340;
-const TAG_H = 42;
+const TAG_H = 44;
 
 /** The first placed city of each trip, read in one go for the header (as Trips does). */
 function useHeroPlaces(trips: TripRow[]) {
