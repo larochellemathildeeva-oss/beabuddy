@@ -1871,7 +1871,7 @@ export function TripDetail({
                     <p className="companion-hero-date">{companionDateLine}</p>
                   ) : null}
                 </section>
-                {view.prefs.ribbon && (
+                {view.prefs.ribbon && companionState(nowStops).phase !== "at" && (
                   <DayRibbon
                     stops={nowStops}
                     dayLabel={companionOrdinal || undefined}

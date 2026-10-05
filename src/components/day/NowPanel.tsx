@@ -336,98 +336,129 @@ export function NowPanel({
       )}
 
       {phase === "at" && current && (
-        <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-here">
-          <StopKicker
-            live
-            label="Current stop"
-            aside={[
-              timeForRail(current.time_label),
-              current.planned_stay_minutes ? stayLabel(current.planned_stay_minutes) : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          />
-          {leavePanel}
-          <div className="flex items-start gap-3">
-            <StopArt item={current} className="h-[104px] w-[78px] rounded-2xl" />
-            <div className="min-w-0 flex-1">
-              <h2 id="now-here" className="break-words font-display text-[28px] leading-[1.1]">
-                {current.title}
-              </h2>
-              {current.address?.trim() && (
-                <p className="mt-1.5 flex items-start gap-1 text-[14px] text-muted-foreground">
-                  <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">{current.address}</span>
-                </p>
-              )}
-              {current.planned_stay_minutes ? (
-                <p className="mt-1 text-[14px] text-muted-foreground">
-                  Planned stay {stayLabel(current.planned_stay_minutes)}
-                </p>
-              ) : null}
-              <StayLine stop={current} now={now} />
+        <>
+          <section
+            className="plain-card trip-focus-card now-current p-3"
+            aria-labelledby="now-here"
+          >
+            <div className="flex items-stretch gap-3">
+              <StopArt item={current} className="h-[150px] w-[112px] rounded-[18px]" />
+              <div className="min-w-0 flex-1 py-1">
+                <p className="now-current-label">Current stop</p>
+                <h2
+                  id="now-here"
+                  className="mt-1 flex items-start gap-2 break-words font-display text-[24px] leading-[1.1]"
+                >
+                  <span className="now-live-dot" aria-hidden />
+                  <span className="min-w-0">{current.title}</span>
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {current.planned_stay_minutes ? (
+                    <span className="now-chip">
+                      <Clock className="size-3.5" aria-hidden />
+                      {stayLabel(current.planned_stay_minutes)}
+                    </span>
+                  ) : null}
+                  <span className="now-chip">Here now</span>
+                </div>
+                {current.address?.trim() && (
+                  <p className="mt-2 flex items-start gap-1 text-[13px] leading-snug text-muted-foreground">
+                    <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0">{current.address}</span>
+                  </p>
+                )}
+                <StayLine stop={current} now={now} />
+              </div>
             </div>
-          </div>
-          <BookingAtHandCard stop={current} docs={bookingDocs} />
-          {says && <BeaSays line={says} />}
-          <div className="flex flex-wrap items-center gap-2">
+            <BookingAtHandCard stop={current} docs={bookingDocs} />
+          </section>
+          {rowNext && (
+            <StopCircles
+              stops={[rowNext, ...later.slice(0, 2)]}
+              nowMinutes={now ? placeClock(now, offset).minutes : null}
+              onLook={onLook}
+            />
+          )}
+          {leavePanel}
+          <div className="now-tools" role="group" aria-label="This stop">
+            <a
+              href={directionsHref}
+              target="_blank"
+              rel="noreferrer"
+              className="now-tool now-tool-pink"
+            >
+              <MapPin className="size-5" aria-hidden />
+              <span>Directions</span>
+              <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
+            </a>
             <button
               type="button"
               disabled={busy}
               onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-              className={primaryBtn}
+              className="now-tool now-tool-blue"
             >
-              Leaving
+              <ChevronRight className="size-5" aria-hidden />
+              <span>Leaving</span>
             </button>
+            {photosFor && (
+              <span className="now-tool now-tool-yellow">
+                <QuickPhoto photos={photosFor(current)} />
+                <span>Photo</span>
+              </span>
+            )}
             <button
               type="button"
               disabled={busy}
               onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
-              className={linkBtn}
+              className="now-tool now-tool-lilac"
             >
-              Not here yet
+              <Clock className="size-5" aria-hidden />
+              <span>Not here yet</span>
             </button>
-            {photosFor && (
-              <span className="flex gap-1.5">
-                <QuickPhoto photos={photosFor(current)} />
-              </span>
-            )}
           </div>
-          {rowNext && (
-            <NextRow
-              stop={rowNext}
-              kicker="Next stop"
-              meta={[timeForRail(rowNext.time_label), isBooked(rowNext) ? "Booked" : ""]
-                .filter(Boolean)
-                .join(" · ")}
-              onLook={onLook}
-            >
-              {journeyNotes}
-              <PlaceFacts
-                name={rowNext.title}
-                lat={rowNext.lat}
-                lon={rowNext.lon}
-                day={rowNext.day_date}
-                time={rowNext.time_label}
-                auto
-              />
-              <BookingAtHandCard stop={rowNext} docs={bookingDocs} />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void act(() => onProgress(arrivalWrites(dayStops, rowNext.id, new Date())))
-                  }
-                  className={softBtn}
-                >
-                  I'm here
-                </button>
-                {navigateTo(rowNext)}
-              </div>
-            </NextRow>
+          {says && (
+            <section className="plain-card now-note p-3" aria-label="A note from Béa">
+              <p className="now-note-title">A note from Béa</p>
+              <BeaSays line={says} />
+            </section>
           )}
-        </section>
+          {rowNext && (
+            <section className="plain-card p-4">
+              <NextRow
+                stop={rowNext}
+                kicker="Next stop"
+                meta={[timeForRail(rowNext.time_label), isBooked(rowNext) ? "Booked" : ""]
+                  .filter(Boolean)
+                  .join(" · ")}
+                onLook={onLook}
+              >
+                {journeyNotes}
+                <PlaceFacts
+                  name={rowNext.title}
+                  lat={rowNext.lat}
+                  lon={rowNext.lon}
+                  day={rowNext.day_date}
+                  time={rowNext.time_label}
+                  auto
+                />
+                <BookingAtHandCard stop={rowNext} docs={bookingDocs} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      void act(() => onProgress(arrivalWrites(dayStops, rowNext.id, new Date())))
+                    }
+                    className={softBtn}
+                  >
+                    I'm here
+                  </button>
+                  {navigateTo(rowNext)}
+                </div>
+              </NextRow>
+            </section>
+          )}
+        </>
       )}
 
       {phase === "between" && previous && (
@@ -625,6 +656,48 @@ const softBtn =
 const linkBtn =
   "inline-flex min-h-11 items-center px-1 text-[16px] font-medium text-muted-foreground underline underline-offset-2 disabled:opacity-60";
 
+function StopCircles({
+  stops,
+  nowMinutes,
+  onLook,
+}: {
+  stops: ItineraryRow[];
+  nowMinutes: number | null;
+  onLook?: ((id: string) => void) | undefined;
+}) {
+  return (
+    <ol className="now-circles" aria-label="Coming up">
+      {stops.map((stop, i) => {
+        const at = clockMinutes(stop.time_label);
+        const sub =
+          i === 0
+            ? "Next"
+            : nowMinutes != null && at != null && at > nowMinutes
+              ? `In ${stayLabel(at - nowMinutes)}`
+              : timeForRail(stop.time_label) || "Later";
+        const body = (
+          <>
+            <StopArt item={stop} className="size-14 rounded-full" />
+            <span className="now-circle-name">{stop.title}</span>
+            <span className="now-circle-sub">{sub}</span>
+          </>
+        );
+        return (
+          <li key={stop.id}>
+            {onLook ? (
+              <button type="button" onClick={() => onLook(stop.id)} className="now-circle">
+                {body}
+              </button>
+            ) : (
+              <div className="now-circle">{body}</div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function StopKicker({ live, label, aside }: { live?: boolean; label: string; aside?: string }) {
   return (
     <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -789,8 +862,10 @@ function LeavePanel({
       rel="noreferrer"
       role={urgent ? "status" : undefined}
       aria-label={`${label} ${big}${words ? `, ${words.time} ${words.how}` : ""} to ${nextTitle} — directions in maps`}
-      className={`flex min-h-11 items-center gap-3 rounded-2xl px-2.5 py-2 ${
-        urgent ? "bg-primary text-primary-foreground" : "border border-border bg-secondary"
+      className={`now-leave flex min-h-11 items-center gap-3 px-3 py-2 ${
+        urgent
+          ? "bg-primary text-primary-foreground"
+          : "border border-border bg-[color-mix(in_oklab,#f59ab8_16%,var(--card))]"
       }`}
     >
       {big ? (
