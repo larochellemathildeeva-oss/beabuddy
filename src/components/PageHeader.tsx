@@ -2,20 +2,9 @@ import type { ReactNode, Ref } from "react";
 import logo from "@/assets/bea-logo.png";
 
 /** Shared identity row; the shell keeps the Home link and header actions. */
-export function BrandMark({
-  version,
-  large = false,
-  slimWhenSlotFilled = false,
-}: {
-  version?: string;
-  large?: boolean;
-  /** Hidden while the shell header carries a page's own actions on the same line. */
-  slimWhenSlotFilled?: boolean;
-}) {
+export function BrandMark({ version, large = false }: { version?: string; large?: boolean }) {
   return (
-    <span
-      className={`flex min-h-11 items-center gap-2${slimWhenSlotFilled ? " group-has-[#app-header-slot:not(:empty)]/hdr:hidden" : ""}`}
-    >
+    <span className="flex min-h-11 items-center gap-2">
       <img
         src={logo}
         alt="Béa logo"

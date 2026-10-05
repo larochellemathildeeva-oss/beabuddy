@@ -268,8 +268,11 @@ export function AppShell({
                     </span>
                   </Link>
                 ))}
-              <Link to="/" className="flex items-center gap-2">
-                <BrandMark version={APP_VERSION} slimWhenSlotFilled />
+              <Link
+                to="/"
+                className="flex items-center gap-2 group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
+              >
+                <BrandMark version={APP_VERSION} />
               </Link>
             </div>
 
@@ -295,7 +298,10 @@ export function AppShell({
               </span>
             </div>
             {/* A page can put its own actions here (a trip: Plan with Béa, Add stop, To do), on the same line as the logo and help. */}
-            <div id="app-header-slot" className="order-2 min-w-0 flex-1 empty:hidden" />
+            <div
+              id="app-header-slot"
+              className="no-scrollbar order-2 -my-2 min-w-0 flex-1 overflow-x-auto py-2 empty:hidden"
+            />
           </header>
         )}
 
