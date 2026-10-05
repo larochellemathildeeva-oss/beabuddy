@@ -1,4 +1,4 @@
-import { backFallback } from "@/lib/back-target";
+import { backFallback, isLandingPage } from "@/lib/back-target";
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
@@ -77,7 +77,7 @@ export function AppShell({
   const router = useRouter();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
-  const showBack = pathname !== "/";
+  const showBack = !isLandingPage(pathname);
   const tabIndex = activeTabIndex(pathname, tabs);
   const scrollRef = useRef<HTMLElement | null>(null);
   const pageHeaderRef = useRef<HTMLDivElement | null>(null);

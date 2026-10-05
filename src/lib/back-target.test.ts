@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { backFallback } from "./back-target.ts";
+import { backFallback, isLandingPage } from "./back-target.ts";
 
 test("a trip climbs to the trips list", () => {
   assert.equal(backFallback("/trips/abc-123"), "/trips");
@@ -16,4 +16,12 @@ test("other sub-screens climb to their tab", () => {
 test("tabs and unknown screens fall back to Home", () => {
   assert.equal(backFallback("/trips"), "/");
   assert.equal(backFallback("/help"), "/");
+});
+
+test("tab roots are landing pages with no back button", () => {
+  for (const p of ["/", "/world", "/trips", "/recommendations", "/profile", "/trips/"]) {
+    assert.equal(isLandingPage(p), true, p);
+  }
+  assert.equal(isLandingPage("/trips/abc"), false);
+  assert.equal(isLandingPage("/profile/documents"), false);
 });
