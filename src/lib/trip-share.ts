@@ -84,8 +84,8 @@ export type SharedTrip = {
  */
 export const SHARED_HERE_MAX_MS = 12 * 60 * 60 * 1000;
 
-/** Hours after midnight at which an earlier day's open stop is read as done. */
-const NEW_DAY_AFTER_MS = 6 * 60 * 60 * 1000;
+/** The local hour from which an earlier day's open stop is read as done. */
+const NEW_DAY_HOUR = 6;
 
 /** A stop's progress as a friend may see it: here, done, or nothing yet. */
 export function sharedStopStatus(
@@ -98,18 +98,30 @@ export function sharedStopStatus(
   return "here";
 }
 
-/** The calendar date (YYYY-MM-DD) of an instant in a time zone, else in UTC. */
-function localDate(ms: number, zone?: string): string {
+/**
+ * The date (YYYY-MM-DD) the wall clock in a zone reads at an instant, counting
+ * the hours before NEW_DAY_HOUR as still the day before. Built from the date
+ * parts, so it holds across daylight saving and does not depend on a locale's
+ * date order. UTC when the zone is unknown.
+ */
+function planDateAt(ms: number, zone?: string): string {
+  let parts: Intl.DateTimeFormatPart[];
   try {
-    return new Intl.DateTimeFormat("en-CA", {
+    parts = new Intl.DateTimeFormat("en-US", {
       timeZone: zone ?? "UTC",
+      hourCycle: "h23",
       year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(ms);
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+    }).formatToParts(ms);
   } catch {
-    return new Date(ms).toISOString().slice(0, 10);
+    return planDateAt(ms);
   }
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const date = new Date(Date.UTC(part("year"), part("month") - 1, part("day")));
+  if (part("hour") % 24 < NEW_DAY_HOUR) date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
 }
 
 /** The view a link shows; everything not named here stays private. */
@@ -165,13 +177,7 @@ export function sharedTripView(
   // A late-evening stop may still be "here" just past midnight, but not into
   // the next morning: from 6 a.m. local on a later day it is done, however
   // recent its tap, so a forgotten "Leaving" never pins a friend to last night.
-  if (follow.following) {
-    for (const h of here) {
-      if (h.stop.status !== "here" || !h.day.day) continue;
-      if (localDate(follow.now - NEW_DAY_AFTER_MS, h.day.zone) > h.day.day) h.stop.status = "done";
-    }
-  }
-  return {
+  const view: SharedTrip = {
     title: trip.title,
     place: [trip.city?.split(",")[0]?.trim(), trip.country].filter(Boolean).join(", "),
     startDate: trip.start_date,
@@ -179,6 +185,16 @@ export function sharedTripView(
     following: follow.following,
     days,
   };
+  if (follow.following) {
+    for (const h of here) {
+      if (h.stop.status !== "here" || !h.day.day) continue;
+      // The zone the page reads this day in, so an unpinned day is not UTC.
+      if (planDateAt(follow.now, sharedTripZone(view, h.day.day)) > h.day.day) {
+        h.stop.status = "done";
+      }
+    }
+  }
+  return view;
 }
 
 /** The address of the page a token opens. */
