@@ -31,7 +31,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { geoContains, geoOrthographic, geoPath } from "d3-geo";
 import { feature, mesh } from "topojson-client";
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
-import worldTopo from "world-atlas/countries-110m.json";
+import worldTopo from "world-atlas/countries-50m.json";
 import { Minus, Pause, Play, Plus, RotateCcw } from "@/components/icons";
 import type { Pin } from "@/data/atlas";
 import { useThemeName } from "@/hooks/useThemeName";
