@@ -177,9 +177,8 @@
   --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 45%, transparent);
   --shadow-soft: var(--shadow-md);
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
-  /* Calm: a peach-cream glow at the top, as in the design boards. */
-  --wash-top: #fdebd9;
-  --page-wash: linear-gradient(180deg, #fdebd9 0, #fff6ec 240px, rgb(255 255 255 / 0) 560px);
+  --wash-top: var(--background);
+  --page-wash: none;
 
   /**
    * Motion is configured where colour is configured — one place, not forty
@@ -218,10 +217,10 @@
 
 /* Colorful: warm ground with the north star's five supporting pastels. */
 [data-theme="colorful"] {
+  /* White ground (owner, 2026-10-05); the moods differ by accents and art. */
   --background: #FFFFFF;
-  /* Colorful: sky blue at the top fading to white, as in the design boards. */
-  --wash-top: #cde7f8;
-  --page-wash: linear-gradient(180deg, #cde7f8 0, #e8f4fb 250px, rgb(255 255 255 / 0) 580px);
+  --wash-top: var(--background);
+  --page-wash: none;
   --foreground: #111111;
   --card: #FFFFFF;
   --card-foreground: #111111;
@@ -236,12 +235,12 @@
   --destructive-ink: var(--destructive);
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
-  --border: #ECE6DE;
+  --border: #F2EDE6;
   --input: #D9D3CC;
   --ring: var(--acc-ink);
-  --elevated: #F4F1EC;
-  --secondary: #F4F1EC;
-  --muted: #F4F1EC;
+  --elevated: #F2EDE6;
+  --secondary: #F2EDE6;
+  --muted: #F2EDE6;
   --tile-1: var(--lavender);
   --tile-2: var(--powder);
   --tile-3: var(--mint);
@@ -251,28 +250,28 @@
 
 /* Dark keeps its existing near-black surfaces and the chosen accent. */
 .dark {
-  --background: #0d0d0f;
-  --foreground: #f6ecdd;
-  --card: #19181a;
-  --card-foreground: #f6ecdd;
-  --elevated: #232124;
-  --popover: #232124;
+  --background: #171513;
+  --foreground: #f6f0e8;
+  --card: #211e1b;
+  --card-foreground: #f6f0e8;
+  --elevated: #2b2723;
+  --popover: #2b2723;
   --popover-foreground: #f6f0e8;
   --primary: var(--acc);
   --primary-ink: var(--acc-done);
   --primary-foreground: #000000;
   --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
-  --secondary: #232124;
-  --secondary-foreground: #f6ecdd;
-  --muted: #232124;
-  --muted-foreground: #a8a29a;
-  --accent: #232124;
-  --accent-foreground: #f6ecdd;
+  --secondary: #2b2723;
+  --secondary-foreground: #f6f0e8;
+  --muted: #2b2723;
+  --muted-foreground: #b8aea4;
+  --accent: #2b2723;
+  --accent-foreground: #f6f0e8;
   --destructive: #C22A52;
   --destructive-ink: #F08AA3;
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: #2e2b2c;
-  --input: #2e2b2c;
+  --border: #3a342f;
+  --input: #3a342f;
   --ring: var(--acc-done);
 
   --visited: oklch(0.7 0.135 249);
@@ -298,8 +297,8 @@
   --shadow-soft: var(--shadow-md);
 
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
-  --wash-top: #1b1816;
-  --page-wash: radial-gradient(120% 60% at 50% -10%, oklch(0.3 0.03 60 / 0.5), transparent 70%);
+  --wash-top: var(--background);
+  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
 
   --success: #86a78b;
   --warning: #d5a25d;
@@ -422,6 +421,17 @@
      numbers set in the display face start at 500, headings at 700. */
   .font-display {
     font-weight: 500;
+  }
+
+  /* The traveller's other choice, Instrument Serif, has one weight. */
+  :root[data-headline="instrument"] {
+    --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  }
+  :root[data-headline="instrument"] .font-display,
+  :root[data-headline="instrument"] h1,
+  :root[data-headline="instrument"] h2,
+  :root[data-headline="instrument"] h3 {
+    font-weight: 400;
   }
 
   h1,
