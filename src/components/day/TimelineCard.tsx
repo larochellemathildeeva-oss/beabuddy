@@ -31,6 +31,8 @@ import {
 } from "@/components/icons";
 import { KindChip, KindIcon, StopDisc } from "@/components/day/stop-bits";
 import { toast } from "sonner";
+import { useLiveLocationReadOnly } from "@/hooks/useLiveLocation";
+import { isNearStop } from "@/lib/live-companion";
 import {
   addInside,
   insideHasRoom,
@@ -291,6 +293,10 @@ export function TimelineEntry({
   };
 
   const current = Boolean(item.arrived_at) && !item.left_at;
+  // The phone is here, with "Use my location" on in Now or the map.
+  const live = useLiveLocationReadOnly();
+  const hereNow =
+    !current && live.on && !live.stale && live.fix != null && isNearStop(live.fix, item);
   const whereLine = stray ? "" : where && where === detail ? "" : where || "No place yet";
   const pillButton =
     "inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[13px] font-medium transition-colors disabled:opacity-40";
@@ -345,7 +351,7 @@ export function TimelineEntry({
   const front = (
     <article
       className={`rounded-[var(--r-card)] border border-border/60 bg-card p-2.5 shadow-sm transition-shadow ${
-        current ? "ring-2 ring-primary/45" : ""
+        current ? "ring-2 ring-primary/45" : hereNow ? "ring-2 ring-primary/25" : ""
       }`}
     >
       <div className="flex items-center gap-2.5">
@@ -407,6 +413,10 @@ export function TimelineEntry({
             {current ? (
               <span className="rounded-full bg-primary px-2 py-0.5 text-[13px] font-bold text-primary-foreground">
                 Now
+              </span>
+            ) : hereNow ? (
+              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[13px] font-bold text-primary">
+                You're here
               </span>
             ) : null}
             {!placed && item.kind !== "note" ? (
@@ -625,7 +635,7 @@ export function TimelineEntry({
   const compactRow = (
     <article
       className={`flex items-center gap-1.5 rounded-xl border border-border/60 bg-card py-1.5 pl-2 pr-2 shadow-sm ${
-        current ? "ring-2 ring-primary/45" : ""
+        current ? "ring-2 ring-primary/45" : hereNow ? "ring-2 ring-primary/25" : ""
       }`}
     >
       {dragHandle}

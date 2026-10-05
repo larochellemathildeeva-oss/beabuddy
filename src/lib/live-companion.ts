@@ -46,6 +46,18 @@ export const ETA_ACCURACY_MAX_M = 500;
 
 export type FollowKind = "arrive" | "leave";
 
+/**
+ * Whether the phone is at this stop right now: a reading sure enough to
+ * mean a block, within reach of the pin. The timeline uses it to mark where
+ * you are; unlike an arrival it needs no dwell, since marking changes nothing
+ * on the trip.
+ */
+export function isNearStop(fix: HereFix, stop: FollowStop): boolean {
+  if (fix.accuracy > ARRIVE_ACCURACY_MAX_M) return false;
+  const pin = pinOf(stop);
+  return pin != null && haversine(fix, pin) <= arriveRadius(fix.accuracy);
+}
+
 /** What the readings have pointed at, and since when. */
 export type Sighting = { kind: FollowKind; stopId: string; since: number } | null;
 

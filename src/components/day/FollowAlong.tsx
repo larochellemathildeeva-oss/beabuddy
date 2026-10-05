@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { readAutoCheck, writeAutoCheck } from "@/lib/auto-check-store";
 import { LocateFixed } from "@/components/icons";
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -45,6 +46,9 @@ export function FollowAlong({
     },
     [],
   );
+  const [auto, setAuto] = useState(false);
+  useEffect(() => setAuto(readAutoCheck()), []);
+  const autoDone = useRef(new Set<string>());
   const start = () => {
     startedHere.current = true;
     startLiveLocation();
@@ -58,8 +62,21 @@ export function FollowAlong({
     }
     const out = followAlong(sighting.current, dayStops, live.fix, Date.now(), dismissed.current);
     sighting.current = out.sighting;
+    // Hands-free, on the traveller's say-so: the same reading that would have
+    // asked now ticks the arrival. Leaving is still asked, and each stop is
+    // ticked once, so an undo is not overruled.
+    if (auto && out.suggest?.kind === "arrive") {
+      const id = out.suggest.stop.id;
+      setSuggest(null);
+      if (!busy && !autoDone.current.has(id)) {
+        autoDone.current.add(id);
+        onArrive(out.suggest.stop);
+      }
+      return;
+    }
     setSuggest(out.suggest);
-  }, [live.on, live.fix, live.stale, dayStops, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live.on, live.fix, live.stale, dayStops, now, auto, busy]);
 
   const wave = (kind: FollowKind, stop: ItineraryRow) => {
     dismissed.current.add(followKey(kind, stop.id));
@@ -115,6 +132,23 @@ export function FollowAlong({
           Stop
         </button>
       </div>
+      <label className="plain-card flex min-h-11 items-center gap-3 px-3.5 py-2 text-[14px]">
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(e) => {
+            setAuto(e.target.checked);
+            writeAutoCheck(e.target.checked);
+          }}
+          className="size-5 shrink-0 accent-[var(--primary)]"
+        />
+        <span className="min-w-0 leading-snug">
+          Check stops off when I arrive
+          <span className="block text-muted-foreground">
+            Béa ticks the stop herself instead of asking. Leaving is still your tap.
+          </span>
+        </span>
+      </label>
       {suggest && (
         <section role="status" className="plain-card space-y-2 border-primary/40 p-3.5">
           <p className="text-[16px] leading-snug">

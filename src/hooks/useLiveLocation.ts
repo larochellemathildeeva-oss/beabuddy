@@ -104,3 +104,23 @@ export function useLiveLocation(): LiveLocation {
     () => OFF,
   );
 }
+
+function subscribeQuietly(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/**
+ * The same reading for something that only looks at it, such as a marker on
+ * the timeline. It never keeps the watch alive: when the last map or Now
+ * panel is closed the watch stops, whoever is still looking.
+ */
+export function useLiveLocationReadOnly(): LiveLocation {
+  return useSyncExternalStore(
+    subscribeQuietly,
+    () => snapshot,
+    () => OFF,
+  );
+}
