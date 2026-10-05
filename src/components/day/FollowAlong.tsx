@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { readAutoCheck, writeAutoCheck } from "@/lib/auto-check-store";
+import { useAuth } from "@/hooks/useAuth";
 import { LocateFixed } from "@/components/icons";
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -13,6 +14,9 @@ import {
   type Sighting,
 } from "@/lib/live-companion";
 import type { TravelChoice } from "@/lib/travel-mode";
+
+/** Stops ticked hands-free in this page load, whatever happens to the Now panel. */
+const autoAttempted = new Set<string>();
 
 /**
  * "Follow along" on Now: off until asked for, and only while this screen is
@@ -31,7 +35,7 @@ export function FollowAlong({
   busy: boolean;
   /** The minute clock, so a wait that has lasted is noticed between readings. */
   now: Date | null;
-  onArrive: (stop: ItineraryRow) => void;
+  onArrive: (stop: ItineraryRow) => void | Promise<boolean>;
   onLeave: (stop: ItineraryRow) => void;
 }) {
   const live = useLiveLocation();
@@ -46,9 +50,9 @@ export function FollowAlong({
     },
     [],
   );
+  const uid = useAuth().user?.id ?? null;
   const [auto, setAuto] = useState(false);
-  useEffect(() => setAuto(readAutoCheck()), []);
-  const autoDone = useRef(new Set<string>());
+  useEffect(() => setAuto(readAutoCheck(uid)), [uid]);
   const start = () => {
     startedHere.current = true;
     startLiveLocation();
@@ -68,9 +72,14 @@ export function FollowAlong({
     if (auto && out.suggest?.kind === "arrive") {
       const id = out.suggest.stop.id;
       setSuggest(null);
-      if (!busy && !autoDone.current.has(id)) {
-        autoDone.current.add(id);
-        onArrive(out.suggest.stop);
+      // Remembered outside this component, so leaving Now and coming back
+      // does not tick a stop the traveller has since undone. A save that
+      // failed is forgotten, so a later reading tries again.
+      if (!busy && !autoAttempted.has(id)) {
+        autoAttempted.add(id);
+        void Promise.resolve(onArrive(out.suggest.stop)).then((saved) => {
+          if (saved === false) autoAttempted.delete(id);
+        });
       }
       return;
     }
@@ -135,10 +144,11 @@ export function FollowAlong({
       <label className="plain-card flex min-h-11 items-center gap-3 px-3.5 py-2 text-[14px]">
         <input
           type="checkbox"
-          checked={auto}
+          checked={auto && uid != null}
+          disabled={uid == null}
           onChange={(e) => {
             setAuto(e.target.checked);
-            writeAutoCheck(e.target.checked);
+            writeAutoCheck(uid, e.target.checked);
           }}
           className="size-5 shrink-0 accent-[var(--primary)]"
         />

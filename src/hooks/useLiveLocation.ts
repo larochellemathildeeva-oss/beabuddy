@@ -28,10 +28,13 @@ let snapshot: LiveLocation = OFF;
 let watchId: number | null = null;
 let staleTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
+/** Read-only lookers: told of every change, never counted when deciding to stop the watch. */
+const observers = new Set<() => void>();
 
 function set(next: LiveLocation) {
   snapshot = next;
   for (const listener of listeners) listener();
+  for (const observer of observers) observer();
 }
 
 function clearWatch() {
@@ -106,9 +109,9 @@ export function useLiveLocation(): LiveLocation {
 }
 
 function subscribeQuietly(listener: () => void) {
-  listeners.add(listener);
+  observers.add(listener);
   return () => {
-    listeners.delete(listener);
+    observers.delete(listener);
   };
 }
 

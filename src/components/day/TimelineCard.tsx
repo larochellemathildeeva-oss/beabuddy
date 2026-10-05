@@ -415,7 +415,7 @@ export function TimelineEntry({
                 Now
               </span>
             ) : hereNow ? (
-              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-[13px] font-bold text-primary">
+              <span className="rounded-full border border-primary/40 bg-card px-2 py-0.5 text-[13px] font-bold text-foreground">
                 You're here
               </span>
             ) : null}

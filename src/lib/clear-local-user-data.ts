@@ -1,7 +1,7 @@
 import { sampleCtaDismissKey } from "./auto-seed.ts";
 import { clearAllOfflineMaps, OFFLINE_MAP_KEY_PREFIX } from "./offline-map.ts";
 import { OFFLINE_TRIP_KEY_PREFIX } from "./offline-trip.ts";
-import { AUTO_CHECK_KEY } from "./auto-check-store.ts";
+import { autoCheckKey } from "./auto-check-store.ts";
 import { TRAVEL_KEY_PREFIX } from "./travel-choice-store.ts";
 import { clearStoredVaultKeys } from "./vaultCrypto.ts";
 import { passkeyStorageKey } from "./vault-passkey.ts";
@@ -31,7 +31,7 @@ export function clearLocalUserData(uid: string) {
     "bea-photo-consent-skip",
     "bea-location-consent",
     "bea-expense-disclaimer",
-    AUTO_CHECK_KEY,
+    autoCheckKey(uid),
   ];
   for (const key of exact) {
     try {
