@@ -1902,6 +1902,603 @@
   --world-place-fallback: #2b2723;
 }
 
+
+/*
+ * Béa — Home (step 8) and Trips (step 7) redesign tokens and classes.
+ * MERGE, don't overwrite: append to the end of src/styles.css (after world.css).
+ * Everything is new and namespaced: `--aerial-*` / `.aerial-*` (the aerial
+ * banner), `.hn-*` (Home), `.tn-*` (Trips). No existing class is changed, so
+ * `/` and `/trips` look exactly as today.
+ *
+ * Components read the app's own tokens wherever one exists (--background,
+ * --card, --foreground, --muted-foreground, --border, --primary, --acc,
+ * --acc2, --acc-soft, --acc-done, --acc-ink, --stat-*, tile-fill-N); only what
+ * has no token yet is defined below, per theme, with the app's own selectors.
+ * Pastels: VISUAL_NORTH_STAR's Blush, Powder blue, Mint, Butter, Lavender.
+ */
+
+/* Calm (the :root default): white main, black secondary, airy terrain. */
+:root,
+[data-theme="calm"] {
+  --aerial-sea: #5d9fbd;
+  --aerial-water: #4a93b8;
+  --aerial-wash: rgb(255 255 255 / 0.06);
+  --aerial-vignette: rgb(24 28 26 / 0.3);
+  --aerial-cloud-opacity: 0.6;
+  --aerial-route: #ffffff;
+  --aerial-route-glow: rgb(255 255 255 / 0.9);
+  --aerial-route-done: var(--acc-done, #1b1918);
+  --aerial-dot: #ffffff;
+  --aerial-dot-stroke: #1b1918;
+  --aerial-dot-done: #1b1918;
+  --aerial-here: #1b1918;
+  --aerial-here-ring: #ffffff;
+  --aerial-here-halo: rgb(255 255 255 / 0.45);
+  --aerial-tag: rgb(255 255 255 / 0.94);
+  --aerial-tag-ink: #1b1918;
+  --aerial-tag-here: #1b1918;
+  --aerial-tag-here-ink: #ffffff;
+  --aerial-tag-shadow: rgb(20 20 20 / 0.28);
+  --hn-ink: #1b1918;
+  --hn-ink-foreground: #ffffff;
+  --hn-haze: var(--background);
+  --hn-panel: var(--background);
+  --hn-card-border: color-mix(in oklch, var(--border) 70%, transparent);
+  --hn-card-shadow: 0 6px 22px rgb(30 24 18 / 0.07);
+  --hn-chip-1: var(--card);
+  --hn-chip-2: var(--card);
+  --hn-chip-4: var(--card);
+  --hn-chip-border: color-mix(in oklch, var(--border) 80%, transparent);
+  --hn-chip-icon-bg: var(--elevated, #f4f2ef);
+  --hn-chip-icon-fg: var(--foreground);
+  --hn-face: #1b1918;
+  --hn-face-ink: #ffffff;
+  --hn-stop-dot: #3f9b6e;
+  --tn-trail: rgb(255 255 255 / 0.95);
+  --tn-plane: #ffffff;
+  --tn-pin: #1b1918;
+  --tn-pin-live: var(--acc, #f6466e);
+  --tn-feature-border: color-mix(in oklch, var(--border) 70%, transparent);
+  --tn-count: #1b1918;
+  --tn-count-ink: #ffffff;
+}
+
+/* Colorful: white base, pastel accents, the accent's pink (or periwinkle) route ring. */
+[data-theme="colorful"] {
+  --aerial-sea: #48b5c9;
+  --aerial-water: #3fb2c9;
+  --aerial-wash: rgb(255 250 246 / 0.04);
+  --aerial-vignette: rgb(40 30 50 / 0.22);
+  --aerial-cloud-opacity: 0.65;
+  --aerial-route: #ffffff;
+  --aerial-route-glow: color-mix(in oklab, var(--acc, #f6466e) 55%, white);
+  --aerial-route-done: var(--acc, #f6466e);
+  --aerial-dot: #ffffff;
+  --aerial-dot-stroke: var(--acc, #f6466e);
+  --aerial-dot-done: var(--acc, #f6466e);
+  --aerial-here: var(--acc, #f6466e);
+  --aerial-here-ring: #ffffff;
+  --aerial-here-halo: color-mix(in oklab, var(--acc, #f6466e) 35%, transparent);
+  --aerial-tag: rgb(255 255 255 / 0.95);
+  --aerial-tag-ink: #29252a;
+  --aerial-tag-here: var(--acc, #f6466e);
+  --aerial-tag-here-ink: #ffffff;
+  --aerial-tag-shadow: rgb(90 60 90 / 0.25);
+  --hn-ink: var(--acc, #f6466e);
+  --hn-ink-foreground: #ffffff;
+  --hn-card-shadow: 0 6px 22px rgb(90 60 90 / 0.08);
+  --hn-chip-1: #fbdce7;
+  --hn-chip-2: #dbecfa;
+  --hn-chip-4: #fcf2cc;
+  --hn-chip-border: transparent;
+  --hn-chip-icon-bg: rgb(255 255 255 / 0.75);
+  --hn-chip-icon-fg: var(--acc-ink, #a51c3f);
+  --hn-face: var(--acc, #f6466e);
+  --hn-stop-dot: var(--acc, #f6466e);
+  --tn-trail: rgb(255 255 255 / 0.95);
+  --tn-pin: var(--acc2, #e4826f);
+  --tn-feature-border: var(--acc-line, var(--border));
+  --tn-count: var(--acc, #f6466e);
+}
+
+/* Dark: black main, white secondary, a night over the terrain, a lavender-white route. */
+.dark,
+[data-theme="dark"] {
+  --aerial-sea: #13263a;
+  --aerial-water: #15314a;
+  --aerial-wash: rgb(6 8 12 / 0.42);
+  --aerial-vignette: rgb(0 0 0 / 0.6);
+  --aerial-cloud-opacity: 0.16;
+  --aerial-route: color-mix(in oklab, var(--acc2, #b9a8ff) 35%, white);
+  --aerial-route-glow: color-mix(in oklab, var(--acc2, #b9a8ff) 75%, transparent);
+  --aerial-route-done: var(--acc2, #b9a8ff);
+  --aerial-dot: #f6f3ee;
+  --aerial-dot-stroke: #121212;
+  --aerial-dot-done: var(--acc2, #b9a8ff);
+  --aerial-here: var(--acc2, #b9a8ff);
+  --aerial-here-ring: #f6f3ee;
+  --aerial-here-halo: color-mix(in oklab, var(--acc2, #b9a8ff) 40%, transparent);
+  --aerial-tag: rgb(22 22 24 / 0.82);
+  --aerial-tag-ink: #f6f3ee;
+  --aerial-tag-here: #f6f3ee;
+  --aerial-tag-here-ink: #121212;
+  --aerial-tag-shadow: rgb(0 0 0 / 0.55);
+  --hn-ink: #f6f3ee;
+  --hn-ink-foreground: #121212;
+  --hn-card-border: rgb(255 255 255 / 0.08);
+  --hn-card-shadow: 0 6px 22px rgb(0 0 0 / 0.35);
+  --hn-chip-1: var(--card);
+  --hn-chip-2: var(--card);
+  --hn-chip-4: var(--card);
+  --hn-chip-border: rgb(255 255 255 / 0.08);
+  --hn-chip-icon-bg: rgb(255 255 255 / 0.08);
+  --hn-chip-icon-fg: #f6f3ee;
+  --hn-face: #f6f3ee;
+  --hn-face-ink: #121212;
+  --hn-stop-dot: var(--acc2, #b9a8ff);
+  --tn-trail: rgb(246 243 238 / 0.85);
+  --tn-plane: #f6f3ee;
+  --tn-pin: #e9c46a;
+  --tn-pin-live: var(--acc2, #b9a8ff);
+  --tn-count: #f6f3ee;
+  --tn-count-ink: #121212;
+}
+
+/* ── The aerial banner ───────────────────────────────────────────────── */
+.aerial .aerial-sea {
+  fill: var(--aerial-sea);
+}
+.aerial .aerial-water-flood {
+  flood-color: var(--aerial-water);
+}
+.aerial .aerial-wash {
+  fill: var(--aerial-wash);
+}
+.aerial .aerial-vignette {
+  stop-color: var(--aerial-vignette);
+}
+.aerial .aerial-cloud {
+  opacity: var(--aerial-cloud-opacity);
+}
+.aerial .aerial-route-glow {
+  fill: none;
+  stroke: var(--aerial-route-glow);
+  stroke-width: 8;
+  stroke-linecap: round;
+}
+.aerial .aerial-route {
+  fill: none;
+  stroke: var(--aerial-route);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.aerial .aerial-route-done {
+  fill: none;
+  stroke: var(--aerial-route-done);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.aerial .aerial-dot {
+  fill: var(--aerial-dot);
+  stroke: var(--aerial-dot-stroke);
+  stroke-width: 2.6;
+}
+.aerial .aerial-dot-done {
+  fill: var(--aerial-dot-done);
+  stroke: var(--aerial-dot);
+}
+.aerial .aerial-here-halo {
+  fill: var(--aerial-here-halo);
+}
+.aerial .aerial-here-ring {
+  fill: var(--aerial-here-ring);
+}
+.aerial .aerial-here {
+  fill: var(--aerial-here);
+}
+.aerial .aerial-tag {
+  fill: var(--aerial-tag);
+}
+.aerial .aerial-tag-here {
+  fill: var(--aerial-tag-here);
+}
+.aerial .aerial-tag-shadow {
+  flood-color: var(--aerial-tag-shadow);
+}
+.aerial .aerial-tag-text {
+  fill: var(--aerial-tag-ink);
+  font-family: var(--font-sans);
+  font-weight: 650;
+}
+.aerial .aerial-tag-text-here {
+  fill: var(--aerial-tag-here-ink);
+  font-weight: 750;
+}
+.aerial-credit {
+  font-size: 13px;
+  line-height: 1.2;
+  color: rgb(255 255 255 / 0.85);
+  text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+}
+
+/* ── Home ─────────────────────────────────────────────────────────────── */
+.hn-hero,
+.tn-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--aerial-sea);
+}
+.hn-haze {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--hn-haze, var(--background)) 92%, transparent) 0,
+    color-mix(in oklab, var(--hn-haze, var(--background)) 70%, transparent)
+      calc(var(--haze-end, 150px) - 40px),
+    color-mix(in oklab, var(--hn-haze, var(--background)) 0%, transparent)
+      calc(var(--haze-end, 150px) + 60px)
+  );
+}
+.hn-kicker {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--foreground) 72%, transparent);
+}
+.hn-title {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+.hn-ink-btn {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 999px;
+  background: var(--hn-ink);
+  color: var(--hn-ink-foreground);
+  box-shadow: 0 6px 16px rgb(0 0 0 / 0.16);
+  transition: transform var(--t-move, 200ms) ease;
+}
+@media (hover: hover) {
+  .hn-ink-btn:hover {
+    transform: translateX(2px);
+  }
+}
+.hn-glass-btn {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  color: var(--foreground);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+}
+.hn-panel {
+  position: relative;
+  z-index: 3;
+  margin-top: -40px;
+  border-radius: 28px 28px 0 0;
+  background: var(--hn-panel, var(--background));
+}
+.hn-card {
+  border-radius: 22px;
+  background: var(--card);
+  border: 1px solid var(--hn-card-border);
+  box-shadow: var(--hn-card-shadow);
+}
+.hn-stop-dot {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--muted-foreground);
+}
+.hn-stop-dot-live {
+  background: var(--hn-stop-dot);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--hn-stop-dot) 22%, transparent);
+}
+.hn-chip {
+  display: flex;
+  min-width: 0;
+  min-height: 60px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--hn-chip-border);
+  box-shadow: var(--hn-card-shadow);
+  color: var(--foreground);
+}
+.hn-chip-1 {
+  background: var(--hn-chip-1);
+}
+.hn-chip-2 {
+  background: var(--hn-chip-2);
+}
+.hn-chip-4 {
+  background: var(--hn-chip-4);
+}
+.hn-stats .hn-chip,
+.hn-chip-stack {
+  min-height: 88px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.hn-chip-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--hn-chip-icon-bg);
+  color: var(--hn-chip-icon-fg);
+}
+.hn-bubble,
+.hn-tag,
+.tn-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 92%, transparent);
+  color: var(--foreground);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+.hn-bubble {
+  padding: 4px;
+  padding-inline-end: 14px;
+}
+.hn-thread {
+  stroke: var(--aerial-route);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+.hn-bubble img {
+  box-shadow: 0 0 0 2px var(--card);
+}
+.hn-tag {
+  padding: 0;
+  padding-inline: 10px 12px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.tn-tag {
+  border-radius: 16px;
+  padding: 0;
+  padding-inline: 9px 12px;
+}
+.tn-pin {
+  color: var(--tn-pin);
+}
+.tn-pin-live {
+  color: var(--tn-pin-live);
+}
+.hn-module {
+  position: relative;
+  display: flex;
+  min-height: 176px;
+  width: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 14px;
+  text-align: left;
+  border-radius: 22px;
+  background: var(--card);
+  border: 1px solid var(--hn-card-border);
+  box-shadow: var(--hn-card-shadow);
+  transition: transform var(--t-move, 200ms) ease;
+}
+.hn-module:active {
+  transform: scale(0.98);
+}
+.hn-module-fade {
+  background: linear-gradient(to bottom, var(--card), transparent 45%);
+}
+.hn-module-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+  color: var(--foreground);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.16);
+}
+.hn-glass-note {
+  display: inline-flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: rgb(0 0 0 / 0.45);
+  color: #ffffff;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.hn-face {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 2px solid var(--card);
+  background: var(--hn-face);
+  color: var(--hn-face-ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.hn-face-sm {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+}
+.hn-tool {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.08);
+}
+.hn-note-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--acc-ink, var(--primary));
+}
+.hn-customize {
+  position: relative;
+  display: flex;
+  min-height: 108px;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  padding: 16px;
+  text-align: left;
+  border-radius: 22px;
+  background: var(--card);
+  border: 1px solid var(--hn-card-border);
+  box-shadow: var(--hn-card-shadow);
+}
+.hn-customize-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: var(--hn-chip-2);
+  border: 1px solid var(--hn-chip-border);
+  color: var(--hn-chip-icon-fg);
+}
+
+/* ── Trips ────────────────────────────────────────────────────────────── */
+.tn-trail {
+  fill: none;
+  stroke: var(--tn-trail);
+  stroke-width: 2.2;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
+}
+.tn-plane {
+  fill: var(--tn-plane);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.4));
+}
+.tn-tabs {
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 6px 22px rgb(0 0 0 / 0.14);
+}
+.tn-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 76px;
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid var(--hn-card-border);
+  color: var(--foreground);
+  box-shadow: var(--hn-card-shadow);
+}
+.tn-action-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--card) 80%, transparent);
+  color: var(--acc-ink, var(--primary));
+}
+.tn-feature,
+.tn-row {
+  background: var(--card);
+  border: 1px solid var(--hn-card-border);
+  border-radius: 22px;
+  box-shadow: var(--hn-card-shadow);
+}
+.tn-feature {
+  border: 1.5px solid var(--tn-feature-border);
+  border-radius: 26px;
+}
+.tn-glass {
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--card) 86%, transparent);
+  color: var(--foreground);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.14);
+}
+.tn-count {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  text-align: center;
+  background: var(--tn-count);
+  color: var(--tn-count-ink, var(--primary-foreground));
+}
+.tn-live,
+.tn-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.tn-live {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.tn-pill {
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+  color: var(--foreground);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
+.tn-past {
+  border-radius: 18px;
+  background: #2a2026;
+  box-shadow: var(--hn-card-shadow);
+}
+.tn-past-fade {
+  background-image: linear-gradient(to top, rgb(18 12 10 / 0.8), rgb(18 12 10 / 0) 62%);
+}
 .no-scrollbar {
   scrollbar-width: none;
 }

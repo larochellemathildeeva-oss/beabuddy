@@ -1,0 +1,38 @@
+{
+  "name": "bea-world-preview-harness",
+  "private": true,
+  "type": "module",
+  "description": "Preview harness only (not part of the app): World previews from ../src, and next-preview/ (Home + Trips) from the real routes against an app checkout.",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p .",
+    "e2e": "node e2e/interact.mjs && node e2e/fling.mjs",
+    "build:next": "node next/build-next.mjs",
+    "serve:next": "python3 -m http.server -d ../next-preview 8765",
+    "e2e:next": "node next/e2e/home-trips.mjs",
+    "shoot:next": "node next/shoot-all.mjs"
+  },
+  "devDependencies": {
+    "@phosphor-icons/react": "^2.1.10",
+    "@tailwindcss/cli": "^4.3.3",
+    "@types/d3-geo": "^3.1.1",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/three": "^0.186.0",
+    "@types/topojson-client": "^3.1.5",
+    "clsx": "^2.1.1",
+    "d3-geo": "^3.1.1",
+    "esbuild": "^0.28.2",
+    "playwright-core": "1.56",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "three": "^0.186.1",
+    "topojson-client": "^3.1.0",
+    "typescript": "5.8",
+    "world-atlas": "^2.0.2"
+  }
+}
