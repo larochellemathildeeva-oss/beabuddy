@@ -144,6 +144,8 @@ import {
   ArrowUUpLeft as PhArrowUUpLeft,
   FlagCheckered as PhFlagCheckered,
   Hourglass as PhHourglass,
+  Pause as PhPause,
+  Play as PhPlay,
   Plant as PhPlant,
   PaperPlaneTilt as PhPaperPlaneTilt,
   PiggyBank as PhPiggyBank,
@@ -256,6 +258,8 @@ export const Plug = icon(PhPlug, "Plug");
 export const Plus = icon(PhPlus, "Plus");
 export const RefreshCw = icon(PhArrowsClockwise, "RefreshCw");
 export const RotateCcw = icon(PhArrowCounterClockwise, "RotateCcw");
+export const Pause = icon(PhPause, "Pause");
+export const Play = icon(PhPlay, "Play");
 export const Route = icon(PhPath, "Route");
 export const Search = icon(PhMagnifyingGlass, "Search");
 export const Signpost = icon(PhSignpost, "Signpost");

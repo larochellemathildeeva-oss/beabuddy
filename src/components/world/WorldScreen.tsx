@@ -127,7 +127,7 @@ export function WorldGlobeStage({
   className?: string | undefined;
 } & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("relative px-2", className)} {...rest}>
+    <div className={cn("relative", className)} {...rest}>
       {children}
     </div>
   );

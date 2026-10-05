@@ -244,8 +244,8 @@ export function AppShell({
             </div>
           </header>
         ) : (
-          <header className="tab-rule z-20 flex shrink-0 items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
-            <div className="flex items-center gap-2">
+          <header className="tab-rule group/hdr z-20 flex shrink-0 items-center justify-between gap-2 bg-background/75 px-4 py-2.5 backdrop-blur-xl">
+            <div className="flex shrink-0 items-center gap-2">
               {showBack &&
                 (canGoBack ? (
                   <button
@@ -268,12 +268,15 @@ export function AppShell({
                     </span>
                   </Link>
                 ))}
-              <Link to="/" className="flex items-center gap-2">
+              <Link
+                to="/"
+                className="flex items-center gap-2 group-has-[#app-header-slot:not(:empty)]/hdr:hidden"
+              >
                 <BrandMark version={APP_VERSION} />
               </Link>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="order-3 flex shrink-0 items-center gap-2">
               {user && <PageGuide round />}
               {!user && (
                 <Link
@@ -287,13 +290,18 @@ export function AppShell({
                 role="img"
                 aria-label={online ? "Online" : "Offline"}
                 title={online ? "Online" : "Offline — changes may not sync"}
-                className="grid size-7 place-items-center rounded-full border border-border bg-card"
+                className="grid size-7 group-has-[#app-header-slot:not(:empty)]/hdr:hidden place-items-center rounded-full border border-border bg-card"
               >
                 <span
                   className={`size-1.5 rounded-full ${online ? "bg-nexttime" : "bg-muted-foreground"}`}
                 />
               </span>
             </div>
+            {/* A page can put its own actions here (a trip: Plan with Béa, Add stop, To do), on the same line as the logo and help. */}
+            <div
+              id="app-header-slot"
+              className="no-scrollbar order-2 -my-2 min-w-0 flex-1 overflow-x-auto py-2 empty:hidden"
+            />
           </header>
         )}
 

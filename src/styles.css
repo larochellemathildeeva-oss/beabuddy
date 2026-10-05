@@ -1482,7 +1482,20 @@
     color-mix(in oklab, var(--background) 0%, transparent) calc(var(--haze-end, 180px) + 70px)
   );
 }
+.trip-hero-shade {
+  position: absolute;
+  inset: auto 0 0;
+  pointer-events: none;
+  /* Under the tracker, so its white words read on any picture. */
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgb(0 0 0 / 0.55) 30%,
+    rgb(0 0 0 / 0.78) 100%
+  );
+}
 .trip-hero-btn {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 44px;
@@ -1520,6 +1533,7 @@
   color: var(--accent-foreground);
 }
 .trip-hero-plan {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1533,6 +1547,13 @@
   background: color-mix(in oklab, var(--card) 92%, transparent);
   color: var(--foreground);
   box-shadow: 0 1px 6px rgb(0 0 0 / 0.14);
+}
+@media (max-width: 459px) {
+  .trip-hero-plan {
+    width: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
 }
 .trip-hero-add {
   display: grid;
@@ -2477,4 +2498,10 @@
 }
 .tn-past-fade {
   background-image: linear-gradient(to top, rgb(18 12 10 / 0.8), rgb(18 12 10 / 0) 62%);
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

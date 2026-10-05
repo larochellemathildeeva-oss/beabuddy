@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { ALL_DAYS, type DayChip, type DayChoice } from "@/lib/trip-days";
 
 /**
- * Which day is on screen, as the master draws it: an arrow either side of a
- * row of day cards, each "Oct 1 / Thu / Day 1". The chosen day is filled
- * with the theme accent, the others outlined. The whole trip leads, as it
- * always has, and an undated pile sits last with no number.
+ * Which day is on screen, in one slim line: the day's name and a dot for each
+ * day, the chosen one filled. Swipe the screen sideways to change day; the
+ * dots are small touch targets too, for a mouse or a keyboard. The whole trip
+ * leads, and an undated pile sits last.
  */
 export function DayCards({
   chips,
@@ -19,114 +19,60 @@ export function DayCards({
 }) {
   const choices: DayChoice[] = [ALL_DAYS, ...chips.map((chip) => chip.key)];
   const at = Math.max(0, choices.indexOf(value));
-  const row = useRef<HTMLDivElement>(null);
+  const dots = useRef<HTMLDivElement>(null);
+  // On a long trip the dots scroll; keep the chosen one in view.
   useEffect(() => {
-    row.current
+    dots.current
       ?.querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [value]);
-  const step = (by: 1 | -1) => {
-    const next = choices[at + by];
-    if (next !== undefined) onChange(next);
+  const step = useDayStepper(chips, value, onChange);
+  const swipe = useDaySwipe(step);
+  const nameOf = (key: DayChoice) => {
+    if (key === ALL_DAYS) return "All days";
+    const date = key ? new Date(`${key}T00:00:00`) : null;
+    return date
+      ? `${date.toLocaleDateString(undefined, { weekday: "short" })} ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+      : "No date";
   };
-  const arrow =
-    "grid size-11 shrink-0 place-items-center rounded-full text-foreground disabled:opacity-30";
-
+  const chip = chips.find((c) => c.key === value);
   return (
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => step(-1)}
-        disabled={at === 0}
-        aria-label="Previous day"
-        className={arrow}
-      >
-        <ChevronLeft className="size-5" aria-hidden />
-      </button>
-      <div
-        ref={row}
-        role="tablist"
-        aria-label="Which day to show"
-        className="no-scrollbar flex min-w-0 flex-1 snap-x gap-2 overflow-x-auto px-0.5 py-1"
-      >
-        <Card
-          selected={value === ALL_DAYS}
-          onSelect={() => onChange(ALL_DAYS)}
-          top="All"
-          middle={`${chips.filter((c) => c.key).length || chips.length} days`}
-          bottom="Trip"
-        />
-        {chips.map((chip) => {
-          const date = chip.key ? new Date(`${chip.key}T00:00:00`) : null;
-          return (
-            <Card
-              key={chip.key || "undated"}
-              selected={value === chip.key}
-              onSelect={() => onChange(chip.key)}
-              top={
-                date
-                  ? date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
-                  : "No date"
-              }
-              middle={date ? date.toLocaleDateString(undefined, { weekday: "short" }) : "—"}
-              bottom={chip.ordinal || `${chip.count} stops`}
-              today={chip.isToday}
-            />
-          );
-        })}
-      </div>
-      <button
-        type="button"
-        onClick={() => step(1)}
-        disabled={at >= choices.length - 1}
-        aria-label="Next day"
-        className={arrow}
-      >
-        <ChevronRight className="size-5" aria-hidden />
-      </button>
-    </div>
-  );
-}
-
-function Card({
-  selected,
-  onSelect,
-  top,
-  middle,
-  bottom,
-  today = false,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  top: string;
-  middle: string;
-  bottom: string;
-  today?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={selected}
-      onClick={onSelect}
-      className={`flex min-w-[84px] shrink-0 snap-center flex-col items-center rounded-2xl border px-3 py-1.5 leading-tight transition-colors ${
-        selected
-          ? "border-primary bg-primary text-primary-foreground shadow-sm"
-          : "border-border bg-card text-foreground"
-      }`}
+    <div
+      role="tablist"
+      aria-label="Which day to show. Swipe sideways to change day."
+      className="flex min-h-11 w-full touch-pan-y items-center justify-between gap-3 px-1"
+      {...swipe}
     >
-      <span className="text-[14px] font-bold">{top}</span>
-      <span
-        className={`text-[13px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
+      <p aria-live="polite" className="min-w-0 truncate text-[14px] font-semibold">
+        {nameOf(value)}
+        {chip?.isToday ? <span className="font-normal text-muted-foreground"> · Today</span> : null}
+        {value !== ALL_DAYS && chip?.ordinal ? (
+          <span className="font-normal text-muted-foreground"> · {chip.ordinal}</span>
+        ) : null}
+      </p>
+      <div
+        ref={dots}
+        className="no-scrollbar flex max-w-[55%] shrink-0 items-center overflow-x-auto"
       >
-        {middle}
-      </span>
-      <span
-        className={`text-[13px] ${selected ? "text-primary-foreground/85" : "text-muted-foreground"}`}
-      >
-        {bottom}
-        {today ? " · Today" : ""}
-      </span>
-    </button>
+        {choices.map((key, index) => (
+          <button
+            key={key || "undated"}
+            type="button"
+            role="tab"
+            aria-selected={index === at}
+            aria-label={nameOf(key)}
+            title={nameOf(key)}
+            onClick={() => onChange(key)}
+            className="grid size-11 shrink-0 place-items-center"
+          >
+            <span
+              className={`rounded-full transition-colors ${
+                index === at ? "size-2.5 bg-primary" : "size-1.5 bg-muted-foreground/40"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

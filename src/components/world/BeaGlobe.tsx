@@ -32,7 +32,7 @@ import { geoContains, geoOrthographic, geoPath } from "d3-geo";
 import { feature, mesh } from "topojson-client";
 import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
 import worldTopo from "world-atlas/countries-110m.json";
-import { Minus, Plus, RotateCcw } from "@/components/icons";
+import { Minus, Pause, Play, Plus, RotateCcw } from "@/components/icons";
 import type { Pin } from "@/data/atlas";
 import { useThemeName } from "@/hooks/useThemeName";
 import { countryKey } from "@/lib/country-names";
@@ -114,6 +114,10 @@ export type BeaGlobeProps = {
   pinColor?: ((pin: Pin, index: number) => string) | undefined;
   /** Hide the +/−/reset stack (e.g. a hero globe). Default true. */
   controls?: boolean | undefined;
+  /** Fill the width the page gives it, rather than stopping at 440px. */
+  fullWidth?: boolean | undefined;
+  /** Adds a turn / hold button to the controls; the page keeps the choice. */
+  spinToggle?: { on: boolean; onChange: (on: boolean) => void } | undefined;
   /** Start somewhere other than Globe.tsx's home view. */
   initialRotation?: Rotation | undefined;
 };
@@ -152,6 +156,8 @@ export function BeaGlobe({
   textures = DEFAULT_EARTH_TEXTURES,
   pinColor,
   controls = true,
+  fullWidth = false,
+  spinToggle,
   initialRotation = HOME_ROTATION,
 }: BeaGlobeProps) {
   const theme = useThemeName();
@@ -592,7 +598,9 @@ export function BeaGlobe({
         aria-label="Interactive globe. Arrow keys rotate, plus and minus zoom, Home resets the view."
         data-earth={earthReady ? "webgl" : "vector"}
         className={cn(
-          "relative mx-auto aspect-square w-full max-w-[440px] cursor-grab rounded-full outline-none active:cursor-grabbing",
+          "relative mx-auto aspect-square w-full cursor-grab",
+          !fullWidth && "max-w-[440px]",
+          " rounded-full outline-none active:cursor-grabbing",
           "focus-visible:ring-2 focus-visible:ring-(--ring) focus-visible:ring-offset-4 focus-visible:ring-offset-(--background)",
           scrollFriendly ? "touch-pan-y touch-pinch-zoom" : "touch-none",
         )}
@@ -851,6 +859,25 @@ export function BeaGlobe({
             >
               <RotateCcw className="size-[18px]" aria-hidden />
             </button>
+            {spinToggle && (
+              <>
+                <span className="h-px bg-(--border)" />
+                <button
+                  type="button"
+                  aria-label={spinToggle.on ? "Stop the globe turning" : "Let the globe turn"}
+                  aria-pressed={spinToggle.on}
+                  title={spinToggle.on ? "Stop turning" : "Turn on its own"}
+                  className="grid size-11 place-items-center text-(--foreground)"
+                  onClick={() => spinToggle.onChange(!spinToggle.on)}
+                >
+                  {spinToggle.on ? (
+                    <Pause className="size-[18px]" aria-hidden />
+                  ) : (
+                    <Play className="size-[18px]" aria-hidden />
+                  )}
+                </button>
+              </>
+            )}
           </div>
         )}
         {/* Globe.tsx's description, kept for screen readers. */}

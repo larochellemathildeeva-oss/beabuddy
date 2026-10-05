@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { createPortal } from "react-dom";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
@@ -67,11 +68,11 @@ import {
 import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
+import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { TripPageBanner } from "@/components/TripPageBanner";
-import { BrandMark } from "@/components/PageHeader";
 import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import { useTripPicture } from "@/hooks/useTripPicture";
@@ -1397,6 +1398,22 @@ export function TripDetail({
   const chips = chosenCity
     ? dayChips(allDayGroups, todayKey).filter((chip) => cityDayKeys.has(chip.key))
     : dayChips(allDayGroups, todayKey);
+  // A city's name for the picker: with its dates when the route visits the
+  // same city more than once, so the visits can be told apart.
+  const cityOptionLabel = (c: (typeof routeCities)[number]) => {
+    const name = c.city.split(",")[0] ?? c.city;
+    const same = routeCities.filter((o) => (o.city.split(",")[0] ?? o.city) === name).length;
+    if (same < 2) return name;
+    const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
+      .filter((d): d is string => Boolean(d))
+      .map((d) =>
+        new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      )
+      .join(" – ");
+    return dates ? `${name} (${dates})` : name;
+  };
+  // Swipe the Companion view sideways to change day.
+  const daySwipe = useDaySwipe(useDayStepper(chips, chosenDay, setDayChoice));
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
   const datedDayCount = chips.filter((chip) => chip.key).length;
   const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
@@ -1488,21 +1505,21 @@ export function TripDetail({
         })
       : null;
 
+  // The trip's actions live in the app's top bar (AppShell's header slot).
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setHeaderSlot(document.getElementById("app-header-slot")), []);
+
   const showDayTracker = perspective === "overview" || !companionDay;
   const dayTracker = (
-    <section
-      aria-label="Your trip progress"
-      className="rounded-2xl border border-border/60 bg-card/85 p-3 backdrop-blur-md"
-    >
+    <section aria-label="Your trip progress" className="text-white">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-display text-[18px]">Your trip</h2>
-        <p className="text-[14px] text-muted-foreground">
+        <p className="text-[14px] text-white/85">
           {moveDays.length} days ·{" "}
           {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size} cities
           · {doneCount}/{stopItems.length} stops reached
         </p>
       </div>
-      <ol className="no-scrollbar relative mt-3 flex gap-2 overflow-x-auto">
+      <ol className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
         {moveDays.map((day, i) => {
           const group = allDayGroups.find((g) => g.key === day);
           const reached = group?.items.filter(isDone).length ?? 0;
@@ -1517,16 +1534,16 @@ export function TripDetail({
                   setCityChoice("");
                   setPerspective("companion");
                 }}
-                className="relative flex min-h-11 w-full flex-col items-center gap-1 px-2 py-2 text-[14px]"
+                className="relative flex min-h-11 w-full flex-col items-center gap-0.5 px-2 py-1.5 text-[14px]"
               >
                 {i > 0 && (
                   <span
                     aria-hidden
-                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-primary/30"
+                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-white/50"
                   />
                 )}
                 <span
-                  className={`relative grid size-8 place-items-center rounded-full border-2 border-primary ${total > 0 && reached === total ? "bg-primary text-primary-foreground" : "bg-card text-primary"}`}
+                  className={`relative grid size-8 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
                 >
                   {total > 0 && reached === total ? (
                     <Check className="size-4" aria-hidden />
@@ -1537,9 +1554,7 @@ export function TripDetail({
                 <span className="font-semibold">
                   {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
                 </span>
-                <span className="text-[13px] text-muted-foreground">
-                  {formatTimelineDayLabel(day)}
-                </span>
+                <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
               </button>
             </li>
           );
@@ -1547,6 +1562,19 @@ export function TripDetail({
       </ol>
     </section>
   );
+
+  // In every view the tracker sits at the foot of the banner: the trip's days
+  // on Overview, the day's stops in the others.
+  const bannerTracker = showDayTracker ? (
+    dayTracker
+  ) : view.prefs.journey ? (
+    <JourneyTracker
+      onPhoto
+      stops={nowStops}
+      selectedId={peekStop?.id ?? null}
+      onSelect={setPeekId}
+    />
+  ) : null;
 
   return (
     // Edge to edge on a phone, a card from tablet width up. `overflow-clip`,
@@ -1556,6 +1584,86 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
+      {headerSlot &&
+        createPortal(
+          <div className="flex w-max min-w-full items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                data-guide="bea-plan"
+                title="Let Béa plan this trip"
+                onClick={() => {
+                  setPlannerTab("start");
+                  setPlannerOpen(true);
+                }}
+                aria-label="Plan with Béa"
+                className="trip-hero-plan"
+              >
+                <img src={logo} alt="" className="size-6 object-contain" />
+                <span className="hidden min-[460px]:inline">Plan with Béa</span>
+              </button>
+              <button
+                type="button"
+                data-guide="add-stop"
+                title="Add a stop, a saved place or a city"
+                aria-label="Add stop"
+                onClick={() => setAddOpen(true)}
+                className="trip-hero-add"
+              >
+                <Plus className="size-5" aria-hidden />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {view.prefs.pinChecks && toCheck.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPinReviewOpen(true)}
+                  title="Pins to check"
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
+                >
+                  !
+                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                    {toCheck.length}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPrepSignal((n) => n + 1)}
+                data-guide="trip-prep"
+                title="To-dos and packing for this trip"
+                aria-label="To do"
+                className="trip-hero-btn"
+              >
+                <ListChecks className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrencyOpen(true)}
+                title="Convert prices into your money"
+                aria-label="Currency"
+                className="trip-hero-btn"
+              >
+                <Coins className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setSheetSection(null);
+                }}
+                data-guide="trip-menu"
+                title="Trip menu"
+                aria-label="Trip menu"
+                className="trip-hero-btn"
+              >
+                <MoreHorizontal className="size-5" aria-hidden />
+              </button>
+            </div>
+          </div>,
+          headerSlot,
+        )}
       <TripPageBanner
         art={perspective === "overview" ? tripArt : companionArt}
         title={trip.title}
@@ -1574,113 +1682,8 @@ export function TripDetail({
         picture={tripPicture}
         onPicture={setTripPicture}
         short={perspective === "map"}
-        tracker={showDayTracker && perspective !== "map" ? dayTracker : null}
-        tools={
-          <>
-            <button
-              type="button"
-              data-guide="bea-plan"
-              title="Let Béa plan this trip"
-              onClick={() => {
-                setPlannerTab("start");
-                setPlannerOpen(true);
-              }}
-              className="trip-hero-plan"
-            >
-              <img src={logo} alt="" className="size-6 object-contain" />
-              Plan with Béa
-            </button>
-            <button
-              type="button"
-              data-guide="add-stop"
-              title="Add a stop, a saved place or a city"
-              aria-label="Add stop"
-              onClick={() => setAddOpen(true)}
-              className="trip-hero-add"
-            >
-              <Plus className="size-5" aria-hidden />
-            </button>
-          </>
-        }
-        footer={
-          perspective !== "overview" && companionDay ? (
-            <p className="mt-2 text-[14px] font-semibold">
-              {[
-                companionOrdinal && `${companionOrdinal} of ${datedDayCount}`,
-                companionPlace,
-                companionDateLine,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-              {/* Said again in the tracker under the banner when it shows. */}
-              {nowStops.length > 0 && !view.prefs.journey && (
-                <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
-                  {companionState(nowStops).reached}/{nowStops.length} stops reached ·{" "}
-                  {Math.round((companionState(nowStops).reached / nowStops.length) * 100)}% complete
-                </span>
-              )}
-            </p>
-          ) : null
-        }
-        actions={
-          <>
-            {view.prefs.pinChecks && toCheck.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setPinReviewOpen(true)}
-                title="Pins to check"
-                aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
-                className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
-              >
-                !
-                <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
-                  {toCheck.length}
-                </span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setPrepSignal((n) => n + 1)}
-              data-guide="trip-prep"
-              title="To-dos and packing for this trip"
-              aria-label="To do"
-              className="trip-hero-btn"
-            >
-              <ListChecks className="size-5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrencyOpen(true)}
-              title="Convert prices into your money"
-              aria-label="Currency"
-              className="trip-hero-btn"
-            >
-              <Coins className="size-5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSettingsOpen(true);
-                setSheetSection(null);
-              }}
-              data-guide="trip-menu"
-              title="Trip menu"
-              aria-label="Trip menu"
-              className="trip-hero-btn"
-            >
-              <MoreHorizontal className="size-5" aria-hidden />
-            </button>
-          </>
-        }
+        tracker={bannerTracker}
       />
-      {/* The Map view keeps its short banner, so its tracker stays under it. */}
-      {perspective === "map" && showDayTracker ? (
-        <div className="trip-panel px-3 pb-2 pt-3">{dayTracker}</div>
-      ) : perspective !== "overview" && companionDay && view.prefs.journey ? (
-        <div className="trip-panel px-3 pb-2 pt-3">
-          <JourneyTracker stops={nowStops} selectedId={peekStop?.id ?? null} onSelect={setPeekId} />
-        </div>
-      ) : null}
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
       <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
@@ -1724,60 +1727,40 @@ export function TripDetail({
         )}
 
         {/* Several cities: pick one and the days, the map and Now all follow
-            it, instead of scrolling past one city to reach the next. */}
+            it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
-          routeCities.length > 1 &&
           (perspective === "companion" ||
             perspective === "map" ||
-            (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-3">
-              <div
-                role="tablist"
-                aria-label="Which city to show"
-                className="no-scrollbar -mx-1 flex w-full gap-1.5 overflow-x-auto px-1 py-0.5"
-              >
-                {[
-                  { id: "", city: "All cities", arrive_on: null, depart_on: null },
-                  ...routeCities,
-                ].map((c) => {
-                  const on = (chosenCity?.id ?? "") === c.id;
-                  const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
-                    .filter((d): d is string => Boolean(d))
-                    .map((d) =>
-                      new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      }),
-                    )
-                    .join(" – ");
-                  return (
-                    <button
-                      key={c.id || "all"}
-                      type="button"
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => {
-                        setCityChoice(c.id ?? "");
+            (perspective === "timeline" && timelineByDay)) &&
+          (routeCities.length > 1 || (offerDays && perspective !== "map")) && (
+            <div ref={dayCardsRef} className="mb-2">
+              <div className="flex items-center gap-2">
+                {routeCities.length > 1 && (
+                  <label className="flex min-h-11 max-w-[55%] shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+                    City
+                    <select
+                      value={chosenCity?.id ?? ""}
+                      onChange={(event) => {
+                        setCityChoice(event.target.value);
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-2.5 text-left transition-all ${
-                        on
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-elevated text-foreground"
-                      }`}
+                      className="min-h-11 min-w-0 truncate rounded-full border border-border bg-elevated px-3 text-[14px] font-semibold text-foreground"
                     >
-                      <span className="whitespace-nowrap text-[13px] font-semibold">{c.city}</span>
-                      {dates && (
-                        <span
-                          className={`whitespace-nowrap text-[13px] ${on ? "opacity-80" : "text-muted-foreground"}`}
-                        >
-                          {dates}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                      <option value="">All cities</option>
+                      {routeCities.map((c) => (
+                        <option key={c.id} value={c.id ?? ""}>
+                          {cityOptionLabel(c)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {offerDays && perspective !== "map" ? (
+                  <div className="min-w-0 flex-1">
+                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
+                  </div>
+                ) : null}
               </div>
               {chosenCity && timelineGroups.length === 0 && (
                 <p className="mt-1.5 px-1 text-[13px] text-muted-foreground">
@@ -1785,16 +1768,6 @@ export function TripDetail({
                   {chosenCity.arrive_on ? "" : " — give it dates under Cities on this trip"}.
                 </p>
               )}
-            </div>
-          )}
-
-        {/* One day row for Companion and the Timeline by day. On the map the
-            same row floats over the map, so it stays with the picture. */}
-        {stopItems.length > 0 &&
-          offerDays &&
-          (perspective === "companion" || (perspective === "timeline" && timelineByDay)) && (
-            <div ref={dayCardsRef} className="mb-3">
-              <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
         {activePerspective.hint ? (
@@ -1875,7 +1848,7 @@ export function TripDetail({
         )}
 
         {perspective === "companion" && (
-          <div className="space-y-3">
+          <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
                 {view.prefs.ribbon && (
