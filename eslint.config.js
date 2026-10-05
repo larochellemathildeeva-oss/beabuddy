@@ -29,6 +29,9 @@ export default tseslint.config(
       "src/integrations/supabase/types.ts",
       // Reference copy of the AI Studio prototype, not part of the app.
       "docs/prototype",
+      // The design package as delivered: its own preview bundles (11 MB of
+      // built JS) and dev scripts. The routes' code is linted at src/.
+      "docs/ui-revamp/next",
       // The preview checker's stand-ins and output; run by hand, not shipped.
       "scripts/preview",
       "scripts/places-bench/out",
