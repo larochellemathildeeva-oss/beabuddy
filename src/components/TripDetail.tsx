@@ -68,6 +68,7 @@ import {
 import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
+import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
@@ -1397,6 +1398,22 @@ export function TripDetail({
   const chips = chosenCity
     ? dayChips(allDayGroups, todayKey).filter((chip) => cityDayKeys.has(chip.key))
     : dayChips(allDayGroups, todayKey);
+  // A city's name for the picker: with its dates when the route visits the
+  // same city more than once, so the visits can be told apart.
+  const cityOptionLabel = (c: (typeof routeCities)[number]) => {
+    const name = c.city.split(",")[0] ?? c.city;
+    const same = routeCities.filter((o) => (o.city.split(",")[0] ?? o.city) === name).length;
+    if (same < 2) return name;
+    const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
+      .filter((d): d is string => Boolean(d))
+      .map((d) =>
+        new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      )
+      .join(" – ");
+    return dates ? `${name} (${dates})` : name;
+  };
+  // Swipe the Companion view sideways to change day.
+  const daySwipe = useDaySwipe(useDayStepper(chips, chosenDay, setDayChoice));
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
   const datedDayCount = chips.filter((chip) => chip.key).length;
   const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
@@ -1709,55 +1726,40 @@ export function TripDetail({
         )}
 
         {/* Several cities: pick one and the days, the map and Now all follow
-            it, instead of scrolling past one city to reach the next. */}
+            it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
-          routeCities.length > 1 &&
           (perspective === "companion" ||
             perspective === "map" ||
-            (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-1.5">
-              <div
-                role="tablist"
-                aria-label="Which city to show"
-                className="no-scrollbar flex w-full gap-1.5 overflow-x-auto px-0.5 py-0.5"
-              >
-                {[
-                  { id: "", city: "All cities", arrive_on: null, depart_on: null },
-                  ...routeCities,
-                ].map((c) => {
-                  const on = (chosenCity?.id ?? "") === c.id;
-                  const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
-                    .filter((d): d is string => Boolean(d))
-                    .map((d) =>
-                      new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      }),
-                    )
-                    .join(" – ");
-                  return (
-                    <button
-                      key={c.id || "all"}
-                      type="button"
-                      role="tab"
-                      aria-selected={on}
-                      onClick={() => {
-                        setCityChoice(c.id ?? "");
+            (perspective === "timeline" && timelineByDay)) &&
+          (routeCities.length > 1 || (offerDays && perspective !== "map")) && (
+            <div ref={dayCardsRef} className="mb-2">
+              <div className="flex items-center gap-2">
+                {routeCities.length > 1 && (
+                  <label className="flex min-h-11 max-w-[55%] shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+                    City
+                    <select
+                      value={chosenCity?.id ?? ""}
+                      onChange={(event) => {
+                        setCityChoice(event.target.value);
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      title={dates ? `${c.city}, ${dates}` : c.city}
-                      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-[14px] font-semibold transition-all ${
-                        on
-                          ? "border-foreground bg-foreground text-background"
-                          : "border-border bg-elevated text-foreground"
-                      }`}
+                      className="min-h-11 min-w-0 truncate rounded-full border border-border bg-elevated px-3 text-[14px] font-semibold text-foreground"
                     >
-                      {c.id ? (c.city.split(",")[0] ?? c.city) : c.city}
-                      {dates && <span className="sr-only">, {dates}</span>}
-                    </button>
-                  );
-                })}
+                      <option value="">All cities</option>
+                      {routeCities.map((c) => (
+                        <option key={c.id} value={c.id ?? ""}>
+                          {cityOptionLabel(c)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {offerDays && perspective !== "map" ? (
+                  <div className="min-w-0 flex-1">
+                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
+                  </div>
+                ) : null}
               </div>
               {chosenCity && timelineGroups.length === 0 && (
                 <p className="mt-1.5 px-1 text-[13px] text-muted-foreground">
@@ -1765,16 +1767,6 @@ export function TripDetail({
                   {chosenCity.arrive_on ? "" : " — give it dates under Cities on this trip"}.
                 </p>
               )}
-            </div>
-          )}
-
-        {/* One day row for Companion and the Timeline by day. On the map the
-            same row floats over the map, so it stays with the picture. */}
-        {stopItems.length > 0 &&
-          offerDays &&
-          (perspective === "companion" || (perspective === "timeline" && timelineByDay)) && (
-            <div ref={dayCardsRef} className="mb-2">
-              <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
         {activePerspective.hint ? (
@@ -1855,7 +1847,7 @@ export function TripDetail({
         )}
 
         {perspective === "companion" && (
-          <div className="space-y-3">
+          <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
                 {view.prefs.ribbon && (
