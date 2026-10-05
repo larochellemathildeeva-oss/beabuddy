@@ -627,7 +627,7 @@ const linkBtn =
 
 function StopKicker({ live, label, aside }: { live?: boolean; label: string; aside?: string }) {
   return (
-    <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-primary">
+    <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
       {live ? (
         <span className="relative flex size-2.5" aria-hidden>
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-50 motion-reduce:animate-none" />
@@ -790,7 +790,7 @@ function LeavePanel({
       role={urgent ? "status" : undefined}
       aria-label={`${label} ${big}${words ? `, ${words.time} ${words.how}` : ""} to ${nextTitle} — directions in maps`}
       className={`flex min-h-11 items-center gap-3 rounded-2xl px-2.5 py-2 ${
-        urgent ? "bg-primary text-primary-foreground" : "bg-primary-soft"
+        urgent ? "bg-primary text-primary-foreground" : "border border-border bg-secondary"
       }`}
     >
       {big ? (
@@ -804,11 +804,11 @@ function LeavePanel({
             <Clock className="size-7" />
           </span>
           <span className="leading-tight">
-            <span className={`block text-[13px] font-semibold ${urgent ? "" : "text-primary"}`}>
+            <span className={`block text-[13px] font-semibold ${urgent ? "" : "text-muted-foreground"}`}>
               {label}
             </span>
             <span
-              className={`block text-[28px] font-bold tabular-nums leading-none ${urgent ? "" : "text-primary"}`}
+              className={`block text-[28px] font-bold tabular-nums leading-none ${urgent ? "" : "text-foreground"}`}
             >
               {big}
             </span>

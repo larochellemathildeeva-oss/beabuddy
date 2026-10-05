@@ -1377,7 +1377,7 @@
 [data-theme="colorful"] {
   --home-ink: var(--acc);
   --home-ink-foreground: var(--primary-foreground);
-  --home-search: color-mix(in oklab, var(--color-primary) 8%, var(--background));
+  --home-search: var(--card);
   --map-wash: rgb(255 250 246 / 0);
   --map-water: #48b5c9;
   --route-line: var(--acc2);
@@ -1782,7 +1782,7 @@
   box-shadow: 0 1px 10px rgb(80 60 40 / 0.07);
 }
 .trips-feature {
-  border: 2px solid var(--acc-line, var(--border));
+  border: 1px solid var(--border);
   border-radius: 24px;
 }
 .trips-glass {
@@ -3049,4 +3049,14 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
 }
 .trip-shell .trip-focus-card [id="now-here"] {
   font-size: 24px;
+}
+
+/* ===== less pink: tint is for small accents, not surfaces ===== */
+.trip-views button[aria-selected="true"],
+.trips-tabs button[aria-selected="true"],
+.trip-views--top button[aria-selected="true"] {
+  background: var(--elevated);
+}
+.dark .trip-views--top button[aria-selected="true"] {
+  background: var(--elevated);
 }
