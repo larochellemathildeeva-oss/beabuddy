@@ -339,7 +339,7 @@ export function NowPanel({
         <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-here">
           <StopKicker
             live
-            label="You are here"
+            label="Current stop"
             aside={[
               timeForRail(current.time_label),
               current.planned_stay_minutes ? stayLabel(current.planned_stay_minutes) : "",

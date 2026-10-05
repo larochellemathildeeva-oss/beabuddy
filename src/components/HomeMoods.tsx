@@ -22,8 +22,8 @@ import { toLocalISODate } from "@/lib/trip-dates";
 import { heroTags, routeLine } from "@/lib/trip-glance";
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
-const NOW_HERO_H = 340;
-const SAVED_HERO_H = 320;
+const NOW_HERO_H = 270;
+const SAVED_HERO_H = 230;
 const TAG_H = 44;
 
 /** What a stop card shows of a plan row. */
@@ -91,8 +91,8 @@ export function HomeOnTrip({
             current={current}
             done={behind}
             pills
-            top={170}
-            bottom={NOW_HERO_H - 64}
+            top={98}
+            bottom={NOW_HERO_H - 62}
           />
         ) : (
           <TripPicture trip={trip} photos={photos} cities={cityNames} />
@@ -257,13 +257,13 @@ export function HomeNoTripHero({
   const points = useMemo(() => placed.map((c) => ({ lat: c.lat, lon: c.lon })), [placed]);
   return (
     <section data-guide="home-trip" className="trip-hero -mx-4" style={{ height: SAVED_HERO_H }}>
-      <TripsWorldMap points={points} height={SAVED_HERO_H} top={150} bottom={SAVED_HERO_H - 36}>
+      <TripsWorldMap points={points} height={SAVED_HERO_H} top={100} bottom={SAVED_HERO_H - 30}>
         {(pins, width) => {
           const widths = placed.map((c) => Math.min(220, 64 + c.city.length * 10));
           const boxes = placeTags(
             pins,
             widths,
-            { width, top: 140, bottom: SAVED_HERO_H - 30 },
+            { width, top: 90, bottom: SAVED_HERO_H - 26 },
             TAG_H,
           );
           return placed.map((c, i) => {

@@ -12,9 +12,9 @@ import type { TripPicture } from "@/lib/trip-picture";
 import { creditedOnPhoto, photoCredit } from "@/lib/wikimedia";
 
 /** Room kept for the route between the words and the foot (Stops picture). */
-const ROUTE_ROOM = { tall: 90, short: 70 };
+const ROUTE_ROOM = { tall: 44, short: 36 };
 /** Under the foot's content: the banner's own bottom padding. */
-const FOOT_PAD = 14;
+const FOOT_PAD = 8;
 
 /**
  * The top of the trip page, as the UI revamp's mockup draws it (`tripHero`):
@@ -100,7 +100,7 @@ export function TripPageBanner({
   // is only as tall as its content; Stops adds room for the route between.
   const [foot, setFoot] = useState<HTMLDivElement | null>(null);
   const footHeight = useHeight(foot);
-  const routeTop = wordsEnd + 16;
+  const routeTop = wordsEnd + 8;
   const routeRoom = showStops ? (short ? ROUTE_ROOM.short : ROUTE_ROOM.tall) : 0;
   const height = Math.round(routeTop + routeRoom + footHeight + FOOT_PAD);
 
@@ -155,7 +155,7 @@ export function TripPageBanner({
         />
       )}
 
-      <div className="relative flex h-full flex-col px-4 pb-3.5 pt-3">
+      <div className="relative flex h-full flex-col px-4 pb-2 pt-2">
         <div ref={setWords} className="min-w-0">
           {kicker && (
             <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
@@ -164,15 +164,17 @@ export function TripPageBanner({
           )}
           <h1
             className={`mt-1 line-clamp-2 break-words font-display leading-[1.05] tracking-[-0.02em] ${
-              short ? "text-[34px]" : "text-[40px]"
+              short ? "text-[26px]" : "text-[28px]"
             }`}
           >
             {title}
           </h1>
-          <p className="mt-1.5 text-[14px] font-medium text-foreground/80">
-            {[where, dates, tentative ? "tentative" : ""].filter(Boolean).join(" · ")}
+          <p className="mt-1 truncate text-[14px] font-medium text-foreground/80">
+            {[where, dates, tentative ? "tentative" : "", short ? "" : (companions ?? "")]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
-          {companions && !short && <p className="text-[14px] text-foreground/75">{companions}</p>}
+
           {footer}
         </div>
 
@@ -209,7 +211,7 @@ export function TripPageBanner({
               </button>
             </div>
           </div>
-          {tracker && <div className="mt-2">{tracker}</div>}
+          {tracker && <div className="mt-1">{tracker}</div>}
         </div>
       </div>
     </section>

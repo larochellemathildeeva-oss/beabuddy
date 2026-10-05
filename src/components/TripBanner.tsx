@@ -157,12 +157,12 @@ export function TripBanner({
 
   const height =
     kind === "hero"
-      ? "min-h-[210px]"
+      ? "min-h-[150px]"
       : kind === "compact"
         ? "h-[68px]"
         : kind === "feature"
-          ? "h-[228px]"
-          : "h-[132px]";
+          ? "h-[148px]"
+          : "h-[104px]";
   const rounded = kind === "hero" ? "rounded-[28px] shadow-lg" : "";
 
   return (
@@ -251,8 +251,8 @@ export function TripBanner({
           </div>
 
           {kind === "hero" ? (
-            <div className="relative flex min-h-[210px] flex-col justify-end p-4 pt-12">
-              <p className="break-words font-display text-[32px] leading-[1.02]">{title}</p>
+            <div className="relative flex min-h-[150px] flex-col justify-end p-4 pt-10">
+              <p className="break-words font-display text-[28px] leading-[1.02]">{title}</p>
               <p className="mt-1 text-[14px] text-white/85">
                 {[dates, routeLine(cities) || city?.split(",")[0] || where]
                   .filter(Boolean)
@@ -261,8 +261,8 @@ export function TripBanner({
               {footer ? <div className="mt-3 border-t border-white/25 pt-3">{footer}</div> : null}
             </div>
           ) : kind === "feature" ? (
-            <div className="absolute inset-x-0 bottom-0 p-4 pb-8">
-              <p className="line-clamp-2 break-words font-display text-[34px] leading-[1.02]">
+            <div className="absolute inset-x-0 bottom-0 p-4 pb-3">
+              <p className="line-clamp-2 break-words font-display text-[28px] leading-[1.02]">
                 {title}
               </p>
               {dates || corner ? (

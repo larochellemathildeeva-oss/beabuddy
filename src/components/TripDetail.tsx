@@ -1534,16 +1534,10 @@ export function TripDetail({
                   setCityChoice("");
                   setPerspective("companion");
                 }}
-                className="relative flex min-h-11 w-full flex-col items-center gap-0.5 px-2 py-1.5 text-[14px]"
+                className="relative flex min-h-11 w-full items-center justify-center gap-2 px-2 py-1 text-[14px]"
               >
-                {i > 0 && (
-                  <span
-                    aria-hidden
-                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-white/50"
-                  />
-                )}
                 <span
-                  className={`relative grid size-8 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
+                  className={`relative grid size-7 shrink-0 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
                 >
                   {total > 0 && reached === total ? (
                     <Check className="size-4" aria-hidden />
@@ -1551,10 +1545,12 @@ export function TripDetail({
                     i + 1
                   )}
                 </span>
-                <span className="font-semibold">
-                  {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                <span className="flex min-w-0 flex-col text-left leading-tight">
+                  <span className="truncate font-semibold">
+                    {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                  </span>
+                  <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
                 </span>
-                <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
               </button>
             </li>
           );
@@ -1851,6 +1847,20 @@ export function TripDetail({
           <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
+                <section className="companion-hero" aria-label="Live companion">
+                  <img src={companionArt} alt="" className="art-dim companion-hero-art" />
+                  <div className="companion-hero-words">
+                    <p className="companion-hero-kicker">Live companion</p>
+                    <h2 className="font-display">
+                      {companionDay.key === todayKey
+                        ? `In ${companionPlace} today.`
+                        : `${companionOrdinal ? `${companionOrdinal} in ` : "In "}${companionPlace}.`}
+                    </h2>
+                  </div>
+                  {companionDateLine ? (
+                    <p className="companion-hero-date">{companionDateLine}</p>
+                  ) : null}
+                </section>
                 {view.prefs.ribbon && (
                   <DayRibbon
                     stops={nowStops}

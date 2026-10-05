@@ -2601,12 +2601,12 @@ html:not(.dark) .page-lit:has(.trip-shell) {
   background: var(--background);
 }
 .trip-shell .trip-hero h1 {
-  font-size: 44px;
-  line-height: 1.04;
+  font-size: 30px;
+  line-height: 1.08;
   letter-spacing: -0.025em;
 }
-.trip-shell .trip-hero h1.text-\[34px\] {
-  font-size: 38px;
+.trip-shell .trip-hero h1.text-\[26px\] {
+  font-size: 28px;
 }
 html:not(.dark) .trip-shell .trip-hero-haze {
   background: linear-gradient(
@@ -2615,6 +2615,20 @@ html:not(.dark) .trip-shell .trip-hero-haze {
     rgb(255 255 255 / 0.92) calc(var(--haze-end, 180px) - 30px),
     rgb(255 255 255 / 0) calc(var(--haze-end, 180px) + 90px)
   );
+}
+/* A thin banner: the picture switch sits in the corner, the progress strip is slim. */
+.trip-shell .trip-hero-switch {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  z-index: 1;
+}
+.trip-shell .trip-hero > div > div:first-child {
+  padding-right: 104px;
+}
+.trip-shell .trip-hero ol button {
+  min-height: 40px;
+  padding-block: 0;
 }
 .trip-shell .trip-hero-switch {
   background: color-mix(in oklab, var(--card) 94%, transparent);
@@ -2976,4 +2990,63 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
 .you-highlight-text {
   position: absolute;
   inset: auto 8px 8px;
+}
+
+/* ===== companion restyle ===== */
+.companion-hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 112px;
+  margin-inline: -12px;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+.companion-hero-art {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.companion-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to right,
+    color-mix(in oklab, var(--background) 96%, transparent) 0%,
+    color-mix(in oklab, var(--background) 88%, transparent) 55%,
+    color-mix(in oklab, var(--background) 30%, transparent) 100%
+  );
+}
+.companion-hero-kicker {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.companion-hero h2 {
+  margin-top: 2px;
+  font-size: 34px;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+.companion-hero-date {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+.trip-shell .trip-focus-card [id="now-here"] {
+  font-size: 24px;
 }
