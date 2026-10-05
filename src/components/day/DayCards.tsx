@@ -1,11 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { ALL_DAYS, type DayChip, type DayChoice } from "@/lib/trip-days";
 
 /**
- * Which day is on screen, as the master draws it: an arrow either side of a
- * row of day cards, each "Oct 1 / Thu / Day 1". The chosen day is filled
- * with the theme accent, the others outlined. The whole trip leads, as it
- * always has, and an undated pile sits last with no number.
+ * Which day is on screen, in one slim line: the day's name and a dot for each
+ * day, the chosen one filled. Swipe the screen sideways to change day; the
+ * dots are small touch targets too, for a mouse or a keyboard. The whole trip
+ * leads, and an undated pile sits last.
  */
 export function DayCards({
   chips,
@@ -18,82 +18,50 @@ export function DayCards({
 }) {
   const choices: DayChoice[] = [ALL_DAYS, ...chips.map((chip) => chip.key)];
   const at = Math.max(0, choices.indexOf(value));
-  const row = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    row.current
-      ?.querySelector<HTMLElement>('[aria-selected="true"]')
-      ?.scrollIntoView({ block: "nearest", inline: "center" });
-  }, [value]);
-
+  const step = useDayStepper(chips, value, onChange);
+  const swipe = useDaySwipe(step);
+  const nameOf = (key: DayChoice) => {
+    if (key === ALL_DAYS) return "All days";
+    const date = key ? new Date(`${key}T00:00:00`) : null;
+    return date
+      ? `${date.toLocaleDateString(undefined, { weekday: "short" })} ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+      : "No date";
+  };
+  const chip = chips.find((c) => c.key === value);
   return (
     <div
-      ref={row}
       role="tablist"
-      aria-label="Which day to show"
-      className="no-scrollbar flex w-full snap-x gap-1.5 overflow-x-auto px-0.5 py-0.5"
+      aria-label="Which day to show. Swipe sideways to change day."
+      className="flex min-h-9 w-full touch-pan-y items-center justify-between gap-3 px-1"
+      {...swipe}
     >
-      <Card
-        selected={value === ALL_DAYS}
-        onSelect={() => onChange(ALL_DAYS)}
-        label="All days"
-        title={`All ${chips.filter((c) => c.key).length || chips.length} days of the trip`}
-      />
-      {chips.map((chip) => {
-        const date = chip.key ? new Date(`${chip.key}T00:00:00`) : null;
-        const label = date
-          ? `${date.toLocaleDateString(undefined, { weekday: "short" })} ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-          : "No date";
-        return (
-          <Card
-            key={chip.key || "undated"}
-            selected={value === chip.key}
-            onSelect={() => onChange(chip.key)}
-            label={label}
-            title={[chip.ordinal, `${chip.count} stops`, chip.isToday ? "today" : ""]
-              .filter(Boolean)
-              .join(" · ")}
-            today={chip.isToday}
-          />
-        );
-      })}
+      <p aria-live="polite" className="min-w-0 truncate text-[14px] font-semibold">
+        {nameOf(value)}
+        {chip?.isToday ? <span className="font-normal text-muted-foreground"> · Today</span> : null}
+        {value !== ALL_DAYS && chip?.ordinal ? (
+          <span className="font-normal text-muted-foreground"> · {chip.ordinal}</span>
+        ) : null}
+      </p>
+      <div className="flex shrink-0 items-center">
+        {choices.map((key, index) => (
+          <button
+            key={key || "undated"}
+            type="button"
+            role="tab"
+            aria-selected={index === at}
+            aria-label={nameOf(key)}
+            title={nameOf(key)}
+            onClick={() => onChange(key)}
+            className="grid size-6 place-items-center"
+          >
+            <span
+              className={`rounded-full transition-all ${
+                index === at ? "size-2.5 bg-primary" : "size-1.5 bg-muted-foreground/40"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
     </div>
-  );
-}
-
-function Card({
-  selected,
-  onSelect,
-  label,
-  title,
-  today = false,
-}: {
-  selected: boolean;
-  onSelect: () => void;
-  label: string;
-  title: string;
-  today?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={selected}
-      onClick={onSelect}
-      title={title}
-      className={`inline-flex min-h-9 shrink-0 snap-center items-center gap-1.5 whitespace-nowrap rounded-full border px-3 text-[14px] font-semibold transition-colors ${
-        selected
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-card text-foreground"
-      }`}
-    >
-      {label}
-      {today && (
-        <span
-          aria-hidden
-          className={`size-1.5 rounded-full ${selected ? "bg-primary-foreground" : "bg-primary"}`}
-        />
-      )}
-      <span className="sr-only">{title ? `, ${title}` : ""}</span>
-    </button>
   );
 }
