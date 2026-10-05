@@ -420,12 +420,15 @@ export function TripBannerMap({
   bottom,
   compact = false,
   pills = false,
+  over = false,
 }: {
   stops: RouteStop[];
   label: string;
   height: number;
   /** Each city as a pill with its picture (Home), instead of a bare name. */
   pills?: boolean;
+  /** Drawn over a picture (the trip page's hero): no terrain of its own. */
+  over?: boolean;
   /** A small picture (a trip's row on Trips): smaller dots and names. */
   compact?: boolean;
   /** The band the cities are drawn in: below the words, above the foot. */
@@ -507,7 +510,7 @@ export function TripBannerMap({
       aria-label={label}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid slice"
-      className={`route-map banner-map absolute inset-0 size-full${compact ? " banner-map-compact" : ""}`}
+      className={`route-map banner-map absolute inset-0 size-full${compact ? " banner-map-compact" : ""}${over ? " banner-map-over" : ""}`}
     >
       <defs>
         <filter id={`${id}-glow`} x="-20%" y="-20%" width="140%" height="140%">
@@ -517,8 +520,12 @@ export function TripBannerMap({
           <feDropShadow dx="0" dy="3" stdDeviation="5" className="pill-shadow" />
         </filter>
       </defs>
-      <ReliefTiles width={width} height={height} tiles={tiles} relief={relief} />
-      <rect width={width} height={height} className="map-wash" />
+      {over ? null : (
+        <>
+          <ReliefTiles width={width} height={height} tiles={tiles} relief={relief} />
+          <rect width={width} height={height} className="map-wash" />
+        </>
+      )}
 
       {dots.length > 1 ? (
         <>

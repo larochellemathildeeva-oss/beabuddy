@@ -1680,7 +1680,8 @@ export function TripDetail({
         picture={tripPicture}
         onPicture={setTripPicture}
         short={perspective === "map"}
-        tracker={bannerTracker}
+        hero={perspective === "overview"}
+        tracker={perspective === "overview" ? undefined : bannerTracker}
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
@@ -1795,6 +1796,7 @@ export function TripDetail({
           )}
         {perspective === "overview" && (
           <TripOverview
+            travellers={members.map((m) => m.display_name || "Traveller")}
             tripId={trip.id}
             items={stopItems}
             cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
