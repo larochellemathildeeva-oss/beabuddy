@@ -1398,6 +1398,20 @@ export function TripDetail({
   const chips = chosenCity
     ? dayChips(allDayGroups, todayKey).filter((chip) => cityDayKeys.has(chip.key))
     : dayChips(allDayGroups, todayKey);
+  // A city's name for the picker: with its dates when the route visits the
+  // same city more than once, so the visits can be told apart.
+  const cityOptionLabel = (c: (typeof routeCities)[number]) => {
+    const name = c.city.split(",")[0] ?? c.city;
+    const same = routeCities.filter((o) => (o.city.split(",")[0] ?? o.city) === name).length;
+    if (same < 2) return name;
+    const dates = [c.arrive_on, c.depart_on !== c.arrive_on ? c.depart_on : null]
+      .filter((d): d is string => Boolean(d))
+      .map((d) =>
+        new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      )
+      .join(" – ");
+    return dates ? `${name} (${dates})` : name;
+  };
   // Swipe the Companion view sideways to change day.
   const daySwipe = useDaySwipe(useDayStepper(chips, chosenDay, setDayChoice));
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
@@ -1721,23 +1735,25 @@ export function TripDetail({
             <div ref={dayCardsRef} className="mb-2">
               <div className="flex items-center gap-2">
                 {routeCities.length > 1 && (
-                  <select
-                    aria-label="Which city to show"
-                    value={chosenCity?.id ?? ""}
-                    onChange={(event) => {
-                      setCityChoice(event.target.value);
-                      // The city's days, not a day from the city before.
-                      setDayChoice(ALL_DAYS);
-                    }}
-                    className="min-h-9 max-w-[45%] shrink-0 truncate rounded-full border border-border bg-elevated px-3 text-[14px] font-semibold text-foreground"
-                  >
-                    <option value="">All cities</option>
-                    {routeCities.map((c) => (
-                      <option key={c.id} value={c.id ?? ""}>
-                        {c.city.split(",")[0] ?? c.city}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="flex min-h-11 max-w-[55%] shrink-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+                    City
+                    <select
+                      value={chosenCity?.id ?? ""}
+                      onChange={(event) => {
+                        setCityChoice(event.target.value);
+                        // The city's days, not a day from the city before.
+                        setDayChoice(ALL_DAYS);
+                      }}
+                      className="min-h-11 min-w-0 truncate rounded-full border border-border bg-elevated px-3 text-[14px] font-semibold text-foreground"
+                    >
+                      <option value="">All cities</option>
+                      {routeCities.map((c) => (
+                        <option key={c.id} value={c.id ?? ""}>
+                          {cityOptionLabel(c)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 )}
                 {offerDays && perspective !== "map" ? (
                   <div className="min-w-0 flex-1">

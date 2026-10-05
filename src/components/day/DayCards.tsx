@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { ALL_DAYS, type DayChip, type DayChoice } from "@/lib/trip-days";
 
@@ -18,6 +19,13 @@ export function DayCards({
 }) {
   const choices: DayChoice[] = [ALL_DAYS, ...chips.map((chip) => chip.key)];
   const at = Math.max(0, choices.indexOf(value));
+  const dots = useRef<HTMLDivElement>(null);
+  // On a long trip the dots scroll; keep the chosen one in view.
+  useEffect(() => {
+    dots.current
+      ?.querySelector<HTMLElement>('[aria-selected="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [value]);
   const step = useDayStepper(chips, value, onChange);
   const swipe = useDaySwipe(step);
   const nameOf = (key: DayChoice) => {
@@ -32,7 +40,7 @@ export function DayCards({
     <div
       role="tablist"
       aria-label="Which day to show. Swipe sideways to change day."
-      className="flex min-h-9 w-full touch-pan-y items-center justify-between gap-3 px-1"
+      className="flex min-h-11 w-full touch-pan-y items-center justify-between gap-3 px-1"
       {...swipe}
     >
       <p aria-live="polite" className="min-w-0 truncate text-[14px] font-semibold">
@@ -42,7 +50,10 @@ export function DayCards({
           <span className="font-normal text-muted-foreground"> · {chip.ordinal}</span>
         ) : null}
       </p>
-      <div className="flex shrink-0 items-center">
+      <div
+        ref={dots}
+        className="no-scrollbar flex max-w-[55%] shrink-0 items-center overflow-x-auto"
+      >
         {choices.map((key, index) => (
           <button
             key={key || "undated"}
@@ -52,10 +63,10 @@ export function DayCards({
             aria-label={nameOf(key)}
             title={nameOf(key)}
             onClick={() => onChange(key)}
-            className="grid size-6 place-items-center"
+            className="grid size-11 shrink-0 place-items-center"
           >
             <span
-              className={`rounded-full transition-all ${
+              className={`rounded-full transition-colors ${
                 index === at ? "size-2.5 bg-primary" : "size-1.5 bg-muted-foreground/40"
               }`}
             />
