@@ -106,7 +106,7 @@ export function HomeOnTrip({
             <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
               {kicker}
             </p>
-            <h2 className="mt-1 line-clamp-2 break-words font-display text-[44px] leading-[1] tracking-[-0.02em]">
+            <h2 className="mt-1 line-clamp-2 break-words font-display text-[38px] leading-[1] tracking-[-0.02em]">
               {line ? `${line}.` : trip.title}
             </h2>
           </Link>
@@ -297,7 +297,7 @@ export function HomeNoTripHero({
         <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
           {greeting}
         </p>
-        <h2 className="mt-1 font-display text-[44px] leading-[1] tracking-[-0.02em]">
+        <h2 className="mt-1 font-display text-[38px] leading-[1] tracking-[-0.02em]">
           Where to next?
         </h2>
         <p className="mt-1.5 text-[14px] font-medium text-foreground/80">{date}</p>

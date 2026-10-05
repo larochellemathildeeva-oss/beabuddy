@@ -139,14 +139,14 @@ if (sample.startsWith("page-") && PAGES[sample.slice(5)]) {
   );
 } else if (sample === "home" || sample === "home-trips") {
   createRoot(document.getElementById("root")!).render(
-    <div className="min-h-screen bg-background px-4 py-4">
+    <div className="page-lit min-h-screen bg-background px-4 py-4">
       {sample === "home" ? <HomePreview /> : <TripsPreview />}
     </div>,
   );
 } else {
 const detail = (
   // Like the app shell on a phone: full width, no padding, page scrolls.
-  <div className="min-h-screen bg-background pb-7">
+  <div className="page-lit min-h-screen bg-background pb-7">
     <Toaster />
     <TripDetail
       trip={trip}

@@ -210,15 +210,15 @@ export function AppShell({
   // bar is a normal flex sibling at the bottom. sticky bottom-0 looked pinned
   // until iOS scroll/visual-viewport churn left it floating mid-page.
   return (
-    <div className="h-dvh bg-background">
+    <div className="page-lit h-dvh bg-background">
       {/* Every tab inherits the traveller's accent from the document. */}
       <div
         data-plane={plane}
         style={{ "--plane-dx": `${direction * 6}px` } as CSSProperties}
-        className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-background md:max-w-[680px] xl:max-w-[780px]"
+        className="relative mx-auto flex h-dvh w-full max-w-[520px] flex-col overflow-hidden border-x border-border/70 bg-transparent md:max-w-[680px] xl:max-w-[780px]"
       >
         {homeHeader ? (
-          <header className="z-20 flex shrink-0 items-center justify-between bg-background/75 px-5 pb-1 pt-3 backdrop-blur-xl">
+          <header className="z-20 flex shrink-0 items-center justify-between bg-background/35 px-5 pb-1 pt-3 backdrop-blur-xl">
             <Link to="/" aria-label={`Béa, version ${APP_VERSION}`} title={`v${APP_VERSION}`}>
               <BrandMark large />
             </Link>
@@ -244,7 +244,7 @@ export function AppShell({
             </div>
           </header>
         ) : (
-          <header className="tab-rule z-20 flex shrink-0 flex-wrap items-center justify-between bg-background/75 px-4 py-2.5 backdrop-blur-xl">
+          <header className="tab-rule z-20 flex shrink-0 flex-wrap items-center justify-between bg-background/35 px-4 py-2.5 backdrop-blur-xl">
             <div className="flex items-center gap-2">
               {showBack &&
                 (canGoBack ? (

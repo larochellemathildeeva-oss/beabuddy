@@ -82,9 +82,9 @@
   /* Library requirement: consumers must load these fonts in their <head>:
      <link rel="preconnect" href="https://fonts.googleapis.com">
      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
+     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"> */
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-display: "Bodoni Moda", "Instrument Serif", ui-serif, Georgia, serif;
 }
 
 /* The owner's six accent tokens. Blush and danger remain independent. */
@@ -177,7 +177,9 @@
   --shadow-primary: 0 6px 18px -8px color-mix(in oklab, var(--acc) 45%, transparent);
   --shadow-soft: var(--shadow-md);
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
-  --page-wash: none;
+  /* Calm: a peach-cream glow at the top, as in the design boards. */
+  --wash-top: #fdebd9;
+  --page-wash: linear-gradient(180deg, #fdebd9 0, #fff6ec 240px, rgb(255 255 255 / 0) 560px);
 
   /**
    * Motion is configured where colour is configured — one place, not forty
@@ -216,7 +218,10 @@
 
 /* Colorful: warm ground with the north star's five supporting pastels. */
 [data-theme="colorful"] {
-  --background: #FCF9F4;
+  --background: #FFFFFF;
+  /* Colorful: sky blue at the top fading to white, as in the design boards. */
+  --wash-top: #cde7f8;
+  --page-wash: linear-gradient(180deg, #cde7f8 0, #e8f4fb 250px, rgb(255 255 255 / 0) 580px);
   --foreground: #111111;
   --card: #FFFFFF;
   --card-foreground: #111111;
@@ -231,12 +236,12 @@
   --destructive-ink: var(--destructive);
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
-  --border: #E3DCD3;
+  --border: #ECE6DE;
   --input: #D9D3CC;
   --ring: var(--acc-ink);
-  --elevated: #F2EDE6;
-  --secondary: #F2EDE6;
-  --muted: #F2EDE6;
+  --elevated: #F4F1EC;
+  --secondary: #F4F1EC;
+  --muted: #F4F1EC;
   --tile-1: var(--lavender);
   --tile-2: var(--powder);
   --tile-3: var(--mint);
@@ -246,28 +251,28 @@
 
 /* Dark keeps its existing near-black surfaces and the chosen accent. */
 .dark {
-  --background: #171513;
-  --foreground: #f6f0e8;
-  --card: #211e1b;
-  --card-foreground: #f6f0e8;
-  --elevated: #2b2723;
-  --popover: #2b2723;
+  --background: #0d0d0f;
+  --foreground: #f6ecdd;
+  --card: #19181a;
+  --card-foreground: #f6ecdd;
+  --elevated: #232124;
+  --popover: #232124;
   --popover-foreground: #f6f0e8;
   --primary: var(--acc);
   --primary-ink: var(--acc-done);
   --primary-foreground: #000000;
   --primary-soft: color-mix(in oklab, var(--acc) 20%, var(--card));
-  --secondary: #2b2723;
-  --secondary-foreground: #f6f0e8;
-  --muted: #2b2723;
-  --muted-foreground: #b8aea4;
-  --accent: #2b2723;
-  --accent-foreground: #f6f0e8;
+  --secondary: #232124;
+  --secondary-foreground: #f6ecdd;
+  --muted: #232124;
+  --muted-foreground: #a8a29a;
+  --accent: #232124;
+  --accent-foreground: #f6ecdd;
   --destructive: #C22A52;
   --destructive-ink: #F08AA3;
   --destructive-foreground: oklch(0.99 0.008 86);
-  --border: #3a342f;
-  --input: #3a342f;
+  --border: #2e2b2c;
+  --input: #2e2b2c;
   --ring: var(--acc-done);
 
   --visited: oklch(0.7 0.135 249);
@@ -293,7 +298,8 @@
   --shadow-soft: var(--shadow-md);
 
   --gradient-clay: linear-gradient(142deg, var(--acc), var(--acc2));
-  --page-wash: radial-gradient(120% 70% at 50% -10%, oklch(0.26 0.01 60 / 0.6), transparent 70%);
+  --wash-top: #1b1816;
+  --page-wash: radial-gradient(120% 60% at 50% -10%, oklch(0.3 0.03 60 / 0.5), transparent 70%);
 
   --success: #86a78b;
   --warning: #d5a25d;
@@ -412,14 +418,26 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Bodoni Moda's regular weight is thin on a phone: card titles and
+     numbers set in the display face start at 500, headings at 700. */
+  .font-display {
+    font-weight: 500;
+  }
+
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.018em;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     text-wrap: balance;
   }
+}
+
+/* The theme's top-of-page glow (peach, sky, or a warm dark), on the app frame. */
+@utility page-lit {
+  background-image: var(--page-wash);
+  background-repeat: no-repeat;
 }
 
 @utility tab-rule { border-bottom: 1px solid var(--border); }
@@ -1477,9 +1495,9 @@
   /* Strong under the words (they end at --haze-end), gone soon after. */
   background: linear-gradient(
     to bottom,
-    color-mix(in oklab, var(--background) 94%, transparent) 0,
-    color-mix(in oklab, var(--background) 82%, transparent) calc(var(--haze-end, 180px) - 40px),
-    color-mix(in oklab, var(--background) 0%, transparent) calc(var(--haze-end, 180px) + 70px)
+    color-mix(in oklab, var(--wash-top, var(--background)) 94%, transparent) 0,
+    color-mix(in oklab, var(--wash-top, var(--background)) 78%, transparent) calc(var(--haze-end, 180px) - 40px),
+    color-mix(in oklab, var(--wash-top, var(--background)) 0%, transparent) calc(var(--haze-end, 180px) + 70px)
   );
 }
 .trip-hero-shade {
@@ -1820,11 +1838,13 @@
 }
 .trips-action {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 10px;
   min-height: 72px;
-  padding: 12px;
-  border-radius: 18px;
+  padding: 14px;
+  border-radius: 22px;
+  box-shadow: var(--shadow-sm);
   border: 1px solid color-mix(in oklch, var(--border) 55%, transparent);
   color: var(--foreground);
 }

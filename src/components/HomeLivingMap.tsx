@@ -49,7 +49,7 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
             {tags.label}
           </p>
           {/* The name is clamped, never the countdown under it. */}
-          <h2 className="mt-2 font-display text-[50px] leading-[0.95] tracking-[-0.02em] [-webkit-text-stroke:0.6px_currentColor]">
+          <h2 className="mt-2 font-display text-[40px] leading-[0.98] tracking-[-0.02em]">
             <span className="line-clamp-2 break-words">{trip.title}</span>
             {when ? <span className="block">{when}</span> : null}
           </h2>
