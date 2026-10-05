@@ -1728,11 +1728,11 @@ export function TripDetail({
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) && (
-            <div className="mb-3">
+            <div className="mb-1.5">
               <div
                 role="tablist"
                 aria-label="Which city to show"
-                className="no-scrollbar -mx-1 flex w-full gap-1.5 overflow-x-auto px-1 py-0.5"
+                className="no-scrollbar flex w-full gap-1.5 overflow-x-auto px-0.5 py-0.5"
               >
                 {[
                   { id: "", city: "All cities", arrive_on: null, depart_on: null },
@@ -1759,20 +1759,15 @@ export function TripDetail({
                         // The city's days, not a day from the city before.
                         setDayChoice(ALL_DAYS);
                       }}
-                      className={`inline-flex shrink-0 flex-col items-start rounded-xl border px-3 py-2.5 text-left transition-all ${
+                      title={dates ? `${c.city}, ${dates}` : c.city}
+                      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border px-3 text-[14px] font-semibold transition-all ${
                         on
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-elevated text-foreground"
                       }`}
                     >
-                      <span className="whitespace-nowrap text-[13px] font-semibold">{c.city}</span>
-                      {dates && (
-                        <span
-                          className={`whitespace-nowrap text-[13px] ${on ? "opacity-80" : "text-muted-foreground"}`}
-                        >
-                          {dates}
-                        </span>
-                      )}
+                      {c.id ? (c.city.split(",")[0] ?? c.city) : c.city}
+                      {dates && <span className="sr-only">, {dates}</span>}
                     </button>
                   );
                 })}
@@ -1791,7 +1786,7 @@ export function TripDetail({
         {stopItems.length > 0 &&
           offerDays &&
           (perspective === "companion" || (perspective === "timeline" && timelineByDay)) && (
-            <div ref={dayCardsRef} className="mb-3">
+            <div ref={dayCardsRef} className="mb-2">
               <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
             </div>
           )}
