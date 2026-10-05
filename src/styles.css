@@ -3089,3 +3089,7 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
   font-size: 52px;
   line-height: 1;
 }
+.trip-shell .trip-map-sheet {
+  background: color-mix(in oklab, var(--card) 94%, transparent);
+  backdrop-filter: blur(14px);
+}

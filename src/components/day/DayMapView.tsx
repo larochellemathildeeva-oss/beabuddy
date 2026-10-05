@@ -54,9 +54,9 @@ const LAYOUTS: { id: MapLayout; label: string }[] = [
 function readLayout(): MapLayout {
   try {
     const saved = window.localStorage.getItem(LAYOUT_KEY);
-    return isMapLayout(saved) ? saved : "split";
+    return isMapLayout(saved) ? saved : "focus";
   } catch {
-    return "split";
+    return "focus";
   }
 }
 
@@ -118,7 +118,7 @@ export function DayMapView({
   // Flat: no stop is named as inside another.
   const titles = new Map(nesting ? stops.map((stop) => [stop.id, stop.title]) : []);
   const [selectedId, setSelectedId] = useState<string | null>(focusId ?? null);
-  const [layout, setLayoutState] = useState<MapLayout>("split");
+  const [layout, setLayoutState] = useState<MapLayout>("focus");
   const [fitSignal, setFitSignal] = useState(0);
 
   // Stored per device, read after mount so the server and browser agree.
@@ -831,52 +831,72 @@ function LiveCard({
 
   return (
     <article aria-live="polite" className="space-y-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[14px]">
-          <StopDisc number={pin.number} className="size-8 text-[13px]" />
-          <span className="font-bold uppercase tracking-wide text-primary">
-            {current ? "Current stop" : "Stop"}
-          </span>
-          <span className="tabular-nums text-muted-foreground">
-            {at + 1} of {total}
-            {time ? ` · ${time}` : ""}
-            {stay ? ` · ~${stay}` : ""}
-          </span>
-        </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onStep(-1)}
-            aria-label="Previous stop"
-            className="grid size-11 place-items-center rounded-full bg-elevated"
-          >
-            <ChevronLeft className="size-5" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => onStep(1)}
-            aria-label="Next stop"
-            className="grid size-11 place-items-center rounded-full bg-elevated"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex items-start gap-3">
-        <StopArt item={stop} className="aspect-[4/3] w-[36%] max-w-[170px] rounded-2xl" />
+      <div className="flex items-center gap-3 rounded-[24px] border border-border bg-card p-3 shadow-sm">
+        <StopArt item={stop} className="size-[96px] rounded-2xl" />
         <div className="min-w-0 flex-1">
-          <h3 className="break-words font-display text-[22px] leading-tight">{stop.title}</h3>
+          <p className="flex flex-wrap items-center gap-x-1.5 text-[14px] text-muted-foreground">
+            <StopDisc number={pin.number} className="size-6 text-[12px]" />
+            <span className="font-semibold text-foreground">
+              {current ? "Current stop" : "Stop"}
+            </span>
+            <span className="tabular-nums">
+              {at + 1} of {total}
+              {time ? ` · ${time}` : ""}
+              {stay ? ` · ~${stay}` : ""}
+            </span>
+          </p>
+          <h3 className="mt-0.5 break-words font-display text-[24px] leading-tight">
+            {stop.title}
+          </h3>
           {stop.address?.trim() && (
-            <p className="mt-1 flex items-start gap-1 text-[14px] leading-snug text-muted-foreground">
-              <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <span className="min-w-0">{stop.address.trim()}</span>
+            <p className="mt-0.5 line-clamp-2 text-[14px] leading-snug text-muted-foreground">
+              {stop.address.trim()}
             </p>
           )}
           <NestLines item={stop} />
           <StopChips item={stop} />
         </div>
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => onStep(1)}
+            aria-label="Next stop"
+            className="grid size-11 place-items-center rounded-full bg-primary-soft"
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
+          <button
+            type="button"
+            onClick={() => onStep(-1)}
+            aria-label="Previous stop"
+            className="grid size-9 place-items-center rounded-full bg-elevated"
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+          </button>
+        </div>
       </div>
+
+      {next ? (
+        <button
+          type="button"
+          onClick={() => onStep(1)}
+          className="flex w-full items-center gap-3 rounded-2xl border border-border p-2.5 text-left"
+        >
+          <StopArt item={next} className="h-14 w-[72px] rounded-xl" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Next stop
+              {timeForRail(next.time_label) ? (
+                <span className="ml-1.5 font-bold text-primary">
+                  · {timeForRail(next.time_label)}
+                </span>
+              ) : null}
+            </span>
+            <span className="block font-display text-[18px] leading-tight">{next.title}</span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+      ) : null}
 
       <p className="text-[16px] leading-snug">
         {next
@@ -931,28 +951,6 @@ function LiveCard({
             <span className="sr-only">: open {stop.title} in maps</span>
           </a>
         </div>
-      ) : null}
-
-      {next ? (
-        <button
-          type="button"
-          onClick={() => onStep(1)}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border p-2.5 text-left"
-        >
-          <StopArt item={next} className="h-14 w-[72px] rounded-xl" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Next stop
-              {timeForRail(next.time_label) ? (
-                <span className="ml-1.5 font-bold text-primary">
-                  · {timeForRail(next.time_label)}
-                </span>
-              ) : null}
-            </span>
-            <span className="block font-display text-[18px] leading-tight">{next.title}</span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-        </button>
       ) : null}
     </article>
   );
