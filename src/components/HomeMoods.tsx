@@ -90,6 +90,7 @@ export function HomeOnTrip({
             height={NOW_HERO_H}
             current={current}
             done={behind}
+            pills
             top={170}
             bottom={NOW_HERO_H - 64}
           />
