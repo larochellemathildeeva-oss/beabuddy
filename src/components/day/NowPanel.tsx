@@ -118,13 +118,15 @@ export function NowPanel({
   const state = companionState(dayStops);
   const { phase, current, previous, next } = state;
 
-  const act = async (write: () => Promise<void>) => {
+  const act = async (write: () => Promise<void>): Promise<boolean> => {
     setBusy(true);
     setError("");
     try {
       await write();
+      return true;
     } catch {
       setError("That didn't save. Check your connection and try again.");
+      return false;
     } finally {
       setBusy(false);
     }
@@ -328,9 +330,7 @@ export function NowPanel({
           dayStops={dayStops}
           busy={busy}
           now={now}
-          onArrive={(stop) =>
-            void act(() => onProgress(arrivalWrites(dayStops, stop.id, new Date())))
-          }
+          onArrive={(stop) => act(() => onProgress(arrivalWrites(dayStops, stop.id, new Date())))}
           onLeave={(stop) => void act(() => onProgress([leavingWrite(stop, new Date())]))}
         />
       )}

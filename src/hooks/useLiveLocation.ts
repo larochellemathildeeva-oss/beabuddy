@@ -28,10 +28,13 @@ let snapshot: LiveLocation = OFF;
 let watchId: number | null = null;
 let staleTimer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
+/** Read-only lookers: told of every change, never counted when deciding to stop the watch. */
+const observers = new Set<() => void>();
 
 function set(next: LiveLocation) {
   snapshot = next;
   for (const listener of listeners) listener();
+  for (const observer of observers) observer();
 }
 
 function clearWatch() {
@@ -100,6 +103,26 @@ function subscribe(listener: () => void) {
 export function useLiveLocation(): LiveLocation {
   return useSyncExternalStore(
     subscribe,
+    () => snapshot,
+    () => OFF,
+  );
+}
+
+function subscribeQuietly(listener: () => void) {
+  observers.add(listener);
+  return () => {
+    observers.delete(listener);
+  };
+}
+
+/**
+ * The same reading for something that only looks at it, such as a marker on
+ * the timeline. It never keeps the watch alive: when the last map or Now
+ * panel is closed the watch stops, whoever is still looking.
+ */
+export function useLiveLocationReadOnly(): LiveLocation {
+  return useSyncExternalStore(
+    subscribeQuietly,
     () => snapshot,
     () => OFF,
   );
