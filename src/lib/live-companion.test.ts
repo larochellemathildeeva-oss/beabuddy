@@ -7,6 +7,7 @@ import {
   followKey,
   fromHere,
   fromHereLine,
+  isNearStop,
   type FollowStop,
 } from "./live-companion.ts";
 
@@ -136,4 +137,12 @@ test("from here without a time says only how far", () => {
   const r = fromHere(fix(louvre), next, "walk", 600)!;
   assert.equal(r.lateBy, null);
   assert.match(fromHereLine(r, false), /^\d+ min away · there about \d\d:\d\d$/);
+});
+
+test("isNearStop marks a stop the phone is at, and only a sure reading", () => {
+  const [stop] = day();
+  assert.equal(isNearStop(fix(north(louvre, 20)), stop!), true);
+  assert.equal(isNearStop(fix(north(louvre, 400)), stop!), false);
+  assert.equal(isNearStop(fix(north(louvre, 20), 300), stop!), false);
+  assert.equal(isNearStop(fix(louvre), { id: "x", title: "x", lat: 0, lon: 0 }), false);
 });

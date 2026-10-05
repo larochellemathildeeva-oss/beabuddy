@@ -1586,8 +1586,8 @@ export function TripDetail({
     >
       {headerSlot &&
         createPortal(
-          <div className="flex flex-wrap items-center justify-between gap-1.5">
-            <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex w-max min-w-full items-center justify-between gap-1.5">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 data-guide="bea-plan"
@@ -1596,10 +1596,11 @@ export function TripDetail({
                   setPlannerTab("start");
                   setPlannerOpen(true);
                 }}
+                aria-label="Plan with Béa"
                 className="trip-hero-plan"
               >
                 <img src={logo} alt="" className="size-6 object-contain" />
-                Plan with Béa
+                <span className="hidden min-[460px]:inline">Plan with Béa</span>
               </button>
               <button
                 type="button"

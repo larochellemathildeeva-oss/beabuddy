@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { readAutoCheck, writeAutoCheck } from "@/lib/auto-check-store";
+import { useAuth } from "@/hooks/useAuth";
 import { LocateFixed } from "@/components/icons";
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import type { ItineraryRow } from "@/hooks/useTrips";
@@ -12,6 +14,9 @@ import {
   type Sighting,
 } from "@/lib/live-companion";
 import type { TravelChoice } from "@/lib/travel-mode";
+
+/** Stops ticked hands-free in this page load, whatever happens to the Now panel. */
+const autoAttempted = new Set<string>();
 
 /**
  * "Follow along" on Now: off until asked for, and only while this screen is
@@ -30,7 +35,7 @@ export function FollowAlong({
   busy: boolean;
   /** The minute clock, so a wait that has lasted is noticed between readings. */
   now: Date | null;
-  onArrive: (stop: ItineraryRow) => void;
+  onArrive: (stop: ItineraryRow) => void | Promise<boolean>;
   onLeave: (stop: ItineraryRow) => void;
 }) {
   const live = useLiveLocation();
@@ -45,6 +50,9 @@ export function FollowAlong({
     },
     [],
   );
+  const uid = useAuth().user?.id ?? null;
+  const [auto, setAuto] = useState(false);
+  useEffect(() => setAuto(readAutoCheck(uid)), [uid]);
   const start = () => {
     startedHere.current = true;
     startLiveLocation();
@@ -58,8 +66,26 @@ export function FollowAlong({
     }
     const out = followAlong(sighting.current, dayStops, live.fix, Date.now(), dismissed.current);
     sighting.current = out.sighting;
+    // Hands-free, on the traveller's say-so: the same reading that would have
+    // asked now ticks the arrival. Leaving is still asked, and each stop is
+    // ticked once, so an undo is not overruled.
+    if (auto && out.suggest?.kind === "arrive") {
+      const id = out.suggest.stop.id;
+      setSuggest(null);
+      // Remembered outside this component, so leaving Now and coming back
+      // does not tick a stop the traveller has since undone. A save that
+      // failed is forgotten, so a later reading tries again.
+      if (!busy && !autoAttempted.has(id)) {
+        autoAttempted.add(id);
+        void Promise.resolve(onArrive(out.suggest.stop)).then((saved) => {
+          if (saved === false) autoAttempted.delete(id);
+        });
+      }
+      return;
+    }
     setSuggest(out.suggest);
-  }, [live.on, live.fix, live.stale, dayStops, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live.on, live.fix, live.stale, dayStops, now, auto, busy]);
 
   const wave = (kind: FollowKind, stop: ItineraryRow) => {
     dismissed.current.add(followKey(kind, stop.id));
@@ -115,6 +141,24 @@ export function FollowAlong({
           Stop
         </button>
       </div>
+      <label className="plain-card flex min-h-11 items-center gap-3 px-3.5 py-2 text-[14px]">
+        <input
+          type="checkbox"
+          checked={auto && uid != null}
+          disabled={uid == null}
+          onChange={(e) => {
+            setAuto(e.target.checked);
+            writeAutoCheck(uid, e.target.checked);
+          }}
+          className="size-5 shrink-0 accent-[var(--primary)]"
+        />
+        <span className="min-w-0 leading-snug">
+          Check stops off when I arrive
+          <span className="block text-muted-foreground">
+            Béa ticks the stop herself instead of asking. Leaving is still your tap.
+          </span>
+        </span>
+      </label>
       {suggest && (
         <section role="status" className="plain-card space-y-2 border-primary/40 p-3.5">
           <p className="text-[16px] leading-snug">

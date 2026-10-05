@@ -462,8 +462,13 @@ like you've left …" (readings must be within ±75 m and agree for a minute,
 or be close and sure at once; only the next stop or the one after it, never
 one behind) and shows the time to the next stop from where they are, with
 the straight-line estimate (`route-estimate.ts`). It never writes
-`arrived_at` / `left_at` itself: those are on the trip for everyone on it,
-so the traveller's tap still saves them. The position is not sent to the
+`arrived_at` / `left_at` unless the traveller turns on "Check stops off when
+I arrive" (off by default, kept on the phone by `auto-check-store.ts`): then
+the arrival suggestion is saved without the tap, once per stop; leaving is
+always a tap. Those marks are on the trip for everyone on it, which is why
+asking is the default. While it is on, a timeline stop the phone is at
+(`isNearStop`, read through `useLiveLocationReadOnly`, which never keeps the
+watch alive) shows "You're here". The position is not sent to the
 server or kept.
 
 ## Reading a booking file

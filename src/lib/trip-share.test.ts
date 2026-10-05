@@ -211,6 +211,48 @@ test("several stops here at once: the latest arrival wins, whatever the plan ord
   );
 });
 
+test("a recent arrival on an earlier day is done, not here", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("Fado bar", 0, { arrived_at: "2026-10-04T23:30:00Z" }), day_date: "2026-10-04" },
+      { ...stop("Belém", 0), day_date: "2026-10-05" },
+    ],
+    { following: true, now: Date.parse("2026-10-05T07:00:00Z") },
+  );
+  assert.equal(view.days[0]!.stops[0]!.status, "done");
+});
+
+test("the morning cutoff follows the wall clock across daylight saving", () => {
+  const zoneAt = () => "America/Los_Angeles";
+  const arrived = { arrived_at: "2026-03-07T23:00:00-08:00" };
+  const at = (now: string) =>
+    sharedTripView(
+      LISBON,
+      [{ ...stop("Late", 0, arrived), day_date: "2026-03-07", lat: 34, lon: -118 }] as never,
+      { following: true, now: Date.parse(now) },
+      zoneAt,
+    ).days[0]!.stops[0]!.status;
+  // Spring forward on 8 March: 05:30 PST-equivalent is still last night, 06:30 PDT is not.
+  assert.equal(at("2026-03-08T12:30:00Z"), "here");
+  assert.equal(at("2026-03-08T13:30:00Z"), "done");
+});
+
+test("an unpinned day is cut off in the trip's zone, not UTC", () => {
+  const zoneAt = (lat: number) => (lat > 0 ? "America/Los_Angeles" : null);
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("Pinned", 0), day_date: "2026-10-04", lat: 34, lon: -118 },
+      { ...stop("Late", 0, { arrived_at: "2026-10-06T05:00:00Z" }), day_date: "2026-10-05" },
+    ] as never,
+    // 00:30 PDT on the 6th is 07:30Z: UTC would already call the 5th over.
+    { following: true, now: Date.parse("2026-10-06T07:30:00Z") },
+    zoneAt,
+  );
+  assert.equal(view.days[1]!.stops[0]!.status, "here");
+});
+
 test("the live card: where they are, the next stop, and the day so far", () => {
   const view = sharedTripView(
     LISBON,

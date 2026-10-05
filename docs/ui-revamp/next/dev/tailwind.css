@@ -1,0 +1,6 @@
+/* Preview-only Tailwind build (the app already has Tailwind v4 via @tailwindcss/vite). */
+@import "tailwindcss" source(none);
+@source "../src";
+@source "./";
+@import "./app-tokens.css";
+@import "../src/styles/world.css";

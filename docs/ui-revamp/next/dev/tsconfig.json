@@ -1,0 +1,27 @@
+{
+  // Type-checks the package against the app's tsconfig settings (copied from the repo), with
+  // `@/` resolving to dev/shims (verbatim app files) first, then ../src. Run: npx tsc -p dev
+  "include": ["../src/**/*.ts", "../src/**/*.tsx", "./*.tsx", "./*.ts", "./shims/**/*"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node"],
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedSideEffectImports": true,
+    "typeRoots": ["./node_modules/@types"],
+    "paths": { "@/*": ["./shims/*", "../src/*"], "*": ["./node_modules/@types/*", "./node_modules/*"] }
+  }
+}
