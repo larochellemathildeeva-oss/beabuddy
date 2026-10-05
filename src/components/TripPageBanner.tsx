@@ -45,8 +45,6 @@ export function TripPageBanner({
   picture,
   onPicture,
   short = false,
-  actions,
-  tools,
   tracker,
   footer,
   viewTransitionName,
@@ -73,10 +71,6 @@ export function TripPageBanner({
   onPicture: (next: TripPicture) => void;
   /** The Map view: a shorter banner. */
   short?: boolean;
-  /** The round buttons at the top right (pins to check, to do, trip menu). */
-  actions: ReactNode;
-  /** Top left, beside the round buttons: Plan with Béa, Add stop. */
-  tools?: ReactNode;
   /** Under the dates, inside the banner: the trip's day-by-day progress. */
   tracker?: ReactNode;
   /** Under the dates: the day the page is showing. */
@@ -162,11 +156,7 @@ export function TripPageBanner({
       )}
 
       <div className="relative flex h-full flex-col px-4 pb-3.5 pt-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">{tools}</div>
-          <div className="flex items-center gap-1.5">{actions}</div>
-        </div>
-        <div ref={setWords} className="mt-2 min-w-0">
+        <div ref={setWords} className="min-w-0">
           {kicker && (
             <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
               {kicker}

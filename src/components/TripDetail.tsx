@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { createPortal } from "react-dom";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bookmark,
@@ -1487,6 +1488,10 @@ export function TripDetail({
         })
       : null;
 
+  // The trip's actions live in the app's top bar (AppShell's header slot).
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => setHeaderSlot(document.getElementById("app-header-slot")), []);
+
   const showDayTracker = perspective === "overview" || !companionDay;
   const dayTracker = (
     <section aria-label="Your trip progress" className="text-white">
@@ -1562,6 +1567,85 @@ export function TripDetail({
       data-bar-position={barPosition}
       className="trip-shell overflow-clip sm:mx-4 sm:mt-3 sm:rounded-3xl sm:border sm:border-border sm:bg-card"
     >
+      {headerSlot &&
+        createPortal(
+          <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <button
+                type="button"
+                data-guide="bea-plan"
+                title="Let Béa plan this trip"
+                onClick={() => {
+                  setPlannerTab("start");
+                  setPlannerOpen(true);
+                }}
+                className="trip-hero-plan"
+              >
+                <img src={logo} alt="" className="size-6 object-contain" />
+                Plan with Béa
+              </button>
+              <button
+                type="button"
+                data-guide="add-stop"
+                title="Add a stop, a saved place or a city"
+                aria-label="Add stop"
+                onClick={() => setAddOpen(true)}
+                className="trip-hero-add"
+              >
+                <Plus className="size-5" aria-hidden />
+              </button>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {view.prefs.pinChecks && toCheck.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setPinReviewOpen(true)}
+                  title="Pins to check"
+                  aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
+                  className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
+                >
+                  !
+                  <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
+                    {toCheck.length}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setPrepSignal((n) => n + 1)}
+                data-guide="trip-prep"
+                title="To-dos and packing for this trip"
+                aria-label="To do"
+                className="trip-hero-btn"
+              >
+                <ListChecks className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrencyOpen(true)}
+                title="Convert prices into your money"
+                aria-label="Currency"
+                className="trip-hero-btn"
+              >
+                <Coins className="size-5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSettingsOpen(true);
+                  setSheetSection(null);
+                }}
+                data-guide="trip-menu"
+                title="Trip menu"
+                aria-label="Trip menu"
+                className="trip-hero-btn"
+              >
+                <MoreHorizontal className="size-5" aria-hidden />
+              </button>
+            </div>
+          </div>,
+          headerSlot,
+        )}
       <TripPageBanner
         art={perspective === "overview" ? tripArt : companionArt}
         title={trip.title}
@@ -1581,103 +1665,6 @@ export function TripDetail({
         onPicture={setTripPicture}
         short={perspective === "map"}
         tracker={bannerTracker}
-        tools={
-          <>
-            <button
-              type="button"
-              data-guide="bea-plan"
-              title="Let Béa plan this trip"
-              onClick={() => {
-                setPlannerTab("start");
-                setPlannerOpen(true);
-              }}
-              className="trip-hero-plan"
-            >
-              <img src={logo} alt="" className="size-6 object-contain" />
-              Plan with Béa
-            </button>
-            <button
-              type="button"
-              data-guide="add-stop"
-              title="Add a stop, a saved place or a city"
-              aria-label="Add stop"
-              onClick={() => setAddOpen(true)}
-              className="trip-hero-add"
-            >
-              <Plus className="size-5" aria-hidden />
-            </button>
-          </>
-        }
-        footer={
-          perspective !== "overview" && companionDay ? (
-            <p className="mt-2 text-[14px] font-semibold">
-              {[
-                companionOrdinal && `${companionOrdinal} of ${datedDayCount}`,
-                companionPlace,
-                companionDateLine,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-              {/* Said again in the tracker under the banner when it shows. */}
-              {nowStops.length > 0 && !view.prefs.journey && (
-                <span className="mt-1 block text-[13px] font-normal text-muted-foreground">
-                  {companionState(nowStops).reached}/{nowStops.length} stops reached ·{" "}
-                  {Math.round((companionState(nowStops).reached / nowStops.length) * 100)}% complete
-                </span>
-              )}
-            </p>
-          ) : null
-        }
-        actions={
-          <>
-            {view.prefs.pinChecks && toCheck.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setPinReviewOpen(true)}
-                title="Pins to check"
-                aria-label={`${toCheck.length} ${toCheck.length === 1 ? "pin" : "pins"} to check`}
-                className="relative grid size-11 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-[20px] font-bold text-destructive"
-              >
-                !
-                <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[13px] font-bold leading-5 text-white">
-                  {toCheck.length}
-                </span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setPrepSignal((n) => n + 1)}
-              data-guide="trip-prep"
-              title="To-dos and packing for this trip"
-              aria-label="To do"
-              className="trip-hero-btn"
-            >
-              <ListChecks className="size-5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrencyOpen(true)}
-              title="Convert prices into your money"
-              aria-label="Currency"
-              className="trip-hero-btn"
-            >
-              <Coins className="size-5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSettingsOpen(true);
-                setSheetSection(null);
-              }}
-              data-guide="trip-menu"
-              title="Trip menu"
-              aria-label="Trip menu"
-              className="trip-hero-btn"
-            >
-              <MoreHorizontal className="size-5" aria-hidden />
-            </button>
-          </>
-        }
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
