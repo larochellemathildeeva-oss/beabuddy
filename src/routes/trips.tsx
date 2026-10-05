@@ -330,14 +330,14 @@ function TripsPage() {
                 <Link
                   to="/trips/plan"
                   data-guide="plan-with-bea"
-                  className="trips-action tile-fill-3"
+                  className="trips-action tile-fill-5"
                 >
                   <Sparkles className="size-6 shrink-0 text-primary" aria-hidden />
                   <span className="min-w-0">
-                    <span className="block font-display text-[19px] leading-tight">
+                    <span className="block font-display text-[18px] leading-tight">
                       Plan with Béa
                     </span>
-                    <span className="block text-[13px] text-muted-foreground">
+                    <span className="block text-[13px] text-foreground/75">
                       Build, import, optimize or compare
                     </span>
                   </span>
@@ -351,16 +351,14 @@ function TripsPage() {
                     setJoining(true);
                     setCreating(false);
                   }}
-                  className="trips-action tile-fill-2 text-left"
+                  className="trips-action tile-fill-3 text-left"
                 >
                   <Users className="size-6 shrink-0 text-primary" aria-hidden />
                   <span className="min-w-0">
-                    <span className="block font-display text-[19px] leading-tight">
+                    <span className="block font-display text-[18px] leading-tight">
                       Join with a code
                     </span>
-                    <span className="block text-[13px] text-muted-foreground">
-                      Trips with friends
-                    </span>
+                    <span className="block text-[13px] text-foreground/75">Trips with friends</span>
                   </span>
                 </button>
               </div>

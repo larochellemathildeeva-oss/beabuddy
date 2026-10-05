@@ -276,7 +276,7 @@ export function TripsHero({
   return (
     <section
       data-guide="trips-header"
-      className={`trip-hero -mx-4 -mt-3 ${hasMap ? "" : "!bg-transparent"}`}
+      className={`trip-hero -mx-4 -mt-3 ${hasMap ? "trips-art" : "!bg-transparent"}`}
       style={{ height: hasMap ? HERO_H : 150 }}
     >
       {hasMap ? (

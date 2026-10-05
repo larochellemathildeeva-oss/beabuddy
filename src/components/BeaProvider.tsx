@@ -18,7 +18,7 @@ export function BeaProvider({ children }: { children: ReactNode }) {
 /**
  * The web-font <link> tags Béa's typography expects. Render inside the
  * document head (in TanStack Start, from a route `head()` links entry or the
- * root document) so Instrument Serif and Manrope load.
+ * root document) so Bodoni Moda, Instrument Serif and Manrope load.
  */
 export function BeaFontLinks() {
   return (
@@ -26,7 +26,7 @@ export function BeaFontLinks() {
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       <link
-        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Manrope:wght@300;400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet"
       />
     </>
