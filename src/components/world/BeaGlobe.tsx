@@ -29,9 +29,8 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { geoContains, geoOrthographic, geoPath } from "d3-geo";
-import { feature, mesh } from "topojson-client";
-import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
-import worldTopo from "world-atlas/countries-110m.json";
+import type { Feature, GeoJsonProperties, Geometry } from "geojson";
+import { coarseWorld, loadDetailedWorld, type WorldGeo } from "./world-geo";
 import { Minus, Pause, Play, Plus, RotateCcw } from "@/components/icons";
 import type { Pin } from "@/data/atlas";
 import { useThemeName } from "@/hooks/useThemeName";
@@ -63,15 +62,6 @@ import { PinTag } from "./GlobePinMarker";
 export type { EarthTextures } from "./bea-earth-gl";
 export type { GlobeMood } from "./globe-looks";
 
-type AnyTopology = Parameters<typeof feature>[0];
-const topo = worldTopo as unknown as AnyTopology;
-const countriesObject = topo.objects["countries"]!;
-const world = feature(topo, countriesObject) as unknown as FeatureCollection<
-  Geometry,
-  { name?: string }
->;
-/** Every border once, as one line — cheap to redraw each frame. */
-const borders = mesh(topo, countriesObject as never, (a: unknown, b: unknown) => a !== b);
 const SPHERE = { type: "Sphere" } as const;
 
 /** Pin colours in list order, as in the mockups (blue, accent, amber, violet, teal). */
@@ -203,16 +193,31 @@ export function BeaGlobe({
   const latest = useRef({ pins, selectedId, onSelect, onCountrySelect, clouds, scrollFriendly });
   latest.current = { pins, selectedId, onSelect, onCountrySelect, clouds, scrollFriendly };
 
+  // The coarse outline draws at once; the 50m one replaces it when it arrives.
+  const [geo, setGeo] = useState<WorldGeo>(coarseWorld);
+  const geoRef = useRef(geo);
+  geoRef.current = geo;
+  useEffect(() => {
+    let live = true;
+    loadDetailedWorld().then(
+      (g) => live && setGeo(g),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const visitedFeatures = useMemo(() => {
     const keys = shadePinCountries ? pinCountryKeys(pins) : new Set<string>();
     for (const key of visitedCountries ?? []) keys.add(key);
     return {
       type: "FeatureCollection" as const,
-      features: world.features.filter(
+      features: geo.world.features.filter(
         (f) => f.properties?.name && keys.has(countryKey(f.properties.name)),
       ),
     };
-  }, [pins, visitedCountries, shadePinCountries]);
+  }, [pins, visitedCountries, shadePinCountries, geo]);
   const regionFeatures = useMemo(
     () => ({ type: "FeatureCollection" as const, features: (regions ?? []).map((r) => r.feature) }),
     [regions],
@@ -246,8 +251,8 @@ export function BeaGlobe({
 
     const path = geoPath(projection());
     sphereRef.current?.setAttribute("d", path(SPHERE) ?? "");
-    if (!ready) landRef.current?.setAttribute("d", path(world) ?? "");
-    bordersRef.current?.setAttribute("d", path(borders) ?? "");
+    if (!ready) landRef.current?.setAttribute("d", path(geoRef.current.world) ?? "");
+    bordersRef.current?.setAttribute("d", path(geoRef.current.borders) ?? "");
     visitedRef.current?.setAttribute("d", path(shapes.current.visitedFeatures) ?? "");
     regionsRef.current?.setAttribute("d", path(shapes.current.regionFeatures) ?? "");
 
@@ -477,7 +482,7 @@ export function BeaGlobe({
   useEffect(() => {
     draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [earthReady, visitedFeatures, regionFeatures, countryMarks, pins, selectedId, clouds]);
+  }, [earthReady, geo, visitedFeatures, regionFeatures, countryMarks, pins, selectedId, clouds]);
 
   // Start turning; pause off-screen and in background tabs; reduced motion stops the spin.
   useEffect(() => {
@@ -583,7 +588,9 @@ export function BeaGlobe({
     const size = sizeRef.current;
     const R = RADIUS_AT_ZOOM_1 * zoomRef.current * size;
     if (Math.hypot(clientX - box.left - size / 2, clientY - box.top - size / 2) > R) return;
-    const hit = world.features.find((f) => f.properties?.name && geoContains(f, lonLat));
+    const hit = geoRef.current.world.features.find(
+      (f) => f.properties?.name && geoContains(f, lonLat),
+    );
     if (hit?.properties?.name) onCountry(hit.properties.name);
   };
 
