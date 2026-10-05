@@ -30,7 +30,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { geoContains, geoOrthographic, geoPath } from "d3-geo";
 import type { Feature, GeoJsonProperties, Geometry } from "geojson";
-import { coarseWorld, loadDetailedWorld, type WorldGeo } from "./world-geo";
+import { coarseWorld, loadDetailedWorld, pinCountryKeys, type WorldGeo } from "./world-geo";
 import { Minus, Pause, Play, Plus, RotateCcw } from "@/components/icons";
 import type { Pin } from "@/data/atlas";
 import { useThemeName } from "@/hooks/useThemeName";
@@ -117,15 +117,6 @@ function prefersReducedMotion(): boolean {
     typeof window !== "undefined" &&
     !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
   );
-}
-
-function pinCountryKeys(pins: Pin[]): Set<string> {
-  const keys = new Set<string>();
-  for (const pin of pins) {
-    if (pin.type !== "visited" && !pin.visited) continue;
-    if (pin.country?.trim()) keys.add(countryKey(pin.country));
-  }
-  return keys;
 }
 
 export function BeaGlobe({
