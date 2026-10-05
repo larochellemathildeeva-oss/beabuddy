@@ -261,6 +261,7 @@ export function AppShell({
                 ) : (
                   <Link
                     to={backFallback(pathname)}
+                    replace
                     aria-label={backFallback(pathname) === "/" ? "Go back home" : "Go back"}
                     className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
                   >
