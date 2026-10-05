@@ -86,6 +86,7 @@ import {
 } from "@/components/day/TripMenuSheet";
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
+import { useThemeName } from "@/hooks/useThemeName";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
@@ -1428,6 +1429,7 @@ export function TripDetail({
         day: "numeric",
       })
     : "";
+  const themeName = useThemeName();
   const cityNames = cities.stops.map((stop) => stop.city);
   // On the banner's map, the hollow dots are the cities really behind you
   // (all of them once the trip is over) and the ring is the city of the day
@@ -1848,7 +1850,13 @@ export function TripDetail({
             {nowStops.length > 0 && companionDay ? (
               <>
                 <section className="companion-hero" aria-label="Live companion">
-                  <img src={companionArt} alt="" className="art-dim companion-hero-art" />
+                  <img
+                    src={
+                      /paris/i.test(companionPlace) ? `/art/paris-${themeName}.webp` : companionArt
+                    }
+                    alt=""
+                    className="art-dim companion-hero-art"
+                  />
                   <div className="companion-hero-words">
                     <p className="companion-hero-kicker">Live companion</p>
                     <h2 className="font-display">

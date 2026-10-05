@@ -3000,12 +3000,13 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
   align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
-  min-height: 112px;
+  min-height: 150px;
   margin-inline: -12px;
   padding: 14px 16px;
   overflow: hidden;
 }
 .companion-hero-art {
+  object-position: 75% 35%;
   position: absolute;
   inset: 0;
   z-index: -2;
