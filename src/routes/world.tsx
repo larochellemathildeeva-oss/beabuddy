@@ -18,6 +18,7 @@ import {
 } from "@/components/icons";
 import { AppShell } from "@/components/AppShell";
 import { BeaGlobe } from "@/components/world/BeaGlobe";
+import { MapLibreGlobe } from "@/components/world/MapLibreGlobe";
 import {
   WorldAddButton,
   WorldFilters,
@@ -206,6 +207,11 @@ function WorldPage() {
   // from the countries, as the countries come from the cities.
   const continents = useMemo(() => visitedContinents(byCountry), [byCountry]);
   const globeCities = useMemo(() => cityPins(cities), [cities]);
+  // /world?globe=maplibre opens the experimental MapLibre globe beside the NASA one.
+  const [mapLibreGlobe, setMapLibreGlobe] = useState(false);
+  useEffect(() => {
+    setMapLibreGlobe(new URLSearchParams(window.location.search).get("globe") === "maplibre");
+  }, []);
   const namedCountries = useMemo(() => countryMarks(places, byCountry), [places, byCountry]);
   const shadedCountries = useMemo(() => visitedCountryKeys(places, provinces), [places, provinces]);
   const provinceOf = useMemo(() => {
@@ -749,36 +755,45 @@ function WorldPage() {
             )}
 
             <WorldGlobeStage data-guide="globe" className="-mx-4 overflow-x-clip">
-              <BeaGlobe
-                autoRotate={spinOn && !selected ? "resume" : "off"}
-                fullWidth
-                spinToggle={{
-                  // A selected place holds the globe still, so the button says so.
-                  on: spinOn && !selected,
-                  onChange: (on) => {
-                    if (on) setSelected(null);
-                    changeSpin(on);
-                  },
-                }}
-                pins={show.cities ? globeCities : []}
-                regions={show.provinces ? provinces : []}
-                // Cities and Provinces show only themselves: no whole countries
-                // shaded behind them, from the pins or from the list.
-                visitedCountries={show.countries ? shadedCountries : noCountries}
-                shadePinCountries={show.countries}
-                countryMarks={show.countries ? namedCountries : []}
-                selectedId={selected?.id}
-                onSelect={setSelected}
-                onCountrySelect={(name) => {
-                  // A tap on a country opens one of your cities there, in any
-                  // language the country was saved in — only while cities are
-                  // on the globe, so it has a pin to spin to.
-                  if (!show.cities) return;
-                  const key = countryKey(name);
-                  const match = globeCities.find((pin) => countryKey(pin.country) === key);
-                  if (match) setSelected(match);
-                }}
-              />
+              {mapLibreGlobe ? (
+                <MapLibreGlobe
+                  pins={show.cities ? globeCities : []}
+                  selectedId={selected?.id}
+                  onSelect={setSelected}
+                  autoRotate={spinOn && !selected}
+                />
+              ) : (
+                <BeaGlobe
+                  autoRotate={spinOn && !selected ? "resume" : "off"}
+                  fullWidth
+                  spinToggle={{
+                    // A selected place holds the globe still, so the button says so.
+                    on: spinOn && !selected,
+                    onChange: (on) => {
+                      if (on) setSelected(null);
+                      changeSpin(on);
+                    },
+                  }}
+                  pins={show.cities ? globeCities : []}
+                  regions={show.provinces ? provinces : []}
+                  // Cities and Provinces show only themselves: no whole countries
+                  // shaded behind them, from the pins or from the list.
+                  visitedCountries={show.countries ? shadedCountries : noCountries}
+                  shadePinCountries={show.countries}
+                  countryMarks={show.countries ? namedCountries : []}
+                  selectedId={selected?.id}
+                  onSelect={setSelected}
+                  onCountrySelect={(name) => {
+                    // A tap on a country opens one of your cities there, in any
+                    // language the country was saved in — only while cities are
+                    // on the globe, so it has a pin to spin to.
+                    if (!show.cities) return;
+                    const key = countryKey(name);
+                    const match = globeCities.find((pin) => countryKey(pin.country) === key);
+                    if (match) setSelected(match);
+                  }}
+                />
+              )}
               <WorldAddButton data-guide="add-city" onClick={() => startAdd("one")} />
             </WorldGlobeStage>
 
