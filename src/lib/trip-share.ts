@@ -84,6 +84,9 @@ export type SharedTrip = {
  */
 export const SHARED_HERE_MAX_MS = 12 * 60 * 60 * 1000;
 
+/** Hours after midnight at which an earlier day's open stop is read as done. */
+const NEW_DAY_AFTER_MS = 6 * 60 * 60 * 1000;
+
 /** A stop's progress as a friend may see it: here, done, or nothing yet. */
 export function sharedStopStatus(
   item: Pick<ShareSourceItem, "arrived_at" | "left_at">,
@@ -93,6 +96,20 @@ export function sharedStopStatus(
   if (!Number.isFinite(arrived)) return undefined;
   if (item.left_at || now - arrived > SHARED_HERE_MAX_MS) return "done";
   return "here";
+}
+
+/** The calendar date (YYYY-MM-DD) of an instant in a time zone, else in UTC. */
+function localDate(ms: number, zone?: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: zone ?? "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(ms);
+  } catch {
+    return new Date(ms).toISOString().slice(0, 10);
+  }
 }
 
 /** The view a link shows; everything not named here stays private. */
@@ -116,7 +133,7 @@ export function sharedTripView(
     );
   const days: SharedTrip["days"] = [];
   // Stops marked "here", with when — kept out of the view, only to choose one.
-  const here: { stop: SharedStop; at: number }[] = [];
+  const here: { stop: SharedStop; at: number; day: (typeof days)[number] }[] = [];
   for (const item of shown) {
     let day = days.at(-1);
     if (!day || day.day !== item.day_date) {
@@ -135,7 +152,7 @@ export function sharedTripView(
     }
     const status = follow.following ? sharedStopStatus(item, follow.now) : undefined;
     if (status) stop.status = status;
-    if (status === "here") here.push({ stop, at: Date.parse(item.arrived_at!) });
+    if (status === "here") here.push({ stop, at: Date.parse(item.arrived_at!), day });
     day.stops.push(stop);
   }
   // Several stops "here" at once (a "Leaving" never tapped, or a tap on
@@ -145,6 +162,15 @@ export function sharedTripView(
     null,
   );
   for (const h of here) if (h !== latest) h.stop.status = "done";
+  // A late-evening stop may still be "here" just past midnight, but not into
+  // the next morning: from 6 a.m. local on a later day it is done, however
+  // recent its tap, so a forgotten "Leaving" never pins a friend to last night.
+  if (follow.following) {
+    for (const h of here) {
+      if (h.stop.status !== "here" || !h.day.day) continue;
+      if (localDate(follow.now - NEW_DAY_AFTER_MS, h.day.zone) > h.day.day) h.stop.status = "done";
+    }
+  }
   return {
     title: trip.title,
     place: [trip.city?.split(",")[0]?.trim(), trip.country].filter(Boolean).join(", "),

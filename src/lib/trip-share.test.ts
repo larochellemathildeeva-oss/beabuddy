@@ -211,6 +211,18 @@ test("several stops here at once: the latest arrival wins, whatever the plan ord
   );
 });
 
+test("a recent arrival on an earlier day is done, not here", () => {
+  const view = sharedTripView(
+    LISBON,
+    [
+      { ...stop("Fado bar", 0, { arrived_at: "2026-10-04T23:30:00Z" }), day_date: "2026-10-04" },
+      { ...stop("Belém", 0), day_date: "2026-10-05" },
+    ],
+    { following: true, now: Date.parse("2026-10-05T07:00:00Z") },
+  );
+  assert.equal(view.days[0]!.stops[0]!.status, "done");
+});
+
 test("the live card: where they are, the next stop, and the day so far", () => {
   const view = sharedTripView(
     LISBON,
