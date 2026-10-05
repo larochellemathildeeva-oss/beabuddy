@@ -1912,3 +1912,21 @@
   --world-float-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
   --world-place-fallback: #2b2723;
 }
+
+/* Trips header art (the owner's text-free hero illustrations, one per theme).
+   The coast stands behind the pins' tags; the relief map under them is hidden. */
+.trips-art {
+  background-color: var(--wash-top);
+  background-size: cover;
+  background-position: 50% 62%;
+  background-image: url("/art/coast-calm.webp");
+}
+[data-theme="colorful"] .trips-art {
+  background-image: url("/art/coast-colorful.webp");
+}
+.dark .trips-art {
+  background-image: url("/art/coast-dark.webp");
+}
+.trips-art .banner-map {
+  opacity: 0;
+}
