@@ -157,7 +157,7 @@ export function TripPageBanner({
         <span
           aria-hidden
           className="trip-hero-shade"
-          style={{ height: footHeight + FOOT_PAD + 36 }}
+          style={{ height: footHeight + FOOT_PAD + 60 }}
         />
       )}
 
