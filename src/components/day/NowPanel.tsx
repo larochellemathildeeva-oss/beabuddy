@@ -804,7 +804,9 @@ function LeavePanel({
             <Clock className="size-7" />
           </span>
           <span className="leading-tight">
-            <span className={`block text-[13px] font-semibold ${urgent ? "" : "text-muted-foreground"}`}>
+            <span
+              className={`block text-[13px] font-semibold ${urgent ? "" : "text-muted-foreground"}`}
+            >
               {label}
             </span>
             <span
