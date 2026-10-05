@@ -337,7 +337,7 @@ function TripsPage() {
                     <span className="block font-display text-[18px] leading-tight">
                       Plan with Béa
                     </span>
-                    <span className="block text-[13px] text-muted-foreground">
+                    <span className="block text-[13px] text-foreground/75">
                       Build, import, optimize or compare
                     </span>
                   </span>
@@ -358,9 +358,7 @@ function TripsPage() {
                     <span className="block font-display text-[18px] leading-tight">
                       Join with a code
                     </span>
-                    <span className="block text-[13px] text-muted-foreground">
-                      Trips with friends
-                    </span>
+                    <span className="block text-[13px] text-foreground/75">Trips with friends</span>
                   </span>
                 </button>
               </div>

@@ -73,7 +73,10 @@ await build({
 });
 writeFileSync(join(out, "app.css"), readFileSync(join(assets, css)));
 const fontLinks = process.env.PREVIEW_FONT_DIR
-  ? `<style>${[["Manrope", "200 800", "manrope.woff2"], ["Instrument Serif", "400", "serif.woff2"], ["Bodoni Moda", "400 900", "bodoni.woff2"]].filter(([, , file]) => existsSync(join(process.env.PREVIEW_FONT_DIR, file))).map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
+  ? `<style>${[["Manrope", "200 800", "manrope.woff2"], ["Instrument Serif", "400", "serif.woff2"], ["Bodoni Moda", "400 900", "bodoni.woff2"]].map((font) => {
+    if (!existsSync(join(process.env.PREVIEW_FONT_DIR, font[2]))) throw new Error(`PREVIEW_FONT_DIR is missing ${font[2]} (the ${font[0]} font)`);
+    return font;
+  }).map(([family, weight, file]) => `@font-face{font-family:"${family}";font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(join(process.env.PREVIEW_FONT_DIR, file)).toString("base64")}) format("woff2");}`).join("")}</style>`
   : '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Bodoni+Moda:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap">';
 writeFileSync(
   join(out, "index.html"),
