@@ -1546,6 +1546,13 @@
   color: var(--foreground);
   box-shadow: 0 1px 6px rgb(0 0 0 / 0.14);
 }
+@media (max-width: 459px) {
+  .trip-hero-plan {
+    width: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
 .trip-hero-add {
   display: grid;
   place-items: center;
