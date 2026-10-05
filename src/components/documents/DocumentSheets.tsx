@@ -121,7 +121,7 @@ export function AddDocumentSheet({
   };
   return (
     <Sheet open={open} onClose={onClose} title="Add document" width="sm">
-      <div className="plain-card divide-y divide-border overflow-hidden">
+      <div className="doc-list">
         <OptionRow
           icon={<ClipboardList className="size-5" aria-hidden />}
           title="Paste text"
@@ -151,7 +151,7 @@ export function AddDocumentSheet({
           onClick={() => onPick(null)}
         />
       </div>
-      <p className="mt-3 text-[12.5px] text-muted-foreground">
+      <p className="mt-3 text-[13px] text-muted-foreground">
         For bookings, confirmations and tickets. Passports, payment cards and passwords belong in
         Protected.
       </p>
@@ -193,7 +193,7 @@ export function TripPicker({
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="Choose a trip" width="sm" above>
-      <div className="plain-card divide-y divide-border overflow-hidden">
+      <div className="doc-list">
         {allowNone && (
           <LinkRow
             media={
@@ -248,7 +248,7 @@ export function EventPicker({
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="Select event" width="sm" above>
-      <div className="plain-card divide-y divide-border overflow-hidden">
+      <div className="doc-list">
         {events.map((e) => (
           <LinkRow
             key={e.id}
@@ -291,7 +291,7 @@ type FilledField = "title" | "kind" | "lines" | "reference" | "trip" | "event" |
 function FromFile({ show, text = false }: { show: boolean; text?: boolean }) {
   if (!show) return null;
   return (
-    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 align-middle text-[11px] font-semibold text-primary">
+    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 align-middle text-[13px] font-semibold text-primary">
       <Sparkles className="size-3" aria-hidden />
       {text ? "from text" : "from file"}
     </span>
@@ -558,7 +558,7 @@ export function AssignSheet({
         <button
           type="button"
           onClick={onClose}
-          className="h-8 rounded-full px-1 text-[14.5px] font-semibold text-foreground"
+          className="h-8 rounded-full px-1 text-[15px] font-semibold text-foreground"
         >
           Cancel
         </button>
@@ -575,7 +575,7 @@ export function AssignSheet({
       }
     >
       <div className="space-y-4">
-        <div className="plain-card flex items-center gap-3 p-3">
+        <div className="doc-card flex items-center gap-3 p-3">
           <FilePreview file={file ?? null} kind={draft.kind} />
           <div className="min-w-0 flex-1">
             {isNew ? (
@@ -599,7 +599,7 @@ export function AssignSheet({
               </p>
             ))}
             {isNew && (file || pasteMode) && (
-              <p className="truncate text-[12px] text-muted-foreground">
+              <p className="truncate text-[13px] text-muted-foreground">
                 {file ? file.name : "Pasted text"}
                 <FromFile show={filled.has("title")} text={pasteMode} />
               </p>
@@ -608,7 +608,7 @@ export function AssignSheet({
         </div>
 
         {(readAs || pasteMode) && (
-          <div className="plain-card space-y-2 p-3">
+          <div className="doc-card space-y-2 p-3">
             {pasteMode && (
               <textarea
                 value={text}
@@ -628,7 +628,7 @@ export function AssignSheet({
               type="button"
               disabled={reading || (pasteMode && !text.trim())}
               onClick={() => void readFile()}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-4 text-[14.5px] font-semibold text-primary disabled:opacity-60"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-4 text-[15px] font-semibold text-primary disabled:opacity-60"
             >
               <Sparkles className="size-4" aria-hidden />
               {reading
@@ -640,20 +640,20 @@ export function AssignSheet({
                     : "Fill in from this file"}
             </button>
             {readError ? (
-              <p role="alert" className="text-[12.5px] font-semibold text-destructive">
+              <p role="alert" className="text-[13px] font-semibold text-destructive">
                 {readError}
               </p>
             ) : filled.size ? (
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Filled in from the {pasteMode ? "text" : "file"}. Check it before you press Done.
               </p>
             ) : pasteMode ? (
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Béa sends this text to Google Gemini to read it, without anything that looks like a
                 card number. The text itself is not kept, and nothing is saved until you press Done.
               </p>
             ) : (
-              <p className="text-[12.5px] text-muted-foreground">
+              <p className="text-[13px] text-muted-foreground">
                 Béa sends this file to Google Gemini to read it. Nothing is saved until you press
                 Done.
               </p>
@@ -692,7 +692,7 @@ export function AssignSheet({
                   setDraft({ ...draft, lines: [e.target.value, draft.lines?.[1] ?? ""] });
                   edited("lines");
                 }}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
               />
               <input
                 value={draft.lines?.[1] ?? ""}
@@ -703,7 +703,7 @@ export function AssignSheet({
                   setDraft({ ...draft, lines: [draft.lines?.[0] ?? "", e.target.value] });
                   edited("lines");
                 }}
-                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
               />
             </label>
             <label className="block space-y-1">
@@ -720,7 +720,7 @@ export function AssignSheet({
                   setDraft({ ...draft, reference: e.target.value });
                   edited("reference");
                 }}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
               />
             </label>
           </div>
@@ -731,7 +731,7 @@ export function AssignSheet({
             Assign to trip
             <FromFile show={filled.has("trip")} text={pasteMode} />
           </p>
-          <div className="plain-card overflow-hidden">
+          <div className="doc-card overflow-hidden">
             <LinkRow
               media={
                 trip ? (
@@ -771,7 +771,7 @@ export function AssignSheet({
               Select event
               <FromFile show={filled.has("event")} text={pasteMode} />
             </p>
-            <div className="plain-card overflow-hidden">
+            <div className="doc-card overflow-hidden">
               <LinkRow
                 media={<KindTile kind={eventKind(event?.kind ?? "")} size="sm" />}
                 title={event ? event.title : "Choose a stop"}
@@ -796,7 +796,7 @@ export function AssignSheet({
             maxLength={NOTES_MAX}
             rows={3}
             placeholder="E-ticket and confirmation."
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
           />
         </label>
 
@@ -924,12 +924,12 @@ export function EditDetailsSheet({
     }
   };
 
-  const input = "w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]";
+  const input = "w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]";
   return (
     <Sheet open={open} onClose={onClose} title="Edit details" width="sm" above>
       <div className="space-y-3">
         <label className="block space-y-1">
-          <span className="text-[12.5px] font-semibold text-muted-foreground">Name</span>
+          <span className="text-[13px] font-semibold text-muted-foreground">Name</span>
           <input
             value={d.title}
             maxLength={TITLE_MAX}
@@ -938,11 +938,11 @@ export function EditDetailsSheet({
           />
         </label>
         <div>
-          <p className="mb-1.5 text-[12.5px] font-semibold text-muted-foreground">Type</p>
+          <p className="mb-1.5 text-[13px] font-semibold text-muted-foreground">Type</p>
           <KindChips value={d.kind} onChange={(kind) => setD({ ...d, kind })} />
         </div>
         <label className="block space-y-1">
-          <span className="text-[12.5px] font-semibold text-muted-foreground">Short lines</span>
+          <span className="text-[13px] font-semibold text-muted-foreground">Short lines</span>
           <input
             value={d.lines[0]}
             maxLength={LINE_MAX}
@@ -1015,7 +1015,7 @@ export function MoreOptionsSheet({
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="More options" width="sm" above>
-      <div className="plain-card divide-y divide-border overflow-hidden">
+      <div className="doc-list">
         <OptionRow
           icon={<Pencil className="size-5" aria-hidden />}
           title="Edit details"
@@ -1090,7 +1090,7 @@ export function BookingLinkedSheet({
         </span>
         <p className="font-display text-[26px] leading-none">Booking linked</p>
         <p className="text-[14px] text-muted-foreground">This document is linked to:</p>
-        <div className="plain-card divide-y divide-border overflow-hidden text-left">
+        <div className="doc-list text-left">
           {trip && (
             <LinkRow
               media={<TripThumb trip={trip} />}
@@ -1141,7 +1141,7 @@ export function DeleteDocumentSheet({
   return (
     <Sheet open={open} onClose={onClose} title="Delete document" hint={title} width="sm" above>
       <div className="space-y-3">
-        <p className="text-[14.5px]">
+        <p className="text-[15px]">
           {shared
             ? "The file and its details are removed for you and everyone on the trip. This cannot be undone."
             : "The file and its details are removed. This cannot be undone."}

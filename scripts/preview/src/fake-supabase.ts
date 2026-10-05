@@ -9,6 +9,8 @@ type Row = Record<string, unknown>;
 const w = window as unknown as { __writes: unknown[]; __sample: string };
 w.__writes = [];
 const sample = new URLSearchParams(location.search).get("sample") ?? "default";
+// The documents lock is a per-account setting kept on the phone: off here.
+if (sample === "docs-open") try { localStorage.setItem("bea.docs.lock.me", "off"); } catch { /* ignore */ }
 w.__sample = sample;
 
 const previewParams = new URLSearchParams(location.search);
@@ -232,7 +234,18 @@ const recsDb: Record<string, Row[]> = {
   ],
 };
 
-export const db: Record<string, Row[]> = sample === "recs" || sample === "you" ? recsDb : sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" || sample === "page-calendar" ? homeDb : {
+// "docs-open": Trip documents unlocked, with a few bookings on the LA trip.
+const docsDb: Record<string, Row[]> = {
+  ...homeDb,
+  trip_documents: [
+    { id: "dc1", owner_id: "me", trip_id: "la", itinerary_item_id: "la1", kind: "flight", title: "Flight AC 781", lines: ["YUL to LAX", "Non-stop, 08:15"], reference: "BA9327", notes: "Window seat, carry-on only.", storage_path: "me/dc1.pdf", file_name: "ac781.pdf", mime_type: "application/pdf", size_bytes: 320000, created_at: ago(300), updated_at: ago(300) },
+    { id: "dc2", owner_id: "me", trip_id: "la", itinerary_item_id: "la2", kind: "accommodation", title: "The Line Hotel", lines: ["3 nights", "Koreatown"], reference: "LA-882", notes: null, storage_path: null, file_name: null, mime_type: null, size_bytes: null, created_at: ago(900), updated_at: ago(900) },
+    { id: "dc3", owner_id: "me", trip_id: "la", itinerary_item_id: null, kind: "ticket", title: "Getty Center entry", lines: ["Timed entry, 10:30"], reference: null, notes: null, storage_path: "me/dc3.pdf", file_name: "getty.pdf", mime_type: "application/pdf", size_bytes: 210000, created_at: ago(1500), updated_at: ago(1500) },
+    { id: "dc4", owner_id: "me", trip_id: null, itinerary_item_id: null, kind: "other", title: "Travel insurance policy", lines: ["World Nomads"], reference: "WN734281", notes: null, storage_path: "me/dc4.pdf", file_name: "policy.pdf", mime_type: "application/pdf", size_bytes: 90000, created_at: ago(3000), updated_at: ago(3000) },
+  ],
+};
+
+export const db: Record<string, Row[]> = sample === "docs-open" ? docsDb : sample === "recs" || sample === "you" ? recsDb : sample === "world" ? worldDb : sample === "homepage-ontrip" ? onTripDb : sample === "homepage-none" ? noneDb : sample === "homepage" ? homeDb : sample === "trips" ? tripsDb : sample === "home" || sample === "home-trips" || sample === "page-calendar" ? homeDb : {
   profiles: [{ id: "me", app_settings: new URLSearchParams(location.search).has("reset-accent") ? { accent: null } : {} }],
   itinerary_items: items(),
   recommendations: [

@@ -147,7 +147,7 @@ export function PlaceDetail({
   };
 
   const action =
-    "flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-1 py-3 text-[12.5px] font-semibold";
+    "flex flex-col items-center gap-1.5 rounded-2xl border border-border bg-card px-1 py-3 text-[13px] font-semibold";
 
   return (
     <div className="rise space-y-5">
@@ -188,12 +188,12 @@ export function PlaceDetail({
 
       <div>
         <h2 className="font-display text-[34px] leading-[1.05]">{place.name}</h2>
-        {kindLine && <p className="mt-1 text-[14.5px] text-muted-foreground">{kindLine}</p>}
+        {kindLine && <p className="mt-1 text-[15px] text-muted-foreground">{kindLine}</p>}
         {metres != null && (
           <p className="mt-0.5 text-[13.5px] text-muted-foreground">{formatMetres(metres)} away</p>
         )}
         {row && (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[12.5px]">
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-[13px]">
             <span
               className={`size-2 rounded-full ${pinColorClass[(row.pin_type ?? "reco") as PinType]}`}
               aria-hidden
@@ -203,7 +203,7 @@ export function PlaceDetail({
         )}
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="recs-actions grid grid-cols-4 gap-2">
         <a href={directionsUrl(place)} target="_blank" rel="noreferrer" className={action}>
           <Navigation className="size-5 text-primary" aria-hidden />
           Directions
@@ -262,7 +262,7 @@ export function PlaceDetail({
         <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-3">
           <span className="min-w-0 flex-1">
             <span className="block font-mono text-[16.5px] tracking-widest">{ready}</span>
-            <span className="block text-[12px] text-muted-foreground">
+            <span className="block text-[13px] text-muted-foreground">
               Works for 30 days. Sent with the Maps link.
             </span>
           </span>
@@ -277,7 +277,7 @@ export function PlaceDetail({
       )}
       {shared && <p className="text-[13px] text-muted-foreground">{shared}</p>}
 
-      <section className="plain-card space-y-3 p-4">
+      <section className="recs-box space-y-3 p-4">
         <p className="inline-block rounded-full bg-primary-soft px-3 py-1 text-[13px] font-semibold">
           Overview
         </p>
@@ -290,11 +290,9 @@ export function PlaceDetail({
           </p>
         )}
         {place.address && <p className="text-[14px]">{place.address}</p>}
-        {tags.length > 0 && (
-          <p className="text-[12.5px] text-muted-foreground">{tags.join(" · ")}</p>
-        )}
+        {tags.length > 0 && <p className="text-[13px] text-muted-foreground">{tags.join(" · ")}</p>}
         {row && (
-          <p className="text-[12.5px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Saved {new Date(row.created_at).toLocaleDateString()}
           </p>
         )}

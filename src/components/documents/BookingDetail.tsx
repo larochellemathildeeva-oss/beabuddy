@@ -19,7 +19,7 @@ export function BookingFacts({ facts }: { facts: BookingFact[] }) {
       {shown.map((f) => (
         <div key={f.label} className="flex items-start justify-between gap-4 py-2.5">
           <dt className="shrink-0 text-[14px] text-muted-foreground">{f.label}</dt>
-          <dd className="min-w-0 text-right text-[14.5px] font-semibold [overflow-wrap:anywhere]">
+          <dd className="min-w-0 text-right text-[15px] font-semibold [overflow-wrap:anywhere]">
             {f.value}
           </dd>
         </div>
@@ -62,7 +62,7 @@ export function BookingFields({
     <div className="space-y-3">
       {booked !== undefined && onBookedChange && (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-elevated px-3 py-2.5">
-          <span className="text-[14.5px] font-semibold">Booked</span>
+          <span className="text-[15px] font-semibold">Booked</span>
           <Switch
             checked={booked}
             onCheckedChange={onBookedChange}
@@ -71,24 +71,24 @@ export function BookingFields({
         </label>
       )}
       <label className="block space-y-1">
-        <span className="text-[12.5px] font-semibold text-muted-foreground">Reference</span>
+        <span className="text-[13px] font-semibold text-muted-foreground">Reference</span>
         <input
           value={reference}
           onChange={(e) => onReferenceChange(e.target.value)}
           maxLength={referenceMax}
           placeholder="Confirmation or ticket number"
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] tabular-nums"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px] tabular-nums"
         />
       </label>
       <label className="block space-y-1">
-        <span className="text-[12.5px] font-semibold text-muted-foreground">{detailsLabel}</span>
+        <span className="text-[13px] font-semibold text-muted-foreground">{detailsLabel}</span>
         <textarea
           value={details}
           onChange={(e) => onDetailsChange(e.target.value)}
           maxLength={detailsMax}
           rows={3}
           placeholder={detailsPlaceholder}
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
         />
       </label>
     </div>

@@ -66,7 +66,7 @@ export function KindTile({ kind, size = "md" }: { kind: string; size?: "sm" | "m
       ? "size-16 rounded-2xl"
       : size === "sm"
         ? "size-10 rounded-xl"
-        : "size-12 rounded-2xl";
+        : "doc-tile size-14 rounded-[18px]";
   return (
     <span
       className={`${KIND_FILL[asKind(kind)]} grid shrink-0 place-items-center border border-border/60 text-primary ${box}`}
@@ -89,7 +89,7 @@ export function DocumentIcon({
 }) {
   const look = fileLook(doc);
   const thumb = useSignedPhoto(look === "image" ? doc.storage_path : null);
-  const box = size === "lg" ? "size-16 rounded-2xl" : "size-12 rounded-2xl";
+  const box = size === "lg" ? "size-16 rounded-2xl" : "doc-tile size-14 rounded-[18px]";
   if (look === "image") {
     return thumb ? (
       <img src={thumb} alt="" className={`${box} shrink-0 border border-border/60 object-cover`} />
@@ -100,7 +100,7 @@ export function DocumentIcon({
   if (look === "pdf") {
     return (
       <span
-        className={`${box} tile-fill-5 grid shrink-0 place-items-center border border-border/60 text-destructive`}
+        className={`${box} ${KIND_FILL[asKind(doc.kind)]} grid shrink-0 place-items-center border border-border/60 text-destructive`}
         aria-label="PDF"
       >
         <FilePdf className={size === "lg" ? "size-9" : "size-7"} aria-hidden />
@@ -133,7 +133,7 @@ export function DocumentRow({
   subtitle?: string | undefined;
 }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-3">
+    <div className="doc-row flex items-center gap-3 px-1 py-3">
       <button
         type="button"
         onClick={onOpen}
@@ -141,13 +141,13 @@ export function DocumentRow({
       >
         <DocumentIcon doc={doc} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">{doc.title}</span>
+          <span className="block truncate text-[17px] font-semibold">{doc.title}</span>
           {doc.lines.slice(0, 2).map((line, i) => (
-            <span key={i} className="block truncate text-[13px] text-muted-foreground">
+            <span key={i} className="block truncate text-[14px] text-muted-foreground">
               {line}
             </span>
           ))}
-          <span className="block text-[12px] text-muted-foreground/80">
+          <span className="block text-[13px] text-muted-foreground">
             {subtitle ?? addedLabel(doc.created_at)}
           </span>
         </span>
@@ -201,7 +201,7 @@ export function LinkRow({
     <>
       {media}
       <span className="min-w-0 flex-1 text-left">
-        {eyebrow && <span className="block text-[12.5px] text-muted-foreground">{eyebrow}</span>}
+        {eyebrow && <span className="block text-[13px] text-muted-foreground">{eyebrow}</span>}
         <span className="block truncate text-[15px] font-semibold">{title}</span>
         {line && <span className="block truncate text-[13px] text-muted-foreground">{line}</span>}
         {line2 && <span className="block truncate text-[13px] text-muted-foreground">{line2}</span>}

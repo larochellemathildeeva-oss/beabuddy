@@ -322,7 +322,7 @@ export function PlaceSearchInput({
           spellCheck={false}
           placeholder={placeholder}
           {...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {})}
-          className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+          className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
         />
         <button
           type="button"
@@ -341,10 +341,10 @@ export function PlaceSearchInput({
           )}
         </button>
       </div>
-      {err && <p className="text-[12px] text-muted-foreground">{err}</p>}
+      {err && <p className="text-[13px] text-muted-foreground">{err}</p>}
       {hits.length === 0 && suggestions.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[12px] text-muted-foreground">Did you mean</span>
+          <span className="text-[13px] text-muted-foreground">Did you mean</span>
           {suggestions.map((place, i) => {
             const line = placeSuggestionLines(place);
             return (
@@ -353,7 +353,7 @@ export function PlaceSearchInput({
                 type="button"
                 onClick={() => choose(place)}
                 title={line.subtitle ?? line.title}
-                className="rounded-full border border-primary/50 px-2.5 py-1 text-[12.5px] font-semibold text-primary"
+                className="rounded-full border border-primary/50 px-2.5 py-1 text-[13px] font-semibold text-primary"
               >
                 {place.name}
                 {place.city && place.city !== place.name ? (
@@ -371,7 +371,7 @@ export function PlaceSearchInput({
       {onLocate && !at && !near && (hits.length > 0 || Boolean(err)) && (
         <div className="space-y-1.5">
           {hits.length > 0 && (
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               {hitsSpanCountries(hits)
                 ? "These are around the world. Search near you for the one on your street."
                 : "Not the one you meant? Search near you."}
@@ -387,7 +387,7 @@ export function PlaceSearchInput({
         </div>
       )}
       {at && !near && hits.length > 0 && (
-        <p className="text-[12px] text-muted-foreground">Nearest to you first.</p>
+        <p className="text-[13px] text-muted-foreground">Nearest to you first.</p>
       )}
       {hits.length > 0 && (
         <ul className="space-y-1 rounded-xl border border-border bg-elevated p-1.5">
@@ -400,12 +400,12 @@ export function PlaceSearchInput({
                   onClick={() => choose(h)}
                   className="min-w-0 flex-1 rounded-lg px-2 py-1.5 text-left"
                 >
-                  <p className="truncate text-[14.5px] font-medium">{line.title}</p>
+                  <p className="truncate text-[15px] font-medium">{line.title}</p>
                   {line.subtitle ? (
-                    <p className="truncate text-[12px] text-muted-foreground">{line.subtitle}</p>
+                    <p className="truncate text-[13px] text-muted-foreground">{line.subtitle}</p>
                   ) : null}
                   {h.weak ? (
-                    <p className="text-[11.5px] font-medium text-muted-foreground">
+                    <p className="text-[13px] font-medium text-muted-foreground">
                       Another name, same area
                     </p>
                   ) : null}
@@ -425,7 +425,7 @@ export function PlaceSearchInput({
                         })
                         .finally(() => setAddingIndex(-1));
                     }}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[12px] font-semibold text-primary disabled:opacity-50"
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-primary/50 px-2.5 py-1.5 text-[13px] font-semibold text-primary disabled:opacity-50"
                   >
                     {addingIndex === i ? (
                       (quickAdd.busyLabel ?? "Adding…")
@@ -454,7 +454,7 @@ export function PlaceSearchInput({
           >
             {hits.length > 0 ? "Not in the list? " : ""}
             <span className="font-semibold text-foreground">Save “{value.trim()}” as typed</span>
-            <span className="block text-[12px]">
+            <span className="block text-[13px]">
               It opens in Maps by name; add the spot later if you like.
             </span>
           </button>
