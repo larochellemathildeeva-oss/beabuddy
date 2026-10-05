@@ -2887,3 +2887,93 @@ html:not(.dark) .trip-shell :is(.tile-card-1, .tile-card-2, .tile-card-3, .tile-
 [data-theme="colorful"] .recs-actions > :nth-child(4) { background-color: var(--tile-4); }
 .recs-actions > * { border-color: var(--border); }
 /* ===== end documents-saved restyle ===== */
+/* ===== tabs restyle ===== */
+/* Calm and Colorful: the page ground is plain white, with no page-wide wash. */
+[data-theme="calm"],
+[data-theme="colorful"] {
+  --page-wash: linear-gradient(transparent, transparent);
+}
+[data-theme="calm"] .bea-world,
+[data-theme="colorful"] .bea-world {
+  --world-wash: none;
+}
+
+/* You: profile header, stats, preferences, theme, highlights. */
+.you-head {
+  padding: 4px 0 0;
+}
+.you-avatar {
+  display: block;
+  flex-shrink: 0;
+  width: 92px;
+  height: 92px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 2px solid var(--acc, #f6466e);
+  background: var(--background);
+}
+.you-edit {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+}
+.you-stats {
+  border-top: 1px solid #f2ede6;
+  padding-top: 14px;
+}
+.dark .you-stats {
+  border-top-color: var(--border);
+}
+.you-figure {
+  border: 1px solid #f2ede6;
+  background: var(--card);
+}
+.dark .you-figure {
+  border-color: var(--border);
+}
+[data-theme="colorful"] .you-figure:nth-child(1) { background: var(--blush, #fbdce7); border-color: transparent; }
+[data-theme="colorful"] .you-figure:nth-child(2) { background: var(--powder, #dbecfa); border-color: transparent; }
+[data-theme="colorful"] .you-figure:nth-child(3) { background: var(--mint, #ddf1e8); border-color: transparent; }
+[data-theme="colorful"] .you-figure:nth-child(4) { background: var(--butter, #fcf2cc); border-color: transparent; }
+.you-section .font-display {
+  font-size: 24px;
+}
+.you-chip {
+  border: 1px solid #f2ede6;
+  color: var(--foreground);
+}
+.dark .you-chip {
+  border-color: var(--border);
+}
+[data-theme="calm"] .you-chip {
+  background: var(--card);
+}
+.you-section [role="radiogroup"] button {
+  min-height: 56px;
+}
+.you-section > div > .rounded-xl.bg-elevated {
+  background: transparent;
+  padding: 0;
+}
+.you-section > div > .rounded-xl.bg-elevated > p:first-child,
+.you-section > div > .rounded-xl.bg-elevated > p:nth-child(2) {
+  display: none;
+}
+.you-highlight {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--muted);
+  color: #fff;
+}
+.you-highlight-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(0 0 0 / 0.6), rgb(0 0 0 / 0) 55%);
+}
+.you-highlight-text {
+  position: absolute;
+  inset: auto 8px 8px;
+}
