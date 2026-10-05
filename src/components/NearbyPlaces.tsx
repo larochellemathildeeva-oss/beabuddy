@@ -83,7 +83,7 @@ export function NearbyPlaces({
 
   if (collapsed && consentReady && !consent && !explaining) {
     return (
-      <div data-guide="location-card" className="plain-card flex items-center gap-3 p-4">
+      <div data-guide="location-card" className="recs-box flex items-center gap-3 p-4">
         <MapPin className="size-6 shrink-0 text-primary" aria-hidden />
         <p className="min-w-0 flex-1 text-[13.5px] leading-snug text-muted-foreground">
           Share where you are and Béa will show which saved places are within reach.
@@ -109,7 +109,7 @@ export function NearbyPlaces({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="label-caps">Your location</p>
-            <p className="mt-1 text-[14.5px] text-muted-foreground">
+            <p className="mt-1 text-[15px] text-muted-foreground">
               {state === "locating" && "Finding you…"}
               {state === "ok" && here && `${here.lat.toFixed(3)}, ${here.lon.toFixed(3)}`}
               {state === "error" && (error || "Location off")}
@@ -138,7 +138,7 @@ export function NearbyPlaces({
 
         {consentReady && !consent && (
           <div className="mt-3 rounded-xl border border-border bg-elevated p-3">
-            <p className="text-[14.5px] font-semibold">Before Béa asks for your location</p>
+            <p className="text-[15px] font-semibold">Before Béa asks for your location</p>
             <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
               Your position is used on this device, right now, to measure how far you are from
               places you've saved. To show the weather and the name of the place you're in, a
@@ -157,13 +157,13 @@ export function NearbyPlaces({
                   }`}
                 >
                   <span className="block text-[13px] font-semibold">{d.label}</span>
-                  <span className="block text-[12px] text-muted-foreground">{d.blurb}</span>
+                  <span className="block text-[13px] text-muted-foreground">{d.blurb}</span>
                 </button>
               ))}
             </div>
             <button
               onClick={() => near.allow(duration)}
-              className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground"
+              className="mt-3 w-full rounded-xl bg-primary px-4 py-2 text-[15px] font-semibold text-primary-foreground"
             >
               I understand — use my location
             </button>
@@ -173,7 +173,7 @@ export function NearbyPlaces({
         {consentReady && consent && (
           <button
             onClick={near.stop}
-            className="mt-3 text-[12px] font-semibold text-muted-foreground underline underline-offset-2"
+            className="mt-3 text-[13px] font-semibold text-muted-foreground underline underline-offset-2"
           >
             Stop sharing my location
           </button>
@@ -205,7 +205,7 @@ export function NearbyPlaces({
       <section data-guide="near-list" className="space-y-3">
         {!collapsed && here && nearby.length >= 2 && (
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[14.5px] text-muted-foreground">
+            <p className="text-[15px] text-muted-foreground">
               {picking
                 ? `${selectedIds.length} selected for a day trip`
                 : "Tick a few and Béa will arrange a day trip."}
@@ -235,7 +235,7 @@ export function NearbyPlaces({
         )}
 
         {here && nearby.length > 0 && (
-          <p className="text-[14.5px] text-muted-foreground">
+          <p className="text-[15px] text-muted-foreground">
             <span className="font-semibold text-primary">{beaLine("near.nearby").title}</span>
             {beaLine("near.nearby").body ? ` — ${beaLine("near.nearby").body}` : ""}
           </p>
@@ -285,7 +285,7 @@ export function NearbyPlaces({
                     {p.category ? ` · ${p.category}` : ""}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-[12px] font-semibold">
+                <span className="shrink-0 rounded-full border border-border bg-card px-2.5 py-1 text-[13px] font-semibold">
                   {formatMetres(metres)}
                 </span>
               </div>
@@ -295,13 +295,13 @@ export function NearbyPlaces({
                   href={`https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lon}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[14.5px] font-semibold text-primary-foreground"
+                  className="flex-1 rounded-xl bg-primary px-4 py-2.5 text-center text-[15px] font-semibold text-primary-foreground"
                 >
                   Go now
                 </a>
                 <button
                   onClick={() => near.dismiss(p.id)}
-                  className="rounded-xl border border-border px-4 py-2.5 text-[14.5px]"
+                  className="rounded-xl border border-border px-4 py-2.5 text-[15px]"
                 >
                   Snooze
                 </button>
@@ -313,7 +313,7 @@ export function NearbyPlaces({
         {collapsed && here && nearby.length > 0 && onExpand && (
           <button
             onClick={onExpand}
-            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-[14.5px] font-semibold"
+            className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-[15px] font-semibold"
           >
             {hiddenCount > 0
               ? `Show all ${nearby.length} nearby`
@@ -322,14 +322,14 @@ export function NearbyPlaces({
         )}
 
         {!here && state !== "locating" && (
-          <p className="py-10 text-center text-[14.5px] text-muted-foreground">
+          <p className="py-10 text-center text-[15px] text-muted-foreground">
             Share your location and Béa will surface what's saved around you.
           </p>
         )}
         {here && nearby.length === 0 && (
           <div className="py-10 text-center">
             <p className="font-display text-[18px] leading-snug">{beaLine("near.empty").title}</p>
-            <p className="mt-1 text-[14.5px] text-muted-foreground">
+            <p className="mt-1 text-[15px] text-muted-foreground">
               {beaLine("near.empty").body} Nothing saved within {formatMetres(radius)}.
             </p>
           </div>
@@ -355,7 +355,7 @@ function HomePlaceCard({
   onSnooze: () => void;
 }) {
   return (
-    <article className="rise plain-card flex gap-3 p-2.5">
+    <article className="rise recs-box flex gap-3 p-2.5">
       <PlacePicture
         name={pin.name}
         category={pin.category}
@@ -388,7 +388,7 @@ function HomePlaceCard({
           <button
             type="button"
             onClick={onSnooze}
-            className="rounded-[12px] px-2 py-2 text-[12.5px] font-semibold text-muted-foreground"
+            className="rounded-[12px] px-2 py-2 text-[13px] font-semibold text-muted-foreground"
           >
             Snooze
           </button>

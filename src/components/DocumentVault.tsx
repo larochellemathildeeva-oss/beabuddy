@@ -27,7 +27,7 @@ function KeyboardToggle({ keyboard, set }: { keyboard: Keyboard; set: (k: Keyboa
     <button
       type="button"
       onClick={() => set(keyboard === "numeric" ? "text" : "numeric")}
-      className="mt-1.5 text-[12.5px] text-muted-foreground underline"
+      className="mt-1.5 text-[13px] text-muted-foreground underline"
     >
       {keyboard === "numeric" ? "Use letters too" : "Use the number pad"}
     </button>
@@ -81,7 +81,7 @@ export function VaultUnlock({
   const ready = v.hasVault ? passcode.length > 0 : check.valid && confirmCode.length > 0;
 
   return (
-    <div className="plain-card p-4">
+    <div className="doc-card p-4">
       <div className="text-center">
         <span className="tile-fill-1 mx-auto grid size-12 place-items-center rounded-2xl border border-border/60 text-primary">
           <Lock className="size-6" aria-hidden />
@@ -170,7 +170,7 @@ export function VaultUnlock({
         </button>
       </form>
       {!v.hasVault && (
-        <p className="mt-2 text-[12px] text-muted-foreground">
+        <p className="mt-2 text-[13px] text-muted-foreground">
           {VAULT_PASSCODE_HINT} Béa cannot recover a forgotten passcode: what is in Protected is
           encrypted with it.
         </p>
@@ -428,7 +428,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
               {error}
             </p>
           )}
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Everything in Protected is re-encrypted on this device with the new passcode.
             {v.hasPasskey && " Face ID or fingerprint will need setting up again here."}
           </p>
@@ -480,7 +480,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
 
   if (!v.signedIn) {
     return (
-      <div className="plain-card p-4 text-center">
+      <div className="doc-card p-4 text-center">
         <p className="font-display text-[22px]">Protected</p>
         <p className="mt-1 text-[13px] text-muted-foreground">
           Passports, cards and private files, encrypted on your device before they sync.
@@ -499,7 +499,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
 
   return (
     <div className="space-y-3">
-      <div className="plain-card p-4">
+      <div className="doc-card p-4">
         <div className="flex items-center justify-between">
           <p className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
             <LockOpen className="size-4" aria-hidden /> Unlocked
@@ -537,12 +537,12 @@ export function ProtectedPanel({ v }: { v: Vault }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-semibold">{row.label}</span>
-                  <span className="block text-[12.5px] text-muted-foreground">
+                  <span className="block text-[13px] text-muted-foreground">
                     {row.kind}
                     {row.expires_on ? ` · expires ${row.expires_on}` : ""}
                   </span>
                 </span>
-                <span className="text-[12.5px] font-semibold text-primary">
+                <span className="text-[13px] font-semibold text-primary">
                   {openId === row.id ? "Hide" : "Reveal"}
                 </span>
               </button>
@@ -688,7 +688,7 @@ export function ProtectedPanel({ v }: { v: Vault }) {
 
       <DeviceUnlockSetting v={v} />
 
-      <p className="text-[12px] text-muted-foreground">
+      <p className="text-[13px] text-muted-foreground">
         Labels and expiry dates stay readable when locked; numbers, notes and attachments are
         encrypted on this device with your passcode.
       </p>

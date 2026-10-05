@@ -2542,3 +2542,198 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ===== documents-saved restyle ===== */
+/* Calm and Colorful stand on plain white: no page-wide glow. Dark keeps its
+   own surfaces (the .dark rule above is more specific than :root alone). */
+:root:not(.dark) {
+  --page-wash: none;
+}
+
+/* ── Trip documents ─────────────────────────────────────────────────────── */
+.doc-intro {
+  position: relative;
+  min-height: 152px;
+}
+.doc-intro-art {
+  position: absolute;
+  inset: 10px 0 0 auto;
+  width: 82%;
+  height: calc(100% - 10px);
+  object-fit: cover;
+  object-position: 62% 55%;
+  border-radius: 28px;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 42%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 42%);
+  pointer-events: none;
+}
+.dark .doc-intro-art {
+  filter: brightness(0.5) saturate(0.9);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, transparent 30%, #000 62%);
+  mask-image: linear-gradient(90deg, transparent 0, transparent 30%, #000 62%);
+}
+.doc-intro-text {
+  position: relative;
+  max-width: 56%;
+  padding-top: 14px;
+  line-height: 1.45;
+}
+.doc-seg {
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+.doc-seg-tab {
+  min-height: 44px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted-foreground);
+}
+.doc-seg-tab[aria-selected="true"] {
+  color: var(--foreground);
+  border-bottom-color: var(--primary);
+  font-weight: 700;
+}
+.doc-search {
+  min-height: 48px;
+  border-color: var(--border);
+  box-shadow: none;
+}
+.doc-search:focus-within {
+  border-color: var(--primary);
+}
+.doc-chip {
+  min-height: 40px;
+}
+.doc-list {
+  display: flex;
+  flex-direction: column;
+}
+.doc-list > * + * {
+  border-top: 1px solid var(--border);
+}
+.doc-list > button.p-3,
+.doc-list > div.p-3,
+.doc-list > a.p-3 {
+  padding-inline: 2px;
+}
+.doc-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: none;
+}
+.doc-tile {
+  border-color: var(--border);
+}
+.doc-fab {
+  box-shadow: 0 12px 26px -10px color-mix(in oklab, var(--primary) 70%, transparent);
+}
+.doc-action-icon {
+  border: 1px solid var(--border);
+}
+.doc-action {
+  background: none;
+}
+.doc-file {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+.doc-hero-detail {
+  position: relative;
+  height: 212px;
+  border-radius: 26px;
+  overflow: hidden;
+  background: var(--muted);
+}
+.doc-hero-detail > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.doc-hero-detail::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgb(14 12 11 / 0.72) 0, rgb(14 12 11 / 0) 62%);
+}
+.doc-hero-text {
+  position: absolute;
+  z-index: 1;
+  inset: auto 18px 16px 18px;
+  color: #fff;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 0.35);
+}
+.doc-hero-kind {
+  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+/* ── Saved places / Recs ────────────────────────────────────────────────── */
+.recs-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background-color: var(--card);
+  box-shadow: none;
+}
+.recs-box {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: none;
+}
+.recs-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background-color: var(--card);
+  padding-inline: 12px;
+}
+[data-theme="colorful"] .recs-pill {
+  border-color: transparent;
+  background-color: var(--acc-soft);
+}
+.dark .recs-pill {
+  background-color: var(--muted);
+}
+.recs-list {
+  display: flex;
+  flex-direction: column;
+}
+.recs-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.recs-act {
+  box-shadow: none;
+}
+.recs-act-ico {
+  background-color: var(--muted);
+}
+[data-theme="colorful"] .recs-act-ico {
+  background-color: rgb(255 255 255 / 0.72);
+}
+.dark .recs-act-ico {
+  background-color: rgb(255 255 255 / 0.08);
+}
+.recs-chip {
+  min-height: 44px;
+}
+.recs-nearby {
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  background-color: var(--card);
+  box-shadow: none;
+}
+[data-theme="colorful"] .recs-actions > :nth-child(1) { background-color: var(--tile-1); }
+[data-theme="colorful"] .recs-actions > :nth-child(2) { background-color: var(--tile-2); }
+[data-theme="colorful"] .recs-actions > :nth-child(3) { background-color: var(--tile-3); }
+[data-theme="colorful"] .recs-actions > :nth-child(4) { background-color: var(--tile-4); }
+.recs-actions > * { border-color: var(--border); }
+/* ===== end documents-saved restyle ===== */

@@ -216,9 +216,12 @@ function DocumentsPage() {
 
   // ── Signed out / loading / locked ────────────────────────────────────────
   const intro = (
-    <p className="-mt-3 text-[16px] text-muted-foreground">
-      Manage all your bookings, confirmations and trip files in one place.
-    </p>
+    <div className="doc-intro -mt-3">
+      <img src="/art/docs-passport.webp" alt="" aria-hidden className="doc-intro-art" />
+      <p className="doc-intro-text text-[16px] text-muted-foreground">
+        Manage all your bookings, confirmations and trip files in one place.
+      </p>
+    </div>
   );
 
   // Signed out never reaches here: AppShell sends the traveller to sign in.
@@ -277,11 +280,7 @@ function DocumentsPage() {
       <div className="space-y-4 pb-2">
         {intro}
 
-        <div
-          role="tablist"
-          aria-label="Which documents"
-          className="grid grid-cols-3 gap-1 rounded-full border border-border bg-card p-1"
-        >
+        <div role="tablist" aria-label="Which documents" className="doc-seg grid grid-cols-3">
           {(
             [
               ["all", "All"],
@@ -295,9 +294,7 @@ function DocumentsPage() {
               role="tab"
               aria-selected={view === value}
               onClick={() => setView(value)}
-              className={`h-9 rounded-full text-[14px] font-semibold transition-colors duration-(--t-tap) ${
-                view === value ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              }`}
+              className="doc-seg-tab text-[15px] font-semibold transition-colors duration-(--t-tap)"
             >
               {label}
             </button>
@@ -322,7 +319,7 @@ function DocumentsPage() {
         )}
 
         {view !== "trip" && (
-          <label className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5">
+          <label className="doc-search flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5">
             <Search className="size-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
               value={query}
@@ -347,7 +344,7 @@ function DocumentsPage() {
                 type="button"
                 aria-pressed={group === g}
                 onClick={() => setGroup(g)}
-                className={`shrink-0 rounded-full border px-3.5 py-1.5 text-[14px] font-semibold ${
+                className={`doc-chip shrink-0 rounded-full border px-3.5 py-1.5 text-[14px] font-semibold ${
                   group === g
                     ? "border-primary bg-primary text-primary-foreground"
                     : `tile-fill-${(i % 5) + 1} border-border`
@@ -419,9 +416,9 @@ function DocumentsPage() {
               )}
             </div>
             {d.loading ? (
-              <div className="plain-card h-32 animate-pulse" />
+              <div className="doc-card h-32 animate-pulse" />
             ) : shown.length > 0 ? (
-              <div className="plain-card divide-y divide-border overflow-hidden">
+              <div className="doc-list">
                 {shown.map((doc) => (
                   <DocumentRow
                     key={doc.id}
@@ -457,13 +454,13 @@ function DocumentsPage() {
           <button
             type="button"
             onClick={() => setPanel({ kind: "protected" })}
-            className="plain-card flex w-full items-center gap-3 p-3 text-left"
+            className="doc-card doc-link flex w-full items-center gap-3 p-3 text-left"
           >
             <span className="tile-fill-1 grid size-12 shrink-0 place-items-center rounded-2xl border border-border/60 text-primary">
               <ShieldCheck className="size-6" aria-hidden />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[16px] font-semibold">
+              <span className="block text-[17px] font-semibold">
                 Passports, cards and private files
               </span>
               <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
@@ -495,7 +492,7 @@ function DocumentsPage() {
               type="button"
               aria-label="Add document"
               onClick={() => setPanel({ kind: "add" })}
-              className="pointer-events-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg"
+              className="doc-fab pointer-events-auto grid size-14 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg"
             >
               <Plus className="size-7" aria-hidden />
             </button>

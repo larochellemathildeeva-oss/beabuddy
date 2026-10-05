@@ -93,7 +93,11 @@ const trip = {
   owner_id: guest ? "someone-else" : "me",
 } as never;
 
-if (sample.startsWith("page-") && PAGES[sample.slice(5)]) {
+if (sample === "docs-open") {
+  // Trip documents with the lock off and a few bookings in it.
+  const Page = (DocsRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
+  createRoot(document.getElementById("root")!).render(<Page />);
+} else if (sample.startsWith("page-") && PAGES[sample.slice(5)]) {
   const Page = (PAGES[sample.slice(5)] as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<Page />);
 } else if (sample === "auth") {

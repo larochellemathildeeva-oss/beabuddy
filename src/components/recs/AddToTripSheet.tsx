@@ -156,7 +156,7 @@ export function AddToTripSheet({
       <p className="mt-1 truncate text-[14px] text-muted-foreground">{place.name}</p>
 
       {ordered.length === 0 ? (
-        <p className="mt-5 text-[14.5px] text-muted-foreground">
+        <p className="mt-5 text-[15px] text-muted-foreground">
           No trips yet. Start one on the Trips tab, then add this place to it.
         </p>
       ) : (
@@ -201,7 +201,7 @@ export function AddToTripSheet({
               <select
                 value={day}
                 onChange={(e) => setDay(e.target.value)}
-                className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+                className="min-w-0 rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
               >
                 <option value="">No set day</option>
                 {days.map((d) => (

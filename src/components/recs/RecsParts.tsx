@@ -60,7 +60,9 @@ export function RecsSectionHead({
   return (
     <div className="mb-3 flex items-baseline justify-between gap-3">
       <h2 className="font-display text-[27px] leading-none">{title}</h2>
-      {hint && <span className="text-[14px] text-muted-foreground">{hint}</span>}
+      {hint && (
+        <span className="shrink-0 whitespace-nowrap text-[14px] text-muted-foreground">{hint}</span>
+      )}
       {onSeeAll && (
         <button type="button" onClick={onSeeAll} className="text-[14px] font-semibold text-primary">
           {seeAllLabel}
