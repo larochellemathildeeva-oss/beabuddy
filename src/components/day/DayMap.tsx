@@ -6,6 +6,7 @@ import type { DayMapPin, PinTone } from "@/lib/day-map";
 import { curvedLeg, mapInsets } from "@/lib/day-map";
 import { TILE_URL_TEMPLATE, TILE_ZOOM_MAX, TILE_ZOOM_MIN } from "@/lib/tile-proxy";
 import { GEOAPIFY_ATTRIBUTION } from "@/lib/geo-endpoints";
+import { OPENFREEMAP_CREDIT, OSM_CREDIT } from "@/lib/map-credits";
 import { journalStyle, labelLanguage } from "@/lib/journal-style";
 import { onVectorTrouble, registerBeaProtocols, vectorMapAvailable } from "@/lib/offline-map";
 import { enableRtlText } from "@/lib/rtl-text";
@@ -18,12 +19,6 @@ import {
 } from "@/lib/live-location";
 import { startLiveLocation, stopLiveLocation, useLiveLocation } from "@/hooks/useLiveLocation";
 import { LocateFixed } from "@/components/icons";
-
-/** OpenFreeMap's credit, as it asks for it: linked, beside OpenMapTiles'. */
-const OPENFREEMAP_CREDIT =
-  '<a href="https://openfreemap.org" target="_blank" rel="noreferrer">OpenFreeMap</a> © <a href="https://www.openmaptiles.org/" target="_blank" rel="noreferrer">OpenMapTiles</a>';
-const OSM_CREDIT =
-  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a> contributors';
 
 /** Close enough to read street names, not so close one stop fills the frame. */
 const SINGLE_STOP_ZOOM = 15;

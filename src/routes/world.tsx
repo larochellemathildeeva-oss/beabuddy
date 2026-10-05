@@ -19,6 +19,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { BeaGlobe } from "@/components/world/BeaGlobe";
 import { MapLibreGlobe } from "@/components/world/MapLibreGlobe";
+import { vectorMapAvailable } from "@/lib/offline-map";
 import {
   WorldAddButton,
   WorldFilters,
@@ -82,12 +83,16 @@ const WORLD_TABS: readonly WorldTab[] = ["map", "bucket", "been", "stats"];
 type WorldSearch = {
   /** Open on one view, so the tour and links can point at a control on it. */
   tab?: WorldTab;
+  /** `maplibre` opens the experimental MapLibre globe beside the NASA one. */
+  globe?: "maplibre";
 };
 
 export const Route = createFileRoute("/world")({
   staticData: { plane: "tab" },
-  validateSearch: (search: Record<string, unknown>): WorldSearch =>
-    WORLD_TABS.includes(search["tab"] as WorldTab) ? { tab: search["tab"] as WorldTab } : {},
+  validateSearch: (search: Record<string, unknown>): WorldSearch => ({
+    ...(WORLD_TABS.includes(search["tab"] as WorldTab) ? { tab: search["tab"] as WorldTab } : {}),
+    ...(search["globe"] === "maplibre" ? { globe: "maplibre" as const } : {}),
+  }),
   head: () => ({
     meta: [
       { title: "World — Béa" },
@@ -146,7 +151,10 @@ function WorldPage() {
   const tab: WorldTab = search.tab ?? "map";
   const setTab = (next: WorldTab) => {
     void navigateWorld({
-      search: next === "map" ? {} : { tab: next },
+      search: {
+        ...(next === "map" ? {} : { tab: next }),
+        ...(search.globe ? { globe: search.globe } : {}),
+      },
       replace: true,
     });
   };
@@ -207,11 +215,18 @@ function WorldPage() {
   // from the countries, as the countries come from the cities.
   const continents = useMemo(() => visitedContinents(byCountry), [byCountry]);
   const globeCities = useMemo(() => cityPins(cities), [cities]);
-  // /world?globe=maplibre opens the experimental MapLibre globe beside the NASA one.
-  const [mapLibreGlobe, setMapLibreGlobe] = useState(false);
+  // /world?globe=maplibre opens the experimental MapLibre globe beside the NASA one,
+  // only where the vector map works; otherwise, or if it stops, the NASA globe stays.
+  const [vectorGlobe, setVectorGlobe] = useState<"checking" | "yes" | "no">("checking");
   useEffect(() => {
-    setMapLibreGlobe(new URLSearchParams(window.location.search).get("globe") === "maplibre");
-  }, []);
+    if (search.globe !== "maplibre") return;
+    let live = true;
+    void vectorMapAvailable().then((ok) => live && setVectorGlobe(ok ? "yes" : "no"));
+    return () => {
+      live = false;
+    };
+  }, [search.globe]);
+  const mapLibreGlobe = search.globe === "maplibre" && vectorGlobe === "yes";
   const namedCountries = useMemo(() => countryMarks(places, byCountry), [places, byCountry]);
   const shadedCountries = useMemo(() => visitedCountryKeys(places, provinces), [places, provinces]);
   const provinceOf = useMemo(() => {
@@ -757,10 +772,27 @@ function WorldPage() {
             <WorldGlobeStage data-guide="globe" className="-mx-4 overflow-x-clip">
               {mapLibreGlobe ? (
                 <MapLibreGlobe
+                  autoRotate={spinOn && !selected}
+                  spinToggle={{
+                    on: spinOn && !selected,
+                    onChange: (on) => {
+                      if (on) setSelected(null);
+                      changeSpin(on);
+                    },
+                  }}
                   pins={show.cities ? globeCities : []}
+                  regions={show.provinces ? provinces : []}
+                  visitedCountries={show.countries ? shadedCountries : noCountries}
+                  shadePinCountries={show.countries}
                   selectedId={selected?.id}
                   onSelect={setSelected}
-                  autoRotate={spinOn && !selected}
+                  onCountrySelect={(name) => {
+                    if (!show.cities) return;
+                    const key = countryKey(name);
+                    const match = globeCities.find((pin) => countryKey(pin.country) === key);
+                    if (match) setSelected(match);
+                  }}
+                  onFail={() => setVectorGlobe("no")}
                 />
               ) : (
                 <BeaGlobe

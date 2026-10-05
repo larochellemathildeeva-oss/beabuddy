@@ -1,5 +1,7 @@
 import { feature, mesh } from "topojson-client";
 import type { Feature, FeatureCollection, Geometry, MultiLineString } from "geojson";
+import { countryKey } from "@/lib/country-names";
+import type { Pin } from "@/data/atlas";
 import coarseTopo from "world-atlas/countries-110m.json";
 
 /**
@@ -32,4 +34,14 @@ let detailed: Promise<WorldGeo> | undefined;
 export function loadDetailedWorld(): Promise<WorldGeo> {
   detailed ??= import("world-atlas/countries-50m.json").then((m) => build(m.default));
   return detailed;
+}
+
+/** The countries a traveller has been to, from their visited pins. */
+export function pinCountryKeys(pins: Pin[]): Set<string> {
+  const keys = new Set<string>();
+  for (const pin of pins) {
+    if (pin.type !== "visited" && !pin.visited) continue;
+    if (pin.country?.trim()) keys.add(countryKey(pin.country));
+  }
+  return keys;
 }

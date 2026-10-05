@@ -25,6 +25,8 @@ export type GlobePalette = {
   ink: string;
   halo: string;
   /** Atmosphere: the haze on the globe, the glow at its rim, the space behind. */
+  /** Visited countries and provinces. */
+  shade: string;
   skyHaze: string;
   skyRim: string;
   space: string;
@@ -39,6 +41,7 @@ export const GLOBE_PALETTES: Record<GlobeMood, GlobePalette> = {
     border: "#b9ab94",
     ink: "#4a3f35",
     halo: "#f8f5f1",
+    shade: "#f24a70",
     skyHaze: "#cfe4ee",
     skyRim: "#fbe9d6",
     space: "#fbf2e6",
@@ -51,6 +54,7 @@ export const GLOBE_PALETTES: Record<GlobeMood, GlobePalette> = {
     border: "#d79a6a",
     ink: "#4a3248",
     halo: "#fff8ef",
+    shade: "#e8559a",
     skyHaze: "#b9e3f2",
     skyRim: "#f7c3b4",
     space: "#e7defa",
@@ -63,6 +67,7 @@ export const GLOBE_PALETTES: Record<GlobeMood, GlobePalette> = {
     border: "#566079",
     ink: "#e8e2d6",
     halo: "#14171f",
+    shade: "#ffb454",
     skyHaze: "#2a4a7a",
     skyRim: "#5a7be0",
     space: "#0b0d14",
