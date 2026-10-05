@@ -2552,3 +2552,33 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* The signed-out landing's destination picture, one coast per mood. */
+.landing-art {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 28px;
+  background: url("/art/coast-calm.webp") 50% 55% / cover no-repeat;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+[data-theme="colorful"] .landing-art {
+  background-image: url("/art/coast-colorful.webp");
+}
+.dark .landing-art {
+  background-image: url("/art/coast-dark.webp");
+}
+.landing-art-pill {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  backdrop-filter: blur(10px);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}

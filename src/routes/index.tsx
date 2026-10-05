@@ -92,8 +92,21 @@ function LandingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   return (
-    <AppShell publicPage eyebrow="Save · Plan · Travel · Remember" title={BEA_POSITION}>
+    <AppShell
+      publicPage
+      eyebrow="Plan · Explore · Remember"
+      title="A more meaningful way to travel."
+    >
       <div className="space-y-6">
+        {/* The destination first, then the ways in, where a thumb reaches them. */}
+        <div
+          className="landing-art"
+          role="img"
+          aria-label="A sunlit coast with a flight path over it"
+        >
+          <span className="landing-art-pill">Amalfi Coast, Italy</span>
+        </div>
+        <LandingWays />
         <p className="text-[17px] leading-snug text-muted-foreground">
           Save the places you care about.
           <br />
@@ -103,7 +116,6 @@ function LandingPage() {
           <br />
           Remember it all.
         </p>
-        {/* The way in first, where a thumb reaches it without scrolling. */}
         <StartFree />
         <p className="text-[15px] leading-relaxed text-muted-foreground">
           {BEA_HELPS} She drafts the days from your saved places or reads a plan you already have,
@@ -138,6 +150,70 @@ function LandingPage() {
   );
 }
 
+/** The three ways in, stacked as in the welcome design. */
+function LandingWays() {
+  const ways = [
+    {
+      to: "/auth",
+      search: { mode: "signup" },
+      fill: "tile-fill-5",
+      title: "Plan with Béa",
+      hint: "Start a trip, Béa drafts the days",
+      icon: "M12 3v3m0 12v3M3 12h3m12 0h3M6 6l2 2m8 8 2 2M18 6l-2 2M8 16l-2 2",
+    },
+    {
+      to: "/auth",
+      search: { mode: "signup" },
+      fill: "tile-fill-3",
+      title: "Join with a code",
+      hint: "Plan a trip with friends",
+      icon: "M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm0 2c-3 0-5 1.5-5 4v1h10v-1c0-2.5-2-4-5-4Zm8 0c-.6 0-1.2.1-1.7.2 1.2.9 1.7 2 1.7 3.8v1h5v-1c0-2.5-2-4-5-4Z",
+    },
+    {
+      to: "/auth",
+      search: {},
+      fill: "tile-fill-1",
+      title: "Sign in or create an account",
+      hint: "Save your trips and more",
+      icon: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 9v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1",
+    },
+  ] as const;
+  return (
+    <div className="space-y-2.5">
+      {ways.map((w) => (
+        <Link
+          key={w.title}
+          to={w.to}
+          search={w.search}
+          className={`${w.fill} flex min-h-[68px] items-center gap-3 rounded-[20px] border border-border p-2.5 pe-3 shadow-[var(--shadow-sm)]`}
+        >
+          <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-card/80 text-foreground">
+            <svg
+              viewBox="0 0 24 24"
+              className="size-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d={w.icon} />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[18px] leading-tight">{w.title}</span>
+            <span className="block text-[14px] text-foreground/75">{w.hint}</span>
+          </span>
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-card text-foreground shadow-[var(--shadow-xs)]">
+            <ArrowRight className="size-[18px]" aria-hidden />
+          </span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 /** What a visitor gets, in their words rather than the features'. */
 const LANDING_POINTS = [
   {
@@ -164,7 +240,7 @@ function StartFree() {
         className="flex min-h-14 items-center justify-between gap-3 rounded-full bg-foreground py-1.5 ps-6 pe-1.5 text-[17px] font-semibold text-background"
       >
         Create your free account
-        <span className="grid size-11 place-items-center rounded-full bg-[var(--acc-soft)] text-foreground">
+        <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground">
           <ArrowRight className="size-5" aria-hidden />
         </span>
       </Link>
