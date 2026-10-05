@@ -1495,6 +1495,7 @@
   );
 }
 .trip-hero-btn {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 44px;
@@ -1532,6 +1533,7 @@
   color: var(--accent-foreground);
 }
 .trip-hero-plan {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1545,6 +1547,13 @@
   background: color-mix(in oklab, var(--card) 92%, transparent);
   color: var(--foreground);
   box-shadow: 0 1px 6px rgb(0 0 0 / 0.14);
+}
+@media (max-width: 459px) {
+  .trip-hero-plan {
+    width: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
 }
 .trip-hero-add {
   display: grid;
@@ -1891,4 +1900,11 @@
   --world-stat-3: #b39445;
   --world-float-shadow: 0 4px 16px rgb(0 0 0 / 0.4);
   --world-place-fallback: #2b2723;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
