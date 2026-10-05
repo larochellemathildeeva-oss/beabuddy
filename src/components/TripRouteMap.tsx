@@ -98,23 +98,21 @@ function ReliefTiles({
         </filter>
       </defs>
       <rect width={width} height={height} className="map-sea" />
-      <g className="map-relief">
-        <g filter={`url(#${id}-water)`}>
-          {tiles
-            .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
-            .map((t) => (
-              <image
-                key={`${t.z}/${t.x}/${t.y}/${t.left}`}
-                href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
-                x={t.left}
-                y={t.top}
-                // A hair over, so no seam shows between tiles.
-                width={t.size + 0.6}
-                height={t.size + 0.6}
-                preserveAspectRatio="none"
-              />
-            ))}
-        </g>
+      <g filter={`url(#${id}-water)`}>
+        {tiles
+          .filter((t) => relief?.has(`${t.z}/${t.x}/${t.y}`))
+          .map((t) => (
+            <image
+              key={`${t.z}/${t.x}/${t.y}/${t.left}`}
+              href={`/relief/${t.z}/${t.x}/${t.y}.webp`}
+              x={t.left}
+              y={t.top}
+              // A hair over, so no seam shows between tiles.
+              width={t.size + 0.6}
+              height={t.size + 0.6}
+              preserveAspectRatio="none"
+            />
+          ))}
       </g>
     </>
   );

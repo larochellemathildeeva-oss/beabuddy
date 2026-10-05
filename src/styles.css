@@ -2542,11 +2542,3 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-/* Home's map: richer terrain, as in the boards (the tiles themselves are pale). */
-.route-map .map-relief {
-  filter: saturate(1.22) contrast(1.04);
-}
-.dark .route-map .map-relief {
-  filter: saturate(1.2) brightness(0.9);
-}
