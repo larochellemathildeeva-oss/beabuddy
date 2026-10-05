@@ -1356,9 +1356,9 @@
   --route-dot-start: #2b2724;
   --route-dot-end: #e4826f;
   --route-trail: #4b443d;
-  --pill-0: #ffffff;
-  --pill-1: #ffffff;
-  --pill-2: #ffffff;
+  --pill-0: #fbe6d2;
+  --pill-1: #f5e9db;
+  --pill-2: #fde4dc;
   --pill-text: #1b1918;
   --pill-shadow: rgb(40 34 28 / 0.16);
   --stat-track: color-mix(in oklch, var(--foreground) 9%, transparent);
@@ -2541,4 +2541,12 @@
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Home's map: richer terrain, as in the boards (the tiles themselves are pale). */
+.route-map .map-relief {
+  filter: saturate(1.22) contrast(1.04);
+}
+.dark .route-map .map-relief {
+  filter: saturate(1.2) brightness(0.9);
 }

@@ -227,17 +227,17 @@ export function HomeSuggested({ trip }: { trip: TripRow }) {
   const ideas = [
     {
       label: "Iconic Landmarks",
-      art: "/places/landmark.webp",
+      art: "/art/suggest-landmarks.webp",
       ask: `Add the iconic landmarks of ${city} that are worth the time.`,
     },
     {
       label: "Cafés & Coffee",
-      art: "/places/cafe.webp",
+      art: "/art/suggest-cafes.webp",
       ask: `Add a few good cafés and coffee places in ${city}, near what we are already doing.`,
     },
     {
       label: "Day Trips",
-      art: "/places/nature.webp",
+      art: "/art/suggest-daytrips.webp",
       ask: `Suggest a day trip from ${city} that fits a free day.`,
     },
   ];
