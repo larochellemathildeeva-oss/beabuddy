@@ -1,3 +1,4 @@
+import { backFallback } from "@/lib/back-target";
 import { Link, useCanGoBack, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
@@ -259,8 +260,9 @@ export function AppShell({
                   </button>
                 ) : (
                   <Link
-                    to="/"
-                    aria-label="Go back home"
+                    to={backFallback(pathname)}
+                    replace
+                    aria-label={backFallback(pathname) === "/" ? "Go back home" : "Go back"}
                     className="tap-target -ml-1.5 grid shrink-0 place-items-center rounded-full"
                   >
                     <span className="grid size-8 place-items-center rounded-full border border-border bg-card">
