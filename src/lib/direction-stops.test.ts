@@ -6,8 +6,8 @@ import {
   wideDayPinsToKeep,
   isSavedDirectionItem,
   looksLikeStreetAddress,
+  legMapsUrl,
   mapsDirToUrl,
-  mapsDirUrl,
   mapsPlaceUrl,
   placeHintFromDetail,
   readsLikeProse,
@@ -73,22 +73,36 @@ test("stopsForDirections uses cities when there are two or more", () => {
   assert.equal(stops[0]?.lat, 49.28);
 });
 
-test("mapsDirUrl uses coordinates when both ends are known", () => {
-  const url = mapsDirUrl(
-    { title: "Hotel", lat: 49.289, lon: -123.117 },
+test("Maps directions start from the phone, never the stop before", () => {
+  const url = legMapsUrl(
+    { mode: "walking", toLat: 49.284, toLon: -123.12 },
     { title: "Dinner", lat: 49.284, lon: -123.12 },
     "Vancouver, Canada",
-    "walking",
   );
-  assert.ok(url.includes("origin=49.289,-123.117"));
-  assert.ok(url.includes("destination=49.284,-123.12"));
-  assert.ok(url.includes("travelmode=walking"));
+  assert.equal(
+    url,
+    "https://www.google.com/maps/dir/?api=1&destination=49.284,-123.12&travelmode=walking",
+  );
+  assert.ok(!url.includes("origin="));
 });
 
-test("mapsDirUrl falls back to a named search only when coords are missing", () => {
-  const url = mapsDirUrl({ title: "Hotel" }, { title: "Dinner" }, "Vancouver, Canada");
-  assert.ok(url.includes(encodeURIComponent("Hotel, Vancouver, Canada")));
-  assert.ok(url.includes(encodeURIComponent("Dinner, Vancouver, Canada")));
+test("legMapsUrl goes to the stop's own pin, then the leg's end, then its name", () => {
+  const moved = legMapsUrl(
+    { mode: "driving", toLat: 10, toLon: 10 },
+    { title: "Dinner", lat: 49.284, lon: -123.12 },
+    "Vancouver, Canada",
+  );
+  assert.ok(moved.includes("destination=49.284,-123.12"));
+  assert.ok(moved.includes("travelmode=driving"));
+  const legOnly = legMapsUrl(
+    { mode: "transit", toLat: 49.2, toLon: -123.1 },
+    { title: "Dinner" },
+    "",
+  );
+  assert.ok(legOnly.includes("destination=49.2,-123.1"));
+  const named = legMapsUrl(null, { title: "Dinner" }, "Vancouver, Canada", "transit");
+  assert.ok(named.includes(encodeURIComponent("Dinner, Vancouver, Canada")));
+  assert.ok(named.includes("travelmode=transit"));
 });
 
 test("hasCoords rejects empty and 0,0 pins", () => {
@@ -268,13 +282,8 @@ test("stopsForDirections goes out and back on a day trip", () => {
   );
 });
 
-test("mapsDirUrl can ask Maps for public transport", () => {
-  const url = mapsDirUrl(
-    { title: "Hotel", lat: 48.87, lon: 2.35 },
-    { title: "Louvre", lat: 48.86, lon: 2.34 },
-    "Paris, France",
-    "transit",
-  );
+test("mapsDirToUrl can ask Maps for public transport", () => {
+  const url = mapsDirToUrl({ title: "Louvre", lat: 48.86, lon: 2.34 }, "Paris, France", "transit");
   assert.ok(url.includes("travelmode=transit"));
 });
 

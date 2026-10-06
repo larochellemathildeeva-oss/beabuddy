@@ -62,6 +62,7 @@ import { haversine } from "@/lib/geo";
 import {
   hasCoords,
   isSavedDirectionItem,
+  legMapsUrl,
   stopsForDirections,
   timelineStopsForDirections,
 } from "@/lib/direction-stops";
@@ -3035,7 +3036,7 @@ export function TripDetail({
                       ))}
                     </ol>
                     <a
-                      href={l.mapUrl}
+                      href={legMapsUrl(l, { title: l.to }, directionArea ?? "")}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 inline-block text-[13px] font-semibold text-primary"
