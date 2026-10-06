@@ -5,7 +5,7 @@ choose **Arrange widgets**, drag a handle (touch or mouse), or focus a handle an
 use Space, arrow keys, Space. Escape cancels a drag. Choose a module's size and
 tap **Done**. Content links are inactive while arranging.
 
-The two-column grid uses Small (1×1), Wide (2×1), and Large (2×2), with 12px
+The two-column grid uses Small (half width), Wide (full width), and Large (full width, taller). Rows follow their content, so a short module leaves no empty space, with 12px
 gutters and the existing 16px Home inset. Unsupported sizes are omitted from
 that module's picker. Long lists and notes scroll inside their widget. Reduced
 motion from either the operating system or Béa's Reading settings disables the
