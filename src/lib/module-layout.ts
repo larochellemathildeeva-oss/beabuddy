@@ -7,9 +7,12 @@
  * Pure, so reading, toggling and moving are tested.
  */
 
+export type WidgetSize = "small" | "wide" | "large";
+
 export type ModuleLayout<K extends string> = {
   /** Every module, in the order the traveller chose (new ones at the end). */
   order: K[];
+  sizes?: Partial<Record<K, WidgetSize>>;
   /** The ones switched on. */
   on: ReadonlySet<K>;
 };
@@ -52,7 +55,14 @@ export function readModules<K extends string>(
         order.push(k);
         if (newOn.includes(k)) on.add(k);
       }
-    return { order, on };
+    const sizes: Partial<Record<K, WidgetSize>> = {};
+    if (obj["sizes"] && typeof obj["sizes"] === "object") {
+      for (const k of keys) {
+        const size = (obj["sizes"] as Record<string, unknown>)[k];
+        if (size === "small" || size === "wide" || size === "large") sizes[k] = size;
+      }
+    }
+    return { order, on, ...(Object.keys(sizes).length ? { sizes } : {}) };
   }
   // The first layouts were one switch per section, in a fixed order.
   const on = new Set<K>();
@@ -64,7 +74,11 @@ export function readModules<K extends string>(
 }
 
 export function writeModules<K extends string>(layout: ModuleLayout<K>): string {
-  return JSON.stringify({ order: layout.order, on: layout.order.filter((k) => layout.on.has(k)) });
+  return JSON.stringify({
+    order: layout.order,
+    on: layout.order.filter((k) => layout.on.has(k)),
+    ...(layout.sizes ? { sizes: layout.sizes } : {}),
+  });
 }
 
 /** The modules to draw, in order. */
@@ -76,7 +90,7 @@ export function toggleModule<K extends string>(layout: ModuleLayout<K>, key: K):
   const on = new Set(layout.on);
   if (on.has(key)) on.delete(key);
   else on.add(key);
-  return { order: layout.order, on };
+  return { ...layout, on };
 }
 
 /**
@@ -99,7 +113,7 @@ export function moveModule<K extends string>(
   const j = order.indexOf(other);
   order[i] = other;
   order[j] = key;
-  return { order, on: layout.on };
+  return { ...layout, order };
 }
 
 export type ModuleRow<K extends string> = { full: K } | { pair: [K] | [K, K] };

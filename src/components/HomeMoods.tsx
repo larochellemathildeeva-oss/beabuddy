@@ -47,12 +47,14 @@ export function HomeOnTrip({
   photos,
   glance,
   showStops = true,
+  height = NOW_HERO_H,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
   /** The "Current / Next stop" module (Customize home). */
   showStops?: boolean;
+  height?: number;
 }) {
   const { stops, loading } = useTripStops(trip.id, null);
   const cityStops = useMemo(
@@ -82,19 +84,19 @@ export function HomeOnTrip({
 
   return (
     <section data-guide="home-trip">
-      <div className="trip-hero -mx-4" style={{ height: NOW_HERO_H }}>
+      <div className="trip-hero -mx-4" style={{ height }}>
         <TripPicture trip={trip} photos={photos} cities={cityNames} />
         {route.length > 0 ? (
           <TripBannerMap
             over
             stops={route}
             label={`Map of the trip: ${cities}`}
-            height={NOW_HERO_H}
+            height={height}
             current={current}
             done={behind}
             pills
             top={98}
-            bottom={NOW_HERO_H - 62}
+            bottom={height - 35}
           />
         ) : null}
         <span
@@ -129,7 +131,7 @@ export function HomeOnTrip({
   );
 }
 
-function NowCards({
+export function NowCards({
   trip,
   glance,
   day,

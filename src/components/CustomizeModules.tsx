@@ -39,8 +39,10 @@ export function CustomizeModules<K extends string>({
   onReset,
   variant,
   fixed,
+  onArrange,
 }: {
   /** "home" or "world": the sheet is "Customize home". */
+  onArrange?: () => void;
   name: string;
   /** Where the modules sit, for the sheet's description. */
   what: string;
@@ -187,6 +189,18 @@ export function CustomizeModules<K extends string>({
             device you sign in on.
           </SheetDescription>
         </SheetHeader>
+        {onArrange && (
+          <button
+            type="button"
+            className="mt-4 min-h-11 w-full rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
+            onClick={() => {
+              setOpen(false);
+              onArrange();
+            }}
+          >
+            Arrange widgets
+          </button>
+        )}
         <p className="label-caps mt-3">On {name}</p>
         {shown.length ? (
           <ul className="divide-y divide-border">{shown.map((k) => row(k))}</ul>
@@ -202,7 +216,7 @@ export function CustomizeModules<K extends string>({
         <button
           type="button"
           onClick={onReset}
-          className="mt-4 w-full rounded-xl border border-border px-4 py-2.5 text-[14.5px] font-semibold transition-colors hover:bg-elevated"
+          className="mt-4 min-h-11 w-full rounded-xl border border-border px-4 py-2.5 text-[14.5px] font-semibold transition-colors hover:bg-elevated"
         >
           Reset to default
         </button>
