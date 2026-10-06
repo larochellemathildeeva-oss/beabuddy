@@ -335,7 +335,7 @@ function AuthPage() {
             </div>
           )}
           {error && (
-            <p role="alert" className="px-1 text-[13px] text-destructive">
+            <p role="alert" className="px-1 text-[14px] text-destructive">
               {error}
             </p>
           )}

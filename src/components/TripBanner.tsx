@@ -308,13 +308,13 @@ export function TripBanner({
 function Pill({ text, light = false }: { text: string; light?: boolean }) {
   if (light) {
     return (
-      <span className="rounded-full bg-white px-3 py-1 text-[11.5px] font-semibold uppercase tracking-[0.14em] text-[#2a2026]">
+      <span className="rounded-full bg-white px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.14em] text-[#2a2026]">
         {text}
       </span>
     );
   }
   return (
-    <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
+    <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-black/35 px-2.5 py-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm">
       <span aria-hidden className="size-1.5 rounded-full bg-[#c9a877]" />
       {text}
     </span>

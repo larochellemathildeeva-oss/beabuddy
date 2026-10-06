@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import {
   ArrowLeft,
   Bookmark,
@@ -140,7 +141,7 @@ export function PlaceDetail({
       setReady(made.code);
       setChoosing(false);
     } catch (e) {
-      setShared(e instanceof Error ? e.message : "Couldn't make a code for this place.");
+      setShared(friendlyError(e, "Couldn't make a code for this place."));
     } finally {
       setMaking(false);
     }

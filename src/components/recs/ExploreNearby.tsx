@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import {
   ArrowLeft,
@@ -372,7 +373,7 @@ export function ExploreNearby({
       setPinned(`${draft.name.trim() || "Pinned spot"} is on your map.`);
       setDraft(null);
     } catch (e) {
-      setPinned(e instanceof Error ? e.message : "Could not save that pin.");
+      setPinned(friendlyError(e, "Could not save that pin."));
     } finally {
       setPinning(false);
     }

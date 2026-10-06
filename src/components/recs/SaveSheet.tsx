@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Check } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
 import type { NewReco, RecoRowDB } from "@/hooks/useRecommendations";
@@ -34,7 +35,7 @@ export function SaveSheet({
     try {
       await onUpdate(patch);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't update that.");
+      setError(friendlyError(e, "Couldn't update that."));
       throw e;
     }
   };
@@ -128,7 +129,11 @@ export function SaveSheet({
         </div>
       </div>
 
-      {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-3 text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       <button
         type="button"

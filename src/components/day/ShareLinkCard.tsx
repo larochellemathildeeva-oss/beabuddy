@@ -193,7 +193,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
           </span>
           {canFollow && (
             <span
-              className={`rounded-full px-2 py-0.5 text-[11.5px] font-bold ${link.follow_along ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
+              className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${link.follow_along ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}
             >
               {link.follow_along ? "Live" : "Plan only"}
             </span>

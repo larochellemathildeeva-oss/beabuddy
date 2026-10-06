@@ -429,7 +429,7 @@ export function DayEditSheet({
               dayRain.until ? `from ${dayRain.from} to ${dayRain.until}` : `from ${dayRain.from}`
             } (${dayRain.chance}%). Béa will plan around it.`
           : `No rain expected on ${dayName(day)}.`}{" "}
-        <span className="text-[10px] text-muted-foreground">{WEATHER_ATTRIBUTION}</span>
+        <span className="text-[12px] text-muted-foreground">{WEATHER_ATTRIBUTION}</span>
         {dayRain && !proposal && (
           <button
             type="button"
@@ -570,7 +570,11 @@ export function DayEditSheet({
               )}
             </div>
           )}
-          {problem && <p className="text-[13px] text-destructive">{problem}</p>}
+          {problem && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {problem}
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -594,7 +598,7 @@ export function DayEditSheet({
                         leaving ? "opacity-60" : ""
                       }`}
                     >
-                      <p className="text-[11.5px] tabular-nums text-muted-foreground">
+                      <p className="text-[12px] tabular-nums text-muted-foreground">
                         {stop.time_label ?? "No time"}
                       </p>
                       <p
@@ -623,7 +627,7 @@ export function DayEditSheet({
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <p className="text-[11.5px] tabular-nums text-muted-foreground">
+                          <p className="text-[12px] tabular-nums text-muted-foreground">
                             {row.time_label ?? "No time"}
                           </p>
                           <button
@@ -640,7 +644,7 @@ export function DayEditSheet({
                             className="-m-1 rounded p-1 text-muted-foreground"
                           >
                             {off ? (
-                              <span className="text-[11px] font-semibold text-primary">Undo</span>
+                              <span className="text-[12px] font-semibold text-primary">Undo</span>
                             ) : (
                               <X className="size-3.5" aria-hidden />
                             )}
@@ -651,13 +655,13 @@ export function DayEditSheet({
                         >
                           {row.title}
                         </p>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-primary">
                           New
                         </p>
                         {row.why && (
                           <p className="break-words text-[12px] text-muted-foreground">{row.why}</p>
                         )}
-                        <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <p className="mt-0.5 flex items-center gap-1 text-[12px] text-muted-foreground">
                           <MapPin className="size-3 shrink-0" aria-hidden />
                           {pinned
                             ? "On the map"
@@ -676,7 +680,7 @@ export function DayEditSheet({
                         changed ? "border-primary/40 bg-primary-soft" : "border-border/70 bg-card"
                       }`}
                     >
-                      <p className="flex items-center gap-1 text-[11.5px] tabular-nums text-muted-foreground">
+                      <p className="flex items-center gap-1 text-[12px] tabular-nums text-muted-foreground">
                         <span className={row.retimed ? "font-semibold text-primary" : ""}>
                           {row.time_label ?? "No time"}
                         </span>
@@ -686,7 +690,7 @@ export function DayEditSheet({
                       </p>
                       <p className="break-words text-[13.5px] font-medium">{row.title}</p>
                       {changed && (
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                        <p className="text-[12px] font-semibold uppercase tracking-wider text-primary">
                           {[row.moved && "Moved", row.retimed && "New time"]
                             .filter(Boolean)
                             .join(" · ")}
@@ -722,7 +726,11 @@ export function DayEditSheet({
             </section>
           </div>
 
-          {problem && <p className="text-[13px] text-destructive">{problem}</p>}
+          {problem && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {problem}
+            </p>
+          )}
 
           {refining ? (
             askBox(

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import type { Pin } from "@/data/atlas";
@@ -68,7 +69,7 @@ export function DayTripFromNear({
       });
       setDraft({ title: out.trip_title, summary: out.summary, items: out.items });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Béa couldn't arrange that day.");
+      setError(friendlyError(err, "Béa couldn't arrange that day."));
     } finally {
       setBusy(false);
     }
@@ -119,7 +120,7 @@ export function DayTripFromNear({
       onClear();
       await navigate({ to: "/trips" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save that day trip.");
+      setError(friendlyError(err, "Couldn't save that day trip."));
     } finally {
       setBusy(false);
     }
@@ -176,7 +177,7 @@ export function DayTripFromNear({
               }`}
             >
               <span className="block text-[13px] font-semibold">{option.label}</span>
-              <span className="block text-[11.5px] leading-snug text-muted-foreground">
+              <span className="block text-[12px] leading-snug text-muted-foreground">
                 {option.hint}
               </span>
             </button>
@@ -219,7 +220,11 @@ export function DayTripFromNear({
         className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px] outline-none focus:border-primary"
       />
 
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       <div className="flex gap-2">
         <button

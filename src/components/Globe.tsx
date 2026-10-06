@@ -988,7 +988,7 @@ export function Globe({
           className={
             open
               ? "sr-only"
-              : "pointer-events-none absolute bottom-2.5 left-4 right-16 truncate text-[11px] text-muted-foreground"
+              : "pointer-events-none absolute bottom-2.5 left-4 right-16 truncate text-[12px] text-muted-foreground"
           }
         >
           Drag to spin · pinch or +/− to zoom

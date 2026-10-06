@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import {
   BedDouble,
   CalendarDays,
@@ -157,7 +158,7 @@ export function TripTodosBody({
       await t.addTodo({ title: name });
       setTitle("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add that");
+      setError(friendlyError(e, "Couldn't add that"));
     } finally {
       setBusy(false);
     }
@@ -173,7 +174,7 @@ export function TripTodosBody({
       setPaste("");
       setPasting(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add those");
+      setError(friendlyError(e, "Couldn't add those"));
     } finally {
       setBusy(false);
     }
@@ -185,7 +186,7 @@ export function TripTodosBody({
     try {
       await t.addMany(starterTodos({ international, hasLodging, hasFlights }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add those");
+      setError(friendlyError(e, "Couldn't add those"));
     } finally {
       setBusy(false);
     }
@@ -200,7 +201,7 @@ export function TripTodosBody({
     try {
       await t.updateTodo(id, patch);
     } catch (e) {
-      setError(e instanceof Error ? e.message : failed);
+      setError(friendlyError(e, failed));
     }
   };
 
@@ -411,7 +412,11 @@ export function TripTodosBody({
         </div>
       )}
 
-      {error && <p className="px-1 text-[12px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="px-1 text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* The ways in, on one bar at the foot, as in the master. */}
       <div className="sticky -bottom-6 -mx-4 flex items-center gap-4 border-t border-border bg-background px-4 pb-6 pt-3">

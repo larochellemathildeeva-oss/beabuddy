@@ -42,7 +42,11 @@ export function AiPromptCopy() {
         {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
         {copied ? "Copied" : "Copy the prompt"}
       </button>
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

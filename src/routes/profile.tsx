@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
@@ -1026,7 +1027,7 @@ function EraseDataPanel({ userId }: { userId: string }) {
       toast.success("Your data was erased. You can start fresh.");
       await navigate({ to: "/" });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not erase your data.");
+      setError(friendlyError(e, "Could not erase your data."));
       setConfirmStep(null);
     } finally {
       setBusy(false);
@@ -1042,7 +1043,11 @@ function EraseDataPanel({ userId }: { userId: string }) {
         hand off to another member when someone else is on them. Your login stays. Backups and the
         AI provider may still hold traces for a short time.
       </p>
-      {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       <button
         type="button"
         disabled={busy}
@@ -1128,7 +1133,11 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
         className="mt-3 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
         aria-label="Type DELETE to confirm account deletion"
       />
-      {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       <button
         type="button"
         disabled={!ready || busy}
@@ -1143,7 +1152,7 @@ function DeleteAccountPanel({ userId }: { userId: string }) {
               await supabase.auth.signOut();
               await navigate({ to: "/auth" });
             } catch (e) {
-              setError(e instanceof Error ? e.message : "Could not delete the account.");
+              setError(friendlyError(e, "Could not delete the account."));
             } finally {
               setBusy(false);
             }

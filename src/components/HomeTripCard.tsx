@@ -129,7 +129,7 @@ export function HomeTripHero({
             {peopleCount > 1 ? (
               <span
                 aria-label={`${peopleCount} people on this trip`}
-                className="flex items-center gap-1 rounded-full bg-white/92 px-2 py-1 text-[11px] font-bold text-[#28231f]"
+                className="flex items-center gap-1 rounded-full bg-white/92 px-2 py-1 text-[12px] font-bold text-[#28231f]"
               >
                 <Users className="size-3" aria-hidden />
                 {peopleCount}
@@ -283,7 +283,7 @@ export function HomeShortcuts({ trip, glance }: { trip: TripRow; glance: TripGla
         {open > 0 ? (
           <span
             aria-hidden
-            className="absolute right-2 top-1.5 grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold leading-5 text-primary-foreground"
+            className="absolute right-2 top-1.5 grid min-w-5 place-items-center rounded-full bg-primary px-1 text-[12px] font-bold leading-5 text-primary-foreground"
           >
             {open}
           </span>
@@ -337,7 +337,7 @@ export function HomeYourTrips({ trips, photos }: { trips: TripRow[]; photos: Tri
               <span className="line-clamp-2 break-words font-display text-[19px] leading-[1.05]">
                 {t.title}
               </span>
-              <span className="block truncate text-[11.5px] text-white/90">
+              <span className="block truncate text-[12px] text-white/90">
                 {tripDateLine(t.start_date, t.end_date)}
               </span>
             </span>

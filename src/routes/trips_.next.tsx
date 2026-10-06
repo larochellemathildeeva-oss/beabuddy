@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -375,7 +376,9 @@ function TripsNextPage() {
             ) : null}
 
             {error && !creating && !joining && (
-              <p className="text-[14px] text-destructive">{error}</p>
+              <p role="alert" className="text-[14px] text-destructive">
+                {error}
+              </p>
             )}
 
             <div data-guide="trip-list" className="space-y-7">
@@ -687,7 +690,7 @@ function TripsNextPage() {
                       month={cities[index - 1]?.end || form.start_date || undefined}
                     />
                     {cityOutsideTrip(city, form.start_date, form.end_date) && (
-                      <p className="px-1 text-[12px] font-medium text-destructive">
+                      <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
                         These dates fall outside the trip's.
                       </p>
                     )}
@@ -720,7 +723,7 @@ function TripsNextPage() {
             </div>
           )}
           {form.start_date && form.end_date && form.end_date < form.start_date && (
-            <p className="px-1 text-[13px] font-medium text-destructive">
+            <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
               End date can't be earlier than the start date.
             </p>
           )}
@@ -816,7 +819,7 @@ function TripsNextPage() {
                 setWithBudget(false);
                 setCreating(false);
               } catch (e) {
-                setError(e instanceof Error ? e.message : "Couldn't create the trip");
+                setError(friendlyError(e, "Couldn't create the trip"));
               } finally {
                 saving.current = false;
                 setSaveBusy(false);
@@ -826,7 +829,11 @@ function TripsNextPage() {
           >
             {saveBusy ? "Creating…" : "Create trip"}
           </button>
-          {error && creating && <p className="text-[14px] text-destructive">{error}</p>}
+          {error && creating && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {error}
+            </p>
+          )}
         </div>
       </Sheet>
 
@@ -863,7 +870,7 @@ function TripsNextPage() {
                 setCode("");
                 setJoining(false);
               } catch (e) {
-                setError(e instanceof Error ? e.message : "That code didn't work");
+                setError(friendlyError(e, "That code didn't work"));
               } finally {
                 setJoinBusy(false);
               }
@@ -872,7 +879,11 @@ function TripsNextPage() {
           >
             Join trip
           </button>
-          {error && joining && <p className="text-[14px] text-destructive">{error}</p>}
+          {error && joining && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {error}
+            </p>
+          )}
         </div>
       </Sheet>
     </AppShell>
@@ -972,7 +983,7 @@ function DayTripRow({
         {from ? `Back to ${from} for the night.` : "Back the same night."}
       </p>
       {outside && (
-        <p className="px-1 text-[12px] font-medium text-destructive">
+        <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
           {from
             ? `This day falls outside your stay in ${from}.`
             : "This day falls outside the trip's."}

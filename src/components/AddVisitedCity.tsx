@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Sheet } from "@/components/Sheet";
@@ -238,7 +239,7 @@ export function AddVisitedCity({
       setNote("");
       onSaved?.();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save that.");
+      setErr(friendlyError(e, "Couldn't save that."));
     } finally {
       setBusy(false);
     }
@@ -265,7 +266,7 @@ export function AddVisitedCity({
       resetList();
       onSaved?.();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Couldn't save those.");
+      setErr(friendlyError(e, "Couldn't save those."));
     } finally {
       setBusy(false);
     }
@@ -524,7 +525,11 @@ export function AddVisitedCity({
           </>
         )}
 
-        {err && <p className="text-[13px] text-destructive">{err}</p>}
+        {err && (
+          <p role="alert" className="text-[14px] text-destructive">
+            {err}
+          </p>
+        )}
         {msg && <p className="text-[13px] text-muted-foreground">{msg}</p>}
 
         <button

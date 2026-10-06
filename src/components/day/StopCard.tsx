@@ -83,7 +83,7 @@ export function StopCard({
           </span>
         )}
         {!placed && (
-          <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-elevated px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <span className="mt-1 inline-flex items-center gap-1 rounded-lg bg-elevated px-1.5 py-0.5 text-[12px] font-medium text-muted-foreground">
             <MapPin className="size-3" aria-hidden />
             Not on the map yet
           </span>
@@ -92,7 +92,7 @@ export function StopCard({
 
       <span
         // The same accent disc as the pin it matches on the map.
-        className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold tabular-nums transition-colors ${
+        className={`grid size-6 shrink-0 place-items-center rounded-full text-[12px] font-semibold tabular-nums transition-colors ${
           selected
             ? "bg-primary text-primary-foreground shadow-sm"
             : placed

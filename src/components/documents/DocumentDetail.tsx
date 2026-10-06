@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Check, Download, ExternalLink, MoreHorizontal, Share2 } from "@/components/icons";
@@ -64,7 +65,7 @@ export function DocumentDetail({
       await fn();
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
-      toast.error(e instanceof Error ? e.message : "That did not work. Try again.");
+      toast.error(friendlyError(e, "That did not work. Try again."));
     } finally {
       setBusy("");
     }

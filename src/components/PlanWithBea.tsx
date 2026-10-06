@@ -139,7 +139,7 @@ export function PlanCards({
             {card.body}
           </span>
           <span className="mt-auto flex w-full items-center justify-between gap-1 pt-2">
-            <span className="text-[11.5px] font-semibold text-muted-foreground">
+            <span className="text-[12px] font-semibold text-muted-foreground">
               {card.note ?? ""}
             </span>
             <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-card">

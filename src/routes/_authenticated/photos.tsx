@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import { useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { BeaRunning } from "@/components/BeaRunning";
@@ -190,7 +191,7 @@ function PhotosPage() {
       if (isNetworkFailure(err)) {
         setStatus("Upload didn't finish — check your connection and try again.");
       } else {
-        setStatus(err instanceof Error ? err.message : "Upload failed. Try again.");
+        setStatus(friendlyError(err, "Upload failed. Try again."));
       }
     } finally {
       setBusy(false);

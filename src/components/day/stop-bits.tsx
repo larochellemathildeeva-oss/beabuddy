@@ -130,7 +130,7 @@ export function StopChips({
       {before}
       <KindChip item={item} />
       {isBooked(item) && (
-        <span className="tile-fill-3 rounded-full border border-border/60 px-2 py-0.5 text-[11.5px] font-semibold text-nexttime">
+        <span className="tile-fill-3 rounded-full border border-border/60 px-2 py-0.5 text-[12px] font-semibold text-nexttime">
           Booked
         </span>
       )}

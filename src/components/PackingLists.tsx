@@ -374,7 +374,11 @@ export function PackingBody({
             card details or other sensitive information.
           </p>
           {importBusy && <BeaRunning moment="choose.working" status="Organizing your list" />}
-          {importError && <p className="text-[13px] text-destructive">{importError}</p>}
+          {importError && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {importError}
+            </p>
+          )}
           {importPreview && (
             <div className="space-y-2 rounded-xl border border-border bg-elevated p-3">
               {importPreview.summary && (

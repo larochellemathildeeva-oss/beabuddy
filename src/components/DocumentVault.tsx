@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Link } from "@tanstack/react-router";
 import { Fingerprint, Lock, LockOpen, ShieldCheck } from "@/components/icons";
 import { useVault, type DocSecret, type VaultDocRow } from "@/hooks/useVault";
@@ -47,7 +48,7 @@ async function attempt(
     if (e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "AbortError")) {
       setError("Face ID or fingerprint was cancelled. Try again or use your passcode.");
     } else {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(friendlyError(e, "Something went wrong"));
     }
   } finally {
     setBusy(false);
@@ -153,7 +154,7 @@ export function VaultUnlock({
           <p className="mt-2 text-[13px] text-muted-foreground">{check.message}</p>
         )}
         {error && (
-          <p role="alert" className="mt-2 text-[13px] text-destructive">
+          <p role="alert" className="mt-2 text-[14px] text-destructive">
             {error}
           </p>
         )}
@@ -244,7 +245,7 @@ function DeviceUnlockSetting({ v }: { v: Vault }) {
       />
       <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
       {error && (
-        <p role="alert" className="text-[13px] text-destructive">
+        <p role="alert" className="text-[14px] text-destructive">
           {error}
         </p>
       )}
@@ -330,7 +331,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
           />
           <KeyboardToggle keyboard={keyboard} set={setKeyboard} />
           {error && (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-[14px] text-destructive">
               {error}
             </p>
           )}
@@ -424,7 +425,7 @@ function StrongerPasscode({ v }: { v: Vault }) {
             <p className="text-[13px] text-muted-foreground">{check.message}</p>
           )}
           {error && (
-            <p role="alert" className="text-[13px] text-destructive">
+            <p role="alert" className="text-[14px] text-destructive">
               {error}
             </p>
           )}
@@ -639,7 +640,11 @@ export function ProtectedPanel({ v }: { v: Vault }) {
                 }}
               />
             </label>
-            {error && <p className="text-[13px] text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-[14px] text-destructive">
+                {error}
+              </p>
+            )}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -683,7 +688,11 @@ export function ProtectedPanel({ v }: { v: Vault }) {
             Add to Protected
           </button>
         )}
-        {error && !adding && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
+        {error && !adding && (
+          <p role="alert" className="mt-2 text-[14px] text-destructive">
+            {error}
+          </p>
+        )}
       </div>
 
       <DeviceUnlockSetting v={v} />

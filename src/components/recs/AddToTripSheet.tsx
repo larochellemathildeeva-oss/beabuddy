@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Link } from "@tanstack/react-router";
 import { Check } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
@@ -104,7 +105,7 @@ export function AddToTripSheet({
       if (insertError) throw insertError;
       setAdded({ trip, day, part });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add that to the trip.");
+      setError(friendlyError(e, "Couldn't add that to the trip."));
     } finally {
       setBusy(false);
     }
@@ -242,7 +243,11 @@ export function AddToTripSheet({
             className="mt-4 w-full rounded-xl border border-[var(--field-border)] bg-card px-3.5 py-3 text-[15px] outline-none focus:border-primary"
           />
 
-          {error && <p className="mt-3 text-[13px] text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="mt-3 text-[14px] text-destructive">
+              {error}
+            </p>
+          )}
 
           <button
             type="button"

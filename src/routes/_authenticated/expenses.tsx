@@ -1,4 +1,5 @@
 import { toLocalISODate } from "@/lib/trip-dates";
+import { friendlyError } from "@/lib/friendly-error";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
@@ -130,7 +131,7 @@ function ExpensesPage() {
       setStatus("Saved to your expense record.");
       reset();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Could not save that one. Try again.");
+      setStatus(friendlyError(err, "Could not save that one. Try again."));
     } finally {
       setBusy(false);
     }

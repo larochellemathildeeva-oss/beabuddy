@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import { createPortal } from "react-dom";
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
@@ -1348,7 +1349,7 @@ export function TripDetail({
             },
           },
         ),
-      (e: unknown) => toast.error(e instanceof Error ? e.message : "That didn't save."),
+      (e: unknown) => toast.error(friendlyError(e, "That didn't save.")),
     );
   };
   // Now follows one day: the one picked, or today when every day is showing.
@@ -3006,7 +3007,11 @@ export function TripDetail({
                 Your stops have changed since this was saved — refresh to bring it up to date.
               </p>
             )}
-            {dir.error && <p className="mt-2 text-[12.5px] text-destructive">{dir.error}</p>}
+            {dir.error && (
+              <p role="alert" className="mt-2 text-[14px] text-destructive">
+                {dir.error}
+              </p>
+            )}
             {dir.saved && (
               <div className="mt-3 space-y-2">
                 {dir.saved.legs.map((l, i) => (
@@ -3057,7 +3062,11 @@ export function TripDetail({
                     in the Timeline to see it offline.
                   </p>
                 )}
-                {dayMaps.error && <p className="text-[12px] text-destructive">{dayMaps.error}</p>}
+                {dayMaps.error && (
+                  <p role="alert" className="text-[14px] text-destructive">
+                    {dayMaps.error}
+                  </p>
+                )}
                 {offlineMap.progress && (
                   <p className="text-[12px] text-muted-foreground">
                     Saving the trip's map
@@ -3075,7 +3084,9 @@ export function TripDetail({
                   </p>
                 )}
                 {offlineMap.error && (
-                  <p className="text-[12px] text-destructive">{offlineMap.error}</p>
+                  <p role="alert" className="text-[14px] text-destructive">
+                    {offlineMap.error}
+                  </p>
                 )}
                 <button
                   onClick={() => {
@@ -3385,7 +3396,7 @@ function NowLine({ done = false }: { done?: boolean }) {
   return (
     <li aria-hidden className="relative -my-0.5 flex items-center gap-2 py-1">
       <span className="h-px flex-1 bg-primary/40" />
-      <span className="text-[11.5px] font-semibold uppercase tracking-wider text-primary">
+      <span className="text-[12px] font-semibold uppercase tracking-wider text-primary">
         {done ? "That was today" : "Now"}
       </span>
       <span className="h-px flex-1 bg-primary/40" />

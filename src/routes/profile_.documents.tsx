@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -210,7 +211,7 @@ function DocumentsPage() {
       await d.updateDocument(doc.id, p);
       if (done) toast.success(done);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "That change did not save.");
+      toast.error(friendlyError(e, "That change did not save."));
     }
   };
 
@@ -630,9 +631,7 @@ function DocumentsPage() {
             void d
               .updateDocument(doc.id, { itinerary_item_id: e.id })
               .then(() => setPanel({ kind: "linked", tripId: doc.trip_id!, eventId: e.id }))
-              .catch((err: unknown) =>
-                toast.error(err instanceof Error ? err.message : "That link did not save."),
-              );
+              .catch((err: unknown) => toast.error(friendlyError(err, "That link did not save.")));
           }}
         />
       )}

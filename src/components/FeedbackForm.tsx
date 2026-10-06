@@ -84,10 +84,10 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
         rows={4}
         maxLength={4000}
         placeholder="What went wrong, or what would make Béa better?"
-        className="w-full rounded-xl border border-[var(--field-border)] bg-card p-3 text-[16px] outline-none"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card p-3 text-[16px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
       {failed && (
-        <p className="text-[13px] text-destructive">
+        <p role="alert" className="text-[14px] text-destructive">
           That didn&rsquo;t send. Check your connection and try again.
         </p>
       )}

@@ -217,7 +217,7 @@ export function StopPhotos({
   return (
     <div className={scope === "stop" ? "mt-2.5" : ""}>
       {scope === "stop" ? (
-        <span className="mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground">
+        <span className="mb-1 flex items-center gap-1 text-[12px] font-medium text-muted-foreground">
           <Camera className="size-3.5" aria-hidden />
           Photos
         </span>
