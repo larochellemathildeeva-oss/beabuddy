@@ -3407,24 +3407,29 @@ html:not(.dark)
   color: var(--muted-foreground);
 }
 
-/* The World globe's surroundings: soft cloud haze behind it, as on the boards. */
+/* Haze behind the Earth globe. Colours are tokens so a mood is changed in one place. */
+:root {
+  --world-haze-a: rgb(255 255 255 / 0.9);
+  --world-haze-b: rgb(255 244 232 / 0.85);
+  --world-haze-c: rgb(255 236 220 / 0.55);
+}
+[data-theme="colorful"] {
+  --world-haze-a: rgb(255 255 255 / 0.95);
+  --world-haze-b: rgb(232 222 255 / 0.9);
+  --world-haze-c: rgb(255 222 232 / 0.55);
+}
+.dark {
+  --world-haze-a: transparent;
+  --world-haze-b: transparent;
+  --world-haze-c: rgb(60 90 190 / 0.18);
+}
 .world-haze {
   pointer-events: none;
   position: absolute;
   inset: -4% -8%;
   background:
-    radial-gradient(46% 40% at 18% 78%, rgb(255 255 255 / 0.9), transparent 70%),
-    radial-gradient(44% 38% at 84% 22%, rgb(255 244 232 / 0.85), transparent 70%),
-    radial-gradient(60% 50% at 50% 55%, rgb(255 236 220 / 0.55), transparent 72%);
+    radial-gradient(46% 40% at 18% 78%, var(--world-haze-a), transparent 70%),
+    radial-gradient(44% 38% at 84% 22%, var(--world-haze-b), transparent 70%),
+    radial-gradient(60% 50% at 50% 55%, var(--world-haze-c), transparent 72%);
   filter: blur(6px);
-}
-[data-theme="colorful"] .world-haze {
-  background:
-    radial-gradient(46% 40% at 16% 80%, rgb(255 255 255 / 0.95), transparent 70%),
-    radial-gradient(44% 38% at 86% 20%, rgb(232 222 255 / 0.9), transparent 70%),
-    radial-gradient(60% 50% at 50% 55%, rgb(255 222 232 / 0.55), transparent 72%);
-}
-.dark .world-haze {
-  background:
-    radial-gradient(56% 48% at 50% 52%, rgb(60 90 190 / 0.18), transparent 72%);
 }

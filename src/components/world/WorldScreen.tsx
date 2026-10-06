@@ -121,14 +121,17 @@ export function WorldTabs({
 export function WorldGlobeStage({
   children,
   className,
+  haze = true,
   ...rest
 }: {
   children: ReactNode;
   className?: string | undefined;
+  /** The soft haze behind the Earth globe; the MapLibre globe draws its own sky. */
+  haze?: boolean;
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn("relative", className)} {...rest}>
-      <div className="world-haze" aria-hidden />
+      {haze ? <div className="world-haze" aria-hidden /> : null}
       {children}
     </div>
   );
