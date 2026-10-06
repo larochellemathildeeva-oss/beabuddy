@@ -75,9 +75,8 @@ import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
 import { SortableDay, SortableStop, type SortableBind } from "@/components/day/SortableStops";
 import { TripPageBanner } from "@/components/TripPageBanner";
-import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/TripViews";
+import { TripViews, TripBarOptions } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
-import { useTripPicture } from "@/hooks/useTripPicture";
 import {
   TripMenuSheet,
   type BookingTile,
@@ -227,7 +226,6 @@ export function TripDetail({
 }) {
   const navigate = useNavigate();
   const [barPosition, setBarPosition] = useTripBarPosition();
-  const [tripPicture, setTripPicture] = useTripPicture();
   const [bookingsOpen, setBookingsOpen] = useState(false);
   const bookingsRef = useRef<HTMLElement>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
@@ -3134,7 +3132,6 @@ export function TripDetail({
         {sheetSection === "customize" && (
           <div className="plain-card px-3.5 py-1">
             <TripBarOptions value={barPosition} onChange={setBarPosition} />
-            <TripPictureOptions value={tripPicture} onChange={setTripPicture} />
             <CustomizeOptions prefs={view.prefs} onToggle={view.toggle} />
           </div>
         )}
