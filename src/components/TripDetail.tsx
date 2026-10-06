@@ -78,9 +78,6 @@ import { TripPageBanner } from "@/components/TripPageBanner";
 import { TripViews, TripBarOptions, TripPictureOptions } from "@/components/day/TripViews";
 import { useTripBarPosition } from "@/hooks/useTripBarPosition";
 import { useTripPicture } from "@/hooks/useTripPicture";
-import { useCityPositions } from "@/hooks/useCityPositions";
-import { tripCityStop, withCityPositions, type CityStop } from "@/lib/city-position";
-import { routeStopsIndexed as mapRouteStopsIndexed } from "@/lib/home-route-map";
 import {
   TripMenuSheet,
   type BookingTile,
@@ -308,20 +305,6 @@ export function TripDetail({
       : cities.stops;
   }, [cities.stops, cities.missingHome]);
   const routeCities = useMemo(() => destinationCities(fullRoute), [fullRoute]);
-  // The banner's Stops picture: the trip's cities (its first included, as
-  // above) on Home's terrain. A one-city trip keeps its city on the trip; a
-  // city typed rather than picked is found by its name, as on Home.
-  const bannerCityStops = useMemo(
-    (): readonly CityStop[] =>
-      fullRoute.length || cities.loading ? fullRoute : tripCityStop(trip),
-    [fullRoute, cities.loading, trip],
-  );
-  const bannerPositions = useCityPositions(bannerCityStops);
-  const banner = useMemo(
-    () => mapRouteStopsIndexed(withCityPositions(bannerCityStops, bannerPositions)),
-    [bannerCityStops, bannerPositions],
-  );
-  const bannerRoute = banner.route;
   /** The city picked in the switcher, by stop id; "" for every city. */
   const [cityChoice, setCityChoice] = useState("");
   const chosenCity =
@@ -1420,22 +1403,6 @@ export function TripDetail({
       })
     : "";
   const cityNames = cities.stops.map((stop) => stop.city);
-  // On the banner's map, the hollow dots are the cities really behind you
-  // (all of them once the trip is over) and the ring is the city of the day
-  // the page shows: today on Overview. Matched by the dated stop itself, not
-  // its name, so a return visit rings the second dot.
-  const onTripToday = Boolean(
-    trip.start_date && trip.start_date <= todayKey && (!trip.end_date || todayKey <= trip.end_date),
-  );
-  const bannerIndexOn = (day: string | null | undefined) => {
-    const stop = routeStopOn(bannerCityStops, day);
-    return stop ? (banner.indexOf[bannerCityStops.indexOf(stop)] ?? -1) : -1;
-  };
-  const todayCity = onTripToday ? bannerIndexOn(todayKey) : -1;
-  const bannerDone =
-    trip.end_date && trip.end_date < todayKey ? bannerRoute.length : Math.max(0, todayCity);
-  const bannerCurrent =
-    perspective !== "overview" && companionDay?.key ? bannerIndexOn(companionDay.key) : todayCity;
   const tripArt = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],
@@ -1507,9 +1474,7 @@ export function TripDetail({
   const dayTracker = (
     <BannerDayTracker
       label="Your trip progress"
-      summary={`${moveDays.length} days · ${
-        new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size
-      } cities · ${doneCount}/${stopItems.length} stops reached`}
+      onPhoto={false}
       days={moveDays.map((day, i) => {
         const group = allDayGroups.find((g) => g.key === day);
         const total = group?.items.length ?? 0;
@@ -1535,6 +1500,7 @@ export function TripDetail({
     shouldOfferDays(allDayGroups) && mapChips.length > 0 ? (
       <BannerDayTracker
         label="Which day to show on the map"
+        onPhoto={false}
         days={[
           {
             key: ALL_DAYS,
@@ -1568,12 +1534,7 @@ export function TripDetail({
   const bannerTracker = showDayTracker ? (
     dayTracker
   ) : view.prefs.journey ? (
-    <JourneyTracker
-      onPhoto
-      stops={nowStops}
-      selectedId={peekStop?.id ?? null}
-      onSelect={setPeekId}
-    />
+    <JourneyTracker bare stops={nowStops} selectedId={peekStop?.id ?? null} onSelect={setPeekId} />
   ) : null;
 
   return (
@@ -1680,14 +1641,6 @@ export function TripDetail({
           cities: cityNames,
         })}
         viewTransitionName={`trip-photo-${trip.id}`}
-        route={bannerRoute}
-        current={bannerCurrent}
-        done={bannerDone}
-        picture={perspective === "companion" ? "photo" : tripPicture}
-        onPicture={setTripPicture}
-        switchable={perspective !== "overview" && perspective !== "companion"}
-        short={perspective === "map"}
-        hero={perspective === "overview"}
         tracker={perspective === "map" ? mapDayTracker : bannerTracker}
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
