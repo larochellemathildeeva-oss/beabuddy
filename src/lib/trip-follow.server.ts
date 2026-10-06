@@ -63,6 +63,20 @@ async function activeLinkId(db: SupabaseClient, token: string): Promise<string |
   return data.id;
 }
 
+/**
+ * The link a token opens even when it is turned off or expired, so a
+ * traveller can still stop following it. Null only for an unknown token.
+ */
+async function anyLinkId(db: SupabaseClient, token: string): Promise<string | null> {
+  const { data, error } = (await db
+    .from("trip_share_links")
+    .select("id")
+    .eq("token", token)
+    .maybeSingle()) as { data: { id: string } | null; error: DbError };
+  if (error) throw new Error(LOAD_FAILED);
+  return data?.id ?? null;
+}
+
 /** Whether this traveller follows the trip a token opens. */
 export async function followState(userId: string, token: string): Promise<FollowState> {
   const db = await admin();
@@ -86,7 +100,8 @@ export async function setFollowing(
   on: boolean,
 ): Promise<FollowState> {
   const db = await admin();
-  const linkId = await activeLinkId(db, token);
+  // Stopping needs no live link: a trip that expired can still be dropped.
+  const linkId = on ? await activeLinkId(db, token) : await anyLinkId(db, token);
   if (!linkId) return "gone";
   if (!on) {
     const { error } = await db

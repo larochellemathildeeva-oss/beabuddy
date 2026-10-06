@@ -13,19 +13,23 @@ import { formatDateRangeLabel } from "@/lib/trip-dates";
  * and only what the share link shows. "Remove from list" stops following; the
  * link still opens, and following it again is one tap on that page.
  */
-export function FollowedTripList({ trips: all }: { trips: FollowedTrip[] }) {
+export function FollowedTripList({
+  trips,
+  onRemoved,
+}: {
+  trips: FollowedTrip[];
+  /** Called once a trip is no longer followed, so its owner drops it from the list. */
+  onRemoved: (token: string) => void;
+}) {
   const change = useServerFn(changeFollow);
-  // Tokens removed in this visit, hidden at once; the server forgets them too.
-  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
-  const [busy, setBusy] = useState<string | null>(null);
-  const trips = all.filter((t) => !removed.has(t.token));
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
   const remove = async (trip: FollowedTrip) => {
-    setBusy(trip.token);
+    setBusy((set) => new Set(set).add(trip.token));
     try {
       const next = await change({ data: { token: trip.token, follow: false } });
       if (next === "not-following" || next === "gone") {
-        setRemoved((set) => new Set(set).add(trip.token));
+        onRemoved(trip.token);
         toast("Removed from Following", { description: trip.title });
       } else {
         toast.error("That didn't save. Try again.");
@@ -33,7 +37,11 @@ export function FollowedTripList({ trips: all }: { trips: FollowedTrip[] }) {
     } catch {
       toast.error("That didn't save. Try again.");
     } finally {
-      setBusy(null);
+      setBusy((set) => {
+        const next = new Set(set);
+        next.delete(trip.token);
+        return next;
+      });
     }
   };
 
@@ -81,7 +89,7 @@ export function FollowedTripList({ trips: all }: { trips: FollowedTrip[] }) {
             </Link>
             <button
               type="button"
-              disabled={busy === trip.token}
+              disabled={busy.has(trip.token)}
               onClick={() => void remove(trip)}
               className="mt-1 min-h-11 px-1 text-[13px] font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
             >
