@@ -3553,3 +3553,29 @@ html:not(.dark)
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+.trip-strip-img {
+  animation: trip-strip-in 0.8s ease both;
+}
+@keyframes trip-strip-in {
+  from {
+    opacity: 0;
+  }
+}
+:root[data-motion="reduce"] .trip-strip-img {
+  animation: none;
+}
+.trip-strip-btn {
+  flex: 1;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 15px;
+  font-weight: 600;
+}
+.trip-strip-btn.is-primary {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}

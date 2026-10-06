@@ -55,6 +55,7 @@ import { clearDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
 import { TripPicture } from "@/components/HomeTripCard";
 import { StopPicturesPicker } from "@/components/StopPicturesPicker";
+import { TripBannerPicker } from "@/components/TripBannerPicker";
 import { AccessibilityPicker } from "@/components/AccessibilityPicker";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
 import { modeName } from "@/lib/bea-personality";
@@ -607,6 +608,7 @@ function ProfilePage() {
       >
         <div className="space-y-3">
           <ThemePicker />
+          <TripBannerPicker />
           <StopPicturesPicker />
           <AccessibilityPicker />
           <CustomizeHome variant="row" />
