@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { findStopForChange, readTimeChange } from "@/lib/stop-edit";
 import { askPlanEdit } from "@/lib/plan-edit.functions";
-import { PLAN_EDIT_MAX_REQUEST } from "@/lib/plan-edit";
+import { PLAN_EDIT_MAX_EARLIER, PLAN_EDIT_MAX_REQUEST, afterMoveChoices } from "@/lib/plan-edit";
 import { rearrange, stopsOfDay, type StopMove } from "@/lib/stop-move";
 import { formatTimelineDayLabel } from "@/lib/timeline-groups";
 import { readableError } from "@/lib/optimistic";
@@ -26,6 +26,10 @@ type Stop = {
  * straight away, as before. Anything else goes to Béa (`askPlanEdit`), whose
  * moves are shown first and only saved on Apply — a wrong stop moved quietly
  * is worse than a question.
+ *
+ * Asking again before Apply adds to what is shown ("and the market too"):
+ * the moves not yet saved go back with the new words, Béa reads the plan with
+ * them in place, and the answer holds both, so nothing asked earlier is lost.
  */
 /** The plan as Béa read it, to tell whether it changed before Apply. */
 const planKey = (stops: readonly Stop[]) =>
@@ -38,6 +42,7 @@ export function TimeChangeBox({
   onChangeTime,
   onApply,
   onDone,
+  onRework,
 }: {
   tripId: string;
   stops: readonly Stop[];
@@ -47,6 +52,8 @@ export function TimeChangeBox({
   /** Save Béa's moves, with its own Undo. */
   onApply: (moves: StopMove[], summary: string) => Promise<void>;
   onDone?: () => void;
+  /** Open Rework for a day with the ask written: "What about day 3?" after Apply. */
+  onRework?: (day: string, ask: string) => void;
 }) {
   const [text, setText] = useState("");
   const [problem, setProblem] = useState("");
@@ -56,33 +63,56 @@ export function TimeChangeBox({
     reply: string;
     /** `planKey` of the stops Béa was asked about. */
     basis: string;
+    /** What the traveller asked for so far, oldest first. */
+    requests: string[];
   } | null>(null);
   const ask = useServerFn(askPlanEdit);
+  /** What to do next about a day the moves change; "" is nothing more. */
+  const [after, setAfter] = useState("");
 
-  const askBea = async () => {
-    // The server reads the trip itself; only which trip and the words go.
-    const basis = planKey(stops);
+  const askBea = async (earlier: typeof proposal) => {
+    // The server reads the trip itself; only which trip, the words and the
+    // moves still waiting for Apply go.
+    const basis = earlier?.basis ?? planKey(stops);
+    const request = text.trim().slice(0, PLAN_EDIT_MAX_REQUEST);
     const answer = await ask({
-      data: { tripId, request: text.trim().slice(0, PLAN_EDIT_MAX_REQUEST) },
+      data: {
+        tripId,
+        request,
+        ...(earlier
+          ? {
+              pending: {
+                requests: earlier.requests.slice(-PLAN_EDIT_MAX_EARLIER),
+                moves: earlier.moves,
+              },
+            }
+          : {}),
+      },
     });
     if (answer.moves.length === 0) {
+      // What was already shown stays, ready to apply.
       setProblem(answer.reply || "Béa didn't find anything to move for that.");
       return;
     }
-    setProposal({ ...answer, basis });
+    setProposal({ ...answer, basis, requests: [...(earlier?.requests ?? []), request] });
+    setAfter("");
+    setText("");
   };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setProblem("");
-    setProposal(null);
-    const change = readTimeChange(text);
+    // Moves shown but not applied are added to, unless the plan changed
+    // under them: then they were worked out on the old one, so start over.
+    const earlier = proposal && planKey(stops) === proposal.basis ? proposal : null;
+    if (!earlier) setProposal(null);
+    const change = earlier ? null : readTimeChange(text);
     const found = change ? findStopForChange(change, stops, days) : null;
     if (!change || !found || "problem" in found) {
       // Not a plain time change Béa can be sure of here: ask the model.
       setBusy(true);
       try {
-        await askBea();
+        await askBea(earlier);
       } catch (err) {
         setProblem(readableError(err) ?? "Béa couldn't answer just now. Try again in a moment.");
       } finally {
@@ -124,12 +154,14 @@ export function TimeChangeBox({
       setProblem("The plan changed since Béa suggested this. Ask again.");
       return;
     }
+    const next = choices.find((c) => c.id === after);
     setBusy(true);
     try {
       await onApply(proposal.moves, proposal.reply);
       setProposal(null);
       setText("");
       onDone?.();
+      if (next) onRework?.(next.day, next.ask);
     } catch {
       setProblem("Couldn't save that. Check your connection and try again.");
     } finally {
@@ -151,6 +183,7 @@ export function TimeChangeBox({
     const updates = rearrange(stops, proposal.moves);
     return stops.map((stop) => ({ ...stop, ...updates.find((u) => u.id === stop.id) }));
   })();
+  const choices = proposal && onRework ? afterMoveChoices(stops, proposal.moves, dayName) : [];
   const describe = (move: StopMove) => {
     const stop = landed?.find((s) => s.id === move.id);
     if (!landed || !stop) return "";
@@ -178,7 +211,9 @@ export function TimeChangeBox({
           id="time-change"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Put the Louvre on day 3 morning"
+          placeholder={
+            proposal ? "Anything else? Béa adds it to these" : "Put the Louvre on day 3 morning"
+          }
           className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-card px-3 text-[16px]"
         />
         <button
@@ -204,6 +239,35 @@ export function TimeChangeBox({
               );
             })}
           </ul>
+          {choices.length > 0 && (
+            <fieldset className="mt-2.5">
+              <legend className="text-[12.5px] font-semibold text-foreground">And then?</legend>
+              <div className="mt-1 space-y-1">
+                {[{ id: "", label: "Just move them" }, ...choices].map((choice) => (
+                  <label
+                    key={choice.id || "none"}
+                    className="flex min-h-9 items-center gap-2 text-[13.5px]"
+                  >
+                    <input
+                      type="radio"
+                      name="time-change-after"
+                      value={choice.id}
+                      checked={after === choice.id}
+                      onChange={() => setAfter(choice.id)}
+                      className="size-4 accent-primary"
+                    />
+                    {choice.label}
+                  </label>
+                ))}
+              </div>
+              {after && (
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  Béa shows her version of that day next, and nothing changes there until you apply
+                  it.
+                </p>
+              )}
+            </fieldset>
+          )}
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -215,8 +279,13 @@ export function TimeChangeBox({
             </button>
             <button
               type="button"
-              onClick={() => setProposal(null)}
-              className="min-h-10 rounded-xl border border-border bg-card px-3 text-[14px] font-semibold text-muted-foreground"
+              // While Béa answers a follow-up her answer would bring it back.
+              disabled={busy}
+              onClick={() => {
+                setProposal(null);
+                setProblem("");
+              }}
+              className="min-h-10 rounded-xl border border-border bg-card px-3 text-[14px] font-semibold text-muted-foreground disabled:opacity-50"
             >
               Not this
             </button>
