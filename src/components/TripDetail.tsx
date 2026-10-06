@@ -27,7 +27,7 @@ import { TripStops } from "@/components/TripStops";
 import { TripPeople } from "@/components/TripPeople";
 import { TripBudgetSwitch, TripDeleteButton, TripDetailsForm } from "@/components/TripSettings";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { pickTripPhoto, tripDateLine } from "@/lib/trip-card";
+import { tripDateLine } from "@/lib/trip-card";
 import { TripOverview } from "@/components/TripOverview";
 import { timelineGlyph } from "@/lib/timeline-kind";
 import { TimelineEntryForm } from "@/components/TimelineEntryForm";
@@ -88,6 +88,8 @@ import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
 import { useStopPhotos } from "@/hooks/useStopPhotos";
+import { useTripBanner } from "@/hooks/useTripBanner";
+import { bannerPhotos } from "@/lib/trip-banner";
 import { StopPhotos } from "@/components/day/StopPhotos";
 import { PastYouCard } from "@/components/day/PastYouCard";
 import { TripAgain } from "@/components/day/TripAgain";
@@ -1401,6 +1403,16 @@ export function TripDetail({
       })
     : "";
   const cityNames = cities.stops.map((stop) => stop.city);
+  const [bannerLook] = useTripBanner();
+  const bannerOwn = useMemo(
+    () =>
+      bannerPhotos(
+        stopPhotos.photos.filter((p) => p.user_id === me.id),
+        photos,
+        { city: trip.city, country: trip.country, cities: cityNames },
+      ),
+    [stopPhotos.photos, me.id, photos, trip.city, trip.country, cityNames],
+  );
   const tripArt = bannerArtUrl(
     bannerSceneFor(
       [trip.title, ...cityNames, trip.city, trip.country],
@@ -1633,11 +1645,21 @@ export function TripDetail({
         endDate={trip.end_date}
         tentative={trip.dates_status === "tentative"}
         companions={companionsLine}
-        photo={pickTripPhoto(photos, {
-          city: trip.city,
-          country: trip.country,
-          cities: cityNames,
-        })}
+        look={bannerLook}
+        own={bannerOwn}
+        actions={{
+          primary:
+            perspective === "timeline"
+              ? { label: "Add stop", onClick: () => setAddOpen(true) }
+              : { label: "View itinerary", onClick: () => setPerspective("timeline") },
+          secondary: {
+            label: "Plan with Béa",
+            onClick: () => {
+              setPlannerTab("start");
+              setPlannerOpen(true);
+            },
+          },
+        }}
         viewTransitionName={`trip-photo-${trip.id}`}
         tracker={perspective === "map" ? mapDayTracker : bannerTracker}
       />
