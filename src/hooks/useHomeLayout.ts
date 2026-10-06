@@ -4,6 +4,7 @@ import { createModuleStore, type ModuleInfo } from "@/hooks/moduleStore";
 export type HomeSectionKey =
   | "trip"
   | "stops"
+  | "suggested"
   | "saved"
   | "now"
   | "group"
@@ -28,6 +29,11 @@ export const HOME_SECTIONS: ModuleInfo<HomeSectionKey>[] = [
     hint: "Your current or next trip at the top, and the trips after it.",
   },
   { key: "stops", label: "Current / Next stop", hint: "On a trip: where you are and what's next." },
+  {
+    key: "suggested",
+    label: "Suggested for your trip",
+    hint: "Ideas for the town you are in: landmarks, cafés, day trips.",
+  },
   { key: "saved", label: "Saved for this trip", hint: "Places you saved in the trip's cities." },
   { key: "now", label: "Right now there", hint: "The time now where the trip is." },
   { key: "group", label: "Group plans", hint: "Who's coming, and inviting someone." },
@@ -52,6 +58,7 @@ export const HOME_SECTIONS: ModuleInfo<HomeSectionKey>[] = [
 export const DEFAULT_HOME_MODULES: HomeSectionKey[] = [
   "trip",
   "stops",
+  "suggested",
   "weather",
   "waiting",
   "future",
@@ -75,5 +82,7 @@ export const useHomeLayout = createModuleStore({
   modules: HOME_SECTIONS,
   defaults: DEFAULT_HOME_MODULES,
   // The current and next stop sit under the trip's map, wherever it is.
-  fixed: ["stops"],
+  fixed: ["stops", "suggested"],
+  // Home already showed it before it could be switched off.
+  newOn: ["suggested"],
 });

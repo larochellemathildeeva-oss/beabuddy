@@ -22,7 +22,7 @@ import {
 } from "@/lib/module-layout";
 import { getStored, setStored } from "@/lib/settings-storage";
 
-const FIXED: ReadonlySet<HomeSectionKey> = new Set(["stops"]);
+const FIXED: ReadonlySet<HomeSectionKey> = new Set(["stops", "suggested"]);
 const HOME_KEYS = HOME_SECTIONS.map((m) => m.key);
 const listeners = new Set<() => void>();
 

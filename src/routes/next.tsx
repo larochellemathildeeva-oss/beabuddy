@@ -168,7 +168,7 @@ function SignedInHomeNext() {
     saved: vault.rows,
     underway: tripUnderway,
   });
-  const shownModules = shown.filter((k) => k !== "stops");
+  const shownModules = shown.filter((k) => k !== "stops" && k !== "suggested");
   const tripWeather = haveTrip && (on("now") || on("weatherThere"));
 
   const homeModule = (key: HomeSectionKey): ReactNode => {
@@ -246,7 +246,7 @@ function SignedInHomeNext() {
             )}
             <HomeNextStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
             <HomeWhereNext />
-            <HomeSuggested trip={trip} />
+            {on("suggested") && <HomeSuggested trip={trip} here={tripModules.here} />}
           </div>
         )}
 
