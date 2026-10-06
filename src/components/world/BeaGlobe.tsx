@@ -75,6 +75,8 @@ const AUTO_SPEED = 6;
 const RESUME_AFTER = 2.5;
 /** The canvas overhangs the box so the atmosphere is not clipped. */
 const OVERHANG = 1.24;
+/** How long the vector globe stays hidden while the Earth loads before it shows as the fallback. */
+const EARTH_LOAD_PATIENCE_MS = 4000;
 
 type Region = { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> };
 type CountryMark = { key: string; name: string; lat: number; lon: number };
@@ -431,6 +433,8 @@ export function BeaGlobe({
     let live = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // A setup that stalls (slow textures, a hung import) must not leave the globe blank.
+    const stalled = window.setTimeout(() => live && setEarthFailed(true), EARTH_LOAD_PATIENCE_MS);
     void (async () => {
       let building: { dispose: () => void } | null = null;
       try {
@@ -448,6 +452,7 @@ export function BeaGlobe({
         if (!live) return e.dispose();
         building = null;
         engine.current = e;
+        window.clearTimeout(stalled);
         setEarthReady(true);
       } catch (err) {
         building?.dispose();
@@ -457,6 +462,7 @@ export function BeaGlobe({
     })();
     return () => {
       live = false;
+      window.clearTimeout(stalled);
       engine.current?.dispose();
       engine.current = null;
       setEarthReady(false);
