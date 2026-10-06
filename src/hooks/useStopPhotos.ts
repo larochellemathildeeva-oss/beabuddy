@@ -12,6 +12,8 @@ export type StopPhoto = {
   /** The stop it was added to; null for a photo of the trip as a whole. */
   itinerary_item_id: string | null;
   taken_at: string | null;
+  /** True when the owner keeps it off read-only links. Absent before its migration. */
+  hidden_from_links?: boolean;
 };
 
 /** What one pick added, and what it left out. */
@@ -44,6 +46,8 @@ export function useStopPhotos(
 ) {
   const [photos, setPhotos] = useState<StopPhoto[]>([]);
   const [available, setAvailable] = useState(true);
+  // "Keep off links" arrives with its own migration; until then no button.
+  const [canHide, setCanHide] = useState(true);
   /** The latest read: an older one finishing late is dropped. */
   const generation = useRef(0);
 
@@ -51,20 +55,28 @@ export function useStopPhotos(
     const mine = ++generation.current;
     const all: StopPhoto[] = [];
     for (let from = 0; ; from += PAGE) {
-      const { data, error } = await supabase
-        .from("photo_memories")
-        .select("id, user_id, storage_path, itinerary_item_id, taken_at")
-        .eq("trip_id", tripId)
-        .order("taken_at", { ascending: true })
-        .order("id", { ascending: true })
-        .range(from, from + PAGE - 1);
+      const ask = (columns: string) =>
+        supabase
+          .from("photo_memories")
+          .select(columns)
+          .eq("trip_id", tripId)
+          .order("taken_at", { ascending: true })
+          .order("id", { ascending: true })
+          .range(from, from + PAGE - 1);
+      const base = "id, user_id, storage_path, itinerary_item_id, taken_at";
+      let { data, error } = await ask(`${base}, hidden_from_links`);
       if (mine !== generation.current) return;
+      if (error?.code === "42703" && /hidden_from_links/.test(error.message ?? "")) {
+        setCanHide(false);
+        ({ data, error } = await ask(base));
+        if (mine !== generation.current) return;
+      }
       if (error) {
         // 42703: no such column, so the migration is not applied yet.
         if (error.code === "42703") setAvailable(false);
         return;
       }
-      all.push(...((data ?? []) as StopPhoto[]));
+      all.push(...((data ?? []) as unknown as StopPhoto[]));
       if ((data ?? []).length < PAGE) break;
     }
     setAvailable(true);
@@ -162,5 +174,24 @@ export function useStopPhotos(
     setPhotos((list) => list.filter((p) => p.id !== photo.id));
   }, []);
 
-  return { available, photos, byStop, add, remove };
+  /** Keep one of your own photos off read-only links, or let it show again. */
+  const setHidden = useCallback(async (photo: StopPhoto, hidden: boolean) => {
+    // Not in the generated types until the migration is part of them.
+    const { error } = await (
+      supabase as unknown as {
+        from: (t: string) => {
+          update: (v: object) => { eq: (c: string, v: string) => Promise<{ error: unknown }> };
+        };
+      }
+    )
+      .from("photo_memories")
+      .update({ hidden_from_links: hidden })
+      .eq("id", photo.id);
+    if (error) throw error;
+    setPhotos((list) =>
+      list.map((p) => (p.id === photo.id ? { ...p, hidden_from_links: hidden } : p)),
+    );
+  }, []);
+
+  return { available, canHide, photos, byStop, add, remove, setHidden };
 }

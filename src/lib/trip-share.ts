@@ -39,6 +39,8 @@ export type ShareSourceTrip = {
 };
 
 export type ShareSourceItem = {
+  /** Only to place photos on stops; never part of the view. */
+  id?: string;
   day_date: string | null;
   time_label: string | null;
   kind: string;
@@ -52,6 +54,45 @@ export type ShareSourceItem = {
   lon?: number | null;
 };
 
+/** A photo a link shows: where to fetch it, and when it was taken. Nothing else. */
+export type SharedPhoto = { url: string; takenAt: string | null };
+
+/** The most photos one link shows, so a page stays light and a read stays cheap. */
+export const SHARED_PHOTOS_MAX = 60;
+
+/** A photo row as the server reads it, before it is signed and checked. */
+export type ShareSourcePhoto = {
+  user_id: string;
+  storage_path: string;
+  itinerary_item_id: string | null;
+  taken_at: string | null;
+  hidden_from_links: boolean | null;
+};
+
+/**
+ * Which of a trip's photos a link may show. Only the ones whose owner has
+ * not kept them off links, that are real files in the owner's own folder
+ * (never "location-only" rows, and never a path into someone else's), in
+ * the order taken, up to SHARED_PHOTOS_MAX. A missing flag counts as hidden,
+ * so a row that was not read with it is never shown.
+ */
+export function pickSharedPhotos<T extends ShareSourcePhoto>(rows: readonly T[]): T[] {
+  return rows
+    .filter(
+      (row) =>
+        row.hidden_from_links === false &&
+        !row.storage_path.startsWith("location-only:") &&
+        row.storage_path.startsWith(`${row.user_id}/`) &&
+        !row.storage_path.includes(".."),
+    )
+    .sort(
+      (a, b) =>
+        (a.taken_at ?? "9999").localeCompare(b.taken_at ?? "9999") ||
+        a.storage_path.localeCompare(b.storage_path),
+    )
+    .slice(0, SHARED_PHOTOS_MAX);
+}
+
 /** Where the trip is on a stop, for a link that follows along. */
 export type SharedStopStatus = "here" | "done";
 
@@ -62,6 +103,8 @@ export type SharedStop = {
   address: string;
   /** Only on a link that follows along, and only once the stop is reached. */
   status?: SharedStopStatus;
+  /** Only on a link that shows photos: the ones added to this stop. */
+  photos?: SharedPhoto[];
 };
 export type SharedTrip = {
   title: string;
@@ -76,6 +119,12 @@ export type SharedTrip = {
    * pins themselves.
    */
   days: { day: string | null; zone?: string; stops: SharedStop[] }[];
+  /**
+   * Only on a link that shows photos: the photos of the trip as a whole, and
+   * any whose stop the plan above does not show. Never the pins they were
+   * taken at, who took them, or their captions.
+   */
+  photos?: SharedPhoto[];
 };
 
 /**
@@ -130,6 +179,8 @@ export function sharedTripView(
   items: readonly ShareSourceItem[],
   follow: { following: boolean; now: number } = { following: false, now: 0 },
   zoneAt?: (lat: number, lon: number) => string | null,
+  /** Photos already picked and signed; `itemId` is the stop each was added to. */
+  photos?: readonly { itemId: string | null; photo: SharedPhoto }[],
 ): SharedTrip {
   const shown = items
     .filter(
@@ -158,6 +209,8 @@ export function sharedTripView(
       kind: timelineGlyph(item),
       address: item.address?.trim() ?? "",
     };
+    const onStop = item.id ? photos?.filter((p) => p.itemId === item.id) : undefined;
+    if (onStop?.length) stop.photos = onStop.map((p) => p.photo);
     if (!day.zone && zoneAt && Number.isFinite(item.lat) && Number.isFinite(item.lon)) {
       const zone = zoneAt(item.lat!, item.lon!);
       if (zone) day.zone = zone;
@@ -185,6 +238,11 @@ export function sharedTripView(
     following: follow.following,
     days,
   };
+  if (photos) {
+    // Whatever no shown stop carries: the trip's own, or a stop the plan hides.
+    const placed = new Set(days.flatMap((d) => d.stops.flatMap((st) => st.photos ?? [])));
+    view.photos = photos.map((p) => p.photo).filter((p) => !placed.has(p));
+  }
   if (follow.following) {
     for (const h of here) {
       if (h.stop.status !== "here" || !h.day.day) continue;

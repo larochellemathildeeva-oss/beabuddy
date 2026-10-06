@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Copy, Link2 } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
+import { useAuth } from "@/hooks/useAuth";
 import { newShareToken, shareUrl } from "@/lib/trip-share";
 
 type LinkRow = {
@@ -11,6 +12,8 @@ type LinkRow = {
   expires_at: string;
   revoked_at: string | null;
   follow_along?: boolean;
+  include_photos?: boolean;
+  created_by?: string;
 };
 type DbError = { message?: string; code?: string } | null;
 type Query = ReturnType<typeof supabase.from>;
@@ -35,12 +38,16 @@ function isMissingTable(error: DbError): boolean {
  * one off.
  */
 export function ShareLinkCard({ tripId }: { tripId: string }) {
+  const { user } = useAuth();
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [ready, setReady] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   // "Follow along" arrives with its own migration; until then, plan only.
   const [canFollow, setCanFollow] = useState(true);
   const [follow, setFollow] = useState(true);
+  // Photos on a link arrive with their own migration too; off unless chosen.
+  const [canPhotos, setCanPhotos] = useState(true);
+  const [photos, setPhotos] = useState(false);
   // Only the latest read for the trip on screen is shown: an Undo tapped
   // after switching trips, or a read overtaken by a newer one, is dropped.
   const shownTrip = useRef(tripId);
@@ -61,10 +68,18 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         data: LinkRow[] | null;
         error: DbError;
       }>;
-    let { data, error } = await ask("id, token, expires_at, revoked_at, follow_along");
+    let { data, error } = await ask(
+      "id, token, expires_at, revoked_at, follow_along, include_photos, created_by",
+    );
     if (stale()) return;
+    if (isMissingColumn(error, ["include_photos"])) {
+      setCanPhotos(false);
+      ({ data, error } = await ask("id, token, expires_at, revoked_at, follow_along"));
+      if (stale()) return;
+    }
     if (isMissingColumn(error, ["follow_along"])) {
       setCanFollow(false);
+      setCanPhotos(false);
       ({ data, error } = await ask("id, token, expires_at, revoked_at"));
       if (stale()) return;
     }
@@ -94,11 +109,12 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
     setBusy(true);
     try {
       const token = newShareToken();
-      const { error } = (await linksTable().insert(
-        canFollow && follow
-          ? { trip_id: tripId, token, follow_along: true }
-          : { trip_id: tripId, token },
-      )) as { error: unknown };
+      const { error } = (await linksTable().insert({
+        trip_id: tripId,
+        token,
+        ...(canFollow && follow ? { follow_along: true } : {}),
+        ...(canPhotos && photos ? { include_photos: true } : {}),
+      })) as { error: unknown };
       if (error) throw error;
       await load();
       await copy(token);
@@ -121,6 +137,26 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         description: on
           ? "The link now shows the stop you're at."
           : "The link no longer shows where you are.",
+      });
+    } catch {
+      toast.error("That didn't save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setShowPhotos = async (id: string, on: boolean) => {
+    setBusy(true);
+    try {
+      const { error } = (await linksTable().update({ include_photos: on }).eq("id", id)) as {
+        error: unknown;
+      };
+      if (error) throw error;
+      await load();
+      toast(on ? "Photos shown" : "Photos hidden", {
+        description: on
+          ? "Anyone with the link sees the trip's photos, except any you keep off links."
+          : "The link no longer shows photos.",
       });
     } catch {
       toast.error("That didn't save. Try again.");
@@ -178,6 +214,8 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         turn it off.
         {canFollow &&
           " Following along also shows the stop you tapped “I'm here” at and the ones you've left — never your location."}
+        {canPhotos &&
+          " Photos are off unless you choose them; a link shows only its maker's photos, and each can be kept off links."}
       </p>
       {links.map((link) => (
         <div
@@ -197,6 +235,21 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
             >
               {link.follow_along ? "Live" : "Plan only"}
             </span>
+          )}
+          {canPhotos && link.include_photos && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[12px] font-bold text-foreground">
+              Photos
+            </span>
+          )}
+          {canPhotos && link.created_by === user?.id && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void setShowPhotos(link.id, !link.include_photos)}
+              className="min-h-11 min-w-11 px-1 text-[13px] font-semibold text-foreground underline underline-offset-2 disabled:opacity-60"
+            >
+              {link.include_photos ? "Hide photos" : "Show photos"}
+            </button>
           )}
           {canFollow && (
             <button
@@ -235,6 +288,17 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
             className="size-4 accent-primary"
           />
           Let them follow along (shows the stop you're at)
+        </label>
+      )}
+      {canPhotos && (
+        <label className="flex min-h-11 items-center gap-2.5 text-[14px]">
+          <input
+            type="checkbox"
+            checked={photos}
+            onChange={(e) => setPhotos(e.target.checked)}
+            className="size-4 accent-primary"
+          />
+          Show my photos of the trip on it
         </label>
       )}
       <button
