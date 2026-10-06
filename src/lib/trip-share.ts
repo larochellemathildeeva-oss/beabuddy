@@ -125,6 +125,8 @@ export type SharedTrip = {
    * taken at, who took them, or their captions.
    */
   photos?: SharedPhoto[];
+  /** Whether the link's maker turned photos on, so a reader can tell "off" from "none yet". */
+  photosOn?: boolean;
 };
 
 /**

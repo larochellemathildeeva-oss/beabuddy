@@ -45,13 +45,15 @@ export async function readSharedTrip(
       return null;
     }
   };
-  return sharedTripView(
+  const view = sharedTripView(
     trip as Parameters<typeof sharedTripView>[0],
     rows,
     { following, now: Date.now() },
     zoneAt,
     photos,
   );
+  view.photosOn = link.include_photos === true;
+  return view;
 }
 
 type LinkRow = {
