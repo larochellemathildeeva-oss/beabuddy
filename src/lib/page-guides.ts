@@ -319,7 +319,7 @@ export const guides: Record<string, Guide> = {
       "Trip documents: bookings, confirmations and private files",
       "Choose Béa's personality and how much she suggests",
       "Change the theme and what Home shows (Appearance)",
-      "Import photos, open the calendar (Data & imports)",
+      "Import photos (Photos & memories), open the calendar (Data & imports)",
       "Privacy & legal, Help & FAQ, Feedback, and replay the tour under About Béa",
     ],
     steps: [
@@ -327,11 +327,6 @@ export const guides: Record<string, Guide> = {
         title: "Your account",
         body: "Your name, home city, and how many trips and places you've saved. Edit profile changes them; everything stays synced across your phone and laptop.",
         selector: "[data-guide='profile-account']",
-      },
-      {
-        title: "Settings",
-        body: "The gear at the top: your name and home city, the details Béa plans from.",
-        selector: "[data-guide='profile-settings']",
       },
       {
         title: "Travel preferences",
@@ -360,7 +355,7 @@ export const guides: Record<string, Guide> = {
       },
       {
         title: "Data & imports",
-        body: "Import photos, open the trip calendar, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
+        body: "Open the trip calendar, and see what is kept on this phone. Appearance, beside it, sets the theme and what Home shows.",
         selector: "[data-guide='offline-options']",
       },
       {
