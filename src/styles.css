@@ -3358,3 +3358,31 @@ html:not(.dark)
   min-height: 260px;
   padding-top: 56px;
 }
+
+.now-upcoming {
+  padding: 4px 2px;
+}
+.now-upcoming-title {
+  margin-bottom: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.now-upcoming ul {
+  list-style: none;
+}
+.now-upcoming li + li {
+  border-top: 1px solid var(--border);
+}
+.now-ask-bea {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}

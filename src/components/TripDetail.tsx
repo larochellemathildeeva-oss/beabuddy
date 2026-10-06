@@ -1663,51 +1663,31 @@ export function TripDetail({
           </div>,
           headerSlot,
         )}
-      {liveCompanion && companionDay && (
-        <section className="companion-hero companion-hero--top" aria-label="Live companion">
-          <img
-            src={/paris/i.test(companionPlace) ? `/art/paris-${themeName}.webp` : companionArt}
-            alt=""
-            className="art-dim companion-hero-art"
-          />
-          <div className="companion-hero-words">
-            <p className="companion-hero-kicker">Live companion</p>
-            <h2 className="font-display">
-              {companionDay.key === todayKey
-                ? `In ${companionPlace} today.`
-                : `${companionOrdinal ? `${companionOrdinal} in ` : "In "}${companionPlace}.`}
-            </h2>
-          </div>
-          {companionDateLine ? <p className="companion-hero-date">{companionDateLine}</p> : null}
-        </section>
-      )}
-      {!liveCompanion && (
-        <TripPageBanner
-          art={perspective === "overview" ? tripArt : companionArt}
-          title={trip.title}
-          city={trip.city}
-          country={trip.country}
-          cities={cityNames}
-          startDate={trip.start_date}
-          endDate={trip.end_date}
-          tentative={trip.dates_status === "tentative"}
-          companions={companionsLine}
-          photo={pickTripPhoto(photos, {
-            city: trip.city,
-            country: trip.country,
-            cities: cityNames,
-          })}
-          viewTransitionName={`trip-photo-${trip.id}`}
-          route={bannerRoute}
-          current={bannerCurrent}
-          done={bannerDone}
-          picture={tripPicture}
-          onPicture={setTripPicture}
-          short={perspective === "map"}
-          hero={perspective === "overview"}
-          tracker={perspective === "overview" ? undefined : bannerTracker}
-        />
-      )}
+      <TripPageBanner
+        art={perspective === "overview" ? tripArt : companionArt}
+        title={trip.title}
+        city={trip.city}
+        country={trip.country}
+        cities={cityNames}
+        startDate={trip.start_date}
+        endDate={trip.end_date}
+        tentative={trip.dates_status === "tentative"}
+        companions={companionsLine}
+        photo={pickTripPhoto(photos, {
+          city: trip.city,
+          country: trip.country,
+          cities: cityNames,
+        })}
+        viewTransitionName={`trip-photo-${trip.id}`}
+        route={bannerRoute}
+        current={bannerCurrent}
+        done={bannerDone}
+        picture={perspective === "companion" ? "photo" : tripPicture}
+        onPicture={setTripPicture}
+        short={perspective === "map"}
+        hero={perspective === "overview"}
+        tracker={perspective === "overview" ? undefined : bannerTracker}
+      />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
       {!liveCompanion && (
@@ -1755,6 +1735,7 @@ export function TripDetail({
         {/* Several cities: pick one and the days, the map and Now all follow
             it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
+          !liveCompanion &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) &&
@@ -1796,7 +1777,7 @@ export function TripDetail({
               )}
             </div>
           )}
-        {activePerspective.hint ? (
+        {activePerspective.hint && !liveCompanion ? (
           <p className="mb-3 px-0.5 text-[16px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
@@ -1878,7 +1859,7 @@ export function TripDetail({
           <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
-                {view.prefs.ribbon && companionState(nowStops).phase !== "at" && (
+                {view.prefs.ribbon && !liveCompanion && (
                   <DayRibbon
                     stops={nowStops}
                     dayLabel={companionOrdinal || undefined}

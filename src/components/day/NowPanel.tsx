@@ -203,7 +203,57 @@ export function NowPanel({
   const rowNext = phase === "at" ? next : phase === "not-started" ? (tail[0] ?? null) : null;
   const later = tail.filter((stop) => stop !== rowNext);
   const [showAllLater, setShowAllLater] = useState(false);
-  const laterShown = showAllLater ? later : later.slice(0, LATER_PREVIEW);
+  const upcoming = phase === "at" ? tail : later;
+  const upcomingShown = showAllLater ? upcoming : upcoming.slice(0, UPCOMING_PREVIEW);
+  const upcomingList =
+    upcoming.length > 0 ? (
+      <section aria-labelledby="now-later" className="now-upcoming">
+        <h2 id="now-later" className="now-upcoming-title">
+          Coming up · {upcoming.length} {upcoming.length === 1 ? "step" : "steps"}
+        </h2>
+        <ul>
+          {upcomingShown.map((stop) => {
+            const row = (
+              <>
+                <StopDisc number={dayStops.indexOf(stop) + 1} className="size-7 text-[13px]" />
+                <span className="w-12 shrink-0 text-[14px] font-semibold tabular-nums text-muted-foreground">
+                  {timeForRail(stop.time_label) || "–"}
+                </span>
+                <span className="min-w-0 flex-1 break-words text-[16px] font-semibold leading-snug">
+                  {stop.title}
+                </span>
+              </>
+            );
+            return (
+              <li key={stop.id}>
+                {onLook ? (
+                  <button
+                    type="button"
+                    onClick={() => onLook(stop.id)}
+                    className="flex min-h-11 w-full items-center gap-2.5 py-1.5 text-left"
+                  >
+                    {row}
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </button>
+                ) : (
+                  <div className="flex min-h-11 items-center gap-2.5 py-1.5">{row}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {upcoming.length > UPCOMING_PREVIEW && (
+          <button
+            type="button"
+            onClick={() => setShowAllLater((v) => !v)}
+            aria-expanded={showAllLater}
+            className="min-h-11 text-[15px] font-semibold text-primary underline underline-offset-2"
+          >
+            {showAllLater ? "Show fewer" : `Show all ${upcoming.length}`}
+          </button>
+        )}
+      </section>
+    ) : null;
   const words = measured(leg) ? legWords(leg) : null;
   const journeyLine = words
     ? `${words.time} ${words.how} · ${words.distance}`
@@ -370,16 +420,10 @@ export function NowPanel({
                 <StayLine stop={current} now={now} />
               </div>
             </div>
+            {leavePanel ? <div className="mt-3">{leavePanel}</div> : null}
             <BookingAtHandCard stop={current} docs={bookingDocs} />
           </section>
-          {rowNext && (
-            <StopCircles
-              stops={[rowNext, ...later.slice(0, 2)]}
-              nowMinutes={now ? placeClock(now, offset).minutes : null}
-              onLook={onLook}
-            />
-          )}
-          {leavePanel}
+          {upcomingList}
           <div className="now-tools" role="group" aria-label="This stop">
             <a
               href={directionsHref}
@@ -420,42 +464,6 @@ export function NowPanel({
             <section className="plain-card now-note p-3" aria-label="A note from Béa">
               <p className="now-note-title">A note from Béa</p>
               <BeaSays line={says} />
-            </section>
-          )}
-          {rowNext && (
-            <section className="plain-card p-4">
-              <NextRow
-                stop={rowNext}
-                kicker="Next stop"
-                meta={[timeForRail(rowNext.time_label), isBooked(rowNext) ? "Booked" : ""]
-                  .filter(Boolean)
-                  .join(" · ")}
-                onLook={onLook}
-              >
-                {journeyNotes}
-                <PlaceFacts
-                  name={rowNext.title}
-                  lat={rowNext.lat}
-                  lon={rowNext.lon}
-                  day={rowNext.day_date}
-                  time={rowNext.time_label}
-                  auto
-                />
-                <BookingAtHandCard stop={rowNext} docs={bookingDocs} />
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      void act(() => onProgress(arrivalWrites(dayStops, rowNext.id, new Date())))
-                    }
-                    className={softBtn}
-                  >
-                    I'm here
-                  </button>
-                  {navigateTo(rowNext)}
-                </div>
-              </NextRow>
             </section>
           )}
         </>
@@ -547,97 +555,13 @@ export function NowPanel({
 
       {progress}
 
-      {later.length > 0 && (
-        <section aria-labelledby="now-later" className="plain-card p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="now-later" className="font-display text-[22px] leading-tight">
-              Later today
-            </h2>
-            <p className="text-[14px] text-muted-foreground">
-              {later.length} more {later.length === 1 ? "stop" : "stops"}
-            </p>
-          </div>
-          <p className="mt-1 text-[16px] leading-snug">
-            {later.map((stop) => stop.title).join(", ")}.
-            {later.some(isBooked) ? ` ${later.filter(isBooked).length} booked.` : ""}
-            {timeForRail(later[later.length - 1]?.time_label)
-              ? ` Last one at ${timeForRail(later[later.length - 1]!.time_label)}.`
-              : ""}
-          </p>
-          <ul className="mt-2 divide-y divide-border">
-            {laterShown.map((stop) => {
-              const number = dayStops.indexOf(stop) + 1;
-              const row = (
-                <>
-                  <StopDisc number={number} className="size-8 text-[14px]" />
-                  <span className="w-14 shrink-0 text-[14px] font-semibold tabular-nums text-primary">
-                    {timeForRail(stop.time_label) || "–"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block break-words font-display text-[17px] leading-snug">
-                      {stop.title}
-                    </span>
-                    {stop.planned_stay_minutes ? (
-                      <span className="block text-[14px] text-muted-foreground">
-                        {stayLabel(stop.planned_stay_minutes)}
-                      </span>
-                    ) : null}
-                  </span>
-                </>
-              );
-              return (
-                <li key={stop.id}>
-                  {onLook ? (
-                    <button
-                      type="button"
-                      onClick={() => onLook(stop.id)}
-                      className="flex min-h-11 w-full items-center gap-2.5 py-2 text-left"
-                    >
-                      {row}
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2.5 py-2">{row}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {later.length > LATER_PREVIEW && (
-            <button
-              type="button"
-              onClick={() => setShowAllLater((v) => !v)}
-              aria-expanded={showAllLater}
-              className="mt-1 min-h-11 text-[16px] font-semibold text-primary underline underline-offset-2"
-            >
-              {showAllLater ? "Show fewer" : `Show all ${later.length}`}
-            </button>
-          )}
-        </section>
-      )}
+      {phase !== "at" && upcomingList}
 
-      {onEase && easeTarget && (
-        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-4">
-          <h2 id="now-ease" className="font-display text-[22px] leading-tight">
-            Make {easeLabel} easier
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {EASE_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => onEase(preset, easeTarget, easeLabel)}
-                className="min-h-11 rounded-full border border-border bg-card px-3 text-[16px] font-medium"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[16px] leading-snug text-muted-foreground">
-            Béa rearranges that day only, keeps every booking where it is, and shows you the change
-            before anything is saved.
-          </p>
-        </section>
+      {onRework && easeTarget && (
+        <button type="button" onClick={() => onRework(easeTarget, "")} className="now-ask-bea">
+          <img src="/bea/bea-ball-static.png" alt="" className="size-24 object-contain" />
+          <span>Ask Béa to make changes</span>
+        </button>
       )}
 
       {error && (
@@ -655,48 +579,6 @@ const softBtn =
   "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-[16px] font-semibold shadow-xs transition-all active:scale-95 disabled:opacity-60";
 const linkBtn =
   "inline-flex min-h-11 items-center px-1 text-[16px] font-medium text-muted-foreground underline underline-offset-2 disabled:opacity-60";
-
-function StopCircles({
-  stops,
-  nowMinutes,
-  onLook,
-}: {
-  stops: ItineraryRow[];
-  nowMinutes: number | null;
-  onLook?: ((id: string) => void) | undefined;
-}) {
-  return (
-    <ol className="now-circles" aria-label="Coming up">
-      {stops.map((stop, i) => {
-        const at = clockMinutes(stop.time_label);
-        const sub =
-          i === 0
-            ? "Next"
-            : nowMinutes != null && at != null && at > nowMinutes
-              ? `In ${stayLabel(at - nowMinutes)}`
-              : timeForRail(stop.time_label) || "Later";
-        const body = (
-          <>
-            <StopArt item={stop} className="size-14 rounded-full" />
-            <span className="now-circle-name">{stop.title}</span>
-            <span className="now-circle-sub">{sub}</span>
-          </>
-        );
-        return (
-          <li key={stop.id}>
-            {onLook ? (
-              <button type="button" onClick={() => onLook(stop.id)} className="now-circle">
-                {body}
-              </button>
-            ) : (
-              <div className="now-circle">{body}</div>
-            )}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
 
 function StopKicker({ live, label, aside }: { live?: boolean; label: string; aside?: string }) {
   return (
@@ -1113,4 +995,4 @@ function useMinuteClock(): Date | null {
 }
 
 /** The rest of a long day stays one tap away rather than filling the screen. */
-const LATER_PREVIEW = 3;
+const UPCOMING_PREVIEW = 8;
