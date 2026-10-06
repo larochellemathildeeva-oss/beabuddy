@@ -48,6 +48,7 @@ function fakeDocument(stored: Record<string, string>) {
 const ALL_ON: Accessibility = {
   textSize: "larger",
   font: "easy",
+  headline: "instrument",
   reduceMotion: true,
   moreContrast: true,
   boldText: true,
@@ -78,7 +79,7 @@ test("apply sets the scale and flags, and the default clears them", () => {
   assert.equal(root.props.get("--text-scale"), String(TEXT_SCALE.larger));
   assert.deepEqual(
     { ...root.dataset },
-    { font: "easy", motion: "reduce", contrast: "more", bold: "on" },
+    { font: "easy", headline: "instrument", motion: "reduce", contrast: "more", bold: "on" },
   );
   assert.equal(links[0]?.href, FONT_HREF.easy);
   applyAccessibility(DEFAULT_ACCESSIBILITY, root);

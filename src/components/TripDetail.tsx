@@ -44,7 +44,6 @@ import {
   type OptimizePreset,
   type PlannerTab,
 } from "@/components/ItineraryImport";
-import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { legDescribes, type KnownLeg } from "@/lib/directions-reuse";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
@@ -143,7 +142,6 @@ import { lookupCoords } from "@/lib/places.functions";
 import { planTowns, tripPlaceFromTowns } from "@/lib/plan-cities";
 import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
-import { DayRibbon } from "@/components/day/DayRibbon";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { NowPanel } from "@/components/day/NowPanel";
@@ -239,18 +237,6 @@ export function TripDetail({
   const [plannerAsk, setPlannerAsk] = useState("");
   /** A one-tap "make this day easier" request, run in Optimize on that day. */
   const [optimizePreset, setOptimizePreset] = useState<OptimizePreset | null>(null);
-  const easeDay = (preset: EasePreset, day: string, dayLabel: string) => {
-    setOptimizePreset((cur) => ({
-      goals: preset.goals,
-      note: preset.note,
-      label: preset.label,
-      day,
-      dayLabel,
-      n: (cur?.n ?? 0) + 1,
-    }));
-    setPlannerTab("optimize");
-    setPlannerOpen(true);
-  };
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -1510,6 +1496,7 @@ export function TripDetail({
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   useEffect(() => setHeaderSlot(document.getElementById("app-header-slot")), []);
 
+  const liveCompanion = perspective === "companion" && nowStops.length > 0 && Boolean(companionDay);
   const showDayTracker = perspective === "overview" || !companionDay;
   const dayTracker = (
     <section aria-label="Your trip progress" className="text-white">
@@ -1535,16 +1522,10 @@ export function TripDetail({
                   setCityChoice("");
                   setPerspective("companion");
                 }}
-                className="relative flex min-h-11 w-full flex-col items-center gap-0.5 px-2 py-1.5 text-[14px]"
+                className="relative flex min-h-11 w-full items-center justify-center gap-2 px-2 py-1 text-[14px]"
               >
-                {i > 0 && (
-                  <span
-                    aria-hidden
-                    className="absolute right-1/2 top-6 w-[calc(100%+0.5rem)] border-t-2 border-dashed border-white/50"
-                  />
-                )}
                 <span
-                  className={`relative grid size-8 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
+                  className={`relative grid size-7 shrink-0 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
                 >
                   {total > 0 && reached === total ? (
                     <Check className="size-4" aria-hidden />
@@ -1552,10 +1533,12 @@ export function TripDetail({
                     i + 1
                   )}
                 </span>
-                <span className="font-semibold">
-                  {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                <span className="flex min-w-0 flex-col text-left leading-tight">
+                  <span className="truncate font-semibold">
+                    {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
+                  </span>
+                  <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
                 </span>
-                <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
               </button>
             </li>
           );
@@ -1675,29 +1658,37 @@ export function TripDetail({
         endDate={trip.end_date}
         tentative={trip.dates_status === "tentative"}
         companions={companionsLine}
-        photo={pickTripPhoto(photos, { city: trip.city, country: trip.country, cities: cityNames })}
+        photo={pickTripPhoto(photos, {
+          city: trip.city,
+          country: trip.country,
+          cities: cityNames,
+        })}
         viewTransitionName={`trip-photo-${trip.id}`}
         route={bannerRoute}
         current={bannerCurrent}
         done={bannerDone}
-        picture={tripPicture}
+        picture={perspective === "companion" ? "photo" : tripPicture}
         onPicture={setTripPicture}
+        switchable={perspective !== "overview" && perspective !== "companion"}
         short={perspective === "map"}
-        tracker={bannerTracker}
+        hero={perspective === "overview"}
+        tracker={perspective === "overview" ? undefined : bannerTracker}
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
-      <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
-        <p>{tripNote}</p>
-        <span className="shrink-0">
-          {[
-            stopItems.length ? `${stopItems.length} entries` : "",
-            cities.stops.length ? `${cities.stops.length} stops` : "",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </span>
-      </div>
+      {!liveCompanion && (
+        <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2.5 text-[13px] text-muted-foreground">
+          <p>{tripNote}</p>
+          <span className="shrink-0">
+            {[
+              stopItems.length ? `${stopItems.length} entries` : "",
+              cities.stops.length ? `${cities.stops.length} stops` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </div>
+      )}
 
       <TripViews position={barPosition} value={perspective} onChange={setPerspective} />
       <div className="trip-content section-stagger px-3 pb-4 pt-3">
@@ -1730,6 +1721,7 @@ export function TripDetail({
         {/* Several cities: pick one and the days, the map and Now all follow
             it. One slim line with the day strip beside it; on the map, alone. */}
         {stopItems.length > 0 &&
+          !liveCompanion &&
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) &&
@@ -1771,7 +1763,7 @@ export function TripDetail({
               )}
             </div>
           )}
-        {activePerspective.hint ? (
+        {activePerspective.hint && !liveCompanion ? (
           <p className="mb-3 px-0.5 text-[16px] text-muted-foreground">{activePerspective.hint}</p>
         ) : null}
 
@@ -1798,6 +1790,7 @@ export function TripDetail({
           )}
         {perspective === "overview" && (
           <TripOverview
+            travellers={members.map((m) => m.display_name || "Traveller")}
             tripId={trip.id}
             items={stopItems}
             cities={cities.stops.map((stop) => ({ city: stop.city, country: stop.country }))}
@@ -1852,14 +1845,9 @@ export function TripDetail({
           <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
-                {view.prefs.ribbon && (
-                  <DayRibbon
-                    stops={nowStops}
-                    dayLabel={companionOrdinal || undefined}
-                    selectedId={peekStop?.id ?? null}
-                    onSelect={setPeekId}
-                  />
-                )}
+                <p className="now-day-line">
+                  {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
+                </p>
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
@@ -1874,7 +1862,6 @@ export function TripDetail({
                       (group) => group.key !== "" && companionDay && group.key > companionDay.key,
                     )?.key ?? null
                   }
-                  onEase={easeDay}
                   onRework={(day, ask) => {
                     setDayEditStart({ day, ask });
                     setDayEditOpen(true);

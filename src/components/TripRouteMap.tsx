@@ -85,7 +85,7 @@ function ReliefTiles({
           />
           <feFlood style={{ floodColor: "var(--map-water)" }} result="water" />
           <feComposite in="water" in2="sea" operator="in" result="wet" />
-          <feColorMatrix in="SourceGraphic" type="saturate" values="1.6" result="rich" />
+          <feColorMatrix in="SourceGraphic" type="saturate" values="1.9" result="rich" />
           <feComponentTransfer in="rich" result="land">
             <feFuncR type="linear" slope="1.18" intercept="-0.1" />
             <feFuncG type="linear" slope="1.18" intercept="-0.1" />
@@ -304,6 +304,8 @@ function StopPill({
   tone,
   clip,
   shadow,
+  h = PILL_H,
+  photoSize = PHOTO,
 }: {
   stop: RouteStop;
   x: number;
@@ -312,14 +314,16 @@ function StopPill({
   tone: number;
   clip: string;
   shadow: string;
+  h?: number;
+  photoSize?: number;
 }) {
   const town = useTownPicture(false, stop.city, stop.country);
   // A pill is too small to carry a photo's author and licence, so it shows
   // only photos credited once for all (Pexels), else Béa's painting.
   const photo = town.photo && !creditedOnPhoto(town.photo) ? town.photo : null;
   const art = bannerArtUrl(bannerSceneFor([stop.city, stop.country], stop.city));
-  const cx = x + 4 + PHOTO / 2;
-  const cy = y + PILL_H / 2;
+  const cx = x + 4 + photoSize / 2;
+  const cy = y + h / 2;
   const days = stayLabel(stop.days);
   return (
     <g>
@@ -327,32 +331,53 @@ function StopPill({
         x={x}
         y={y}
         width={w}
-        height={PILL_H}
-        rx={PILL_H / 2}
+        height={h}
+        rx={h / 2}
         className={`route-pill route-pill-${tone}`}
         filter={`url(#${shadow})`}
       />
       <image
         href={photo?.url ?? art}
-        x={cx - PHOTO / 2}
-        y={cy - PHOTO / 2}
-        width={PHOTO}
-        height={PHOTO}
+        x={cx - photoSize / 2}
+        y={cy - photoSize / 2}
+        width={photoSize}
+        height={photoSize}
         preserveAspectRatio="xMidYMid slice"
         clipPath={`url(#${clip})`}
         onError={photo ? town.onError : undefined}
       />
-      <circle cx={cx} cy={cy} r={PHOTO / 2} className="route-photo-ring" />
-      <text x={x + PHOTO + 16} y={days ? cy - 3 : cy + 5} className="route-city">
+      <circle cx={cx} cy={cy} r={photoSize / 2} className="route-photo-ring" />
+      <text x={x + photoSize + 16} y={days ? cy - 3 : cy + 5} className="route-city">
         {pillLabel(stop.city)}
       </text>
       {days ? (
-        <text x={x + PHOTO + 16} y={cy + 14} className="route-days">
+        <text x={x + photoSize + 16} y={cy + 14} className="route-days">
           {days}
         </text>
       ) : null}
     </g>
   );
+}
+
+/** Keeps pills from sitting on one another: one that would overlap drops below the last. */
+function spreadPills<T extends { x: number; y: number; w: number }>(
+  pills: T[],
+  min: number,
+  max: number,
+): T[] {
+  const placed: T[] = [];
+  for (const p of [...pills].sort((a, b) => a.y - b.y)) {
+    let y = Math.max(min - 20, p.y);
+    for (let guard = 0; guard < 12; guard++) {
+      const hit = placed.find(
+        (q) => Math.abs(q.y - y) < 44 && p.x < q.x + q.w + 4 && q.x < p.x + p.w + 4,
+      );
+      if (!hit) break;
+      y = hit.y + 44;
+    }
+    placed.push({ ...p, y: Math.min(y, Math.max(min, max)) });
+  }
+  return placed;
 }
 
 /** A dotted arc rising from the first city toward the top of the map, and where its plane sits. */
@@ -394,10 +419,16 @@ export function TripBannerMap({
   top,
   bottom,
   compact = false,
+  pills = false,
+  over = false,
 }: {
   stops: RouteStop[];
   label: string;
   height: number;
+  /** Each city as a pill with its picture (Home), instead of a bare name. */
+  pills?: boolean;
+  /** Drawn over a picture (the trip page's hero): no terrain of its own. */
+  over?: boolean;
   /** A small picture (a trip's row on Trips): smaller dots and names. */
   compact?: boolean;
   /** The band the cities are drawn in: below the words, above the foot. */
@@ -479,15 +510,22 @@ export function TripBannerMap({
       aria-label={label}
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="xMidYMid slice"
-      className={`route-map banner-map absolute inset-0 size-full${compact ? " banner-map-compact" : ""}`}
+      className={`route-map banner-map absolute inset-0 size-full${compact ? " banner-map-compact" : ""}${over ? " banner-map-over" : ""}`}
     >
       <defs>
         <filter id={`${id}-glow`} x="-20%" y="-20%" width="140%" height="140%">
           <feGaussianBlur stdDeviation="3" />
         </filter>
+        <filter id={`${id}-bpill`} x="-20%" y="-30%" width="140%" height="170%">
+          <feDropShadow dx="0" dy="3" stdDeviation="5" className="pill-shadow" />
+        </filter>
       </defs>
-      <ReliefTiles width={width} height={height} tiles={tiles} relief={relief} />
-      <rect width={width} height={height} className="map-wash" />
+      {over ? null : (
+        <>
+          <ReliefTiles width={width} height={height} tiles={tiles} relief={relief} />
+          <rect width={width} height={height} className="map-wash" />
+        </>
+      )}
 
       {dots.length > 1 ? (
         <>
@@ -515,7 +553,40 @@ export function TripBannerMap({
           />
         ),
       )}
-      {labels.map((l) => (
+      {pills
+        ? spreadPills(
+            dots.map((d, i) => {
+              const w = Math.min(190, Math.max(104, 28 + pillLabel(stops[i]!.city).length * 8.6));
+              const onRight = d.x + 14 + w < width - 6;
+              return {
+                i,
+                w,
+                x: onRight ? d.x + 14 : Math.max(6, d.x - 14 - w),
+                y: d.y - 20,
+              };
+            }),
+            top,
+            height - 70,
+          ).map((p) => (
+            <g key={p.i}>
+              <clipPath id={`${id}-bp-${p.i}`}>
+                <circle cx={p.x + 4 + 17} cy={p.y + 20} r={17} />
+              </clipPath>
+              <StopPill
+                stop={stops[p.i]!}
+                x={p.x}
+                y={p.y}
+                w={p.w}
+                h={40}
+                photoSize={34}
+                tone={p.i % 3}
+                clip={`${id}-bp-${p.i}`}
+                shadow={`${id}-bpill`}
+              />
+            </g>
+          ))
+        : null}
+      {(pills ? [] : labels).map((l) => (
         <text
           key={l.index}
           x={l.x}

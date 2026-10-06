@@ -3,10 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { Bed, ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
 import { bookingAtHand, isBooked } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
-import { EASE_PRESETS, type EasePreset } from "@/lib/day-ease";
 import { parseLocalDate } from "@/lib/trip-dates";
-import { useBeaSays } from "@/components/day/bea-says";
-import { BeaSays, KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
+import { KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -68,7 +66,6 @@ export function NowPanel({
   bookingDocs = [],
   reminderItems = [],
   nextDay = null,
-  onEase,
   onRework,
   onProgress,
   progress,
@@ -95,8 +92,6 @@ export function NowPanel({
   reminderItems?: readonly (ReminderItem & ArrivalStop & { position: number })[];
   /** The trip's next day with stops after this one, for "Make tomorrow easier". */
   nextDay?: string | null;
-  /** Run one of Optimize's one-tap requests on a day. */
-  onEase?: ((preset: EasePreset, day: string, dayLabel: string) => void) | undefined;
   /** Open "Change a day" on a day, with words already typed. */
   onRework?: ((day: string, ask: string) => void) | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
@@ -195,7 +190,6 @@ export function NowPanel({
       nextTitle={next.title}
     />
   ) : null;
-  const says = useBeaSays(current && phase === "at" ? current : null, next, leave);
 
   const focus = phase === "at" ? current : phase === "done" ? null : next;
   const tail = focus
@@ -205,7 +199,57 @@ export function NowPanel({
   const rowNext = phase === "at" ? next : phase === "not-started" ? (tail[0] ?? null) : null;
   const later = tail.filter((stop) => stop !== rowNext);
   const [showAllLater, setShowAllLater] = useState(false);
-  const laterShown = showAllLater ? later : later.slice(0, LATER_PREVIEW);
+  const upcoming = phase === "at" ? tail : later;
+  const upcomingShown = showAllLater ? upcoming : upcoming.slice(0, UPCOMING_PREVIEW);
+  const upcomingList =
+    upcoming.length > 0 ? (
+      <section aria-labelledby="now-later" className="now-upcoming">
+        <h2 id="now-later" className="now-upcoming-title">
+          Coming up · {upcoming.length} {upcoming.length === 1 ? "step" : "steps"}
+        </h2>
+        <ul>
+          {upcomingShown.map((stop) => {
+            const row = (
+              <>
+                <StopDisc number={dayStops.indexOf(stop) + 1} className="size-7 text-[13px]" />
+                <span className="w-12 shrink-0 text-[14px] font-semibold tabular-nums text-muted-foreground">
+                  {timeForRail(stop.time_label) || "–"}
+                </span>
+                <span className="min-w-0 flex-1 break-words text-[16px] font-semibold leading-snug">
+                  {stop.title}
+                </span>
+              </>
+            );
+            return (
+              <li key={stop.id}>
+                {onLook ? (
+                  <button
+                    type="button"
+                    onClick={() => onLook(stop.id)}
+                    className="flex min-h-11 w-full items-center gap-2.5 py-1.5 text-left"
+                  >
+                    {row}
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  </button>
+                ) : (
+                  <div className="flex min-h-11 items-center gap-2.5 py-1.5">{row}</div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {upcoming.length > UPCOMING_PREVIEW && (
+          <button
+            type="button"
+            onClick={() => setShowAllLater((v) => !v)}
+            aria-expanded={showAllLater}
+            className="min-h-11 text-[15px] font-semibold text-primary underline underline-offset-2"
+          >
+            {showAllLater ? "Show fewer" : `Show all ${upcoming.length}`}
+          </button>
+        )}
+      </section>
+    ) : null;
   const words = measured(leg) ? legWords(leg) : null;
   const journeyLine = words
     ? `${words.time} ${words.how} · ${words.distance}`
@@ -338,98 +382,82 @@ export function NowPanel({
       )}
 
       {phase === "at" && current && (
-        <section className="plain-card space-y-3 p-4" aria-labelledby="now-here">
-          <StopKicker
-            live
-            label="You are here"
-            aside={[
-              timeForRail(current.time_label),
-              current.planned_stay_minutes ? stayLabel(current.planned_stay_minutes) : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          />
-          {leavePanel}
-          <div className="flex items-start gap-3">
-            <StopArt item={current} className="size-16 rounded-2xl" />
-            <div className="min-w-0 flex-1">
-              <h2 id="now-here" className="break-words font-display text-[28px] leading-[1.1]">
-                {current.title}
-              </h2>
-              {current.address?.trim() && (
-                <p className="mt-1.5 flex items-start gap-1 text-[14px] text-muted-foreground">
-                  <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">{current.address}</span>
-                </p>
-              )}
-              {current.planned_stay_minutes ? (
-                <p className="mt-1 text-[14px] text-muted-foreground">
-                  Planned stay {stayLabel(current.planned_stay_minutes)}
-                </p>
-              ) : null}
-              <StayLine stop={current} now={now} />
-            </div>
-          </div>
-          <BookingAtHandCard stop={current} docs={bookingDocs} />
-          {says && <BeaSays line={says} />}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-              className={primaryBtn}
-            >
-              Leaving
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
-              className={linkBtn}
-            >
-              Not here yet
-            </button>
-            {photosFor && (
-              <span className="flex gap-1.5">
-                <QuickPhoto photos={photosFor(current)} />
-              </span>
-            )}
-          </div>
-          {rowNext && (
-            <NextRow
-              stop={rowNext}
-              kicker="Next stop"
-              meta={[timeForRail(rowNext.time_label), isBooked(rowNext) ? "Booked" : ""]
-                .filter(Boolean)
-                .join(" · ")}
-              onLook={onLook}
-            >
-              {journeyNotes}
-              <PlaceFacts
-                name={rowNext.title}
-                lat={rowNext.lat}
-                lon={rowNext.lon}
-                day={rowNext.day_date}
-                time={rowNext.time_label}
-                auto
-              />
-              <BookingAtHandCard stop={rowNext} docs={bookingDocs} />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() =>
-                    void act(() => onProgress(arrivalWrites(dayStops, rowNext.id, new Date())))
-                  }
-                  className={softBtn}
+        <>
+          <section
+            className="plain-card trip-focus-card now-current p-3"
+            aria-labelledby="now-here"
+          >
+            <div className="flex items-stretch gap-3">
+              <StopArt item={current} className="h-[150px] w-[112px] rounded-[18px]" />
+              <div className="min-w-0 flex-1 py-1">
+                <p className="now-current-label">Current stop</p>
+                <h2
+                  id="now-here"
+                  className="mt-1 flex items-start gap-2 break-words font-display text-[24px] leading-[1.1]"
                 >
-                  I'm here
-                </button>
-                {navigateTo(rowNext)}
+                  <span className="now-live-dot" aria-hidden />
+                  <span className="min-w-0">{current.title}</span>
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {current.planned_stay_minutes ? (
+                    <span className="now-chip">
+                      <Clock className="size-3.5" aria-hidden />
+                      {stayLabel(current.planned_stay_minutes)}
+                    </span>
+                  ) : null}
+                  <span className="now-chip">Here now</span>
+                </div>
+                {current.address?.trim() && (
+                  <p className="mt-2 flex items-start gap-1 text-[13px] leading-snug text-muted-foreground">
+                    <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <span className="min-w-0">{current.address}</span>
+                  </p>
+                )}
+                <StayLine stop={current} now={now} />
               </div>
-            </NextRow>
-          )}
-        </section>
+            </div>
+            {leavePanel ? <div className="mt-3">{leavePanel}</div> : null}
+            <div className="now-actions" role="group" aria-label="This stop">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
+                className={primaryBtn}
+              >
+                Leaving
+              </button>
+              <a
+                href={
+                  next
+                    ? directionsHref
+                    : mapsPlaceUrl(
+                        current.title,
+                        { lat: current.lat, lon: current.lon },
+                        current.address,
+                      )
+                }
+                target="_blank"
+                rel="noreferrer"
+                className={softBtn}
+              >
+                <MapPin className="size-4" aria-hidden />
+                Directions
+                <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
+              </a>
+              {photosFor && <QuickPhoto photos={photosFor(current)} />}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
+                className={linkBtn}
+              >
+                Not here yet
+              </button>
+            </div>
+            <BookingAtHandCard stop={current} docs={bookingDocs} />
+          </section>
+          {upcomingList}
+        </>
       )}
 
       {phase === "between" && previous && (
@@ -451,14 +479,14 @@ export function NowPanel({
       )}
 
       {focus && phase !== "at" && phase !== "done" && (
-        <section className="plain-card space-y-3 p-4" aria-labelledby="now-next">
+        <section className="plain-card trip-focus-card space-y-3 p-4" aria-labelledby="now-next">
           <StopKicker
             live={phase === "between"}
             label={phase === "between" ? "On the way to" : "First up"}
             aside={timeForRail(focus.time_label)}
           />
           <div className="flex items-start gap-3">
-            <StopArt item={focus} className="size-16 rounded-2xl" />
+            <StopArt item={focus} className="h-[104px] w-[78px] rounded-2xl" />
             <div className="min-w-0 flex-1">
               <h2 id="now-next" className="break-words font-display text-[28px] leading-[1.1]">
                 {focus.title}
@@ -518,97 +546,13 @@ export function NowPanel({
 
       {progress}
 
-      {later.length > 0 && (
-        <section aria-labelledby="now-later" className="plain-card p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id="now-later" className="font-display text-[22px] leading-tight">
-              Later today
-            </h2>
-            <p className="text-[14px] text-muted-foreground">
-              {later.length} more {later.length === 1 ? "stop" : "stops"}
-            </p>
-          </div>
-          <p className="mt-1 text-[16px] leading-snug">
-            {later.map((stop) => stop.title).join(", ")}.
-            {later.some(isBooked) ? ` ${later.filter(isBooked).length} booked.` : ""}
-            {timeForRail(later[later.length - 1]?.time_label)
-              ? ` Last one at ${timeForRail(later[later.length - 1]!.time_label)}.`
-              : ""}
-          </p>
-          <ul className="mt-2 divide-y divide-border">
-            {laterShown.map((stop) => {
-              const number = dayStops.indexOf(stop) + 1;
-              const row = (
-                <>
-                  <StopDisc number={number} className="size-8 text-[14px]" />
-                  <span className="w-14 shrink-0 text-[14px] font-semibold tabular-nums text-primary">
-                    {timeForRail(stop.time_label) || "–"}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block break-words font-display text-[17px] leading-snug">
-                      {stop.title}
-                    </span>
-                    {stop.planned_stay_minutes ? (
-                      <span className="block text-[14px] text-muted-foreground">
-                        {stayLabel(stop.planned_stay_minutes)}
-                      </span>
-                    ) : null}
-                  </span>
-                </>
-              );
-              return (
-                <li key={stop.id}>
-                  {onLook ? (
-                    <button
-                      type="button"
-                      onClick={() => onLook(stop.id)}
-                      className="flex min-h-11 w-full items-center gap-2.5 py-2 text-left"
-                    >
-                      {row}
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2.5 py-2">{row}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          {later.length > LATER_PREVIEW && (
-            <button
-              type="button"
-              onClick={() => setShowAllLater((v) => !v)}
-              aria-expanded={showAllLater}
-              className="mt-1 min-h-11 text-[16px] font-semibold text-primary underline underline-offset-2"
-            >
-              {showAllLater ? "Show fewer" : `Show all ${later.length}`}
-            </button>
-          )}
-        </section>
-      )}
+      {phase !== "at" && upcomingList}
 
-      {onEase && easeTarget && (
-        <section aria-labelledby="now-ease" className="plain-card space-y-2 p-4">
-          <h2 id="now-ease" className="font-display text-[22px] leading-tight">
-            Make {easeLabel} easier
-          </h2>
-          <div className="flex flex-wrap gap-2">
-            {EASE_PRESETS.map((preset) => (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => onEase(preset, easeTarget, easeLabel)}
-                className="min-h-11 rounded-full border border-border bg-card px-3 text-[16px] font-medium"
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[16px] leading-snug text-muted-foreground">
-            Béa rearranges that day only, keeps every booking where it is, and shows you the change
-            before anything is saved.
-          </p>
-        </section>
+      {onRework && easeTarget && (
+        <button type="button" onClick={() => onRework(easeTarget, "")} className="now-ask-bea">
+          <img src="/bea/bea-ball-static.png" alt="" className="size-24 object-contain" />
+          <span>Ask Béa to make changes</span>
+        </button>
       )}
 
       {error && (
@@ -629,7 +573,7 @@ const linkBtn =
 
 function StopKicker({ live, label, aside }: { live?: boolean; label: string; aside?: string }) {
   return (
-    <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-primary">
+    <p className="flex items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
       {live ? (
         <span className="relative flex size-2.5" aria-hidden>
           <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary opacity-50 motion-reduce:animate-none" />
@@ -791,8 +735,10 @@ function LeavePanel({
       rel="noreferrer"
       role={urgent ? "status" : undefined}
       aria-label={`${label} ${big}${words ? `, ${words.time} ${words.how}` : ""} to ${nextTitle} — directions in maps`}
-      className={`flex min-h-11 items-center gap-3 rounded-2xl px-2.5 py-2 ${
-        urgent ? "bg-primary text-primary-foreground" : "bg-primary-soft"
+      className={`now-leave flex min-h-11 items-center gap-3 px-3 py-2 ${
+        urgent
+          ? "bg-primary text-primary-foreground"
+          : "border border-border bg-[color-mix(in_oklab,#f59ab8_16%,var(--card))]"
       }`}
     >
       {big ? (
@@ -806,11 +752,13 @@ function LeavePanel({
             <Clock className="size-7" />
           </span>
           <span className="leading-tight">
-            <span className={`block text-[13px] font-semibold ${urgent ? "" : "text-primary"}`}>
+            <span
+              className={`block text-[13px] font-semibold ${urgent ? "" : "text-muted-foreground"}`}
+            >
               {label}
             </span>
             <span
-              className={`block text-[28px] font-bold tabular-nums leading-none ${urgent ? "" : "text-primary"}`}
+              className={`block text-[28px] font-bold tabular-nums leading-none ${urgent ? "" : "text-foreground"}`}
             >
               {big}
             </span>
@@ -1038,4 +986,4 @@ function useMinuteClock(): Date | null {
 }
 
 /** The rest of a long day stays one tap away rather than filling the screen. */
-const LATER_PREVIEW = 3;
+const UPCOMING_PREVIEW = 8;

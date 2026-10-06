@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
 import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -44,7 +44,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { beaCheer, useBeaSettings } from "@/hooks/useBeaSettings";
 import { useTrips } from "@/hooks/useTrips";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
-import { Section } from "@/components/Section";
 import { groupCountLabel, groupRecosByType } from "@/lib/reco-groups";
 import { useRecommendations, type RecoRowDB } from "@/hooks/useRecommendations";
 import {
@@ -695,24 +694,31 @@ function RecommendationsPage() {
   // A saved place as a card: its name, its picture, a line, and the two things
   // to do with it next.
   const recCard = (r: RecoRowDB) => (
-    <article className="plain-card p-3">
-      <button
-        type="button"
-        onClick={() => openPlace(placeFromRow(r))}
-        className="flex min-h-11 w-full items-center gap-2 text-left"
-      >
-        <span
-          className={`size-2.5 shrink-0 rounded-full ${pinColorClass[(r.pin_type ?? "reco") as PinType]}`}
-          aria-hidden
-        />
-        <span className="text-[17px] font-semibold leading-tight">{r.name}</span>
-      </button>
-      <div className="mt-2.5 flex gap-3">
-        <PlaceArt
-          place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
-          className="size-[84px] shrink-0 rounded-xl"
-        />
+    <article className="recs-card">
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={() => openPlace(placeFromRow(r))}
+          aria-label={`Open ${r.name}`}
+          className="shrink-0"
+        >
+          <PlaceArt
+            place={{ name: r.name, category: r.category, lat: r.lat, lon: r.lon }}
+            className="size-[96px] rounded-2xl"
+          />
+        </button>
         <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => openPlace(placeFromRow(r))}
+            className="flex min-h-11 w-full items-center gap-2 text-left"
+          >
+            <span
+              className={`size-2.5 shrink-0 rounded-full ${pinColorClass[(r.pin_type ?? "reco") as PinType]}`}
+              aria-hidden
+            />
+            <span className="font-display text-[22px] leading-tight">{r.name}</span>
+          </button>
           <p className="text-[15px] font-semibold leading-snug">
             {[r.city, r.category].filter(Boolean).join(" · ") || "Saved place"}
           </p>
@@ -733,14 +739,14 @@ function RecommendationsPage() {
           href={recMapsUrl(r)}
           target="_blank"
           rel="noreferrer"
-          className="grid min-h-11 place-items-center rounded-full text-center bg-muted px-3 text-[14px] font-semibold"
+          className="recs-pill grid min-h-11 place-items-center text-center text-[14px] font-semibold"
         >
           Open in Maps ↗
         </a>
         <button
           type="button"
           onClick={() => setTripSheet(placeFromRow(r))}
-          className="min-h-11 rounded-full bg-muted px-3 text-[14px] font-semibold"
+          className="recs-pill min-h-11 text-[14px] font-semibold"
         >
           Add to a day
         </button>
@@ -903,7 +909,7 @@ function RecommendationsPage() {
           <section data-guide="reco-list" className="space-y-3">
             {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
             {shownGroups.map((group) => (
-              <Section
+              <RecsGroup
                 key={group.type}
                 title={pinLabel[group.type]}
                 hint={groupCountLabel(group.rows.length)}
@@ -913,7 +919,7 @@ function RecommendationsPage() {
                   {group.rows.map((v) => {
                     const row = vault.rows.find((r) => r.id === v.id);
                     return (
-                      <article key={v.id} className="plain-card p-3">
+                      <article key={v.id} className="recs-card">
                         <div className="flex items-start gap-3">
                           <button
                             type="button"
@@ -946,10 +952,10 @@ function RecommendationsPage() {
                               {v.source ? ` · ${v.source}` : ""}
                             </p>
                             {v.notes && (
-                              <p className="mt-1.5 text-[14.5px] leading-snug">{v.notes}</p>
+                              <p className="mt-1.5 text-[15px] leading-snug">{v.notes}</p>
                             )}
                             {v.tags.length > 0 && (
-                              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                              <p className="mt-1.5 text-[13px] text-muted-foreground">
                                 {v.tags.join(" · ")}
                               </p>
                             )}
@@ -961,7 +967,7 @@ function RecommendationsPage() {
                                   href={recMapsUrl(row)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="inline-block text-[12.5px] font-semibold text-primary underline"
+                                  className="inline-block text-[13px] font-semibold text-primary underline"
                                 >
                                   Open in Maps ↗
                                 </a>
@@ -975,15 +981,15 @@ function RecommendationsPage() {
                             )}
                           </div>
                           <div className="shrink-0 text-right">
-                            <span className="rounded-full border border-border px-2 py-1 text-[11.5px] uppercase tracking-wider text-muted-foreground">
+                            <span className="rounded-full border border-border px-2 py-1 text-[13px] uppercase tracking-wider text-muted-foreground">
                               {v.category}
                             </span>
-                            <p className="mt-1.5 text-[11.5px] text-muted-foreground">{v.year}</p>
+                            <p className="mt-1.5 text-[13px] text-muted-foreground">{v.year}</p>
                             {v.removable && (
                               <button
                                 type="button"
                                 onClick={() => removeRow(v.id, v.name)}
-                                className="mt-1.5 text-[11.5px] text-muted-foreground underline"
+                                className="mt-1.5 text-[13px] text-muted-foreground underline"
                               >
                                 Remove
                               </button>
@@ -994,16 +1000,16 @@ function RecommendationsPage() {
                     );
                   })}
                 </div>
-              </Section>
+              </RecsGroup>
             ))}
             {views.length === 0 && !vault.loading && <EmptyVault />}
             {views.length > 0 && filtered.length === 0 && (
-              <p className="py-8 text-center text-[14.5px] text-muted-foreground">
+              <p className="py-8 text-center text-[15px] text-muted-foreground">
                 Nothing saved matches that yet.
               </p>
             )}
             {views.length > 0 && filtered.length > 0 && shownGroups.length === 0 && (
-              <p className="py-8 text-center text-[14.5px] text-muted-foreground">
+              <p className="py-8 text-center text-[15px] text-muted-foreground">
                 Nothing in this list yet.
               </p>
             )}
@@ -1101,9 +1107,11 @@ function RecommendationsPage() {
                       field?.focus();
                     }
                   }}
-                  className={`${bg} flex min-h-[84px] flex-col items-start justify-center gap-0.5 rounded-2xl border border-border px-3 py-2 text-left`}
+                  className={`${bg} recs-act flex min-h-[92px] flex-col items-start justify-center gap-0.5 rounded-[20px] border border-border px-3 py-2 text-left`}
                 >
-                  <Glyph className={`size-5 shrink-0 ${ink}`} aria-hidden />
+                  <span className="recs-act-ico mb-1 grid size-9 place-items-center rounded-full">
+                    <Glyph className={`size-5 shrink-0 ${ink}`} aria-hidden />
+                  </span>
                   <span className="whitespace-nowrap text-[15px] font-semibold leading-tight">
                     {label}
                   </span>
@@ -1123,7 +1131,7 @@ function RecommendationsPage() {
               />
             </div>
             {mode === "here" && busy === "here" && (
-              <p className="text-[14.5px] text-muted-foreground">Finding where you are…</p>
+              <p className="text-[15px] text-muted-foreground">Finding where you are…</p>
             )}
 
             {mode === "list" && (
@@ -1153,7 +1161,7 @@ function RecommendationsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="label-caps">Check the details</p>
-                    <p className="text-[12px] text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       Name is the only part Béa needs. Everything else can wait.
                     </p>
                   </div>
@@ -1166,7 +1174,7 @@ function RecommendationsPage() {
                       setLocResults(null);
                       setError(null);
                     }}
-                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[12px] text-muted-foreground"
+                    className="shrink-0 rounded-lg border border-border px-2.5 py-1 text-[13px] text-muted-foreground"
                   >
                     Discard
                   </button>
@@ -1185,7 +1193,7 @@ function RecommendationsPage() {
                 <button
                   onClick={save}
                   disabled={busy === "save" || !draft.name.trim()}
-                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   {busy === "save" ? "Saving…" : "Save to vault"}
                 </button>
@@ -1197,10 +1205,10 @@ function RecommendationsPage() {
                   onChange={(e) => setDraftField("name", e.target.value)}
                   placeholder="Name"
                   aria-label="Name"
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                 />
                 {[draft.address, draft.city, draft.country].some(Boolean) && (
-                  <p className="px-1 text-[12px] text-muted-foreground">
+                  <p className="px-1 text-[13px] text-muted-foreground">
                     📍 {[draft.address || draft.city, draft.country].filter(Boolean).join(", ")}
                   </p>
                 )}
@@ -1237,12 +1245,12 @@ function RecommendationsPage() {
                     }}
                     placeholder={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
                     aria-label={DRAFT_FIELDS.find(([f]) => f === draftField)?.[1] ?? ""}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                   />
                 )}
                 <div className="pt-1">
                   <p className="label-caps">Travel tags</p>
-                  <p className="mt-1 text-[12px] leading-snug text-muted-foreground">
+                  <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
                     Béa guessed these so she can pick this rec when you ask her to plan. Tap to
                     change.
                   </p>
@@ -1261,7 +1269,7 @@ function RecommendationsPage() {
                             });
                           }}
                           aria-pressed={on}
-                          className={`rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                          className={`rounded-full border px-2.5 py-1 text-[13px] transition-colors ${
                             on
                               ? "border-primary bg-card text-foreground"
                               : "border-border/60 text-muted-foreground"
@@ -1274,7 +1282,7 @@ function RecommendationsPage() {
                     <button
                       type="button"
                       onClick={() => setMoreTags((v) => !v)}
-                      className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[12px] text-muted-foreground"
+                      className="rounded-full border border-dashed border-border/80 px-2.5 py-1 text-[13px] text-muted-foreground"
                     >
                       {moreTags ? "Fewer tags" : "Add a tag"}
                     </button>
@@ -1283,12 +1291,12 @@ function RecommendationsPage() {
                 <div data-guide="reco-location" className="pt-1">
                   <p className="label-caps">Location on the map</p>
                   {draft.lat != null ? (
-                    <p className="mt-1 text-[12px] text-muted-foreground">
+                    <p className="mt-1 text-[13px] text-muted-foreground">
                       Pinned at {draft.lat.toFixed(4)}, {draft.lon?.toFixed(4)}. Search again to
                       move it.
                     </p>
                   ) : (
-                    <p className="mt-1 text-[12px] text-muted-foreground">
+                    <p className="mt-1 text-[13px] text-muted-foreground">
                       No exact spot yet. Search a place or address and pick the pin yourself — Near
                       and directions need it.
                     </p>
@@ -1303,13 +1311,13 @@ function RecommendationsPage() {
                       }
                     }}
                     placeholder="Search a place, street, or city"
-                    className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[14.5px] outline-none focus:border-primary"
+                    className="mt-2 w-full rounded-xl border border-border bg-background px-3 py-2 text-[15px] outline-none focus:border-primary"
                   />
                   <button
                     type="button"
                     onClick={() => void findLocation()}
                     disabled={busy === "location"}
-                    className="mt-2 w-full rounded-xl border border-border px-4 py-2 text-[14.5px] font-semibold disabled:opacity-50"
+                    className="mt-2 w-full rounded-xl border border-border px-4 py-2 text-[15px] font-semibold disabled:opacity-50"
                   >
                     {busy === "location" ? "Searching the map…" : "Find this spot"}
                   </button>
@@ -1324,9 +1332,9 @@ function RecommendationsPage() {
                             onClick={() => pickLocation(r)}
                             className="w-full rounded-xl border border-border bg-background p-3 text-left"
                           >
-                            <p className="text-[14.5px] font-semibold">{line.title}</p>
+                            <p className="text-[15px] font-semibold">{line.title}</p>
                             {line.subtitle ? (
-                              <p className="text-[12px] text-muted-foreground">{line.subtitle}</p>
+                              <p className="text-[13px] text-muted-foreground">{line.subtitle}</p>
                             ) : null}
                           </button>
                         );
@@ -1359,17 +1367,17 @@ function RecommendationsPage() {
                 <button
                   onClick={save}
                   disabled={busy === "save" || !draft.name.trim()}
-                  className="w-full rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-50"
+                  className="w-full rounded-xl bg-primary px-4 py-2 text-[15px] font-semibold text-primary-foreground disabled:opacity-50"
                 >
                   {busy === "save" ? "Saving…" : "Save to vault"}
                 </button>
                 {!draft.name.trim() && (
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground">
                     Give it a name first — that's the only required field.
                   </p>
                 )}
                 {!vault.signedIn && (
-                  <p className="text-[12px] text-muted-foreground">
+                  <p className="text-[13px] text-muted-foreground">
                     Sign in on the You tab to keep this saved to your account.
                   </p>
                 )}
@@ -1402,14 +1410,14 @@ function RecommendationsPage() {
                     type="button"
                     aria-pressed={homeList === k}
                     onClick={() => setHomeList(k)}
-                    className={`h-11 shrink-0 whitespace-nowrap rounded-full border px-4 font-display text-[18px] ${
+                    className={`recs-chip h-11 shrink-0 whitespace-nowrap rounded-full border px-4 font-display text-[18px] ${
                       homeList === k
-                        ? "border-primary bg-primary-soft text-foreground"
-                        : "border-transparent bg-card text-foreground"
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : `tile-fill-${(["all", "reco", "wishlist", "nexttime", "visited"].indexOf(k) % 5) + 1} border-border text-foreground`
                     }`}
                   >
                     {label}
-                    <span className="ms-1.5 font-sans text-[13px] text-muted-foreground">{n}</span>
+                    <span className="ms-1.5 font-sans text-[13px] opacity-70">{n}</span>
                   </button>
                 ))}
               </div>
@@ -1435,7 +1443,7 @@ function RecommendationsPage() {
                     onSeeAll={() => setScreen({ kind: "saved", list: "all" })}
                   />
                   {vault.loading && vault.rows.length === 0 && <RowListSkeleton />}
-                  <ul className="plain-card divide-y divide-border/60 overflow-hidden">
+                  <ul className="recs-list">
                     {recentlySaved(visibleRows, 5).map((r) => (
                       <li key={r.id} className="flex items-center">
                         <button
@@ -1445,7 +1453,7 @@ function RecommendationsPage() {
                         >
                           <PlaceArt
                             place={{ name: r.name, category: r.category }}
-                            className="size-12 shrink-0 rounded-full"
+                            className="size-14 shrink-0 rounded-2xl"
                           />
                           <span className="min-w-0">
                             <span className="block truncate text-[17px] font-semibold">
@@ -1504,11 +1512,11 @@ function RecommendationsPage() {
                   className="flex flex-col items-center gap-1.5"
                 >
                   <span
-                    className={`tile-fill-${i + 1} grid size-14 place-items-center rounded-full border border-border`}
+                    className={`tile-fill-${i + 1} grid size-[60px] place-items-center rounded-full border border-border`}
                   >
                     <Icon className="size-6 text-primary" aria-hidden />
                   </span>
-                  <span className="whitespace-nowrap text-center text-[12px] leading-tight tracking-tight">
+                  <span className="whitespace-nowrap text-center text-[13px] leading-tight tracking-tight">
                     {k}
                   </span>
                 </button>
@@ -1520,14 +1528,14 @@ function RecommendationsPage() {
             type="button"
             data-guide="explore-nearby"
             onClick={() => setScreen({ kind: "nearby", browse: "All" })}
-            className="plain-card grid w-full grid-cols-[1fr_118px] overflow-hidden text-left"
+            className="recs-nearby grid w-full grid-cols-[1fr_118px] overflow-hidden text-left"
           >
             <span className="block p-4">
               <span className="block font-display text-[26px] leading-none">Explore nearby</span>
               <span className="mt-2 block text-[14px] leading-snug text-muted-foreground">
                 Open a map of where you are and discover what's around you.
               </span>
-              <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary-soft px-4 text-[14.5px] font-semibold text-primary">
+              <span className="mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary-soft px-4 text-[15px] font-semibold text-primary">
                 Open map <ArrowRight className="size-4" aria-hidden />
               </span>
             </span>
@@ -1557,7 +1565,7 @@ function RecommendationsPage() {
                 key={m}
                 type="button"
                 onClick={() => startMode(m)}
-                className={`tile-fill-${i + 1} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold`}
+                className={`tile-fill-${i + 1} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold`}
               >
                 <Icon className="size-5 shrink-0 text-primary" aria-hidden />
                 {label}
@@ -1579,7 +1587,7 @@ function RecommendationsPage() {
                   setDraft(null);
                   setMoreWays(false);
                 }}
-                className={`tile-fill-${i + 5 > 5 ? 1 : 5} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold`}
+                className={`tile-fill-${i + 5 > 5 ? 1 : 5} flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold`}
               >
                 <Icon className="size-5 shrink-0 text-primary" aria-hidden />
                 {label}
@@ -1591,7 +1599,7 @@ function RecommendationsPage() {
                 setMoreWays(false);
                 setScreen({ kind: "nearby", browse: "All" });
               }}
-              className="tile-fill-2 col-span-2 flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[14.5px] font-semibold"
+              className="tile-fill-2 col-span-2 flex items-center gap-2 rounded-2xl border border-border px-3 py-3 text-left text-[15px] font-semibold"
             >
               <MapPinned className="size-5 shrink-0 text-primary" aria-hidden />
               Pin somewhere nearby
@@ -1632,10 +1640,43 @@ function EmptyVault() {
     <div className="flex flex-col items-center py-6 text-center">
       <img src="/bea/bea-think-static.png" alt="" className="size-28 object-contain" />
       <p className="mt-2 font-display text-[22px] leading-snug">{beaLine("empty.recs").title}</p>
-      <p className="mt-1 max-w-[30ch] text-[14.5px] text-muted-foreground">
+      <p className="mt-1 max-w-[30ch] text-[15px] text-muted-foreground">
         {line || beaLine("empty.recs").body}
       </p>
     </div>
+  );
+}
+
+/** One list of saved places under its heading: collapsible, with no box of its own. */
+function RecsGroup({
+  title,
+  hint,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  hint?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="mb-5">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex min-h-11 w-full items-center gap-2 text-left"
+      >
+        <ChevronDown
+          className={`size-4 shrink-0 text-muted-foreground transition-transform duration-(--t-shift) ${open ? "" : "-rotate-90"}`}
+          aria-hidden
+        />
+        <span className="font-display text-[24px] leading-none">{title}</span>
+        {hint && <span className="text-[14px] text-muted-foreground">{hint}</span>}
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </section>
   );
 }
 
@@ -1643,8 +1684,8 @@ function EmptyVault() {
 function SavedMatches({ rows, onOpen }: { rows: RecoRowDB[]; onOpen: (row: RecoRowDB) => void }) {
   if (rows.length === 0) return null;
   return (
-    <div className="plain-card p-1.5">
-      <p className="px-2.5 pt-1.5 text-[12px] font-semibold text-muted-foreground">
+    <div className="recs-box p-1.5">
+      <p className="px-2.5 pt-1.5 text-[13px] font-semibold text-muted-foreground">
         In your saved places
       </p>
       <ul>
@@ -1661,7 +1702,7 @@ function SavedMatches({ rows, onOpen }: { rows: RecoRowDB[]; onOpen: (row: RecoR
               />
               <span className="min-w-0">
                 <span className="block truncate text-[15px] font-medium">{r.name}</span>
-                <span className="block truncate text-[12.5px] text-muted-foreground">
+                <span className="block truncate text-[13px] text-muted-foreground">
                   {[r.city, r.category, r.recommended_by ? `from ${r.recommended_by}` : ""]
                     .filter(Boolean)
                     .join(" · ")}
@@ -1732,7 +1773,7 @@ function FilterSelect({
   return (
     <label
       data-guide={guide}
-      className={`relative flex min-w-0 flex-1 items-center gap-1 rounded-full border px-3.5 py-2.5 text-[14px] sm:flex-none ${
+      className={`relative flex min-w-[8.5rem] flex-1 items-center gap-1 rounded-full border px-3.5 py-2.5 text-[14px] sm:flex-none ${
         on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card"
       }`}
     >

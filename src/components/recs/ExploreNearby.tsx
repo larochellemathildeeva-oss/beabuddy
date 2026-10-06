@@ -466,8 +466,8 @@ export function ExploreNearby({
       {searchNote && <p className="text-[13px] text-muted-foreground">{searchNote}</p>}
 
       {filtersOpen && (
-        <div className="plain-card space-y-3 p-4">
-          <label className="flex items-center justify-between gap-3 text-[14.5px]">
+        <div className="recs-box space-y-3 p-4">
+          <label className="flex items-center justify-between gap-3 text-[15px]">
             <span>Sort by</span>
             <select
               value={sort}
@@ -478,7 +478,7 @@ export function ExploreNearby({
               <option value="name">Name</option>
             </select>
           </label>
-          <label className="flex items-center justify-between gap-3 text-[14.5px]">
+          <label className="flex items-center justify-between gap-3 text-[15px]">
             <span>Show my saved places on the map</span>
             <input
               type="checkbox"
@@ -520,7 +520,7 @@ export function ExploreNearby({
       </div>
 
       {state === "error" && (
-        <div className="plain-card p-4 text-[14px] text-muted-foreground">
+        <div className="recs-box p-4 text-[14px] text-muted-foreground">
           {error}
           <button type="button" onClick={locate} className="ml-2 font-semibold text-primary">
             Try again
@@ -528,7 +528,7 @@ export function ExploreNearby({
         </div>
       )}
       {state === "locating" && !center && (
-        <div className="plain-card grid h-40 place-items-center text-[14px] text-muted-foreground">
+        <div className="recs-box grid h-40 place-items-center text-[14px] text-muted-foreground">
           Finding where you are…
         </div>
       )}
@@ -542,7 +542,7 @@ export function ExploreNearby({
               role="tab"
               aria-selected={view === v}
               onClick={() => setView(v)}
-              className={`h-10 rounded-full text-[14.5px] font-semibold ${
+              className={`h-10 rounded-full text-[15px] font-semibold ${
                 view === v ? "bg-primary text-primary-foreground" : ""
               }`}
             >
@@ -704,20 +704,20 @@ export function ExploreNearby({
               onPointerDown={(e) => e.stopPropagation()}
               onPointerUp={(e) => e.stopPropagation()}
               onClick={() => setView("list")}
-              className="absolute bottom-3 right-3 flex flex-col items-center rounded-2xl bg-card px-3 py-1.5 text-[11.5px] font-semibold shadow-md"
+              className="absolute bottom-3 right-3 flex flex-col items-center rounded-2xl bg-card px-3 py-1.5 text-[13px] font-semibold shadow-md"
             >
               <List className="size-5" aria-hidden />
               List
             </button>
           </div>
-          <p className="mt-1.5 text-[11px] text-muted-foreground">
+          <p className="mt-1.5 text-[13px] text-muted-foreground">
             {OSM_ATTRIBUTION} · {GEOAPIFY_ATTRIBUTION}. Tap anywhere on the map to pin that spot.
           </p>
         </div>
       )}
 
       {draft && (
-        <div className="plain-card p-4">
+        <div className="recs-box p-4">
           <div className="flex items-start justify-between gap-2">
             <label className="text-[15px] font-semibold" htmlFor="nearby-pin-name">
               Name this pin
@@ -769,7 +769,7 @@ export function ExploreNearby({
       {pinned && <p className="text-[13px] text-primary">{pinned}</p>}
 
       {selected && (
-        <section className="plain-card overflow-hidden" aria-label={selected.name}>
+        <section className="recs-box overflow-hidden" aria-label={selected.name}>
           <div className="relative">
             <PlaceArt
               place={{ name: selected.name, category: prettyTag(selected.tag) }}
@@ -894,7 +894,7 @@ export function ExploreNearby({
                       setCenter({ lat: p.lat, lon: p.lon });
                     }
                   }}
-                  className="plain-card flex cursor-pointer items-center gap-3 p-2.5"
+                  className="recs-box flex cursor-pointer items-center gap-3 p-2.5"
                 >
                   <PlaceArt
                     place={{ name: p.name, category: prettyTag(p.tag) }}
@@ -913,7 +913,7 @@ export function ExploreNearby({
             ))}
           </ul>
           {view === "list" && (
-            <p className="text-[11px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
+            <p className="text-[13px] text-muted-foreground">{OSM_ATTRIBUTION}</p>
           )}
           {!loadingPlaces && !placesError && shown.length === 0 && places.length > 0 && (
             <p className="text-[14px] text-muted-foreground">

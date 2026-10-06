@@ -1,9 +1,10 @@
 import { useMemo, type CSSProperties } from "react";
+import { useThemeName } from "@/hooks/useThemeName";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ChevronRight, Heart, MapPin } from "@/components/icons";
 import { StopArt } from "@/components/day/stop-bits";
 import { TripPicture } from "@/components/HomeTripCard";
-import { TripBannerMap, TripsWorldMap } from "@/components/TripRouteMap";
+import { TripBannerMap } from "@/components/TripRouteMap";
 import { TownPhotoCredit } from "@/components/TownPhotoCredit";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
@@ -15,15 +16,14 @@ import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { tripCityStop, withCityPositions } from "@/lib/city-position";
 import { routeStopsIndexed } from "@/lib/home-route-map";
 import { savedSummary, todaysCompanion, untilLabel, type SavedCity } from "@/lib/home-now";
-import { placeTags } from "@/lib/trips-page";
 import { routeStopOn } from "@/lib/import-stop";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
 import { heroTags, routeLine } from "@/lib/trip-glance";
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
-const NOW_HERO_H = 340;
-const SAVED_HERO_H = 320;
+const NOW_HERO_H = 270;
+const SAVED_HERO_H = 250;
 const TAG_H = 44;
 
 /** What a stop card shows of a plan row. */
@@ -83,19 +83,20 @@ export function HomeOnTrip({
   return (
     <section data-guide="home-trip">
       <div className="trip-hero -mx-4" style={{ height: NOW_HERO_H }}>
+        <TripPicture trip={trip} photos={photos} cities={cityNames} />
         {route.length > 0 ? (
           <TripBannerMap
+            over
             stops={route}
             label={`Map of the trip: ${cities}`}
             height={NOW_HERO_H}
             current={current}
             done={behind}
-            top={170}
-            bottom={NOW_HERO_H - 64}
+            pills
+            top={98}
+            bottom={NOW_HERO_H - 62}
           />
-        ) : (
-          <TripPicture trip={trip} photos={photos} cities={cityNames} />
-        )}
+        ) : null}
         <span
           aria-hidden
           className="trip-hero-haze"
@@ -253,41 +254,15 @@ export function HomeNoTripHero({
         .slice(0, 6),
     [cities],
   );
-  const points = useMemo(() => placed.map((c) => ({ lat: c.lat, lon: c.lon })), [placed]);
+  const theme = useThemeName();
   return (
     <section data-guide="home-trip" className="trip-hero -mx-4" style={{ height: SAVED_HERO_H }}>
-      <TripsWorldMap points={points} height={SAVED_HERO_H} top={150} bottom={SAVED_HERO_H - 36}>
-        {(pins, width) => {
-          const widths = placed.map((c) => Math.min(220, 64 + c.city.length * 10));
-          const boxes = placeTags(
-            pins,
-            widths,
-            { width, top: 140, bottom: SAVED_HERO_H - 30 },
-            TAG_H,
-          );
-          return placed.map((c, i) => {
-            const box = boxes[i];
-            if (!box) return null;
-            return (
-              <Link
-                key={`${c.city}-${c.country}`}
-                to="/recommendations"
-                aria-label={`${c.city}: ${c.count} saved ${c.count === 1 ? "place" : "places"}`}
-                className="trips-tag absolute gap-1.5 text-[15px] font-semibold"
-                style={{
-                  left: `${(box.x / width) * 100}%`,
-                  top: box.y,
-                  width: box.width,
-                  height: box.height,
-                }}
-              >
-                <Heart className="size-4 shrink-0 text-[var(--acc)]" aria-hidden />
-                <span className="min-w-0 truncate">{c.city}</span>
-              </Link>
-            );
-          });
-        }}
-      </TripsWorldMap>
+      <img
+        src={`/art/coast-${theme}.webp`}
+        alt=""
+        decoding="async"
+        className="art-dim absolute inset-0 size-full object-cover"
+      />
       <span
         aria-hidden
         className="trip-hero-haze"
@@ -302,6 +277,22 @@ export function HomeNoTripHero({
         </h2>
         <p className="mt-1.5 text-[14px] font-medium text-foreground/80">{date}</p>
       </div>
+      {placed.length > 0 ? (
+        <ul className="no-scrollbar absolute inset-x-0 bottom-3 flex gap-2 overflow-x-auto px-4">
+          {placed.map((c) => (
+            <li key={`${c.city}-${c.country}`} className="shrink-0">
+              <Link
+                to="/recommendations"
+                aria-label={`${c.city}: ${c.count} saved ${c.count === 1 ? "place" : "places"}`}
+                className="trips-tag flex h-11 items-center gap-1.5 px-3 text-[15px] font-semibold"
+              >
+                <Heart className="size-4 shrink-0 text-[var(--acc)]" aria-hidden />
+                <span className="truncate">{c.city}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
   );
 }

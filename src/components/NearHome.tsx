@@ -125,7 +125,7 @@ function NearTitle() {
       <h2 className="font-display text-[27px] leading-none">Nearby recommendations</h2>
       <Link
         to="/recommendations"
-        className="flex shrink-0 items-center gap-0.5 text-[14px] font-semibold text-primary"
+        className="-me-2 flex min-h-11 shrink-0 items-center gap-0.5 px-2 text-[14px] font-semibold text-primary"
       >
         See all
         <ChevronRight className="size-4" aria-hidden />

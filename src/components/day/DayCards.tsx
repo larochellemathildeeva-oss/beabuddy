@@ -35,43 +35,46 @@ export function DayCards({
       ? `${date.toLocaleDateString(undefined, { weekday: "short" })} ${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
       : "No date";
   };
-  const chip = chips.find((c) => c.key === value);
+  const parts = (key: DayChoice) => {
+    if (key === ALL_DAYS) return { top: "All", bottom: "days", small: true };
+    const date = key ? new Date(`${key}T00:00:00`) : null;
+    return date
+      ? {
+          top: date.toLocaleDateString(undefined, { weekday: "short" }),
+          bottom: String(date.getDate()),
+        }
+      : { top: "No", bottom: "date", small: true };
+  };
   return (
     <div
       role="tablist"
       aria-label="Which day to show. Swipe sideways to change day."
-      className="flex min-h-11 w-full touch-pan-y items-center justify-between gap-3 px-1"
+      className="day-pills touch-pan-y"
       {...swipe}
     >
-      <p aria-live="polite" className="min-w-0 truncate text-[14px] font-semibold">
-        {nameOf(value)}
-        {chip?.isToday ? <span className="font-normal text-muted-foreground"> · Today</span> : null}
-        {value !== ALL_DAYS && chip?.ordinal ? (
-          <span className="font-normal text-muted-foreground"> · {chip.ordinal}</span>
-        ) : null}
-      </p>
-      <div
-        ref={dots}
-        className="no-scrollbar flex max-w-[55%] shrink-0 items-center overflow-x-auto"
-      >
-        {choices.map((key, index) => (
-          <button
-            key={key || "undated"}
-            type="button"
-            role="tab"
-            aria-selected={index === at}
-            aria-label={nameOf(key)}
-            title={nameOf(key)}
-            onClick={() => onChange(key)}
-            className="grid size-11 shrink-0 place-items-center"
-          >
-            <span
-              className={`rounded-full transition-colors ${
-                index === at ? "size-2.5 bg-primary" : "size-1.5 bg-muted-foreground/40"
-              }`}
-            />
-          </button>
-        ))}
+      <div ref={dots} className="no-scrollbar flex w-full items-stretch gap-1 overflow-x-auto">
+        {choices.map((key, index) => {
+          const { top, bottom, small } = parts(key);
+          const today = chips.find((c) => c.key === key)?.isToday;
+          return (
+            <button
+              key={key || "undated"}
+              type="button"
+              role="tab"
+              aria-selected={index === at}
+              aria-label={`${nameOf(key)}${today ? ", today" : ""}`}
+              title={nameOf(key)}
+              onClick={() => onChange(key)}
+              className="day-pill"
+            >
+              <span className="text-[13px]">{top}</span>
+              <span className={small ? "text-[13px]" : "font-display text-[22px] leading-none"}>
+                {bottom}
+              </span>
+              {today ? <span aria-hidden className="day-pill-dot" /> : null}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

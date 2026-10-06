@@ -194,7 +194,7 @@ function whereToday(stops: readonly CityStop[], route: RouteStop[], today: strin
 /* Header                                                              */
 /* ------------------------------------------------------------------ */
 
-const HERO_H = 300;
+const HERO_H = 200;
 const TAG_H = 50;
 
 /** The first placed city of each trip, read in one go for the header. */
@@ -277,10 +277,10 @@ export function TripsHero({
     <section
       data-guide="trips-header"
       className={`trip-hero -mx-4 -mt-3 ${hasMap ? "trips-art" : "!bg-transparent"}`}
-      style={{ height: hasMap ? HERO_H : 150 }}
+      style={{ height: hasMap ? HERO_H : 110 }}
     >
       {hasMap ? (
-        <TripsWorldMap points={points} height={HERO_H} top={118} bottom={HERO_H - 34}>
+        <TripsWorldMap points={points} height={HERO_H} top={72} bottom={HERO_H - 28}>
           {(pins, width) => {
             const label = (group: (typeof places)[number][]) => {
               const first = group[0]!;
@@ -299,7 +299,7 @@ export function TripsHero({
               const { first, second } = label(group);
               return Math.min(200, 48 + Math.max(first.city.length * 9.2, second.length * 8));
             });
-            const boxes = placeTags(pins, widths, { width, top: 104, bottom: HERO_H - 30 }, TAG_H);
+            const boxes = placeTags(pins, widths, { width, top: 64, bottom: HERO_H - 26 }, TAG_H);
             return groups.map((group, i) => {
               const box = boxes[i];
               if (!box) return null;
@@ -571,7 +571,7 @@ export function TripFeature({
         params={{ tripId: trip.id }}
         viewTransition
         aria-label={`Open ${trip.title}`}
-        className="relative block h-[300px] overflow-hidden bg-muted"
+        className="relative block h-[210px] overflow-hidden bg-muted"
         style={{ viewTransitionName: `trip-photo-${trip.id}` }}
       >
         <TripPictureFill
@@ -580,9 +580,9 @@ export function TripFeature({
           cityNames={cityNames}
           route={route}
           picture={picture}
-          height={300}
-          top={70}
-          bottom={190}
+          height={210}
+          top={44}
+          bottom={100}
           current={current}
           done={done}
         />

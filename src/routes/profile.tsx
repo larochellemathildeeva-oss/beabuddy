@@ -11,6 +11,7 @@ import {
   CloudUpload,
   FileText,
   HelpCircle,
+  Globe,
   House,
   Info,
   Luggage,
@@ -44,11 +45,14 @@ import {
 import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
+import { useTripPhotos } from "@/hooks/useTripPhotos";
+import { toLocalISODate } from "@/lib/trip-dates";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
 import { clearDemoSeed } from "@/lib/demo-seed";
 import { ThemePicker } from "@/components/ThemePicker";
+import { TripPicture } from "@/components/HomeTripCard";
 import { StopPicturesPicker } from "@/components/StopPicturesPicker";
 import { AccessibilityPicker } from "@/components/AccessibilityPicker";
 import { useBeaSettings } from "@/hooks/useBeaSettings";
@@ -184,6 +188,16 @@ function ProfilePage() {
   const metaAvatar = user?.user_metadata?.["avatar_url"];
   const photo = avatarUrl || (typeof metaAvatar === "string" ? metaAvatar : null);
   const tripCount = t.trips.length;
+  const { photos: tripPhotos } = useTripPhotos(t.uid);
+  const todayKey = toLocalISODate(new Date());
+  // Trips that have started: an upcoming destination is not "been there" yet.
+  const startedTrips = t.trips.filter((trip) => (trip.start_date ?? "") <= todayKey);
+  const countryCount = new Set(
+    startedTrips.map((trip) => (trip.country ?? "").trim().toLowerCase()).filter(Boolean),
+  ).size;
+  const highlights = [...startedTrips]
+    .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
+    .slice(0, 3);
 
   const signingOut = useRef(false);
   const signOut = async () => {
@@ -251,39 +265,47 @@ function ProfilePage() {
         )}
 
         {user && (
-          <section data-guide="profile-account" className={`${PLAIN} p-4`}>
-            <div className="flex items-center gap-3.5">
-              {photo ? (
-                <img
-                  src={photo}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="size-16 shrink-0 rounded-full object-cover"
-                />
-              ) : (
-                <span
-                  aria-hidden
-                  className="grid size-16 shrink-0 place-items-center rounded-full bg-primary-soft font-display text-[28px] text-primary"
-                >
-                  {signedInName[0]?.toUpperCase()}
-                </span>
-              )}
+          <section data-guide="profile-account" className="you-head">
+            <div className="flex items-center gap-4">
+              <span className="you-avatar">
+                {photo ? (
+                  <img
+                    src={photo}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    className="size-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="grid size-full place-items-center rounded-full bg-primary-soft font-display text-[40px] text-primary"
+                  >
+                    {signedInName[0]?.toUpperCase()}
+                  </span>
+                )}
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-display text-[24px] leading-tight">{signedInName}</p>
-                <p className="truncate text-[13px] text-muted-foreground">
+                <p className="truncate font-display text-[30px] leading-[1.05]">{signedInName}</p>
+                {homeCity ? (
+                  <p className="mt-1 flex items-center gap-1.5 truncate text-[15px]">
+                    <MapPin className="size-4 shrink-0" aria-hidden />
+                    <span className="truncate">{homeCity}</span>
+                  </p>
+                ) : null}
+                <p className="mt-0.5 truncate text-[14px] text-muted-foreground">
                   {saved ? "Saved" : user.email}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => setPanel("settings")}
+                  className="you-edit mt-2 inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-[14px] font-semibold"
+                >
+                  Edit profile
+                  <ChevronRight className="size-3.5" aria-hidden />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setPanel("settings")}
-                className="flex shrink-0 items-center gap-1 rounded-full bg-primary-soft [[data-theme=colorful]_&]:bg-tile-5 px-3.5 py-2 text-[13.5px] font-semibold text-primary"
-              >
-                Edit profile
-                <ChevronRight className="size-3.5" aria-hidden />
-              </button>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-2 border-t border-border/60 pt-3.5">
+            <div className="you-stats mt-5 grid grid-cols-4 gap-2">
               <Figure
                 icon={House}
                 tone={1}
@@ -299,6 +321,90 @@ function ProfilePage() {
                 label="Places"
                 to="/recommendations"
               />
+              <Figure
+                icon={Globe}
+                tone={4}
+                value={String(countryCount)}
+                label={countryCount === 1 ? "Country" : "Countries"}
+                to="/world"
+              />
+            </div>
+          </section>
+        )}
+
+        {user && (
+          <section aria-label="Travel preferences" className="you-section">
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>Travel preferences</SectionTitle>
+              <Link
+                to="/preferences"
+                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
+              >
+                See all
+              </Link>
+            </div>
+            <div className="you-chips mt-3 flex flex-wrap gap-2">
+              {interests.slice(0, 6).map((tag, i) => (
+                <Link
+                  key={tag}
+                  to="/preferences"
+                  className={`you-chip tile-fill-${(i % 5) + 1} rounded-full px-4 py-2 text-[15px] font-semibold`}
+                >
+                  {tag}
+                </Link>
+              ))}
+              {interests.length === 0 ? (
+                <Link
+                  to="/preferences"
+                  className="you-chip tile-fill-1 rounded-full px-4 py-2 text-[15px] font-semibold"
+                >
+                  Add your interests
+                </Link>
+              ) : null}
+            </div>
+          </section>
+        )}
+
+        {panel === null && (
+          <section aria-label="App theme" className="you-section">
+            <SectionTitle>App theme</SectionTitle>
+            <div className="mt-3">
+              <ThemePicker />
+            </div>
+          </section>
+        )}
+
+        {highlights.length > 0 && (
+          <section aria-label="Recent highlights" className="you-section">
+            <div className="flex items-baseline justify-between">
+              <SectionTitle>Recent highlights</SectionTitle>
+              <Link
+                to="/trips"
+                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
+              >
+                See all
+              </Link>
+            </div>
+            <div className="you-highlights mt-3 grid grid-cols-3 gap-2">
+              {highlights.map((trip) => (
+                <Link
+                  key={trip.id}
+                  to="/trips/$tripId"
+                  params={{ tripId: trip.id }}
+                  className="you-highlight"
+                >
+                  <TripPicture trip={trip} photos={tripPhotos} cities={[]} />
+                  <span aria-hidden className="you-highlight-shade" />
+                  <span className="you-highlight-text">
+                    <span className="block truncate text-[14px] font-semibold">
+                      {trip.city?.split(",")[0] || trip.title}
+                    </span>
+                    <span className="block truncate text-[13px] opacity-90">
+                      {highlightWhen(trip.start_date)}
+                    </span>
+                  </span>
+                </Link>
+              ))}
             </div>
           </section>
         )}
@@ -387,7 +493,6 @@ function ProfilePage() {
               guide="offline-options"
             />
           </div>
-          {panel === null && <ThemePicker />}
         </div>
 
         <div className="space-y-3">
@@ -653,6 +758,15 @@ function ProfilePage() {
   );
 }
 
+function highlightWhen(iso: string | null): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso ?? "");
+  if (!m) return "";
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h2 className="font-display text-[27px] leading-none">{children}</h2>;
 }
@@ -672,19 +786,20 @@ function Figure({
   tone: Tone;
   value: string;
   label: string;
-  to?: "/trips" | "/recommendations";
+  to?: "/trips" | "/recommendations" | "/world";
   onClick?: () => void;
 }) {
   const body = (
     <>
       <Glyph className={`seq-text-${tone} size-6 shrink-0`} aria-hidden />
-      <span className="min-w-0 text-left">
-        <span className="block truncate text-[15px] font-semibold leading-tight">{value}</span>
-        <span className="block truncate text-[12px] text-muted-foreground">{label}</span>
+      <span className="line-clamp-2 max-w-full text-[16px] font-semibold leading-tight [overflow-wrap:anywhere]">
+        {value}
       </span>
+      <span className="block max-w-full truncate text-[13px] text-foreground/80">{label}</span>
     </>
   );
-  const cls = "flex min-w-0 items-center justify-center gap-2 rounded-xl py-1";
+  const cls =
+    "you-figure flex min-w-0 flex-col items-center gap-1 rounded-2xl px-1 py-3 text-center";
   return to ? (
     <Link to={to} className={cls}>
       {body}

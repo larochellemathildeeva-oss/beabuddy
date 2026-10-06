@@ -92,6 +92,7 @@ export function TripOverview({
   onOpenSaved,
   onPrep,
   bookings,
+  travellers = [],
 }: {
   tripId: string;
   items: ItineraryRow[];
@@ -125,6 +126,8 @@ export function TripOverview({
   onPrep: (tab: PrepTab) => void;
   /** The bookings list, shown under the booked strip when it is open. */
   bookings?: ReactNode;
+  /** Names of everyone on the trip. */
+  travellers?: string[];
 }) {
   const { glances } = useTripGlances([tripId]);
   const glance = glances[tripId];
@@ -231,8 +234,119 @@ export function TripOverview({
     },
   ];
 
+  // The day the trip is on (0 before it starts, all of them once it is over).
+  const dayNo = days.length
+    ? Math.max(0, Math.min(days.length, days.filter((d) => d <= today).length))
+    : 0;
+  const upcoming = groups
+    .filter((g) => g.key && g.key >= today)
+    .flatMap((g) => g.items)
+    .filter((item) => timelineGlyph(item) !== "lodging" && !isDone(item));
+  const nextStop = upcoming[0];
+  const highlights = upcoming.slice(0, 6);
+
   return (
     <div className="space-y-6">
+      {days.length > 0 && (
+        <div className="-mt-1 grid grid-cols-2 gap-3 overview-glance">
+          <section className="overview-card col-span-2 flex items-center gap-4 p-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-[14px] font-semibold">Trip progress</p>
+              <p className="mt-1 font-display text-[24px] leading-none">
+                {dayNo} of {days.length} days
+              </p>
+              <span className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-elevated">
+                <span
+                  className="block h-full rounded-full bg-foreground"
+                  style={{ width: `${Math.round((dayNo / days.length) * 100)}%` }}
+                />
+              </span>
+            </div>
+            {nextStop ? (
+              <button
+                type="button"
+                onClick={() => onOpenTimeline(nextStop.day_date ?? undefined)}
+                className="flex min-w-0 flex-1 items-center gap-2.5 border-s border-border ps-4 text-left"
+              >
+                <PlacePicture
+                  name={nextStop.title}
+                  kind={nextStop.kind}
+                  lat={nextStop.lat}
+                  lon={nextStop.lon}
+                  className="size-12 shrink-0 rounded-xl"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] text-muted-foreground">Next up</span>
+                  <span className="block truncate font-display text-[17px] leading-tight">
+                    {nextStop.title}
+                  </span>
+                  <span className="block truncate text-[13px] text-muted-foreground">
+                    {nextStop.day_date ? formatTimelineDayLabel(nextStop.day_date) : ""}
+                  </span>
+                </span>
+                <ChevronRight className="size-4 shrink-0" aria-hidden />
+              </button>
+            ) : null}
+          </section>
+          {travellers.length > 0 && (
+            <section className="overview-card col-span-2 flex items-center justify-between gap-3 p-4">
+              <div>
+                <p className="text-[14px] font-semibold">Travellers</p>
+                <p className="text-[13px] text-muted-foreground">
+                  {travellers.length} {travellers.length === 1 ? "person" : "people"}
+                </p>
+              </div>
+              <div className="flex -space-x-2">
+                {travellers.slice(0, 5).map((name, i) => (
+                  <span
+                    key={`${name}-${i}`}
+                    title={name}
+                    className={`grid size-10 place-items-center rounded-full border-2 border-card text-[15px] font-semibold tile-fill-${(i % 5) + 1}`}
+                  >
+                    {name.slice(0, 1).toUpperCase()}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+      {highlights.length > 0 && (
+        <section>
+          <SectionHead title="Upcoming highlights" />
+          <ul className="no-scrollbar -mx-3 flex snap-x gap-2.5 overflow-x-auto px-3 pb-1">
+            {highlights.map((item) => (
+              <li key={item.id} className="w-[132px] shrink-0 snap-start">
+                <button
+                  type="button"
+                  onClick={() => onOpenTimeline(item.day_date ?? undefined)}
+                  className="relative block h-[128px] w-full overflow-hidden rounded-2xl text-left text-white"
+                >
+                  <PlacePicture
+                    name={item.title}
+                    kind={item.kind}
+                    lat={item.lat}
+                    lon={item.lon}
+                    className="absolute inset-0 size-full"
+                  />
+                  <span
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-transparent"
+                  />
+                  <span className="absolute inset-x-2.5 top-2 block">
+                    <span className="line-clamp-2 block text-[14px] font-semibold leading-tight">
+                      {item.title}
+                    </span>
+                    <span className="block text-[12px] text-white/80">
+                      {item.day_date ? formatTimelineDayLabel(item.day_date) : ""}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {live ? (
         <RightNow state={now} onOpenCompanion={onOpenCompanion} />
       ) : past ? (

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Download, ExternalLink, MoreHorizontal, Share2 } from "@/components/icons";
+import { Check, Download, ExternalLink, MoreHorizontal, Share2 } from "@/components/icons";
 import { BookingFacts } from "@/components/documents/BookingDetail";
 import {
   DocumentIcon,
@@ -10,6 +10,7 @@ import {
   TripThumb,
   type TripLite,
 } from "@/components/documents/DocumentParts";
+import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { documentFileBlob, documentFileUrl, type EventOption } from "@/hooks/useTripDocuments";
 import {
   KIND_LABEL,
@@ -137,18 +138,30 @@ export function DocumentDetail({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start gap-3">
-        <DocumentIcon doc={doc} size="lg" />
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[26px] leading-[1.05]">{doc.title}</h2>
+      <div className="doc-hero-detail">
+        <img
+          src={
+            asKind(doc.kind) === "accommodation"
+              ? "/art/booking-hotel.webp"
+              : bannerArtUrl(
+                  bannerSceneFor([doc.title, trip?.title, trip?.city, trip?.country], doc.id),
+                )
+          }
+          alt=""
+          aria-hidden
+          className="art-dim"
+        />
+        <div className="doc-hero-text">
+          <p className="doc-hero-kind">{KIND_LABEL[asKind(doc.kind)]}</p>
+          <h2 className="font-display text-[32px] leading-[1.05]">{doc.title}</h2>
           {doc.lines.map((l, i) => (
-            <p key={i} className="text-[14px] text-muted-foreground">
+            <p key={i} className="text-[14px]">
               {l}
             </p>
           ))}
-          <p className="text-[13px] text-muted-foreground">{addedFull(doc.created_at)}</p>
         </div>
       </div>
+      <p className="-mt-3 text-[13px] text-muted-foreground">{addedFull(doc.created_at)}</p>
 
       {actions.length > 0 && (
         <div
@@ -164,32 +177,51 @@ export function DocumentDetail({
               type="button"
               onClick={a.onClick}
               disabled={busy !== ""}
-              className={`${a.fill} flex flex-col items-center gap-1 rounded-2xl border border-border/70 py-3 text-[13px] font-semibold disabled:opacity-60`}
+              className="doc-action flex flex-col items-center gap-1.5 py-1 text-[13px] font-semibold disabled:opacity-60"
             >
-              <a.icon className="size-5 text-primary" aria-hidden />
+              <span
+                className={`${a.fill} doc-action-icon grid size-12 place-items-center rounded-full`}
+              >
+                <a.icon className="size-5 text-primary" aria-hidden />
+              </span>
               {busy === a.key ? "…" : a.label}
             </button>
           ))}
         </div>
       )}
 
-      <BookingFacts
-        facts={[
-          { label: "Confirmation", value: doc.reference },
-          { label: "Type", value: KIND_LABEL[asKind(doc.kind)] },
-          {
-            label: "File",
-            value: hasFile
-              ? [doc.file_name, fileSizeLabel(doc.size_bytes)].filter(Boolean).join(" · ")
-              : null,
-          },
-        ]}
-      />
+      {doc.reference && (
+        <div className="doc-card flex items-center gap-3 p-3">
+          <span className="tile-fill-3 grid size-11 shrink-0 place-items-center rounded-full border border-border/60 text-primary">
+            <Check className="size-5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[17px] font-semibold">Confirmation</p>
+            <p className="text-[14px] tabular-nums text-muted-foreground [overflow-wrap:anywhere]">
+              Reservation number {doc.reference}
+            </p>
+          </div>
+        </div>
+      )}
+
+      <BookingFacts facts={[{ label: "Type", value: KIND_LABEL[asKind(doc.kind)] }]} />
+
+      {hasFile && (
+        <div className="doc-file flex items-center gap-3">
+          <DocumentIcon doc={doc} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[16px] font-semibold">{doc.file_name ?? doc.title}</p>
+            <p className="text-[14px] text-muted-foreground">
+              {fileSizeLabel(doc.size_bytes) || "File attached"}
+            </p>
+          </div>
+        </div>
+      )}
 
       <section>
         <h3 className="mb-2 font-display text-[22px] leading-none">Linked to</h3>
         {trip || event ? (
-          <div className="plain-card divide-y divide-border overflow-hidden">
+          <div className="doc-list">
             {trip && (
               <LinkRow
                 media={<TripThumb trip={trip} />}
@@ -210,7 +242,7 @@ export function DocumentDetail({
             )}
           </div>
         ) : (
-          <p className="plain-card p-3 text-[14px] text-muted-foreground">
+          <p className="doc-card p-3 text-[14px] text-muted-foreground">
             Not linked to a trip yet.{canEdit ? " Use More to assign it." : ""}
           </p>
         )}
@@ -238,7 +270,7 @@ export function DocumentDetail({
               rows={3}
               autoFocus
               aria-label="Notes"
-              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
             />
             <div className="flex gap-2">
               <button
@@ -251,7 +283,7 @@ export function DocumentDetail({
                     .catch(() => toast.error("Those notes did not save. Try again."))
                     .finally(() => setBusy(""));
                 }}
-                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[14.5px] font-semibold text-primary-foreground disabled:opacity-60"
+                className="flex-1 rounded-xl bg-primary px-4 py-2 text-[15px] font-semibold text-primary-foreground disabled:opacity-60"
               >
                 {busy === "notes" ? "Saving…" : "Save notes"}
               </button>
@@ -261,21 +293,21 @@ export function DocumentDetail({
                   setNotes(doc.notes ?? "");
                   setEditing(false);
                 }}
-                className="rounded-xl border border-border px-4 py-2 text-[14.5px]"
+                className="rounded-xl border border-border px-4 py-2 text-[15px]"
               >
                 Cancel
               </button>
             </div>
           </div>
         ) : (
-          <p className="plain-card whitespace-pre-wrap p-3 text-[14.5px]">
+          <p className="doc-card whitespace-pre-wrap p-3 text-[15px]">
             {doc.notes || <span className="text-muted-foreground">No notes.</span>}
           </p>
         )}
       </section>
 
       {!canEdit && (
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
           Added by someone on this trip. Only they can change or delete it.
         </p>
       )}

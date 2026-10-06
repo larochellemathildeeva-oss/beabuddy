@@ -42,13 +42,13 @@ export function LockSetting({
   const [warning, setWarning] = useState(false);
   return (
     <>
-      <label className="plain-card flex items-center gap-3 p-3">
+      <label className="doc-card flex items-center gap-3 p-3">
         <span className="tile-fill-4 grid size-10 shrink-0 place-items-center rounded-xl border border-border/60 text-primary">
           <Lock className="size-5" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold">Lock Trip documents</span>
-          <span className="block text-[12.5px] text-muted-foreground">
+          <span className="block text-[13px] text-muted-foreground">
             {lockOn
               ? "Asks for Face ID, fingerprint or your passcode on this device."
               : "Off on this device. Anyone holding it unlocked can open your bookings."}
@@ -68,7 +68,7 @@ export function LockSetting({
         above
       >
         <div className="space-y-3">
-          <p className="text-[14.5px]">
+          <p className="text-[15px]">
             Without the lock, anyone who picks up this device while it is unlocked can open your
             bookings, tickets and trip files, and download or share them.
           </p>
