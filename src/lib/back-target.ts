@@ -14,3 +14,12 @@ export function backFallback(pathname: string): string {
   }
   return "/";
 }
+
+// The five tab roots are landing pages: nothing sits above them, so the app
+// bar shows no back button there.
+const TAB_ROOTS = new Set(["/", "/world", "/trips", "/recommendations", "/profile"]);
+
+export function isLandingPage(pathname: string): boolean {
+  const trimmed = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return TAB_ROOTS.has(trimmed);
+}
