@@ -549,7 +549,7 @@ function TripPhotos({ trip }: { trip: SharedTrip }) {
   return (
     <p className="text-[13px] text-muted-foreground">
       {trip.photosOn
-        ? "Photos are on for this link, but none have been added to the trip yet."
+        ? "Photos are on for this link, but there are none to show right now."
         : "Photos aren't shared on this link. The traveller who shared it can turn them on."}
     </p>
   );
