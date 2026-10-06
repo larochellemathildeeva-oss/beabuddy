@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { assertNewPasswordAllowed, MIN_NEW_PASSWORD_LENGTH } from "@/lib/pwned-password";
 
+const PASSWORD_MISMATCH = "Those two passwords don't match.";
+
 export const Route = createFileRoute("/reset-password")({
   staticData: { plane: "detail" },
   ssr: false,
@@ -51,11 +53,13 @@ function ResetPasswordPage() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const mismatch = error === PASSWORD_MISMATCH;
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (password !== confirm) {
-      setError("Those two passwords don't match.");
+      setError(PASSWORD_MISMATCH);
       return;
     }
     setBusy(true);
@@ -117,11 +121,12 @@ function ResetPasswordPage() {
                 minLength={MIN_NEW_PASSWORD_LENGTH}
                 autoComplete="new-password"
                 enterKeyHint="done"
+                error={mismatch ? error : null}
               />
               <div id="password-rules">
                 <PasswordCreationRules password={password} />
               </div>
-              {error && (
+              {error && !mismatch && (
                 <p role="alert" className="text-[14px] text-destructive">
                   {error}
                 </p>

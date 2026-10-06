@@ -832,7 +832,7 @@ export function TimelineEntry({
             {item.address || "No place yet"}
           </p>
           {stray && (
-            <p role="alert" className="mt-1 text-[14px] font-semibold text-destructive">
+            <p className="mt-1 text-[14px] font-semibold text-destructive">
               ⚠ This pin is far from the rest of the trip, so it may be a different place with the
               same name. Use “Change place” to pick the right one.
             </p>
@@ -1578,7 +1578,7 @@ export function TravelConnector({
               {leg?.farApartKm ? (
                 // One of the two pins is wrong; a drive between them would be
                 // a confident answer to the wrong question.
-                <p role="alert" className="text-[14px] font-semibold text-destructive">
+                <p className="text-[14px] font-semibold text-destructive">
                   ⚠ {leg.farApartKm} km apart on the map on the same day — one of these stops is
                   probably in the wrong place. Tap it to check.
                 </p>
