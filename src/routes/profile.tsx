@@ -20,7 +20,6 @@ import {
   MessageCircle,
   Palette,
   Plane,
-  Settings,
   ShieldCheck,
   type LucideProps,
 } from "@/components/icons";
@@ -232,23 +231,7 @@ function ProfilePage() {
   };
 
   return (
-    <AppShell
-      eyebrow="You"
-      title="Travel, your way."
-      headerAction={
-        user ? (
-          <button
-            type="button"
-            data-guide="profile-settings"
-            aria-label="Settings"
-            onClick={() => setPanel("settings")}
-            className="grid size-11 place-items-center rounded-full border border-border bg-card text-foreground"
-          >
-            <Settings className="size-5" aria-hidden />
-          </button>
-        ) : undefined
-      }
-    >
+    <AppShell eyebrow="You" title="Travel, your way.">
       <div className="space-y-6">
         {!loading && !user && (
           <div data-guide="profile-account" className={`${PLAIN} p-4`}>
@@ -334,7 +317,11 @@ function ProfilePage() {
         )}
 
         {user && (
-          <section aria-label="Travel preferences" className="you-section">
+          <section
+            aria-label="Travel preferences"
+            data-guide="travel-preferences"
+            className="you-section"
+          >
             <div className="flex items-baseline justify-between">
               <SectionTitle>Travel preferences</SectionTitle>
               <Link
@@ -362,15 +349,6 @@ function ProfilePage() {
                   Add your interests
                 </Link>
               ) : null}
-            </div>
-          </section>
-        )}
-
-        {panel === null && (
-          <section aria-label="App theme" className="you-section">
-            <SectionTitle>App theme</SectionTitle>
-            <div className="mt-3">
-              <ThemePicker />
             </div>
           </section>
         )}
@@ -431,15 +409,6 @@ function ProfilePage() {
         </Link>
 
         <div className={`${PLAIN} divide-y divide-border/60 overflow-hidden`}>
-          <ListRow
-            icon={Plane}
-            tone={1}
-            title="Travel preferences"
-            hint="Style, pace, budget, interests and diet"
-            to="/preferences"
-            guide="travel-preferences"
-          />
-          <CustomizeHome variant="list" />
           <ListRow
             icon={Luggage}
             tone={2}
@@ -535,8 +504,8 @@ function ProfilePage() {
       <Sheet
         open={panel === "settings"}
         onClose={close}
-        title="Profile settings"
-        hint={`Your details and ${interests.length} travel tag${interests.length === 1 ? "" : "s"}`}
+        title="Edit profile"
+        hint="Your name and home city"
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -564,23 +533,7 @@ function ProfilePage() {
               </p>
             )}
           </div>
-          <SheetLink
-            to="/preferences"
-            title="Travel preferences"
-            hint="Help Béa understand how you like to travel — style, pace, and tags she plans with."
-          />
-          <CustomizeHome variant="row" />
-          <ThemePicker />
-          <TourRow onReplay={replayTour} />
-          {user && (
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="w-full rounded-full border border-border px-4 py-2.5 text-[14.5px] font-semibold"
-            >
-              Sign out
-            </button>
-          )}
+          {/* Theme, Home and the tour live in Appearance and About; sign out is below. */}
         </div>
       </Sheet>
 
@@ -621,12 +574,6 @@ function ProfilePage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <SheetLink
-              to="/photos"
-              icon={Camera}
-              title="Import photos"
-              hint="Bring photos from your phone into your travel memories."
-            />
             <SheetLink
               to="/calendar"
               icon={CalendarDays}

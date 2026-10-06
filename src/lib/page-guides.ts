@@ -329,11 +329,6 @@ export const guides: Record<string, Guide> = {
         selector: "[data-guide='profile-account']",
       },
       {
-        title: "Settings",
-        body: "The gear at the top: your name and home city, the details Béa plans from.",
-        selector: "[data-guide='profile-settings']",
-      },
-      {
         title: "Travel preferences",
         body: "Your style, pace, budget, interests and diet — what Béa plans and ranks with.",
         selector: "[data-guide='travel-preferences']",
