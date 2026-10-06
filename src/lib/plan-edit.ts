@@ -249,3 +249,100 @@ export function combineMoves<T extends PlannedStop>(
   }
   return out;
 }
+
+/** A day a set of moves changes: how many stops leave it and how many arrive. */
+export type TouchedDay = { day: string; lost: number; gained: number };
+
+/**
+ * The days a set of moves changes, for "What about day 3?", in date order.
+ * A day left empty is not one (nothing is left to re-plan), nor is a move
+ * within one day, nor the undated list.
+ */
+export function daysTouched(
+  stops: readonly PlanEditStop[],
+  moves: readonly StopMove[],
+): TouchedDay[] {
+  const dayOf = new Map(stops.map((stop) => [stop.id, stop.day_date]));
+  const finalDay = new Map(dayOf);
+  for (const move of moves) if (dayOf.has(move.id)) finalDay.set(move.id, move.day_date);
+  const touched = new Map<string, TouchedDay>();
+  const entry = (day: string) => {
+    let found = touched.get(day);
+    if (!found) touched.set(day, (found = { day, lost: 0, gained: 0 }));
+    return found;
+  };
+  for (const [id, from] of dayOf) {
+    const to = finalDay.get(id) ?? null;
+    if (from === to) continue;
+    if (from) entry(from).lost++;
+    if (to) entry(to).gained++;
+  }
+  const holds = new Set(finalDay.values());
+  return [...touched.values()]
+    .filter((t) => holds.has(t.day))
+    .sort((a, b) => (a.day < b.day ? -1 : 1));
+}
+
+/** Something to do about a changed day once the moves are applied. */
+export type AfterMoveChoice = {
+  id: string;
+  day: string;
+  label: string;
+  /** What Rework asks Béa for that day, written but not sent. */
+  ask: string;
+};
+
+const KEEP_BOOKED = "Keep every booked stop on its time.";
+
+const listNames = (names: readonly string[]) =>
+  names.length <= 1
+    ? (names[0] ?? "")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+
+/**
+ * "What about day 3?": for each day the moves change, what Béa can do with
+ * it next. A day stops left can have the gap filled with something new, or
+ * the rest re-planned; a day stops arrived on can have them fitted in. Each
+ * opens Rework for that day with the ask written, so nothing changes until
+ * the traveller sees Béa's version and applies it.
+ */
+export function afterMoveChoices(
+  stops: readonly PlanEditStop[],
+  moves: readonly StopMove[],
+  dayName: (day: string) => string,
+): AfterMoveChoice[] {
+  const byId = new Map(stops.map((stop) => [stop.id, stop]));
+  const finalDay = new Map(stops.map((stop) => [stop.id, stop.day_date]));
+  for (const move of moves) if (byId.has(move.id)) finalDay.set(move.id, move.day_date);
+  const leaving = (day: string) =>
+    stops.filter((s) => s.day_date === day && finalDay.get(s.id) !== day);
+  const arriving = (day: string) =>
+    stops.filter((s) => s.day_date !== day && finalDay.get(s.id) === day);
+  const names = (list: readonly PlanEditStop[]) => listNames(list.map((s) => s.title.trim()));
+
+  const choices: AfterMoveChoice[] = [];
+  for (const { day, lost, gained } of daysTouched(stops, moves)) {
+    const name = dayName(day);
+    const out = leaving(day);
+    const into = arriving(day);
+    const moved =
+      lost > 0
+        ? `${names(out)} moved off this day${gained > 0 ? `, and ${names(into)} moved here` : ""}.`
+        : `${names(into)} moved here from another day.`;
+    if (lost > 0) {
+      choices.push({
+        id: `fill:${day}`,
+        day,
+        label: `Fill the gap on ${name}`,
+        ask: `${moved} Suggest something nearby for the time they left, and keep the other stops. ${KEEP_BOOKED}`,
+      });
+    }
+    choices.push({
+      id: `replan:${day}`,
+      day,
+      label: lost > 0 && gained === 0 ? `Re-plan the rest of ${name}` : `Fit them into ${name}`,
+      ask: `${moved} Re-order and re-time the day so it flows. ${KEEP_BOOKED}`,
+    });
+  }
+  return choices;
+}

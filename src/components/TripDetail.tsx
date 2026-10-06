@@ -2492,6 +2492,10 @@ export function TripDetail({
                   }}
                   onApply={(moves, summary) => moveStops(moves, summary || "Plan changed")}
                   onDone={() => setTimelineMenuOpen(false)}
+                  onRework={(day, ask) => {
+                    setDayEditStart({ day, ask });
+                    setDayEditOpen(true);
+                  }}
                 />
               )}
               <MenuChoice

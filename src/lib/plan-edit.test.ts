@@ -1,7 +1,9 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
+  afterMoveChoices,
   combineMoves,
+  daysTouched,
   planAfter,
   planEditPrompt,
   readPendingMoves,
@@ -179,4 +181,60 @@ test("a pending anchor no longer on the day it is used for is dropped", () => {
     moves.map((m) => m.id),
     ["b", "c"],
   );
+});
+
+test("the days a move leaves with a gap and the days it fills", () => {
+  // Market and Temple from day 2 to day 5: day 2 keeps Museum and Lunch.
+  assert.deepEqual(
+    daysTouched(planned, [
+      { id: "a", day_date: five[4]!, at: "end" },
+      { id: "b", day_date: five[4]!, at: "end" },
+    ]),
+    [
+      { day: five[1], lost: 2, gained: 0 },
+      { day: five[4], lost: 0, gained: 2 },
+    ],
+  );
+  // Beach leaves day 5 empty: nothing to re-plan there. A move inside a day is neither.
+  assert.deepEqual(
+    daysTouched(planned, [
+      { id: "e", day_date: five[0]!, at: "end" },
+      { id: "c", day_date: five[1]!, at: "start" },
+    ]),
+    [{ day: five[0], lost: 0, gained: 1 }],
+  );
+  // A swap changes both days both ways.
+  assert.deepEqual(
+    daysTouched(planned, [
+      { id: "a", day_date: five[4]!, at: "end" },
+      { id: "e", day_date: five[1]!, at: "end" },
+    ]),
+    [
+      { day: five[1], lost: 1, gained: 1 },
+      { day: five[4], lost: 1, gained: 1 },
+    ],
+  );
+});
+
+test("after a move, each changed day can be filled, re-planned or fitted", () => {
+  const name = (day: string) => `Day ${five.indexOf(day) + 1}`;
+  const choices = afterMoveChoices(
+    planned,
+    [
+      { id: "a", day_date: five[4]!, at: "end" },
+      { id: "b", day_date: five[4]!, at: "end" },
+    ],
+    name,
+  );
+  assert.deepEqual(
+    choices.map((c) => [c.id, c.label]),
+    [
+      [`fill:${five[1]}`, "Fill the gap on Day 2"],
+      [`replan:${five[1]}`, "Re-plan the rest of Day 2"],
+      [`replan:${five[4]}`, "Fit them into Day 5"],
+    ],
+  );
+  assert.match(choices[0]!.ask, /^Market and Temple moved off this day\. Suggest something nearby/);
+  assert.match(choices[2]!.ask, /^Market and Temple moved here from another day\. Re-order/);
+  for (const c of choices) assert.match(c.ask, /Keep every booked stop on its time\.$/);
 });
