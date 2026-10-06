@@ -3433,3 +3433,117 @@ html:not(.dark)
     radial-gradient(60% 50% at 50% 55%, var(--world-haze-c), transparent 72%);
   filter: blur(6px);
 }
+
+/* Home widgets share iOS's square / wide / large rhythm, in Béa's palette. */
+.home-widgets-frame {
+  container-type: inline-size;
+}
+.home-widget-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: calc((100cqw - 12px) / 2);
+  gap: 12px;
+}
+.home-widget {
+  min-width: 0;
+  min-height: 0;
+}
+.home-widget-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--card);
+  overflow: hidden;
+}
+.home-widget-content {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+/* Existing module actions retain a phone-sized touch target in the grid. */
+.home-widget-content :is(button, a) {
+  min-width: 44px;
+  min-height: 44px;
+}
+.home-widget-content [data-guide="home-past"] > div:first-child a {
+  display: inline-flex;
+  align-items: center;
+}
+.home-widget-content > :only-child {
+  min-height: 100%;
+}
+.home-widget-content > [data-guide^="home-module-"] {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  overflow: auto;
+}
+/* A Small group widget keeps the count and invite action; avatars need more room. */
+.home-widget[data-size="small"] [data-guide="home-module-group"] > span:nth-of-type(2) {
+  display: none;
+}
+.home-widget-grid[data-editing="true"] .module-card-action {
+  display: none;
+}
+.home-widget-content .module-weather-reading {
+  margin-top: 4px;
+}
+.home-widget-content .trip-hero {
+  margin-inline: 0;
+  overflow: hidden;
+}
+.home-widget-content .trip-hero h2 {
+  font-size: 28px;
+}
+.home-widget-content .trip-panel {
+  margin-inline: 0;
+}
+.home-widget-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.home-widget-handle {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: none;
+  cursor: grab;
+}
+.home-widget-handle:active { cursor: grabbing; }
+.home-widget-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  background: var(--card);
+  color: var(--foreground);
+  border-radius: 8px;
+  padding-inline: 4px;
+  font-size: 12px;
+}
+.home-widget-handle:focus-visible, .home-widget-controls select:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+@keyframes home-widget-wiggle {
+  from { rotate: -0.35deg; }
+  to { rotate: 0.35deg; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="reduce"]) .home-widget-grid[data-editing="true"] .home-widget-inner {
+    animation: home-widget-wiggle calc(var(--t-arrive) * 2) ease-in-out infinite alternate;
+  }
+  .home-widget-grid[data-editing="true"] .home-widget:nth-child(even) .home-widget-inner { animation-direction: alternate-reverse; }
+}
+.home-widget[data-dragging="true"] .home-widget-inner {
+  animation: none !important;
+  box-shadow: var(--shadow-lg);
+}

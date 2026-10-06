@@ -25,7 +25,15 @@ const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
  * are looked up or when the map knows none of them, its picture and where it
  * goes.
  */
-export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+export function HomeUpcoming({
+  trip,
+  photos,
+  height = UPCOMING_HERO_H,
+}: {
+  trip: TripRow;
+  photos: TripPhotoRow[];
+  height?: number;
+}) {
   const { stops, loading } = useTripStops(trip.id, null);
   // A one-city trip keeps its city on the trip, not as a stop.
   const cityStops = useMemo(
@@ -47,7 +55,7 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
 
   return (
     <section data-guide="home-trip">
-      <div className="trip-hero -mx-4" style={{ height: UPCOMING_HERO_H }}>
+      <div className="trip-hero -mx-4" style={{ height }}>
         <TripPicture trip={trip} photos={photos} cities={stopCities} />
         {route.length > 0 ? (
           <TripBannerMap
@@ -55,11 +63,11 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
             pills
             stops={route}
             label={`Map of the trip: ${cities}`}
-            height={UPCOMING_HERO_H}
+            height={height}
             current={-1}
             done={0}
-            top={130}
-            bottom={UPCOMING_HERO_H - 50}
+            top={Math.min(130, height - 100)}
+            bottom={height - 35}
           />
         ) : null}
         <span

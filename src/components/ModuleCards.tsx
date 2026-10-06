@@ -42,7 +42,7 @@ export function ModuleCard({
 }) {
   const ActionIcon = action?.icon ?? ArrowRight;
   const button = action ? (
-    <span className="absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_4px_12px_rgb(0_0_0/0.16)]">
+    <span className="module-card-action absolute bottom-3 right-3 grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_4px_12px_rgb(0_0_0/0.16)]">
       <ActionIcon className="size-5" aria-hidden />
     </span>
   ) : null;
@@ -167,7 +167,7 @@ export function NowThereCard({
       {...(guide ? { guide } : {})}
     >
       {weather ? (
-        <span className="mt-[52px] inline-flex flex-col rounded-xl bg-black/45 px-2.5 py-1.5 text-white backdrop-blur-sm">
+        <span className="module-weather-reading mt-[52px] inline-flex flex-col rounded-xl bg-black/45 px-2.5 py-1.5 text-white backdrop-blur-sm">
           {time && (
             <span className="text-[17px] font-semibold tabular-nums leading-tight">{time}</span>
           )}
@@ -204,7 +204,7 @@ export function WeatherThereCard({
         <span
           className={
             art
-              ? "mt-[52px] inline-flex flex-col rounded-xl bg-black/45 px-2.5 py-1.5 text-white backdrop-blur-sm"
+              ? "module-weather-reading mt-[52px] inline-flex flex-col rounded-xl bg-black/45 px-2.5 py-1.5 text-white backdrop-blur-sm"
               : "inline-flex flex-col"
           }
         >
