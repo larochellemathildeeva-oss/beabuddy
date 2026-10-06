@@ -292,7 +292,7 @@ function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => setPanel("settings")}
-                  className="you-edit mt-2 inline-flex items-center gap-1 rounded-full px-3.5 py-1.5 text-[14px] font-semibold"
+                  className="you-edit mt-2 inline-flex min-h-11 items-center gap-1 rounded-full px-4 text-[14px] font-semibold"
                 >
                   Edit profile
                   <ChevronRight className="size-3.5" aria-hidden />
@@ -330,7 +330,10 @@ function ProfilePage() {
           <section aria-label="Travel preferences" className="you-section">
             <div className="flex items-baseline justify-between">
               <SectionTitle>Travel preferences</SectionTitle>
-              <Link to="/preferences" className="text-[14px] font-semibold text-muted-foreground">
+              <Link
+                to="/preferences"
+                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
+              >
                 See all
               </Link>
             </div>
@@ -369,7 +372,10 @@ function ProfilePage() {
           <section aria-label="Recent highlights" className="you-section">
             <div className="flex items-baseline justify-between">
               <SectionTitle>Recent highlights</SectionTitle>
-              <Link to="/trips" className="text-[14px] font-semibold text-muted-foreground">
+              <Link
+                to="/trips"
+                className="-me-2 inline-flex min-h-11 items-center px-2 text-[14px] font-semibold text-muted-foreground"
+              >
                 See all
               </Link>
             </div>
@@ -783,7 +789,7 @@ function Figure({
       <span className="line-clamp-2 max-w-full text-[16px] font-semibold leading-tight [overflow-wrap:anywhere]">
         {value}
       </span>
-      <span className="block max-w-full truncate text-[13px] text-muted-foreground">{label}</span>
+      <span className="block max-w-full truncate text-[13px] text-foreground/80">{label}</span>
     </>
   );
   const cls =

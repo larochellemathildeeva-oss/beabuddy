@@ -64,7 +64,11 @@ export function RecsSectionHead({
         <span className="shrink-0 whitespace-nowrap text-[14px] text-muted-foreground">{hint}</span>
       )}
       {onSeeAll && (
-        <button type="button" onClick={onSeeAll} className="text-[14px] font-semibold text-primary">
+        <button
+          type="button"
+          onClick={onSeeAll}
+          className="-me-2 min-h-11 px-2 text-[14px] font-semibold text-primary"
+        >
           {seeAllLabel}
         </button>
       )}
