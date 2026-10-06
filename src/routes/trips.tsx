@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { friendlyError } from "@/lib/friendly-error";
 import type { PlannerTab } from "@/components/ItineraryImport";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { CalendarDays, ChevronRight, FileText, Plus, Sparkles, Users, X } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
@@ -115,7 +115,7 @@ function TripsPage() {
   );
   const [layout, setLayout] = useTripsLayout();
   const [picture, setPicture] = useTripPicture();
-  const followed = useFollowedTrips(user?.id ?? null);
+  const { trips: followed, forget: forgetFollowed } = useFollowedTrips(user?.id ?? null);
   const [form, setForm] = useState({
     title: "",
     city: "",
@@ -430,7 +430,9 @@ function TripsPage() {
                 </>
               )}
 
-              {view === "following" && <FollowedTripList trips={followed ?? []} />}
+              {view === "following" && (
+                <FollowedTripList trips={followed ?? []} onRemoved={forgetFollowed} />
+              )}
 
               {t.trips.length === 0 && !t.loading && view !== "following" && (
                 <div className="tile-fill-3 flex items-center gap-4 rounded-[var(--r-card)] p-4">
@@ -986,7 +988,11 @@ function DayTripRow({
  * list belongs to the account it was read for, so another account never
  * sees it, even for a moment.
  */
-function useFollowedTrips(userId: string | null): FollowedTrip[] | null {
+function useFollowedTrips(userId: string | null): {
+  trips: FollowedTrip[] | null;
+  /** A trip the traveller just stopped following leaves the list for good this visit. */
+  forget: (token: string) => void;
+} {
   const list = useServerFn(listFollowedTrips);
   const [read, setRead] = useState<{ userId: string; trips: FollowedTrip[] | null } | null>(null);
   useEffect(() => {
@@ -999,5 +1005,8 @@ function useFollowedTrips(userId: string | null): FollowedTrip[] | null {
       alive = false;
     };
   }, [userId, list]);
-  return userId && read?.userId === userId ? read.trips : null;
+  const forget = useCallback((token: string) => {
+    setRead((r) => (r?.trips ? { ...r, trips: r.trips.filter((t) => t.token !== token) } : r));
+  }, []);
+  return { trips: userId && read?.userId === userId ? read.trips : null, forget };
 }

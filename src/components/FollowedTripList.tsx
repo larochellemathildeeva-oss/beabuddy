@@ -1,14 +1,50 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { ChevronRight, MapPin } from "@/components/icons";
+import { changeFollow } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
 import { formatDateRangeLabel } from "@/lib/trip-dates";
 
 /**
  * Trips → Following: trips other travellers shared with this one, each
  * opening the shared page (the live card, both clocks, the plan). Read-only,
- * and only what the share link shows. Unfollowing is on that page.
+ * and only what the share link shows. "Remove from list" stops following; the
+ * link still opens, and following it again is one tap on that page.
  */
-export function FollowedTripList({ trips }: { trips: FollowedTrip[] }) {
+export function FollowedTripList({
+  trips,
+  onRemoved,
+}: {
+  trips: FollowedTrip[];
+  /** Called once a trip is no longer followed, so its owner drops it from the list. */
+  onRemoved: (token: string) => void;
+}) {
+  const change = useServerFn(changeFollow);
+  const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
+
+  const remove = async (trip: FollowedTrip) => {
+    setBusy((set) => new Set(set).add(trip.token));
+    try {
+      const next = await change({ data: { token: trip.token, follow: false } });
+      if (next === "not-following" || next === "gone") {
+        onRemoved(trip.token);
+        toast("Removed from Following", { description: trip.title });
+      } else {
+        toast.error("That didn't save. Try again.");
+      }
+    } catch {
+      toast.error("That didn't save. Try again.");
+    } finally {
+      setBusy((set) => {
+        const next = new Set(set);
+        next.delete(trip.token);
+        return next;
+      });
+    }
+  };
+
   if (trips.length === 0) {
     return (
       <p className="py-6 text-center text-[14.5px] text-muted-foreground">
@@ -51,6 +87,14 @@ export function FollowedTripList({ trips }: { trips: FollowedTrip[] }) {
               </span>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
             </Link>
+            <button
+              type="button"
+              disabled={busy.has(trip.token)}
+              onClick={() => void remove(trip)}
+              className="mt-1 min-h-11 px-1 text-[13px] font-semibold text-muted-foreground underline underline-offset-2 disabled:opacity-60"
+            >
+              Remove from list
+            </button>
           </li>
         );
       })}
