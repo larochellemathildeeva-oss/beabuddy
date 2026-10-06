@@ -128,6 +128,7 @@ export function WorldGlobeStage({
 } & HTMLAttributes<HTMLDivElement>) {
   return (
     <div className={cn("relative", className)} {...rest}>
+      <div className="world-haze" aria-hidden />
       {children}
     </div>
   );

@@ -150,7 +150,7 @@ export const CLOUD_FRAGMENT = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorldPos);
     float lit = clamp(0.5 + 0.65 * dot(N, normalize(uLightDir)), 0.0, 1.0);
     vec3 col = mix(uShade, uColor, lit);
-    float a = smoothstep(0.04, 0.55, c) * uOpacity * smoothstep(0.02, 0.35, dot(G, V));
+    float a = smoothstep(0.0, 0.9, c) * uOpacity * smoothstep(0.02, 0.35, dot(G, V));
     gl_FragColor = vec4(col, a);
   }
 `;
