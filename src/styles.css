@@ -3407,7 +3407,7 @@ html:not(.dark)
   color: var(--muted-foreground);
 }
 
-/* Haze behind the Earth globe. Colours are tokens so a mood is changed in one place. */
+/* Haze behind the Earth globe in Calm and Colorful (Dark has none). Colours are tokens so a mood is changed in one place. */
 :root {
   --world-haze-a: rgb(255 255 255 / 0.9);
   --world-haze-b: rgb(255 244 232 / 0.85);
@@ -3421,7 +3421,7 @@ html:not(.dark)
 .dark {
   --world-haze-a: transparent;
   --world-haze-b: transparent;
-  --world-haze-c: rgb(60 90 190 / 0.18);
+  --world-haze-c: transparent;
 }
 .world-haze {
   pointer-events: none;
