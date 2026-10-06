@@ -1,113 +1,24 @@
-import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Check, Luggage, Plane, Search } from "@/components/icons";
-import { TripPicture } from "@/components/HomeTripCard";
-import { TripBannerMap } from "@/components/TripRouteMap";
+import { HomeTripBanner } from "@/components/HomeTripBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import { useTripStops } from "@/hooks/useTripStops";
-import { useCityPositions } from "@/hooks/useCityPositions";
-import { tripCityStop, withCityPositions } from "@/lib/city-position";
-import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
+import { flightParts } from "@/lib/home-route-map";
 import { placeArtUrl } from "@/lib/place-art";
-import { heroTags, routeLine } from "@/lib/trip-glance";
-
-/** The picture the trip's cities are drawn over. */
-const UPCOMING_HERO_H = 300;
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
 
-/**
- * The top of Home, as the "three moods" design draws it: what kind of moment
- * it is, the trip's name and how soon in large serif, a round arrow into it,
- * and under them the living map of its cities — or, while their positions
- * are looked up or when the map knows none of them, its picture and where it
- * goes.
- */
-export function HomeUpcoming({
-  trip,
-  photos,
-  height = UPCOMING_HERO_H,
-}: {
-  trip: TripRow;
-  photos: TripPhotoRow[];
-  height?: number;
-}) {
-  const { stops, loading } = useTripStops(trip.id, null);
-  // A one-city trip keeps its city on the trip, not as a stop.
-  const cityStops = useMemo(
-    () => (stops.length || loading ? stops : tripCityStop(trip)),
-    [stops, loading, trip],
-  );
-  // A city typed rather than picked has no position: found by its name.
-  const positions = useCityPositions(cityStops);
-  const route = useMemo(
-    () => routeStops(withCityPositions(cityStops, positions)),
-    [cityStops, positions],
-  );
-  const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
-  const when = heroWhen(tags.when);
-  const cities = route.map((s) => s.city).join(", ");
-  const stopCities = stops.map((s) => s.city).filter(Boolean);
-  const where =
-    routeLine(stopCities) || trip.city?.split(",")[0] || stopCities[0] || trip.country || "";
+/** The top of Home with a trip ahead: the trip as the short strip the trip page opens with. */
+export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhotoRow[] }) {
+  const { stops } = useTripStops(trip.id, null);
+  const stopCities = useMemo(() => stops.map((s) => s.city).filter(Boolean), [stops]);
 
   return (
-    <section data-guide="home-trip">
-      <div className="trip-hero -mx-4" style={{ height }}>
-        <TripPicture trip={trip} photos={photos} cities={stopCities} />
-        {route.length > 0 ? (
-          <TripBannerMap
-            over
-            pills
-            stops={route}
-            label={`Map of the trip: ${cities}`}
-            height={height}
-            current={-1}
-            done={0}
-            top={Math.min(130, height - 100)}
-            bottom={height - 35}
-          />
-        ) : null}
-        <span
-          aria-hidden
-          className="trip-hero-haze"
-          style={{ "--haze-end": "130px" } as CSSProperties}
-        />
-        <div className="relative flex items-start justify-between gap-3 px-5 pt-2">
-          <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
-              {tags.label}
-            </p>
-            {/* The name is clamped, never the countdown under it. */}
-            <h2 className="mt-1 font-display text-[38px] leading-[0.98] tracking-[-0.02em]">
-              <span className="line-clamp-2 break-words">{trip.title}</span>
-              {when ? <span className="block">{when}</span> : null}
-            </h2>
-          </Link>
-          <Link
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            viewTransition
-            aria-label={`Open ${trip.title}`}
-            className="mt-3 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform motion-safe:hover:translate-x-0.5"
-          >
-            <ArrowRight className="size-[22px]" />
-          </Link>
-        </div>
-        {route.length === 0 && where ? (
-          <>
-            <span
-              aria-hidden
-              className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(to_top,rgb(0_0_0/0.55),transparent)]"
-            />
-            <span className="absolute inset-x-5 bottom-3 truncate text-[15px] font-semibold text-white">
-              {where}
-            </span>
-          </>
-        ) : null}
-      </div>
+    <section>
+      <HomeTripBanner trip={trip} photos={photos} cities={stopCities} />
     </section>
   );
 }
@@ -126,16 +37,7 @@ function shortDay(iso: string | null | undefined): string {
  * The trip in three numbers: to-dos left, the flight, how packed. Each opens
  * its own list.
  */
-export function HomeTripStats({
-  trip,
-  glance,
-  overlap = true,
-}: {
-  trip: TripRow;
-  glance: TripGlance | undefined;
-  /** Rising over the foot of the map above it; off when cards sit between. */
-  overlap?: boolean;
-}) {
+export function HomeTripStats({ trip, glance }: { trip: TripRow; glance: TripGlance | undefined }) {
   const open = glance?.todos.open ?? 0;
   const flight = glance?.flight ?? null;
   const parts = flight ? flightParts(`${flight.title} ${flight.detail ?? ""}`) : null;
@@ -150,7 +52,7 @@ export function HomeTripStats({
     <section
       data-guide="home-next"
       aria-label="This trip at a glance"
-      className={`relative z-10 ${overlap ? "-mt-6" : ""} grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
+      className={`relative z-10 grid grid-cols-[0.85fr_1.3fr_1fr] divide-x divide-border/70 rounded-[24px] bg-card py-3.5 ${SOFT_SHADOW}`}
     >
       <Link
         to="/trips/$tripId"

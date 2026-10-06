@@ -3,26 +3,20 @@ import { useThemeName } from "@/hooks/useThemeName";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, ChevronRight, Heart, MapPin } from "@/components/icons";
 import { StopArt } from "@/components/day/stop-bits";
-import { TripPicture } from "@/components/HomeTripCard";
-import { TripBannerMap } from "@/components/TripRouteMap";
+import { HomeTripBanner } from "@/components/HomeTripBanner";
 import { TownPhotoCredit } from "@/components/TownPhotoCredit";
 import type { TripGlance } from "@/hooks/useTripGlances";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
-import { useCityPositions } from "@/hooks/useCityPositions";
 import { useTownPicture } from "@/hooks/useTownPicture";
 import { useTripStops } from "@/hooks/useTripStops";
 import type { TripRow } from "@/hooks/useTrips";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { tripCityStop, withCityPositions } from "@/lib/city-position";
-import { routeStopsIndexed } from "@/lib/home-route-map";
 import { savedSummary, todaysCompanion, untilLabel, type SavedCity } from "@/lib/home-now";
-import { routeStopOn } from "@/lib/import-stop";
 import { timeForRail } from "@/lib/timeline-kind";
 import { toLocalISODate } from "@/lib/trip-dates";
-import { heroTags, routeLine } from "@/lib/trip-glance";
+import { heroTags } from "@/lib/trip-glance";
 
 const SOFT_SHADOW = "shadow-[0_4px_16px_rgb(0_0_0/0.06)]";
-const NOW_HERO_H = 270;
 const SAVED_HERO_H = 250;
 const TAG_H = 44;
 
@@ -37,93 +31,30 @@ type NowStop = {
 };
 
 /**
- * Home while a trip is under way (mockup `tripHero('home')`): the trip's route
- * over the terrain with the city you are in ringed, then the current stop and
- * the next one as two cards. Where you are comes from the taps on the
- * Companion ("I'm here", "Leaving"), never from the clock.
+ * Home while a trip is under way: the trip as the short strip the trip page
+ * opens with, then the current stop and the next one as two cards. Where you
+ * are comes from the taps on the Companion ("I'm here", "Leaving"), never
+ * from the clock.
  */
 export function HomeOnTrip({
   trip,
   photos,
   glance,
   showStops = true,
-  height = NOW_HERO_H,
 }: {
   trip: TripRow;
   photos: TripPhotoRow[];
   glance: TripGlance | undefined;
   /** The "Current / Next stop" module (Customize home). */
   showStops?: boolean;
-  height?: number;
 }) {
-  const { stops, loading } = useTripStops(trip.id, null);
-  const cityStops = useMemo(
-    () => (stops.length || loading ? stops : tripCityStop(trip)),
-    [stops, loading, trip],
-  );
-  const positions = useCityPositions(cityStops);
-  const placed = useMemo(() => withCityPositions(cityStops, positions), [cityStops, positions]);
-  const { route, indexOf } = useMemo(() => routeStopsIndexed(placed), [placed]);
-  const today = toLocalISODate(new Date());
-  // The city ringed is where the taps say you are (the stop on the card),
-  // never merely the city the calendar puts today in.
-  const taps = useMemo(() => todaysCompanion(glance?.items ?? [], today), [glance, today]);
-  const calendarCity = routeStopOn(placed, today);
-  const tappedCity = taps.current?.day_date ? routeStopOn(placed, taps.current.day_date) : null;
-  const indexOfCity = (city: typeof calendarCity) =>
-    city ? (indexOf[placed.indexOf(city)] ?? -1) : -1;
-  const current = indexOfCity(tappedCity);
-  const behind = Math.max(0, indexOfCity(calendarCity));
+  const { stops } = useTripStops(trip.id, null);
+  const cityNames = useMemo(() => stops.map((s) => s.city).filter(Boolean), [stops]);
   const tags = heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative");
-  const cityNames = stops.map((s) => s.city).filter(Boolean);
-  const line = routeLine(cityNames);
-  const cities = route.map((s) => s.city).join(", ");
-  const kicker = [tags.label === "On the trip" ? "On trip" : tags.label, tags.when]
-    .filter(Boolean)
-    .join(" · ");
 
   return (
-    <section data-guide="home-trip">
-      <div className="trip-hero -mx-4" style={{ height }}>
-        <TripPicture trip={trip} photos={photos} cities={cityNames} />
-        {route.length > 0 ? (
-          <TripBannerMap
-            over
-            stops={route}
-            label={`Map of the trip: ${cities}`}
-            height={height}
-            current={current}
-            done={behind}
-            pills
-            top={98}
-            bottom={height - 35}
-          />
-        ) : null}
-        <span
-          aria-hidden
-          className="trip-hero-haze"
-          style={{ "--haze-end": "130px" } as CSSProperties}
-        />
-        <div className="relative flex items-start justify-between gap-3 px-5 pt-2">
-          <Link to="/trips/$tripId" params={{ tripId: trip.id }} viewTransition className="min-w-0">
-            <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-foreground/75">
-              {kicker}
-            </p>
-            <h2 className="mt-1 line-clamp-2 break-words font-display text-[38px] leading-[1] tracking-[-0.02em]">
-              {line ? `${line}.` : trip.title}
-            </h2>
-          </Link>
-          <Link
-            to="/trips/$tripId"
-            params={{ tripId: trip.id }}
-            viewTransition
-            aria-label={`Open ${trip.title}`}
-            className="mt-2 grid size-[50px] shrink-0 place-items-center rounded-full bg-[var(--home-ink)] text-[var(--home-ink-foreground)] shadow-[0_6px_16px_rgb(0_0_0/0.14)] transition-transform motion-safe:hover:translate-x-0.5"
-          >
-            <ArrowRight className="size-[22px]" />
-          </Link>
-        </div>
-      </div>
+    <section>
+      <HomeTripBanner trip={trip} photos={photos} cities={cityNames} />
       <div className="trip-panel -mx-4 space-y-3 px-4 pt-4">
         {showStops && <NowCards trip={trip} glance={glance} day={tags.when} />}
       </div>
