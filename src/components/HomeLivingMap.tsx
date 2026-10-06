@@ -88,9 +88,15 @@ export function HomeUpcoming({ trip, photos }: { trip: TripRow; photos: TripPhot
           </Link>
         </div>
         {route.length === 0 && where ? (
-          <span className="absolute inset-x-5 bottom-3 truncate text-[15px] font-semibold text-white">
-            {where}
-          </span>
+          <>
+            <span
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(to_top,rgb(0_0_0/0.55),transparent)]"
+            />
+            <span className="absolute inset-x-5 bottom-3 truncate text-[15px] font-semibold text-white">
+              {where}
+            </span>
+          </>
         ) : null}
       </div>
     </section>
