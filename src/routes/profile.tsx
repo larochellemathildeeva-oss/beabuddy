@@ -458,7 +458,7 @@ function ProfilePage() {
               icon={CloudUpload}
               tone={3}
               title="Data & imports"
-              hint="Photos, calendar, offline trips on this phone"
+              hint="Calendar, offline trips on this phone"
               onClick={() => setPanel("data")}
               guide="offline-options"
             />
