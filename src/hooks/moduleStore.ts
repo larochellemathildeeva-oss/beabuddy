@@ -10,6 +10,7 @@ import {
   toggleModule,
   writeModules,
   type ModuleLayout,
+  type WidgetSize,
 } from "@/lib/module-layout";
 import { getStored, setStored } from "@/lib/settings-storage";
 
@@ -20,6 +21,7 @@ export type ModuleInfo<K extends string> = { key: K; label: string; hint: string
  * them: a switch flipped under You changes Home at once, without a reload.
  */
 export function createModuleStore<K extends string>(config: {
+  normalize?: (layout: ModuleLayout<K>) => ModuleLayout<K>;
   setting: SyncedSetting;
   keyFor: (uid: string | undefined) => string;
   /** Prefix of `keyFor`'s keys, so a change in another tab is heard. */
@@ -33,7 +35,8 @@ export function createModuleStore<K extends string>(config: {
 }) {
   const fixed: ReadonlySet<K> = new Set(config.fixed ?? []);
   const keys = config.modules.map((m) => m.key);
-  const fallback = defaultModules(keys, config.defaults);
+  const normalize = config.normalize ?? ((layout: ModuleLayout<K>) => layout);
+  const fallback = normalize(defaultModules(keys, config.defaults));
   const listeners = new Set<() => void>();
   const cache = new Map<string, { raw: string | null; layout: ModuleLayout<K> }>();
 
@@ -42,7 +45,7 @@ export function createModuleStore<K extends string>(config: {
     const raw = getStored(key);
     const hit = cache.get(key);
     if (hit && hit.raw === raw) return hit.layout;
-    const layout = readModules(raw, keys, config.defaults, config.newOn);
+    const layout = normalize(readModules(raw, keys, config.defaults, config.newOn));
     cache.set(key, { raw, layout });
     return layout;
   }
@@ -84,11 +87,41 @@ export function createModuleStore<K extends string>(config: {
       (key: K, step: -1 | 1) => write(userId, moveModule(current(userId), key, step, fixed)),
       [userId],
     );
+    const resize = useCallback(
+      (key: K, size: WidgetSize) => {
+        const layout = current(userId);
+        write(userId, normalize({ ...layout, sizes: { ...layout.sizes, [key]: size } }));
+      },
+      [userId],
+    );
+    const reorder = useCallback(
+      (active: K, over: K) => {
+        const layout = current(userId);
+        const order = [...layout.order];
+        const from = order.indexOf(active);
+        const to = order.indexOf(over);
+        if (from < 0 || to < 0 || from === to) return;
+        order.splice(from, 1);
+        order.splice(to, 0, active);
+        write(userId, { ...layout, order });
+      },
+      [userId],
+    );
     const reset = useCallback(() => write(userId, null), [userId]);
     const layout = Object.fromEntries(keys.map((k) => [k, modules.on.has(k)])) as Record<
       K,
       boolean
     >;
-    return { layout, modules, shown: shownModules(modules), fixed, toggle, move, reset };
+    return {
+      layout,
+      modules,
+      shown: shownModules(modules),
+      fixed,
+      toggle,
+      move,
+      reset,
+      resize,
+      reorder,
+    };
   };
 }

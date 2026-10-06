@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
@@ -12,7 +12,13 @@ import {
   HomeUpcoming,
   HomeWhereNext,
 } from "@/components/HomeLivingMap";
-import { HomeNoTripHero, HomeOnTrip, HomeSavedCard, HomeWaiting } from "@/components/HomeMoods";
+import {
+  HomeNoTripHero,
+  HomeOnTrip,
+  HomeSavedCard,
+  HomeWaiting,
+  NowCards,
+} from "@/components/HomeMoods";
 import { laterTrips, pastTrips, pickActiveTrip } from "@/lib/home-trip";
 import { savedCities } from "@/lib/home-now";
 import { isUnderway } from "@/lib/trip-card";
@@ -23,14 +29,14 @@ import { useNearMe } from "@/hooks/useNearMe";
 import { useTrips } from "@/hooks/useTrips";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { greetingFor } from "@/lib/trip-glance";
+import { greetingFor, heroTags } from "@/lib/trip-glance";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
-import { HOME_SMALL, useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
+import { useHomeLayout, type HomeSectionKey } from "@/hooks/useHomeLayout";
 import { HomeTripModule } from "@/components/HomeModules";
 import { useHomeTripModules } from "@/hooks/useHomeTripModules";
-import { moduleRows } from "@/lib/module-layout";
+import { HomeWidgetGrid } from "@/components/HomeWidgetGrid";
 import { CustomizeHome } from "@/components/CustomizeHome";
 import { usePhotoMemories } from "@/hooks/usePhotoMemories";
 import { useRecommendations } from "@/hooks/useRecommendations";
@@ -345,7 +351,16 @@ function SignedInHome() {
   const empty = photo.rows.length === 0 && vault.rows.length === 0 && notes.rows.length === 0;
   const sampleCtaDismissed = Boolean(user?.id && hasDismissedSampleCta(safeStorage(), user.id));
   const showSamplePrompt = empty && !sampleCtaDismissed;
-  const { layout, shown } = useHomeLayout();
+  const { layout, modules, shown, resize, reorder } = useHomeLayout();
+  const [editing, setEditing] = useState(false);
+  const doneRef = useRef<HTMLButtonElement>(null);
+  // Entering arrangement from the Customize card at the bottom: bring the
+  // bar (and the handles under it) into view and put focus on Done.
+  useEffect(() => {
+    if (!editing) return;
+    doneRef.current?.scrollIntoView({ block: "center" });
+    doneRef.current?.focus({ preventScroll: true });
+  }, [editing]);
 
   const now = new Date();
   const today = now.toLocaleDateString(undefined, {
@@ -390,7 +405,10 @@ function SignedInHome() {
   // The trip modules show while there is a trip under way or ahead.
   const shownModules = shown.filter(
     (k) =>
-      k !== "stops" && k !== "suggested" && (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)),
+      (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)) &&
+      (k !== "stops" || (tripUnderway && Boolean(trip && glances[trip.id]))) &&
+      (k !== "trip" || !trips.loading) &&
+      (k !== "suggested" || Boolean(trip && !trips.loading)),
   );
   const tripWeather =
     Boolean(trip && !trips.loading) &&
@@ -400,16 +418,54 @@ function SignedInHome() {
   const homeModule = (key: HomeSectionKey): ReactNode => {
     switch (key) {
       case "trip":
-        return trips.loading ? null : <HomeYourTrips trips={others} photos={photos} />;
+        return trips.loading ? null : (
+          <div className="space-y-3">
+            {trip &&
+              (underway ? (
+                <HomeOnTrip
+                  trip={trip}
+                  photos={photos}
+                  glance={glances[trip.id]}
+                  showStops={false}
+                  height={220}
+                />
+              ) : (
+                <HomeUpcoming trip={trip} photos={photos} height={220} />
+              ))}
+            {trip && <HomeTripStats trip={trip} glance={glances[trip.id]} />}
+            <HomeYourTrips trips={others} photos={photos} />
+            {!trip && others.length === 0 && (
+              <p className="p-4 text-muted-foreground">Your next trip starts here.</p>
+            )}
+            <HomeWhereNext />
+          </div>
+        );
+      case "stops":
+        return trip ? (
+          <NowCards
+            trip={trip}
+            glance={glances[trip.id]}
+            day={heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative").when}
+          />
+        ) : null;
+      case "suggested":
+        return trip ? <HomeSuggested trip={trip} here={tripModules.here} /> : null;
       case "weather":
-        return showTrip || noTripMap ? (
-          <div className="flex justify-end">
+        return (
+          <div className="p-3">
+            <p className="mb-3 font-display text-[20px]">Weather here</p>
             <HomeWeather near={near} />
           </div>
-        ) : null;
+        );
       case "waiting":
         return (
-          <div className="pt-2">
+          <div className="space-y-3 pt-2">
+            {noTripMap && (
+              <>
+                <HomeSavedCard cities={waiting} />
+                <HomeWaiting cities={waiting} />
+              </>
+            )}
             <NearHome pins={vault.pins} near={near} waiting={showSave ? topReco : undefined} />
           </div>
         );
@@ -427,7 +483,14 @@ function SignedInHome() {
               <p className="mt-2 text-[15px] leading-relaxed">{topNote.note}</p>
             </div>
           </section>
-        ) : null;
+        ) : (
+          <div className="p-4">
+            <p className="font-display text-[20px]">Future me note</p>
+            <Link to="/recommendations" className="mt-3 flex min-h-11 items-center text-primary">
+              Save a place for your next visit
+            </Link>
+          </div>
+        );
       default:
         return trip ? (
           <HomeTripModule
@@ -449,48 +512,39 @@ function SignedInHome() {
         : {
             eyebrow: today,
             title: greetingLine,
-            ...(layout.weather ? { headerAction: <HomeWeather near={near} /> } : {}),
           })}
       actionBesideEyebrow
     >
       <div className="space-y-5">
-        {showTrip && (
-          <div className="space-y-4">
-            {underway ? (
-              <HomeOnTrip
-                trip={trip}
-                photos={photos}
-                glance={glances[trip.id]}
-                showStops={layout.stops}
-              />
-            ) : (
-              <HomeUpcoming trip={trip} photos={photos} />
-            )}
-            <HomeTripStats trip={trip} glance={glances[trip.id]} overlap={!underway} />
-            <HomeWhereNext />
-            {layout.suggested && <HomeSuggested trip={trip} here={tripModules.here} />}
-          </div>
-        )}
-
-        {noTripMap && (
-          <div className="space-y-4">
-            <HomeNoTripHero greeting={greetingLine} date={today} cities={waiting} />
-            <HomeSavedCard cities={waiting} />
-            <HomeWaiting cities={waiting} />
-          </div>
-        )}
-
-        {moduleRows(shownModules, (k) => HOME_SMALL.has(k)).map((row) =>
-          "full" in row ? (
-            <div key={row.full}>{homeModule(row.full)}</div>
-          ) : (
-            <div key={row.pair.join("+")} className="grid grid-cols-2 gap-3">
-              {row.pair.map((k) => (
-                <div key={k}>{homeModule(k)}</div>
-              ))}
+        {editing && (
+          <div className="sticky top-0 z-20 flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3 shadow-sm">
+            <div>
+              <p className="font-semibold">Customize home</p>
+              <p className="text-[13px] text-muted-foreground">
+                Drag a handle or use the arrow keys. Pick a size.
+              </p>
             </div>
-          ),
+            <button
+              ref={doneRef}
+              type="button"
+              onClick={() => setEditing(false)}
+              className="min-h-11 min-w-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
+            >
+              Done
+            </button>
+          </div>
         )}
+        {noTripMap && <HomeNoTripHero greeting={greetingLine} date={today} cities={waiting} />}
+        <div className="home-widgets-frame">
+          <HomeWidgetGrid
+            modules={modules}
+            items={shownModules}
+            editing={editing}
+            render={homeModule}
+            onResize={resize}
+            onReorder={reorder}
+          />
+        </div>
 
         {showSamplePrompt && (
           <section data-guide="home-empty" className="rise plain-card p-5">
@@ -513,7 +567,7 @@ function SignedInHome() {
           </section>
         )}
 
-        <CustomizeHome variant="card" />
+        <CustomizeHome variant="card" onArrange={() => setEditing(true)} />
 
         {((layout.weather && near.consent && near.state === "ok") || tripWeather) && (
           <WeatherCredit />

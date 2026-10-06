@@ -107,6 +107,7 @@ if (sample === "docs-open") {
   // The first-use welcome, over an empty page.
   createRoot(document.getElementById("root")!).render(<Welcome />);
 } else if (sample.startsWith("homepage") || sample === "landing") {
+  startAccountSettingsSync();
   // The Home route itself, in the app's frame.
   const HomePage = (HomeRoute as unknown as { options: { component: () => JSX.Element } }).options.component;
   createRoot(document.getElementById("root")!).render(<HomePage />);

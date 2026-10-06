@@ -1,3 +1,4 @@
+import { normalizeHomeWidgets } from "@/lib/home-widget-grid";
 import { homeLayoutKey } from "@/lib/account-settings";
 import { createModuleStore, type ModuleInfo } from "@/hooks/moduleStore";
 
@@ -77,12 +78,13 @@ export const HOME_SMALL: ReadonlySet<HomeSectionKey> = new Set([
 
 export const useHomeLayout = createModuleStore({
   setting: "homeLayout",
+  normalize: normalizeHomeWidgets,
   keyFor: homeLayoutKey,
   prefix: "bea-home-layout-",
   modules: HOME_SECTIONS,
   defaults: DEFAULT_HOME_MODULES,
   // The current and next stop sit under the trip's map, wherever it is.
-  fixed: ["stops", "suggested"],
+  fixed: [],
   // Home already showed it before it could be switched off.
   newOn: ["suggested"],
 });
