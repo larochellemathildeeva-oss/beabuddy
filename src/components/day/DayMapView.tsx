@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Maximize2 } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Clock, MapPin, Maximize2 } from "@/components/icons";
 import { DayMap } from "@/components/day/DayMap";
 import { LegIcon, StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
 import { dayLengthLabel, dayTitle, legWords, measured } from "@/components/day/stop-words";
@@ -97,6 +97,7 @@ export function DayMapView({
   nesting = true,
   legFor,
   dayStrip,
+  onDayStep,
 }: {
   groups: TimelineDayGroup<ItineraryRow>[];
   /** Off: the flat view — ordinary pins, and no "In …" on the cards. */
@@ -111,6 +112,8 @@ export function DayMapView({
   legFor?: LegFor | undefined;
   /** The day's chips, drawn on the map rather than above it. */
   dayStrip?: ReactNode;
+  /** A sideways swipe on the sheet changes the day. */
+  onDayStep?: ((by: 1 | -1) => void) | undefined;
 }) {
   const stops = groups.flatMap((group) => group.items);
   const model = dayMapModel(stops, { nesting });
@@ -190,6 +193,7 @@ export function DayMapView({
           onLayout={setLayout}
           onFit={() => setSelectedId(null)}
           dayStrip={dayStrip}
+          onDayStep={onDayStep}
           heightClass={TALL_STAGE}
         />
       ) : (
@@ -362,7 +366,7 @@ function Legend({ model }: { model: DayMapModel }) {
 }
 
 function MapFootnotes({ model, brief = false }: { model: DayMapModel; brief?: boolean }) {
-  const caption = brief ? "" : dayMapCaption(model);
+  const caption = dayMapCaption(model);
   return (
     <div className={brief ? "mt-1.5 space-y-1" : "mt-3 space-y-1"}>
       {caption && <p className="text-[14px] leading-snug text-muted-foreground">{caption}</p>}
@@ -684,6 +688,7 @@ function FocusStage({
   onLayout,
   onFit,
   dayStrip,
+  onDayStep,
   heightClass,
 }: {
   model: DayMapModel;
@@ -697,6 +702,7 @@ function FocusStage({
   onLayout: (layout: MapLayout) => void;
   onFit: () => void;
   dayStrip?: ReactNode;
+  onDayStep?: ((by: 1 | -1) => void) | undefined;
   heightClass: string;
 }) {
   const pins = model.pins;
@@ -707,7 +713,7 @@ function FocusStage({
   const next = nextPin ? stops.find((item) => item.id === nextPin.id) : undefined;
   const step = (by: 1 | -1) => onSelect(stepPin(pins, selectedId, by));
 
-  // A horizontal swipe on the sheet steps; a vertical one is left to the page.
+  // A horizontal swipe on the sheet changes the day; a vertical one is left to the page.
   const swipe = useRef<{ x: number; y: number } | null>(null);
 
   return (
@@ -731,7 +737,7 @@ function FocusStage({
         if (!start) return;
         const dx = e.clientX - start.x;
         if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(e.clientY - start.y)) {
-          step(dx < 0 ? 1 : -1);
+          onDayStep?.(dx < 0 ? 1 : -1);
         }
       }}
       sheet={
@@ -827,52 +833,60 @@ function LiveCard({
   const stay = stop.planned_stay_minutes ? stayLabel(stop.planned_stay_minutes) : "";
   const href = mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address);
 
-  // One pill like the Timeline's, carrying what Companion's current stop does:
-  // the picture, the name, the time and stay, the address and the way on.
+  // The Companion's current-stop card, for the one stop in hand: its picture,
+  // label, name, chips and address, then the way on.
   return (
-    <article aria-live="polite" className="space-y-1.5">
-      <div
-        className={`flex items-center gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm ${
-          current ? "ring-2 ring-primary/45" : ""
-        }`}
+    <article aria-live="polite" className="space-y-2">
+      <section
+        className={`plain-card trip-focus-card now-current p-2.5 ${current ? "ring-2 ring-primary/45" : ""}`}
       >
-        <StopArt item={stop} className="size-14 rounded-lg" />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
-            <StopDisc number={pin.number} className="size-5 text-[11px]" />
-            <span className="font-semibold text-foreground">{current ? "Here now" : "Stop"}</span>
-            <span className="truncate tabular-nums">
-              {at + 1}/{total}
-              {time ? ` · ${time}` : ""}
-              {stay ? ` · ~${stay}` : ""}
-            </span>
-          </p>
-          <h3 className="truncate font-display text-[18px] leading-tight">{stop.title}</h3>
-          {stop.address?.trim() && (
-            <p className="truncate text-[13px] leading-snug text-muted-foreground">
-              {stop.address.trim()}
+        <div className="flex items-stretch gap-3">
+          <StopArt item={stop} className="h-[112px] w-[88px] rounded-[16px]" />
+          <div className="min-w-0 flex-1 py-0.5">
+            <p className="now-current-label">
+              {current ? "Current stop" : "Stop"} · {at + 1} of {total}
             </p>
-          )}
+            <h3 className="mt-0.5 flex items-start gap-2 break-words font-display text-[22px] leading-[1.1]">
+              {current ? <span className="now-live-dot" aria-hidden /> : null}
+              <span className="min-w-0">{stop.title}</span>
+            </h3>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              <StopDisc number={pin.number} className="size-6 text-[12px]" />
+              {time ? <span className="now-chip">{time}</span> : null}
+              {stay ? (
+                <span className="now-chip">
+                  <Clock className="size-3.5" aria-hidden />
+                  {stay}
+                </span>
+              ) : null}
+            </div>
+            {stop.address?.trim() && (
+              <p className="mt-1.5 flex items-start gap-1 text-[13px] leading-snug text-muted-foreground">
+                <MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span className="line-clamp-2 min-w-0">{stop.address.trim()}</span>
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col justify-center gap-1">
+            <button
+              type="button"
+              onClick={() => onStep(-1)}
+              aria-label="Previous stop"
+              className="grid size-11 place-items-center rounded-full bg-elevated"
+            >
+              <ChevronLeft className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => onStep(1)}
+              aria-label="Next stop"
+              className="grid size-11 place-items-center rounded-full bg-primary-soft"
+            >
+              <ChevronRight className="size-5" aria-hidden />
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 gap-1">
-          <button
-            type="button"
-            onClick={() => onStep(-1)}
-            aria-label="Previous stop"
-            className="grid size-11 place-items-center rounded-full bg-elevated"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-          </button>
-          <button
-            type="button"
-            onClick={() => onStep(1)}
-            aria-label="Next stop"
-            className="grid size-11 place-items-center rounded-full bg-primary-soft"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
-        </div>
-      </div>
+      </section>
 
       <NestLines item={stop} />
 
@@ -883,10 +897,12 @@ function LiveCard({
               Leave by {leave.at}
             </span>
           ) : null}
-          {trip ? (
+          {trip && next ? (
             <>
               <LegIcon walking={trip.walking} mode={trip.mode} className="size-4 shrink-0" />
-              <span className="truncate">{trip.text}</span>
+              <span className="truncate">
+                {trip.text} to {next.title}
+              </span>
             </>
           ) : (
             <span className="truncate">{next ? `Then ${next.title}` : "Last stop of the day"}</span>

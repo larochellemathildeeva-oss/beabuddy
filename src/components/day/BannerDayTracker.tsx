@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Check } from "@/components/icons";
 
 export type TrackerDay = {
@@ -28,6 +29,13 @@ export function BannerDayTracker({
   value?: string | undefined;
   onPick: (key: string) => void;
 }) {
+  const list = useRef<HTMLOListElement>(null);
+  // On a long trip, bring the chosen day into view.
+  useEffect(() => {
+    list.current
+      ?.querySelector<HTMLElement>('[aria-pressed="true"]')
+      ?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [value]);
   return (
     <section aria-label={label} className="text-white">
       {summary ? (
@@ -35,7 +43,7 @@ export function BannerDayTracker({
           <p className="text-[14px] text-white/85">{summary}</p>
         </div>
       ) : null}
-      <ol className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
+      <ol ref={list} className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
         {days.map((day) => {
           const chosen = value !== undefined && day.key === value;
           return (

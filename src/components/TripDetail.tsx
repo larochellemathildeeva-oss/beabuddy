@@ -1403,7 +1403,8 @@ export function TripDetail({
     return dates ? `${name} (${dates})` : name;
   };
   // Swipe the Companion view sideways to change day.
-  const daySwipe = useDaySwipe(useDayStepper(chips, chosenDay, setDayChoice));
+  const stepDay = useDayStepper(chips, chosenDay, setDayChoice);
+  const daySwipe = useDaySwipe(stepDay);
   const ordinalFor = (key: string) => chips.find((chip) => chip.key === key)?.ordinal ?? "";
   const datedDayCount = chips.filter((chip) => chip.key).length;
   const companionOrdinal = companionDay ? ordinalFor(companionDay.key) : "";
@@ -1528,8 +1529,10 @@ export function TripDetail({
     />
   );
   // The Map's day switcher: the same circles, and a tap changes the map's day.
+  // Built from every day of the trip, so a chosen city never hides the way to another.
+  const mapChips = dayChips(allDayGroups, todayKey);
   const mapDayTracker =
-    offerDays && chips.length > 0 ? (
+    shouldOfferDays(allDayGroups) && mapChips.length > 0 ? (
       <BannerDayTracker
         label="Which day to show on the map"
         days={[
@@ -1537,10 +1540,10 @@ export function TripDetail({
             key: ALL_DAYS,
             mark: "All",
             title: "All days",
-            subtitle: `${chips.length} ${chips.length === 1 ? "day" : "days"}`,
+            subtitle: `${mapChips.length} ${mapChips.length === 1 ? "day" : "days"}`,
             complete: false,
           },
-          ...chips.map((chip) => {
+          ...mapChips.map((chip) => {
             const group = allDayGroups.find((g) => g.key === chip.key);
             const total = group?.items.length ?? 0;
             return {
@@ -1978,6 +1981,7 @@ export function TripDetail({
                 todayKey={todayKey}
                 ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
+                onDayStep={offerDays ? stepDay : undefined}
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole
