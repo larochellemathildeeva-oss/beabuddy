@@ -322,7 +322,7 @@ export function PlaceSearchInput({
           spellCheck={false}
           placeholder={placeholder}
           {...(ariaLabelledBy ? { "aria-labelledby": ariaLabelledBy } : {})}
-          className="flex-1 resize-none rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+          className="flex-1 resize-none rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
         />
         <button
           type="button"

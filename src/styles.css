@@ -150,6 +150,8 @@
   --destructive-foreground: #ffffff;
   --border: #f2ede6;
   --input: #d9d3cc;
+  /* A text field's edge: 3:1 against the card (WCAG 1.4.11); --border is for dividers. */
+  --field-border: #8a847e;
   --ring: var(--acc-ink);
 
   --visited: oklch(0.55 0.135 249);
@@ -236,6 +238,7 @@
   --accent-foreground: #111111;
   --border: #f2ede6;
   --input: #d9d3cc;
+  --field-border: #8a847e;
   --ring: var(--acc-ink);
   --elevated: #f2ede6;
   --secondary: #f2ede6;
@@ -271,6 +274,7 @@
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #3a342f;
   --input: #3a342f;
+  --field-border: #8a847e;
   --ring: var(--acc-done);
 
   --visited: oklch(0.7 0.135 249);

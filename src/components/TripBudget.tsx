@@ -39,16 +39,18 @@ export function TripBudget({ tripId }: { tripId: string }) {
       {editing && (
         <div className="mt-2 flex gap-2">
           <input
+            aria-label="Total budget"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             inputMode="decimal"
             placeholder="Total budget"
-            className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <select
+            aria-label="Currency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
-            className="rounded-xl border border-border bg-card px-2 py-2 text-[14.5px]"
+            className="rounded-xl border border-[var(--field-border)] bg-card px-2 py-2 text-[14.5px]"
           >
             {currencies.map((c) => (
               <option key={c} value={c}>
@@ -126,24 +128,27 @@ export function TripBudget({ tripId }: { tripId: string }) {
       <div className="mt-3 space-y-2">
         <div className="flex gap-2">
           <input
+            aria-label="Planned expense"
             value={draft.label}
             onChange={(e) => setDraft({ ...draft, label: e.target.value })}
             placeholder="Planned expense"
-            className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
           <input
+            aria-label="Amount"
             value={draft.amount}
             onChange={(e) => setDraft({ ...draft, amount: e.target.value })}
             inputMode="decimal"
             placeholder="Amount"
-            className="w-24 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="w-24 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           />
         </div>
         <div className="flex gap-2">
           <select
+            aria-label="Category"
             value={draft.category}
             onChange={(e) => setDraft({ ...draft, category: e.target.value })}
-            className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
+            className="flex-1 rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14.5px]"
           >
             {expenseCategories.map((c) => (
               <option key={c} value={c}>

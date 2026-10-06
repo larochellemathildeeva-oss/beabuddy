@@ -588,7 +588,7 @@ export function AssignSheet({
                 maxLength={TITLE_MAX}
                 placeholder="Name, e.g. Flight confirmation"
                 aria-label="Document name"
-                className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-[15px] font-semibold"
+                className="w-full rounded-lg border border-[var(--field-border)] bg-card px-2 py-1.5 text-[15px] font-semibold"
               />
             ) : (
               <p className="truncate text-[15px] font-semibold">{draft.title}</p>
@@ -621,7 +621,7 @@ export function AssignSheet({
                 autoFocus
                 placeholder="Paste the confirmation email or message here"
                 aria-label="Confirmation text"
-                className="w-full resize-y rounded-xl border border-border bg-card px-3 py-2 text-[14px]"
+                className="w-full resize-y rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[14px]"
               />
             )}
             <button
@@ -692,7 +692,7 @@ export function AssignSheet({
                   setDraft({ ...draft, lines: [e.target.value, draft.lines?.[1] ?? ""] });
                   edited("lines");
                 }}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               />
               <input
                 value={draft.lines?.[1] ?? ""}
@@ -703,7 +703,7 @@ export function AssignSheet({
                   setDraft({ ...draft, lines: [draft.lines?.[0] ?? "", e.target.value] });
                   edited("lines");
                 }}
-                className="mt-1.5 w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="mt-1.5 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               />
             </label>
             <label className="block space-y-1">
@@ -720,7 +720,7 @@ export function AssignSheet({
                   setDraft({ ...draft, reference: e.target.value });
                   edited("reference");
                 }}
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+                className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
               />
             </label>
           </div>
@@ -796,7 +796,7 @@ export function AssignSheet({
             maxLength={NOTES_MAX}
             rows={3}
             placeholder="E-ticket and confirmation."
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
           />
         </label>
 

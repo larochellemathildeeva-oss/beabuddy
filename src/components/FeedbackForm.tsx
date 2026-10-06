@@ -67,7 +67,7 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           required
-          className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
+          className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[16px] outline-none focus:border-primary"
         >
           <option value="">What kind of something is this?</option>
           {FEEDBACK_CATEGORIES.map((item) => (
@@ -78,12 +78,13 @@ export function FeedbackForm({ alreadySignedIn = false }: { alreadySignedIn?: bo
         </select>
       </label>
       <textarea
+        aria-label="What went wrong, or what would make Béa better?"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         rows={4}
         maxLength={4000}
         placeholder="What went wrong, or what would make Béa better?"
-        className="w-full rounded-xl border border-border bg-card p-3 text-[16px] outline-none"
+        className="w-full rounded-xl border border-[var(--field-border)] bg-card p-3 text-[16px] outline-none"
       />
       {failed && (
         <p className="text-[13px] text-destructive">

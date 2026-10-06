@@ -1358,7 +1358,7 @@ function InsideEditor({
               }}
               placeholder="Add something to see here"
               aria-label="Add something to see inside this stop"
-              className="min-w-0 flex-1 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[12.5px]"
             />
             <button
               type="button"
@@ -1381,14 +1381,14 @@ function InsideEditor({
                 onChange={(e) => setDraftNote(e.target.value)}
                 placeholder="What it's for (optional)"
                 aria-label="Note for this entry"
-                className="min-w-0 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+                className="min-w-0 rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[12.5px]"
               />
               <input
                 value={draftAddress}
                 onChange={(e) => setDraftAddress(e.target.value)}
                 placeholder="Address (optional)"
                 aria-label="Address for this entry"
-                className="min-w-0 rounded-lg border border-border bg-card px-2 py-1 text-[12.5px]"
+                className="min-w-0 rounded-lg border border-[var(--field-border)] bg-card px-2 py-1 text-[12.5px]"
               />
             </div>
           ) : null}

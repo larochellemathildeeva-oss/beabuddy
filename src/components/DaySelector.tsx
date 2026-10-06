@@ -87,7 +87,7 @@ function DayTab({
     >
       <span className="min-w-0">
         <span
-          className={`block text-[9px] font-bold uppercase tracking-wider sm:text-[10px] ${
+          className={`block text-[11px] font-bold uppercase tracking-wider ${
             selected ? "text-inverse-accent" : "text-muted-foreground"
           }`}
         >
@@ -101,7 +101,7 @@ function DayTab({
         </span>
       </span>
       <span
-        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[9px] font-semibold sm:rounded-lg sm:px-2 sm:text-[10px] ${
+        className={`shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold sm:rounded-lg sm:px-2 ${
           selected ? "bg-background/15 text-background/85" : "bg-elevated text-muted-foreground"
         }`}
       >

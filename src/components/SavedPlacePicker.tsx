@@ -109,7 +109,7 @@ export function SavedPlacePicker({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search your saved places"
             aria-label="Search your saved places"
-            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[15px]"
+            className="w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2 text-[15px]"
           />
           <ul className="max-h-64 space-y-1 overflow-y-auto">
             {rows.slice(0, 40).map((row) => {

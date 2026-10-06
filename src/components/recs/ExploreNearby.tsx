@@ -447,7 +447,7 @@ export function ExploreNearby({
             }}
             placeholder="Search this area…"
             aria-label="Search this area"
-            className="h-12 w-full rounded-full border border-border bg-card pl-12 pr-4 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
+            className="h-12 w-full rounded-full border border-[var(--field-border)] bg-card pl-12 pr-4 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary"
           />
         </label>
         <button
@@ -472,7 +472,7 @@ export function ExploreNearby({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as "distance" | "name")}
-              className="rounded-xl border border-border bg-card px-3 py-2"
+              className="rounded-xl border border-[var(--field-border)] bg-card px-3 py-2"
             >
               <option value="distance">Distance</option>
               <option value="name">Name</option>
@@ -736,7 +736,7 @@ export function ExploreNearby({
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Little bakery on the corner"
-            className="mt-2 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[15px]"
+            className="mt-2 w-full rounded-xl border border-[var(--field-border)] bg-card px-3 py-2.5 text-[15px]"
           />
           <div className="mt-2 flex flex-wrap gap-2">
             {pinTypes.map((t) => (
