@@ -769,7 +769,11 @@ function WorldPage() {
               </div>
             )}
 
-            <WorldGlobeStage data-guide="globe" className="-mx-4 overflow-x-clip">
+            <WorldGlobeStage
+              data-guide="globe"
+              className="-mx-4 overflow-x-clip"
+              haze={!mapLibreGlobe}
+            >
               {mapLibreGlobe ? (
                 <MapLibreGlobe
                   autoRotate={spinOn && !selected}

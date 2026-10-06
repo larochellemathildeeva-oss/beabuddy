@@ -3406,3 +3406,30 @@ html:not(.dark)
   text-transform: uppercase;
   color: var(--muted-foreground);
 }
+
+/* Haze behind the Earth globe in Calm and Colorful (Dark has none). Colours are tokens so a mood is changed in one place. */
+:root {
+  --world-haze-a: rgb(255 255 255 / 0.9);
+  --world-haze-b: rgb(255 244 232 / 0.85);
+  --world-haze-c: rgb(255 236 220 / 0.55);
+}
+[data-theme="colorful"] {
+  --world-haze-a: rgb(255 255 255 / 0.95);
+  --world-haze-b: rgb(232 222 255 / 0.9);
+  --world-haze-c: rgb(255 222 232 / 0.55);
+}
+.dark {
+  --world-haze-a: transparent;
+  --world-haze-b: transparent;
+  --world-haze-c: transparent;
+}
+.world-haze {
+  pointer-events: none;
+  position: absolute;
+  inset: -4% -8%;
+  background:
+    radial-gradient(46% 40% at 18% 78%, var(--world-haze-a), transparent 70%),
+    radial-gradient(44% 38% at 84% 22%, var(--world-haze-b), transparent 70%),
+    radial-gradient(60% 50% at 50% 55%, var(--world-haze-c), transparent 72%);
+  filter: blur(6px);
+}
