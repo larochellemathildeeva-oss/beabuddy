@@ -69,6 +69,7 @@ import {
 import { formatTripLocation, placePatchForSavedRow } from "@/lib/place-label";
 import { formatTimelineDayLabel, groupTimelineByDay } from "@/lib/timeline-groups";
 import { DayCards } from "@/components/day/DayCards";
+import { BannerDayTracker } from "@/components/day/BannerDayTracker";
 import { useDayStepper, useDaySwipe } from "@/hooks/useDaySwipe";
 import { StickyDayBar } from "@/components/day/StickyDayBar";
 import { nowTarget } from "@/lib/now-jump";
@@ -1500,54 +1501,64 @@ export function TripDetail({
 
   const liveCompanion = perspective === "companion" && nowStops.length > 0 && Boolean(companionDay);
   const showDayTracker = perspective === "overview" || !companionDay;
+  const cityOn = (day: string) =>
+    routeCityOn(cities.stops, day)?.split(",")[0]?.trim() || trip.city || "Trip";
   const dayTracker = (
-    <section aria-label="Your trip progress" className="text-white">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <p className="text-[14px] text-white/85">
-          {moveDays.length} days ·{" "}
-          {new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size} cities
-          · {doneCount}/{stopItems.length} stops reached
-        </p>
-      </div>
-      <ol className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
-        {moveDays.map((day, i) => {
-          const group = allDayGroups.find((g) => g.key === day);
-          const reached = group?.items.filter(isDone).length ?? 0;
-          const total = group?.items.length ?? 0;
-          return (
-            <li key={day} className="min-w-[100px] flex-1">
-              <button
-                type="button"
-                aria-label={`Day ${i + 1}, ${routeCityOn(cities.stops, day) || trip.city || "Trip"}`}
-                onClick={() => {
-                  setDayChoice(day);
-                  setCityChoice("");
-                  setPerspective("companion");
-                }}
-                className="relative flex min-h-11 w-full items-center justify-center gap-2 px-2 py-1 text-[14px]"
-              >
-                <span
-                  className={`relative grid size-7 shrink-0 place-items-center rounded-full border-2 border-white ${total > 0 && reached === total ? "bg-white text-black" : "bg-black/30 text-white"}`}
-                >
-                  {total > 0 && reached === total ? (
-                    <Check className="size-4" aria-hidden />
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-                <span className="flex min-w-0 flex-col text-left leading-tight">
-                  <span className="truncate font-semibold">
-                    {routeCityOn(cities.stops, day)?.split(",")[0] || trip.city || "Trip"}
-                  </span>
-                  <span className="text-[13px] text-white/80">{formatTimelineDayLabel(day)}</span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
+    <BannerDayTracker
+      label="Your trip progress"
+      summary={`${moveDays.length} days · ${
+        new Set((cityNames.length ? cityNames : [trip.city || ""]).filter(Boolean)).size
+      } cities · ${doneCount}/${stopItems.length} stops reached`}
+      days={moveDays.map((day, i) => {
+        const group = allDayGroups.find((g) => g.key === day);
+        const total = group?.items.length ?? 0;
+        return {
+          key: day,
+          mark: String(i + 1),
+          title: cityOn(day),
+          subtitle: formatTimelineDayLabel(day),
+          complete: total > 0 && (group?.items.filter(isDone).length ?? 0) === total,
+        };
+      })}
+      onPick={(day) => {
+        setDayChoice(day);
+        setCityChoice("");
+        setPerspective("companion");
+      }}
+    />
   );
+  // The Map's day switcher: the same circles, and a tap changes the map's day.
+  const mapDayTracker =
+    offerDays && chips.length > 0 ? (
+      <BannerDayTracker
+        label="Which day to show on the map"
+        days={[
+          {
+            key: ALL_DAYS,
+            mark: "All",
+            title: "All days",
+            subtitle: `${chips.length} ${chips.length === 1 ? "day" : "days"}`,
+            complete: false,
+          },
+          ...chips.map((chip) => {
+            const group = allDayGroups.find((g) => g.key === chip.key);
+            const total = group?.items.length ?? 0;
+            return {
+              key: chip.key,
+              mark: chip.ordinal.replace("Day ", "") || "–",
+              title: chip.key ? cityOn(chip.key) : "No date",
+              subtitle: chip.key ? formatTimelineDayLabel(chip.key) : "",
+              complete: total > 0 && (group?.items.filter(isDone).length ?? 0) === total,
+            };
+          }),
+        ]}
+        value={chosenDay}
+        onPick={(day) => {
+          setDayChoice(day);
+          setCityChoice("");
+        }}
+      />
+    ) : null;
 
   // In every view the tracker sits at the foot of the banner: the trip's days
   // on Overview, the day's stops in the others.
@@ -1674,7 +1685,13 @@ export function TripDetail({
         switchable={perspective !== "overview" && perspective !== "companion"}
         short={perspective === "map"}
         hero={perspective === "overview"}
-        tracker={perspective === "overview" ? undefined : bannerTracker}
+        tracker={
+          perspective === "overview"
+            ? undefined
+            : perspective === "map"
+              ? mapDayTracker
+              : bannerTracker
+        }
       />
       {/* Béa's line scrolls away with the page; only the bar above stays.
           The trip's actions moved up into the banner. */}
@@ -1727,7 +1744,8 @@ export function TripDetail({
           (perspective === "companion" ||
             perspective === "map" ||
             (perspective === "timeline" && timelineByDay)) &&
-          (routeCities.length > 1 || (offerDays && perspective !== "map")) && (
+          perspective !== "map" &&
+          (routeCities.length > 1 || offerDays) && (
             <div ref={dayCardsRef} className="mb-2">
               <div className="flex items-center gap-2">
                 {routeCities.length > 1 && (
@@ -1751,7 +1769,7 @@ export function TripDetail({
                     </select>
                   </label>
                 )}
-                {offerDays && perspective !== "map" ? (
+                {offerDays ? (
                   <div className="min-w-0 flex-1">
                     <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
                   </div>
@@ -1960,11 +1978,6 @@ export function TripDetail({
                 todayKey={todayKey}
                 ordinals={Object.fromEntries(chips.map((chip) => [chip.key, chip.ordinal]))}
                 legFor={travelInto}
-                dayStrip={
-                  offerDays ? (
-                    <DayCards chips={chips} value={chosenDay} onChange={setDayChoice} />
-                  ) : null
-                }
               />
             )}
             {/* The whole trip, city to city — only when looking at the whole

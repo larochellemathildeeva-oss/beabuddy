@@ -10,8 +10,7 @@ import {
 } from "react";
 import { ChevronLeft, ChevronRight, MapPin, Maximize2 } from "@/components/icons";
 import { DayMap } from "@/components/day/DayMap";
-import { useBeaSays } from "@/components/day/bea-says";
-import { BeaSays, LegIcon, StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
+import { LegIcon, StopArt, StopChips, StopDisc } from "@/components/day/stop-bits";
 import { dayLengthLabel, dayTitle, legWords, measured } from "@/components/day/stop-words";
 import type { ItineraryRow } from "@/hooks/useTrips";
 import { dayTightnessNote } from "@/lib/day-shape";
@@ -362,10 +361,10 @@ function Legend({ model }: { model: DayMapModel }) {
   );
 }
 
-function MapFootnotes({ model }: { model: DayMapModel }) {
-  const caption = dayMapCaption(model);
+function MapFootnotes({ model, brief = false }: { model: DayMapModel; brief?: boolean }) {
+  const caption = brief ? "" : dayMapCaption(model);
   return (
-    <div className="mt-3 space-y-1">
+    <div className={brief ? "mt-1.5 space-y-1" : "mt-3 space-y-1"}>
       {caption && <p className="text-[14px] leading-snug text-muted-foreground">{caption}</p>}
       {/* The credit ODbL asks for, next to the data it applies to. */}
       <p className="text-[13px] leading-snug text-muted-foreground">
@@ -458,13 +457,13 @@ function MapStage({
             onClick={() => onLayout(layout === "split" ? "focus" : "split")}
             aria-expanded={layout === "split"}
             aria-label={layout === "split" ? "Show one stop" : "Show the day list"}
-            className="sticky top-0 z-10 grid h-11 w-full place-items-center bg-card"
+            className="sticky top-0 z-10 flex h-8 w-full items-center justify-center gap-2 bg-card text-[13px] font-semibold text-muted-foreground"
           >
             <span aria-hidden className="block h-1 w-9 rounded-full bg-border" />
+            {layout === "split" ? "Back to one stop" : "Day list"}
           </button>
-          <div className="px-3 pb-3">
-            <LayoutSwitch value={layout} onChange={onLayout} />
-            <div className="mt-3">{sheet}</div>
+          <div className="px-2.5 pb-2.5">
+            {sheet}
             {legend ? <div className="mt-3">{legend}</div> : null}
           </div>
         </div>
@@ -722,7 +721,6 @@ function FocusStage({
       layout={layout}
       onLayout={onLayout}
       dayStrip={dayStrip}
-      legend={<Legend model={model} />}
       chrome={<NumberStrip pins={pins} selectedId={selectedId} onSelect={onSelect} onFit={onFit} />}
       onPointerDown={(e) => {
         swipe.current = { x: e.clientX, y: e.clientY };
@@ -753,7 +751,7 @@ function FocusStage({
               The whole day is on the map. Tap a number or a pin to look at one stop.
             </p>
           )}
-          <MapFootnotes model={model} />
+          <MapFootnotes model={model} brief />
         </>
       }
     />
@@ -824,47 +822,39 @@ function LiveCard({
   const leg = measured(realLeg) ? realLeg : null;
   const leave = next && leg ? leaveBy(next.time_label, leg) : null;
   const trip = next ? between(stop, next, legFor) : null;
-  const says = useBeaSays(stop, next ?? null, leave);
   const current = Boolean(stop.arrived_at) && !stop.left_at;
   const time = timeForRail(stop.time_label);
   const stay = stop.planned_stay_minutes ? stayLabel(stop.planned_stay_minutes) : "";
+  const href = mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address);
 
+  // One pill like the Timeline's, carrying what Companion's current stop does:
+  // the picture, the name, the time and stay, the address and the way on.
   return (
-    <article aria-live="polite" className="space-y-3">
-      <div className="flex items-center gap-3 rounded-[24px] border border-border bg-card p-3 shadow-sm">
-        <StopArt item={stop} className="size-[96px] rounded-2xl" />
+    <article aria-live="polite" className="space-y-1.5">
+      <div
+        className={`flex items-center gap-2 rounded-xl border border-border/60 bg-card p-1.5 shadow-sm ${
+          current ? "ring-2 ring-primary/45" : ""
+        }`}
+      >
+        <StopArt item={stop} className="size-14 rounded-lg" />
         <div className="min-w-0 flex-1">
-          <p className="flex flex-wrap items-center gap-x-1.5 text-[14px] text-muted-foreground">
-            <StopDisc number={pin.number} className="size-6 text-[12px]" />
-            <span className="font-semibold text-foreground">
-              {current ? "Current stop" : "Stop"}
-            </span>
-            <span className="tabular-nums">
-              {at + 1} of {total}
+          <p className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <StopDisc number={pin.number} className="size-5 text-[11px]" />
+            <span className="font-semibold text-foreground">{current ? "Here now" : "Stop"}</span>
+            <span className="truncate tabular-nums">
+              {at + 1}/{total}
               {time ? ` · ${time}` : ""}
               {stay ? ` · ~${stay}` : ""}
             </span>
           </p>
-          <h3 className="mt-0.5 break-words font-display text-[24px] leading-tight">
-            {stop.title}
-          </h3>
+          <h3 className="truncate font-display text-[18px] leading-tight">{stop.title}</h3>
           {stop.address?.trim() && (
-            <p className="mt-0.5 line-clamp-2 text-[14px] leading-snug text-muted-foreground">
+            <p className="truncate text-[13px] leading-snug text-muted-foreground">
               {stop.address.trim()}
             </p>
           )}
-          <NestLines item={stop} />
-          <StopChips item={stop} />
         </div>
-        <div className="flex shrink-0 flex-col items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onStep(1)}
-            aria-label="Next stop"
-            className="grid size-11 place-items-center rounded-full bg-primary-soft"
-          >
-            <ChevronRight className="size-5" aria-hidden />
-          </button>
+        <div className="flex shrink-0 gap-1">
           <button
             type="button"
             onClick={() => onStep(-1)}
@@ -873,85 +863,46 @@ function LiveCard({
           >
             <ChevronLeft className="size-4" aria-hidden />
           </button>
+          <button
+            type="button"
+            onClick={() => onStep(1)}
+            aria-label="Next stop"
+            className="grid size-11 place-items-center rounded-full bg-primary-soft"
+          >
+            <ChevronRight className="size-5" aria-hidden />
+          </button>
         </div>
       </div>
 
-      {next ? (
-        <button
-          type="button"
-          onClick={() => onStep(1)}
-          className="flex w-full items-center gap-3 rounded-2xl border border-border p-2.5 text-left"
-        >
-          <StopArt item={next} className="h-14 w-[72px] rounded-xl" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Next stop
-              {timeForRail(next.time_label) ? (
-                <span className="ml-1.5 font-bold text-primary">
-                  · {timeForRail(next.time_label)}
-                </span>
-              ) : null}
-            </span>
-            <span className="block font-display text-[18px] leading-tight">{next.title}</span>
-          </span>
-          <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
-        </button>
-      ) : null}
+      <NestLines item={stop} />
 
-      <p className="text-[16px] leading-snug">
-        {next
-          ? trip
-            ? `Then ${next.title}, ${trip.text}.`
-            : `Then ${next.title}.`
-          : "Last stop of the day."}
-      </p>
-
-      <a
-        href={mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address)}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-primary px-4 text-[16px] font-semibold text-primary-foreground"
-      >
-        Open in maps
-        <ChevronRight className="size-4" aria-hidden />
-        <span className="sr-only">: open {stop.title} in maps</span>
-      </a>
-
-      {says && <BeaSays line={says} />}
-
-      {leave?.kind === "time" || trip ? (
-        <div className="flex items-center gap-3 rounded-2xl bg-primary-soft px-3 py-2.5">
+      <div className="flex items-center gap-2 px-1">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[14px] text-muted-foreground">
           {leave?.kind === "time" ? (
-            <span className="leading-tight">
-              <span className="block text-[13px] text-primary">Leave by</span>
-              <span className="block text-[22px] font-bold tabular-nums leading-none text-primary">
-                {leave.at}
-              </span>
+            <span className="shrink-0 font-bold tabular-nums text-primary">
+              Leave by {leave.at}
             </span>
           ) : null}
-          {leave?.kind === "time" && trip ? (
-            <span aria-hidden className="h-8 w-px shrink-0 bg-border" />
-          ) : null}
-          <span className="flex min-w-0 flex-1 items-center gap-2 text-[14px]">
-            {trip ? (
-              <>
-                <LegIcon walking={trip.walking} mode={trip.mode} className="size-5 shrink-0" />
-                <span className="min-w-0 leading-snug text-muted-foreground">{trip.text}</span>
-              </>
-            ) : null}
-          </span>
-          <a
-            href={mapsPlaceUrl(stop.title, { lat: stop.lat, lon: stop.lon }, stop.address)}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-[16px] font-semibold text-primary-foreground"
-          >
-            Navigate
-            <ChevronRight className="size-4" aria-hidden />
-            <span className="sr-only">: open {stop.title} in maps</span>
-          </a>
-        </div>
-      ) : null}
+          {trip ? (
+            <>
+              <LegIcon walking={trip.walking} mode={trip.mode} className="size-4 shrink-0" />
+              <span className="truncate">{trip.text}</span>
+            </>
+          ) : (
+            <span className="truncate">{next ? `Then ${next.title}` : "Last stop of the day"}</span>
+          )}
+        </span>
+        <a
+          href={href}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-primary px-3.5 text-[15px] font-semibold text-primary-foreground"
+        >
+          Navigate
+          <ChevronRight className="size-4" aria-hidden />
+          <span className="sr-only">: open {stop.title} in maps</span>
+        </a>
+      </div>
     </article>
   );
 }
