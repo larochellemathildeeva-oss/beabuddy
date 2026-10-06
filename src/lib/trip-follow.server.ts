@@ -173,7 +173,7 @@ export async function listFollowed(userId: string): Promise<FollowedTrip[] | nul
     return [link];
   });
   const cards = await inBatches(live, READS_AT_ONCE, async (link) => {
-    const trip = await readSharedTrip(link.token);
+    const trip = await readSharedTrip(link.token, { photos: false });
     return trip ? followedTripCard(link.token, trip) : null;
   });
   if (gone.length) {

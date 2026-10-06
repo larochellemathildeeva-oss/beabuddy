@@ -22,7 +22,14 @@
 -- Safe to re-run. Until it is applied, links show the plan only and the photo
 -- sheet has no "keep off links" button.
 --
+-- A link shows only its maker's photos (created_by), and only its maker may
+-- turn include_photos on or off, whatever the row policies let other
+-- travellers change on the link: the trigger below refuses any other change.
+-- The server and the service role (no auth.uid()) are not restricted.
+--
 -- To undo:
+--   DROP TRIGGER IF EXISTS trip_share_links_photos_maker ON public.trip_share_links;
+--   DROP FUNCTION IF EXISTS public.trip_share_links_photos_maker();
 --   ALTER TABLE public.photo_memories DROP COLUMN IF EXISTS hidden_from_links;
 --   ALTER TABLE public.trip_share_links DROP COLUMN IF EXISTS include_photos;
 
@@ -31,3 +38,26 @@ ALTER TABLE public.trip_share_links
 
 ALTER TABLE public.photo_memories
   ADD COLUMN IF NOT EXISTS hidden_from_links boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION public.trip_share_links_photos_maker()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
+BEGIN
+  IF auth.uid() IS NOT NULL
+    AND auth.uid() IS DISTINCT FROM NEW.created_by
+    AND NEW.include_photos IS DISTINCT FROM OLD.include_photos
+  THEN
+    RAISE EXCEPTION 'Only the traveller who made a link can change whether it shows photos'
+      USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+REVOKE EXECUTE ON FUNCTION public.trip_share_links_photos_maker() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS trip_share_links_photos_maker ON public.trip_share_links;
+CREATE TRIGGER trip_share_links_photos_maker
+  BEFORE UPDATE OF include_photos ON public.trip_share_links
+  FOR EACH ROW EXECUTE FUNCTION public.trip_share_links_photos_maker();

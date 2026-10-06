@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Copy, Link2 } from "@/components/icons";
 import { supabase } from "@/integrations/supabase/client";
 import { isMissingColumn } from "@/lib/bookings";
+import { useAuth } from "@/hooks/useAuth";
 import { newShareToken, shareUrl } from "@/lib/trip-share";
 
 type LinkRow = {
@@ -12,6 +13,7 @@ type LinkRow = {
   revoked_at: string | null;
   follow_along?: boolean;
   include_photos?: boolean;
+  created_by?: string;
 };
 type DbError = { message?: string; code?: string } | null;
 type Query = ReturnType<typeof supabase.from>;
@@ -36,6 +38,7 @@ function isMissingTable(error: DbError): boolean {
  * one off.
  */
 export function ShareLinkCard({ tripId }: { tripId: string }) {
+  const { user } = useAuth();
   const [links, setLinks] = useState<LinkRow[]>([]);
   const [ready, setReady] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -66,7 +69,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         error: DbError;
       }>;
     let { data, error } = await ask(
-      "id, token, expires_at, revoked_at, follow_along, include_photos",
+      "id, token, expires_at, revoked_at, follow_along, include_photos, created_by",
     );
     if (stale()) return;
     if (isMissingColumn(error, ["include_photos"])) {
@@ -212,7 +215,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
         {canFollow &&
           " Following along also shows the stop you tapped “I'm here” at and the ones you've left — never your location."}
         {canPhotos &&
-          " Photos are off unless you choose them, and a photo's owner can keep it off links."}
+          " Photos are off unless you choose them; a link shows only its maker's photos, and each can be kept off links."}
       </p>
       {links.map((link) => (
         <div
@@ -238,7 +241,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
               Photos
             </span>
           )}
-          {canPhotos && (
+          {canPhotos && link.created_by === user?.id && (
             <button
               type="button"
               disabled={busy}
@@ -295,7 +298,7 @@ export function ShareLinkCard({ tripId }: { tripId: string }) {
             onChange={(e) => setPhotos(e.target.checked)}
             className="size-4 accent-primary"
           />
-          Show the trip's photos on it
+          Show my photos of the trip on it
         </label>
       )}
       <button

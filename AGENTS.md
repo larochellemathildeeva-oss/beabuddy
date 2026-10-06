@@ -503,12 +503,15 @@ migration is applied by hand, and until it is, links show the plan only.
 A read-only link can also show the trip's photos (`include_photos` on
 `trip_share_links`, off by default, chosen in `ShareLinkCard`), and anyone
 following that link in Béa sees them too, since both read the same view. Nothing
-is visible unless the traveller who made the link turned it on. The server
+is visible unless the traveller who made the link turned it on, and a link shows only
+its maker's own photos (`created_by`; a trigger lets only the maker change
+`include_photos`). The server
 (`readPhotos` in `trip-share.server.ts`) reads only the columns it needs, never
 a position, caption or name, and `pickSharedPhotos` (pure and tested) keeps out
 photos their owner has kept off links (`photo_memories.hidden_from_links`, set
 from the photo's sheet), "location-only" rows and any file outside the owner's
-own folder, at most `SHARED_PHOTOS_MAX`. Photos are signed for an hour, so a
+own folder, at most `SHARED_PHOTOS_MAX`. Photos are signed for an hour (the URLs are kept in process for 40 minutes, so a
+refresh reuses them, and the Following list never reads photos), so a
 link turned off can still open a photo it already handed out for up to an hour.
 A database without the hide flag shows no photos. There is no separate viewer
 role: a link is the view-only access, and trip members already see each other's

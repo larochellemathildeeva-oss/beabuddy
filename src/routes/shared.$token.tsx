@@ -513,7 +513,12 @@ function PhotoRow({ photos, label }: { photos: SharedPhoto[]; label: string }) {
           aria-label={`Open photo ${i + 1} of ${label}`}
           className="block size-16 overflow-hidden rounded-xl bg-elevated"
         >
-          <img src={photo.url} alt="" loading="lazy" className="size-full object-cover" />
+          <img
+            src={photo.url}
+            alt={`Photo ${i + 1} of ${label}`}
+            loading="lazy"
+            className="size-full object-cover"
+          />
         </a>
       ))}
     </span>

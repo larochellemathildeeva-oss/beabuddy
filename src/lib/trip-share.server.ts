@@ -15,7 +15,10 @@ import {
  * a token that is unknown, revoked or expired — the page says the same
  * thing for all three, so a guess learns nothing.
  */
-export async function readSharedTrip(token: string): Promise<SharedTrip | null> {
+export async function readSharedTrip(
+  token: string,
+  options: { photos?: boolean } = {},
+): Promise<SharedTrip | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const db = supabaseAdmin as unknown as SupabaseClient;
   const link = await readLink(db, token);
@@ -29,7 +32,9 @@ export async function readSharedTrip(token: string): Promise<SharedTrip | null> 
       .eq("id", link.trip_id)
       .maybeSingle(),
     readItems(db, link.trip_id, following),
-    link.include_photos === true ? readPhotos(db, link.trip_id) : Promise.resolve(undefined),
+    link.include_photos === true && options.photos !== false
+      ? readPhotos(db, link.trip_id, link.created_by)
+      : Promise.resolve(undefined),
   ]);
   if (!trip) return null;
   const { default: tzlookup } = await import("@photostructure/tz-lookup");
@@ -55,12 +60,13 @@ type LinkRow = {
   revoked_at: string | null;
   follow_along?: boolean;
   include_photos?: boolean;
+  created_by?: string;
 };
 
 /** The link, with "follow along" when its migration is in; without it, never. */
 async function readLink(db: SupabaseClient, token: string): Promise<LinkRow | null> {
   for (const columns of [
-    "trip_id, expires_at, revoked_at, follow_along, include_photos",
+    "trip_id, expires_at, revoked_at, follow_along, include_photos, created_by",
     "trip_id, expires_at, revoked_at, follow_along",
     "trip_id, expires_at, revoked_at",
   ]) {
@@ -102,37 +108,71 @@ async function readItems(
   return [];
 }
 
+/** Signed URLs kept until shortly before they lapse, so a refresh hands back the same ones. */
+const SIGN_SECONDS = 3600;
+const KEEP_MS = 40 * 60 * 1000;
+const SIGNED_MAX = 2_000;
+const signedUrls = new Map<string, { url: string; until: number }>();
+
 /**
- * The photos a link may show, signed for an hour. Read by exact columns (no
- * position, no caption, no name) and only those the owner has not kept off
- * links. Where the hide flag is not in the database yet, nothing is shown:
- * a photo is never shown without being able to tell whether it was hidden.
- * Never throws; a failed read or signing just shows fewer photos.
+ * The photos a link may show. Only the ones the link's own maker added (a
+ * link made by one traveller never shows what the others on the trip took),
+ * read by exact columns — no position, caption or name — and only those the
+ * owner has not kept off links. Where the hide flag is not in the database
+ * yet, nothing is shown: a photo is never shown without being able to tell
+ * whether it was hidden. Never throws; a failure shows fewer photos and is
+ * logged, without detail for the viewer.
  */
 async function readPhotos(
   db: SupabaseClient,
   tripId: string,
+  madeBy: string | undefined,
 ): Promise<{ itemId: string | null; photo: SharedPhoto }[]> {
+  if (!madeBy) return [];
   const { data, error } = await db
     .from("photo_memories")
     .select("user_id, storage_path, itinerary_item_id, taken_at, hidden_from_links")
     .eq("trip_id", tripId)
+    .eq("user_id", madeBy)
     .eq("hidden_from_links", false)
     .order("taken_at", { ascending: true })
     .limit(500);
-  if (error || !data) return [];
+  if (error || !data) {
+    console.error("shared trip photos: read failed", {
+      tripId,
+      code: (error as { code?: string } | null)?.code,
+    });
+    return [];
+  }
   const picked = pickSharedPhotos(data as unknown as ShareSourcePhoto[]);
   if (!picked.length) return [];
-  const { data: signed, error: signError } = await db.storage
-    .from("photo-memories")
-    .createSignedUrls(
-      picked.map((p) => p.storage_path),
-      3600,
-    );
-  if (signError || !signed) return [];
-  const urls = new Map(signed.map((s) => [s.path, s.signedUrl]));
+  const now = Date.now();
+  const missing = picked
+    .map((p) => p.storage_path)
+    .filter((path) => {
+      const hit = signedUrls.get(path);
+      return !hit || hit.until <= now;
+    });
+  if (missing.length) {
+    const { data: signed, error: signError } = await db.storage
+      .from("photo-memories")
+      .createSignedUrls(missing, SIGN_SECONDS);
+    if (signError || !signed) {
+      console.error("shared trip photos: signing failed", { tripId });
+      return [];
+    }
+    for (const item of signed) {
+      if (!item.path || !item.signedUrl) continue;
+      signedUrls.set(item.path, { url: item.signedUrl, until: now + KEEP_MS });
+    }
+    while (signedUrls.size > SIGNED_MAX) {
+      const oldest = signedUrls.keys().next().value;
+      if (oldest === undefined) break;
+      signedUrls.delete(oldest);
+    }
+  }
   return picked.flatMap((row) => {
-    const url = urls.get(row.storage_path);
+    const url = signedUrls.get(row.storage_path)?.url;
     return url ? [{ itemId: row.itinerary_item_id, photo: { url, takenAt: row.taken_at } }] : [];
   });
 }
