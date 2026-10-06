@@ -288,11 +288,7 @@ function TripsPage() {
         />
         {t.signedIn ? (
           <>
-            <div
-              role="tablist"
-              aria-label="Which trips"
-              className="trips-tabs relative z-[1]"
-            >
+            <div role="tablist" aria-label="Which trips" className="trips-tabs relative z-[1]">
               {(
                 [
                   ["upcoming", "Upcoming"],
