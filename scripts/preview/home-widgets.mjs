@@ -142,6 +142,12 @@ try {
     await page.screenshot({ path: join(shots, `${theme}-normal.png`), fullPage: true });
     const small = await page.locator('[data-module="saved"]').boundingBox();
     assert.ok(Math.abs(small.width - small.height) < 2, `${theme}: small is square`);
+    const tripContent = page.locator('[data-module="trip"] .home-widget-content');
+    await tripContent.evaluate((node) => node.scrollTop = node.scrollHeight);
+    const tripBox = await tripContent.boundingBox();
+    await page.mouse.move(tripBox.x + tripBox.width / 2, tripBox.y + tripBox.height / 2);
+    await page.mouse.wheel(0, 200);
+    await page.waitForFunction(() => document.querySelector("main").scrollTop > 0);
     await page.reload();
     await page.locator(".home-widget-grid").waitFor();
     assert.deepEqual(await saved(page), raw, `${theme}: layout reload`);

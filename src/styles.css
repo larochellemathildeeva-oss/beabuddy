@@ -3461,7 +3461,6 @@ html:not(.dark)
   min-height: 0;
   flex: 1;
   overflow: auto;
-  overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 /* Existing module actions retain a phone-sized touch target in the grid. */
