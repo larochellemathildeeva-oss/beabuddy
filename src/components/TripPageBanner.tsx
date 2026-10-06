@@ -88,7 +88,7 @@ export function TripPageBanner({
   // the revamp), so it shows a real photo whatever "Real photos" says for
   // stop and place pictures; only "No pictures" turns it off.
   const showStops = picture === "stops" && route.length > 0;
-  const wantPhoto = (!showStops || hero) && pictures !== "none";
+  const wantPhoto = pictures !== "none";
   const town = useTownPhoto(city || cities[0], country, wantPhoto && !photo);
   const [brokenTown, setBrokenTown] = useState<string | null>(null);
   const commons = !photo && town && town.url !== brokenTown ? town : null;
@@ -104,8 +104,8 @@ export function TripPageBanner({
   const [foot, setFoot] = useState<HTMLDivElement | null>(null);
   const footHeight = useHeight(foot);
   const routeTop = wordsEnd + 8;
-  const heroPins = hero && route.length > 0;
-  const routeRoom = heroPins ? 250 : showStops ? (short ? ROUTE_ROOM.short : ROUTE_ROOM.tall) : 0;
+  const heroPins = (hero || showStops) && route.length > 0;
+  const routeRoom = hero ? 250 : showStops ? (short ? ROUTE_ROOM.short : ROUTE_ROOM.tall) : 0;
   const height = Math.round(routeTop + routeRoom + footHeight + FOOT_PAD);
 
   // formatTripLocation, not a plain join: the city field often already ends
@@ -126,17 +126,7 @@ export function TripPageBanner({
       className="trip-hero"
       style={{ height, ...(viewTransitionName ? { viewTransitionName } : {}) }}
     >
-      {showStops && !hero ? (
-        <TripBannerMap
-          stops={route}
-          label={mapLabel}
-          height={height}
-          current={current}
-          done={done}
-          top={routeTop}
-          bottom={height - footHeight - FOOT_PAD}
-        />
-      ) : imageUrl ? (
+      {imageUrl ? (
         <img
           src={imageUrl}
           alt=""
@@ -148,7 +138,7 @@ export function TripPageBanner({
       {heroPins ? (
         <TripBannerMap
           over
-          pills
+          pills={hero}
           stops={route}
           label={mapLabel}
           height={height}

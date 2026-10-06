@@ -83,8 +83,10 @@ export function HomeOnTrip({
   return (
     <section data-guide="home-trip">
       <div className="trip-hero -mx-4" style={{ height: NOW_HERO_H }}>
+        <TripPicture trip={trip} photos={photos} cities={cityNames} />
         {route.length > 0 ? (
           <TripBannerMap
+            over
             stops={route}
             label={`Map of the trip: ${cities}`}
             height={NOW_HERO_H}
@@ -94,9 +96,7 @@ export function HomeOnTrip({
             top={98}
             bottom={NOW_HERO_H - 62}
           />
-        ) : (
-          <TripPicture trip={trip} photos={photos} cities={cityNames} />
-        )}
+        ) : null}
         <span
           aria-hidden
           className="trip-hero-haze"
