@@ -22,12 +22,15 @@ export function BannerDayTracker({
   days,
   value,
   onPick,
+  onPhoto = true,
 }: {
   label: string;
   summary?: string;
   days: TrackerDay[];
   value?: string | undefined;
   onPick: (key: string) => void;
+  /** False on the page's own colour (the trip banner's strip). */
+  onPhoto?: boolean;
 }) {
   const list = useRef<HTMLOListElement>(null);
   // On a long trip, bring the chosen day into view.
@@ -37,10 +40,12 @@ export function BannerDayTracker({
       ?.scrollIntoView({ block: "nearest", inline: "center" });
   }, [value]);
   return (
-    <section aria-label={label} className="text-white">
+    <section aria-label={label} className={onPhoto ? "text-white" : "text-foreground"}>
       {summary ? (
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-[14px] text-white/85">{summary}</p>
+          <p className={`text-[14px] ${onPhoto ? "text-white/85" : "text-muted-foreground"}`}>
+            {summary}
+          </p>
         </div>
       ) : null}
       <ol ref={list} className="no-scrollbar relative mt-1 flex gap-2 overflow-x-auto">
@@ -58,10 +63,14 @@ export function BannerDayTracker({
                 <span
                   className={`relative grid size-7 shrink-0 place-items-center rounded-full border-2 text-[13px] font-semibold ${
                     chosen
-                      ? "border-white bg-primary text-primary-foreground ring-4 ring-white/40"
+                      ? `border-transparent bg-primary text-primary-foreground ring-4 ${onPhoto ? "ring-white/40" : "ring-primary/25"}`
                       : day.complete
-                        ? "border-white bg-white text-black"
-                        : "border-white bg-black/30 text-white"
+                        ? onPhoto
+                          ? "border-white bg-white text-black"
+                          : "border-foreground bg-foreground text-background"
+                        : onPhoto
+                          ? "border-white bg-black/30 text-white"
+                          : "border-foreground/70 text-foreground"
                   }`}
                 >
                   {day.complete && !chosen ? <Check className="size-4" aria-hidden /> : day.mark}
@@ -70,7 +79,9 @@ export function BannerDayTracker({
                   <span className={`truncate ${chosen ? "font-bold" : "font-semibold"}`}>
                     {day.title}
                   </span>
-                  <span className="whitespace-nowrap text-[13px] text-white/80">
+                  <span
+                    className={`whitespace-nowrap text-[13px] ${onPhoto ? "text-white/80" : "text-muted-foreground"}`}
+                  >
                     {day.subtitle}
                   </span>
                 </span>

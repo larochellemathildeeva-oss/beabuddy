@@ -41,6 +41,7 @@ export function JourneyTracker({
   selectedId = null,
   onSelect,
   onPhoto = false,
+  bare = false,
 }: {
   stops: ItineraryRow[];
   /** The stop being looked at, from a tap here or on the ribbon. */
@@ -49,6 +50,8 @@ export function JourneyTracker({
   onSelect?: ((id: string | null) => void) | undefined;
   /** Drawn over the trip banner's picture, with no card of its own. */
   onPhoto?: boolean;
+  /** On the page's own colour, with no card (the trip banner's strip). */
+  bare?: boolean;
 }) {
   const track = useRef<HTMLDivElement>(null);
   const pickedIndex = selectedId ? stops.findIndex((s) => s.id === selectedId) : -1;
@@ -68,7 +71,10 @@ export function JourneyTracker({
   const filled = stops.length > 1 ? Math.min(1, (position - 1) / (stops.length - 1)) : 1;
 
   return (
-    <section aria-label="Today's progress" className={onPhoto ? "text-white" : "plain-card p-3.5"}>
+    <section
+      aria-label="Today's progress"
+      className={onPhoto ? "text-white" : bare ? "" : "plain-card p-3.5"}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p
           className={`text-[13px] font-semibold uppercase tracking-[0.08em] ${onPhoto ? "text-white/85" : "text-muted-foreground"}`}
