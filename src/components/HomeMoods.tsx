@@ -284,7 +284,7 @@ export function HomeNoTripHero({
               <Link
                 to="/recommendations"
                 aria-label={`${c.city}: ${c.count} saved ${c.count === 1 ? "place" : "places"}`}
-                className="trips-tag flex h-10 items-center gap-1.5 px-3 text-[15px] font-semibold"
+                className="trips-tag flex h-11 items-center gap-1.5 px-3 text-[15px] font-semibold"
               >
                 <Heart className="size-4 shrink-0 text-[var(--acc)]" aria-hidden />
                 <span className="truncate">{c.city}</span>

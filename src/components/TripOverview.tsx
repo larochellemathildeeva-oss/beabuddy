@@ -331,9 +331,9 @@ export function TripOverview({
                   />
                   <span
                     aria-hidden
-                    className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/10 to-transparent"
                   />
-                  <span className="absolute inset-x-2.5 bottom-2 block">
+                  <span className="absolute inset-x-2.5 top-2 block">
                     <span className="line-clamp-2 block text-[14px] font-semibold leading-tight">
                       {item.title}
                     </span>

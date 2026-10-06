@@ -44,6 +44,7 @@ export function TripPageBanner({
   done,
   picture,
   onPicture,
+  switchable = true,
   short = false,
   hero = false,
   tracker,
@@ -70,6 +71,8 @@ export function TripPageBanner({
   done: number;
   picture: TripPicture;
   onPicture: (next: TripPicture) => void;
+  /** False where Stops and Photo would draw the same thing (Overview, Companion). */
+  switchable?: boolean;
   /** The Map view: a shorter banner. */
   short?: boolean;
   /** Overview: a tall picture with the trip's cities as photo pills over it. */
@@ -197,26 +200,28 @@ export function TripPageBanner({
                 </p>
               ) : null}
             </div>
-            <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
-              <button
-                type="button"
-                aria-pressed={picture === "stops"}
-                aria-label="Stops"
-                onClick={() => onPicture("stops")}
-                title="Show the trip's stops on a map"
-              >
-                <MapIcon className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                aria-pressed={picture === "photo"}
-                aria-label="Photo"
-                onClick={() => onPicture("photo")}
-                title="Show a photo of the place"
-              >
-                <ImageIcon className="size-5" aria-hidden />
-              </button>
-            </div>
+            {switchable ? (
+              <div role="group" aria-label="Trip picture" className="trip-hero-switch shrink-0">
+                <button
+                  type="button"
+                  aria-pressed={picture === "stops"}
+                  aria-label="Stops"
+                  onClick={() => onPicture("stops")}
+                  title="Show the trip's stops on a map"
+                >
+                  <MapIcon className="size-5" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={picture === "photo"}
+                  aria-label="Photo"
+                  onClick={() => onPicture("photo")}
+                  title="Show a photo of the place"
+                >
+                  <ImageIcon className="size-5" aria-hidden />
+                </button>
+              </div>
+            ) : null}
           </div>
           {tracker && <div className="mt-1">{tracker}</div>}
         </div>

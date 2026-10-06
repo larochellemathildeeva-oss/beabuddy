@@ -44,7 +44,6 @@ import {
   type OptimizePreset,
   type PlannerTab,
 } from "@/components/ItineraryImport";
-import type { EasePreset } from "@/lib/day-ease";
 import { ItineraryDirections } from "@/components/ItineraryDirections";
 import { legDescribes, type KnownLeg } from "@/lib/directions-reuse";
 import { TimeChangeBox } from "@/components/day/TimeChangeBox";
@@ -86,7 +85,6 @@ import {
 } from "@/components/day/TripMenuSheet";
 import { dayLengthLabel, dayTitle } from "@/components/day/stop-words";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
-import { useThemeName } from "@/hooks/useThemeName";
 import { countBookings, tripBookings } from "@/lib/trip-overview";
 import { TripBookings, type BookingFilter } from "@/components/day/TripBookings";
 import { useTripBookingDocuments } from "@/hooks/useTripDocuments";
@@ -143,7 +141,6 @@ import { lookupCoords } from "@/lib/places.functions";
 import { planTowns, tripPlaceFromTowns } from "@/lib/plan-cities";
 import logo from "@/assets/bea-logo.png";
 import { DayMapView } from "@/components/day/DayMapView";
-import { DayRibbon } from "@/components/day/DayRibbon";
 import { JourneyTracker } from "@/components/day/JourneyTracker";
 import { StopPeek } from "@/components/day/StopPeek";
 import { NowPanel } from "@/components/day/NowPanel";
@@ -239,18 +236,6 @@ export function TripDetail({
   const [plannerAsk, setPlannerAsk] = useState("");
   /** A one-tap "make this day easier" request, run in Optimize on that day. */
   const [optimizePreset, setOptimizePreset] = useState<OptimizePreset | null>(null);
-  const easeDay = (preset: EasePreset, day: string, dayLabel: string) => {
-    setOptimizePreset((cur) => ({
-      goals: preset.goals,
-      note: preset.note,
-      label: preset.label,
-      day,
-      dayLabel,
-      n: (cur?.n ?? 0) + 1,
-    }));
-    setPlannerTab("optimize");
-    setPlannerOpen(true);
-  };
   // Everything on this page is about this trip, so the hooks are simply live.
   // As a card this had to be conditional, which is what made the planner button
   // fail with "Open a trip first" when pressed on a collapsed card.
@@ -1429,7 +1414,6 @@ export function TripDetail({
         day: "numeric",
       })
     : "";
-  const themeName = useThemeName();
   const cityNames = cities.stops.map((stop) => stop.city);
   // On the banner's map, the hollow dots are the cities really behind you
   // (all of them once the trip is over) and the ring is the city of the day
@@ -1684,6 +1668,7 @@ export function TripDetail({
         done={bannerDone}
         picture={perspective === "companion" ? "photo" : tripPicture}
         onPicture={setTripPicture}
+        switchable={perspective !== "overview" && perspective !== "companion"}
         short={perspective === "map"}
         hero={perspective === "overview"}
         tracker={perspective === "overview" ? undefined : bannerTracker}
@@ -1859,14 +1844,9 @@ export function TripDetail({
           <div className="space-y-3" {...(offerDays ? daySwipe : {})}>
             {nowStops.length > 0 && companionDay ? (
               <>
-                {view.prefs.ribbon && !liveCompanion && (
-                  <DayRibbon
-                    stops={nowStops}
-                    dayLabel={companionOrdinal || undefined}
-                    selectedId={peekStop?.id ?? null}
-                    onSelect={setPeekId}
-                  />
-                )}
+                <p className="now-day-line">
+                  {[companionOrdinal, companionDateLine].filter(Boolean).join(" · ")}
+                </p>
                 <NowPanel
                   key={companionDay.key}
                   dayStops={nowStops}
@@ -1881,7 +1861,6 @@ export function TripDetail({
                       (group) => group.key !== "" && companionDay && group.key > companionDay.key,
                     )?.key ?? null
                   }
-                  onEase={easeDay}
                   onRework={(day, ask) => {
                     setDayEditStart({ day, ask });
                     setDayEditOpen(true);

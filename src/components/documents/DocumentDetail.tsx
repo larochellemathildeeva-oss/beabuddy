@@ -197,7 +197,7 @@ export function DocumentDetail({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[17px] font-semibold">Confirmation</p>
-            <p className="truncate text-[14px] tabular-nums text-muted-foreground">
+            <p className="text-[14px] tabular-nums text-muted-foreground [overflow-wrap:anywhere]">
               Reservation number {doc.reference}
             </p>
           </div>

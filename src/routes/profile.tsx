@@ -45,6 +45,8 @@ import {
 import { listSavedDirectionTripIds } from "@/hooks/useOfflineDirections";
 
 import { useTrips } from "@/hooks/useTrips";
+import { useTripPhotos } from "@/hooks/useTripPhotos";
+import { toLocalISODate } from "@/lib/trip-dates";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { hasDismissedSampleCta } from "@/lib/auto-seed";
@@ -186,10 +188,14 @@ function ProfilePage() {
   const metaAvatar = user?.user_metadata?.["avatar_url"];
   const photo = avatarUrl || (typeof metaAvatar === "string" ? metaAvatar : null);
   const tripCount = t.trips.length;
+  const { photos: tripPhotos } = useTripPhotos(t.uid);
+  const todayKey = toLocalISODate(new Date());
+  // Trips that have started: an upcoming destination is not "been there" yet.
+  const startedTrips = t.trips.filter((trip) => (trip.start_date ?? "") <= todayKey);
   const countryCount = new Set(
-    t.trips.map((trip) => (trip.country ?? "").trim().toLowerCase()).filter(Boolean),
+    startedTrips.map((trip) => (trip.country ?? "").trim().toLowerCase()).filter(Boolean),
   ).size;
-  const highlights = [...t.trips]
+  const highlights = [...startedTrips]
     .sort((x, y) => (y.start_date ?? "").localeCompare(x.start_date ?? ""))
     .slice(0, 3);
 
@@ -387,7 +393,7 @@ function ProfilePage() {
                   params={{ tripId: trip.id }}
                   className="you-highlight"
                 >
-                  <TripPicture trip={trip} photos={[]} cities={[]} />
+                  <TripPicture trip={trip} photos={tripPhotos} cities={[]} />
                   <span aria-hidden className="you-highlight-shade" />
                   <span className="you-highlight-text">
                     <span className="block truncate text-[14px] font-semibold">

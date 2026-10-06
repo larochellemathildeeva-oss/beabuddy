@@ -3,7 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { Bed, ChevronRight, Clock, CloudRain, MapPin, Ticket } from "@/components/icons";
 import { bookingAtHand, isBooked } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
-import { EASE_PRESETS, type EasePreset } from "@/lib/day-ease";
 import { parseLocalDate } from "@/lib/trip-dates";
 import { KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
@@ -67,7 +66,6 @@ export function NowPanel({
   bookingDocs = [],
   reminderItems = [],
   nextDay = null,
-  onEase,
   onRework,
   onProgress,
   progress,
@@ -94,8 +92,6 @@ export function NowPanel({
   reminderItems?: readonly (ReminderItem & ArrivalStop & { position: number })[];
   /** The trip's next day with stops after this one, for "Make tomorrow easier". */
   nextDay?: string | null;
-  /** Run one of Optimize's one-tap requests on a day. */
-  onEase?: ((preset: EasePreset, day: string, dayLabel: string) => void) | undefined;
   /** Open "Change a day" on a day, with words already typed. */
   onRework?: ((day: string, ask: string) => void) | undefined;
   onProgress: (writes: Write[]) => Promise<void>;
@@ -428,7 +424,20 @@ export function NowPanel({
               >
                 Leaving
               </button>
-              <a href={directionsHref} target="_blank" rel="noreferrer" className={softBtn}>
+              <a
+                href={
+                  next
+                    ? directionsHref
+                    : mapsPlaceUrl(
+                        current.title,
+                        { lat: current.lat, lon: current.lon },
+                        current.address,
+                      )
+                }
+                target="_blank"
+                rel="noreferrer"
+                className={softBtn}
+              >
                 <MapPin className="size-4" aria-hidden />
                 Directions
                 <span className="sr-only">: open {next?.title ?? current.title} in maps</span>

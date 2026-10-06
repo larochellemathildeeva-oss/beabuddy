@@ -163,7 +163,7 @@ function LandingWays() {
     },
     {
       to: "/auth",
-      search: { mode: "signup" },
+      search: { mode: "signup", redirect: "/trips" },
       fill: "tile-fill-3",
       title: "Join with a code",
       hint: "Plan a trip with friends",

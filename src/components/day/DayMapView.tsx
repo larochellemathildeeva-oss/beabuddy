@@ -869,7 +869,7 @@ function LiveCard({
             type="button"
             onClick={() => onStep(-1)}
             aria-label="Previous stop"
-            className="grid size-9 place-items-center rounded-full bg-elevated"
+            className="grid size-11 place-items-center rounded-full bg-elevated"
           >
             <ChevronLeft className="size-4" aria-hidden />
           </button>
