@@ -195,7 +195,11 @@ export function MoveStopSheet({
           )}
         </div>
 
-        {problem && <p className="text-[13px] text-destructive">{problem}</p>}
+        {problem && (
+          <p role="alert" className="text-[14px] text-destructive">
+            {problem}
+          </p>
+        )}
         <button
           type="button"
           disabled={busy || unchanged}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { formatTripLocation } from "@/lib/place-label";
 import { Check, Copy, Inbox, Share2 } from "@/components/icons";
 import { claimSharedList, readSharedList, useRecoShares } from "@/hooks/useRecoShares";
@@ -124,7 +125,7 @@ export function ShareRecos({
       setSentCode(share.code);
       setMode("sent");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't make that share");
+      setError(friendlyError(e, "Couldn't make that share"));
     } finally {
       setBusy(false);
     }
@@ -165,7 +166,7 @@ export function ShareRecos({
       }
       setKeeping(next);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't open that code");
+      setError(friendlyError(e, "Couldn't open that code"));
     } finally {
       setBusy(false);
     }
@@ -185,7 +186,7 @@ export function ShareRecos({
       setCode("");
       setMode("idle");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save those");
+      setError(friendlyError(e, "Couldn't save those"));
     } finally {
       setBusy(false);
     }
@@ -479,7 +480,11 @@ export function ShareRecos({
         </div>
       )}
 
-      {error && <p className="mt-2 text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* ---- Shares you've sent ---- */}
       {(bare ? mode === "picking" : mode === "idle") && live.length > 0 && (

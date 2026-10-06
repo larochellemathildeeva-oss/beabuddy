@@ -1,4 +1,5 @@
 import { Sheet } from "@/components/Sheet";
+import { friendlyError } from "@/lib/friendly-error";
 import { AiPromptButton } from "@/components/AiPromptSheet";
 import { PlanAsk, PlanCards, PlanExamples, PlanHero } from "@/components/PlanWithBea";
 import { BeaRunning } from "@/components/BeaRunning";
@@ -1157,7 +1158,7 @@ function ImportPanel({
         toast.success(done.title, { description: beaCheer("route") ?? done.body });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save those. Try again.");
+      setError(friendlyError(e, "Could not save those. Try again."));
     } finally {
       setBusy(false);
     }
@@ -1359,7 +1360,7 @@ function ImportPanel({
             </label>
           </div>
           {badLink ? (
-            <p className="text-[12px] text-destructive">
+            <p role="alert" className="text-[14px] text-destructive">
               That doesn't look like a link. Paste the whole address, starting with https://
             </p>
           ) : link ? (
@@ -1444,7 +1445,7 @@ function ImportPanel({
               aria-label="Include approximate costs"
             />
             <span className="min-w-0 flex-1 text-muted-foreground">
-              Estimate costs <span className="text-[11.5px]">(approximate, not quotes)</span>
+              Estimate costs <span className="text-[12px]">(approximate, not quotes)</span>
             </span>
             {includeCosts && (
               <select
@@ -1484,7 +1485,7 @@ function ImportPanel({
           <BeaRunning moment="plan.working" action={mode === "build" ? "run" : "think"} />
         </div>
       )}
-      <p className="text-center text-[11.5px] leading-snug text-muted-foreground">
+      <p className="text-center text-[12px] leading-snug text-muted-foreground">
         {mode === "build"
           ? "Béa drafts the plan; you book and confirm."
           : !hasFiles && !link && text.trim().length < 10
@@ -1492,7 +1493,11 @@ function ImportPanel({
             : "Sent to an AI to read, so leave out passport and card numbers. Calendar files stay on your device."}
       </p>
 
-      {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="break-words text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       {saved && (
         <p className="text-[13px] text-primary">
           {beaLine("plan.complete").title} {tripStillEditableNote()}
@@ -1674,17 +1679,17 @@ function ImportPanel({
                 <span className="block text-[14.5px] font-medium">
                   {it.title}
                   {it.source === "vault" && (
-                    <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[11.5px] font-semibold text-primary">
+                    <span className="ml-1.5 rounded-full border border-primary/40 px-1.5 py-0.5 text-[12px] font-semibold text-primary">
                       From your vault
                     </span>
                   )}
                   {it.booked && (
-                    <span className="ml-1.5 rounded-full bg-nexttime/12 px-1.5 py-0.5 text-[11.5px] font-semibold text-nexttime">
+                    <span className="ml-1.5 rounded-full bg-nexttime/12 px-1.5 py-0.5 text-[12px] font-semibold text-nexttime">
                       Booked
                     </span>
                   )}
                   {duplicateIndexes.has(i) && (
-                    <span className="ml-1.5 rounded-full border border-border px-1.5 py-0.5 text-[11.5px] font-semibold text-muted-foreground">
+                    <span className="ml-1.5 rounded-full border border-border px-1.5 py-0.5 text-[12px] font-semibold text-muted-foreground">
                       Already on your timeline
                     </span>
                   )}
@@ -1741,7 +1746,7 @@ function ImportPanel({
                 rows={2}
                 maxLength={800}
                 placeholder="Rainy-day activities, something less expensive…"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 onClick={() => void findAlternatives()}
@@ -1759,7 +1764,7 @@ function ImportPanel({
                 rows={2}
                 maxLength={800}
                 placeholder="Fewer museums, more food, a slower first day…"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+                className="w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 onClick={() => void rebuildTrip()}
@@ -1809,7 +1814,7 @@ function PlacementNote({
     <button
       type="button"
       onClick={choose(next)}
-      className="ml-1.5 inline-flex min-h-7 items-center rounded-md border border-border bg-card px-2 text-[11.5px] font-semibold text-foreground"
+      className="ml-1.5 inline-flex min-h-7 items-center rounded-md border border-border bg-card px-2 text-[12px] font-semibold text-foreground"
     >
       {label}
     </button>
@@ -1967,7 +1972,7 @@ function OptimizePanel({
       const done = beaLine("plan.complete");
       toast.success(done.title, { description: beaCheer("route") ?? done.body });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save that arrangement.");
+      setError(friendlyError(e, "Couldn't save that arrangement."));
     } finally {
       setBusy(false);
     }
@@ -2076,7 +2081,11 @@ function OptimizePanel({
         </>
       )}
 
-      {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="break-words text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       {saved && <p className="text-[13px] text-primary">Timeline updated.</p>}
 
       {plan && (
@@ -2252,7 +2261,11 @@ function ComparePanel() {
       </PlanAction>
       {busy && <BeaRunning moment="choose.working" status="Reading both plans, then comparing" />}
 
-      {error && <p className="break-words text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="break-words text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       {result && <ComparisonResult result={result} />}
     </div>
@@ -2397,7 +2410,11 @@ function CompareSide({
         <Upload className="size-3.5 shrink-0" aria-hidden />
         <span className="truncate">{reading ? `Reading ${reading}…` : "Or upload a file"}</span>
       </button>
-      {problem ? <p className="break-words text-[11.5px] text-destructive">{problem}</p> : null}
+      {problem ? (
+        <p role="alert" className="break-words text-[14px] text-destructive">
+          {problem}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -2542,7 +2559,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
                   <td className="border-t border-border/60 p-1 text-muted-foreground">
                     {row.label}
                     {diff > 0 && (
-                      <span className="block text-[11.5px]">
+                      <span className="block text-[12px]">
                         {row.key === "estimatedCost"
                           ? `${money(diff)} apart`
                           : `${Math.round(diff * 10) / 10}${row.unit ? ` ${row.unit}` : ""} apart`}
@@ -2556,7 +2573,7 @@ function ComparisonResult({ result }: { result: ItineraryComparison }) {
             })}
           </tbody>
         </table>
-        <p className="mt-1 text-[11.5px] text-muted-foreground">
+        <p className="mt-1 text-[12px] text-muted-foreground">
           Cost and stop counts are added up in the app. A blank row means we could not measure it —
           never a guess. Nothing here is a quote or a booking.
         </p>

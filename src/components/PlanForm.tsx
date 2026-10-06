@@ -74,7 +74,7 @@ export function PlanPanel({
 /** "0/500", small, for a panel's title row. */
 export function CharCount({ value, max }: { value: string; max: number }) {
   return (
-    <span className="shrink-0 text-[11.5px] tabular-nums text-muted-foreground">
+    <span className="shrink-0 text-[12px] tabular-nums text-muted-foreground">
       {value.length.toLocaleString()}/{max.toLocaleString()}
     </span>
   );
@@ -132,7 +132,7 @@ export function PriorityPicker({
       tone="butter"
       title={title}
       aside={
-        hint ? <span className="shrink-0 text-[11.5px] text-muted-foreground">{hint}</span> : null
+        hint ? <span className="shrink-0 text-[12px] text-muted-foreground">{hint}</span> : null
       }
     >
       <div className="flex flex-wrap gap-1.5">

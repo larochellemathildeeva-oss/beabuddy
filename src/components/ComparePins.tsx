@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { comparePlaces, type ComparisonResult } from "@/lib/compare.functions";
 import { pinColorClass, pinLabel, type Pin } from "@/data/atlas";
@@ -71,7 +72,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
       });
       setResult(out);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      setError(friendlyError(e, "Something went wrong. Try again."));
     } finally {
       setBusy(false);
     }
@@ -123,7 +124,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
               rows={2}
               maxLength={400}
               placeholder="Warm weather, easy on the budget, good food, a long weekend…"
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+              className="mt-1 w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
             />
           </label>
 
@@ -132,7 +133,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
             <select
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px] outline-none"
+              className="mt-1 w-full rounded-xl border border-input bg-card px-3 py-2 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">Not sure yet</option>
               {MONTHS.map((name) => (
@@ -156,7 +157,11 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
           </button>
           {busy && <BeaRunning moment="choose.working" />}
 
-          {error && <p className="text-[13px] text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="text-[14px] text-destructive">
+              {error}
+            </p>
+          )}
 
           {result && (
             <div className="rise space-y-2 rounded-2xl border border-border bg-elevated p-3">
@@ -232,7 +237,7 @@ export function ComparePins({ pins }: { pins: Pin[] }) {
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[15px] font-semibold">{p.name}</p>
                       {winner && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-[11.5px] font-semibold text-primary-foreground">
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[12px] font-semibold text-primary-foreground">
                           Béa's pick
                         </span>
                       )}

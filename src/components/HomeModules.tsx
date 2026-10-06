@@ -123,7 +123,7 @@ function TripTools({ trip }: { trip: TripRow }) {
     { label: "Translate", icon: Languages, href: "https://translate.google.com/" },
     { label: "Offline", icon: Download, search: { menu: "offline" } },
   ];
-  const cls = "flex min-h-11 flex-col items-center gap-1 text-[11.5px] text-muted-foreground";
+  const cls = "flex min-h-11 flex-col items-center gap-1 text-[12px] text-muted-foreground";
   return (
     <ModuleCard guide="home-module-tools" title="Trip tools" tone={2}>
       <span className="grid grid-cols-2 gap-x-1 gap-y-2">

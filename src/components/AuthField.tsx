@@ -8,9 +8,11 @@ import { useId, type InputHTMLAttributes } from "react";
 export function AuthField({
   label,
   className = "",
+  error,
   ...input
-}: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+}: { label: string; error?: string | null } & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
+  const errorId = `${id}-error`;
   return (
     <div>
       <label htmlFor={id} className="mb-1 block text-[13px] font-semibold text-foreground">
@@ -19,8 +21,15 @@ export function AuthField({
       <input
         id={id}
         {...input}
-        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-border bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : input["aria-describedby"]}
+        className={`h-[var(--h-input)] w-full rounded-[var(--r-input)] border border-input bg-card px-4 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring ${className}`}
       />
+      {error ? (
+        <p id={errorId} role="alert" className="mt-1 text-[14px] text-destructive">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

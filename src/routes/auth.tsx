@@ -334,7 +334,11 @@ function AuthPage() {
               </label>
             </div>
           )}
-          {error && <p className="px-1 text-[13px] text-destructive">{error}</p>}
+          {error && (
+            <p role="alert" className="px-1 text-[14px] text-destructive">
+              {error}
+            </p>
+          )}
           {message && <p className="px-1 text-[13px] text-nexttime">{message}</p>}
           <button
             type="submit"

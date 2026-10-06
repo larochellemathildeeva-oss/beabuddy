@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import {
   Bookmark,
   CalendarDays,
@@ -193,7 +194,7 @@ export function TimelineEntryForm({
       setScheduling(null);
       if (typeof id === "string" && onUpdateEntry) setJustAdded({ id, title: label });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add that one");
+      setError(friendlyError(e, "Couldn't add that one"));
     }
   };
 
@@ -266,7 +267,7 @@ export function TimelineEntryForm({
           });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add that entry");
+      setError(friendlyError(e, "Couldn't add that entry"));
     } finally {
       setBusy(false);
     }
@@ -293,7 +294,7 @@ export function TimelineEntryForm({
       }
       setScheduling(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't set that");
+      setError(friendlyError(e, "Couldn't set that"));
     }
   };
 
@@ -566,7 +567,11 @@ export function TimelineEntryForm({
         />
       )}
 
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       {/* Added first, scheduled after — the day and time are offered once the
           thing exists, rather than asked for before it does. */}

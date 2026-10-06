@@ -76,7 +76,7 @@ function ForgotPasswordPage() {
                 enterKeyHint="send"
               />
               {error && (
-                <p role="alert" className="text-[13px] text-destructive">
+                <p role="alert" className="text-[14px] text-destructive">
                   {error}
                 </p>
               )}

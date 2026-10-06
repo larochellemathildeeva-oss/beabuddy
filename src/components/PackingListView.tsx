@@ -676,7 +676,11 @@ export function PackingListView({
                 className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
               />
             )}
-            {saveError && <p className="text-[13px] text-destructive">{saveError}</p>}
+            {saveError && (
+              <p role="alert" className="text-[14px] text-destructive">
+                {saveError}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"

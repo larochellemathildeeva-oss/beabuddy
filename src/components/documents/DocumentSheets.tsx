@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Sheet } from "@/components/Sheet";
 import {
   Camera,
@@ -541,7 +542,7 @@ export function AssignSheet({
         itinerary_item_id: linkEvent && draft.trip_id ? draft.itinerary_item_id : null,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "That did not save. Try again.");
+      setError(friendlyError(e, "That did not save. Try again."));
     } finally {
       setBusy(false);
     }
@@ -640,7 +641,7 @@ export function AssignSheet({
                     : "Fill in from this file"}
             </button>
             {readError ? (
-              <p role="alert" className="text-[13px] font-semibold text-destructive">
+              <p role="alert" className="text-[14px] font-semibold text-destructive">
                 {readError}
               </p>
             ) : filled.size ? (
@@ -801,7 +802,7 @@ export function AssignSheet({
         </label>
 
         {error && (
-          <p role="alert" className="text-[13px] font-semibold text-destructive">
+          <p role="alert" className="text-[14px] font-semibold text-destructive">
             {error}
           </p>
         )}
@@ -918,7 +919,7 @@ export function EditDetailsSheet({
       await onSave(d);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "That did not save. Try again.");
+      setError(friendlyError(e, "That did not save. Try again."));
     } finally {
       setBusy(false);
     }
@@ -971,7 +972,7 @@ export function EditDetailsSheet({
           detailsPlaceholder="Seat, check-in time, what to bring"
         />
         {error && (
-          <p role="alert" className="text-[13px] font-semibold text-destructive">
+          <p role="alert" className="text-[14px] font-semibold text-destructive">
             {error}
           </p>
         )}
@@ -1147,7 +1148,7 @@ export function DeleteDocumentSheet({
             : "The file and its details are removed. This cannot be undone."}
         </p>
         {error && (
-          <p role="alert" className="text-[13px] font-semibold text-destructive">
+          <p role="alert" className="text-[14px] font-semibold text-destructive">
             {error}
           </p>
         )}
@@ -1167,7 +1168,7 @@ export function DeleteDocumentSheet({
               setError("");
               onDelete()
                 .catch((e: unknown) =>
-                  setError(e instanceof Error ? e.message : "That was not deleted. Try again."),
+                  setError(friendlyError(e, "That was not deleted. Try again.")),
                 )
                 .finally(() => setBusy(false));
             }}

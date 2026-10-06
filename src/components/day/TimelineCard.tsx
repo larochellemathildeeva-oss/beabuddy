@@ -1,4 +1,5 @@
 import { PlacePicture } from "@/components/PlacePicture";
+import { friendlyError } from "@/lib/friendly-error";
 import { useEffect, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUp,
@@ -250,8 +251,7 @@ export function TimelineEntry({
     if (!onKeep || kept) return;
     void onKeep(item).then(
       () => setKept(true),
-      (e: unknown) =>
-        toast.error(e instanceof Error ? e.message : "Couldn't save that to your places."),
+      (e: unknown) => toast.error(friendlyError(e, "Couldn't save that to your places.")),
     );
   };
 
@@ -680,7 +680,7 @@ export function TimelineEntry({
 
   const field =
     "block min-h-9 w-full min-w-0 rounded-xl border border-border bg-card px-2 text-[14px] text-foreground";
-  const caption = "mb-1 flex items-center gap-1 text-[11.5px] font-medium text-muted-foreground";
+  const caption = "mb-1 flex items-center gap-1 text-[12px] font-medium text-muted-foreground";
   const timeModeNote =
     timeMode === "fixed"
       ? "Keep this time. Béa won’t move it."
@@ -832,7 +832,7 @@ export function TimelineEntry({
             {item.address || "No place yet"}
           </p>
           {stray && (
-            <p className="mt-1 text-[12.5px] font-semibold text-destructive">
+            <p role="alert" className="mt-1 text-[14px] font-semibold text-destructive">
               ⚠ This pin is far from the rest of the trip, so it may be a different place with the
               same name. Use “Change place” to pick the right one.
             </p>
@@ -1212,7 +1212,7 @@ function InsidePill({
   onTick?: ((index: number) => void) | undefined;
 }) {
   const pillClass =
-    "inline-flex min-h-7 items-center gap-1 rounded-full border border-primary/35 bg-primary/5 px-2.5 text-[11px] font-bold text-primary";
+    "inline-flex min-h-7 items-center gap-1 rounded-full border border-primary/35 bg-primary/5 px-2.5 text-[12px] font-bold text-primary";
   if (entries.length === 0) {
     return (
       <span className="mt-1.5 inline-block">
@@ -1327,7 +1327,7 @@ function InsideEditor({
                   ) : null}
                 </span>
                 {entry.note || entry.address ? (
-                  <span className="block break-words text-[11.5px] text-muted-foreground">
+                  <span className="block break-words text-[12px] text-muted-foreground">
                     {[entry.note, entry.address].filter(Boolean).join(" · ")}
                   </span>
                 ) : null}
@@ -1370,7 +1370,7 @@ function InsideEditor({
             </button>
           </div>
           {draft.trim() && !fits ? (
-            <p className="text-[12px] text-destructive">
+            <p role="alert" className="text-[14px] text-destructive">
               This list is full. Shorten the note or address, or remove an entry.
             </p>
           ) : null}
@@ -1578,7 +1578,7 @@ export function TravelConnector({
               {leg?.farApartKm ? (
                 // One of the two pins is wrong; a drive between them would be
                 // a confident answer to the wrong question.
-                <p className="text-[13px] font-semibold text-destructive">
+                <p role="alert" className="text-[14px] font-semibold text-destructive">
                   ⚠ {leg.farApartKm} km apart on the map on the same day — one of these stops is
                   probably in the wrong place. Tap it to check.
                 </p>
@@ -1660,7 +1660,7 @@ export function TravelConnector({
                         <StepArrow instruction={step.instruction} />
                         <span className="min-w-0 flex-1 leading-snug">{step.instruction}</span>
                         {step.distance > 0 && (
-                          <span className="shrink-0 text-[11.5px] text-muted-foreground">
+                          <span className="shrink-0 text-[12px] text-muted-foreground">
                             {prettyDistance(step.distance)}
                           </span>
                         )}

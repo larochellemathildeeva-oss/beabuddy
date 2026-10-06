@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { Check, ChevronDown } from "@/components/icons";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -136,7 +137,7 @@ export function TripPlacesImport({
       toast.success(line.title, { description: line.body });
       onSaved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save those places.");
+      setError(friendlyError(err, "Couldn't save those places."));
     } finally {
       setSaving(false);
     }
@@ -149,7 +150,12 @@ export function TripPlacesImport({
       </p>
     );
   }
-  if (error && !trips) return <p className="mt-3 text-[13px] text-destructive">{error}</p>;
+  if (error && !trips)
+    return (
+      <p role="alert" className="mt-3 text-[14px] text-destructive">
+        {error}
+      </p>
+    );
   if (!trips) {
     return <p className="mt-3 text-[14.5px] text-muted-foreground">Looking through your trips…</p>;
   }
@@ -296,7 +302,11 @@ export function TripPlacesImport({
         </div>
       </div>
 
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       <button
         type="button"
         onClick={() => void save()}

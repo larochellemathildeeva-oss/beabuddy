@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { pinColorClass, pinLabel, type Pin, type PinType } from "@/data/atlas";
 import { useRecommendations } from "@/hooks/useRecommendations";
 import { tilePath } from "@/lib/tile-proxy";
@@ -258,7 +259,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
       setSaved(`${draft.name.trim() || "Pinned spot"} is on your map.`);
       setDraft(null);
     } catch (e) {
-      setSaved(e instanceof Error ? e.message : "Could not save that pin.");
+      setSaved(friendlyError(e, "Could not save that pin."));
     } finally {
       setSaving(false);
     }
@@ -393,7 +394,7 @@ export function NearbyMapPin({ existing = [] }: { existing?: Pin[] }) {
                   setDraft({ name: p.name, lat: p.lat, lon: p.lon, category: p.category });
                   setSaved("");
                 }}
-                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[11.5px] font-medium text-background"
+                className="absolute rounded-full border border-white bg-foreground/80 px-1.5 py-0.5 text-[12px] font-medium text-background"
                 style={{ left: x - 8, top: y - 8, maxWidth: 120 }}
               >
                 <span className="block truncate">{p.name}</span>

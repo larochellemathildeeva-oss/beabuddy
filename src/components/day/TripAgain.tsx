@@ -91,7 +91,7 @@ export function TripAgain({
   };
 
   const field =
-    "mt-1 w-full rounded-xl border border-border bg-card px-3 py-2.5 text-[14.5px] outline-none";
+    "mt-1 w-full rounded-xl border border-input bg-card px-3 py-2.5 text-[14.5px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <div className="space-y-3">
@@ -193,7 +193,7 @@ export function TripAgain({
       )}
 
       {error && (
-        <p role="alert" className="text-[13px] font-semibold text-destructive">
+        <p role="alert" className="text-[14px] font-semibold text-destructive">
           {error}
         </p>
       )}

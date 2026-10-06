@@ -34,7 +34,7 @@ export function FollowedTripList({ trips }: { trips: FollowedTrip[] }) {
                     {trip.title}
                   </span>
                   {trip.live && (
-                    <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[11.5px] font-bold text-primary-foreground">
+                    <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[12px] font-bold text-primary-foreground">
                       Live
                     </span>
                   )}

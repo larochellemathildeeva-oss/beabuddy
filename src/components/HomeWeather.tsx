@@ -104,7 +104,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
       >
         <CloudSun className="size-6 shrink-0 text-muted-foreground" aria-hidden />
         <span className="text-left leading-tight">
-          <span className="block text-[11px] text-muted-foreground">Weather</span>
+          <span className="block text-[12px] text-muted-foreground">Weather</span>
           <span className="block text-[13px] font-bold">Show</span>
         </span>
         <span className="sr-only">
@@ -125,7 +125,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
       >
         <CloudOff className="size-6 shrink-0 text-muted-foreground" aria-hidden />
         <span className="text-left leading-tight">
-          <span className="block text-[11px] text-muted-foreground">Weather</span>
+          <span className="block text-[12px] text-muted-foreground">Weather</span>
           <span className="block text-[13px] font-bold">Try again</span>
         </span>
       </button>
@@ -159,7 +159,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
     >
       <WeatherIcon kind={kind} isDay={weather.isDay} />
       <span className="min-w-0 leading-tight" aria-hidden>
-        <span className="block truncate text-[11px] text-muted-foreground">{where || "Here"}</span>
+        <span className="block truncate text-[12px] text-muted-foreground">{where || "Here"}</span>
         <span className="block font-display text-[21px] leading-none">
           {formatTemp(weather.temp, fahrenheit)}
         </span>
@@ -171,7 +171,7 @@ export function HomeWeather({ near }: { near: ReturnType<typeof useNearMe> }) {
 /** Open-Meteo's credit, at the foot of Home once the weather is showing. */
 export function WeatherCredit() {
   return (
-    <p className="text-center text-[11px] text-muted-foreground">
+    <p className="text-center text-[12px] text-muted-foreground">
       Weather by{" "}
       <a
         href="https://open-meteo.com/"

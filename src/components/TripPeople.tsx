@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { toast } from "sonner";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import type { MemberRow } from "@/hooks/useTrips";
@@ -155,8 +156,7 @@ export function TripPeople({
           setConfirmLeave(false);
           void onLeave().then(
             () => onLeft?.(),
-            (e: unknown) =>
-              toast.error(e instanceof Error ? e.message : "Couldn't leave that trip."),
+            (e: unknown) => toast.error(friendlyError(e, "Couldn't leave that trip.")),
           );
         }}
       />
@@ -172,7 +172,7 @@ export function TripPeople({
           setConfirmRemove(null);
           if (!target) return;
           void onRemoveMember(target.id).catch((e: unknown) =>
-            toast.error(e instanceof Error ? e.message : "Couldn't remove them."),
+            toast.error(friendlyError(e, "Couldn't remove them.")),
           );
         }}
       />

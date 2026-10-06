@@ -119,7 +119,7 @@ export function SavedPlacesSheet({
           </ul>
         )}
         {error && (
-          <p role="alert" className="text-[13px] font-semibold text-destructive">
+          <p role="alert" className="text-[14px] font-semibold text-destructive">
             {error}
           </p>
         )}

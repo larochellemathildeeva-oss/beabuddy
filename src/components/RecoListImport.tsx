@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera, ImageIcon } from "@/components/icons";
 import { pinColorClass, pinLabel, type PinType } from "@/data/atlas";
@@ -233,7 +234,7 @@ export function RecoListImport({
       setListSource("Uploaded list");
       onSaved?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't save those places.");
+      setError(friendlyError(err, "Couldn't save those places."));
     } finally {
       setBusy(null);
     }
@@ -332,7 +333,11 @@ export function RecoListImport({
           Looking up {searchingAt + 1} of {drafts?.length ?? 0}…
         </p>
       )}
-      {error && <p className="text-[13px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
 
       {drafts && (
         <div className="space-y-3">
@@ -398,7 +403,7 @@ export function RecoListImport({
                       value={row.category ?? "Place"}
                       onChange={(e) => patch(i, { category: e.target.value })}
                       aria-label={`Category for ${row.originalName || `suggestion ${i + 1}`}`}
-                      className="rounded-lg border border-border bg-card px-2.5 py-2 text-[15px] outline-none"
+                      className="rounded-lg border border-input bg-card px-2.5 py-2 text-[15px] outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {RECO_LIST_CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>

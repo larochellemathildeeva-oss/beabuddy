@@ -106,7 +106,7 @@ export function TripDetailsForm({
           />
         </div>
         {backwards && (
-          <p className="px-1 text-[13px] font-medium text-destructive">
+          <p role="alert" className="px-1 text-[14px] font-medium text-destructive">
             End date can't be earlier than the start date.
           </p>
         )}

@@ -224,7 +224,11 @@ export function TimeChangeBox({
           {busy ? "Thinking…" : "Ask"}
         </button>
       </div>
-      {problem && <p className="mt-1.5 text-[13px] text-destructive">{problem}</p>}
+      {problem && (
+        <p role="alert" className="mt-1.5 text-[14px] text-destructive">
+          {problem}
+        </p>
+      )}
       {proposal && (
         <div className="mt-2 rounded-xl border border-primary/30 bg-primary-soft p-2.5">
           {proposal.reply && <p className="text-[13.5px] text-foreground">{proposal.reply}</p>}

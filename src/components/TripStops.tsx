@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { MoreHorizontal } from "@/components/icons";
 import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import { Section } from "@/components/Section";
@@ -151,7 +152,7 @@ export function TripStops({
       await s.addStop(toNewStop(place));
       close();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't add that one");
+      setError(friendlyError(e, "Couldn't add that one"));
     }
   };
 
@@ -190,7 +191,7 @@ export function TripStops({
       }
       close();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save that stop");
+      setError(friendlyError(e, "Couldn't save that stop"));
     } finally {
       setBusy(false);
     }
@@ -307,9 +308,7 @@ export function TripStops({
             onClick={() =>
               void s
                 .addHome()
-                .catch((e: unknown) =>
-                  setError(e instanceof Error ? e.message : "Couldn't add that one"),
-                )
+                .catch((e: unknown) => setError(friendlyError(e, "Couldn't add that one")))
             }
             className="shrink-0 rounded-lg bg-primary px-2.5 py-1 text-[12.5px] font-semibold text-primary-foreground"
           >
@@ -557,7 +556,11 @@ function StopDraftForm({
         placeholder={draft.kind === "layover" ? "Layover detail (e.g. 6h, terminal 2)" : "Note"}
         className="w-full rounded-xl border border-border bg-card px-3 py-2 text-[14.5px]"
       />
-      {error && <p className="text-[12px] text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-[14px] text-destructive">
+          {error}
+        </p>
+      )}
       <div className="flex gap-2">
         <button
           type="button"

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { friendlyError } from "@/lib/friendly-error";
 import { RowListSkeleton } from "@/components/Skeletons";
 import { confirm } from "@/lib/haptics";
 import { hostOf, linkFailureMessage, unlocatedMessage } from "@/lib/link-failure";
@@ -481,7 +482,7 @@ function RecommendationsPage() {
         toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save that one.");
+      setError(friendlyError(e, "Couldn't save that one."));
     } finally {
       setBusy(null);
     }
@@ -509,7 +510,7 @@ function RecommendationsPage() {
       setMode(null);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save that.");
+      setError(friendlyError(e, "Couldn't save that."));
     } finally {
       setBusy(null);
     }
@@ -550,8 +551,8 @@ function RecommendationsPage() {
         toast.success(line.title, { description: beaCheer("recommendations") ?? line.body });
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't save that one.");
-      toast.error(e instanceof Error ? e.message : "Couldn't save that one.");
+      setError(friendlyError(e, "Couldn't save that one."));
+      toast.error(friendlyError(e, "Couldn't save that one."));
     } finally {
       setBusy(null);
       setSavingName(null);
@@ -1154,7 +1155,11 @@ function RecommendationsPage() {
               />
             )}
 
-            {error && <p className="text-[13px] text-destructive">{error}</p>}
+            {error && (
+              <p role="alert" className="text-[14px] text-destructive">
+                {error}
+              </p>
+            )}
 
             {draft && (
               <div ref={draftRef} className="rise mt-3 card-soft space-y-2 p-4">

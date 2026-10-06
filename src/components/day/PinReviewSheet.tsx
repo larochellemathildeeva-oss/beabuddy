@@ -62,7 +62,7 @@ export function PinReviewSheet({
             const anchors = anchorsFor(item.day_date);
             return (
               <li key={item.id} className="rounded-2xl border border-border bg-elevated p-3">
-                {when ? <p className="text-[11.5px] text-muted-foreground">{when}</p> : null}
+                {when ? <p className="text-[12px] text-muted-foreground">{when}</p> : null}
                 <p className="break-words font-display text-[17px] leading-tight">{item.title}</p>
                 <p className="mt-1 break-words text-[13px] leading-snug text-foreground">
                   {item.pin_check}

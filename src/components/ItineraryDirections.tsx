@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/friendly-error";
 import { useServerFn } from "@tanstack/react-start";
 import { Check } from "@/components/icons";
 import { Sheet } from "@/components/Sheet";
@@ -225,7 +226,7 @@ export function ItineraryDirections({
       // Anything Béa couldn't find is worth reading, so the sheet stays open for it.
       if (result.unresolved.length === 0) onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't work out the directions.");
+      setError(friendlyError(e, "Couldn't work out the directions."));
     } finally {
       setBusy(false);
     }
@@ -238,7 +239,7 @@ export function ItineraryDirections({
     try {
       await onRemoveFromTimeline();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't remove them.");
+      setError(friendlyError(e, "Couldn't remove them."));
     } finally {
       setRemoving(false);
     }
@@ -351,7 +352,11 @@ export function ItineraryDirections({
 
         {busy && <BeaRunning moment="plan.locating" status="Working out the journeys" />}
 
-        {error && <p className="text-[13px] text-destructive">{error}</p>}
+        {error && (
+          <p role="alert" className="text-[14px] text-destructive">
+            {error}
+          </p>
+        )}
 
         {found === 0 && !busy && (
           <p className="text-[13px] text-muted-foreground">

@@ -149,7 +149,7 @@
   --destructive-ink: var(--destructive);
   --destructive-foreground: #ffffff;
   --border: #f2ede6;
-  --input: #d9d3cc;
+  --input: #8f877e;
   --ring: var(--acc-ink);
 
   --visited: oklch(0.55 0.135 249);
@@ -235,7 +235,7 @@
   --accent: var(--acc-soft);
   --accent-foreground: #111111;
   --border: #f2ede6;
-  --input: #d9d3cc;
+  --input: #8f877e;
   --ring: var(--acc-ink);
   --elevated: #f2ede6;
   --secondary: #f2ede6;
@@ -270,7 +270,7 @@
   --destructive-ink: #f08aa3;
   --destructive-foreground: oklch(0.99 0.008 86);
   --border: #3a342f;
-  --input: #3a342f;
+  --input: #7d746b;
   --ring: var(--acc-done);
 
   --visited: oklch(0.7 0.135 249);

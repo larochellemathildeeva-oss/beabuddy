@@ -130,7 +130,7 @@ export function SwipeRow({
               setOffset(0);
               onSave();
             }}
-            className="flex flex-1 flex-col items-center justify-center gap-1 bg-primary text-[11.5px] font-bold text-primary-foreground"
+            className="flex flex-1 flex-col items-center justify-center gap-1 bg-primary text-[12px] font-bold text-primary-foreground"
           >
             <Bookmark className="size-4" aria-hidden />
             Save
@@ -144,7 +144,7 @@ export function SwipeRow({
             setOffset(0);
             onDelete();
           }}
-          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-r-2xl bg-destructive text-[11.5px] font-bold text-destructive-foreground"
+          className="flex flex-1 flex-col items-center justify-center gap-1 rounded-r-2xl bg-destructive text-[12px] font-bold text-destructive-foreground"
         >
           <Trash2 className="size-4" aria-hidden />
           Delete
