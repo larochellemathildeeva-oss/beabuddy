@@ -403,15 +403,13 @@ export function CustomizeHomeNext({ state }: { state: HomeState }) {
       }}
     >
       <SheetTrigger asChild>
-        <div className="flex justify-center">
-          <button
-            type="button"
-            data-guide="customize-home"
-            className="flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <LayoutGrid className="size-4" aria-hidden /> Customize home
-          </button>
-        </div>
+        <button
+          type="button"
+          data-guide="customize-home"
+          className="mx-auto flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <LayoutGrid className="size-4" aria-hidden /> Customize home
+        </button>
       </SheetTrigger>
       <SheetContent side="bottom" className="max-h-[88dvh] overflow-y-auto rounded-t-2xl">
         <SheetHeader className="text-left">

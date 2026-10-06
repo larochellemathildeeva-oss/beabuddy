@@ -80,15 +80,13 @@ export function CustomizeModules<K extends string>({
       </button>
     ) : variant === "card" ? (
       // A quiet link at the foot of the page, not a banner.
-      <div className="flex justify-center">
-        <button
-          type="button"
-          data-guide={guide}
-          className="flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <LayoutGrid className="size-4" aria-hidden /> {title}
-        </button>
-      </div>
+      <button
+        type="button"
+        data-guide={guide}
+        className="mx-auto flex min-h-11 items-center gap-1.5 rounded-full px-4 text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <LayoutGrid className="size-4" aria-hidden /> {title}
+      </button>
     ) : variant === "list" ? (
       // A row in You's grouped lists: pastel bubble, title, one line, chevron.
       <button

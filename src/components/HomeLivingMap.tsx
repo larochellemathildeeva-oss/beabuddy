@@ -239,10 +239,11 @@ export function HomeSuggested({
 }: {
   trip: TripRow;
   /** The town the traveller is in today (or the trip starts in), and its country. */
-  here: { city: string; country: string | null };
+  here: { city: string; stopCountry?: string | null };
 }) {
   const city = here.city || trip.city?.split(",")[0]?.trim() || trip.title;
-  const country = here.country || trip.country || "";
+  // Only a country known to belong to this town: a multi-country trip must not inherit the first one.
+  const country = here.stopCountry || "";
   const ideas = [
     {
       label: "Iconic Landmarks",
