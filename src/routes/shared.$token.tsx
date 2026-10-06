@@ -14,6 +14,7 @@ import {
   sharedTripZone,
   sharedStopMapsUrl,
   type SharedLive,
+  type SharedPhoto,
   type SharedStop,
   type SharedTrip,
 } from "@/lib/trip-share";
@@ -256,6 +257,7 @@ function SharedTripPage() {
                 </div>
               </details>
             )}
+            {trip.photos && <TripPhotos photos={trip.photos} />}
             <p className="text-[13px] text-muted-foreground">
               Following along, read-only: it shows the stop they tapped “I'm here” at — never their
               location — and updates by itself.
@@ -277,6 +279,7 @@ function SharedTripPage() {
             {trip.days.map((day) => (
               <DayPlan key={day.day ?? "undated"} day={day} />
             ))}
+            {trip.photos && <TripPhotos photos={trip.photos} />}
           </>
         )}
         <p className="text-center text-[13px] text-muted-foreground">
@@ -497,6 +500,39 @@ function ClockLine({ clocks }: { clocks: Clocks }) {
   );
 }
 
+/** A stop's or the trip's photos, small; a tap opens one at full size. */
+function PhotoRow({ photos, label }: { photos: SharedPhoto[]; label: string }) {
+  return (
+    <span className="mt-2 flex flex-wrap gap-1.5">
+      {photos.map((photo, i) => (
+        <a
+          key={i}
+          href={photo.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open photo ${i + 1} of ${label}`}
+          className="block size-16 overflow-hidden rounded-xl bg-elevated"
+        >
+          <img src={photo.url} alt="" loading="lazy" className="size-full object-cover" />
+        </a>
+      ))}
+    </span>
+  );
+}
+
+/** The photos of the trip as a whole, under its plan. */
+function TripPhotos({ photos }: { photos: SharedPhoto[] }) {
+  if (!photos.length) return null;
+  return (
+    <section aria-label="Photos from this trip">
+      <h2 className="mb-2 px-0.5 font-display text-[21px] leading-tight">Photos from this trip</h2>
+      <div className="plain-card p-3.5">
+        <PhotoRow photos={photos} label="the trip" />
+      </div>
+    </section>
+  );
+}
+
 /** One day of the plan, marking what is done and where they are on a following link. */
 function DayPlan({ day }: { day: SharedTrip["days"][number] }) {
   return (
@@ -549,6 +585,7 @@ function DayPlan({ day }: { day: SharedTrip["days"][number] }) {
                       <span className="min-w-0">{stop.address}</span>
                     </span>
                   ))}
+                {stop.photos?.length ? <PhotoRow photos={stop.photos} label={stop.title} /> : null}
               </span>
             </li>
           );

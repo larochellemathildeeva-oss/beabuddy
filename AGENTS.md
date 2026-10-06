@@ -498,6 +498,23 @@ arrival older than 12 hours with no "Leaving" counts as done. It is the
 `follow_along` column on `trip_share_links`, off for older links; the
 migration is applied by hand, and until it is, links show the plan only.
 
+## Photos on a link
+
+A read-only link can also show the trip's photos (`include_photos` on
+`trip_share_links`, off by default, chosen in `ShareLinkCard`), and anyone
+following that link in Béa sees them too, since both read the same view. Nothing
+is visible unless the traveller who made the link turned it on. The server
+(`readPhotos` in `trip-share.server.ts`) reads only the columns it needs, never
+a position, caption or name, and `pickSharedPhotos` (pure and tested) keeps out
+photos their owner has kept off links (`photo_memories.hidden_from_links`, set
+from the photo's sheet), "location-only" rows and any file outside the owner's
+own folder, at most `SHARED_PHOTOS_MAX`. Photos are signed for an hour, so a
+link turned off can still open a photo it already handed out for up to an hour.
+A database without the hide flag shows no photos. There is no separate viewer
+role: a link is the view-only access, and trip members already see each other's
+photos by row policy. The migration is applied by hand; until it is, links show
+the plan only.
+
 ## Following a shared trip
 
 A signed-in traveller who opens a share link can tap **"Follow in Béa"**

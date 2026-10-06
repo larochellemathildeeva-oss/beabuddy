@@ -19,6 +19,8 @@ export type StopPhotosProps = {
   uid: string | null;
   onAdd: (files: File[]) => Promise<StopPhotosAdded>;
   onRemove: (photo: StopPhoto) => Promise<void>;
+  /** Keep one of your photos off read-only links; absent until its migration is in. */
+  onHide?: ((photo: StopPhoto, hidden: boolean) => Promise<void>) | undefined;
 };
 
 const plural = (n: number) => (n === 1 ? "1 photo" : `${n} photos`);
@@ -203,6 +205,7 @@ export function StopPhotos({
   uid,
   onAdd,
   onRemove,
+  onHide,
 }: StopPhotosProps) {
   const { busy, add } = usePhotoAdd(onAdd);
   const [viewing, setViewing] = useState<StopPhoto | null>(null);
@@ -266,6 +269,30 @@ export function StopPhotos({
       {viewing && (
         <Sheet open onClose={() => setViewing(null)} title="Photo" hint={title} above>
           <FullPhoto photo={viewing} alt={`Photo of ${title}`} />
+          {uid && viewing.user_id === uid && onHide && (
+            <button
+              type="button"
+              onClick={() => {
+                const photo = viewing;
+                const hidden = !photo.hidden_from_links;
+                // The sheet shows the photo as it is after the change.
+                setViewing({ ...photo, hidden_from_links: hidden });
+                void onHide(photo, hidden)
+                  .then(() =>
+                    toast(
+                      hidden ? "Kept off shared links" : "Shown on shared links when photos are on",
+                    ),
+                  )
+                  .catch(() => {
+                    setViewing(photo);
+                    toast.error("That didn't save. Try again.");
+                  });
+              }}
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-border bg-card text-[14px] font-semibold"
+            >
+              {viewing.hidden_from_links ? "Allow on shared links" : "Keep off shared links"}
+            </button>
+          )}
           {uid && viewing.user_id === uid && (
             <button
               type="button"

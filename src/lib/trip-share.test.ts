@@ -3,6 +3,8 @@ import { test } from "node:test";
 import { dateIn } from "./trip-clock.ts";
 import {
   sharedStopMapsUrl,
+  pickSharedPhotos,
+  SHARED_PHOTOS_MAX,
   isShareToken,
   newShareToken,
   shareClientKey,
@@ -352,4 +354,93 @@ test("each day is over on its own calendar, across time zones", () => {
   assert.equal(sharedLive(view, todayIn).next?.stop.title, "Griffith");
   // One date for the whole trip, Tokyo's, would have skipped them.
   assert.equal(sharedLive(view, "2026-10-03").next, null);
+});
+
+const owner = "11111111-1111-1111-1111-111111111111";
+const photoRow = (over: Partial<Parameters<typeof pickSharedPhotos>[0][number]> = {}) => ({
+  user_id: owner,
+  storage_path: `${owner}/a.jpg`,
+  itinerary_item_id: null,
+  taken_at: "2026-10-05T10:00:00Z",
+  hidden_from_links: false,
+  ...over,
+});
+
+test("a link shows only photos their owner has not kept off links", () => {
+  const picked = pickSharedPhotos([
+    photoRow({ storage_path: `${owner}/shown.jpg` }),
+    photoRow({ storage_path: `${owner}/hidden.jpg`, hidden_from_links: true }),
+    // Not read with the flag (older database): never shown.
+    photoRow({ storage_path: `${owner}/unknown.jpg`, hidden_from_links: null }),
+  ]);
+  assert.deepEqual(
+    picked.map((p) => p.storage_path),
+    [`${owner}/shown.jpg`],
+  );
+});
+
+test("a link never shows location-only rows or a file outside the owner's folder", () => {
+  const picked = pickSharedPhotos([
+    photoRow({ storage_path: "location-only:abc" }),
+    photoRow({ storage_path: "22222222-2222-2222-2222-222222222222/theirs.jpg" }),
+    photoRow({ storage_path: `${owner}/../22222222-2222-2222-2222-222222222222/x.jpg` }),
+    photoRow({ storage_path: `${owner}/ok.jpg` }),
+  ]);
+  assert.deepEqual(
+    picked.map((p) => p.storage_path),
+    [`${owner}/ok.jpg`],
+  );
+});
+
+test("photos come in the order taken and are capped", () => {
+  const rows = Array.from({ length: SHARED_PHOTOS_MAX + 10 }, (_, i) =>
+    photoRow({
+      storage_path: `${owner}/${String(i).padStart(3, "0")}.jpg`,
+      taken_at: `2026-10-05T10:${String(59 - (i % 60)).padStart(2, "0")}:00Z`,
+    }),
+  );
+  const picked = pickSharedPhotos(rows);
+  assert.equal(picked.length, SHARED_PHOTOS_MAX);
+  const times = picked.map((p) => p.taken_at!);
+  assert.deepEqual(times, [...times].sort());
+});
+
+test("photos sit under their stop, and the rest under the trip, with nothing private", () => {
+  const trip = { title: "Lisbon", city: null, country: null, start_date: null, end_date: null };
+  const items = [
+    {
+      id: "s1",
+      day_date: "2026-10-05",
+      time_label: "10:00",
+      kind: "sight",
+      title: "Alfama",
+      address: null,
+      position: 0,
+    },
+    {
+      id: "n1",
+      day_date: "2026-10-05",
+      time_label: null,
+      kind: "note",
+      title: "Note",
+      address: null,
+      position: 1,
+    },
+  ];
+  const a = { url: "https://x/a", takenAt: null };
+  const b = { url: "https://x/b", takenAt: null };
+  const c = { url: "https://x/c", takenAt: null };
+  const view = sharedTripView(trip, items, undefined, undefined, [
+    { itemId: "s1", photo: a },
+    { itemId: null, photo: b },
+    // A stop the plan does not show (a note) still shows, under the trip.
+    { itemId: "n1", photo: c },
+  ]);
+  assert.deepEqual(view.days[0]!.stops[0]!.photos, [a]);
+  assert.deepEqual(view.photos, [b, c]);
+  assert.ok(!JSON.stringify(view).includes("n1"));
+  // A link without photos carries no photo keys at all.
+  const plain = sharedTripView(trip, items);
+  assert.equal(plain.photos, undefined);
+  assert.equal(plain.days[0]!.stops[0]!.photos, undefined);
 });

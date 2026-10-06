@@ -1258,6 +1258,7 @@ export function TripDetail({
       uid: me.id,
       onAdd: (files: File[]) => stopPhotos.add(item, files),
       onRemove: stopPhotos.remove,
+      onHide: stopPhotos.canHide ? stopPhotos.setHidden : undefined,
     },
   });
   const linkedDocProps = (item: ItineraryRow) => {
@@ -3113,6 +3114,7 @@ export function TripDetail({
             uid={me.id}
             onAdd={(files) => stopPhotos.add(null, files)}
             onRemove={stopPhotos.remove}
+            onHide={stopPhotos.canHide ? stopPhotos.setHidden : undefined}
           />
         )}
 
