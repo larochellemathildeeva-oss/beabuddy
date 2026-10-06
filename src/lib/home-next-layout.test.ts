@@ -49,7 +49,11 @@ describe("stateLayout", () => {
       order: ["future", "saved", "trip"],
       on: new Set(["future", "saved"]),
     } as never);
-    assert.deepEqual(shownModules(stateLayout("upcoming", raw, null)), ["future", "saved"]);
+    assert.deepEqual(shownModules(stateLayout("upcoming", raw, null)), [
+      "future",
+      "saved",
+      "suggested",
+    ]);
     assert.deepEqual(shownModules(stateLayout("none", raw, null)), ["future"]);
     for (const k of STATE_MODULES.upcoming)
       assert.ok(stateLayout("upcoming", raw, null).order.includes(k));

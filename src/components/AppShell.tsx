@@ -226,6 +226,7 @@ export function AppShell({
             <div className="flex items-center gap-2.5">
               <Link
                 to="/recommendations"
+                search={{ find: true }}
                 aria-label="Search your places"
                 className="grid size-11 place-items-center rounded-full bg-card text-foreground shadow-[0_3px_12px_rgb(0_0_0/0.07)]"
               >

@@ -28,6 +28,8 @@ export function createModuleStore<K extends string>(config: {
   defaults: readonly K[];
   /** Modules drawn in a fixed place: a switch, but no arrows. */
   fixed?: readonly K[];
+  /** Modules a layout saved before they existed gets switched on. */
+  newOn?: readonly K[];
 }) {
   const fixed: ReadonlySet<K> = new Set(config.fixed ?? []);
   const keys = config.modules.map((m) => m.key);
@@ -40,7 +42,7 @@ export function createModuleStore<K extends string>(config: {
     const raw = getStored(key);
     const hit = cache.get(key);
     if (hit && hit.raw === raw) return hit.layout;
-    const layout = readModules(raw, keys, config.defaults);
+    const layout = readModules(raw, keys, config.defaults, config.newOn);
     cache.set(key, { raw, layout });
     return layout;
   }

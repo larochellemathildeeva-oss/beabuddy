@@ -51,6 +51,8 @@ export function useHomeTripModules({
     return {
       city,
       country: stop?.country ?? trip?.country ?? null,
+      /** The stop's own country; null when it has none recorded. */
+      stopCountry: stop?.country ?? null,
       lat: typeof stop?.lat === "number" ? stop.lat : null,
       lon: typeof stop?.lon === "number" ? stop.lon : null,
     };

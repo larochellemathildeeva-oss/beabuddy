@@ -82,3 +82,11 @@ describe("module rows", () => {
     assert.equal(moveModule(layout, "a", 1, fixed), layout);
   });
 });
+
+describe("modules added later", () => {
+  it("switches a new module on only when asked to", () => {
+    const raw = JSON.stringify({ order: ["d", "a"], on: ["d"] });
+    assert.deepEqual(shownModules(readModules(raw, KEYS, DEFAULTS)), ["d"]);
+    assert.deepEqual(shownModules(readModules(raw, KEYS, DEFAULTS, ["b"])), ["d", "b"]);
+  });
+});

@@ -10,6 +10,7 @@ import { useTripStops } from "@/hooks/useTripStops";
 import { useCityPositions } from "@/hooks/useCityPositions";
 import { tripCityStop, withCityPositions } from "@/lib/city-position";
 import { flightParts, heroWhen, routeStops } from "@/lib/home-route-map";
+import { placeArtUrl } from "@/lib/place-art";
 import { heroTags, routeLine } from "@/lib/trip-glance";
 
 /** The picture the trip's cities are drawn over. */
@@ -232,25 +233,32 @@ export function HomeWhereNext() {
  * Three ideas for the trip. Each opens Plan with Béa with the request already
  * written for the trip's city; nothing is asked until the traveller sends it.
  */
-export function HomeSuggested({ trip }: { trip: TripRow }) {
-  const { stops } = useTripStops(trip.id, null);
-  const city =
-    stops.find((s) => s.city.trim())?.city.trim() || trip.city?.split(",")[0] || trip.title;
+export function HomeSuggested({
+  trip,
+  here,
+}: {
+  trip: TripRow;
+  /** The town the traveller is in today (or the trip starts in), and its country. */
+  here: { city: string; stopCountry?: string | null };
+}) {
+  const city = here.city || trip.city?.split(",")[0]?.trim() || trip.title;
+  // Only a country known to belong to this town: a multi-country trip must not inherit the first one.
+  const country = here.stopCountry || "";
   const ideas = [
     {
       label: "Iconic Landmarks",
-      art: "/art/suggest-landmarks.webp",
+      art: placeArtUrl("landmark"),
       ask: `Add the iconic landmarks of ${city} that are worth the time.`,
     },
     {
       label: "Cafés & Coffee",
-      art: "/art/suggest-cafes.webp",
+      art: placeArtUrl("cafe"),
       ask: `Add a few good cafés and coffee places in ${city}, near what we are already doing.`,
     },
     {
       label: "Day Trips",
-      art: "/art/suggest-daytrips.webp",
-      ask: `Suggest a day trip from ${city} that fits a free day.`,
+      art: placeArtUrl("viewpoint"),
+      ask: `Suggest a day trip from ${city} that fits a free day${country ? `, without leaving ${country}` : ""}.`,
     },
   ];
   return (

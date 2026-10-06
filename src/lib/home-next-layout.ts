@@ -32,8 +32,8 @@ const TRIP_MODULES: readonly HomeSectionKey[] = [
 
 /** What each state can show. "stops" is the Current / Next stop pair under the on-trip map. */
 export const STATE_MODULES: Record<HomeState, readonly HomeSectionKey[]> = {
-  ontrip: ["stops", "trip", ...TRIP_MODULES, "weather", "waiting", "future"],
-  upcoming: ["trip", ...TRIP_MODULES, "weather", "waiting", "future"],
+  ontrip: ["stops", "suggested", "trip", ...TRIP_MODULES, "weather", "waiting", "future"],
+  upcoming: ["suggested", "trip", ...TRIP_MODULES, "weather", "waiting", "future"],
   none: ["trip", "weather", "waiting", "future"],
 };
 
@@ -43,10 +43,13 @@ export const STATE_MODULES: Record<HomeState, readonly HomeSectionKey[]> = {
  * none), with what Home always showed.
  */
 export const STATE_DEFAULTS: Record<HomeState, readonly HomeSectionKey[]> = {
-  ontrip: ["stops", "now", "trip", "weather", "waiting", "future"],
-  upcoming: ["saved", "trip", "weather", "waiting", "future"],
+  ontrip: ["stops", "suggested", "now", "trip", "weather", "waiting", "future"],
+  upcoming: ["suggested", "saved", "trip", "weather", "waiting", "future"],
   none: ["waiting", "trip", "future"],
 };
+
+/** Modules a list saved before they existed gets switched on. */
+const NEW_ON: readonly HomeSectionKey[] = ["suggested"];
 
 /** Kept on this device, per account, per state. */
 export const homeNextLayoutKey = (state: HomeState, uid: string | undefined) =>
@@ -65,7 +68,7 @@ export function stateLayout(
   account: ModuleLayout<HomeSectionKey> | null,
 ): ModuleLayout<HomeSectionKey> {
   const keys = STATE_MODULES[state];
-  if (raw) return readModules(raw, keys, STATE_DEFAULTS[state]);
+  if (raw) return readModules(raw, keys, STATE_DEFAULTS[state], NEW_ON);
   if (account) {
     const order = account.order.filter((k) => keys.includes(k));
     for (const k of keys) if (!order.includes(k)) order.push(k);

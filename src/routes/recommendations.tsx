@@ -99,6 +99,9 @@ export const Route = createFileRoute("/recommendations")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
+  // Home's search loop opens this page with the search box ready.
+  validateSearch: (search: Record<string, unknown>): { find?: true } =>
+    search["find"] === true || search["find"] === "1" ? { find: true } : {},
   component: RecommendationsPage,
 });
 
@@ -144,6 +147,11 @@ function draftWithTags(place: Draft): Draft {
 }
 
 function RecommendationsPage() {
+  const { find } = Route.useSearch();
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (find) searchRef.current?.focus();
+  }, [find]);
   const [query, setQuery] = useState("");
   const [placeFilter, setPlaceFilter] = useState("All places");
   const [category, setCategory] = useState("All");
@@ -851,6 +859,7 @@ function RecommendationsPage() {
           </div>
 
           {(searchWorthShowing({ total: views.length }) ||
+            find ||
             anyFilterWorthShowing({
               total: views.length,
               places: places.length - 1,
@@ -859,13 +868,14 @@ function RecommendationsPage() {
             // One row: search, then City and Type as two compact menus rather
             // than two rows of chips that ran off the side of the screen.
             <div className="flex flex-wrap gap-2">
-              {searchWorthShowing({ total: views.length }) && (
+              {(searchWorthShowing({ total: views.length }) || find) && (
                 <label className="relative min-w-[12rem] flex-[2_1_14rem]">
                   <Search
                     className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
                     aria-hidden
                   />
                   <input
+                    ref={searchRef}
                     data-guide="reco-search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
