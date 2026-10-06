@@ -427,10 +427,9 @@ function SignedInHome() {
                   photos={photos}
                   glance={glances[trip.id]}
                   showStops={false}
-                  height={220}
                 />
               ) : (
-                <HomeUpcoming trip={trip} photos={photos} height={220} />
+                <HomeUpcoming trip={trip} photos={photos} />
               ))}
             {trip && <HomeTripStats trip={trip} glance={glances[trip.id]} />}
             <HomeYourTrips trips={others} photos={photos} />

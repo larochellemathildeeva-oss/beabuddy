@@ -11,13 +11,11 @@ import { PlaceSearchInput } from "@/components/PlaceSearchInput";
 import {
   LayoutSwitch,
   PastTiles,
-  PictureSwitch,
   TripFeature,
   TripListRow,
   TripsHero,
   TripsSection,
 } from "@/components/TripsList";
-import { useTripPicture } from "@/hooks/useTripPicture";
 import { useTripsLayout } from "@/hooks/useTripsLayout";
 import { heroTrips } from "@/lib/trips-page";
 import { FollowedTripList } from "@/components/FollowedTripList";
@@ -114,7 +112,6 @@ function TripsPage() {
     "upcoming",
   );
   const [layout, setLayout] = useTripsLayout();
-  const [picture, setPicture] = useTripPicture();
   const { trips: followed, forget: forgetFollowed } = useFollowedTrips(user?.id ?? null);
   const [form, setForm] = useState({
     title: "",
@@ -183,15 +180,10 @@ function TripsPage() {
       photos={photos}
       glance={glances[trip.id]}
       peopleCount={peopleOnTrip(t.members, trip.id, t.uid)}
-      picture={picture}
     />
   );
-  const switches = (withLayout: boolean) => (
-    <div className="flex flex-wrap items-center gap-2">
-      {withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : null}
-      <PictureSwitch picture={picture} onPicture={setPicture} />
-    </div>
-  );
+  const switches = (withLayout: boolean) =>
+    withLayout ? <LayoutSwitch layout={layout} onLayout={setLayout} /> : undefined;
   const pastSection = (all: boolean) =>
     lists.past.length > 0 ? (
       <TripsSection
@@ -214,7 +206,7 @@ function TripsPage() {
         {all ? (
           <div className="space-y-3">{lists.past.map(row)}</div>
         ) : (
-          <PastTiles trips={lists.past.slice(0, 3)} photos={photos} picture={picture} />
+          <PastTiles trips={lists.past.slice(0, 3)} photos={photos} />
         )}
       </TripsSection>
     ) : null;
@@ -234,7 +226,6 @@ function TripsPage() {
               photos={photos}
               glance={glances[featured.id]}
               peopleCount={peopleOnTrip(t.members, featured.id, t.uid)}
-              picture={picture}
             />
           </TripsSection>
         ) : (
@@ -270,8 +261,6 @@ function TripsPage() {
     <AppShell>
       <div className="space-y-6">
         <TripsHero
-          trips={hero}
-          today={today}
           actions={
             <>
               <Link
@@ -302,7 +291,7 @@ function TripsPage() {
             <div
               role="tablist"
               aria-label="Which trips"
-              className="trips-tabs relative z-[1] -mt-12"
+              className="trips-tabs relative z-[1]"
             >
               {(
                 [
