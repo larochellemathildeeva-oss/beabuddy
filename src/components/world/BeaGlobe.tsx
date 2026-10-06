@@ -158,6 +158,8 @@ export function BeaGlobe({
 
   const engine = useRef<EarthEngine | null>(null);
   const [earthReady, setEarthReady] = useState(false);
+  // True once WebGL has failed: only then is the plain vector globe worth showing.
+  const [earthFailed, setEarthFailed] = useState(false);
   const readyRef = useRef(false);
   readyRef.current = earthReady;
 
@@ -449,6 +451,7 @@ export function BeaGlobe({
         setEarthReady(true);
       } catch (err) {
         building?.dispose();
+        if (live) setEarthFailed(true);
         console.warn("BeaGlobe: WebGL Earth unavailable, using the vector globe.", err);
       }
     })();
@@ -689,11 +692,14 @@ export function BeaGlobe({
           tryCountryTap(e.clientX, e.clientY);
         }}
       >
-        {/* Vector globe: the fallback, and what shows while the Earth loads. */}
+        {/* Vector globe: the fallback. Hidden while the Earth loads, so the flat map never flashes. */}
         <svg
           ref={svgRef}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-[1] size-full overflow-visible"
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[1] size-full overflow-visible",
+            !earthReady && !earthFailed && "invisible",
+          )}
           viewBox="0 0 320 320"
         >
           <defs>

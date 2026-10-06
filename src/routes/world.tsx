@@ -751,7 +751,7 @@ function WorldPage() {
 
         {tab === "map" && (
           <>
-            {places.length === 0 && (
+            {places.length === 0 && !photo.loading && !vault.loading && (
               <div className="plain-card flex items-center gap-3 p-4">
                 <img
                   src="/bea/bea-think-static.png"
