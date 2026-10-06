@@ -75,6 +75,8 @@ const AUTO_SPEED = 6;
 const RESUME_AFTER = 2.5;
 /** The canvas overhangs the box so the atmosphere is not clipped. */
 const OVERHANG = 1.24;
+/** How long the vector globe stays hidden while the Earth loads before it shows as the fallback. */
+const EARTH_LOAD_PATIENCE_MS = 4000;
 
 type Region = { id: string; name: string; feature: Feature<Geometry, GeoJsonProperties> };
 type CountryMark = { key: string; name: string; lat: number; lon: number };
@@ -158,6 +160,8 @@ export function BeaGlobe({
 
   const engine = useRef<EarthEngine | null>(null);
   const [earthReady, setEarthReady] = useState(false);
+  // True once WebGL has failed: only then is the plain vector globe worth showing.
+  const [earthFailed, setEarthFailed] = useState(false);
   const readyRef = useRef(false);
   readyRef.current = earthReady;
 
@@ -429,6 +433,8 @@ export function BeaGlobe({
     let live = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // A setup that stalls (slow textures, a hung import) must not leave the globe blank.
+    const stalled = window.setTimeout(() => live && setEarthFailed(true), EARTH_LOAD_PATIENCE_MS);
     void (async () => {
       let building: { dispose: () => void } | null = null;
       try {
@@ -446,14 +452,17 @@ export function BeaGlobe({
         if (!live) return e.dispose();
         building = null;
         engine.current = e;
+        window.clearTimeout(stalled);
         setEarthReady(true);
       } catch (err) {
         building?.dispose();
+        if (live) setEarthFailed(true);
         console.warn("BeaGlobe: WebGL Earth unavailable, using the vector globe.", err);
       }
     })();
     return () => {
       live = false;
+      window.clearTimeout(stalled);
       engine.current?.dispose();
       engine.current = null;
       setEarthReady(false);
@@ -689,11 +698,14 @@ export function BeaGlobe({
           tryCountryTap(e.clientX, e.clientY);
         }}
       >
-        {/* Vector globe: the fallback, and what shows while the Earth loads. */}
+        {/* Vector globe: the fallback. Hidden while the Earth loads, so the flat map never flashes. */}
         <svg
           ref={svgRef}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-[1] size-full overflow-visible"
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[1] size-full overflow-visible",
+            !earthReady && !earthFailed && "invisible",
+          )}
           viewBox="0 0 320 320"
         >
           <defs>
