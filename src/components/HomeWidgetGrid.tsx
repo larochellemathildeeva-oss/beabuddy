@@ -159,17 +159,20 @@ function HomeWidget({
                 )}
               </svg>
             </button>
-            <select
-              aria-label={`Size of ${label}`}
-              value={cell.size}
-              onChange={(event) => onResize(cell.key, event.target.value as WidgetSize)}
-            >
-              {HOME_WIDGET_SIZES[cell.key].map((size) => (
-                <option key={size} value={size}>
-                  {sizeLabels[size]}
-                </option>
-              ))}
-            </select>
+            <label className="home-widget-size">
+              <span>Size</span>
+              <select
+                aria-label={`Size of ${label}`}
+                value={cell.size}
+                onChange={(event) => onResize(cell.key, event.target.value as WidgetSize)}
+              >
+                {HOME_WIDGET_SIZES[cell.key].map((size) => (
+                  <option key={size} value={size}>
+                    {sizeLabels[size]}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
         <div className="home-widget-content" inert={editing ? true : undefined}>

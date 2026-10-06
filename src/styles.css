@@ -3518,6 +3518,14 @@ html:not(.dark)
   cursor: grab;
 }
 .home-widget-handle:active { cursor: grabbing; }
+.home-widget-size {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
 .home-widget-controls select {
   width: 100%;
   min-width: 0;

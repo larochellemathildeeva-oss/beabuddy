@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { browserHasStoredSession } from "@/lib/stored-session";
 import { hasPendingOAuthResultInWindow } from "@/lib/auth-redirect";
 import { AppShell } from "@/components/AppShell";
@@ -29,7 +29,7 @@ import { useNearMe } from "@/hooks/useNearMe";
 import { useTrips } from "@/hooks/useTrips";
 import { useTripPhotos } from "@/hooks/useTripPhotos";
 import { useTripGlances } from "@/hooks/useTripGlances";
-import { greetingFor } from "@/lib/trip-glance";
+import { greetingFor, heroTags } from "@/lib/trip-glance";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useFutureNotes } from "@/hooks/useFutureNotes";
@@ -353,6 +353,14 @@ function SignedInHome() {
   const showSamplePrompt = empty && !sampleCtaDismissed;
   const { layout, modules, shown, resize, reorder } = useHomeLayout();
   const [editing, setEditing] = useState(false);
+  const doneRef = useRef<HTMLButtonElement>(null);
+  // Entering arrangement from the Customize card at the bottom: bring the
+  // bar (and the handles under it) into view and put focus on Done.
+  useEffect(() => {
+    if (!editing) return;
+    doneRef.current?.scrollIntoView({ block: "center" });
+    doneRef.current?.focus({ preventScroll: true });
+  }, [editing]);
 
   const now = new Date();
   const today = now.toLocaleDateString(undefined, {
@@ -398,7 +406,8 @@ function SignedInHome() {
   const shownModules = shown.filter(
     (k) =>
       (!TRIP_ONLY.has(k) || Boolean(trip && !trips.loading)) &&
-      (k !== "stops" || tripUnderway) &&
+      (k !== "stops" || (tripUnderway && Boolean(trip && glances[trip.id]))) &&
+      (k !== "trip" || !trips.loading) &&
       (k !== "suggested" || Boolean(trip && !trips.loading)),
   );
   const tripWeather =
@@ -432,7 +441,13 @@ function SignedInHome() {
           </div>
         );
       case "stops":
-        return trip ? <NowCards trip={trip} glance={glances[trip.id]} day="Today" /> : null;
+        return trip ? (
+          <NowCards
+            trip={trip}
+            glance={glances[trip.id]}
+            day={heroTags(trip.start_date, trip.end_date, trip.dates_status === "tentative").when}
+          />
+        ) : null;
       case "suggested":
         return trip ? <HomeSuggested trip={trip} here={tripModules.here} /> : null;
       case "weather":
@@ -510,6 +525,7 @@ function SignedInHome() {
               </p>
             </div>
             <button
+              ref={doneRef}
               type="button"
               onClick={() => setEditing(false)}
               className="min-h-11 min-w-11 rounded-xl bg-primary px-4 font-semibold text-primary-foreground"
