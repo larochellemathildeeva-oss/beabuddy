@@ -165,12 +165,19 @@ export function readPendingMoves(
 ): StopMove[] {
   const ids = new Set(stops.map((stop) => stop.id));
   const known = new Set(days);
+  // Each stop's day as the moves accepted so far leave it: an anchor must be
+  // on the day its stop goes to, or the stop would quietly land at the end.
+  const dayOf = new Map(stops.map((stop) => [stop.id, stop.day_date]));
   const out: StopMove[] = [];
   for (const move of moves.slice(0, PLAN_EDIT_MAX_MOVES)) {
     if (!ids.has(move.id)) continue;
     if (move.day_date !== null && !known.has(move.day_date)) continue;
     const at = move.at;
-    if (typeof at === "object" && "after" in at && (!ids.has(at.after) || at.after === move.id)) {
+    if (
+      typeof at === "object" &&
+      "after" in at &&
+      (!ids.has(at.after) || at.after === move.id || dayOf.get(at.after) !== move.day_date)
+    ) {
       continue;
     }
     if (typeof at === "object" && "index" in at && !Number.isFinite(at.index)) continue;
@@ -179,6 +186,7 @@ export function readPendingMoves(
       time = normalizeClock(time) ?? undefined;
       if (time === undefined) continue;
     }
+    dayOf.set(move.id, move.day_date);
     out.push({
       id: move.id,
       day_date: move.day_date,
@@ -221,6 +229,7 @@ export function combineMoves<T extends PlannedStop>(
 ): StopMove[] {
   const moved = new Set(moves.map((move) => move.id));
   if (moved.size === 0) return [];
+  const savedTime = new Map(stops.map((stop) => [stop.id, stop.time_label]));
   const after = planAfter(stops, moves);
   const days = [...new Set(after.map((stop) => stop.day_date))];
   const out: StopMove[] = [];
@@ -232,7 +241,9 @@ export function combineMoves<T extends PlannedStop>(
         id: stop.id,
         day_date: day,
         at: index === 0 ? "start" : { after: list[index - 1]!.id },
-        time_label: stop.time_label,
+        // Only a time Béa changed: a saved one (free text like "after
+        // check-in" included) is left as it is.
+        ...(stop.time_label !== savedTime.get(stop.id) ? { time_label: stop.time_label } : {}),
       });
     });
   }

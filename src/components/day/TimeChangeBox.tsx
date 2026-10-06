@@ -241,11 +241,13 @@ export function TimeChangeBox({
             </button>
             <button
               type="button"
+              // While Béa answers a follow-up her answer would bring it back.
+              disabled={busy}
               onClick={() => {
                 setProposal(null);
                 setProblem("");
               }}
-              className="min-h-10 rounded-xl border border-border bg-card px-3 text-[14px] font-semibold text-muted-foreground"
+              className="min-h-10 rounded-xl border border-border bg-card px-3 text-[14px] font-semibold text-muted-foreground disabled:opacity-50"
             >
               Not this
             </button>

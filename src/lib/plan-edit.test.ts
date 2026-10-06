@@ -140,3 +140,43 @@ test("pending moves naming anything not on the trip are dropped", () => {
   );
   assert.deepEqual(moves, [{ id: "c", day_date: null, at: "start", time_label: "09:30" }]);
 });
+
+test("a saved time is never copied into the moves, free text included", () => {
+  const withText = planned.map((s) =>
+    s.id === "a"
+      ? { ...s, time_label: "after check-in" }
+      : s.id === "c"
+        ? { ...s, time_label: "noon" }
+        : s,
+  );
+  const all = combineMoves(withText, [
+    { id: "a", day_date: five[4]!, at: "end" },
+    { id: "c", day_date: five[4]!, at: "end" },
+    { id: "b", day_date: five[4]!, at: "start", time_label: "09:00" },
+  ]);
+  assert.deepEqual(all, [
+    { id: "b", day_date: five[4], at: "start", time_label: "09:00" },
+    { id: "a", day_date: five[4], at: { after: "e" } },
+    { id: "c", day_date: five[4], at: { after: "a" } },
+  ]);
+  // Sent back with a follow-up, all three are kept.
+  assert.deepEqual(readPendingMoves(all, withText, five), all);
+});
+
+test("a pending anchor no longer on the day it is used for is dropped", () => {
+  const moves = readPendingMoves(
+    [
+      // "d" is on day 2, not day 5.
+      { id: "a", day_date: five[4]!, at: { after: "d" } },
+      // "b" lands on day 5 first, so it can anchor "c" there.
+      { id: "b", day_date: five[4]!, at: "end" },
+      { id: "c", day_date: five[4]!, at: { after: "b" } },
+    ],
+    planned,
+    five,
+  );
+  assert.deepEqual(
+    moves.map((m) => m.id),
+    ["b", "c"],
+  );
+});
