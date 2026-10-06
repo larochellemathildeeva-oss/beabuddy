@@ -3564,6 +3564,11 @@ html:not(.dark)
 :root[data-motion="reduce"] .trip-strip-img {
   animation: none;
 }
+@media (prefers-reduced-motion: reduce) {
+  .trip-strip-img {
+    animation: none;
+  }
+}
 .trip-strip-btn {
   flex: 1;
   min-height: 44px;

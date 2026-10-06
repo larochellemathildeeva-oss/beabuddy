@@ -1406,12 +1406,12 @@ export function TripDetail({
   const [bannerLook] = useTripBanner();
   const bannerOwn = useMemo(
     () =>
-      bannerPhotos(stopPhotos.photos, photos, {
-        city: trip.city,
-        country: trip.country,
-        cities: cityNames,
-      }),
-    [stopPhotos.photos, photos, trip.city, trip.country, cityNames],
+      bannerPhotos(
+        stopPhotos.photos.filter((p) => p.user_id === me.id),
+        photos,
+        { city: trip.city, country: trip.country, cities: cityNames },
+      ),
+    [stopPhotos.photos, me.id, photos, trip.city, trip.country, cityNames],
   );
   const tripArt = bannerArtUrl(
     bannerSceneFor(
@@ -1649,11 +1649,9 @@ export function TripDetail({
         own={bannerOwn}
         actions={{
           primary:
-            perspective === "overview"
-              ? { label: "View today's plan", onClick: () => setPerspective("companion") }
-              : perspective === "timeline"
-                ? { label: "Add stop", onClick: () => setAddOpen(true) }
-                : { label: "View itinerary", onClick: () => setPerspective("timeline") },
+            perspective === "timeline"
+              ? { label: "Add stop", onClick: () => setAddOpen(true) }
+              : { label: "View itinerary", onClick: () => setPerspective("timeline") },
           secondary: {
             label: "Plan with Béa",
             onClick: () => {

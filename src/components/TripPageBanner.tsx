@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useSignedPhoto } from "@/hooks/useTripPhotos";
-import { useStopPictures } from "@/hooks/useStopPictures";
 import { useTownPhoto } from "@/hooks/useTownPhoto";
 import { formatTripLocation } from "@/lib/place-label";
 import { tripDateLine, tripPlacesLine } from "@/lib/trip-card";
@@ -60,38 +59,33 @@ export function TripPageBanner({
   tracker?: ReactNode;
   viewTransitionName?: string;
 }) {
-  const [pictures] = useStopPictures();
-  const wantPhoto = pictures !== "none";
   const mine = look !== "illustration" && look !== "stock" && own.length > 0;
   const [turn, setTurn] = useState(0);
   useEffect(() => {
     if (!mine || own.length < 2) return;
-    // Reduced motion keeps the first photo still.
-    if (
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
-      document.documentElement.dataset["motion"] === "reduce"
-    )
-      return;
-    const id = window.setInterval(() => setTurn((t) => nextBannerIndex(t, own.length)), TURN_MS);
+    const id = window.setInterval(() => {
+      // Still while the tab is hidden, and with reduced motion on (checked at
+      // each turn, so a change of the setting takes effect at once).
+      if (
+        document.hidden ||
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ||
+        document.documentElement.dataset["motion"] === "reduce"
+      )
+        return;
+      setTurn((t) => nextBannerIndex(t, own.length));
+    }, TURN_MS);
     return () => window.clearInterval(id);
   }, [mine, own.length]);
   const ownPath = mine ? (own[turn % own.length]?.storage_path ?? null) : null;
   const signed = useSignedPhoto(ownPath);
-  const town = useTownPhoto(
-    city || cities[0],
-    country,
-    wantPhoto && look !== "illustration" && !mine,
-  );
+  // A photo that will not sign or load keeps Béa's illustration in its place.
+  const [brokenOwn, setBrokenOwn] = useState<string | null>(null);
+  const ownUrl = signed && signed !== brokenOwn ? signed : null;
+  const town = useTownPhoto(city || cities[0], country, look !== "illustration" && !mine);
   const [brokenTown, setBrokenTown] = useState<string | null>(null);
   const commons = !mine && look !== "illustration" && town && town.url !== brokenTown ? town : null;
-  const imageUrl = !wantPhoto
-    ? null
-    : look === "illustration"
-      ? art
-      : mine
-        ? signed
-        : (commons?.url ?? art);
-  const credited = wantPhoto && commons && creditedOnPhoto(commons) ? commons : null;
+  const imageUrl = look === "illustration" ? art : mine ? (ownUrl ?? art) : (commons?.url ?? art);
+  const credited = commons && creditedOnPhoto(commons) ? commons : null;
 
   // formatTripLocation, not a plain join: the city field often already ends
   // in the country ("Kyoto, Kyoto Prefecture, Japan").
@@ -107,7 +101,11 @@ export function TripPageBanner({
   const photoProps = {
     src: imageUrl ?? undefined,
     referrerPolicy: commons ? ("no-referrer" as const) : undefined,
-    onError: commons ? () => setBrokenTown(commons.url) : undefined,
+    onError: commons
+      ? () => setBrokenTown(commons.url)
+      : ownUrl
+        ? () => setBrokenOwn(ownUrl)
+        : undefined,
   };
 
   if (look === "compact") {
@@ -124,7 +122,9 @@ export function TripPageBanner({
               {title}
             </h1>
             <p className="mt-1 truncate text-[14px] text-muted-foreground">
-              {[where, dates, tentative ? "tentative" : ""].filter(Boolean).join(" · ")}
+              {[where, dates, tentative ? "tentative" : "", companions ?? ""]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           {imageUrl ? (
