@@ -5,8 +5,7 @@ import { bookingAtHand, isBooked } from "@/lib/bookings";
 import { remindersFor, type ReminderItem } from "@/lib/reminders";
 import { EASE_PRESETS, type EasePreset } from "@/lib/day-ease";
 import { parseLocalDate } from "@/lib/trip-dates";
-import { useBeaSays } from "@/components/day/bea-says";
-import { BeaSays, KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
+import { KindIcon, StopArt, StopDisc } from "@/components/day/stop-bits";
 import { legWords, measured } from "@/components/day/stop-words";
 import { stayLabel } from "@/lib/planned-stay";
 import { PlaceFacts } from "@/components/PlaceFacts";
@@ -193,7 +192,6 @@ export function NowPanel({
       nextTitle={next.title}
     />
   ) : null;
-  const says = useBeaSays(current && phase === "at" ? current : null, next, leave);
 
   const focus = phase === "at" ? current : phase === "done" ? null : next;
   const tail = focus
@@ -421,51 +419,33 @@ export function NowPanel({
               </div>
             </div>
             {leavePanel ? <div className="mt-3">{leavePanel}</div> : null}
+            <div className="now-actions" role="group" aria-label="This stop">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
+                className={primaryBtn}
+              >
+                Leaving
+              </button>
+              <a href={directionsHref} target="_blank" rel="noreferrer" className={softBtn}>
+                <MapPin className="size-4" aria-hidden />
+                Directions
+                <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
+              </a>
+              {photosFor && <QuickPhoto photos={photosFor(current)} />}
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
+                className={linkBtn}
+              >
+                Not here yet
+              </button>
+            </div>
             <BookingAtHandCard stop={current} docs={bookingDocs} />
           </section>
           {upcomingList}
-          <div className="now-tools" role="group" aria-label="This stop">
-            <a
-              href={directionsHref}
-              target="_blank"
-              rel="noreferrer"
-              className="now-tool now-tool-pink"
-            >
-              <MapPin className="size-5" aria-hidden />
-              <span>Directions</span>
-              <span className="sr-only">: open {next?.title ?? current.title} in maps</span>
-            </a>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => onProgress([leavingWrite(current, new Date())]))}
-              className="now-tool now-tool-blue"
-            >
-              <ChevronRight className="size-5" aria-hidden />
-              <span>Leaving</span>
-            </button>
-            {photosFor && (
-              <span className="now-tool now-tool-yellow">
-                <QuickPhoto photos={photosFor(current)} />
-                <span>Photo</span>
-              </span>
-            )}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(() => onProgress([undoArrivalWrite(current)]))}
-              className="now-tool now-tool-lilac"
-            >
-              <Clock className="size-5" aria-hidden />
-              <span>Not here yet</span>
-            </button>
-          </div>
-          {says && (
-            <section className="plain-card now-note p-3" aria-label="A note from Béa">
-              <p className="now-note-title">A note from Béa</p>
-              <BeaSays line={says} />
-            </section>
-          )}
         </>
       )}
 

@@ -3386,3 +3386,11 @@ html:not(.dark)
   font-size: 16px;
   font-weight: 600;
 }
+
+.now-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
