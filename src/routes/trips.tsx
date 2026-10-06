@@ -17,7 +17,6 @@ import {
   TripsSection,
 } from "@/components/TripsList";
 import { useTripsLayout } from "@/hooks/useTripsLayout";
-import { heroTrips } from "@/lib/trips-page";
 import { FollowedTripList } from "@/components/FollowedTripList";
 import { listFollowedTrips } from "@/lib/trip-follow.functions";
 import type { FollowedTrip } from "@/lib/trip-follow";
@@ -159,8 +158,6 @@ function TripsPage() {
   const { glances } = useTripGlances(t.trips.map((trip) => trip.id));
   const today = toLocalISODate(new Date());
   const lists = tripTabs(t.trips, today);
-  // The same array until the trips change, so the header map is not redrawn on every render.
-  const hero = useMemo(() => heroTrips(tripTabs(t.trips, today)), [t.trips, today]);
   const beaSettings = useBeaSettings();
   // Picked once per visit, in the traveller's mix.
   const [emptyTrips] = useState(() => emptyLine({ kind: "noTrips", settings: beaSettings }));

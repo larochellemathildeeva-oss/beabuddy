@@ -3,6 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { TripPageBanner } from "@/components/TripPageBanner";
 import type { TripPhotoRow } from "@/hooks/useTripPhotos";
 import type { TripRow } from "@/hooks/useTrips";
+import { useAuth } from "@/hooks/useAuth";
+import { useStopPhotos } from "@/hooks/useStopPhotos";
 import { useTripBanner } from "@/hooks/useTripBanner";
 import { bannerArtUrl, bannerSceneFor } from "@/lib/banner-art";
 import { bannerPhotos } from "@/lib/trip-banner";
@@ -23,9 +25,17 @@ export function HomeTripBanner({
 }) {
   const [look] = useTripBanner();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const stopPhotos = useStopPhotos(trip.id, user?.id ?? null, trip);
+  // The same photos, in the same order, as the top of the trip page.
   const own = useMemo(
-    () => bannerPhotos([], photos, { city: trip.city, country: trip.country, cities }),
-    [photos, trip.city, trip.country, cities],
+    () =>
+      bannerPhotos(
+        stopPhotos.photos.filter((p) => p.user_id === user?.id),
+        photos,
+        { city: trip.city, country: trip.country, cities },
+      ),
+    [stopPhotos.photos, user?.id, photos, trip.city, trip.country, cities],
   );
   const art = bannerArtUrl(
     bannerSceneFor([trip.title, ...cities, trip.city, trip.country], trip.title || trip.city || ""),
